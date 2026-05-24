@@ -2282,24 +2282,27 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
       transition: transform 100ms;
     }
     .hub-tile:hover { transform: translateY(-2px); }
-    .hub-tile iframe {
-      width: 156px; height: 338px;
-      border: 0;
-      border-radius: 24px;
-      background: #000;
-      pointer-events: none;
-      transform: scale(0.4);
-      transform-origin: top left;
-      width: 392px; height: 851px;
-      margin: 0 0 -510px -118px;
-    }
     .hub-tile .frame-wrap {
-      width: 156px; height: 338px;
+      width: 180px;
+      height: 380px;
       overflow: hidden;
       border-radius: 24px;
       margin-bottom: 12px;
-      background: #000;
+      background: var(--screen-bg);
       box-shadow: 0 8px 20px rgba(80, 70, 200, 0.10);
+      position: relative;
+    }
+    .hub-tile iframe {
+      width: 480px;
+      height: 1010px;
+      border: 0;
+      background: transparent;
+      pointer-events: none;
+      transform: scale(0.375);
+      transform-origin: top left;
+      position: absolute;
+      top: 0;
+      left: 0;
     }
     .hub-tile .tile-label { font-size: 13px; font-weight: 600; text-align: center; }
     .hub-tile .tile-num { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
