@@ -43,8 +43,8 @@ The prototype is **non-functional** — no real backend, no real auth, no real s
 The prototype is built as plain HTML/CSS/JS files served by the visual companion server already running for this brainstorming session.
 
 - All files live under `.superpowers/brainstorm/<session-dir>/content/` (gitignored — `.superpowers/` is already in `.gitignore`)
-- The server auto-serves the newest file at `http://localhost:52271/`
-- The nav hub (`00-nav-hub.html`) is the durable entry point. Because the visual-companion server serves the newest file at `/`, the hub is *touched* (re-saved) any time we want it to become the active landing page. The hub itself uses anchor links (`<a href="07-home.html">`) to navigate the browser directly to each screen file by name — those direct file URLs work regardless of which file is "newest"
+- The server serves the *newest* file at `http://localhost:52271/`. Individual files are accessible at `http://localhost:52271/files/<filename>`
+- The nav hub (`00-nav-hub.html`) is the durable entry point. To make the hub the active landing page, we `touch` it so it becomes the newest file. The hub uses `/files/<screen-file>` URLs to navigate the browser to each screen, and every screen links back to the hub at `/files/00-nav-hub.html`
 - No build step, no framework — vanilla HTML, CSS variables, minimal JS for theme switching and click navigation
 
 ### File naming
