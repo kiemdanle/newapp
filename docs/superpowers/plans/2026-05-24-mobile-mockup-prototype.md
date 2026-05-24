@@ -48,7 +48,7 @@ Every screen file (`01-welcome.html` … `25-push-preview.html`) follows this ex
           <svg class="sb-wifi" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.2a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm0-3.6a2.4 2.4 0 0 0-1.7.7l-1-1A3.9 3.9 0 0 1 8 6a3.9 3.9 0 0 1 2.7 1.1l-1 1A2.4 2.4 0 0 0 8 7.6Zm0-3.6a6 6 0 0 0-4.2 1.7l-1-1A7.5 7.5 0 0 1 8 2.4a7.5 7.5 0 0 1 5.2 2.1l-1 1A6 6 0 0 0 8 4Z"/></svg>
           <span class="sb-battery"><span class="sb-battery-fill"></span></span>
         </span>
-      </span>
+      </div>
       <main class="screen">
         SCREEN_BODY_GOES_HERE
       </main>
