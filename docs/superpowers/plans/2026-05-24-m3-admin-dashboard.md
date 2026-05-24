@@ -117,7 +117,7 @@ pantry/
     │   │   ├── chart-line.tsx
     │   │   ├── chart-bar.tsx
     │   │   └── status-badge.tsx
-    │   └── app/(dashboard)/
+    │   └── app/(admin)/
     │       ├── page.tsx                             ← /
     │       ├── users/page.tsx
     │       ├── users/[id]/page.tsx
@@ -261,6 +261,7 @@ async function main() {
         reviewsEnabled: true,
         passkeysEnabled: true,
         ocrEnabled: true,
+        maintenanceBanner: null,
       },
     },
   });
@@ -547,13 +548,15 @@ git commit -m "feat(api): admin-only plugin gates /v1/admin sub-app"
 
 ```ts
 // api/tests/integration/admin/plugin-audit.test.ts
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../../../src/server.js';
-import { getPrisma } from '../../../src/db.js';
 import { makeAdmin } from '../../helpers/admin.js';
+import * as auditService from '../../../src/services/audit/log.js';
+
+vi.spyOn(auditService, 'writeAuditLog').mockResolvedValue();
 
 describe('audit plugin', () => {
-  it('writes an admin_audit_log row when req.auditLog is called', async () => {
+  it('delegates to writeAuditLog when req.auditLog is called', async () => {
     const app = await buildServer();
     // Register a one-off probe route inside the admin sub-app for this test.
     app.post('/v1/admin/_test-audit', async (req) => {
@@ -569,13 +572,16 @@ describe('audit plugin', () => {
     });
     expect(res.statusCode).toBe(200);
 
-    const rows = await getPrisma().adminAuditLog.findMany({ where: { adminId: admin.id } });
-    expect(rows).toHaveLength(1);
-    expect(rows[0].action).toBe('test.action');
-    expect(rows[0].targetType).toBe('thing');
-    expect(rows[0].targetId).toBe('thing-1');
-    expect(rows[0].requestId).toBe('req-abc');
-    expect(rows[0].diff).toEqual({ before: null, after: { x: 1 } });
+    expect(auditService.writeAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminId: admin.id,
+        action: 'test.action',
+        targetType: 'thing',
+        targetId: 'thing-1',
+        requestId: 'req-abc',
+        diff: { before: null, after: { x: 1 } },
+      }),
+    );
     await app.close();
   });
 });
@@ -592,7 +598,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-audit.t
 ```ts
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
-import { getPrisma } from '../db.js';
+import { writeAuditLog } from '../services/audit/log.js'; // helper shipped in M0d (Phase C)
 import type { AuditDiff } from '@pantry/shared';
 
 export type AuditTarget = { type: string; id: string };
@@ -606,16 +612,14 @@ declare module 'fastify' {
 export const auditPlugin = fp(async (app: FastifyInstance) => {
   app.decorateRequest('auditLog', async function (this: FastifyRequest, action, target, diff = null) {
     if (!this.user) throw new Error('auditLog requires an authenticated admin');
-    await getPrisma().adminAuditLog.create({
-      data: {
-        adminId: this.user.id,
-        action,
-        targetType: target.type,
-        targetId: target.id,
-        diff: diff ?? undefined,
-        requestId: (this.headers['x-request-id'] as string) ?? this.id,
-        ip: this.ip,
-      },
+    await writeAuditLog({
+      adminId: this.user.id,
+      action,
+      targetType: target.type,
+      targetId: target.id,
+      diff,
+      requestId: (this.headers['x-request-id'] as string) ?? this.id,
+      ip: this.ip,
     });
   });
 });
@@ -812,6 +816,7 @@ git commit -m "feat(shared): admin users zod schemas"
 // api/tests/integration/admin/users-list.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../../src/server.js';
+import { getPrisma } from '../../../src/db.js';
 import { makeAdmin, makeUser } from '../../helpers/admin.js';
 
 describe('GET /v1/admin/users', () => {
@@ -822,11 +827,16 @@ describe('GET /v1/admin/users', () => {
     await makeUser({ email: 'bob@example.com', country: 'GB', status: 'suspended' });
     await makeUser({ email: 'carol@example.com', country: 'US' });
 
+    // D30: the M2 system user must exist in the DB but be hidden from the admin list.
+    const systemUser = await getPrisma().user.findUnique({ where: { id: '00000000-0000-0000-0000-000000000001' } });
+    expect(systemUser).not.toBeNull(); // sanity: it exists in DB
+
     const res = await app.inject({ method: 'GET', url: '/v1/admin/users?limit=10', headers });
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.items.length).toBeGreaterThanOrEqual(3);
     expect(body.nextCursor === null || typeof body.nextCursor === 'string').toBe(true);
+    expect(body.items.find((u: { id: string }) => u.id === '00000000-0000-0000-0000-000000000001')).toBeUndefined();
 
     const filtered = await app.inject({ method: 'GET', url: '/v1/admin/users?status=suspended', headers });
     const bodyF = filtered.json();
@@ -879,7 +889,9 @@ export async function adminUsersListRoute(app: FastifyInstance) {
     const q = adminUsersQuerySchema.parse(req.query);
     const prisma = getPrisma();
 
-    const where: Prisma.UserWhereInput = {};
+    // D30: hide the system user (M2 seeds it with id 00000000-0000-0000-0000-000000000001) from the admin list.
+    const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
+    const where: Prisma.UserWhereInput = { id: { not: SYSTEM_USER_ID } };
     if (q.status) where.status = q.status;
     if (q.role) where.role = q.role;
     if (q.country) where.country = q.country;
@@ -1989,7 +2001,7 @@ git commit -m "feat(api): POST /v1/admin/products/:id/merge (transactional)"
 - Create: `api/tests/integration/admin/products-pending.test.ts`
 - Modify: `api/src/routes/admin/index.ts`
 
-> **Cross-milestone note:** M1 creates the `product_edits` table. The Prisma model name is `ProductEdit` with columns `id`, `productId`, `submittedBy`, `proposed (Json)`, `status ('pending'|'approved'|'rejected')`, `createdAt`, `resolvedBy`, `resolvedAt`, `notes`. If M1 has not yet shipped that exact shape, add a minimal migration in the same commit as Task C5 to match.
+> **Cross-milestone note:** M1 ships the `product_edits` table. The Prisma model name is `ProductEdit` with columns `id`, `productId`, `submittedBy`, `proposed (Json)`, `status ('pending'|'approved'|'rejected')`, `createdAt`, `resolvedBy`, `resolvedAt`, `notes`. M3 consumes this shape directly — no fallback migration needed.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3278,7 +3290,7 @@ describe('GET /v1/admin/system/queue-health', () => {
     expect(Array.isArray(body.queues)).toBe(true);
     // Names registered in M1/M2:
     const names = body.queues.map((q: { name: string }) => q.name);
-    expect(names).toEqual(expect.arrayContaining(['product-lookup', 'notification-schedule', 'notification-send', 'score-recalc', 'moderation-flag']));
+    expect(names).toEqual(expect.arrayContaining(['product-lookup', 'notification-schedule', 'notification-send', 'score-recalc', 'moderation-flag', 'product-rating-recalc']));
     await app.close();
   });
 });
@@ -3295,7 +3307,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { queueHealthSchema } from '@pantry/shared';
-import { getAllQueues } from '../../../services/queues/index.js'; // exposed by M1
+import { getAllQueues } from '../../queues/index.js'; // exposed by M1 (api/src/queues/index.ts)
 
 export async function adminSystemQueueHealthRoute(app: FastifyInstance) {
   app.get('/queue-health', async () => {
@@ -3316,7 +3328,7 @@ export async function adminSystemQueueHealthRoute(app: FastifyInstance) {
 }
 ```
 
-> **Cross-milestone note:** M1 exports `getAllQueues()` from `api/src/services/queues/index.ts`. If that helper does not yet exist, add it (a 5-line function returning the array of registered queues) in the same commit as this task.
+> **Cross-milestone note:** M1 ships `getAllQueues()` from `api/src/queues/index.ts` (committed). It returns the array `{ name, queue }[]` for every registered BullMQ queue.
 
 - [ ] **Step 4: Wire** — in `api/src/routes/admin/index.ts`:
 
@@ -3564,7 +3576,7 @@ export function snapshotBreakers() {
 }
 ```
 
-> **Cross-milestone note:** M1 exposes `getBreaker(name)` returning an `opossum` `CircuitBreaker` instance. If absent, add a 10-line registry there in the same commit.
+> **Cross-milestone note:** M1 ships `getBreaker(name)` and `getAllBreakers()` from `api/src/services/external/breakers.ts` (committed). The three registered names are `'off'`, `'upcitemdb'`, `'expo-push'`.
 
 - [ ] **Step 2: Append the failing test**
 
@@ -3638,7 +3650,7 @@ import type { FastifyInstance } from 'fastify';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter.js';
 import { FastifyAdapter } from '@bull-board/fastify';
-import { getAllQueues } from '../../../services/queues/index.js';
+import { getAllQueues } from '../../queues/index.js';
 
 export async function adminBullBoardRoute(app: FastifyInstance) {
   const serverAdapter = new FastifyAdapter();
@@ -3696,6 +3708,7 @@ export const featureFlagsSchema = z.object({
   reviewsEnabled: z.boolean(),
   passkeysEnabled: z.boolean(),
   ocrEnabled: z.boolean(),
+  maintenanceBanner: z.string().nullable(),
 });
 
 export const moderationSettingsSchema = z.object({
@@ -3822,8 +3835,8 @@ beforeAll(async () => {
   const prisma = getPrisma();
   await prisma.setting.upsert({
     where: { key: 'feature_flags' },
-    update: { value: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true } },
-    create: { key: 'feature_flags', value: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true } },
+    update: { value: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true, maintenanceBanner: null } },
+    create: { key: 'feature_flags', value: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true, maintenanceBanner: null } },
   });
   await prisma.setting.upsert({
     where: { key: 'moderation' },
@@ -3845,11 +3858,25 @@ describe('admin settings — feature flags', () => {
   it('PATCH updates flags and audit-logs', async () => {
     const app = await buildServer();
     const { admin, headers } = await makeAdmin();
-    const res = await app.inject({ method: 'PATCH', url: '/v1/admin/settings/feature-flags', headers, payload: { reviewsEnabled: false, passkeysEnabled: true, ocrEnabled: true } });
+    const res = await app.inject({ method: 'PATCH', url: '/v1/admin/settings/feature-flags', headers, payload: { reviewsEnabled: false, passkeysEnabled: true, ocrEnabled: true, maintenanceBanner: null } });
     expect(res.statusCode).toBe(200);
     expect(res.json().reviewsEnabled).toBe(false);
     const log = await getPrisma().adminAuditLog.findFirstOrThrow({ where: { adminId: admin.id, action: 'settings.feature_flags.update' } });
     expect(log.diff).toMatchObject({ after: { reviewsEnabled: false } });
+    await app.close();
+  });
+
+  it('PATCH can set and clear maintenanceBanner', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    // Set a banner.
+    const set = await app.inject({ method: 'PATCH', url: '/v1/admin/settings/feature-flags', headers, payload: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true, maintenanceBanner: 'Scheduled maintenance at 02:00 UTC' } });
+    expect(set.statusCode).toBe(200);
+    expect(set.json().maintenanceBanner).toBe('Scheduled maintenance at 02:00 UTC');
+    // Clear it.
+    const clear = await app.inject({ method: 'PATCH', url: '/v1/admin/settings/feature-flags', headers, payload: { reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true, maintenanceBanner: null } });
+    expect(clear.statusCode).toBe(200);
+    expect(clear.json().maintenanceBanner).toBeNull();
     await app.close();
   });
 });
@@ -4044,6 +4071,67 @@ git commit -m "feat(api): admin notification template GET/PATCH"
 
 ---
 
+### Task G3a: Extend email service with `sendAdminInviteEmail` (D21)
+
+**Files:**
+- Modify: `api/src/services/auth/email.ts` (created in M0a)
+- Modify: `api/src/services/auth/email.test.ts` (created in M0a)
+
+- [ ] **Step 1: Verify `EmailToken.purpose` is a `String` column (no enum migration needed)**
+
+```bash
+grep -n "purpose\s\+String" api/prisma/schema.prisma
+```
+Expected: a line `purpose String` (M0a's shape). If it's an enum, halt — that's a separate refactor outside this task's scope.
+
+- [ ] **Step 2: Write the failing unit test**
+
+```ts
+// api/src/services/auth/email.test.ts (append)
+import { sendAdminInviteEmail } from './email.js';
+import { transport } from './email.js';
+
+describe('sendAdminInviteEmail', () => {
+  it('sends an invite email with the accept-invite link', async () => {
+    const send = vi.spyOn(transport, 'sendMail').mockResolvedValue({ messageId: 'm1' } as any);
+    await sendAdminInviteEmail({ email: 'a@b.test', inviteUrl: 'https://admin.example.com/accept-invite?token=xyz' });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'a@b.test',
+      subject: expect.stringMatching(/admin/i),
+      html: expect.stringContaining('https://admin.example.com/accept-invite?token=xyz'),
+    }));
+  });
+});
+```
+
+- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @pantry/api test email`
+
+- [ ] **Step 4: Implement**
+
+```ts
+// api/src/services/auth/email.ts (append)
+export async function sendAdminInviteEmail(input: { email: string; inviteUrl: string }): Promise<void> {
+  await transport.sendMail({
+    from: cfg.smtp.from,
+    to: input.email,
+    subject: "You've been invited to administer Pantry",
+    text: `Click to accept: ${input.inviteUrl}`,
+    html: `<p>You've been invited to administer Pantry. <a href="${input.inviteUrl}">Accept invite</a> (expires in 7 days).</p>`,
+  });
+}
+```
+
+- [ ] **Step 5: Run, verify PASS**
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add api/src/services/auth/email.ts api/src/services/auth/email.test.ts
+git commit -m "feat(api): sendAdminInviteEmail for admin invites (D21)"
+```
+
+---
+
 ### Task G5: GET/POST/PATCH /v1/admin/settings/admins (list/invite/revoke)
 
 **Files:**
@@ -4108,6 +4196,7 @@ import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 import { sendAdminInviteEmail } from '../../../services/auth/email.js';
 import { hashToken, randomToken } from '../../../utils/random.js';
+import { cfg } from '../../../config.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -4137,7 +4226,8 @@ export async function adminAdminsRoute(app: FastifyInstance) {
     await prisma.emailToken.create({
       data: { userId: user.id, tokenHash: hashToken(token), purpose: 'admin_grant', expiresAt: new Date(Date.now() + 24 * 3600_000) },
     });
-    await sendAdminInviteEmail(user.email, token);
+    const inviteUrl = `${cfg.frontend.adminUrl}/accept-invite?token=${token}`;
+    await sendAdminInviteEmail({ email: user.email, inviteUrl });
     await req.auditLog('admin.invite', { type: 'user', id: user.id }, { before: null, after: { email: user.email } });
     return { sent: true };
   });
@@ -4156,7 +4246,7 @@ export async function adminAdminsRoute(app: FastifyInstance) {
 }
 ```
 
-> **Cross-milestone note:** Add `sendAdminInviteEmail(email, token)` to `api/src/services/auth/email.ts` if M0a/M0b did not — a 6-line wrapper around the existing nodemailer transport that links to `/admin/accept-invite?token=...`. Add the `'admin_grant'` value to the `purpose` enum on `EmailToken` via a tiny Prisma migration in the same commit.
+> **D21:** `sendAdminInviteEmail` and acceptance of `EmailToken.purpose = 'admin_grant'` are added in Task G3a immediately above. `purpose` is a `String` column (M0a) — no enum migration is required.
 
 - [ ] **Step 4: Wire** — in `api/src/routes/admin/index.ts`:
 
@@ -4214,9 +4304,17 @@ git commit -m "chore(admin): add tanstack query/table + recharts"
 - [ ] **Step 1: Write `apps/admin/src/lib/admin-api.ts`**
 
 ```ts
-// Thin typed wrappers around the M0d cookie-based api client (`lib/api.ts`).
+// Thin typed wrappers around M0d's cookie-based api client (`lib/api.ts`),
+// which exports `apiServerFetch` (Server Components / server actions, forwards
+// the cookie header from the inbound request) and `apiBrowserFetch` (Client
+// Components, runs in the browser using fetch with credentials: 'include').
 // Each function returns a Promise<T> typed against @pantry/shared schemas.
-import { apiFetch } from './api.js'; // installed by M0d; sends cookies + CSRF.
+//
+// Both factories share the same shape so callers pick the right one for their
+// runtime: `serverAdminApi` for server-side fetches and `browserAdminApi` for
+// client-side fetches. (Importing the wrong one in the wrong context is a
+// typecheck-clean runtime bug — server fetch in a client component throws.)
+import { apiServerFetch, apiBrowserFetch } from './api.js'; // exported by M0d
 import {
   adminUsersListSchema,
   adminUserDetailSchema,
@@ -4249,61 +4347,71 @@ function qs(q: Q): string {
   return e.length === 0 ? '' : '?' + new URLSearchParams(Object.fromEntries(e.map(([k, v]) => [k, String(v)]))).toString();
 }
 
-export const adminApi = {
-  users: {
-    list: (q: Q = {}) => apiFetch(`/v1/admin/users${qs(q)}`).then((r) => adminUsersListSchema.parse(r)),
-    get: (id: string) => apiFetch(`/v1/admin/users/${id}`).then((r) => adminUserDetailSchema.parse(r)),
-    patch: (id: string, body: object) => apiFetch(`/v1/admin/users/${id}`, { method: 'PATCH', body }).then((r) => adminUserRowSchema.parse(r)),
-    revokeSessions: (id: string) => apiFetch(`/v1/admin/users/${id}/sessions/revoke-all`, { method: 'POST' }).then((r) => z.object({ revoked: z.number() }).parse(r)),
-    impersonate: (id: string) => apiFetch(`/v1/admin/users/${id}/impersonate`, { method: 'POST' }).then((r) => adminUserImpersonateResponseSchema.parse(r)),
-  },
-  products: {
-    list: (q: Q = {}) => apiFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
-    patch: (id: string, body: object) => apiFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body }).then((r) => adminProductRowSchema.parse(r)),
-    merge: (winnerId: string, loserIds: string[]) => apiFetch(`/v1/admin/products/${winnerId}/merge`, { method: 'POST', body: { winnerId, loserIds } }).then((r) => adminProductMergeResponseSchema.parse(r)),
-    pending: (q: Q = {}) => apiFetch(`/v1/admin/products/pending${qs(q)}`).then((r) => adminProductEditsListSchema.parse(r)),
-    resolveEdit: (id: string, decision: 'approve' | 'reject', notes?: string) => apiFetch(`/v1/admin/products/pending/${id}`, { method: 'PATCH', body: { decision, notes } }),
-  },
-  reviews: {
-    list: (q: Q = {}) => apiFetch(`/v1/admin/reviews${qs(q)}`).then((r) => adminReviewsListSchema.parse(r)),
-    setStatus: (id: string, status: 'visible' | 'hidden' | 'deleted') => apiFetch(`/v1/admin/reviews/${id}/status`, { method: 'PATCH', body: { status } }),
-  },
-  reports: {
-    list: (q: Q = {}) => apiFetch(`/v1/admin/reports${qs(q)}`).then((r) => adminReportsListSchema.parse(r)),
-    resolve: (id: string, action: 'hide' | 'delete' | 'dismiss' | 'ban', notes?: string) => apiFetch(`/v1/admin/reports/${id}/resolve`, { method: 'PATCH', body: { action, notes } }),
-  },
-  analytics: {
-    overview: () => apiFetch('/v1/admin/analytics/overview').then((r) => analyticsOverviewSchema.parse(r)),
-    scans: (range: '7d' | '30d' | '90d') => apiFetch(`/v1/admin/analytics/scans?range=${range}`).then((r) => analyticsScansSchema.parse(r)),
-    reviews: (range: '7d' | '30d' | '90d') => apiFetch(`/v1/admin/analytics/reviews?range=${range}`).then((r) => analyticsReviewsSchema.parse(r)),
-    geography: () => apiFetch('/v1/admin/analytics/geography').then((r) => analyticsGeographySchema.parse(r)),
-  },
-  system: {
-    queueHealth: () => apiFetch('/v1/admin/system/queue-health').then((r) => queueHealthSchema.parse(r)),
-    pushLogs: (q: Q = {}) => apiFetch(`/v1/admin/system/push-logs${qs(q)}`).then((r) => pushLogsListSchema.parse(r)),
-    apiErrors: (range: '24h' | '7d' | '30d') => apiFetch(`/v1/admin/system/api-errors?range=${range}`).then((r) => apiErrorsAggSchema.parse(r)),
-    externalApis: () => apiFetch('/v1/admin/system/external-apis').then((r) => externalApiStateSchema.parse(r)),
-  },
-  settings: {
-    featureFlags: {
-      get: () => apiFetch('/v1/admin/settings/feature-flags').then((r) => featureFlagsSchema.parse(r)),
-      put: (body: z.infer<typeof featureFlagsSchema>) => apiFetch('/v1/admin/settings/feature-flags', { method: 'PATCH', body }).then((r) => featureFlagsSchema.parse(r)),
+type Fetcher = (path: string, init?: { method?: string; body?: unknown }) => Promise<unknown>;
+
+function makeAdminApi(apiFetch: Fetcher) {
+  return {
+    users: {
+      list: (q: Q = {}) => apiFetch(`/v1/admin/users${qs(q)}`).then((r) => adminUsersListSchema.parse(r)),
+      get: (id: string) => apiFetch(`/v1/admin/users/${id}`).then((r) => adminUserDetailSchema.parse(r)),
+      patch: (id: string, body: object) => apiFetch(`/v1/admin/users/${id}`, { method: 'PATCH', body }).then((r) => adminUserRowSchema.parse(r)),
+      revokeSessions: (id: string) => apiFetch(`/v1/admin/users/${id}/sessions/revoke-all`, { method: 'POST' }).then((r) => z.object({ revoked: z.number() }).parse(r)),
+      impersonate: (id: string) => apiFetch(`/v1/admin/users/${id}/impersonate`, { method: 'POST' }).then((r) => adminUserImpersonateResponseSchema.parse(r)),
     },
-    moderation: {
-      get: () => apiFetch('/v1/admin/settings/moderation').then((r) => moderationSettingsSchema.parse(r)),
-      put: (body: z.infer<typeof moderationSettingsSchema>) => apiFetch('/v1/admin/settings/moderation', { method: 'PATCH', body }).then((r) => moderationSettingsSchema.parse(r)),
+    products: {
+      list: (q: Q = {}) => apiFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
+      patch: (id: string, body: object) => apiFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body }).then((r) => adminProductRowSchema.parse(r)),
+      merge: (winnerId: string, loserIds: string[]) => apiFetch(`/v1/admin/products/${winnerId}/merge`, { method: 'POST', body: { winnerId, loserIds } }).then((r) => adminProductMergeResponseSchema.parse(r)),
+      pending: (q: Q = {}) => apiFetch(`/v1/admin/products/pending${qs(q)}`).then((r) => adminProductEditsListSchema.parse(r)),
+      resolveEdit: (id: string, decision: 'approve' | 'reject', notes?: string) => apiFetch(`/v1/admin/products/pending/${id}`, { method: 'PATCH', body: { decision, notes } }),
     },
-    notificationTemplates: {
-      list: () => apiFetch('/v1/admin/settings/notification-templates').then((r) => z.array(notificationTemplateSchema).parse(r)),
-      patch: (id: string, body: object) => apiFetch(`/v1/admin/settings/notification-templates/${id}`, { method: 'PATCH', body }).then((r) => notificationTemplateSchema.parse(r)),
+    reviews: {
+      list: (q: Q = {}) => apiFetch(`/v1/admin/reviews${qs(q)}`).then((r) => adminReviewsListSchema.parse(r)),
+      setStatus: (id: string, status: 'visible' | 'hidden' | 'deleted') => apiFetch(`/v1/admin/reviews/${id}/status`, { method: 'PATCH', body: { status } }),
     },
-    admins: {
-      list: () => apiFetch('/v1/admin/settings/admins').then((r) => z.array(adminRowSchema).parse(r)),
-      invite: (body: { email: string; firstName: string; lastName: string }) => apiFetch('/v1/admin/settings/admins/invite', { method: 'POST', body }),
-      revoke: (id: string) => apiFetch(`/v1/admin/settings/admins/${id}`, { method: 'PATCH', body: { revoke: true } }),
+    reports: {
+      list: (q: Q = {}) => apiFetch(`/v1/admin/reports${qs(q)}`).then((r) => adminReportsListSchema.parse(r)),
+      resolve: (id: string, action: 'hide' | 'delete' | 'dismiss' | 'ban', notes?: string) => apiFetch(`/v1/admin/reports/${id}/resolve`, { method: 'PATCH', body: { action, notes } }),
     },
-  },
-};
+    analytics: {
+      overview: () => apiFetch('/v1/admin/analytics/overview').then((r) => analyticsOverviewSchema.parse(r)),
+      scans: (range: '7d' | '30d' | '90d') => apiFetch(`/v1/admin/analytics/scans?range=${range}`).then((r) => analyticsScansSchema.parse(r)),
+      reviews: (range: '7d' | '30d' | '90d') => apiFetch(`/v1/admin/analytics/reviews?range=${range}`).then((r) => analyticsReviewsSchema.parse(r)),
+      geography: () => apiFetch('/v1/admin/analytics/geography').then((r) => analyticsGeographySchema.parse(r)),
+    },
+    system: {
+      queueHealth: () => apiFetch('/v1/admin/system/queue-health').then((r) => queueHealthSchema.parse(r)),
+      pushLogs: (q: Q = {}) => apiFetch(`/v1/admin/system/push-logs${qs(q)}`).then((r) => pushLogsListSchema.parse(r)),
+      apiErrors: (range: '24h' | '7d' | '30d') => apiFetch(`/v1/admin/system/api-errors?range=${range}`).then((r) => apiErrorsAggSchema.parse(r)),
+      externalApis: () => apiFetch('/v1/admin/system/external-apis').then((r) => externalApiStateSchema.parse(r)),
+    },
+    settings: {
+      featureFlags: {
+        get: () => apiFetch('/v1/admin/settings/feature-flags').then((r) => featureFlagsSchema.parse(r)),
+        put: (body: z.infer<typeof featureFlagsSchema>) => apiFetch('/v1/admin/settings/feature-flags', { method: 'PATCH', body }).then((r) => featureFlagsSchema.parse(r)),
+      },
+      moderation: {
+        get: () => apiFetch('/v1/admin/settings/moderation').then((r) => moderationSettingsSchema.parse(r)),
+        put: (body: z.infer<typeof moderationSettingsSchema>) => apiFetch('/v1/admin/settings/moderation', { method: 'PATCH', body }).then((r) => moderationSettingsSchema.parse(r)),
+      },
+      notificationTemplates: {
+        list: () => apiFetch('/v1/admin/settings/notification-templates').then((r) => z.array(notificationTemplateSchema).parse(r)),
+        patch: (id: string, body: object) => apiFetch(`/v1/admin/settings/notification-templates/${id}`, { method: 'PATCH', body }).then((r) => notificationTemplateSchema.parse(r)),
+      },
+      admins: {
+        list: () => apiFetch('/v1/admin/settings/admins').then((r) => z.array(adminRowSchema).parse(r)),
+        invite: (body: { email: string; firstName: string; lastName: string }) => apiFetch('/v1/admin/settings/admins/invite', { method: 'POST', body }),
+        revoke: (id: string) => apiFetch(`/v1/admin/settings/admins/${id}`, { method: 'PATCH', body: { revoke: true } }),
+      },
+    },
+  };
+}
+
+/** Use from Server Components, server actions, route handlers. Forwards the inbound cookie header. */
+export const serverAdminApi = makeAdminApi(apiServerFetch);
+
+/** Use from Client Components ('use client'). Runs in the browser, sends cookies via credentials: 'include'. */
+export const browserAdminApi = makeAdminApi(apiBrowserFetch);
 ```
 
 - [ ] **Step 2: Typecheck**
@@ -4652,17 +4760,17 @@ git commit -m "feat(admin): KPI card, chart wrappers, status badge"
 
 ## Phase I — Admin pages: overview, users, products
 
-> Each page replaces the M0d stub. Server Components fetch via `adminApi`; client islands handle interactivity. Every mutation pipes through `toast.promise(...)`.
+> Each page replaces the M0d stub. **Server Components import `serverAdminApi`** (forwards cookies from the inbound request via `apiServerFetch`). **Client Components / `'use client'` islands import `browserAdminApi`** (runs in the browser with `credentials: 'include'`). Both wrappers expose the identical typed surface from `@/lib/admin-api`. Every mutation pipes through `toast.promise(...)`.
 
 ### Task I1: `/` Overview dashboard
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/page.tsx`
 
 - [ ] **Step 1: Replace the stub with the overview page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/page.tsx
+// apps/admin/src/app/(admin)/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 import { ChartLine } from '@/components/chart-line';
@@ -4702,7 +4810,7 @@ Expected: exit 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/admin/src/app/\(dashboard\)/page.tsx
+git add apps/admin/src/app/\(admin\)/page.tsx
 git commit -m "feat(admin): overview dashboard page"
 ```
 
@@ -4711,13 +4819,13 @@ git commit -m "feat(admin): overview dashboard page"
 ### Task I2: `/users` list page
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/users/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/users/_users-table.tsx`
+- Modify: `apps/admin/src/app/(admin)/users/page.tsx`
+- Create: `apps/admin/src/app/(admin)/users/_users-table.tsx`
 
 - [ ] **Step 1: Write the client table island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/users/_users-table.tsx
+// apps/admin/src/app/(admin)/users/_users-table.tsx
 'use client';
 import { ColumnDef } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
@@ -4786,7 +4894,7 @@ export function UsersTable() {
 }
 ```
 
-- [ ] **Step 2: Replace `apps/admin/src/app/(dashboard)/users/page.tsx`**
+- [ ] **Step 2: Replace `apps/admin/src/app/(admin)/users/page.tsx`**
 
 ```tsx
 import { UsersTable } from './_users-table';
@@ -4812,7 +4920,7 @@ pnpm --filter @pantry/admin build
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/admin/src/app/\(dashboard\)/users
+git add apps/admin/src/app/\(admin\)/users
 git commit -m "feat(admin): users list page with filters"
 ```
 
@@ -4821,13 +4929,13 @@ git commit -m "feat(admin): users list page with filters"
 ### Task I3: `/users/[id]` detail page with tabs
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/users/[id]/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/users/[id]/_actions.tsx`
+- Modify: `apps/admin/src/app/(admin)/users/[id]/page.tsx`
+- Create: `apps/admin/src/app/(admin)/users/[id]/_actions.tsx`
 
 - [ ] **Step 1: Write the actions client island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/users/[id]/_actions.tsx
+// apps/admin/src/app/(admin)/users/[id]/_actions.tsx
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -4921,7 +5029,7 @@ export function UserActions({ userId, current }: Props) {
 }
 ```
 
-- [ ] **Step 2: Replace `apps/admin/src/app/(dashboard)/users/[id]/page.tsx`**
+- [ ] **Step 2: Replace `apps/admin/src/app/(admin)/users/[id]/page.tsx`**
 
 ```tsx
 import { adminApi } from '@/lib/admin-api';
@@ -4990,7 +5098,7 @@ pnpm --filter @pantry/admin build
 - [ ] **Step 4: Commit**
 
 ```bash
-git add apps/admin/src/app/\(dashboard\)/users/\[id\]
+git add apps/admin/src/app/\(admin\)/users/\[id\]
 git commit -m "feat(admin): user detail page with tabs + actions"
 ```
 
@@ -4999,13 +5107,13 @@ git commit -m "feat(admin): user detail page with tabs + actions"
 ### Task I4: `/products` list page
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/products/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/products/_products-table.tsx`
+- Modify: `apps/admin/src/app/(admin)/products/page.tsx`
+- Create: `apps/admin/src/app/(admin)/products/_products-table.tsx`
 
 - [ ] **Step 1: Write the table island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/_products-table.tsx
+// apps/admin/src/app/(admin)/products/_products-table.tsx
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -5071,7 +5179,7 @@ export function ProductsTable() {
 }
 ```
 
-- [ ] **Step 2: Replace `apps/admin/src/app/(dashboard)/products/page.tsx`**
+- [ ] **Step 2: Replace `apps/admin/src/app/(admin)/products/page.tsx`**
 
 ```tsx
 import { ProductsTable } from './_products-table';
@@ -5097,7 +5205,7 @@ export default function ProductsPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/products
+git add apps/admin/src/app/\(admin\)/products
 git commit -m "feat(admin): products list page"
 ```
 
@@ -5106,13 +5214,13 @@ git commit -m "feat(admin): products list page"
 ### Task I5: `/products/[id]` view + inline edit + audit sidebar
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/products/[id]/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/products/[id]/_edit-form.tsx`
+- Modify: `apps/admin/src/app/(admin)/products/[id]/page.tsx`
+- Create: `apps/admin/src/app/(admin)/products/[id]/_edit-form.tsx`
 
 - [ ] **Step 1: Write the edit form island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/[id]/_edit-form.tsx
+// apps/admin/src/app/(admin)/products/[id]/_edit-form.tsx
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -5153,7 +5261,7 @@ export function EditForm({ init }: { init: Init }) {
 }
 ```
 
-- [ ] **Step 2: Replace `apps/admin/src/app/(dashboard)/products/[id]/page.tsx`**
+- [ ] **Step 2: Replace `apps/admin/src/app/(admin)/products/[id]/page.tsx`**
 
 ```tsx
 import { adminApi } from '@/lib/admin-api';
@@ -5201,7 +5309,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/products/\[id\]/page.tsx apps/admin/src/app/\(dashboard\)/products/\[id\]/_edit-form.tsx
+git add apps/admin/src/app/\(admin\)/products/\[id\]/page.tsx apps/admin/src/app/\(admin\)/products/\[id\]/_edit-form.tsx
 git commit -m "feat(admin): product detail + edit form"
 ```
 
@@ -5210,13 +5318,13 @@ git commit -m "feat(admin): product detail + edit form"
 ### Task I6: `/products/pending` queue
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/products/pending/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/products/pending/_pending-table.tsx`
+- Modify: `apps/admin/src/app/(admin)/products/pending/page.tsx`
+- Create: `apps/admin/src/app/(admin)/products/pending/_pending-table.tsx`
 
 - [ ] **Step 1: Write the client island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/pending/_pending-table.tsx
+// apps/admin/src/app/(admin)/products/pending/_pending-table.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -5257,7 +5365,7 @@ export function PendingTable() {
 - [ ] **Step 2: Replace the page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/pending/page.tsx
+// apps/admin/src/app/(admin)/products/pending/page.tsx
 import { PendingTable } from './_pending-table';
 
 export const dynamic = 'force-dynamic';
@@ -5276,7 +5384,7 @@ export default function PendingPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/products/pending
+git add apps/admin/src/app/\(admin\)/products/pending
 git commit -m "feat(admin): pending product edits queue"
 ```
 
@@ -5285,13 +5393,13 @@ git commit -m "feat(admin): pending product edits queue"
 ### Task I7: `/products/[id]/merge` tool
 
 **Files:**
-- Create: `apps/admin/src/app/(dashboard)/products/[id]/merge/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/products/[id]/merge/_merge-tool.tsx`
+- Create: `apps/admin/src/app/(admin)/products/[id]/merge/page.tsx`
+- Create: `apps/admin/src/app/(admin)/products/[id]/merge/_merge-tool.tsx`
 
 - [ ] **Step 1: Write the client merge tool**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/[id]/merge/_merge-tool.tsx
+// apps/admin/src/app/(admin)/products/[id]/merge/_merge-tool.tsx
 'use client';
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -5355,7 +5463,7 @@ export function MergeTool({ winnerId }: { winnerId: string }) {
 - [ ] **Step 2: Write the page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/products/[id]/merge/page.tsx
+// apps/admin/src/app/(admin)/products/[id]/merge/page.tsx
 import { MergeTool } from './_merge-tool';
 
 export const dynamic = 'force-dynamic';
@@ -5375,7 +5483,7 @@ export default async function MergePage({ params }: { params: Promise<{ id: stri
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/products/\[id\]/merge
+git add apps/admin/src/app/\(admin\)/products/\[id\]/merge
 git commit -m "feat(admin): product merge tool"
 ```
 
@@ -5386,13 +5494,13 @@ git commit -m "feat(admin): product merge tool"
 ### Task J1: `/reviews` filterable list
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/reviews/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/reviews/_reviews-table.tsx`
+- Modify: `apps/admin/src/app/(admin)/reviews/page.tsx`
+- Create: `apps/admin/src/app/(admin)/reviews/_reviews-table.tsx`
 
 - [ ] **Step 1: Write the table island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reviews/_reviews-table.tsx
+// apps/admin/src/app/(admin)/reviews/_reviews-table.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -5468,7 +5576,7 @@ export function ReviewsTable() {
 - [ ] **Step 2: Replace the page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reviews/page.tsx
+// apps/admin/src/app/(admin)/reviews/page.tsx
 import { ReviewsTable } from './_reviews-table';
 
 export const dynamic = 'force-dynamic';
@@ -5487,7 +5595,7 @@ export default function ReviewsPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/reviews
+git add apps/admin/src/app/\(admin\)/reviews
 git commit -m "feat(admin): reviews list with inline status change"
 ```
 
@@ -5496,12 +5604,12 @@ git commit -m "feat(admin): reviews list with inline status change"
 ### Task J2: `/reviews/[id]` detail with vote breakdown chart
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/reviews/[id]/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/reviews/[id]/page.tsx`
 
 - [ ] **Step 1: Replace the stub**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reviews/[id]/page.tsx
+// apps/admin/src/app/(admin)/reviews/[id]/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { ChartBar } from '@/components/chart-bar';
 import { StatusBadge } from '@/components/status-badge';
@@ -5536,7 +5644,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/reviews/\[id\]/page.tsx
+git add apps/admin/src/app/\(admin\)/reviews/\[id\]/page.tsx
 git commit -m "feat(admin): review detail page with vote chart"
 ```
 
@@ -5545,13 +5653,13 @@ git commit -m "feat(admin): review detail page with vote chart"
 ### Task J3: `/reports` queue with polling + bulk actions
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/reports/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/reports/_reports-table.tsx`
+- Modify: `apps/admin/src/app/(admin)/reports/page.tsx`
+- Create: `apps/admin/src/app/(admin)/reports/_reports-table.tsx`
 
 - [ ] **Step 1: Write the table island (polls every 10s; uses bulk-selection hook)**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reports/_reports-table.tsx
+// apps/admin/src/app/(admin)/reports/_reports-table.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -5628,7 +5736,7 @@ export function ReportsTable() {
 - [ ] **Step 2: Replace the page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reports/page.tsx
+// apps/admin/src/app/(admin)/reports/page.tsx
 import { ReportsTable } from './_reports-table';
 
 export const dynamic = 'force-dynamic';
@@ -5647,7 +5755,7 @@ export default function ReportsPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/reports
+git add apps/admin/src/app/\(admin\)/reports
 git commit -m "feat(admin): reports queue with polling + bulk actions"
 ```
 
@@ -5656,13 +5764,13 @@ git commit -m "feat(admin): reports queue with polling + bulk actions"
 ### Task J4: `/reports/[id]` detail with one-click actions
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/reports/[id]/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/reports/[id]/_actions.tsx`
+- Modify: `apps/admin/src/app/(admin)/reports/[id]/page.tsx`
+- Create: `apps/admin/src/app/(admin)/reports/[id]/_actions.tsx`
 
 - [ ] **Step 1: Write the actions island**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reports/[id]/_actions.tsx
+// apps/admin/src/app/(admin)/reports/[id]/_actions.tsx
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -5701,7 +5809,7 @@ export function ReportActions({ reportId }: { reportId: string }) {
 - [ ] **Step 2: Replace the page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/reports/[id]/page.tsx
+// apps/admin/src/app/(admin)/reports/[id]/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { ReportActions } from './_actions';
 
@@ -5732,7 +5840,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/reports/\[id\]
+git add apps/admin/src/app/\(admin\)/reports/\[id\]
 git commit -m "feat(admin): report detail page with one-click actions"
 ```
 
@@ -5741,15 +5849,15 @@ git commit -m "feat(admin): report detail page with one-click actions"
 ### Task J5: Analytics pages (overview, scans, reviews, geography)
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/analytics/overview/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/analytics/scans/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/analytics/reviews/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/analytics/geography/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/analytics/overview/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/analytics/scans/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/analytics/reviews/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/analytics/geography/page.tsx`
 
 - [ ] **Step 1: Overview page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/analytics/overview/page.tsx
+// apps/admin/src/app/(admin)/analytics/overview/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 
@@ -5776,7 +5884,7 @@ export default async function AnalyticsOverviewPage() {
 - [ ] **Step 2: Scans page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/analytics/scans/page.tsx
+// apps/admin/src/app/(admin)/analytics/scans/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { ChartLine } from '@/components/chart-line';
 import { ChartBar } from '@/components/chart-bar';
@@ -5799,7 +5907,7 @@ export default async function ScansPage() {
 - [ ] **Step 3: Reviews page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/analytics/reviews/page.tsx
+// apps/admin/src/app/(admin)/analytics/reviews/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { ChartLine } from '@/components/chart-line';
 import { KpiCard } from '@/components/kpi-card';
@@ -5821,7 +5929,7 @@ export default async function ReviewsAnalyticsPage() {
 - [ ] **Step 4: Geography page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/analytics/geography/page.tsx
+// apps/admin/src/app/(admin)/analytics/geography/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { ChartBar } from '@/components/chart-bar';
 
@@ -5842,7 +5950,7 @@ export default async function GeographyPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/analytics
+git add apps/admin/src/app/\(admin\)/analytics
 git commit -m "feat(admin): analytics pages (overview, scans, reviews, geography)"
 ```
 
@@ -5851,15 +5959,15 @@ git commit -m "feat(admin): analytics pages (overview, scans, reviews, geography
 ### Task J6: System pages (queue, push, api-errors, external-apis)
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/system/queue/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/system/push/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/system/api-errors/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/system/external-apis/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/system/queue/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/system/push/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/system/api-errors/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/system/external-apis/page.tsx`
 
 - [ ] **Step 1: Queue page (embeds bull-board iframe + summary)**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/system/queue/page.tsx
+// apps/admin/src/app/(admin)/system/queue/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 
@@ -5888,7 +5996,7 @@ export default async function QueuePage() {
 - [ ] **Step 2: Push logs page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/system/push/page.tsx
+// apps/admin/src/app/(admin)/system/push/page.tsx
 'use client';
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
@@ -5937,7 +6045,7 @@ export default function PushPage() {
 - [ ] **Step 3: API errors page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/system/api-errors/page.tsx
+// apps/admin/src/app/(admin)/system/api-errors/page.tsx
 import { adminApi } from '@/lib/admin-api';
 
 export const dynamic = 'force-dynamic';
@@ -5964,7 +6072,7 @@ export default async function ApiErrorsPage() {
 - [ ] **Step 4: External APIs page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/system/external-apis/page.tsx
+// apps/admin/src/app/(admin)/system/external-apis/page.tsx
 import { adminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -5994,7 +6102,7 @@ export default async function ExternalApisPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/system
+git add apps/admin/src/app/\(admin\)/system
 git commit -m "feat(admin): system pages (queue, push, api-errors, external-apis)"
 ```
 
@@ -6003,16 +6111,16 @@ git commit -m "feat(admin): system pages (queue, push, api-errors, external-apis
 ### Task J7: Settings pages (feature flags, moderation, notification templates, admins)
 
 **Files:**
-- Modify: `apps/admin/src/app/(dashboard)/settings/feature-flags/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/settings/moderation/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/settings/notification-templates/page.tsx`
-- Modify: `apps/admin/src/app/(dashboard)/settings/admins/page.tsx`
-- Create: `apps/admin/src/app/(dashboard)/settings/admins/_invite-modal.tsx`
+- Modify: `apps/admin/src/app/(admin)/settings/feature-flags/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/settings/moderation/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/settings/notification-templates/page.tsx`
+- Modify: `apps/admin/src/app/(admin)/settings/admins/page.tsx`
+- Create: `apps/admin/src/app/(admin)/settings/admins/_invite-modal.tsx`
 
 - [ ] **Step 1: Feature flags page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/settings/feature-flags/page.tsx
+// apps/admin/src/app/(admin)/settings/feature-flags/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/admin-api';
@@ -6049,7 +6157,7 @@ export default function FeatureFlagsPage() {
 - [ ] **Step 2: Moderation settings page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/settings/moderation/page.tsx
+// apps/admin/src/app/(admin)/settings/moderation/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/admin-api';
@@ -6092,7 +6200,7 @@ export default function ModerationPage() {
 - [ ] **Step 3: Notification templates page**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/settings/notification-templates/page.tsx
+// apps/admin/src/app/(admin)/settings/notification-templates/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/admin-api';
@@ -6137,7 +6245,7 @@ export default function NotificationTemplatesPage() {
 - [ ] **Step 4: Admins page + invite modal**
 
 ```tsx
-// apps/admin/src/app/(dashboard)/settings/admins/_invite-modal.tsx
+// apps/admin/src/app/(admin)/settings/admins/_invite-modal.tsx
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -6177,7 +6285,7 @@ export function InviteModal() {
 ```
 
 ```tsx
-// apps/admin/src/app/(dashboard)/settings/admins/page.tsx
+// apps/admin/src/app/(admin)/settings/admins/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/admin-api';
@@ -6231,7 +6339,7 @@ export default function AdminsPage() {
 
 ```bash
 pnpm --filter @pantry/admin build
-git add apps/admin/src/app/\(dashboard\)/settings
+git add apps/admin/src/app/\(admin\)/settings
 git commit -m "feat(admin): settings pages (flags, moderation, templates, admins)"
 ```
 

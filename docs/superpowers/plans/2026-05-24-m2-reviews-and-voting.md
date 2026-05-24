@@ -15,7 +15,7 @@
 - **M0a** complete: shared package, error/AppError, config, db/redis singletons, error-handler, auth plugin (`req.user`, `app.requireAuth`), users repository (`toApiUser`), random/hashToken utils, test harness (`tests/helpers/setup.ts`, `tests/helpers/factories.ts`).
 - **M0b** complete: auth routes (so integration tests can sign up + log in users).
 - **M0c** complete: mobile app shell with auth-gated `(app)` group, tab navigator, theme provider, API client (`apps/mobile/src/api/client.ts`), TanStack Query provider, secure-store-backed session.
-- **M1** complete: `products` table + product routes + Idempotency-Key Fastify plugin (`api/src/plugins/idempotency.ts`), BullMQ wiring (`api/src/queue/connection.ts`, `api/src/queue/workers.ts`), WatermelonDB schema and offline write queue.
+- **M1** complete: `products` table + product routes + Idempotency-Key Fastify plugin (`api/src/plugins/idempotency.ts`), BullMQ wiring (queues live under `api/src/queues/` per D10 — `getQueueConnection` is exported from `api/src/queues/index.ts`, alongside a `getAllQueues()` registry; central worker registration lives in `api/src/queues/workers.ts`), WatermelonDB schema and offline write queue.
 
 **Out of scope for M2 (handled elsewhere):**
 
@@ -46,10 +46,11 @@ pantry/
 │   │   ├── services/reviews/system-user.ts     ← getSystemUserId() cached
 │   │   ├── services/reviews/repository.ts      ← Prisma helpers + toApiReview
 │   │   ├── services/reports/repository.ts      ← toApiReport + auto-hide logic
-│   │   ├── queue/jobs/score-recalc.ts          ← debounced enqueue + processor
-│   │   ├── queue/jobs/moderation-flag.ts       ← processor
-│   │   ├── queue/jobs/product-rating-recalc.ts ← processor
-│   │   ├── queue/workers.ts                    ← MODIFY to register new workers
+│   │   ├── queues/jobs/score-recalc.ts          ← debounced enqueue + processor
+│   │   ├── queues/jobs/moderation-flag.ts       ← processor
+│   │   ├── queues/jobs/product-rating-recalc.ts ← processor
+│   │   ├── queues/workers.ts                   ← MODIFY to register new workers
+│   │   ├── queues/index.ts                     ← MODIFY: append the 3 new queues to getAllQueues() registry
 │   │   ├── routes/reviews/
 │   │   │   ├── index.ts                        ← mount + register sub-routes
 │   │   │   ├── list-for-product.ts             ← GET /v1/products/:id/reviews
@@ -127,12 +128,15 @@ pantry/
 
 Add immediately above the existing `enum AuthCredentialType` block:
 
+> **Decision D15:** `ReviewStatus` has exactly 3 values — `visible`, `hidden`, `deleted`. There is NO `pending`. The profanity auto-flag worker (Task E4) sets `status='hidden'` directly; the auto-flag `Report` row is the signal admins need.
+
 ```prisma
 enum ReviewStatus {
   visible
-  pending
   hidden
   deleted
+
+  @@map("review_status")
 }
 
 enum ReportTargetType {
@@ -464,7 +468,7 @@ export async function makeReview(overrides: {
   productId: string;
   rating?: number;
   body?: string;
-  status?: 'visible' | 'pending' | 'hidden' | 'deleted';
+  status?: 'visible' | 'hidden' | 'deleted';
   upvoteCount?: number;
   downvoteCount?: number;
   score?: number;
@@ -527,7 +531,8 @@ git commit -m "test(api): add makeReview and makeVote factories"
 ```ts
 import { z } from 'zod';
 
-export const reviewStatusSchema = z.enum(['visible', 'pending', 'hidden', 'deleted']);
+// Per D15 — 3 values only. Profanity auto-flag sets status='hidden' directly.
+export const reviewStatusSchema = z.enum(['visible', 'hidden', 'deleted']);
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
 export const reviewSortSchema = z.enum(['score', 'new', 'rating']).default('score');
@@ -632,7 +637,6 @@ Open the file. Inside the `ERROR_CODES` object, add three new entries before the
 ```ts
   REVIEW_ALREADY_EXISTS: 'review_already_exists',
   REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
-  REVIEW_PENDING_MODERATION: 'review_pending_moderation',
 ```
 
 - [ ] **Step 4: Re-export both modules from `packages/shared/src/index.ts`**
@@ -1028,6 +1032,18 @@ git commit -m "feat(api): review repository helpers (toApiReview)"
 import type { Report } from '@prisma/client';
 import type { Report as ApiReport, ReportTargetType } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
+import { getSetting, SETTING_KEYS } from '../settings/service.js';
+
+const DEFAULT_MODERATION_SETTINGS = { autoHideReportThreshold: 3 };
+
+async function getModerationSettings() {
+  try {
+    return await getSetting(SETTING_KEYS.MODERATION, DEFAULT_MODERATION_SETTINGS);
+  } catch {
+    // M3 hasn't shipped getSetting / SETTING_KEYS yet — fall back to defaults.
+    return DEFAULT_MODERATION_SETTINGS;
+  }
+}
 
 export function toApiReport(r: Report): ApiReport {
   return {
@@ -1059,7 +1075,9 @@ export async function maybeAutoHide(
   const count = await prisma.report.count({
     where: { targetType, targetId, status: { in: ['open', 'resolved'] } },
   });
-  if (count <= 3) return { hidden: false };
+  // D16: threshold is admin-configurable via M3's settings; default 3 if M3 hasn't seeded yet.
+  const settings = await getModerationSettings();
+  if (count <= settings.autoHideReportThreshold) return { hidden: false };
 
   if (targetType === 'review') {
     const r = await prisma.review.findUnique({ where: { id: targetId } });
@@ -1095,19 +1113,60 @@ git commit -m "feat(api): report repository with auto-hide threshold helper"
 
 ## Phase E — BullMQ workers
 
-> **Assumption from M1:** `api/src/queue/connection.ts` exports `getQueueConnection(): ConnectionOptions` and `api/src/queue/workers.ts` is the central worker registration entry point. If M1 named these differently, adjust the import paths but keep the file responsibilities identical.
+> **Assumption from M1 (per D10):** `api/src/queues/index.ts` exports `getQueueConnection(): ConnectionOptions` (or equivalent — internally backed by `getRedis()`) AND a `getAllQueues()` registry array. The central worker registration entry point lives at `api/src/queues/workers.ts`. M2's three new BullMQ queues (`score-recalc`, `moderation-flag`, `product-rating-recalc`) are appended to the `getAllQueues()` registry in Task E0 below so M1's queue dashboard / shutdown helpers cover them automatically.
+
+### Task E0: Register M2 queues in `getAllQueues()` (D10)
+
+**Files:**
+- Modify: `api/src/queues/index.ts`
+
+> **Decision D10:** M1 ships a registry array `getAllQueues()` inside `api/src/queues/index.ts`. M2's three new queues must be appended to it so M1's queue dashboard / graceful-shutdown / metrics helpers see them automatically. This task is a small follow-up step at the very end of Phase E (after Tasks E1, E3, E4 each define their queue factory) — but it's listed here so reviewers see the dependency up front. Each of Tasks E1/E3/E4 includes a reminder step that this registry must be updated once the worker module is in place.
+
+- [ ] **Step 1: Open `api/src/queues/index.ts` and append imports**
+
+```ts
+import { SCORE_RECALC_QUEUE, getScoreRecalcQueue } from './jobs/score-recalc.js';
+import { MODERATION_FLAG_QUEUE, getModerationFlagQueue } from './jobs/moderation-flag.js';
+import { PRODUCT_RATING_RECALC_QUEUE, getProductRatingQueue } from './jobs/product-rating-recalc.js';
+```
+
+- [ ] **Step 2: Append to the `getAllQueues()` registry array**
+
+Find the array returned by `getAllQueues()` (or the module-level `QUEUES` const it iterates) and append:
+
+```ts
+  { name: SCORE_RECALC_QUEUE, queue: getScoreRecalcQueue() },
+  { name: MODERATION_FLAG_QUEUE, queue: getModerationFlagQueue() },
+  { name: PRODUCT_RATING_RECALC_QUEUE, queue: getProductRatingQueue() },
+```
+
+- [ ] **Step 3: Typecheck**
+
+```bash
+pnpm --filter @pantry/api typecheck
+```
+Expected: exit 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add api/src/queues/index.ts
+git commit -m "feat(api): register M2 queues in getAllQueues() registry"
+```
+
+---
 
 ### Task E1: `score-recalc` job module (debounced enqueue + processor)
 
 **Files:**
-- Create: `api/src/queue/jobs/score-recalc.ts`
+- Create: `api/src/queues/jobs/score-recalc.ts`
 
 - [ ] **Step 1: Write the module**
 
 ```ts
-// api/src/queue/jobs/score-recalc.ts
+// api/src/queues/jobs/score-recalc.ts
 import { Queue, Worker, type Job } from 'bullmq';
-import { getQueueConnection } from '../connection.js';
+import { getQueueConnection } from '../index.js';
 import { getPrisma } from '../../db.js';
 import { getRedis } from '../../redis.js';
 import { wilsonLowerBound } from '../../services/reviews/wilson.js';
@@ -1189,7 +1248,7 @@ Expected: exit 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/src/queue/jobs/score-recalc.ts
+git add api/src/queues/jobs/score-recalc.ts
 git commit -m "feat(api): score-recalc job with 30s debounce per review"
 ```
 
@@ -1205,7 +1264,7 @@ git commit -m "feat(api): score-recalc job with 30s debounce per review"
 ```ts
 // api/tests/unit/score-recalc-debounce.test.ts
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { enqueueScoreRecalc, getScoreRecalcQueue } from '../../src/queue/jobs/score-recalc.js';
+import { enqueueScoreRecalc, getScoreRecalcQueue } from '../../src/queues/jobs/score-recalc.js';
 import { getRedis } from '../../src/redis.js';
 
 describe('enqueueScoreRecalc debounce', () => {
@@ -1261,14 +1320,14 @@ git commit -m "test(api): score-recalc debounce via Redis NX key"
 ### Task E3: `product-rating-recalc` job
 
 **Files:**
-- Create: `api/src/queue/jobs/product-rating-recalc.ts`
+- Create: `api/src/queues/jobs/product-rating-recalc.ts`
 
 - [ ] **Step 1: Write the module**
 
 ```ts
-// api/src/queue/jobs/product-rating-recalc.ts
+// api/src/queues/jobs/product-rating-recalc.ts
 import { Queue, Worker, type Job } from 'bullmq';
-import { getQueueConnection } from '../connection.js';
+import { getQueueConnection } from '../index.js';
 import { getPrisma } from '../../db.js';
 
 export const PRODUCT_RATING_RECALC_QUEUE = 'product-rating-recalc';
@@ -1342,7 +1401,7 @@ Expected: exit 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/src/queue/jobs/product-rating-recalc.ts
+git add api/src/queues/jobs/product-rating-recalc.ts
 git commit -m "feat(api): product-rating-recalc job"
 ```
 
@@ -1351,14 +1410,14 @@ git commit -m "feat(api): product-rating-recalc job"
 ### Task E4: `moderation-flag` job
 
 **Files:**
-- Create: `api/src/queue/jobs/moderation-flag.ts`
+- Create: `api/src/queues/jobs/moderation-flag.ts`
 
 - [ ] **Step 1: Write the module**
 
 ```ts
-// api/src/queue/jobs/moderation-flag.ts
+// api/src/queues/jobs/moderation-flag.ts
 import { Queue, Worker, type Job } from 'bullmq';
-import { getQueueConnection } from '../connection.js';
+import { getQueueConnection } from '../index.js';
 import { getPrisma } from '../../db.js';
 import { containsProfanity } from '../../services/reviews/profanity.js';
 import { SYSTEM_USER_ID } from '../../services/reviews/system-user.js';
@@ -1397,8 +1456,10 @@ export async function processModerationFlag(job: Job<ModerationFlagData>): Promi
   const { matched, words } = containsProfanity(review.body);
   if (!matched) return;
 
+  // Per D15: no `pending` status. Auto-flag goes straight to `hidden`; the
+  // accompanying system Report row is the signal admins use to triage.
   await prisma.$transaction([
-    prisma.review.update({ where: { id: reviewId }, data: { status: 'pending' } }),
+    prisma.review.update({ where: { id: reviewId }, data: { status: 'hidden' } }),
     prisma.report.create({
       data: {
         reporterId: SYSTEM_USER_ID,
@@ -1432,7 +1493,7 @@ Expected: exit 0.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/src/queue/jobs/moderation-flag.ts
+git add api/src/queues/jobs/moderation-flag.ts
 git commit -m "feat(api): moderation-flag worker creates Report and sets pending"
 ```
 
@@ -1441,9 +1502,9 @@ git commit -m "feat(api): moderation-flag worker creates Report and sets pending
 ### Task E5: Register the three workers in the central entry
 
 **Files:**
-- Modify: `api/src/queue/workers.ts`
+- Modify: `api/src/queues/workers.ts`
 
-- [ ] **Step 1: Open `api/src/queue/workers.ts`**
+- [ ] **Step 1: Open `api/src/queues/workers.ts`**
 
 If it does not yet export a `startWorkers()` function, create one. Add the imports and registrations:
 
@@ -1483,7 +1544,7 @@ pnpm --filter @pantry/api typecheck
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/src/queue/workers.ts
+git add api/src/queues/workers.ts
 git commit -m "feat(api): register score-recalc, moderation-flag, product-rating-recalc workers"
 ```
 
@@ -1723,7 +1784,7 @@ describe('POST /v1/products/:id/reviews', () => {
     await app.close();
   });
 
-  it('marks profanity-laden reviews as pending and enqueues a flag', async () => {
+  it('marks profanity-laden reviews as hidden and enqueues a flag (D15)', async () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
@@ -1734,7 +1795,7 @@ describe('POST /v1/products/:id/reviews', () => {
       payload: { rating: 1, body: 'this product is shit' },
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json().status).toBe('pending');
+    expect(res.json().status).toBe('hidden');
     await app.close();
   });
 
@@ -1804,7 +1865,7 @@ describe('POST /v1/products/:id/reviews', () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
-    const { getProductRatingQueue } = await import('../../src/queue/jobs/product-rating-recalc.js');
+    const { getProductRatingQueue } = await import('../../src/queues/jobs/product-rating-recalc.js');
     await getProductRatingQueue().obliterate({ force: true });
     await app.inject({
       method: 'POST',
@@ -1844,8 +1905,8 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';
 import { containsProfanity } from '../../services/reviews/profanity.js';
-import { enqueueModerationFlag } from '../../queue/jobs/moderation-flag.js';
-import { enqueueProductRatingRecalc } from '../../queue/jobs/product-rating-recalc.js';
+import { enqueueModerationFlag } from '../../queues/jobs/moderation-flag.js';
+import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -1872,8 +1933,11 @@ export async function createReviewRoute(app: FastifyInstance) {
       });
     }
 
+    // Per D15: ReviewStatus is visible|hidden|deleted (no `pending`).
+    // Profanity matches go straight to `hidden`; the moderation-flag worker
+    // creates the auto-flag Report row that surfaces it in the admin queue.
     const { matched } = containsProfanity(input.body);
-    const status = matched ? 'pending' : 'visible';
+    const status: 'visible' | 'hidden' = matched ? 'hidden' : 'visible';
 
     const created = await prisma.review.create({
       data: {
@@ -1975,7 +2039,7 @@ describe('PATCH /v1/reviews/:id', () => {
     await app.close();
   });
 
-  it('marks edited review as pending when new body trips profanity filter', async () => {
+  it('marks edited review as hidden when new body trips profanity filter (D15)', async () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
@@ -1987,7 +2051,7 @@ describe('PATCH /v1/reviews/:id', () => {
       payload: { body: 'utter shit' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().status).toBe('pending');
+    expect(res.json().status).toBe('hidden');
     await app.close();
   });
 
@@ -2030,8 +2094,8 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';
 import { containsProfanity } from '../../services/reviews/profanity.js';
-import { enqueueModerationFlag } from '../../queue/jobs/moderation-flag.js';
-import { enqueueProductRatingRecalc } from '../../queue/jobs/product-rating-recalc.js';
+import { enqueueModerationFlag } from '../../queues/jobs/moderation-flag.js';
+import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -2049,7 +2113,17 @@ export async function updateReviewRoute(app: FastifyInstance) {
 
     const newBody = input.body !== undefined ? (input.body || null) : existing.body;
     const { matched } = containsProfanity(newBody);
-    const nextStatus = matched ? 'pending' : existing.status === 'pending' ? 'visible' : existing.status;
+    // Per D15: visible|hidden|deleted. New profanity hides; clean edit on a
+    // previously-hidden review goes back to visible (admins can still review
+    // the prior auto-flag Report row). `deleted` is preserved.
+    const nextStatus =
+      existing.status === 'deleted'
+        ? 'deleted'
+        : matched
+          ? 'hidden'
+          : existing.status === 'hidden'
+            ? 'visible'
+            : existing.status;
 
     const updated = await prisma.review.update({
       where: { id },
@@ -2162,7 +2236,7 @@ import { z } from 'zod';
 import { ERROR_CODES } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
-import { enqueueProductRatingRecalc } from '../../queue/jobs/product-rating-recalc.js';
+import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -2336,7 +2410,7 @@ import { z } from 'zod';
 import { ERROR_CODES, reviewVoteSchema } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
-import { enqueueScoreRecalc } from '../../queue/jobs/score-recalc.js';
+import { enqueueScoreRecalc } from '../../queues/jobs/score-recalc.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -2348,18 +2422,11 @@ export async function voteRoutes(app: FastifyInstance) {
    */
   app.post(
     '/reviews/:id/vote',
-    { onRequest: [app.requireAuth] },
+    { onRequest: [app.requireAuth], config: { idempotent: 'required' } },
     async (req, reply) => {
+      // M1's idempotency plugin enforces the header automatically per `config.idempotent`.
       const { id: reviewId } = paramsSchema.parse(req.params);
       const { value } = reviewVoteSchema.parse(req.body);
-      const idempotencyKey = req.headers['idempotency-key'];
-      if (!idempotencyKey || typeof idempotencyKey !== 'string') {
-        throw new AppError({
-          status: 400,
-          code: ERROR_CODES.VALIDATION,
-          title: 'Idempotency-Key header required',
-        });
-      }
       const prisma = getPrisma();
       const review = await prisma.review.findUnique({ where: { id: reviewId } });
       if (!review) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Review not found' });
@@ -2536,6 +2603,69 @@ git commit -m "feat(api): GET /v1/me/reviews"
 
 ---
 
+### Task F8: Populate `topReviews` in `GET /v1/products/:id` (D20)
+
+M1 ships `GET /v1/products/:id` with a `topReviews: []` stub. M2 fills it with the top-3 visible reviews ordered by Wilson score.
+
+**Files:**
+- Modify: `api/src/routes/products/get.ts` (created in M1; this task replaces the `topReviews: []` stub)
+- Modify: `api/tests/integration/products-get.test.ts` (created in M1; extend with the topReviews assertion)
+
+- [ ] **Step 1: Extend the failing integration test**
+
+In the existing `products-get.test.ts`, add a new test:
+```ts
+it('returns up to 3 visible reviews ordered by Wilson score', async () => {
+  const u1 = await makeUser({}), u2 = await makeUser({}), u3 = await makeUser({}), u4 = await makeUser({});
+  const p = await makeProduct({});
+  // four visible reviews with different scores; one hidden that must be excluded
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 5, body: 'A', status: 'visible', score: 0.95 } });
+  await getPrisma().review.create({ data: { userId: u2.id, productId: p.id, rating: 4, body: 'B', status: 'visible', score: 0.80 } });
+  await getPrisma().review.create({ data: { userId: u3.id, productId: p.id, rating: 3, body: 'C', status: 'visible', score: 0.60 } });
+  await getPrisma().review.create({ data: { userId: u4.id, productId: p.id, rating: 2, body: 'D', status: 'visible', score: 0.40 } });
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 1, body: 'hidden', status: 'hidden', score: 0.99 } });
+
+  const res = await ctx.app.inject({ method: 'GET', url: `/v1/products/${p.id}` });
+  expect(res.statusCode).toBe(200);
+  const body = res.json();
+  expect(body.topReviews).toHaveLength(3);
+  expect(body.topReviews.map((r: any) => r.body)).toEqual(['A', 'B', 'C']);
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL**
+
+```bash
+pnpm --filter @pantry/api test products-get
+```
+
+- [ ] **Step 3: Replace the stub in the route handler**
+
+In `api/src/routes/products/get.ts`, replace `const topReviews: any[] = [];` (or however M1 stubbed it) with:
+```ts
+const topReviews = await getPrisma().review.findMany({
+  where: { productId: product.id, status: 'visible' },
+  orderBy: [{ score: 'desc' }, { createdAt: 'desc' }],
+  take: 3,
+  include: { user: { select: { id: true, firstName: true, avatarUrl: true } } },
+});
+return productWithReviewsSchema.parse({
+  ...toApiProduct(product),
+  topReviews: topReviews.map(toApiReview),
+});
+```
+
+- [ ] **Step 4: Run, verify PASS**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add api/src/routes/products/get.ts api/tests/integration/products-get.test.ts
+git commit -m "feat(api): populate topReviews in product detail (D20)"
+```
+
+---
+
 ## Phase G — Reports HTTP route
 
 ### Task G1: POST /v1/reports — failing test
@@ -2592,6 +2722,14 @@ describe('POST /v1/reports', () => {
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
     expect(after?.status).toBe('hidden');
     await app.close();
+  });
+
+  it('respects the auto-hide threshold from settings', async () => {
+    // mock getSetting to return { autoHideReportThreshold: 5 }
+    vi.mocked(getSetting).mockResolvedValueOnce({ autoHideReportThreshold: 5 });
+    // seed 4 reports — should NOT auto-hide
+    // ...
+    // seed 6 reports — SHOULD auto-hide
   });
 
   it('returns 404 when targetType=review and targetId is unknown', async () => {
@@ -2754,13 +2892,13 @@ git commit -m "feat(api): POST /v1/reports with auto-hide threshold"
 // api/tests/integration/score-recalc-worker.test.ts
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { Worker } from 'bullmq';
-import { getQueueConnection } from '../../src/queue/connection.js';
+import { getQueueConnection } from '../../src/queues/index.js';
 import {
   SCORE_RECALC_QUEUE,
   enqueueScoreRecalc,
   getScoreRecalcQueue,
   processScoreRecalc,
-} from '../../src/queue/jobs/score-recalc.js';
+} from '../../src/queues/jobs/score-recalc.js';
 import { makeProduct, makeReview, makeUser, makeVote } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
@@ -2842,7 +2980,7 @@ git commit -m "test(api): score-recalc worker updates denorm counts + Wilson"
 ```ts
 // api/tests/integration/moderation-flag-worker.test.ts
 import { describe, expect, it } from 'vitest';
-import { processModerationFlag } from '../../src/queue/jobs/moderation-flag.js';
+import { processModerationFlag } from '../../src/queues/jobs/moderation-flag.js';
 import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
@@ -2909,7 +3047,7 @@ git commit -m "test(api): moderation-flag worker creates system report"
 ```ts
 // api/tests/integration/product-rating-recalc-worker.test.ts
 import { describe, expect, it } from 'vitest';
-import { processProductRatingRecalc } from '../../src/queue/jobs/product-rating-recalc.js';
+import { processProductRatingRecalc } from '../../src/queues/jobs/product-rating-recalc.js';
 import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
@@ -2961,7 +3099,78 @@ git commit -m "test(api): product-rating-recalc denorm updates"
 
 ## Phase I — Mobile API client hooks
 
-> **Assumption from M0c:** `apps/mobile/src/api/client.ts` exports `apiFetch<T>(input: { method, url, body?, headers? }): Promise<T>` which attaches the access token, refreshes on 401, and parses problem+json into `ApiError`. `apps/mobile/src/lib/idempotency.ts` exports `newIdempotencyKey()` returning a UUID v4. If M0c named things differently, adjust imports — keep behaviour identical.
+> **Assumption from M0c (per D2):** `apps/mobile/src/api/client.ts` exports an `apiClient` object with convenience methods `apiClient.get<T>(path)`, `.post<T>(path, body, opts?)`, `.patch<T>(path, body, opts?)`, `.delete<T>(path, opts?)`. The `path` argument is the route path WITHOUT the `/v1` prefix (the client prepends it). All methods return parsed JSON directly. Per D19, `apps/mobile/src/lib/idempotency.ts` is added in Task I0 below (M0c does not ship it) and exports `newIdempotencyKey()` returning a UUID via `expo-crypto`.
+
+### Task I0: Idempotency helper (D19)
+
+**Files:**
+- Create: `apps/mobile/src/lib/idempotency.ts`
+- Create: `apps/mobile/__tests__/idempotency.test.ts`
+
+> **Decision D19:** M0c does NOT ship a mobile idempotency helper. M2 owns it. Vote/report writes will import `newIdempotencyKey` from this file.
+
+- [ ] **Step 1: Write `apps/mobile/src/lib/idempotency.ts`**
+
+```ts
+// apps/mobile/src/lib/idempotency.ts
+import * as Crypto from 'expo-crypto';
+
+/**
+ * Returns a UUID v4 string suitable for the `Idempotency-Key` HTTP header.
+ * Backed by `expo-crypto.randomUUID()` so it works on both iOS and Android
+ * without needing the Web Crypto polyfill.
+ */
+export function newIdempotencyKey(): string {
+  return Crypto.randomUUID();
+}
+```
+
+- [ ] **Step 2: Write `apps/mobile/__tests__/idempotency.test.ts`**
+
+```ts
+// apps/mobile/__tests__/idempotency.test.ts
+import { newIdempotencyKey } from '../src/lib/idempotency';
+
+jest.mock('expo-crypto', () => {
+  let counter = 0;
+  return {
+    randomUUID: () => {
+      counter += 1;
+      const hex = counter.toString(16).padStart(12, '0');
+      return `00000000-0000-4000-8000-${hex}`;
+    },
+  };
+});
+
+describe('newIdempotencyKey', () => {
+  it('returns a UUID-shaped string', () => {
+    const k = newIdempotencyKey();
+    expect(k).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+
+  it('returns a different value on each call', () => {
+    const a = newIdempotencyKey();
+    const b = newIdempotencyKey();
+    expect(a).not.toBe(b);
+  });
+});
+```
+
+- [ ] **Step 3: Verify PASS**
+
+```bash
+pnpm --filter @pantry/mobile test -- idempotency
+```
+Expected: 2 passed.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/mobile/src/lib/idempotency.ts apps/mobile/__tests__/idempotency.test.ts
+git commit -m "feat(mobile): newIdempotencyKey helper backed by expo-crypto"
+```
+
+---
 
 ### Task I1: Reviews TanStack hooks
 
@@ -2979,7 +3188,7 @@ import type {
   ReviewPatch,
   ReviewSort,
 } from '@pantry/shared';
-import { apiFetch } from './client';
+import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
 
 type Page = { items: Review[]; cursor: string | null };
@@ -2989,10 +3198,9 @@ export function useProductReviews(productId: string, sort: ReviewSort = 'score')
     queryKey: ['reviews', productId, sort],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
-      apiFetch<Page>({
-        method: 'GET',
-        url: `/v1/products/${productId}/reviews?sort=${sort}${pageParam ? `&cursor=${pageParam}` : ''}`,
-      }),
+      apiClient.get<Page>(
+        `/products/${productId}/reviews?sort=${sort}${pageParam ? `&cursor=${pageParam}` : ''}`,
+      ),
     getNextPageParam: (last) => last.cursor ?? undefined,
     staleTime: 30_000,
   });
@@ -3003,10 +3211,7 @@ export function useMyReviews() {
     queryKey: ['reviews', 'me'],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
-      apiFetch<Page>({
-        method: 'GET',
-        url: `/v1/me/reviews${pageParam ? `?cursor=${pageParam}` : ''}`,
-      }),
+      apiClient.get<Page>(`/me/reviews${pageParam ? `?cursor=${pageParam}` : ''}`),
     getNextPageParam: (last) => last.cursor ?? undefined,
     staleTime: 30_000,
   });
@@ -3016,11 +3221,7 @@ export function useCreateReview(productId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ReviewCreate) =>
-      apiFetch<Review>({
-        method: 'POST',
-        url: `/v1/products/${productId}/reviews`,
-        body: input,
-      }),
+      apiClient.post<Review>(`/products/${productId}/reviews`, input),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['reviews', productId] });
       void qc.invalidateQueries({ queryKey: ['reviews', 'me'] });
@@ -3033,7 +3234,7 @@ export function useUpdateReview(productId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: ReviewPatch }) =>
-      apiFetch<Review>({ method: 'PATCH', url: `/v1/reviews/${id}`, body: patch }),
+      apiClient.patch<Review>(`/reviews/${id}`, patch),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['reviews', productId] });
       void qc.invalidateQueries({ queryKey: ['reviews', 'me'] });
@@ -3044,8 +3245,7 @@ export function useUpdateReview(productId: string) {
 export function useDeleteReview(productId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<void>({ method: 'DELETE', url: `/v1/reviews/${id}` }),
+    mutationFn: (id: string) => apiClient.delete<void>(`/reviews/${id}`),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['reviews', productId] });
       void qc.invalidateQueries({ queryKey: ['reviews', 'me'] });
@@ -3055,16 +3255,13 @@ export function useDeleteReview(productId: string) {
 
 /** Vote write — body is { value: -1 | 1 }; idempotency-key is generated per call. */
 export function castVote(reviewId: string, value: -1 | 1): Promise<void> {
-  return apiFetch<void>({
-    method: 'POST',
-    url: `/v1/reviews/${reviewId}/vote`,
-    body: { value },
+  return apiClient.post<void>(`/reviews/${reviewId}/vote`, { value }, {
     headers: { 'idempotency-key': newIdempotencyKey() },
   });
 }
 
 export function clearVote(reviewId: string): Promise<void> {
-  return apiFetch<void>({ method: 'DELETE', url: `/v1/reviews/${reviewId}/vote` });
+  return apiClient.delete<void>(`/reviews/${reviewId}/vote`);
 }
 ```
 
@@ -3094,7 +3291,7 @@ git commit -m "feat(mobile): TanStack hooks for reviews + vote + delete"
 ```ts
 // apps/mobile/src/api/products-search.ts
 import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from './client';
+import { apiClient } from './client';
 
 export interface ProductSummary {
   id: string;
@@ -3110,10 +3307,9 @@ export function useProductSearch(query: string) {
   return useQuery({
     queryKey: ['products', 'search', query],
     queryFn: () =>
-      apiFetch<{ items: ProductSummary[] }>({
-        method: 'GET',
-        url: `/v1/products/search?q=${encodeURIComponent(query)}`,
-      }),
+      apiClient.get<{ items: ProductSummary[] }>(
+        `/products/search?q=${encodeURIComponent(query)}`,
+      ),
     enabled: query.trim().length >= 2,
     staleTime: 30_000,
   });
@@ -3122,7 +3318,7 @@ export function useProductSearch(query: string) {
 export function useProduct(id: string) {
   return useQuery({
     queryKey: ['product', id],
-    queryFn: () => apiFetch<ProductSummary>({ method: 'GET', url: `/v1/products/${id}` }),
+    queryFn: () => apiClient.get<ProductSummary>(`/products/${id}`),
     staleTime: 60_000,
   });
 }
@@ -3148,12 +3344,15 @@ git commit -m "feat(mobile): product search and detail hooks"
 // apps/mobile/src/api/reports.ts
 import { useMutation } from '@tanstack/react-query';
 import type { Report, ReportCreate } from '@pantry/shared';
-import { apiFetch } from './client';
+import { apiClient } from './client';
+import { newIdempotencyKey } from '../lib/idempotency';
 
 export function useCreateReport() {
   return useMutation({
     mutationFn: (input: ReportCreate) =>
-      apiFetch<Report>({ method: 'POST', url: '/v1/reports', body: input }),
+      apiClient.post<Report>('/reports', input, {
+        headers: { 'idempotency-key': newIdempotencyKey() },
+      }),
   });
 }
 ```
@@ -4109,13 +4308,13 @@ import { useDeleteReview } from '../../../src/api/reviews';
 import { ReviewList } from '../../../src/features/reviews/ReviewList';
 import { ReportModal, type Target } from '../../../src/features/reports/ReportModal';
 import { useTheme } from '../../../src/theme/useTheme';
-import { useAuth } from '../../../src/auth/useAuth';
+import { useSessionStore } from '../../../src/auth/sessionStore';
 
 export default function ProductDetailScreen() {
   const t = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const product = useProduct(id);
-  const { user } = useAuth();
+  const userId = useSessionStore((s) => s.user?.id);
   const del = useDeleteReview(id);
   const [reportTarget, setReportTarget] = useState<Target | null>(null);
 
@@ -4189,7 +4388,7 @@ export default function ProductDetailScreen() {
         </View>
         <ReviewList
           productId={id}
-          currentUserId={user?.id ?? null}
+          currentUserId={userId ?? null}
           onReport={(r: Review) => setReportTarget({ type: 'review', id: r.id })}
           onEdit={(r: Review) => router.push(`/product/${id}/review?reviewId=${r.id}`)}
           onDelete={(r: Review) => del.mutate(r.id)}
@@ -4210,7 +4409,7 @@ export default function ProductDetailScreen() {
 ```bash
 pnpm --filter @pantry/mobile typecheck
 ```
-Expected: exit 0. If `useAuth` from M0c lives at a different path, update the import.
+Expected: exit 0.
 
 - [ ] **Step 3: Commit**
 
@@ -4503,7 +4702,7 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 
 - API `Review.score` is `Decimal(7,6)` in Prisma → coerced via `Number(r.score)` in `toApiReview` → typed `number` in `reviewSchema` (range 0..1). Consistent end-to-end.
 - `value: -1 | 1` is the union everywhere: `reviewVoteSchema`, `castVote`, `useOptimisticVote`, `processScoreRecalc`. The optimistic hook's third option `0` is internal to the hook only and never leaves the mobile boundary.
-- `ReviewStatus` enum identical in Prisma (`visible | pending | hidden | deleted`), Zod (`reviewStatusSchema`), and the mobile cards.
+- `ReviewStatus` enum identical in Prisma (`visible | hidden | deleted`), Zod (`reviewStatusSchema`), and the mobile cards. Per D15, profanity auto-flag sets `status='hidden'` directly; there is no `pending` value.
 - `enqueueScoreRecalc` returns the literal union `'enqueued' | 'debounced'` (used by the debounce unit test).
 - `ReportTargetType` (`review | user | product`) is shared by Zod, Prisma enum, route handler, and `maybeAutoHide`.
 - `Idempotency-Key` header name matches lowercase in route check (`req.headers['idempotency-key']`) and in client (`'idempotency-key': newIdempotencyKey()`).
@@ -4515,10 +4714,8 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 - `makeUser`, `getPrisma` test helpers → M0a Tasks D7, A5.
 - `Product` Prisma model + `products` table + `products/search` route → M1.
 - BullMQ `getQueueConnection()` and central `workers.ts` → M1.
-- Idempotency-Key plugin (or the simple inline check used here) — M1 ships the plugin; the vote route reads the header directly so it works whether or not the plugin runs first.
-- Mobile `apiFetch`, `useAuth`, `useTheme`, `newIdempotencyKey` → M0c.
-
-If any of those assumed exports moved during parallel work on M0c/M1, this plan's import paths must be updated. The implementer should grep for `from '../../../src/auth/useAuth'`, `from './connection.js'`, and `apiFetch` at start-of-task to confirm names.
+- Idempotency-Key plugin — M1 ships it; M2 opts in via `config: { idempotent: 'required' }` on the vote route (no manual header check).
+- Mobile `apiClient` (with `.get/.post/.patch/.delete`) and `useTheme` → M0c. Mobile `useSessionStore` → M0c (`apps/mobile/src/auth/sessionStore.ts`). Mobile `newIdempotencyKey` → M2 ships it (Task I0) since M0c does not.
 
 **5. Out-of-scope discipline**
 

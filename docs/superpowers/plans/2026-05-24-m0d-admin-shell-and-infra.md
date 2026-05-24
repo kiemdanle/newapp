@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the Next.js 15 admin app shell (login + TOTP + session middleware + CSRF + stub pages for every M3 route), add the `admin_audit_log` Prisma table + audit helper, provision the single VPS end-to-end with Ansible (Postgres, Redis, Node, nginx, certbot, systemd, secrets, ufw, fail2ban), wire a `main`-branch deploy pipeline (test → build → atomic symlink flip with rollback), and automate encrypted offsite backups with a 7/4/3 daily/weekly/monthly rotation.
 
-**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`csrf_token` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/pantry/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl reload` swap traffic, with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
+**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`pantry_admin_csrf` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/pantry/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl reload` swap traffic, with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
 
 **Tech Stack:** Next.js 15 (App Router, standalone output), TypeScript 5 strict, Tailwind CSS 3, shadcn/ui, TanStack Query 5, TanStack Table 8, Zod 3, Playwright 1.45+, Vitest 2, Ansible 2.15+, Ubuntu 22.04/24.04 LTS, PostgreSQL 16, Redis 7, Node 20 LTS, nginx, certbot, systemd, ufw, fail2ban, age, rclone, GitHub Actions, Renovate.
 
@@ -21,7 +21,7 @@
 
 - `GET /health` and `GET /health/ready` from M0a — verified in Task A2 before the deploy smoke test is wired
 - `POST /v1/auth/login` returning either `{user, tokens}` or `{requiresTotp: true, challengeToken}` from M0b
-- `POST /v1/auth/totp/verify` exchanging `{challengeToken, code}` for `{user, tokens}` from M0b
+- `POST /v1/auth/totp/challenge-verify` exchanging `{challengeToken, code}` for `{user, tokens}` from M0b
 - `GET /v1/auth/me` and `POST /v1/auth/refresh` from M0b
 - Shared Zod schemas in `@pantry/shared` from M0a (extended here for admin login forms only)
 
@@ -209,9 +209,9 @@ Expected: both print `{"status":"ok"}` and `{"status":"ready"}` respectively.
 - [ ] **Step 3: Verify M0b login response shape**
 
 ```bash
-grep -n "requiresTotp\|challengeToken" api/src/routes/auth/login.ts api/src/routes/auth/totp.ts
+grep -n "requiresTotp\|challengeToken\|challenge-verify" api/src/routes/auth/login.ts api/src/routes/auth/totp.ts
 ```
-Expected: `login.ts` returns `{ requiresTotp: true, challengeToken }` when the user is an admin with TOTP enabled; `totp.ts` accepts `{ challengeToken, code }` and returns `{ user, tokens }`. If these aren't present, STOP — M0b is incomplete.
+Expected: `login.ts` returns `{ requiresTotp: true, challengeToken }` when the user is an admin with TOTP enabled; `totp.ts` registers `POST /v1/auth/totp/challenge-verify`, accepts `{ challengeToken, code }`, and returns `{ user, tokens }`. If any of these are missing, STOP — M0b is incomplete. (Note: the path is `challenge-verify`, NOT `verify` — `/v1/auth/totp/verify` is the enrollment confirm endpoint, not the login challenge endpoint.)
 
 - [ ] **Step 4: No commit (verification only)**
 
@@ -736,7 +736,24 @@ pnpm --filter @pantry/admin build
 ```
 Expected: prints `Compiled successfully`, produces `apps/admin/.next/standalone/`.
 
-- [ ] **Step 15: Commit**
+- [ ] **Step 15: Smoke-test the `start` script's standalone path**
+
+This catches mis-specified `standalone` output paths (Next.js writes the server to `.next/standalone/apps/admin/server.js` in a monorepo, NOT `.next/standalone/server.js`) BEFORE we wire systemd + nginx and discover the path is wrong in production. We curl `/` (the temporary page) since `/login` doesn't exist yet — a richer login smoke runs in Task F2 / Task I3.
+
+```bash
+pnpm --filter @pantry/admin build && \
+  node apps/admin/.next/standalone/apps/admin/server.js -p 4001 &
+SMOKE_PID=$!
+sleep 2
+curl -fsS http://localhost:4001/ | grep -q "Pantry Admin"
+SMOKE_RC=$?
+kill $SMOKE_PID 2>/dev/null || true
+wait $SMOKE_PID 2>/dev/null || true
+test $SMOKE_RC -eq 0 || { echo "Standalone smoke failed — check next.config.mjs output path"; exit 1; }
+```
+Expected: exits 0. If the `node` invocation errors with `Cannot find module`, the standalone path in the `start` script of `package.json` is wrong for this monorepo layout — fix it before continuing.
+
+- [ ] **Step 16: Commit**
 
 ```bash
 git add apps/admin pnpm-lock.yaml
@@ -1575,7 +1592,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/verify`, {
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/challenge-verify`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(parsed),
@@ -1649,7 +1666,7 @@ export async function POST(req: Request) {
     return NextResponse.json(body, { status: upstream.status });
   }
 
-  const tokens = (body.tokens ?? body) as { accessToken: string; refreshToken: string };
+  const tokens = body.tokens as { accessToken: string; refreshToken: string };
   const res = NextResponse.json({ ok: true });
   res.headers.append(
     'Set-Cookie',
@@ -2046,6 +2063,7 @@ We do NOT verify the JWT inside middleware (no secret on the edge runtime); we t
 ```ts
 // apps/admin/src/middleware.ts
 import { NextResponse, type NextRequest } from 'next/server';
+import { COOKIE_NAMES } from './lib/cookies';
 
 const PUBLIC_PATHS = ['/login'];
 const PUBLIC_PREFIXES = ['/_next', '/api/auth', '/favicon'];
@@ -2057,7 +2075,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasAccess = req.cookies.has('pantry_admin_access');
+  const hasAccess = req.cookies.has(COOKIE_NAMES.access);
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
 
   if (!hasAccess && !isPublicPage) {

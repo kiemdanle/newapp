@@ -209,7 +209,7 @@ Add to `packages/theme/src/tokens.test.ts`:
 
 ```ts
 import { describe, it, expectTypeOf } from 'vitest';
-import type { ThemeTokens, ClayElevation, MD3Elevation, TypeRamp } from './tokens.js';
+import type { Theme, ClayElevation, MD3Elevation, TypeRamp } from '@pantry/theme';
 
 describe('extended token shape', () => {
   it('exposes ClayElevation with rim + base + ambient', () => {
@@ -275,14 +275,17 @@ export type TypeRamp = {
   labelLarge: TypeRampEntry; labelMedium: TypeRampEntry; labelSmall: TypeRampEntry;
 };
 
-export type ThemeTokens = {
-  // ... existing fields ...
-  elevation: {
-    clay: ClayElevation;
-    md3: MD3Elevation;
-  };
-  typeRamp: TypeRamp;
-};
+// D1 (M0a): we extend M0a's existing `Theme` interface in place rather than inventing a parallel type.
+// M0a's tokens.ts already declares `Theme` with `colors / radii / shadows / typography / spacing / animation`.
+// M4 adds the following fields directly to M0a's Theme interface (edit packages/theme/src/tokens.ts):
+//
+//   elevation: { clay: ClayElevation; md3: MD3Elevation };
+//   typeRamp: TypeRamp;
+//
+// The four shipped themes (aurora/bento/clay/material) — created in M0a — are extended in Phase B below
+// to provide values for the new fields. No theme files are duplicated.
+
+export type { Theme } from '@pantry/theme';
 ```
 
 - [ ] **Step 5: Run the typecheck test, watch it pass**
@@ -394,6 +397,107 @@ git commit -m "feat(theme): backfill new tokens for aurora"
 
 ---
 
+### Task A4b: `parseShadow` helper (M4 self-review #12)
+
+M0a's theme tokens give shadows as CSS strings (e.g., `"0 4px 12px rgba(0,0,0,0.12)"`). React Native needs them as separate `shadowColor / shadowOffset / shadowOpacity / shadowRadius / elevation` props.
+
+**Files:**
+- Create: `apps/mobile/src/theme/shadow.ts`
+- Create: `apps/mobile/src/theme/shadow.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// apps/mobile/src/theme/shadow.test.ts
+import { describe, it, expect } from 'vitest';
+import { parseShadow } from './shadow';
+
+describe('parseShadow', () => {
+  it('parses "x y blur color" form', () => {
+    const r = parseShadow('0 4px 12px rgba(0,0,0,0.12)');
+    expect(r.shadowOffset).toEqual({ width: 0, height: 4 });
+    expect(r.shadowRadius).toBe(12);
+    expect(r.shadowColor).toBe('rgba(0,0,0,0.12)');
+    expect(r.shadowOpacity).toBe(1);
+    expect(r.elevation).toBeGreaterThanOrEqual(2);
+  });
+
+  it('handles negative y offsets', () => {
+    const r = parseShadow('0 -2px 4px rgba(255,255,255,0.5)');
+    expect(r.shadowOffset).toEqual({ width: 0, height: -2 });
+  });
+
+  it('handles a separate opacity in a 5-segment form (x y blur color opacity)', () => {
+    const r = parseShadow('0 8px 24px #000000 0.16');
+    expect(r.shadowColor).toBe('#000000');
+    expect(r.shadowOpacity).toBe(0.16);
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL** — `pnpm --filter @pantry/mobile test shadow`
+
+- [ ] **Step 3: Implement**
+
+```ts
+// apps/mobile/src/theme/shadow.ts
+export type RNShadowProps = {
+  shadowColor: string;
+  shadowOffset: { width: number; height: number };
+  shadowOpacity: number;
+  shadowRadius: number;
+  elevation: number;
+};
+
+const PX = (s: string) => Number.parseFloat(s.replace('px', ''));
+
+export function parseShadow(css: string): RNShadowProps {
+  // Tokenise on whitespace, but keep rgba(...) / hsl(...) etc. intact.
+  const parts: string[] = [];
+  let buf = '';
+  let depth = 0;
+  for (const ch of css.trim()) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ' ' && depth === 0) {
+      if (buf) parts.push(buf);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  if (buf) parts.push(buf);
+
+  // Forms supported:
+  //   "x y blur color"           (4 parts)
+  //   "x y blur color opacity"   (5 parts, opacity overrides)
+  const x = PX(parts[0] ?? '0');
+  const y = PX(parts[1] ?? '0');
+  const blur = PX(parts[2] ?? '0');
+  const color = parts[3] ?? 'rgba(0,0,0,0.1)';
+  const opacity = parts[4] ? Number.parseFloat(parts[4]) : 1;
+
+  return {
+    shadowColor: color,
+    shadowOffset: { width: x, height: y },
+    shadowOpacity: opacity,
+    shadowRadius: blur,
+    elevation: Math.max(2, Math.round(blur / 2)),
+  };
+}
+```
+
+- [ ] **Step 4: Run, verify PASS** — `pnpm --filter @pantry/mobile test shadow`
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/mobile/src/theme/shadow.ts apps/mobile/src/theme/shadow.test.ts
+git commit -m "feat(mobile): parseShadow helper for theme tokens (M4#12)"
+```
+
+---
+
 ## Phase B — Implement the three secondary themes
 
 ### Task B1: Bento Grid theme tokens
@@ -437,9 +541,9 @@ Expected: FAIL (values mismatch).
 - [ ] **Step 3: Implement `bento.ts`**
 
 ```ts
-import type { ThemeTokens } from '../tokens.js';
+import type { Theme } from '@pantry/theme';
 
-export const bento: ThemeTokens = {
+export const bento: Theme = {
   name: 'bento',
   colors: {
     background: '#FAFAF7',
@@ -551,9 +655,9 @@ pnpm -C packages/theme test -- clay
 - [ ] **Step 3: Implement `clay.ts`**
 
 ```ts
-import type { ThemeTokens } from '../tokens.js';
+import type { Theme } from '@pantry/theme';
 
-export const clay: ThemeTokens = {
+export const clay: Theme = {
   name: 'clay',
   colors: {
     background: '#F8E8DC',
@@ -673,9 +777,9 @@ pnpm -C packages/theme test -- material
 - [ ] **Step 3: Implement `material.ts`**
 
 ```ts
-import type { ThemeTokens } from '../tokens.js';
+import type { Theme } from '@pantry/theme';
 
-export const material: ThemeTokens = {
+export const material: Theme = {
   name: 'material',
   colors: {
     background: '#FEF7FF',
@@ -1280,6 +1384,7 @@ git commit -m "feat(mobile): add MD3 Chip, ListRow, FAB, TextField primitives"
 - [ ] **Step 1: Write failing test for cross-fade timing**
 
 ```tsx
+import { describe, it, expect, vi } from 'vitest';
 import { act, render } from '@testing-library/react-native';
 import { ThemeProvider, useThemeSwitcher } from '../../src/theme/ThemeProvider';
 import { Text } from 'react-native';
@@ -1291,14 +1396,14 @@ function Probe() {
 
 describe('ThemeProvider', () => {
   it('cross-fades 200ms between themes', async () => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     const { getByTestId } = render(
       <ThemeProvider initial="aurora"><Probe /></ThemeProvider>,
     );
     expect(getByTestId('probe').props.children).toBe('aurora');
     act(() => { getByTestId('probe').props.onPress(); });
     expect(getByTestId('probe').props.children).toBe('aurora'); // mid-fade old value still readable
-    act(() => { jest.advanceTimersByTime(220); });
+    act(() => { vi.advanceTimersByTime(220); });
     expect(getByTestId('probe').props.children).toBe('clay');
   });
 });
@@ -1788,16 +1893,21 @@ import { glob } from 'glob';
 
 const files = glob.sync('apps/mobile/src/components/**/*.tsx');
 const INTERACTIVE = /<(Pressable|TouchableOpacity|TouchableHighlight|Button)\b/;
-const HAS_MIN = /minHeight:\s*([0-9]+)/;
+const HAS_MIN = /minHeight:\s*([0-9]+)/g;
 
 describe('interactive primitives have minHeight >= 44', () => {
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
     if (!INTERACTIVE.test(src)) continue;
     it(f, () => {
-      const m = src.match(HAS_MIN);
-      expect(m, `${f} missing minHeight`).toBeTruthy();
-      expect(Number(m![1])).toBeGreaterThanOrEqual(44);
+      let found = false;
+      let fail = false;
+      for (const m of src.matchAll(HAS_MIN)) {
+        found = true;
+        if (Number(m[1]) < 44) { fail = true; break; }
+      }
+      expect(found, `${f} missing minHeight`).toBe(true);
+      expect(fail, `${f} has minHeight < 44`).toBe(false);
     });
   }
 });
@@ -1973,7 +2083,7 @@ git commit -m "feat(mobile): cap font scaling at 1.5x and document large-text be
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.pantry.example"
       }
     },
     "preview": {
@@ -1981,14 +2091,13 @@ git commit -m "feat(mobile): cap font scaling at 1.5x and document large-text be
       "channel": "preview",
       "ios": { "simulator": false },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.pantry.example"
       }
     },
     "production": {
       "channel": "production",
-      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.pantry.example"
       }
     }
   },
@@ -2726,7 +2835,7 @@ git commit -m "docs(legal): publish terms of service"
 - Scratch VPS available (same provider class as prod, e.g., Hetzner CX22). Provision and tear down per drill — do not keep it standing.
 - SSH key for the operator account loaded
 - `age` CLI installed locally
-- Read access to the backups S3 bucket (`pantry-backups`)
+- `rclone` installed locally with a working `[b2]` remote configured at `~/.config/rclone/rclone.conf` (read access to `pantry-backups`)
 - The `age` recipient private key checked out from 1Password into `~/.config/age/pantry.key` (mode 600)
 
 ## Step-by-step
@@ -2757,9 +2866,10 @@ exit
 
 ```bash
 # On your laptop
-aws s3 ls s3://pantry-backups/daily/ | tail -5
-# Pick the latest, e.g., pantry-2026-05-23.dump.age
-aws s3 cp s3://pantry-backups/daily/pantry-2026-05-23.dump.age ./drill.dump.age
+rclone lsf b2:pantry-backups/daily/ | sort | tail -5
+# Pick the latest, e.g., 2026-05-23.age
+rclone copy b2:pantry-backups/daily/2026-05-23.age /tmp/
+mv /tmp/2026-05-23.age ./drill.dump.age
 ```
 
 ### 4. Decrypt locally (1 min)
@@ -2786,11 +2896,11 @@ Capture prod row counts beforehand. From your laptop with prod read-only access:
 
 ```bash
 ssh pantryapp@prod-host \
-  "psql -d pantry -At -c \"SELECT 'users', count(*) FROM users UNION ALL \
-                          SELECT 'records', count(*) FROM records UNION ALL \
-                          SELECT 'reviews', count(*) FROM reviews UNION ALL \
-                          SELECT 'review_votes', count(*) FROM review_votes UNION ALL \
-                          SELECT 'products', count(*) FROM products;\"" \
+  "sudo -u postgres psql -d pantry -At -c \"SELECT 'users', count(*) FROM users UNION ALL \
+                                            SELECT 'records', count(*) FROM records UNION ALL \
+                                            SELECT 'reviews', count(*) FROM reviews UNION ALL \
+                                            SELECT 'review_votes', count(*) FROM review_votes UNION ALL \
+                                            SELECT 'products', count(*) FROM products;\"" \
   > prod-counts.txt
 ```
 
@@ -2953,7 +3063,8 @@ Expected: error rate drops back to baseline within 60 seconds. If not, you rolle
 # On the prod host:
 ssh pantryapp@prod-host
 # Pull the most recent pre-incident dump
-aws s3 cp s3://pantry-backups/daily/pantry-2026-05-23.dump.age /tmp/backup.dump.age
+rclone copy b2:pantry-backups/daily/2026-05-23.age /tmp/
+mv /tmp/2026-05-23.age /tmp/backup.dump.age
 age -d -i ~/.config/age/pantry.key -o /tmp/backup.dump /tmp/backup.dump.age
 
 # Restore one table into a recovery schema
@@ -3023,7 +3134,7 @@ Expected: the printed `revoked` count is in the ballpark of active sessions. Thi
 
 ## 2. Force-rotate the JWT signing key
 
-The access token (15 min lifetime) is signed with the key in `JWT_SIGNING_KEY`. After step 1, refresh fails immediately, but a stolen access token is still valid until expiry. Rotating the signing key kills active access tokens too.
+The access token (15 min lifetime) is signed with the key in `JWT_ACCESS_SECRET`. After step 1, refresh fails immediately, but a stolen access token is still valid until expiry. Rotating the signing key kills active access tokens too.
 
 ```bash
 # Generate a new key
@@ -3031,13 +3142,14 @@ NEW=$(openssl rand -base64 64 | tr -d '\n')
 # Edit the env file
 sudo -i
 nano /etc/pantry/.env.production
-# Set: JWT_SIGNING_KEY=<NEW>
-# Optionally set: JWT_SIGNING_KEY_PREVIOUS=<old> to allow a brief grace period
+# Set: JWT_ACCESS_SECRET=<NEW>
 # Save, exit
 systemctl reload pantry-api pantry-admin
 ```
 
-The API supports a `JWT_SIGNING_KEY_PREVIOUS` second key, accepted on verify but never used to sign. Set it for a 1-hour grace window if you want returning clients to refresh cleanly; leave unset for a hard cutover.
+> **v1 behavior:** rotating `JWT_ACCESS_SECRET` is a hard cutover. All access tokens signed under the old key fail verification immediately and every client must re-authenticate.
+>
+> **Future enhancement:** implement a previous-key grace mechanism (e.g., `JWT_ACCESS_SECRET_PREVIOUS`) for zero-downtime JWT rotation. Not in v1.
 
 ## 3. Verify
 
@@ -3055,9 +3167,15 @@ curl -i https://api.pantry.example/v1/auth/login \
 
 ## 4. Communicate
 
-Post to status page and in-app banner (`/admin/settings/feature-flags → maintenance_banner`):
+Post to status page and in-app banner. Use the admin UI or PATCH the feature flag directly with the Zod-validated body shape:
 
-> "For security reasons we have signed everyone out. Please sign in again. Your data is unaffected."
+```bash
+curl -X PATCH https://admin.pantry.example/api/feature-flags \
+  -H "Content-Type: application/json" \
+  -d '{ "maintenanceBanner": "For security reasons we have signed everyone out. Please sign in again. Your data is unaffected." }'
+```
+
+Set `maintenanceBanner: null` to clear.
 
 ## 5. Audit
 
@@ -3093,11 +3211,11 @@ git commit -m "docs(infra): revoke-all-sessions emergency runbook"
 
 **Inventory** (in `/etc/pantry/.env.production`):
 
-- `JWT_SIGNING_KEY` (+ optional `JWT_SIGNING_KEY_PREVIOUS` for graceful overlap)
+- `JWT_ACCESS_SECRET` (HS256 signing key for access tokens)
 - `DATABASE_URL` password (the `pantry_app` Postgres role)
-- `REDIS_PASSWORD`
-- `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (backups bucket)
-- `AGE_RECIPIENT_PUBLIC_KEY` (encryption pubkey for backups)
+- `REDIS_URL` (full URL incl. password: `redis://[:password@]localhost:6379`)
+- `BACKUP_AGE_RECIPIENT` (age public recipient string for encrypting backups)
+- B2 application key (used by `rclone` to upload backups; lives in `~/.config/rclone/rclone.conf` for the `pantryapp` user, NOT in `.env.production`)
 - `SMTP_PASSWORD`
 - `EXPO_ACCESS_TOKEN` (push delivery)
 - `OAUTH_GOOGLE_CLIENT_SECRET`
@@ -3108,12 +3226,11 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 ## JWT signing key
 
 1. Generate: `openssl rand -base64 64`
-2. Move current `JWT_SIGNING_KEY` to `JWT_SIGNING_KEY_PREVIOUS`
-3. Set the new value as `JWT_SIGNING_KEY`
-4. Reload services
-5. Wait 24h (longer than access-token lifetime + refresh lifetime grace)
-6. Remove `JWT_SIGNING_KEY_PREVIOUS`
-7. Reload services again
+2. Set the new value as `JWT_ACCESS_SECRET` in `/etc/pantry/.env.production`
+3. `systemctl reload pantry-api pantry-admin`
+4. **All sessions are forced to re-authenticate.** This is a hard cutover in v1.
+
+> **Future enhancement:** implement a previous-key grace period (e.g., `JWT_ACCESS_SECRET_PREVIOUS` accepted on verify only) for zero-downtime JWT rotation. For v1, all sessions are forced to re-auth after rotation.
 
 ## Postgres `pantry_app` password
 
@@ -3130,32 +3247,33 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 
 1. Generate: `openssl rand -base64 32`
 2. Edit `/etc/redis/redis.conf` → `requirepass <new>`
-3. `systemctl reload redis-server`
-4. Update `REDIS_PASSWORD` in `.env.production`
-5. `systemctl reload pantry-api pantry-admin`
-6. Verify: `/health/ready` → `redis: true`
+3. Edit `/etc/pantry/.env.production` → `REDIS_URL=redis://:<new>@localhost:6379`
+4. `systemctl reload redis-server pantry-api`
+5. Verify: `curl https://api.pantry.example/health/ready` returns `redis: true`
 
-## S3 access keys
+## Backblaze B2 application key (used by rclone)
 
-1. In Backblaze/Cloudflare console, create a new keypair scoped to the `pantry-backups` bucket (RW)
-2. Update `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY`
-3. `systemctl reload pantry-api`
+1. In the Backblaze B2 console, create a new application key scoped to the `pantry-backups` bucket (RW)
+2. Update the credentials in `~/.config/rclone/rclone.conf` under the `[b2]` remote section:
+   ```ini
+   [b2]
+   type = b2
+   account = <new-key-id>
+   key = <new-application-key>
+   ```
+3. Test: `rclone lsf b2:pantry-backups/`
 4. Trigger a manual backup: `sudo -u pantryapp /opt/pantry/current/infra/scripts/backup.sh`
-5. Confirm a new file lands in S3
-6. Delete the old keypair in the console
+5. Confirm a new file lands at `b2:pantry-backups/daily/$(date -u +%Y-%m-%d).age`
+6. Revoke the old application key in the B2 console
 
-## age backup recipient key
+## age backup recipient
 
 1. Generate new keypair on a workstation: `age-keygen -o pantry-age-$(date +%Y%m%d).key`
-2. Add the public recipient to `.env.production`:
-   - Move current `AGE_RECIPIENT_PUBLIC_KEY` to `AGE_RECIPIENT_PUBLIC_KEY_PREVIOUS`
-   - Set new key as `AGE_RECIPIENT_PUBLIC_KEY`
-3. Update `infra/scripts/backup.sh` to encrypt to both recipients during overlap (already supports a `-R` per recipient line):
-   ```bash
-   age -R <(echo "$AGE_RECIPIENT_PUBLIC_KEY"; echo "$AGE_RECIPIENT_PUBLIC_KEY_PREVIOUS") ...
-   ```
-4. Store the new private key in 1Password under "Pantry Backups → Age key (current)". Move the previous one to "Age key (N-1)". Keep two generations.
-5. After the next quarterly restore drill passes with the new key, remove `_PREVIOUS`.
+2. The output file contains both the secret key and the public recipient (`# public key: age1...`).
+3. Update `BACKUP_AGE_RECIPIENT` in `/etc/pantry/.env.production` to the new `age1...` recipient string
+4. `systemctl reload pantry-api`
+5. Store the new private key in 1Password under "Pantry Backups → Age key (current)". Move the previous one to "Age key (N-1)". Keep two generations so that historic backups under the old recipient can still be decrypted during a restore drill.
+6. After the next quarterly restore drill passes with the new key, the old generation may be archived but never deleted while any backups encrypted under it still exist.
 
 ## SMTP password
 
@@ -3231,7 +3349,7 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 
 - Post in #incidents Slack/Discord with `[INC YYYY-MM-DD-NN] S<n>: <one-line summary>`
 - Open a ticket; this is your scratchpad and the seed for the postmortem
-- If S1/S2: enable the maintenance banner via `/admin/settings/feature-flags → maintenance_banner = "We are investigating an issue. Updates at status.pantry.example."`
+- If S1/S2: enable the maintenance banner via `/admin/settings/feature-flags → maintenanceBanner = "We are investigating an issue. Updates at status.pantry.example."` (string value; set `null` to clear). The PATCH body shape is `{ "maintenanceBanner": "..." }`, Zod-validated against M3's `feature_flags` seed.
 
 ### 2. Triage (first 15 min)
 
@@ -3667,7 +3785,7 @@ A 14-day staged launch to keep blast radius small while real users exercise the 
 ## Day +1
 
 - [ ] Manual spot-check of three random accounts: profile, records, reviews look sane
-- [ ] Backup ran overnight: `aws s3 ls s3://pantry-backups/daily/ | grep $(date +%Y-%m-%d)`
+- [ ] Backup ran overnight: `rclone lsf b2:pantry-backups/daily/ | grep $(date +%Y-%m-%d)`
 - [ ] Review yesterday's logs end-to-end for anything unusual
 - [ ] Resolve any TestFlight feedback received
 
@@ -3951,6 +4069,8 @@ Run against the M4 task list from the prompt.
 | 31. Release checklist          | J3, K1                      | ✓ |
 
 **Placeholder scan:** searched for "TODO", "TBD", "fill in", "implement later", "add appropriate", "similar to" — none present in plan body. Runbook and store-submission contents are written in full inside the plan.
+
+- **Cross-plan check (M4 self-review #21):** theme token type names match M0a's `Theme` interface (no invented `ThemeTokens`); mobile API base-URL env var matches M0c's `EXPO_PUBLIC_API_BASE_URL`; backup tooling matches M0d (`rclone`, `b2:pantry-backups`); JWT env matches M0a (`JWT_ACCESS_SECRET`); Redis env matches M0a (`REDIS_URL`); feature flag `maintenanceBanner` matches M3's seed.
 
 **Type consistency:** `ClayElevation`, `MD3Elevation`, `TypeRamp`, `TypeRampEntry` defined once in Task A2 and consumed unchanged in A3, B1–B3. `ThemeName` defined in C1 and consumed in C2. Component prop names (`title`, `subtitle`, `onPress`, `accent`, `selected`, `label`, `accessibilityLabel`) are consistent across BentoTile / ClayCard / ClayButton / MD3*. `useThemeSwitcher` exported from `ThemeProvider` in C1, imported in C2. Channel names `development`/`preview`/`production` are consistent between `eas.json` (G1), `app.config.ts` (G2), and the build-and-release runbook (G4). Runbook cross-references (`rollback.md` → `restore-drill.md`, `incident-response.md` → `rollback.md`, `release-checklist.md` → `a11y-manual-checklist.md` + `security-review.md`) all point at files actually created in this plan.
 

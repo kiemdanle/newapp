@@ -25,7 +25,7 @@
 - Admin review of `product_edits`, admin pages, admin audit log entries (M3)
 - Theme polish, app store submission (M4)
 
-**Architecture decision: product edits.** The spec is ambiguous on whether user-suggested product edits live on the main `products` row (`status='pending'`) or in a side table. This plan picks a side table `product_edits` with a JSON `diff` and `status enum(pending, accepted, rejected)`. Reasons: (1) the live product row stays `active` and visible during review, (2) multiple competing edits can stack without overwriting, (3) the M3 admin queue maps cleanly to a list of `product_edits` rows. M3 will add the admin endpoints that resolve them.
+**Architecture decision: product edits.** The spec is ambiguous on whether user-suggested product edits live on the main `products` row (`status='pending'`) or in a side table. This plan picks a side table `product_edits` with a JSON `proposed` payload and `status enum(pending, approved, rejected)`. Reasons: (1) the live product row stays `active` and visible during review, (2) multiple competing edits can stack without overwriting, (3) the M3 admin queue maps cleanly to a list of `product_edits` rows. M3 will add the admin endpoints that resolve them (writing `resolvedBy`/`resolvedAt`/`notes`).
 
 **Architecture decision: notification preferences.** Spec §2.5 mentions per-user override of the default 7d/1d/0d schedule. This plan adds `users.notificationPreferences Json?` with shape `{ "offsetsDays": number[] }`. Default (when null) is `[7, 1, 0]`. Per-record overrides are stored inside the existing `records.notify_at jsonb` (already in the spec) — that field holds the *resolved* absolute timestamps, not the offsets.
 
@@ -49,6 +49,8 @@ pantry/
 │   │   ├── lib/
 │   │   │   ├── breaker.ts                                ← NEW (opossum factory + Redis state)
 │   │   │   └── http.ts                                   ← NEW (undici fetch with timeout)
+│   │   ├── services/external/
+│   │   │   └── breakers.ts                               ← NEW (D11 breaker registry)
 │   │   ├── services/products/
 │   │   │   ├── off-client.ts                             ← NEW
 │   │   │   ├── upcitemdb-client.ts                       ← NEW
@@ -87,7 +89,8 @@ pantry/
 │   │   │   ├── delete.ts                                 ← NEW
 │   │   │   └── sync.ts                                   ← NEW
 │   │   └── routes/me/
-│   │       └── push-token.ts                             ← NEW
+│   │       ├── push-token.ts                             ← NEW
+│   │       └── country-suggestion.ts                     ← NEW (D28)
 │   └── tests/
 │       ├── helpers/
 │       │   ├── factories.ts                              ← MODIFIED (add makeProduct, makeRecord)
@@ -99,6 +102,8 @@ pantry/
 │       │   ├── notify-at.test.ts                         ← NEW
 │       │   ├── product-mappers.test.ts                   ← NEW
 │       │   ├── breaker.test.ts                           ← NEW
+│       │   ├── breakers-registry.test.ts                 ← NEW (D11)
+│       │   ├── queue-registry.test.ts                    ← NEW (D10)
 │       │   ├── worker-notification-schedule.test.ts      ← NEW
 │       │   └── worker-notification-send.test.ts          ← NEW
 │       └── integration/
@@ -110,7 +115,8 @@ pantry/
 │           ├── products-patch.test.ts                    ← NEW
 │           ├── records-crud.test.ts                      ← NEW
 │           ├── records-sync.test.ts                      ← NEW
-│           └── push-token.test.ts                        ← NEW
+│           ├── push-token.test.ts                        ← NEW
+│           └── country-suggestion.test.ts                ← NEW (D28)
 └── apps/mobile/
     ├── package.json                                      ← MODIFIED (add deps)
     ├── app/(app)/
@@ -451,8 +457,10 @@ enum ProductStatus {
 
 enum ProductEditStatus {
   pending
-  accepted
+  approved
   rejected
+
+  @@map("product_edit_status")
 }
 
 enum RecordStatus {
@@ -468,9 +476,10 @@ enum PushPlatform {
 }
 
 enum PushLogStatus {
-  ok
-  error
-  retry
+  sent
+  failed
+
+  @@map("push_log_status")
 }
 ```
 
@@ -483,11 +492,14 @@ In the `User` model block, after the `totpEnabledAt` line add:
 
 In the relations section of `User` append:
 ```prisma
-  products     Product[]     @relation("ProductCreator")
-  records      Record[]
-  productEdits ProductEdit[] @relation("ProductEditAuthor")
-  pushLogs     PushLog[]
+  products             Product[]     @relation("ProductCreator")
+  records              Record[]
+  productEditsAuthored ProductEdit[] @relation("ProductEditAuthor")
+  productEditsResolved ProductEdit[] @relation("ProductEditResolver")
+  pushLogs             PushLog[]
 ```
+
+> Note: M0a's `User` model may already declare `pushLogs PushLog[]`. If so, do not duplicate — keep one entry. The `productEditsResolver` relation back-link is required for the renamed `ProductEdit.resolvedBy` foreign key introduced below; if M0a never wrote `pushLogs`, this M1 step adds it.
 
 - [ ] **Step 3: Add the new models at the bottom of `schema.prisma`**
 
@@ -525,17 +537,20 @@ model Product {
 model ProductEdit {
   id          String            @id @default(uuid()) @db.Uuid
   productId   String            @db.Uuid @map("product_id")
-  authorId    String            @db.Uuid @map("author_id")
-  diff        Json
+  submittedBy String            @db.Uuid @map("submitted_by")
+  proposed    Json
   status      ProductEditStatus @default(pending)
-  reviewedBy  String?           @db.Uuid @map("reviewed_by")
-  reviewedAt  DateTime?         @map("reviewed_at")
+  resolvedBy  String?           @db.Uuid @map("resolved_by")
+  resolvedAt  DateTime?         @map("resolved_at")
+  notes       String?
   createdAt   DateTime          @default(now()) @map("created_at")
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  author  User    @relation("ProductEditAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  submitter User    @relation("ProductEditAuthor", fields: [submittedBy], references: [id])
+  resolver  User?   @relation("ProductEditResolver", fields: [resolvedBy], references: [id])
 
-  @@index([status, createdAt])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([productId])
   @@map("product_edits")
 }
 
@@ -557,32 +572,36 @@ model Record {
   updatedAt     DateTime     @updatedAt @map("updated_at")
   consumedAt    DateTime?    @map("consumed_at")
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  pushLogs PushLog[]
 
   @@index([userId, status, expiryDate])
   @@map("records")
 }
 
 model PushLog {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @db.Uuid @map("user_id")
-  recordId     String?       @db.Uuid @map("record_id")
-  expoTicketId String?       @map("expo_ticket_id")
-  status       PushLogStatus
-  error        String?
-  sentAt       DateTime      @default(now()) @map("sent_at")
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @db.Uuid @map("user_id")
+  recordId      String?       @db.Uuid @map("record_id")
+  expoTicketId  String?       @map("expo_ticket_id")
+  templateKey   String        @map("template_key")
+  status        PushLogStatus
+  errorMessage  String?       @map("error_message")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  record Record? @relation(fields: [recordId], references: [id], onDelete: SetNull)
 
-  @@index([userId, sentAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
   @@map("push_logs")
 }
 ```
 
-- [ ] **Step 4: Confirm existing `PushToken` model matches M1 needs**
+- [ ] **Step 4: Convert `PushToken.platform` from `String` to the `PushPlatform` enum (D27)**
 
-Open `api/prisma/schema.prisma` and confirm `PushToken` has exactly these fields. If M0a wrote `platform` as `String`, change it to the `PushPlatform` enum:
+M0a ships `PushToken.platform` as a plain `String` column. M1 owns the conversion to the new `PushPlatform` enum. Update the model in `api/prisma/schema.prisma` so it matches exactly:
 
 ```prisma
 model PushToken {
@@ -600,6 +619,15 @@ model PushToken {
   @@map("push_tokens")
 }
 ```
+
+The migration generated by `prisma migrate dev` in Task B2 will need a raw-SQL `ALTER ... USING` because Postgres can't auto-cast `text → enum`. After the auto-generated `CREATE TYPE "PushPlatform" ...` statement, append the following inside the same `migration.sql` (or, if Prisma refuses to round-trip, create a sibling migration that runs immediately after):
+
+```sql
+ALTER TABLE push_tokens
+  ALTER COLUMN platform TYPE "PushPlatform" USING platform::"PushPlatform";
+```
+
+> Note: M0a's existing `platform` values are already exactly `'ios'` or `'android'` (validated by M0a's Zod schema), so the cast is a straight one-to-one — no data backfill or scrubbing required. If the column has any other historical value, the cast will throw and you should fail fast and clean the row before re-running.
 
 - [ ] **Step 5: Generate Prisma client**
 
@@ -629,7 +657,7 @@ pnpm --filter @pantry/api exec prisma migrate dev --name m1_pantry --create-only
 ```
 Expected: a new directory under `api/prisma/migrations/` ending in `_m1_pantry/`.
 
-- [ ] **Step 2: Append the `pg_trgm` extension + index to the generated `migration.sql`**
+- [ ] **Step 2: Append the `pg_trgm` extension + index + `PushPlatform` cast to the generated `migration.sql`**
 
 At the bottom of the new `migration.sql`, append:
 
@@ -641,7 +669,16 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE INDEX IF NOT EXISTS products_name_brand_trgm
   ON products
   USING GIN ((coalesce(name, '') || ' ' || coalesce(brand, '')) gin_trgm_ops);
+
+-- D27: convert push_tokens.platform from text → PushPlatform enum.
+-- Prisma can't auto-cast text→enum, so we do it explicitly here.
+-- (M0a's existing values 'ios'/'android' are already valid enum strings,
+-- so the cast is a straightforward one-to-one.)
+ALTER TABLE push_tokens
+  ALTER COLUMN platform TYPE "PushPlatform" USING platform::"PushPlatform";
 ```
+
+> If `prisma migrate dev --create-only` already emitted its own `ALTER TABLE push_tokens ALTER COLUMN platform TYPE "PushPlatform"` (without the `USING` clause), replace that line with the version above — Postgres rejects the no-USING variant when converting from `text`.
 
 - [ ] **Step 3: Apply the migration**
 
@@ -923,6 +960,96 @@ git commit -m "feat(api): opossum circuit breaker factory"
 
 ---
 
+### Task C2a: Breaker registry (D11)
+
+**Files:**
+- Create: `api/src/services/external/breakers.ts`
+- Create: `api/tests/unit/breakers-registry.test.ts`
+
+- [ ] **Step 1: Write the failing test `api/tests/unit/breakers-registry.test.ts`**
+
+```ts
+import { describe, expect, it, beforeEach } from 'vitest';
+import CircuitBreaker from 'opossum';
+import {
+  register,
+  getBreaker,
+  getAllBreakers,
+} from '../../src/services/external/breakers.js';
+
+// The registry is process-global; reset it by re-importing/registering for each test.
+function freshBreaker(name: string) {
+  return new CircuitBreaker(async () => name, { timeout: 100, name });
+}
+
+describe('breakers registry', () => {
+  it('register + getBreaker round-trip', () => {
+    const b = freshBreaker('alpha');
+    register('alpha', b);
+    expect(getBreaker('alpha')).toBe(b);
+  });
+
+  it('getBreaker throws when name missing', () => {
+    expect(() => getBreaker('not-registered-xyz')).toThrow(/not registered/);
+  });
+
+  it('getAllBreakers lists every registered breaker', () => {
+    const b1 = freshBreaker('beta');
+    const b2 = freshBreaker('gamma');
+    register('beta', b1);
+    register('gamma', b2);
+    const names = getAllBreakers().map((x) => x.name);
+    expect(names).toEqual(expect.arrayContaining(['beta', 'gamma']));
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL**
+
+```bash
+pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
+```
+
+- [ ] **Step 3: Write `api/src/services/external/breakers.ts`**
+
+```ts
+import type CircuitBreaker from 'opossum';
+
+const registry = new Map<string, CircuitBreaker>();
+
+export function register(name: string, breaker: CircuitBreaker): void {
+  registry.set(name, breaker);
+}
+
+export function getBreaker(name: string): CircuitBreaker {
+  const b = registry.get(name);
+  if (!b) throw new Error(`Breaker not registered: ${name}`);
+  return b;
+}
+
+export function getAllBreakers(): { name: string; breaker: CircuitBreaker }[] {
+  return Array.from(registry.entries()).map(([name, breaker]) => ({ name, breaker }));
+}
+```
+
+> M2 and future health-check endpoints iterate `getAllBreakers()` to surface circuit state. Each external client (OFF, UPCitemdb, Expo Push) MUST call `register(...)` immediately after creating its breaker.
+
+- [ ] **Step 4: Run, verify pass**
+
+```bash
+pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
+```
+Expected: 3 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add api/src/services/external/breakers.ts api/tests/unit/breakers-registry.test.ts
+git commit -m "feat(api): external service circuit-breaker registry"
+```
+
+---
+
 ### Task C3: Product mappers (OFF/UPCitemdb → internal shape)
 
 **Files:**
@@ -1101,12 +1228,14 @@ git commit -m "feat(api): map OFF/UPCitemdb responses to internal product shape"
 
 **Files:**
 - Create: `api/src/services/products/off-client.ts`
+- Modify: `api/src/services/external/breakers.ts` (register call site)
 
 - [ ] **Step 1: Write `api/src/services/products/off-client.ts`**
 
 ```ts
 import { getJson, HttpError } from '../../lib/http.js';
 import { makeBreaker } from '../../lib/breaker.js';
+import { register } from '../external/breakers.js';
 import { mapOffProduct, type ExternalProductData } from './mappers.js';
 
 const OFF_URL = (barcode: string) =>
@@ -1136,6 +1265,9 @@ export const offBreaker = makeBreaker(fetchOff, {
 // Fallback: when the breaker is open, return null so caller can fall through.
 offBreaker.fallback(() => null);
 
+// D11: register in the global breaker registry for health/observability.
+register('off', offBreaker);
+
 export async function lookupOff(barcode: string): Promise<ExternalProductData | null> {
   return offBreaker.fire(barcode);
 }
@@ -1154,12 +1286,14 @@ git commit -m "feat(api): Open Food Facts client with circuit breaker"
 
 **Files:**
 - Create: `api/src/services/products/upcitemdb-client.ts`
+- Modify: `api/src/services/external/breakers.ts` (register call site)
 
 - [ ] **Step 1: Write `api/src/services/products/upcitemdb-client.ts`**
 
 ```ts
 import { getJson, HttpError } from '../../lib/http.js';
 import { makeBreaker } from '../../lib/breaker.js';
+import { register } from '../external/breakers.js';
 import { mapUpcitemdbProduct, type ExternalProductData } from './mappers.js';
 
 const UPC_URL = (barcode: string) =>
@@ -1184,6 +1318,9 @@ export const upcBreaker = makeBreaker(fetchUpc, {
 });
 
 upcBreaker.fallback(() => null);
+
+// D11: register in the global breaker registry.
+register('upcitemdb', upcBreaker);
 
 export async function lookupUpcitemdb(barcode: string): Promise<ExternalProductData | null> {
   return upcBreaker.fire(barcode);
@@ -1928,9 +2065,9 @@ describe('PATCH /v1/products/:id', () => {
 
     const edits = await getPrisma().productEdit.findMany({ where: { productId: p.id } });
     expect(edits).toHaveLength(1);
-    expect(edits[0]!.authorId).toBe(user.id);
+    expect(edits[0]!.submittedBy).toBe(user.id);
     expect(edits[0]!.status).toBe('pending');
-    expect((edits[0]!.diff as { name?: string }).name).toBe('New Name');
+    expect((edits[0]!.proposed as { name?: string }).name).toBe('New Name');
     await app.close();
   });
 
@@ -1996,8 +2133,8 @@ export async function patchProductRoute(app: FastifyInstance) {
     const edit = await prisma.productEdit.create({
       data: {
         productId: id,
-        authorId: req.user!.id,
-        diff: input,
+        submittedBy: req.user!.id,
+        proposed: input,
       },
     });
     return reply.status(202).send({
@@ -2282,19 +2419,82 @@ export function notificationSendQueue(): Queue<NotificationSendJob> {
 }
 ```
 
-- [ ] **Step 4: Write `api/src/queues/index.ts`**
+- [ ] **Step 4: Write `api/src/queues/index.ts` (registry — D10)**
 
 ```ts
+import type { ConnectionOptions, Queue } from 'bullmq';
+import { getRedis } from '../redis.js';
+import {
+  PRODUCT_LOOKUP_QUEUE,
+  productLookupQueue,
+} from './product-lookup.js';
+import {
+  NOTIFICATION_SCHEDULE_QUEUE,
+  notificationScheduleQueue,
+} from './notification-schedule.js';
+import {
+  NOTIFICATION_SEND_QUEUE,
+  notificationSendQueue,
+} from './notification-send.js';
+
 export * from './product-lookup.js';
 export * from './notification-schedule.js';
 export * from './notification-send.js';
+
+export function getQueueConnection(): { connection: ConnectionOptions } {
+  return { connection: getRedis() };
+}
+
+export function getAllQueues(): { name: string; queue: Queue }[] {
+  return [
+    { name: PRODUCT_LOOKUP_QUEUE, queue: productLookupQueue() },
+    { name: NOTIFICATION_SCHEDULE_QUEUE, queue: notificationScheduleQueue() },
+    { name: NOTIFICATION_SEND_QUEUE, queue: notificationSendQueue() },
+  ];
+}
 ```
 
-- [ ] **Step 5: Commit**
+> Path is `api/src/queues/` (NOT `api/src/services/queues/`). M2 will extend `getAllQueues()` with its own queues.
+
+- [ ] **Step 5: Write unit test `api/tests/unit/queue-registry.test.ts`**
+
+```ts
+import { describe, expect, it } from 'vitest';
+import {
+  getAllQueues,
+  getQueueConnection,
+  PRODUCT_LOOKUP_QUEUE,
+  NOTIFICATION_SCHEDULE_QUEUE,
+  NOTIFICATION_SEND_QUEUE,
+} from '../../src/queues/index.js';
+
+describe('queue registry', () => {
+  it('getAllQueues returns the three M1 queues by name', () => {
+    const names = getAllQueues().map((q) => q.name).sort();
+    expect(names).toEqual(
+      [PRODUCT_LOOKUP_QUEUE, NOTIFICATION_SCHEDULE_QUEUE, NOTIFICATION_SEND_QUEUE].sort(),
+    );
+  });
+
+  it('getQueueConnection returns a connection wrapper', () => {
+    const out = getQueueConnection();
+    expect(out).toHaveProperty('connection');
+  });
+});
+```
+
+- [ ] **Step 6: Run, verify pass**
 
 ```bash
-git add api/src/queues
-git commit -m "feat(api): BullMQ queue definitions for M1"
+pnpm --filter @pantry/api exec vitest run tests/unit/queue-registry.test.ts
+```
+Expected: 2 passed.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add api/src/queues api/tests/unit/queue-registry.test.ts
+git commit -m "feat(api): BullMQ queue definitions + registry for M1"
 ```
 
 ---
@@ -3632,6 +3832,143 @@ git commit -m "feat(api): push token register + revoke routes"
 
 ---
 
+### Task H3: `GET /v1/me/country-suggestion` (D28)
+
+**Files:**
+- Create: `api/src/routes/me/country-suggestion.ts`
+- Modify: `api/src/server.ts` (mount the route)
+- Create: `api/tests/integration/country-suggestion.test.ts`
+- Modify: `packages/shared/src/schemas/user.ts` (add `countrySuggestionSchema`)
+
+- [ ] **Step 1: Add Zod schema in `@pantry/shared`**
+
+```ts
+// packages/shared/src/schemas/user.ts (append)
+export const countrySuggestionSchema = z.object({
+  country: z.string().length(2).nullable(),
+});
+export type CountrySuggestion = z.infer<typeof countrySuggestionSchema>;
+```
+
+- [ ] **Step 2: Write the failing integration test**
+
+```ts
+// api/tests/integration/country-suggestion.test.ts
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { buildTestApp, signInAs } from '../helpers/app.js';
+import { makeUser } from '../helpers/factories.js';
+
+vi.mock('../../src/services/users/country-detect.js', () => ({
+  detectCountryFromIp: vi.fn(async (ip: string) => (ip === '127.0.0.1' ? 'US' : null)),
+}));
+
+describe('GET /v1/me/country-suggestion', () => {
+  const ctx = buildTestApp();
+  beforeAll(() => ctx.start());
+  afterAll(() => ctx.stop());
+
+  it('returns the detected country code for a request IP', async () => {
+    const u = await makeUser({});
+    const headers = await signInAs(ctx.app, u);
+    const res = await ctx.app.inject({ method: 'GET', url: '/v1/me/country-suggestion', headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ country: 'US' });
+  });
+
+  it('returns null when detection fails', async () => {
+    const u = await makeUser({});
+    const headers = await signInAs(ctx.app, u);
+    // simulate a non-detectable IP by overriding the mock for this call
+    const mod = await import('../../src/services/users/country-detect.js');
+    (mod.detectCountryFromIp as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const res = await ctx.app.inject({ method: 'GET', url: '/v1/me/country-suggestion', headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ country: null });
+  });
+});
+```
+
+- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @pantry/api test country-suggestion`
+
+- [ ] **Step 4: Implement the route**
+
+```ts
+// api/src/routes/me/country-suggestion.ts
+import type { FastifyInstance } from 'fastify';
+import { countrySuggestionSchema } from '@pantry/shared';
+import { detectCountryFromIp } from '../../services/users/country-detect.js';
+
+export async function countrySuggestionRoute(app: FastifyInstance) {
+  app.get(
+    '/country-suggestion',
+    { onRequest: [app.requireAuth] },
+    async (req) => {
+      const country = await detectCountryFromIp(req.ip);
+      return countrySuggestionSchema.parse({ country });
+    },
+  );
+}
+```
+
+- [ ] **Step 5: Wire into the `/v1/me` mount**
+
+In `api/src/server.ts`, after the push-token mount add:
+```ts
+import { countrySuggestionRoute } from './routes/me/country-suggestion.js';
+// inside the /v1/me sub-app:
+await meScope.register(countrySuggestionRoute);
+```
+
+- [ ] **Step 6: Re-run, verify PASS** — `pnpm --filter @pantry/api test country-suggestion`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add api/src/routes/me/country-suggestion.ts api/src/server.ts \
+  api/tests/integration/country-suggestion.test.ts \
+  packages/shared/src/schemas/user.ts
+git commit -m "feat(api): GET /v1/me/country-suggestion (D28)"
+```
+
+### Task H4: Mobile — show country suggestion on first profile open (D28)
+
+**Files:**
+- Modify: `apps/mobile/src/api/me.ts` (add `useCountrySuggestion` hook)
+- Modify: `apps/mobile/app/(app)/(tabs)/profile.tsx` (consume + pre-fill)
+
+- [ ] **Step 1: Add the hook**
+
+```ts
+// apps/mobile/src/api/me.ts (append)
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from './client';
+import type { CountrySuggestion } from '@pantry/shared';
+
+export function useCountrySuggestion(enabled: boolean) {
+  return useQuery({
+    queryKey: ['me', 'country-suggestion'],
+    queryFn: () => apiClient.get<CountrySuggestion>('/me/country-suggestion'),
+    enabled,
+    staleTime: Infinity,
+  });
+}
+```
+
+- [ ] **Step 2: Profile screen consumes the hook**
+
+In `apps/mobile/app/(app)/(tabs)/profile.tsx`, when the loaded user's `country` is null, call `useCountrySuggestion(user.country === null)` and pre-fill the country field with `data?.country ?? ''`. User can override before saving via the existing `PATCH /me` form.
+
+- [ ] **Step 3: RNTL test** — mock the hook to return `{ country: 'US' }` and assert the country input renders `US` as the initial value when the user's country is null.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/mobile/src/api/me.ts apps/mobile/app/\(app\)/\(tabs\)/profile.tsx
+git commit -m "feat(mobile): show country suggestion on profile when missing (D28)"
+```
+
+---
+
 ## Phase I — Workers (BullMQ)
 
 ### Task I1: Add `expo-server-sdk` dep + Expo Push wrapper
@@ -3652,6 +3989,7 @@ Expected: `expo-server-sdk` appears in `api/package.json`.
 ```ts
 import { Expo, type ExpoPushMessage, type ExpoPushTicket } from 'expo-server-sdk';
 import { makeBreaker } from '../../lib/breaker.js';
+import { register } from '../external/breakers.js';
 
 const expo = new Expo();
 
@@ -3666,6 +4004,9 @@ export const expoPushBreaker = makeBreaker(sendChunk, {
   resetTimeout: 30_000,
   volumeThreshold: 5,
 });
+
+// D11: register in the global breaker registry.
+register('expo-push', expoPushBreaker);
 
 export async function sendPush(messages: ExpoPushMessage[]): Promise<ExpoPushTicket[]> {
   const valid = messages.filter((m) => Expo.isExpoPushToken(m.to as string));
@@ -3864,7 +4205,7 @@ import { makeUser, makeRecord } from '../helpers/factories.js';
 describe('notification-send worker', () => {
   beforeEach(() => sendPushMock.mockReset());
 
-  it('sends a push per active token and writes a push_logs row each', async () => {
+  it('sends a push per active token and writes a push_logs row each (templateKey persisted)', async () => {
     sendPushMock.mockResolvedValue([{ status: 'ok', id: 'ticket-1' }]);
     const u = await makeUser({});
     const r = await makeRecord(u.id, { customName: 'Yogurt', expiryDate: new Date('2099-12-31') });
@@ -3877,14 +4218,16 @@ describe('notification-send worker', () => {
     await processSendJob({
       recordId: r.id, userId: u.id,
       fireAt: '2099-12-30T09:00:00.000Z', offsetDays: 1,
+      templateKey: 'expiry.warning_1d',
     });
     expect(sendPushMock).toHaveBeenCalledTimes(1); // one chunk of two messages
     const logs = await getPrisma().pushLog.findMany({ where: { userId: u.id } });
     expect(logs.length).toBeGreaterThanOrEqual(1);
-    expect(logs[0]!.status).toBe('ok');
+    expect(logs[0]!.status).toBe('sent');
+    expect(logs[0]!.templateKey).toBe('expiry.warning_1d');
   });
 
-  it('writes an error log when the chunk returns an error ticket', async () => {
+  it('writes a failed log when the chunk returns an error ticket', async () => {
     sendPushMock.mockResolvedValue([{ status: 'error', message: 'DeviceNotRegistered' }]);
     const u = await makeUser({});
     const r = await makeRecord(u.id, { customName: 'X' });
@@ -3894,10 +4237,12 @@ describe('notification-send worker', () => {
     await processSendJob({
       recordId: r.id, userId: u.id,
       fireAt: '2099-12-31T09:00:00.000Z', offsetDays: 0,
+      templateKey: 'expiry.today',
     });
     const logs = await getPrisma().pushLog.findMany({ where: { userId: u.id } });
-    expect(logs[0]!.status).toBe('error');
-    expect(logs[0]!.error).toContain('DeviceNotRegistered');
+    expect(logs[0]!.status).toBe('failed');
+    expect(logs[0]!.errorMessage).toContain('DeviceNotRegistered');
+    expect(logs[0]!.templateKey).toBe('expiry.today');
   });
 
   it('skips when record has been deleted or is not active', async () => {
@@ -3906,6 +4251,7 @@ describe('notification-send worker', () => {
     await processSendJob({
       recordId: r.id, userId: u.id,
       fireAt: '2099-12-31T09:00:00.000Z', offsetDays: 0,
+      templateKey: 'expiry.today',
     });
     expect(sendPushMock).not.toHaveBeenCalled();
   });
@@ -3970,8 +4316,9 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
         data: {
           userId: data.userId,
           recordId: record.id,
-          status: 'retry',
-          error: err instanceof Error ? err.message : 'send failed',
+          templateKey: data.templateKey,
+          status: 'failed',
+          errorMessage: err instanceof Error ? err.message : 'send failed',
         },
       });
     }
@@ -3985,8 +4332,9 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
         userId: data.userId,
         recordId: record.id,
         expoTicketId: ticket.id ?? null,
-        status: ticket.status === 'ok' ? 'ok' : 'error',
-        error: ticket.status === 'ok' ? null : ticket.message ?? 'unknown',
+        templateKey: data.templateKey,
+        status: ticket.status === 'ok' ? 'sent' : 'failed',
+        errorMessage: ticket.status === 'ok' ? null : ticket.message ?? 'unknown',
       },
     });
   }
@@ -4388,7 +4736,7 @@ async function pushPending(): Promise<void> {
     const clientId = rec.clientId || uuidv4();
     if (!rec.serverId) {
       // CREATE — POST /v1/records
-      const res = await apiClient.post('/v1/records', {
+      const res = await apiClient.post<{ id: string }>('/records', {
         clientId,
         productId: rec.productId,
         customName: rec.customName,
@@ -4399,7 +4747,7 @@ async function pushPending(): Promise<void> {
         notes: rec.notes,
         photoUrl: rec.photoUrl,
       }, { headers: { 'Idempotency-Key': clientId } });
-      const remoteId = res.data.id as string;
+      const remoteId = res.id;
       await database.write(async () => {
         await rec.update((r) => {
           r.serverId = remoteId;
@@ -4409,7 +4757,7 @@ async function pushPending(): Promise<void> {
       });
     } else {
       // UPDATE — PATCH /v1/records/:id
-      await apiClient.patch(`/v1/records/${rec.serverId}`, {
+      await apiClient.patch(`/records/${rec.serverId}`, {
         customName: rec.customName,
         expiryDate: rec.expiryDate,
         purchaseDate: rec.purchaseDate,
@@ -4427,7 +4775,7 @@ async function pushPending(): Promise<void> {
 
   for (const rec of deletes) {
     if (rec.serverId) {
-      await apiClient.delete(`/v1/records/${rec.serverId}`);
+      await apiClient.delete(`/records/${rec.serverId}`);
     }
     await database.write(async () => { await rec.destroyPermanently(); });
   }
@@ -4440,8 +4788,8 @@ async function pullSince(): Promise<void> {
     upserts: [],
     deletes: [],
   };
-  const res = await apiClient.post<RecordSyncResponse>('/v1/records/sync', body);
-  const { changes, deletedIds, serverTime } = res.data;
+  const res = await apiClient.post<RecordSyncResponse>('/records/sync', body);
+  const { changes, deletedIds, serverTime } = res;
   const recordsCol = database.get<RecordModel>('records');
 
   await database.write(async () => {
@@ -4608,8 +4956,8 @@ import { apiClient } from './client.js';
 export function useProductLookup() {
   return useMutation({
     mutationFn: async (input: { barcode?: string; qr?: string }) => {
-      const { data } = await apiClient.post<ProductLookupResponse>(
-        '/v1/products/lookup',
+      const data = await apiClient.post<ProductLookupResponse>(
+        '/products/lookup',
         input,
       );
       return data.product;
@@ -4622,8 +4970,8 @@ export function useProductSearch(q: string, enabled: boolean) {
     queryKey: ['products', 'search', q],
     enabled: enabled && q.length > 0,
     queryFn: async () => {
-      const { data } = await apiClient.get<ProductSearchResult>(
-        `/v1/products/search?q=${encodeURIComponent(q)}`,
+      const data = await apiClient.get<ProductSearchResult>(
+        `/products/search?q=${encodeURIComponent(q)}`,
       );
       return data.items;
     },
@@ -4635,8 +4983,7 @@ export function useProduct(id: string | undefined) {
     queryKey: ['products', id],
     enabled: Boolean(id),
     queryFn: async () => {
-      const { data } = await apiClient.get<ProductWithReviews>(`/v1/products/${id}`);
-      return data;
+      return await apiClient.get<ProductWithReviews>(`/products/${id}`);
     },
   });
 }
@@ -4650,8 +4997,7 @@ export function useCreateProduct() {
       brand?: string | null;
       defaultShelfLifeDays?: number | null;
     }) => {
-      const { data } = await apiClient.post<Product>('/v1/products', input);
-      return data;
+      return await apiClient.post<Product>('/products', input);
     },
   });
 }
@@ -6121,8 +6467,7 @@ import { apiClient } from './client.js';
 import type { PushToken, PushTokenRegister } from '@pantry/shared';
 
 export async function registerPushTokenApi(input: PushTokenRegister): Promise<PushToken> {
-  const { data } = await apiClient.post<PushToken>('/v1/me/push-token', input);
-  return data;
+  return await apiClient.post<PushToken>('/me/push-token', input);
 }
 ```
 

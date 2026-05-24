@@ -4,9 +4,9 @@
 
 **Goal:** Stand up the Expo mobile app at `apps/mobile/`, wire it into the pnpm + Turborepo monorepo, ship a full mobile-side auth flow against the `/v1/auth/*` and `/v1/me` endpoints built in M0a/M0b, and deliver a working theme provider + switcher covering all four token sets from `@pantry/theme` with Aurora Glass as the polished default.
 
-**Architecture:** Expo SDK (latest stable) with Expo Router for file-based navigation, Zustand stores for client state (auth session, theme, ephemeral UI), TanStack Query for server state, NativeWind 4 for styling via Tailwind tokens hydrated from `@pantry/theme`, `expo-secure-store` for tokens + theme persistence, and a single `fetch`-based API client that injects the access token, refreshes once on 401, and surfaces RFC 7807 errors as typed exceptions. WatermelonDB is installed but its models are deferred to M1. Per-screen polished UI ships for Aurora Glass only; the other three themes' surface treatment is M4 — the provider, switcher, and token plumbing work for all four.
+**Architecture:** Expo SDK (latest stable) with Expo Router for file-based navigation, Zustand stores for client state (auth session, theme, ephemeral UI), TanStack Query for server state, NativeWind 4 for styling via Tailwind tokens hydrated from `@pantry/theme`, `expo-secure-store` for tokens + theme persistence, and a single `fetch`-based API client that injects the access token, refreshes once on 401, and surfaces RFC 7807 errors as typed exceptions. WatermelonDB is NOT installed in M0c; M1 installs it when it builds the offline-first sync engine. Per-screen polished UI ships for Aurora Glass only; the other three themes' surface treatment is M4 — the provider, switcher, and token plumbing work for all four.
 
-**Tech Stack:** Expo SDK 51+, React Native, TypeScript 5, Expo Router 3, Zustand 4, TanStack Query 5, NativeWind 4, Tailwind 3, `expo-secure-store`, `expo-constants`, `expo-linking`, `expo-status-bar`, `expo-blur`, `react-native-reanimated` 3, `react-native-gesture-handler`, `@react-native-google-signin/google-signin`, `expo-apple-authentication`, `react-native-passkey`, WatermelonDB (install only), Vitest + React Native Testing Library, Maestro (E2E).
+**Tech Stack:** Expo SDK 51+, React Native, TypeScript 5, Expo Router 3, Zustand 4, TanStack Query 5, NativeWind 4, Tailwind 3, `expo-secure-store`, `expo-constants`, `expo-linking`, `expo-status-bar`, `expo-blur`, `react-native-reanimated` 3, `react-native-gesture-handler`, `@react-native-google-signin/google-signin`, `expo-apple-authentication`, `react-native-passkey`, Vitest + React Native Testing Library, Maestro (E2E). (WatermelonDB is installed in M1 alongside its models.)
 
 **Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.1, 2.10, 6.1, 6.6, 7.1, 7.2, 7.3, 7.5.
 
@@ -87,8 +87,8 @@ apps/mobile/
     │   └── **passkey.ts**                          ← react-native-passkey adapter
     ├── theme/
     │   ├── **store.ts**                            ← Zustand theme store
-    │   ├── **provider.tsx**                        ← cross-fade theme provider
-    │   ├── use-theme.ts                            ← hook
+    │   ├── **ThemeProvider.tsx**                   ← cross-fade theme provider (exports ThemeProvider, useTheme, useThemeSwitcher)
+    │   ├── useTheme.ts                             ← re-export of useTheme from ThemeProvider
     │   └── tailwind-tokens.ts                     ← maps tokens → tailwind colors
     ├── components/
     │   ├── Button.tsx
@@ -916,6 +916,24 @@ describe('apiClient — happy path', () => {
     await expect(apiClient.request({ method: 'POST', path: '/auth/login' }))
       .rejects.toBeInstanceOf(ApiError);
   });
+
+  it('apiClient.get prepends /v1 to the path', async () => {
+    const f = queueFetch(jsonResponse({ ok: true }));
+    await apiClient.get<{ ok: true }>('/foo');
+    expect(f).toHaveBeenCalledOnce();
+    const [url, init] = f.mock.calls[0]!;
+    expect(url).toBe('http://localhost:4000/v1/foo');
+    expect((init as RequestInit).method).toBe('GET');
+  });
+
+  it('apiClient.post sends JSON body via convenience method', async () => {
+    const f = queueFetch(jsonResponse({ ok: true }));
+    await apiClient.post<{ ok: true }>('/bar', { x: 1 });
+    const [url, init] = f.mock.calls[0]!;
+    expect(url).toBe('http://localhost:4000/v1/bar');
+    expect((init as RequestInit).method).toBe('POST');
+    expect((init as RequestInit).body).toBe(JSON.stringify({ x: 1 }));
+  });
 });
 ```
 
@@ -932,13 +950,13 @@ import Constants from 'expo-constants';
 import { secureStore } from '../auth/secure-store';
 import { ApiError } from './errors';
 
-interface ApiRequest {
+// path must NOT include /v1 prefix; client adds it
+export type ApiClientOpts = { headers?: Record<string, string>; skipAuth?: boolean };
+
+interface ApiRequest extends ApiClientOpts {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   path: string;
   body?: unknown;
-  headers?: Record<string, string>;
-  /** When true, skip Authorization header (for /auth/* unauthenticated routes). */
-  skipAuth?: boolean;
 }
 
 function getBaseUrl(): string {
@@ -964,6 +982,7 @@ async function parseError(res: Response): Promise<ApiError> {
 }
 
 async function doFetch<T>(req: ApiRequest): Promise<T> {
+  // path must NOT include /v1 prefix; client adds it
   const url = `${getBaseUrl()}/v1${req.path.startsWith('/') ? '' : '/'}${req.path}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -986,6 +1005,14 @@ async function doFetch<T>(req: ApiRequest): Promise<T> {
 
 export const apiClient = {
   request: doFetch,
+  get: <T,>(path: string, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'GET', path, ...opts }),
+  post: <T,>(path: string, body?: unknown, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'POST', path, body, ...opts }),
+  patch: <T,>(path: string, body?: unknown, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'PATCH', path, body, ...opts }),
+  delete: <T,>(path: string, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'DELETE', path, ...opts }),
 };
 ```
 
@@ -994,7 +1021,7 @@ export const apiClient = {
 ```bash
 pnpm --filter @pantry/mobile exec vitest run src/api/client.test.ts
 ```
-Expected: 5 passed.
+Expected: 7 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -1091,12 +1118,13 @@ import Constants from 'expo-constants';
 import { secureStore } from '../auth/secure-store';
 import { ApiError } from './errors';
 
-interface ApiRequest {
+// path must NOT include /v1 prefix; client adds it
+export type ApiClientOpts = { headers?: Record<string, string>; skipAuth?: boolean };
+
+interface ApiRequest extends ApiClientOpts {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   path: string;
   body?: unknown;
-  headers?: Record<string, string>;
-  skipAuth?: boolean;
 }
 
 interface RefreshResponse {
@@ -1179,6 +1207,7 @@ async function refreshTokensOnce(): Promise<boolean> {
 }
 
 async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
+  // path must NOT include /v1 prefix; client adds it
   const url = `${getBaseUrl()}/v1${req.path.startsWith('/') ? '' : '/'}${req.path}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
@@ -1206,6 +1235,14 @@ async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
 
 export const apiClient = {
   request: doFetch,
+  get: <T,>(path: string, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'GET', path, ...opts }),
+  post: <T,>(path: string, body?: unknown, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'POST', path, body, ...opts }),
+  patch: <T,>(path: string, body?: unknown, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'PATCH', path, body, ...opts }),
+  delete: <T,>(path: string, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'DELETE', path, ...opts }),
 };
 ```
 
@@ -1214,7 +1251,7 @@ export const apiClient = {
 ```bash
 pnpm --filter @pantry/mobile exec vitest run src/api/client.test.ts
 ```
-Expected: 9 passed.
+Expected: 11 passed.
 
 - [ ] **Step 5: Commit**
 
@@ -1289,11 +1326,20 @@ import type {
 } from '@pantry/shared';
 import { apiClient } from './client';
 
+/**
+ * Server response shape when an account requires a TOTP step. Mobile users
+ * rarely hit this (admins use the admin web app), but the type must be correct.
+ */
+export interface TotpChallenge {
+  requiresTotp: true;
+  challengeToken: string;
+}
+
 export const authEndpoints = {
   register: (input: RegisterInput) =>
     apiClient.request<AuthResult>({ method: 'POST', path: '/auth/register', body: input, skipAuth: true }),
   login: (input: LoginInput) =>
-    apiClient.request<AuthResult>({ method: 'POST', path: '/auth/login', body: input, skipAuth: true }),
+    apiClient.request<AuthResult | TotpChallenge>({ method: 'POST', path: '/auth/login', body: input, skipAuth: true }),
   refresh: (refreshToken: string) =>
     apiClient.request<Tokens>({ method: 'POST', path: '/auth/refresh', body: { refreshToken }, skipAuth: true }),
   logout: () =>
@@ -1456,39 +1502,35 @@ git commit -m "feat(mobile): theme zustand store with secure-store persistence"
 ### Task C2: Theme provider with cross-fade transition
 
 **Files:**
-- Create: `apps/mobile/src/theme/use-theme.ts`
-- Create: `apps/mobile/src/theme/provider.tsx`
-- Create: `apps/mobile/src/theme/provider.test.tsx`
+- Create: `apps/mobile/src/theme/useTheme.ts`
+- Create: `apps/mobile/src/theme/ThemeProvider.tsx`
+- Create: `apps/mobile/src/theme/ThemeProvider.test.tsx`
 
-- [ ] **Step 1: Write `apps/mobile/src/theme/use-theme.ts`**
+- [ ] **Step 1: Write `apps/mobile/src/theme/useTheme.ts`** (one-line re-export so importers can use either `'../theme/ThemeProvider'` or `'../theme/useTheme'`)
 
 ```ts
-import { useContext } from 'react';
-import type { Theme } from '@pantry/theme';
-import { ThemeContext } from './provider';
-
-export function useTheme(): Theme {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
-  return ctx;
-}
+export { useTheme } from './ThemeProvider';
 ```
 
-- [ ] **Step 2: Write the failing test `apps/mobile/src/theme/provider.test.tsx`**
+- [ ] **Step 2: Write the failing test `apps/mobile/src/theme/ThemeProvider.test.tsx`**
 
 ```tsx
 import React from 'react';
 import { Text } from 'react-native';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, waitFor, act } from '@testing-library/react-native';
-import { ThemeProvider } from './provider';
-import { useTheme } from './use-theme';
+import { ThemeProvider, useTheme, useThemeSwitcher } from './ThemeProvider';
 import { useThemeStore, initThemeStore } from './store';
 import { __reset } from '../../tests/mocks/expo-secure-store';
 
 function Probe() {
   const theme = useTheme();
   return <Text testID="probe">{theme.id}:{theme.name}</Text>;
+}
+
+function SwitcherProbe() {
+  const { themeId } = useThemeSwitcher();
+  return <Text testID="switcher-probe">{themeId}</Text>;
 }
 
 describe('ThemeProvider', () => {
@@ -1516,26 +1558,62 @@ describe('ThemeProvider', () => {
       expect(getByTestId('probe').props.children.join('')).toBe('clay:Soft Clay');
     });
   });
+
+  it('honours the `initial` prop on first mount', async () => {
+    useThemeStore.setState({ themeId: 'aurora', hydrated: false });
+    const { getByTestId } = render(
+      <ThemeProvider initial="bento"><Probe /></ThemeProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('probe').props.children.join('')).toBe('bento:Bento');
+    });
+  });
+
+  it('useThemeSwitcher.setTheme updates the store and themeId reflects the new id', async () => {
+    const { getByTestId } = render(
+      <ThemeProvider><SwitcherProbe /></ThemeProvider>,
+    );
+    await act(async () => {
+      await useThemeStore.getState().setTheme('bento');
+    });
+    await waitFor(() => {
+      expect(getByTestId('switcher-probe').props.children).toBe('bento');
+    });
+    expect(useThemeStore.getState().themeId).toBe('bento');
+  });
 });
 ```
 
 - [ ] **Step 3: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/theme/provider.test.tsx
+pnpm --filter @pantry/mobile exec vitest run src/theme/ThemeProvider.test.tsx
 ```
 
-- [ ] **Step 4: Write `apps/mobile/src/theme/provider.tsx`**
+- [ ] **Step 4: Write `apps/mobile/src/theme/ThemeProvider.tsx`**
 
 ```tsx
-import React, { createContext, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { themes, type Theme } from '@pantry/theme';
+import { themes, type Theme, type ThemeId } from '@pantry/theme';
 import { useThemeStore } from './store';
 
 export const ThemeContext = createContext<Theme | null>(null);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export interface ThemeProviderProps {
+  children: React.ReactNode;
+  /** Optional initial theme id — applied to the store on first mount. */
+  initial?: ThemeId;
+}
+
+export function ThemeProvider({ children, initial }: ThemeProviderProps) {
+  // Apply the initial prop exactly once on mount (before paint via layout effect would be ideal,
+  // but useEffect is fine here because the store starts in a hydrated=false state).
+  useEffect(() => {
+    if (initial) useThemeStore.setState({ themeId: initial, hydrated: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const themeId = useThemeStore((s) => s.themeId);
   const theme = themes[themeId];
   const fade = useRef(new Animated.Value(1)).current;
@@ -1563,6 +1641,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function useTheme(): Theme {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error('useTheme must be used inside <ThemeProvider>');
+  return ctx;
+}
+
+export function useThemeSwitcher() {
+  return useThemeStore((s) => ({ themeId: s.themeId, setTheme: s.setTheme }));
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   fill: { flex: 1 },
@@ -1572,14 +1660,14 @@ const styles = StyleSheet.create({
 - [ ] **Step 5: Run, verify PASS**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/theme/provider.test.tsx
+pnpm --filter @pantry/mobile exec vitest run src/theme/ThemeProvider.test.tsx
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(mobile): ThemeProvider with 200ms cross-fade transition"
+git commit -m "feat(mobile): ThemeProvider with 200ms cross-fade, initial prop, useThemeSwitcher"
 ```
 
 ---
@@ -1692,7 +1780,7 @@ export async function initThemeStore(): Promise<void> {
 ```bash
 pnpm --filter @pantry/mobile exec vitest run src/theme/
 ```
-Expected: all tests in `store.test.ts`, `provider.test.tsx`, `sync.test.ts` pass.
+Expected: all tests in `store.test.ts`, `ThemeProvider.test.tsx`, `sync.test.ts` pass.
 
 - [ ] **Step 6: Commit**
 
@@ -2051,7 +2139,7 @@ git commit -m "feat(mobile): deep link parser for reset/verify URLs"
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export function Screen({ children, scroll = true }: { children: React.ReactNode; scroll?: boolean }) {
   const theme = useTheme();
@@ -2077,7 +2165,7 @@ const styles = StyleSheet.create({
 ```tsx
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export interface ButtonProps {
   label: string;
@@ -2137,7 +2225,7 @@ const styles = StyleSheet.create({
 ```tsx
 import React from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -2181,7 +2269,7 @@ const styles = StyleSheet.create({
 ```tsx
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export function ErrorText({ children, testID }: { children: React.ReactNode; testID?: string }) {
   const theme = useTheme();
@@ -2201,7 +2289,7 @@ const styles = StyleSheet.create({
 ```tsx
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export function Card({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
@@ -2232,7 +2320,7 @@ const styles = StyleSheet.create({
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useTheme } from '../theme/use-theme';
+import { useTheme } from '../theme/useTheme';
 
 export function GlassCard({ children }: { children: React.ReactNode }) {
   const theme = useTheme();
@@ -2286,7 +2374,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Linking from 'expo-linking';
 import { createQueryClient } from '../src/api/query-client';
-import { ThemeProvider } from '../src/theme/provider';
+import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../src/theme/store';
 import { hydrateSession, useSessionStore } from '../src/auth/session-store';
 import { wireApiClient } from '../src/auth/wire-client';
@@ -2434,7 +2522,7 @@ export default function AppLayout() {
 ```tsx
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 
 export default function TabsLayout() {
   const theme = useTheme();
@@ -2630,7 +2718,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import { GlassCard } from '../../src/components/GlassCard';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function Welcome() {
   const router = useRouter();
@@ -2679,7 +2767,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
 import SignUp from './sign-up';
-import { ThemeProvider } from '../../src/theme/provider';
+import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { useThemeStore, initThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
 import { router } from '../../tests/mocks/expo-router';
@@ -2764,7 +2852,7 @@ import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function SignUp() {
   const router = useRouter();
@@ -2839,7 +2927,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
 import SignIn from './sign-in';
-import { ThemeProvider } from '../../src/theme/provider';
+import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
 import { router } from '../../tests/mocks/expo-router';
@@ -2898,6 +2986,19 @@ describe('<SignIn />', () => {
     });
     await waitFor(() => expect(router.push).toHaveBeenCalledWith('/(auth)/verify-email'));
   });
+
+  it('on TOTP challenge: surfaces the admin-web hint and does not sign in', async () => {
+    queueFetch(jsonResponse({ requiresTotp: true, challengeToken: 'tok-123' }));
+    const { getByTestId, getByLabelText, findByText } = render(wrap(<SignIn />));
+    fireEvent.changeText(getByLabelText('Email'), 'admin@b.co');
+    fireEvent.changeText(getByLabelText('Password'), 'correct-horse-battery-staple');
+    await act(async () => {
+      fireEvent.press(getByTestId('sign-in-submit'));
+    });
+    expect(await findByText(/admin TOTP/i)).toBeTruthy();
+    expect(useSessionStore.getState().accessToken).toBeNull();
+    expect(router.replace).not.toHaveBeenCalledWith('/(app)/(tabs)/home');
+  });
 });
 ```
 
@@ -2922,7 +3023,7 @@ import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { ApiError, isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 import { signInWithGoogle, GoogleSignInCancelled } from '../../src/auth/google';
 import { isAppleSignInAvailable, signInWithApple } from '../../src/auth/apple';
 import { signInWithPasskey } from '../../src/auth/passkey';
@@ -2963,6 +3064,12 @@ export default function SignIn() {
     setLoading(true);
     try {
       const result = await authEndpoints.login(input);
+      if ('requiresTotp' in result) {
+        // Mobile users hitting this means they have an admin account —
+        // route them to the admin web app for the TOTP step.
+        setFormError('This account requires admin TOTP; please sign in via the admin web.');
+        return;
+      }
       await signIn(result);
       router.replace('/(app)/(tabs)/home');
     } catch (e) {
@@ -3068,7 +3175,7 @@ import { ErrorText } from '../../src/components/ErrorText';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function VerifyEmail() {
   const router = useRouter();
@@ -3142,7 +3249,7 @@ import { ErrorText } from '../../src/components/ErrorText';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -3224,7 +3331,7 @@ import { ErrorText } from '../../src/components/ErrorText';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/use-theme';
+import { useTheme } from '../../src/theme/useTheme';
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -3301,7 +3408,7 @@ import React from 'react';
 import { Text } from 'react-native';
 import { Screen } from '../../../src/components/Screen';
 import { GlassCard } from '../../../src/components/GlassCard';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 import { useSessionStore } from '../../../src/auth/session-store';
 
 export default function Home() {
@@ -3327,7 +3434,7 @@ export default function Home() {
 import React from 'react';
 import { Text } from 'react-native';
 import { Screen } from '../../../src/components/Screen';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 
 export default function Browse() {
   const theme = useTheme();
@@ -3346,7 +3453,7 @@ export default function Browse() {
 import React from 'react';
 import { Text } from 'react-native';
 import { Screen } from '../../../src/components/Screen';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 
 export default function Reviews() {
   const theme = useTheme();
@@ -3368,7 +3475,7 @@ import { useRouter } from 'expo-router';
 import { Screen } from '../../../src/components/Screen';
 import { Button } from '../../../src/components/Button';
 import { Card } from '../../../src/components/Card';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 import { useSessionStore } from '../../../src/auth/session-store';
 import { authEndpoints } from '../../../src/api/endpoints';
 
@@ -3430,7 +3537,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import ThemeSettings from './theme';
-import { ThemeProvider } from '../../../src/theme/provider';
+import { ThemeProvider } from '../../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../../src/theme/store';
 import { __reset } from '../../../tests/mocks/expo-secure-store';
 
@@ -3476,7 +3583,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { themeList, type Theme } from '@pantry/theme';
 import { Screen } from '../../../src/components/Screen';
-import { useTheme } from '../../../src/theme/use-theme';
+import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
 
 export default function ThemeSettings() {
@@ -3621,15 +3728,15 @@ Expected: every file passes. As of M0c, the suite is:
 
 - `src/auth/secure-store.test.ts` — 4 tests
 - `src/api/errors.test.ts` — 2 tests
-- `src/api/client.test.ts` — 9 tests
+- `src/api/client.test.ts` — 11 tests
 - `src/theme/store.test.ts` — 4 tests
-- `src/theme/provider.test.tsx` — 2 tests
+- `src/theme/ThemeProvider.test.tsx` — 4 tests
 - `src/theme/sync.test.ts` — 3 tests
 - `src/auth/session-store.test.ts` — 4 tests
 - `src/lib/validate.test.ts` — 2 tests
 - `src/lib/linking.test.ts` — 4 tests
 - `app/(auth)/sign-up.test.tsx` — 3 tests
-- `app/(auth)/sign-in.test.tsx` — 3 tests
+- `app/(auth)/sign-in.test.tsx` — 4 tests
 - `app/(app)/settings/theme.test.tsx` — 2 tests
 
 - [ ] **Step 2: Typecheck the whole repo**
@@ -3646,17 +3753,37 @@ Expected: exit 0 for every workspace package.
 ### Task J3: CI workflow — mobile lint + tests on PRs, Maestro nightly TODO
 
 **Files:**
-- Modify: `.github/workflows/ci.yml` (created in M0a)
+- Create: `.github/workflows/ci.yml`
 
-- [ ] **Step 1: Read the existing workflow**
+> M0a does NOT ship `.github/workflows/ci.yml` — M0c creates it from scratch.
+
+- [ ] **Step 1: Verify the file does not already exist**
 
 ```bash
-cat .github/workflows/ci.yml
+test ! -f .github/workflows/ci.yml
+```
+Expected: exit 0 (file is absent). If the file exists, stop and investigate before overwriting — another milestone may have created it ahead of schedule.
+
+- [ ] **Step 2: Create the directory if needed and write `.github/workflows/ci.yml` from scratch**
+
+```bash
+mkdir -p .github/workflows
 ```
 
-- [ ] **Step 2: Add a `mobile` job. Append the following block to `.github/workflows/ci.yml` (under `jobs:`)**
+Write the full file `.github/workflows/ci.yml`:
 
 ```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'  # 06:00 UTC nightly — used by Maestro job once enabled (M4)
+
+jobs:
   mobile:
     name: Mobile (typecheck + tests)
     runs-on: ubuntu-latest
@@ -3689,24 +3816,18 @@ cat .github/workflows/ci.yml
   #     - run: maestro test apps/mobile/tests/e2e
 ```
 
-- [ ] **Step 3: Add a nightly schedule trigger at the top of the workflow (if not already present)**
+- [ ] **Step 3: Smoke check the file is syntactically valid YAML**
 
-Find the `on:` block and ensure it includes:
-```yaml
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 6 * * *'  # 06:00 UTC nightly — used by Maestro job once enabled (M4)
+```bash
+python3 -c "import yaml,sys; yaml.safe_load(open('.github/workflows/ci.yml'))" && echo ok
 ```
+Expected: prints `ok`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add -A
-git commit -m "ci(mobile): typecheck + vitest on PRs; nightly Maestro TODO"
+git add .github/workflows/ci.yml
+git commit -m "ci(mobile): create ci.yml with typecheck + vitest on PRs; nightly Maestro TODO"
 ```
 
 ---

@@ -1291,7 +1291,7 @@ SMTP_FROM="Pantry <no-reply@pantry.local>"
 
 # Frontend URLs (used in email links)
 APP_DEEP_LINK=pantry://
-ADMIN_URL=http://localhost:3000
+ADMIN_URL=http://localhost:4001
 
 # Country detection
 COUNTRY_DETECT_PRIMARY=https://ipapi.co
@@ -1302,7 +1302,7 @@ COUNTRY_DETECT_FALLBACK=http://ip-api.com
 
 ```bash
 NODE_ENV=test
-PORT=4001
+PORT=4100
 HOST=127.0.0.1
 LOG_LEVEL=silent
 DATABASE_URL=postgresql://pantry:pantry@localhost:5432/pantry_test?schema=public
@@ -2584,28 +2584,44 @@ git commit -m "feat(api): argon2id password hashing service"
 - Create: `api/src/services/auth/tokens.ts`
 - Create: `api/tests/unit/tokens.test.ts`
 
+`issueAccessToken(payload, opts?)` takes an `AccessTokenPayload` (`{ sub, role }`) and an optional `{ expiresIn }` override (seconds). It returns `{ token, expiresIn }`; when `opts.expiresIn` is omitted it falls back to `cfg.jwt.accessTtlSeconds`. M3 uses the override (`{ expiresIn: 15 * 60 }`) for the admin impersonate route; all other call sites in M0/M1/M2 pass no options and inherit the configured TTL.
+
 - [ ] **Step 1: Write the failing test**
 
 ```ts
 // api/tests/unit/tokens.test.ts
 import { describe, expect, it, beforeAll } from 'vitest';
+import { decodeJwt } from 'jose';
 import { issueAccessToken, verifyAccessToken, issueRefreshToken } from '../../src/services/auth/tokens.js';
-import { resetConfigForTests } from '../../src/config.js';
+import { getConfig, resetConfigForTests } from '../../src/config.js';
 
 beforeAll(() => resetConfigForTests());
 
 describe('tokens', () => {
   it('issues and verifies an access token', async () => {
-    const t = await issueAccessToken({ sub: 'user-1', role: 'user' });
-    const claims = await verifyAccessToken(t);
+    const { token, expiresIn } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const claims = await verifyAccessToken(token);
     expect(claims.sub).toBe('user-1');
     expect(claims.role).toBe('user');
+    expect(expiresIn).toBe(getConfig().jwt.accessTtlSeconds);
   });
 
   it('rejects a tampered access token', async () => {
-    const t = await issueAccessToken({ sub: 'user-1', role: 'user' });
-    const tampered = t.slice(0, -2) + 'XX';
+    const { token } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const tampered = token.slice(0, -2) + 'XX';
     await expect(verifyAccessToken(tampered)).rejects.toThrow();
+  });
+
+  it('honors an explicit expiresIn override', async () => {
+    const { token, expiresIn } = await issueAccessToken(
+      { sub: 'user-1', role: 'admin' },
+      { expiresIn: 60 },
+    );
+    expect(expiresIn).toBe(60);
+    const decoded = decodeJwt(token);
+    expect(decoded.exp).toBeDefined();
+    expect(decoded.iat).toBeDefined();
+    expect((decoded.exp as number) - (decoded.iat as number)).toBe(60);
   });
 
   it('issueRefreshToken returns { token, hash, expiresAt }', () => {
@@ -2630,28 +2646,54 @@ import { SignJWT, jwtVerify } from 'jose';
 import { getConfig } from '../../config.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 
-export interface AccessClaims {
+export interface AccessTokenPayload {
   sub: string;
   role: 'user' | 'admin';
+}
+
+/** Backward-compatible alias retained for any callers that still import AccessClaims. */
+export type AccessClaims = AccessTokenPayload;
+
+export interface IssueAccessTokenOptions {
+  /** Override the default TTL (seconds). Defaults to `cfg.jwt.accessTtlSeconds`. */
+  expiresIn?: number;
+}
+
+export interface IssuedAccessToken {
+  token: string;
+  expiresIn: number;
 }
 
 function secretKey(): Uint8Array {
   return new TextEncoder().encode(getConfig().jwt.accessSecret);
 }
 
-export async function issueAccessToken(claims: AccessClaims): Promise<string> {
+/**
+ * Issue a signed JWT access token.
+ *
+ * When `opts.expiresIn` is supplied, it is used as the token TTL in seconds;
+ * otherwise the default `cfg.jwt.accessTtlSeconds` is used. The returned
+ * `expiresIn` always reflects the TTL actually applied to the token, so
+ * callers can forward it to clients without re-deriving it from config.
+ */
+export async function issueAccessToken(
+  payload: AccessTokenPayload,
+  opts?: IssueAccessTokenOptions,
+): Promise<IssuedAccessToken> {
   const cfg = getConfig();
-  return new SignJWT({ role: claims.role })
+  const expiresIn = opts?.expiresIn ?? cfg.jwt.accessTtlSeconds;
+  const token = await new SignJWT({ role: payload.role })
     .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(claims.sub)
+    .setSubject(payload.sub)
     .setIssuer(cfg.jwt.issuer)
     .setAudience(cfg.jwt.audience)
     .setIssuedAt()
-    .setExpirationTime(`${cfg.jwt.accessTtlSeconds}s`)
+    .setExpirationTime(`${expiresIn}s`)
     .sign(secretKey());
+  return { token, expiresIn };
 }
 
-export async function verifyAccessToken(token: string): Promise<AccessClaims> {
+export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
   const cfg = getConfig();
   const { payload } = await jwtVerify(token, secretKey(), {
     issuer: cfg.jwt.issuer,
