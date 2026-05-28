@@ -3,6 +3,7 @@ import rateLimit from '@fastify/rate-limit';
 import { getConfig } from '../../config.js';
 import { getRedis } from '../../redis.js';
 import { registerRoute } from './register.js';
+import { loginRoute } from './login.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const cfg = getConfig();
@@ -17,4 +18,5 @@ export async function authRoutes(app: FastifyInstance) {
     });
   }
   await app.register(registerRoute);
+  await app.register(loginRoute);
 }
