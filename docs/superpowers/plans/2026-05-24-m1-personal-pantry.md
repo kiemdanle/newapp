@@ -4,19 +4,24 @@
 
 **Goal:** Ship the personal-pantry vertical end-to-end: a shared `products` catalogue with external lookup (Open Food Facts → UPCitemdb), private `records` with offline-first sync, barcode/QR scanning, on-device OCR for expiry dates, and Expo Push notifications scheduled via BullMQ.
 
-**Architecture:** Backend adds `products`, `product_edits`, `records`, `push_tokens`, and `push_logs` tables to Prisma. External product APIs are wrapped in `opossum` circuit breakers and called through `undici`; the synchronous lookup hierarchy is local → OFF → UPCitemdb → null, with a background `product-lookup` BullMQ job for slow backfill. Records are idempotent on `client_id` (Redis-backed `Idempotency-Key` middleware) and notifications are scheduled by a `notification-schedule` worker that fans out delayed `notification-send` jobs to the Expo Push API. Mobile reads/writes go through WatermelonDB; a sync engine pushes/pulls through `/v1/records/sync` on app foreground, network reconnect, after each local write, and every 5 minutes while foregrounded. Scanning uses one `expo-camera` + `expo-barcode-scanner` flow that handles UPC-A/EAN-13/QR; expiry capture is either manual date picker or `@react-native-ml-kit/text-recognition` OCR parsed by a `parseExpiryString` helper.
+**Architecture:** Backend adds `products`, `product_edits`, `records`, `push_tokens`, and `push_logs` tables to Prisma. External product APIs are wrapped in `opossum` circuit breakers and called through `undici`; the synchronous lookup hierarchy is local → OFF → UPCitemdb → null, with a background `product-lookup` BullMQ job for slow backfill. Records are idempotent on `client_id` (Redis-backed `Idempotency-Key` middleware) and notifications are scheduled by a `notification-schedule` worker that fans out delayed `notification-send` jobs to the Expo Push API. Mobile reads/writes go through WatermelonDB; a sync engine pushes/pulls through `/v1/records/sync` on app foreground, network reconnect, after each local write, and every 5 minutes while foregrounded. Scanning uses one `expo-camera` `CameraView` flow (its built-in barcode scanner) that handles UPC-A/EAN-13/QR; expiry capture is either manual date picker or `@react-native-ml-kit/text-recognition` OCR parsed by a `parseExpiryString` helper.
 
-**Tech Stack:** Fastify 4, Prisma 5, Postgres 16 (with `pg_trgm`), Redis 7, Zod 3, BullMQ 5, `opossum` 8, `undici` 6, `expo-server-sdk`, Vitest + Supertest, Expo SDK (latest stable), Expo Router, Zustand, TanStack Query, NativeWind, WatermelonDB, `expo-camera`, `expo-barcode-scanner`, `@react-native-ml-kit/text-recognition`, `expo-notifications`, `@react-native-community/netinfo`, React Native Testing Library, Maestro.
+**Tech Stack:** Fastify 4, Prisma 5, Postgres 16 (with `pg_trgm`), Redis 7, Zod 3, BullMQ 5, `opossum` 8, `undici` 6, `expo-server-sdk`, Vitest + Supertest, Expo SDK (latest stable), Expo Router, Zustand, TanStack Query, NativeWind, WatermelonDB, `expo-camera` (built-in `CameraView` barcode scanning), `@react-native-ml-kit/text-recognition`, `expo-notifications`, `@react-native-community/netinfo`, React Native Testing Library, Maestro.
 
 **Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.2–2.5, 2.11, 4.3, 5, 6.2, 6.3, 6.6, 7.
 
-**Prerequisite:** M0a, M0b, and M0c complete. Specifically this plan depends on:
+**Prerequisites:** Per the backend-first execution order, prereqs split by track. Track A (backend phases A–I) does NOT depend on M0c — backend phases touch only `api/`, `packages/shared`, and Postgres. M0c is required only when Track B (mobile phases J–Q) begins.
+
+**Track A (backend, build now) prerequisites:** M0a + M0b complete. Specifically:
 
 - `@pantry/shared` (Zod schemas)
 - `api/src/server.ts`, `api/src/config.ts`, `api/src/db.ts`, `api/src/redis.ts`, `api/src/errors.ts`
 - `api/src/plugins/auth.ts` (`req.user`, `app.requireAuth`)
 - `api/src/services/users/repository.ts`
 - `api/tests/helpers/setup.ts` and `factories.ts`
+
+**Track B (mobile, deferred) — additional prerequisite:** M0c complete.
+
 - Mobile: `apps/mobile/src/api/client.ts`, secure session store, theme provider with `useTheme()` from M0c.
 
 **Out of scope for M1:**
@@ -27,7 +32,68 @@
 
 **Architecture decision: product edits.** The spec is ambiguous on whether user-suggested product edits live on the main `products` row (`status='pending'`) or in a side table. This plan picks a side table `product_edits` with a JSON `proposed` payload and `status enum(pending, approved, rejected)`. Reasons: (1) the live product row stays `active` and visible during review, (2) multiple competing edits can stack without overwriting, (3) the M3 admin queue maps cleanly to a list of `product_edits` rows. M3 will add the admin endpoints that resolve them (writing `resolvedBy`/`resolvedAt`/`notes`).
 
-**Architecture decision: notification preferences.** Spec §2.5 mentions per-user override of the default 7d/1d/0d schedule. This plan adds `users.notificationPreferences Json?` with shape `{ "offsetsDays": number[] }`. Default (when null) is `[7, 1, 0]`. Per-record overrides are stored inside the existing `records.notify_at jsonb` (already in the spec) — that field holds the *resolved* absolute timestamps, not the offsets.
+**Architecture decision: notification preferences.** Spec §2.5 mentions per-user override of the default reminder schedule. This plan adds `users.notificationPreferences Json?` with shape `{ "offsetsDays": number[] }`. Default (when null) is `[3, 1, 0]` (3 days before, 1 day before, on the expiry day). Per-record overrides are stored inside the existing `records.notify_at jsonb` (already in the spec) — that field holds the *resolved* absolute timestamps, not the offsets.
+
+---
+
+## Validation amendments — 2026-05-26
+
+The following corrections were applied after a validation pass. They define contracts that M2/M3 depend on; treat them as canonical.
+
+1. **`getQueueConnection()` returns a raw `ConnectionOptions`** — not a `{ connection: ... }` wrapper. Every queue/worker construction passes it as `new Queue(name, { connection: getQueueConnection() })` / `new Worker(name, processor, { connection: getQueueConnection() })`. This avoids the double-wrap that downstream milestones (which already pass `connection: getQueueConnection()`) would otherwise hit.
+2. **The worker registry lives at `api/src/workers/runner.ts`** exposing `startWorkers()` / `stopWorkers()`. All worker processor files live under `api/src/workers/`. There is no `api/src/queues/workers.ts`. Later milestones add worker files under `api/src/workers/` and register them in `runner.ts`.
+3. **`templateKey` is threaded through the notification job chain.** `push_logs.templateKey` is `NOT NULL`, so `NotificationSendJob` now carries `templateKey`; the `notification-schedule` worker sets a default (`'expiry_reminder'`) per enqueued send job; the `notification-send` worker reads it and writes it to `push_logs`.
+4. **The `/v1/me` mount is a single `meScope` sub-app** registered under `prefix: '/v1/me'`; `pushTokenRoutes` and `countrySuggestionRoute` register inside it (no path prefixes on the child routes).
+5. **The `product-lookup` backfill job is actually enqueued.** On a local cache miss in `POST /v1/products/lookup`, the route enqueues a background `product-lookup` job (spec §4.3) for slow backfill.
+6. **`users.notificationPreferences.offsetsDays` is wired in.** When computing `notify_at` on record create/patch and during sync, the default offsets are read from the user's `notificationPreferences.offsetsDays`, falling back to `[3, 1, 0]` when null. A per-request `notificationOffsetsDays` still takes precedence when supplied.
+7. **Scanning uses `expo-camera`'s built-in `CameraView` barcode scanning** (handles UPC-A/EAN-13/QR in one flow). The removed `expo-barcode-scanner` + `onBarCodeScanned` API is no longer used.
+
+---
+
+## Feature additions — 2026-05-26
+
+Three product requirements landed after the validation pass. They are reflected throughout the tasks below.
+
+1. **Expiry reminders now default to 3 days / 1 day / day-of (`[3, 1, 0]`).** Previously the default was 7d/1d/0d. Only the *default* changed — a per-user `notificationPreferences.offsetsDays` override and a per-request `notificationOffsetsDays` still take precedence. This affects the notify-at helper, the create/patch/sync defaulting, and the related tests.
+
+2. **Home screen shows a green / amber / red expiry indicator.** A small pure helper `expiryStatus(expiryDate, now)` classifies each record: **red** when it has expired or expires today, **amber** when it expires in the next 1–3 days (matching the soonest reminder offset), and **green** when more than 3 days out. The indicator renders as a colored dot on each record card and on the record detail screen, using the existing `success` / `warning` / `danger` theme tokens.
+
+3. **Products carry two-criteria rating columns (taste + value).** Because M2 reviews will rate both *taste* and *value* instead of a single score, the `products` table created here now has `taste_avg`, `value_avg`, and `review_count` (replacing the old `rating_avg` / `rating_count`). The product API exposes these as `tasteAvg`, `valueAvg`, `reviewCount`. M1 only defines the columns and field names (all default `0`); M2's recalc worker fills them in.
+
+---
+
+## Execution order — backend-first (2026-05-26)
+
+This milestone is split across two tracks per the project's backend-first sequence: build the **Backend + Admin** track to completion first, then start the **Mobile** track. Phases keep their original letters, numbering, and order — this header only sets *when* each runs.
+
+**Track A — Backend + Admin (build now):**
+
+- Phase A — Shared Zod schemas (products + records)
+- Phase B — Database schema (Prisma migration)
+- Phase C — HTTP helpers, circuit breaker, and external product clients
+- Phase D — Product HTTP routes
+- Phase E — Idempotency middleware
+- Phase F — BullMQ queues + notify-at computation
+- Phase G — Records HTTP routes
+- Phase H — Push tokens
+- Phase I — Workers (BullMQ)
+
+(The shared `packages/shared` Zod schemas in Phase A serve both tracks but are owned/built in Track A.)
+
+**Track B — Mobile (DEFERRED):**
+
+- Phase J — Mobile: dependencies + WatermelonDB
+- Phase K — Mobile: sync engine
+- Phase L — Mobile: TanStack Query hooks + groupRecords helper
+- Phase M — Mobile: OCR + scan
+- Phase N — Mobile: record UI components
+- Phase O — Mobile: screens (scan, add, home, detail, product)
+- Phase P — Mobile: push token registration
+- Phase Q — Mobile: Maestro E2E
+
+**Rule:** Do NOT implement the Track B phases until the entire Backend + Admin track is complete and the Mobile track begins (which starts with M0c).
+
+**Final verification (Phase Z) splits accordingly:** run the backend verification (Task Z1 — full API suite + repo typecheck) at the end of Track A; run the mobile verification (Task Z2 — mobile checks) at the end of Track B.
 
 ---
 
@@ -148,7 +214,8 @@ pantry/
         │   │   ├── AddRecordForm.tsx                     ← NEW
         │   │   ├── RecordList.tsx                        ← NEW
         │   │   ├── RecordCard.tsx                        ← NEW
-        │   │   └── groupRecords.ts                       ← NEW
+        │   │   ├── groupRecords.ts                       ← NEW
+        │   │   └── expiryStatus.ts                       ← NEW (green/amber/red from days-to-expiry)
         │   ├── expiry/
         │   │   ├── OcrCamera.tsx                         ← NEW
         │   │   └── parseExpiryString.ts                  ← NEW
@@ -157,6 +224,7 @@ pantry/
         └── tests/
             ├── parseExpiryString.test.ts                 ← NEW
             ├── groupRecords.test.ts                      ← NEW
+            ├── expiryStatus.test.ts                      ← NEW
             ├── AddRecordForm.test.tsx                    ← NEW
             ├── ScanCamera.test.tsx                       ← NEW
             └── e2e/scan-and-save.yaml                    ← NEW (Maestro)
@@ -184,7 +252,7 @@ pantry/
 - Create: `packages/shared/src/schemas/product.ts`
 - Modify: `packages/shared/src/index.ts`
 
-- [ ] **Step 1: Write `packages/shared/src/schemas/product.ts`**
+- [x] **Step 1: Write `packages/shared/src/schemas/product.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -214,8 +282,8 @@ export const productSchema = z.object({
   defaultShelfLifeDays: z.number().int().positive().nullable(),
   source: productSourceSchema,
   sourceId: z.string().nullable(),
-  ratingAvg: z.number().min(0).max(5),
-  ratingCount: z.number().int().min(0),
+  tasteAvg: z.number().min(0).max(5),
+  valueAvg: z.number().min(0).max(5),
   reviewCount: z.number().int().min(0),
   status: productStatusSchema,
   createdAt: z.string().datetime(),
@@ -269,21 +337,21 @@ export const productPatchRequestSchema = z.object({
 export type ProductPatchRequest = z.infer<typeof productPatchRequestSchema>;
 ```
 
-- [ ] **Step 2: Re-export from `packages/shared/src/index.ts`**
+- [x] **Step 2: Re-export from `packages/shared/src/index.ts`**
 
 Append:
 ```ts
 export * from './schemas/product.js';
 ```
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 ```bash
 pnpm --filter @pantry/shared typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/shared/src/schemas/product.ts packages/shared/src/index.ts
@@ -515,8 +583,8 @@ model Product {
   defaultShelfLifeDays  Int?          @map("default_shelf_life_days")
   source                ProductSource
   sourceId              String?       @map("source_id")
-  ratingAvg             Decimal       @default(0) @db.Decimal(3, 2) @map("rating_avg")
-  ratingCount           Int           @default(0) @map("rating_count")
+  tasteAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("taste_avg")
+  valueAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("value_avg")
   reviewCount           Int           @default(0) @map("review_count")
   createdByUserId       String?       @db.Uuid @map("created_by_user_id")
   status                ProductStatus @default(active)
@@ -1454,8 +1522,8 @@ export function toApiProduct(p: Product): ApiProduct {
     defaultShelfLifeDays: p.defaultShelfLifeDays,
     source: p.source,
     sourceId: p.sourceId,
-    ratingAvg: Number(p.ratingAvg),
-    ratingCount: p.ratingCount,
+    tasteAvg: Number(p.tasteAvg),
+    valueAvg: Number(p.valueAvg),
     reviewCount: p.reviewCount,
     status: p.status,
     createdAt: p.createdAt.toISOString(),
@@ -1572,6 +1640,7 @@ import {
 import { AppError } from '../../errors.js';
 import { lookupProduct } from '../../services/products/lookup.js';
 import { toApiProduct } from '../../services/products/serializer.js';
+import { productLookupQueue } from '../../queues/index.js';
 
 export async function lookupRoute(app: FastifyInstance) {
   app.post('/lookup', { onRequest: app.requireAuth }, async (req, reply) => {
@@ -1581,6 +1650,16 @@ export async function lookupRoute(app: FastifyInstance) {
       qr: input.qr,
     });
     if (!product) {
+      // Synchronous path (local cache → OFF → UPCitemdb) missed. For a barcode,
+      // enqueue a slow background backfill (spec §4.3) so a later request can hit
+      // local cache. jobId dedupes concurrent misses for the same barcode.
+      if (input.barcode) {
+        await productLookupQueue().add(
+          'backfill',
+          { barcode: input.barcode, requestedByUserId: req.user!.id },
+          { jobId: `lookup:${input.barcode}`, removeOnComplete: true, removeOnFail: 100 },
+        );
+      }
       throw new AppError({
         status: 404,
         code: ERROR_CODES.NOT_FOUND,
@@ -1711,7 +1790,7 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
     WHERE status = 'active'
       AND similarity(coalesce(name, '') || ' ' || coalesce(brand, ''), ${q}) > 0.3
     ORDER BY similarity(coalesce(name, '') || ' ' || coalesce(brand, ''), ${q}) DESC,
-             rating_count DESC
+             review_count DESC
     LIMIT ${limit}
   `;
 }
@@ -2356,7 +2435,7 @@ git commit -m "feat(api): Redis-backed Idempotency-Key middleware"
 
 ```ts
 import { Queue } from 'bullmq';
-import { getRedis } from '../redis.js';
+import { getQueueConnection } from './index.js';
 
 export interface ProductLookupJob {
   barcode: string;
@@ -2368,7 +2447,7 @@ export const PRODUCT_LOOKUP_QUEUE = 'product-lookup';
 let _q: Queue<ProductLookupJob> | undefined;
 export function productLookupQueue(): Queue<ProductLookupJob> {
   if (!_q) {
-    _q = new Queue<ProductLookupJob>(PRODUCT_LOOKUP_QUEUE, { connection: getRedis() });
+    _q = new Queue<ProductLookupJob>(PRODUCT_LOOKUP_QUEUE, { connection: getQueueConnection() });
   }
   return _q;
 }
@@ -2378,7 +2457,7 @@ export function productLookupQueue(): Queue<ProductLookupJob> {
 
 ```ts
 import { Queue } from 'bullmq';
-import { getRedis } from '../redis.js';
+import { getQueueConnection } from './index.js';
 
 export interface NotificationScheduleJob {
   recordId: string;
@@ -2389,7 +2468,7 @@ export const NOTIFICATION_SCHEDULE_QUEUE = 'notification-schedule';
 let _q: Queue<NotificationScheduleJob> | undefined;
 export function notificationScheduleQueue(): Queue<NotificationScheduleJob> {
   if (!_q) {
-    _q = new Queue<NotificationScheduleJob>(NOTIFICATION_SCHEDULE_QUEUE, { connection: getRedis() });
+    _q = new Queue<NotificationScheduleJob>(NOTIFICATION_SCHEDULE_QUEUE, { connection: getQueueConnection() });
   }
   return _q;
 }
@@ -2399,13 +2478,14 @@ export function notificationScheduleQueue(): Queue<NotificationScheduleJob> {
 
 ```ts
 import { Queue } from 'bullmq';
-import { getRedis } from '../redis.js';
+import { getQueueConnection } from './index.js';
 
 export interface NotificationSendJob {
   recordId: string;
   userId: string;
   fireAt: string;        // ISO timestamp, for tracking
-  offsetDays: number;    // 7, 1, 0 etc.
+  offsetDays: number;    // 3, 1, 0 etc.
+  templateKey: string;   // written to push_logs.templateKey (NOT NULL); e.g. 'expiry_reminder'
 }
 
 export const NOTIFICATION_SEND_QUEUE = 'notification-send';
@@ -2413,7 +2493,7 @@ export const NOTIFICATION_SEND_QUEUE = 'notification-send';
 let _q: Queue<NotificationSendJob> | undefined;
 export function notificationSendQueue(): Queue<NotificationSendJob> {
   if (!_q) {
-    _q = new Queue<NotificationSendJob>(NOTIFICATION_SEND_QUEUE, { connection: getRedis() });
+    _q = new Queue<NotificationSendJob>(NOTIFICATION_SEND_QUEUE, { connection: getQueueConnection() });
   }
   return _q;
 }
@@ -2441,8 +2521,11 @@ export * from './product-lookup.js';
 export * from './notification-schedule.js';
 export * from './notification-send.js';
 
-export function getQueueConnection(): { connection: ConnectionOptions } {
-  return { connection: getRedis() };
+// Canonical contract: returns a RAW ConnectionOptions. Callers wrap it as
+// `{ connection: getQueueConnection() }` when constructing a Queue/Worker.
+// Downstream milestones rely on this shape — do not re-wrap it here.
+export function getQueueConnection(): ConnectionOptions {
+  return getRedis();
 }
 
 export function getAllQueues(): { name: string; queue: Queue }[] {
@@ -2455,6 +2538,8 @@ export function getAllQueues(): { name: string; queue: Queue }[] {
 ```
 
 > Path is `api/src/queues/` (NOT `api/src/services/queues/`). M2 will extend `getAllQueues()` with its own queues.
+>
+> The individual queue files import `getQueueConnection` from this `index.ts` and only call it lazily inside their factory functions (never at module top level), so the import cycle is safe under ESM — `getQueueConnection` is fully defined before any factory runs.
 
 - [ ] **Step 5: Write unit test `api/tests/unit/queue-registry.test.ts`**
 
@@ -2476,9 +2561,11 @@ describe('queue registry', () => {
     );
   });
 
-  it('getQueueConnection returns a connection wrapper', () => {
+  it('getQueueConnection returns a raw ConnectionOptions (not a wrapper)', () => {
     const out = getQueueConnection();
-    expect(out).toHaveProperty('connection');
+    // Raw connection options object, NOT `{ connection: ... }`.
+    expect(out).not.toHaveProperty('connection');
+    expect(out).toBeTypeOf('object');
   });
 });
 ```
@@ -2509,14 +2596,27 @@ git commit -m "feat(api): BullMQ queue definitions + registry for M1"
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { computeNotifyAt, DEFAULT_OFFSETS_DAYS } from '../../src/services/records/notify-at.js';
+import { computeNotifyAt, DEFAULT_OFFSETS_DAYS, resolveOffsetsForUser } from '../../src/services/records/notify-at.js';
+
+describe('resolveOffsetsForUser', () => {
+  it('returns the default offsets when prefs is null', () => {
+    expect(resolveOffsetsForUser(null)).toEqual([3, 1, 0]);
+  });
+  it('returns the default offsets when offsetsDays is missing/malformed', () => {
+    expect(resolveOffsetsForUser({})).toEqual([3, 1, 0]);
+    expect(resolveOffsetsForUser({ offsetsDays: 'nope' })).toEqual([3, 1, 0]);
+  });
+  it('returns the stored offsetsDays when valid', () => {
+    expect(resolveOffsetsForUser({ offsetsDays: [14, 3] })).toEqual([14, 3]);
+  });
+});
 
 describe('computeNotifyAt', () => {
-  it('returns timestamps for the default 7/1/0 offsets at 09:00 user-local UTC', () => {
+  it('returns timestamps for the default 3/1/0 offsets at 09:00 user-local UTC', () => {
     const expiry = new Date('2026-01-15');
     const out = computeNotifyAt(expiry);
     expect(out).toHaveLength(3);
-    expect(out[0]).toBe('2026-01-08T09:00:00.000Z'); // 7d before
+    expect(out[0]).toBe('2026-01-12T09:00:00.000Z'); // 3d before
     expect(out[1]).toBe('2026-01-14T09:00:00.000Z'); // 1d before
     expect(out[2]).toBe('2026-01-15T09:00:00.000Z'); // day of
   });
@@ -2545,8 +2645,8 @@ describe('computeNotifyAt', () => {
     ]);
   });
 
-  it('exports DEFAULT_OFFSETS_DAYS = [7,1,0]', () => {
-    expect(DEFAULT_OFFSETS_DAYS).toEqual([7, 1, 0]);
+  it('exports DEFAULT_OFFSETS_DAYS = [3,1,0]', () => {
+    expect(DEFAULT_OFFSETS_DAYS).toEqual([3, 1, 0]);
   });
 });
 ```
@@ -2560,7 +2660,7 @@ pnpm --filter @pantry/api exec vitest run tests/unit/notify-at.test.ts
 - [ ] **Step 3: Write `api/src/services/records/notify-at.ts`**
 
 ```ts
-export const DEFAULT_OFFSETS_DAYS = [7, 1, 0];
+export const DEFAULT_OFFSETS_DAYS = [3, 1, 0];
 
 /**
  * Given a UTC expiry date (date-only) and a list of offsets in days,
@@ -2583,6 +2683,25 @@ export function computeNotifyAt(
   }
   return [...out].sort();
 }
+
+/**
+ * Resolve the offsets to use for a user when the request did not specify any.
+ * Reads `users.notificationPreferences.offsetsDays`, falling back to the
+ * default [3,1,0] when the column is null or malformed. An explicit
+ * per-request `notificationOffsetsDays` (passed by the caller) takes
+ * precedence over this and should be applied before calling here.
+ */
+export function resolveOffsetsForUser(
+  prefs: unknown,
+): number[] {
+  if (prefs && typeof prefs === 'object') {
+    const offs = (prefs as { offsetsDays?: unknown }).offsetsDays;
+    if (Array.isArray(offs) && offs.every((n) => typeof n === 'number')) {
+      return offs as number[];
+    }
+  }
+  return DEFAULT_OFFSETS_DAYS;
+}
 ```
 
 - [ ] **Step 4: Run, verify pass**
@@ -2590,7 +2709,7 @@ export function computeNotifyAt(
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/notify-at.test.ts
 ```
-Expected: 5 passed.
+Expected: 8 passed (5 `computeNotifyAt` + 3 `resolveOffsetsForUser`).
 
 - [ ] **Step 5: Commit**
 
@@ -2765,7 +2884,7 @@ import { recordCreateSchema, ERROR_CODES } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
-import { computeNotifyAt, DEFAULT_OFFSETS_DAYS } from '../../services/records/notify-at.js';
+import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
@@ -2775,7 +2894,14 @@ export async function createRecordRoute(app: FastifyInstance) {
   }, async (req, reply) => {
     const input = recordCreateSchema.parse(req.body);
     const userId = req.user!.id;
-    const offsets = input.notificationOffsetsDays ?? DEFAULT_OFFSETS_DAYS;
+    // Explicit per-request offsets win; otherwise fall back to the user's
+    // notificationPreferences.offsetsDays (default [3,1,0] when null).
+    const user = await getPrisma().user.findUnique({
+      where: { id: userId },
+      select: { notificationPreferences: true },
+    });
+    const offsets =
+      input.notificationOffsetsDays ?? resolveOffsetsForUser(user?.notificationPreferences);
     const notifyAt = computeNotifyAt(new Date(input.expiryDate), offsets);
 
     try {
@@ -3144,7 +3270,7 @@ import { recordPatchSchema, ERROR_CODES } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
-import { computeNotifyAt, DEFAULT_OFFSETS_DAYS } from '../../services/records/notify-at.js';
+import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
@@ -3168,9 +3294,22 @@ export async function patchRecordRoute(app: FastifyInstance) {
     const reschedule = expiryChanged || offsetsChanged;
 
     const nextExpiry = input.expiryDate ? new Date(input.expiryDate) : existing.expiryDate;
-    const nextNotifyAt = reschedule
-      ? computeNotifyAt(nextExpiry, input.notificationOffsetsDays ?? DEFAULT_OFFSETS_DAYS)
-      : (existing.notifyAt as string[]);
+    let nextNotifyAt: string[];
+    if (reschedule) {
+      // Explicit per-request offsets win; otherwise fall back to the user's
+      // notificationPreferences.offsetsDays (default [3,1,0] when null).
+      let offsets = input.notificationOffsetsDays;
+      if (offsets === undefined) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { notificationPreferences: true },
+        });
+        offsets = resolveOffsetsForUser(user?.notificationPreferences);
+      }
+      nextNotifyAt = computeNotifyAt(nextExpiry, offsets);
+    } else {
+      nextNotifyAt = existing.notifyAt as string[];
+    }
 
     const updated = await prisma.record.update({
       where: { id },
@@ -3491,11 +3630,13 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-sync.test.ts
 
 - [ ] **Step 3: Write `api/src/services/records/sync.ts`**
 
+> Note: this batch endpoint receives the delta cursor as `since` inside the POST body (`recordSyncBatchSchema`), not as a `?since=` query param. Spec §6.3 mentions `?since=` for the GET delta-pull style; M1 deliberately keeps the cursor in the batch body because push + pull happen in one round-trip.
+
 ```ts
 import type { Record as PrismaRecord } from '@prisma/client';
 import type { RecordSyncBatch } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
-import { computeNotifyAt, DEFAULT_OFFSETS_DAYS } from './notify-at.js';
+import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -3507,6 +3648,14 @@ export async function syncRecords(userId: string, batch: RecordSyncBatch): Promi
   const prisma = getPrisma();
   const serverTime = new Date();
   const deletedIds: string[] = [];
+
+  // Resolve the user's default notification offsets once for the whole batch.
+  // A per-upsert `notificationOffsetsDays` (when present) still wins below.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { notificationPreferences: true },
+  });
+  const userOffsets = resolveOffsetsForUser(user?.notificationPreferences);
 
   // 1. Apply deletes (only the caller's records)
   if (batch.deletes.length > 0) {
@@ -3527,7 +3676,7 @@ export async function syncRecords(userId: string, batch: RecordSyncBatch): Promi
     const clientUpdatedAt = new Date(u.updatedAt);
     if (existing && existing.userId !== userId) continue; // ignore foreign client_id
     if (existing && existing.updatedAt >= clientUpdatedAt) continue; // server is newer
-    const offsets = u.notificationOffsetsDays ?? DEFAULT_OFFSETS_DAYS;
+    const offsets = u.notificationOffsetsDays ?? userOffsets;
     const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
     await prisma.record.upsert({
       where: { clientId: u.clientId },
@@ -3810,11 +3959,18 @@ export async function pushTokenRoutes(app: FastifyInstance) {
 
 - [ ] **Step 4: Mount in `api/src/server.ts`**
 
-If `api/src/routes/me/index.ts` already exists from M0b, register `pushTokenRoutes` inside it. Otherwise add directly:
+Canonical composition: a single `meScope` sub-app registered once under `prefix: '/v1/me'`, with `pushTokenRoutes` (and later `countrySuggestionRoute`) registered inside it (child routes use no prefix). If `api/src/routes/me/index.ts` already exists from M0b, add `pushTokenRoutes` to that sub-app instead of creating a new one.
+
 ```ts
 import { pushTokenRoutes } from './routes/me/push-token.js';
 // ...
-await app.register(pushTokenRoutes, { prefix: '/v1/me' });
+await app.register(
+  async (meScope) => {
+    await meScope.register(pushTokenRoutes);
+    // country-suggestion route is registered here in Task H3
+  },
+  { prefix: '/v1/me' },
+);
 ```
 
 - [ ] **Step 5: Run, verify pass**
@@ -3912,11 +4068,17 @@ export async function countrySuggestionRoute(app: FastifyInstance) {
 
 - [ ] **Step 5: Wire into the `/v1/me` mount**
 
-In `api/src/server.ts`, after the push-token mount add:
+In `api/src/server.ts`, add the import alongside the other route imports and register the route inside the same `meScope` sub-app created in Task H2 (do NOT add a second `/v1/me` registration):
 ```ts
 import { countrySuggestionRoute } from './routes/me/country-suggestion.js';
-// inside the /v1/me sub-app:
-await meScope.register(countrySuggestionRoute);
+// ...
+await app.register(
+  async (meScope) => {
+    await meScope.register(pushTokenRoutes);
+    await meScope.register(countrySuggestionRoute);
+  },
+  { prefix: '/v1/me' },
+);
 ```
 
 - [ ] **Step 6: Re-run, verify PASS** — `pnpm --filter @pantry/api test country-suggestion`
@@ -4073,6 +4235,7 @@ describe('notification-schedule worker', () => {
     const call0 = addMock.mock.calls[0]![1];
     expect(call0.userId).toBe(u.id);
     expect(call0.recordId).toBe(r.id);
+    expect(call0.templateKey).toBe('expiry_reminder'); // default template threaded to send job
   });
 
   it('cancels existing delayed jobs for the record before re-enqueuing', async () => {
@@ -4103,14 +4266,18 @@ pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-schedul
 
 ```ts
 import { Worker } from 'bullmq';
-import { getRedis } from '../redis.js';
 import { getPrisma } from '../db.js';
 import {
   NOTIFICATION_SCHEDULE_QUEUE,
   notificationSendQueue,
+  getQueueConnection,
   type NotificationScheduleJob,
 } from '../queues/index.js';
 import { logger } from '../logger.js';
+
+// Default notification template written into every send job. push_logs.templateKey
+// is NOT NULL, so the send job must always carry one. M2 may vary this per-record.
+const DEFAULT_TEMPLATE_KEY = 'expiry_reminder';
 
 export async function processScheduleJob(data: NotificationScheduleJob): Promise<void> {
   const prisma = getPrisma();
@@ -4140,6 +4307,7 @@ export async function processScheduleJob(data: NotificationScheduleJob): Promise
         userId: record.userId,
         fireAt: isoTs,
         offsetDays,
+        templateKey: DEFAULT_TEMPLATE_KEY,
       },
       {
         delay,
@@ -4157,7 +4325,7 @@ export function startScheduleWorker(): Worker<NotificationScheduleJob> {
   const worker = new Worker<NotificationScheduleJob>(
     NOTIFICATION_SCHEDULE_QUEUE,
     async (job) => processScheduleJob(job.data),
-    { connection: getRedis(), concurrency: 8 },
+    { connection: getQueueConnection(), concurrency: 8 },
   );
   worker.on('failed', (job, err) =>
     logger.error({ err, jobId: job?.id }, 'notification-schedule worker failed'),
@@ -4269,10 +4437,10 @@ pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-send.te
 ```ts
 import { Worker } from 'bullmq';
 import type { ExpoPushMessage } from 'expo-server-sdk';
-import { getRedis } from '../redis.js';
 import { getPrisma } from '../db.js';
 import {
   NOTIFICATION_SEND_QUEUE,
+  getQueueConnection,
   type NotificationSendJob,
 } from '../queues/index.js';
 import { sendPush } from '../services/push/expo-push.js';
@@ -4344,7 +4512,7 @@ export function startSendWorker(): Worker<NotificationSendJob> {
   const worker = new Worker<NotificationSendJob>(
     NOTIFICATION_SEND_QUEUE,
     async (job) => processSendJob(job.data),
-    { connection: getRedis(), concurrency: 4 },
+    { connection: getQueueConnection(), concurrency: 4 },
   );
   worker.on('failed', (job, err) =>
     logger.error({ err, jobId: job?.id }, 'notification-send worker failed'),
@@ -4377,9 +4545,8 @@ git commit -m "feat(api): notification-send worker with push_logs"
 
 ```ts
 import { Worker } from 'bullmq';
-import { getRedis } from '../redis.js';
 import { lookupProduct } from '../services/products/lookup.js';
-import { PRODUCT_LOOKUP_QUEUE, type ProductLookupJob } from '../queues/index.js';
+import { PRODUCT_LOOKUP_QUEUE, getQueueConnection, type ProductLookupJob } from '../queues/index.js';
 import { logger } from '../logger.js';
 
 /**
@@ -4398,7 +4565,7 @@ export function startProductLookupWorker(): Worker<ProductLookupJob> {
         logger.info({ barcode: job.data.barcode }, 'product backfill miss');
       }
     },
-    { connection: getRedis(), concurrency: 2 },
+    { connection: getQueueConnection(), concurrency: 2 },
   );
   worker.on('failed', (job, err) =>
     logger.warn({ err, jobId: job?.id, barcode: job?.data.barcode }, 'product-lookup retry'),
@@ -4480,6 +4647,8 @@ git commit -m "feat(api): wire BullMQ workers into server boot"
 
 ## Phase J — Mobile: dependencies + WatermelonDB
 
+(Mobile track — deferred; see Execution order header.)
+
 ### Task J1: Install mobile deps
 
 **Files:**
@@ -4492,7 +4661,6 @@ pnpm --filter @pantry/mobile add \
   @nozbe/watermelondb \
   @nozbe/with-observables \
   expo-camera \
-  expo-barcode-scanner \
   expo-notifications \
   expo-device \
   expo-constants \
@@ -5276,6 +5444,102 @@ git commit -m "feat(mobile): groupRecords (expired / today / week / later)"
 
 ---
 
+### Task L4: `expiryStatus` helper (green / amber / red)
+
+**Files:**
+- Create: `apps/mobile/src/features/records/expiryStatus.ts`
+- Create: `apps/mobile/src/tests/expiryStatus.test.ts`
+
+A small pure helper that maps a record's expiry date to a traffic-light status, consumed by `RecordCard` and the record detail screen. Thresholds (canonical):
+
+- **red** — expired or expires today (`expiryDate <= today`)
+- **amber** — expires within the next 3 days (1–3 days out; aligns with the soonest default reminder offset)
+- **green** — more than 3 days out
+
+- [ ] **Step 1: Write the failing test `apps/mobile/src/tests/expiryStatus.test.ts`**
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { expiryStatus } from '../features/records/expiryStatus.js';
+
+const now = new Date('2026-05-24T12:00:00Z');
+
+describe('expiryStatus', () => {
+  it('red when already expired', () => {
+    expect(expiryStatus('2026-05-20', now)).toBe('red');
+  });
+  it('red when expires today', () => {
+    expect(expiryStatus('2026-05-24', now)).toBe('red');
+  });
+  it('amber when 1 day out', () => {
+    expect(expiryStatus('2026-05-25', now)).toBe('amber');
+  });
+  it('amber when exactly 3 days out', () => {
+    expect(expiryStatus('2026-05-27', now)).toBe('amber');
+  });
+  it('green when 4 days out', () => {
+    expect(expiryStatus('2026-05-28', now)).toBe('green');
+  });
+  it('green when far in the future', () => {
+    expect(expiryStatus('2026-12-31', now)).toBe('green');
+  });
+});
+```
+
+- [ ] **Step 2: Run, verify FAIL**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run src/tests/expiryStatus.test.ts
+```
+
+- [ ] **Step 3: Write `apps/mobile/src/features/records/expiryStatus.ts`**
+
+```ts
+export type ExpiryStatus = 'green' | 'amber' | 'red';
+
+function startOfDayUtc(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+/**
+ * Map an ISO date-only expiry (YYYY-MM-DD) to a traffic-light status.
+ * - red:   expired or expires today (expiry <= today)
+ * - amber: expires within the next 3 days (1–3 days out)
+ * - green: more than 3 days out
+ */
+export function expiryStatus(expiryDate: string, now: Date = new Date()): ExpiryStatus {
+  const today = startOfDayUtc(now);
+  const exp = startOfDayUtc(new Date(`${expiryDate}T00:00:00Z`));
+  const days = Math.round((exp.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (days <= 0) return 'red';
+  if (days <= 3) return 'amber';
+  return 'green';
+}
+
+/** Maps a status to the matching theme color token name. */
+export const EXPIRY_STATUS_TOKEN: Record<ExpiryStatus, 'success' | 'warning' | 'danger'> = {
+  green: 'success',
+  amber: 'warning',
+  red: 'danger',
+};
+```
+
+- [ ] **Step 4: Run, verify pass**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run src/tests/expiryStatus.test.ts
+```
+Expected: 6 passed.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/mobile/src/features/records/expiryStatus.ts apps/mobile/src/tests/expiryStatus.test.ts
+git commit -m "feat(mobile): expiryStatus helper (green/amber/red)"
+```
+
+---
+
 ## Phase M — Mobile: OCR + scan
 
 ### Task M1: `parseExpiryString` helper with 15+ format tests
@@ -5450,7 +5714,7 @@ git commit -m "feat(mobile): parseExpiryString covers 15+ date formats"
 
 ```ts
 import { useCallback, useState } from 'react';
-import { Camera } from 'expo-camera';
+import { getCameraPermissionsAsync, requestCameraPermissionsAsync } from 'expo-camera';
 
 export type PermissionState = 'unknown' | 'granted' | 'denied';
 
@@ -5458,14 +5722,14 @@ export function useCameraPermission() {
   const [state, setState] = useState<PermissionState>('unknown');
 
   const request = useCallback(async (): Promise<PermissionState> => {
-    const { status } = await Camera.requestCameraPermissionsAsync();
+    const { status } = await requestCameraPermissionsAsync();
     const next: PermissionState = status === 'granted' ? 'granted' : 'denied';
     setState(next);
     return next;
   }, []);
 
   const check = useCallback(async (): Promise<PermissionState> => {
-    const { status } = await Camera.getCameraPermissionsAsync();
+    const { status } = await getCameraPermissionsAsync();
     const next: PermissionState = status === 'granted' ? 'granted' : 'denied';
     setState(next);
     return next;
@@ -5538,19 +5802,9 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { ScanCamera } from '../features/scan/ScanCamera.js';
 
 vi.mock('expo-camera', () => ({
-  Camera: ({ children, onBarCodeScanned }: any) => {
-    (globalThis as any).__triggerScan = onBarCodeScanned;
+  CameraView: ({ children, onBarcodeScanned }: any) => {
+    (globalThis as any).__triggerScan = onBarcodeScanned;
     return <>{children}</>;
-  },
-  CameraType: { back: 'back' },
-}));
-vi.mock('expo-barcode-scanner', () => ({
-  BarCodeScanner: {
-    Constants: {
-      BarCodeType: {
-        ean13: 'ean13', upc_a: 'upc_a', qr: 'qr', upc_e: 'upc_e', ean8: 'ean8',
-      },
-    },
   },
 }));
 
@@ -5589,8 +5843,7 @@ pnpm --filter @pantry/mobile exec vitest run src/tests/ScanCamera.test.tsx
 
 ```tsx
 import { useRef } from 'react';
-import { Camera, CameraType } from 'expo-camera';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { CameraView } from 'expo-camera';
 
 export interface ScanResult {
   kind: 'barcode' | 'qr';
@@ -5601,27 +5854,22 @@ interface Props {
   onScan: (r: ScanResult) => void;
 }
 
-const BARCODE_TYPES = [
-  BarCodeScanner.Constants.BarCodeType.ean13,
-  BarCodeScanner.Constants.BarCodeType.ean8,
-  BarCodeScanner.Constants.BarCodeType.upc_a,
-  BarCodeScanner.Constants.BarCodeType.upc_e,
-  BarCodeScanner.Constants.BarCodeType.qr,
-];
+// expo-camera's built-in scanner handles all of these in one CameraView.
+const BARCODE_TYPES = ['ean13', 'ean8', 'upc_a', 'upc_e', 'qr'] as const;
 
 export function ScanCamera({ onScan }: Props) {
   const lastValue = useRef<string | null>(null);
 
   return (
-    <Camera
+    <CameraView
       style={{ flex: 1 }}
-      type={CameraType.back}
-      barCodeScannerSettings={{ barCodeTypes: BARCODE_TYPES }}
-      onBarCodeScanned={({ type, data }: { type: string; data: string }) => {
+      facing="back"
+      barcodeScannerSettings={{ barcodeTypes: BARCODE_TYPES as unknown as string[] }}
+      onBarcodeScanned={({ type, data }: { type: string; data: string }) => {
         if (lastValue.current === data) return;
         lastValue.current = data;
         setTimeout(() => { lastValue.current = null; }, 2000);
-        const kind = type === BarCodeScanner.Constants.BarCodeType.qr ? 'qr' : 'barcode';
+        const kind = type === 'qr' ? 'qr' : 'barcode';
         onScan({ kind, value: data });
       }}
     />
@@ -5653,7 +5901,7 @@ git commit -m "feat(mobile): combined barcode+QR scanner camera component"
 
 ```tsx
 import { useRef, useState } from 'react';
-import { Camera, CameraType } from 'expo-camera';
+import { CameraView } from 'expo-camera';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { parseExpiryString } from './parseExpiryString.js';
@@ -5665,7 +5913,7 @@ interface Props {
 }
 
 export function OcrCamera({ onParsed, onCancel }: Props) {
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
@@ -5689,7 +5937,7 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <Camera ref={cameraRef} type={CameraType.back} style={{ flex: 1 }} />
+      <CameraView ref={cameraRef} facing="back" style={{ flex: 1 }} />
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
         <Pressable
@@ -5946,6 +6194,7 @@ git commit -m "feat(mobile): AddRecordForm with validation + local-first save"
 import { Pressable, Text, View } from 'react-native';
 import type { LocalRecord } from '../../api/records.js';
 import { useTheme } from '../../theme/useTheme.js';
+import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus.js';
 
 interface Props {
   record: LocalRecord;
@@ -5954,6 +6203,8 @@ interface Props {
 
 export function RecordCard({ record, onPress }: Props) {
   const theme = useTheme();
+  const status = expiryStatus(record.expiryDate);
+  const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   return (
     <Pressable
       onPress={onPress}
@@ -5966,9 +6217,16 @@ export function RecordCard({ record, onPress }: Props) {
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 16 }}>
-          {record.customName ?? 'Item'}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+          <View
+            testID={`record-expiry-status-${status}`}
+            accessibilityLabel={`expiry status ${status}`}
+            style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: statusColor }}
+          />
+          <Text style={{ color: theme.colors.text, fontWeight: '600', fontSize: 16 }}>
+            {record.customName ?? 'Item'}
+          </Text>
+        </View>
         <Text style={{ color: theme.colors.textMuted }}>
           {record.quantity} {record.unit}
         </Text>
@@ -6188,6 +6446,7 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRecord, patchLocalRecord, deleteLocalRecord } from '../../../src/api/records.js';
 import { useTheme } from '../../../src/theme/useTheme.js';
+import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records/expiryStatus.js';
 
 export default function RecordDetail() {
   const theme = useTheme();
@@ -6213,12 +6472,22 @@ export default function RecordDetail() {
     router.back();
   };
 
+  const status = expiryStatus(record.expiryDate);
+  const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
+
   return (
     <ScrollView contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.md, backgroundColor: theme.colors.bg }}>
       <Text style={{ color: theme.colors.text, fontSize: 22, fontWeight: '700' }}>
         {record.customName ?? 'Item'}
       </Text>
-      <Text style={{ color: theme.colors.textMuted }}>Expires {record.expiryDate}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+        <View
+          testID={`record-expiry-status-${status}`}
+          accessibilityLabel={`expiry status ${status}`}
+          style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: statusColor }}
+        />
+        <Text style={{ color: statusColor }}>Expires {record.expiryDate}</Text>
+      </View>
       <Text style={{ color: theme.colors.textMuted }}>{record.quantity} {record.unit}</Text>
       {record.notes ? (
         <Text style={{ color: theme.colors.text, marginTop: theme.spacing.md }}>{record.notes}</Text>
@@ -6607,7 +6876,7 @@ Expected: every workspace exits 0.
 ```bash
 pnpm --filter @pantry/mobile exec vitest run
 ```
-Expected: passes for `parseExpiryString.test.ts` (19), `groupRecords.test.ts` (2), `AddRecordForm.test.tsx` (2), `ScanCamera.test.tsx` (3).
+Expected: passes for `parseExpiryString.test.ts` (19), `groupRecords.test.ts` (2), `expiryStatus.test.ts` (6), `AddRecordForm.test.tsx` (2), `ScanCamera.test.tsx` (3).
 
 - [ ] **Step 2: Mobile typecheck**
 
@@ -6644,17 +6913,17 @@ git tag m1-complete
 Run this against the spec before declaring M1 done.
 
 - [ ] **Spec §2.2 (records)** — `records` table created; required fields (expiry + name/product) enforced via Zod `.refine` on `recordCreateSchema`; status lifecycle covered by `recordStatusSchema` + PATCH route.
-- [ ] **Spec §2.3 (scanning)** — One scan flow in `ScanCamera` accepts both `BarCodeType.qr` and EAN/UPC types; `POST /products/lookup` walks cache → OFF → UPCitemdb → null (Task C6); manual-create fallback wired in Scan screen routing.
+- [ ] **Spec §2.3 (scanning)** — One scan flow in `ScanCamera` uses `expo-camera`'s `CameraView` built-in scanner (`onBarcodeScanned`) accepting both `qr` and EAN/UPC barcode types; `POST /products/lookup` walks cache → OFF → UPCitemdb → null (Task C6) and enqueues a `product-lookup` backfill job on miss; manual-create fallback wired in Scan screen routing.
 - [ ] **Spec §2.4 (expiry capture)** — Manual date input in `AddRecordForm`; OCR via `@react-native-ml-kit/text-recognition` in `OcrCamera`; `parseExpiryString` covers 15+ formats.
-- [ ] **Spec §2.5 (notifications)** — Default offsets `[7, 1, 0]` in `notify-at.ts`; per-user override via `users.notificationPreferences`; per-record `notify_at` jsonb; BullMQ schedule + send workers; Expo Push via `expo-server-sdk` with breaker.
+- [ ] **Spec §2.5 (notifications)** — Default offsets `[3, 1, 0]` (3d / 1d / day-of) in `notify-at.ts`; per-user override via `users.notificationPreferences.offsetsDays` resolved by `resolveOffsetsForUser` in record create/patch + sync; per-record `notify_at` jsonb; BullMQ schedule + send workers thread `templateKey` (NOT NULL on `push_logs`) end-to-end; Expo Push via `expo-server-sdk` with breaker.
 - [ ] **Spec §2.11 (offline-first)** — All reads via WatermelonDB (`useActiveRecords`, `useRecord`); writes go to WatermelonDB then sync via `Idempotency-Key`; LWW on user data in `syncRecords`; triggers cover foreground, network reconnect, post-write, 5min interval.
-- [ ] **Spec §4.3 (background jobs)** — `product-lookup`, `notification-schedule`, `notification-send` queues + workers all present; `opossum` circuit breaker on OFF / UPCitemdb / Expo Push.
+- [ ] **Spec §4.3 (background jobs)** — `product-lookup`, `notification-schedule`, `notification-send` queues + workers all present, registered in `api/src/workers/runner.ts`; `product-lookup` actually enqueued on lookup miss; `getQueueConnection()` returns raw `ConnectionOptions` wrapped as `{ connection: getQueueConnection() }` at every construction site; `opossum` circuit breaker on OFF / UPCitemdb / Expo Push.
 - [ ] **Spec §5 (data model)** — `products`, `product_edits`, `records`, `push_tokens`, `push_logs`, `notificationPreferences` on `User` all in Prisma; pg_trgm GIN index on `(name, brand)`.
 - [ ] **Spec §6.2 (products endpoints)** — `POST /lookup`, `GET /search`, `GET /:id` (with `topReviews: []` stub), `POST /`, `PATCH /:id` (→ `product_edits` row) all implemented + tested.
 - [ ] **Spec §6.3 (records endpoints)** — `GET /`, `POST /` (idempotent), `PATCH /:id`, `DELETE /:id`, `POST /sync` all implemented + tested.
-- [ ] **Spec §6.6 (profile push tokens)** — `POST /me/push-token`, `DELETE /me/push-token/:id` implemented + tested.
+- [ ] **Spec §6.6 (profile push tokens)** — `POST /me/push-token`, `DELETE /me/push-token/:id` implemented + tested; both register inside a single `meScope` sub-app mounted once at `prefix: '/v1/me'` (no duplicate `/v1/me` registration).
 - [ ] **Spec §6.8 (cross-cutting)** — RFC 7807 errors reused from M0a; `Idempotency-Key` middleware (Task E1) plus required on `POST /records`; auth via `app.requireAuth` from M0a.
-- [ ] **Spec §7 (mobile)** — WatermelonDB models + adapter, sync engine, scan + OCR, AddRecordForm, RecordList grouped, RecordCard, scan screen, product detail (M2 reviews stub), record detail, manual-create screen (Task O5), FAB on home, push token registration after first save.
+- [ ] **Spec §7 (mobile)** — WatermelonDB models + adapter, sync engine, scan + OCR, AddRecordForm, RecordList grouped, RecordCard (with green/amber/red expiry-status indicator from `expiryStatus`), scan screen, product detail (M2 reviews stub), record detail (with expiry-status indicator), manual-create screen (Task O5), FAB on home, push token registration after first save.
 
 ### Placeholder scan
 
@@ -6679,8 +6948,18 @@ M2 will:
 
 1. Add `reviews` and `review_votes` tables (already specced).
 2. Replace the `topReviews: []` stub in `GET /v1/products/:id` with a real top-N reviews list ordered by Wilson score.
-3. Populate `products.rating_avg`, `rating_count`, `review_count` denormalized columns via the `score-recalc` BullMQ worker.
+3. Populate `products.taste_avg`, `value_avg`, `review_count` denormalized columns (two-criteria reviews: taste + value) via the `product-rating-recalc` BullMQ worker.
 4. Add the Browse tab search results screen and the product detail reviews list on mobile.
 5. Add `POST /reports` and the profanity-filter `moderation-flag` worker.
 
 All M1 surfaces — records CRUD, scan flow, OCR, notifications, sync engine — should remain green throughout M2.
+
+**Canonical contracts M2 inherits from M1** (see "Validation amendments — 2026-05-26"):
+
+- **`getQueueConnection()` returns a raw `ConnectionOptions`** (NOT `{ connection: ... }`). M2 queues/workers construct as `new Queue(name, { connection: getQueueConnection() })` / `new Worker(name, processor, { connection: getQueueConnection() })` — matching the existing M1 sites, no double-wrap.
+- **Worker registry is `api/src/workers/runner.ts`** (`startWorkers()` / `stopWorkers()`). M2's `product-rating-recalc` and `moderation-flag` workers go under `api/src/workers/` and register in `runner.ts`. There is no `api/src/queues/workers.ts`.
+- **`NotificationSendJob.templateKey`** is required and persisted to `push_logs.templateKey`; the schedule worker sets `'expiry_reminder'` by default. M2 may add new template keys but must always set one.
+- **`/v1/me` is a single `meScope` sub-app**; M2 registers any new profile routes inside it rather than adding another `/v1/me` registration.
+- **Notification offsets** resolve through `resolveOffsetsForUser(user.notificationPreferences)`; reuse it wherever M2 recomputes `notify_at`. The default reminder schedule is `[3, 1, 0]` (3 days before, 1 day before, on the expiry day).
+- **Two-criteria product ratings.** The `products` table exposes denormalized columns `products.taste_avg numeric(3,2)`, `products.value_avg numeric(3,2)`, and `products.review_count int`; the API serializes them as `tasteAvg`, `valueAvg`, `reviewCount`. M1 only ships the columns + field names (all default `0`); M2's `product-rating-recalc` worker writes them from the two-criteria (taste + value) reviews. There is no `rating_avg` / `rating_count`.
+- **Expiry-status helper.** `apps/mobile/src/features/records/expiryStatus.ts` exports `expiryStatus(expiryDate, now): 'green' | 'amber' | 'red'` (red = expired or today, amber = 1–3 days out, green = >3 days) plus `EXPIRY_STATUS_TOKEN` mapping to theme tokens; reuse it for any M2 surface that shows expiry urgency.
