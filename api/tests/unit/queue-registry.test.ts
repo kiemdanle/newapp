@@ -5,13 +5,23 @@ import {
   PRODUCT_LOOKUP_QUEUE,
   NOTIFICATION_SCHEDULE_QUEUE,
   NOTIFICATION_SEND_QUEUE,
+  SCORE_RECALC_QUEUE,
+  MODERATION_FLAG_QUEUE,
+  PRODUCT_RATING_RECALC_QUEUE,
 } from '../../src/queues/index.js';
 
 describe('queue registry', () => {
-  it('getAllQueues returns the three M1 queues by name', () => {
+  it('getAllQueues returns every registered queue by name', () => {
     const names = getAllQueues().map((q) => q.name).sort();
     expect(names).toEqual(
-      [PRODUCT_LOOKUP_QUEUE, NOTIFICATION_SCHEDULE_QUEUE, NOTIFICATION_SEND_QUEUE].sort(),
+      [
+        PRODUCT_LOOKUP_QUEUE,
+        NOTIFICATION_SCHEDULE_QUEUE,
+        NOTIFICATION_SEND_QUEUE,
+        SCORE_RECALC_QUEUE,
+        MODERATION_FLAG_QUEUE,
+        PRODUCT_RATING_RECALC_QUEUE,
+      ].sort(),
     );
   });
 
