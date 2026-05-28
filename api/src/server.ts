@@ -12,6 +12,7 @@ import { idempotencyPlugin } from './plugins/idempotency.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
+import { recordRoutes } from './routes/records/index.js';
 
 const REDACT_PATHS = [
   'password',
@@ -61,6 +62,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(authRoutes, { prefix: '/v1/auth' });
   await app.register(meRoutes, { prefix: '/v1/me' });
+  await app.register(recordRoutes, { prefix: '/v1/records' });
 
   return app;
 }
