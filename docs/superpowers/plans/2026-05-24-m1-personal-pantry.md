@@ -366,7 +366,7 @@ git commit -m "feat(shared): add product Zod schemas"
 - Create: `packages/shared/src/schemas/record.ts`
 - Modify: `packages/shared/src/index.ts`
 
-- [ ] **Step 1: Write `packages/shared/src/schemas/record.ts`**
+- [x] **Step 1: Write `packages/shared/src/schemas/record.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -476,21 +476,21 @@ export type PushToken = z.infer<typeof pushTokenSchema>;
 
 > Note: `recordCreateSchema` is a `ZodEffects` (because of `.refine`). The sync batch uses `recordCreateSchema.unwrap()` to grab the underlying object schema so we can `.extend` it.
 
-- [ ] **Step 2: Re-export from `packages/shared/src/index.ts`**
+- [x] **Step 2: Re-export from `packages/shared/src/index.ts`**
 
 Append:
 ```ts
 export * from './schemas/record.js';
 ```
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 ```bash
 pnpm --filter @pantry/shared typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add packages/shared/src/schemas/record.ts packages/shared/src/index.ts
