@@ -41,7 +41,8 @@ export async function enqueueScoreRecalc(
     { reviewId },
     {
       delay: SCORE_DEBOUNCE_TTL_SECONDS * 1000,
-      jobId: `score-recalc:${reviewId}`,
+      // BullMQ 5 disallows ':' in custom job IDs.
+      jobId: `score-recalc-${reviewId}`,
       removeOnComplete: 1000,
       removeOnFail: 100,
     },
