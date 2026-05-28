@@ -811,7 +811,7 @@ git commit -m "feat(api): m1 migration with pg_trgm index + truncate list"
 **Files:**
 - Modify: `api/tests/helpers/factories.ts`
 
-- [ ] **Step 1: Append helpers to `api/tests/helpers/factories.ts`**
+- [x] **Step 1: Append helpers to `api/tests/helpers/factories.ts`**
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -871,7 +871,7 @@ export async function makeRecord(userId: string, overrides: Partial<{
 
 > Note: the existing M0a `factories.ts` already exports `makeUser`. Append, don't replace.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/tests/helpers/factories.ts
