@@ -17,10 +17,9 @@ export async function registerRateLimit(app: FastifyInstance) {
       (req as WithUser).user?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin,
     timeWindow: '1 minute',
     redis: getRedis(),
-    nameSpace: 'rl:global:',
     keyGenerator: (req) => {
       const u = (req as WithUser).user;
-      return u?.id ? `user:${u.id}` : `ip:${req.ip}`;
+      return u?.id ? `user:rl:global:${u.id}` : `ip:rl:global:${req.ip}`;
     },
     addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true },
   });
@@ -37,8 +36,7 @@ export function authRateLimitConfig(_app: FastifyInstance): RouteShorthandOption
     rateLimit: {
       max: cfg.rateLimit.authPerIpPerMin,
       timeWindow: '1 minute',
-      nameSpace: 'rl:auth:',
-      keyGenerator: (req: FastifyRequest) => `ip:${req.ip}`,
+      keyGenerator: (req: FastifyRequest) => `ip:rl:auth:${req.ip}`,
     },
   };
 }

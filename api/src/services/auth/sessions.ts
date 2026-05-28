@@ -1,4 +1,4 @@
-import type { Session } from '@prisma/client';
+import { Prisma, type Session } from '@prisma/client';
 import { getPrisma } from '../../db.js';
 import { hashToken } from '../../utils/random.js';
 import { issueRefreshToken } from './tokens.js';
@@ -14,15 +14,16 @@ export async function createSession(
 ): Promise<{ session: Session; refreshToken: string }> {
   const prisma = getPrisma();
   const issued = issueRefreshToken();
-  const session = await prisma.session.create({
-    data: {
-      userId,
-      refreshTokenHash: issued.hash,
-      expiresAt: issued.expiresAt,
-      ip: ctx.ip ?? null,
-      deviceInfo: ctx.deviceInfo ?? null,
-    },
-  });
+  const data: Prisma.SessionUncheckedCreateInput = {
+    userId,
+    refreshTokenHash: issued.hash,
+    expiresAt: issued.expiresAt,
+    ip: ctx.ip ?? null,
+    deviceInfo: ctx.deviceInfo
+      ? (ctx.deviceInfo as Prisma.InputJsonValue)
+      : Prisma.JsonNull,
+  };
+  const session = await prisma.session.create({ data });
   return { session, refreshToken: issued.token };
 }
 
@@ -43,20 +44,22 @@ export async function rotateSession(
   const current = await findActiveSessionByToken(oldToken);
   if (!current) throw new Error('session not found');
   const issued = issueRefreshToken();
+  const data: Prisma.SessionUncheckedCreateInput = {
+    userId: current.userId,
+    refreshTokenHash: issued.hash,
+    expiresAt: issued.expiresAt,
+    ip: current.ip,
+    deviceInfo:
+      current.deviceInfo === null
+        ? Prisma.JsonNull
+        : (current.deviceInfo as Prisma.InputJsonValue),
+  };
   const [, session] = await prisma.$transaction([
     prisma.session.update({
       where: { id: current.id },
       data: { revokedAt: new Date() },
     }),
-    prisma.session.create({
-      data: {
-        userId: current.userId,
-        refreshTokenHash: issued.hash,
-        expiresAt: issued.expiresAt,
-        ip: current.ip,
-        deviceInfo: current.deviceInfo ?? undefined,
-      },
-    }),
+    prisma.session.create({ data }),
   ]);
   return { session, refreshToken: issued.token };
 }

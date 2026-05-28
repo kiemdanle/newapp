@@ -2,16 +2,37 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import { randomUUID } from 'node:crypto';
 import { getConfig } from './config.js';
-import { logger } from './logger.js';
 import { registerCors } from './plugins/cors.js';
 import { registerRateLimit } from './plugins/rate-limit.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
+import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './routes/health.js';
+
+const REDACT_PATHS = [
+  'password',
+  'passwordHash',
+  'refreshToken',
+  'accessToken',
+  'totpSecret',
+  'authorization',
+  'req.headers.authorization',
+];
 
 export async function buildServer(): Promise<FastifyInstance> {
   const cfg = getConfig();
-  const app = Fastify({
-    loggerInstance: logger,
+  const app: FastifyInstance = Fastify({
+    logger: {
+      level: cfg.logLevel,
+      redact: { paths: REDACT_PATHS, remove: true },
+      ...(cfg.env === 'development'
+        ? {
+            transport: {
+              target: 'pino-pretty',
+              options: { colorize: true, translateTime: 'SYS:HH:MM:ss' },
+            },
+          }
+        : {}),
+    },
     genReqId: () => randomUUID(),
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'requestId',
@@ -21,6 +42,9 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(helmet, { global: true });
   await registerCors(app);
+  // The auth plugin's onRequest hook must populate req.user BEFORE the rate
+  // limiter runs so the limiter can pick the per-user vs per-IP budget.
+  await app.register(authPlugin);
   if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
 
