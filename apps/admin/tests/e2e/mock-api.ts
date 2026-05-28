@@ -10,7 +10,7 @@
 //   POST /v1/auth/totp/verify-enrollment    → 204 on correct code
 //   GET  /v1/auth/me                        → returns admin user when bearer matches mock token
 
-import { createServer } from 'node:http';
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { authenticator } from 'otplib';
 import {
   ACCESS_TOKEN,
@@ -33,17 +33,14 @@ interface JsonResp {
   body?: unknown;
 }
 
-async function readJson(req: Parameters<Parameters<typeof createServer>[0]>[0]): Promise<unknown> {
+async function readJson(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   if (chunks.length === 0) return {};
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
 }
 
-function send(
-  res: Parameters<Parameters<typeof createServer>[0]>[1],
-  { status = 200, body }: JsonResp,
-): void {
+function send(res: ServerResponse, { status = 200, body }: JsonResp): void {
   if (status === 204) {
     res.statusCode = 204;
     res.end();
