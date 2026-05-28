@@ -34,6 +34,10 @@ export const ERROR_CODES = {
   INVALID_TOTP: 'invalid_totp',
   INVALID_RECOVERY_CODE: 'invalid_recovery_code',
   PASSKEY_VERIFICATION_FAILED: 'passkey_verification_failed',
+
+  // Reviews + reports
+  REVIEW_ALREADY_EXISTS: 'review_already_exists',
+  REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

@@ -4,4 +4,6 @@ export * from './schemas/error.js';
 export * from './schemas/admin.js';
 export * from './schemas/product.js';
 export * from './schemas/record.js';
+export * from './schemas/review.js';
+export * from './schemas/report.js';
 export * from './types.js';
