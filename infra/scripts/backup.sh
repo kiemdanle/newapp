@@ -55,6 +55,15 @@ done
 
 : "${DATABASE_URL:?DATABASE_URL is required (in /etc/pantry/secrets/api.env or backup.env)}"
 
+# Defer-backups guard: if neither driver is configured, exit cleanly so the
+# nightly cron does not fail. Wire one of the two before production traffic:
+#   restic mode   → set RESTIC_REPOSITORY + RESTIC_PASSWORD_FILE in /etc/pantry/secrets/backup.env
+#   age + rclone  → set BACKUP_RCLONE_REMOTE in env (and rclone config) and place /etc/pantry/secrets/age.pub
+if [[ -z "${RESTIC_REPOSITORY:-}" && -z "${BACKUP_RCLONE_REMOTE:-}" ]]; then
+    log "no backup driver configured (RESTIC_REPOSITORY and BACKUP_RCLONE_REMOTE both empty) — skipping"
+    exit 0
+fi
+
 # Backup filename: a stable timestamp in UTC.
 TODAY=$(date -u +%F)        # YYYY-MM-DD
 DOW=$(date -u +%u)          # 1..7 (Mon=1, Sun=7)

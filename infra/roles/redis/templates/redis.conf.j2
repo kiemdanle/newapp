@@ -6,6 +6,10 @@ tcp-backlog 511
 timeout 0
 tcp-keepalive 300
 
+# Run under systemd: emit sd_notify("READY=1") on startup so the
+# Type=notify unit knows when redis is actually accepting connections.
+supervised systemd
+
 # Persistence: RDB only, no AOF
 save 900 1
 save 300 10
