@@ -1,0 +1,13 @@
+{
+  "code": "OK",
+  "total": 1,
+  "items": [
+    {
+      "ean": "0012345678905",
+      "title": "Lemon Dish Soap 16oz",
+      "brand": "SudsCo",
+      "category": "Household > Cleaning",
+      "images": ["https://example.com/soap.jpg"]
+    }
+  ]
+}
