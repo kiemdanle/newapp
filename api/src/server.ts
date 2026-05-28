@@ -7,6 +7,7 @@ import { registerRateLimit } from './plugins/rate-limit.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { authRoutes } from './routes/auth/index.js';
 
 const REDACT_PATHS = [
   'password',
@@ -53,6 +54,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
+  await app.register(authRoutes, { prefix: '/v1/auth' });
 
   return app;
 }
