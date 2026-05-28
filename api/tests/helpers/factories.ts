@@ -77,3 +77,45 @@ export async function makeRecord(
     },
   });
 }
+
+export async function makeReview(overrides: {
+  userId: string;
+  productId: string;
+  tasteRating?: number;
+  valueRating?: number;
+  body?: string | null;
+  status?: 'visible' | 'hidden' | 'deleted';
+  upvoteCount?: number;
+  downvoteCount?: number;
+  score?: number;
+}) {
+  const prisma = getPrisma();
+  return prisma.review.create({
+    data: {
+      userId: overrides.userId,
+      productId: overrides.productId,
+      tasteRating: overrides.tasteRating ?? 5,
+      valueRating: overrides.valueRating ?? 5,
+      body: overrides.body ?? 'A solid product.',
+      status: overrides.status ?? 'visible',
+      upvoteCount: overrides.upvoteCount ?? 0,
+      downvoteCount: overrides.downvoteCount ?? 0,
+      score: overrides.score ?? 0,
+    },
+  });
+}
+
+export async function makeVote(overrides: {
+  userId: string;
+  reviewId: string;
+  value: 1 | -1;
+}) {
+  const prisma = getPrisma();
+  return prisma.reviewVote.create({
+    data: {
+      userId: overrides.userId,
+      reviewId: overrides.reviewId,
+      value: overrides.value,
+    },
+  });
+}
