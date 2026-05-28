@@ -887,7 +887,7 @@ git commit -m "test(api): add product + record factories"
 **Files:**
 - Create: `api/src/lib/http.ts`
 
-- [ ] **Step 1: Write `api/src/lib/http.ts`**
+- [x] **Step 1: Write `api/src/lib/http.ts`**
 
 ```ts
 import { request } from 'undici';
@@ -928,7 +928,7 @@ export async function getJson<T>(url: string, opts: HttpJsonOptions): Promise<T>
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/lib/http.ts
@@ -943,7 +943,7 @@ git commit -m "feat(api): undici JSON helper with timeout"
 - Create: `api/src/lib/breaker.ts`
 - Create: `api/tests/unit/breaker.test.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/unit/breaker.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/unit/breaker.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -973,14 +973,14 @@ describe('makeBreaker', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/breaker.test.ts
 ```
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write `api/src/lib/breaker.ts`**
+- [x] **Step 3: Write `api/src/lib/breaker.ts`**
 
 ```ts
 import CircuitBreaker from 'opossum';
@@ -1012,14 +1012,14 @@ export function makeBreaker<TArgs extends unknown[], TResult>(
 }
 ```
 
-- [ ] **Step 4: Run, verify pass**
+- [x] **Step 4: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/breaker.test.ts
 ```
 Expected: 2 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/lib/breaker.ts api/tests/unit/breaker.test.ts
@@ -1034,7 +1034,7 @@ git commit -m "feat(api): opossum circuit breaker factory"
 - Create: `api/src/services/external/breakers.ts`
 - Create: `api/tests/unit/breakers-registry.test.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/unit/breakers-registry.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/unit/breakers-registry.test.ts`**
 
 ```ts
 import { describe, expect, it, beforeEach } from 'vitest';
@@ -1072,13 +1072,13 @@ describe('breakers registry', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/services/external/breakers.ts`**
+- [x] **Step 3: Write `api/src/services/external/breakers.ts`**
 
 ```ts
 import type CircuitBreaker from 'opossum';
@@ -1102,14 +1102,14 @@ export function getAllBreakers(): { name: string; breaker: CircuitBreaker }[] {
 
 > M2 and future health-check endpoints iterate `getAllBreakers()` to surface circuit state. Each external client (OFF, UPCitemdb, Expo Push) MUST call `register(...)` immediately after creating its breaker.
 
-- [ ] **Step 4: Run, verify pass**
+- [x] **Step 4: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
 ```
 Expected: 3 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/src/services/external/breakers.ts api/tests/unit/breakers-registry.test.ts
@@ -1126,7 +1126,7 @@ git commit -m "feat(api): external service circuit-breaker registry"
 - Create: `api/tests/helpers/fixtures/off-cola.json`
 - Create: `api/tests/helpers/fixtures/upcitemdb-soap.json`
 
-- [ ] **Step 1: Save the OFF fixture `api/tests/helpers/fixtures/off-cola.json`**
+- [x] **Step 1: Save the OFF fixture `api/tests/helpers/fixtures/off-cola.json`**
 
 ```json
 {
@@ -1141,7 +1141,7 @@ git commit -m "feat(api): external service circuit-breaker registry"
 }
 ```
 
-- [ ] **Step 2: Save the UPCitemdb fixture `api/tests/helpers/fixtures/upcitemdb-soap.json`**
+- [x] **Step 2: Save the UPCitemdb fixture `api/tests/helpers/fixtures/upcitemdb-soap.json`**
 
 ```json
 {
@@ -1159,7 +1159,7 @@ git commit -m "feat(api): external service circuit-breaker registry"
 }
 ```
 
-- [ ] **Step 3: Write the failing test `api/tests/unit/product-mappers.test.ts`**
+- [x] **Step 3: Write the failing test `api/tests/unit/product-mappers.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1201,13 +1201,13 @@ describe('product mappers', () => {
 });
 ```
 
-- [ ] **Step 4: Run, verify FAIL**
+- [x] **Step 4: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/product-mappers.test.ts
 ```
 
-- [ ] **Step 5: Write `api/src/services/products/mappers.ts`**
+- [x] **Step 5: Write `api/src/services/products/mappers.ts`**
 
 ```ts
 export interface ExternalProductData {
@@ -1276,14 +1276,14 @@ export function mapUpcitemdbProduct(barcode: string, raw: unknown): ExternalProd
 }
 ```
 
-- [ ] **Step 6: Run, verify pass**
+- [x] **Step 6: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/product-mappers.test.ts
 ```
 Expected: 4 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/src/services/products/mappers.ts api/tests/unit/product-mappers.test.ts api/tests/helpers/fixtures
@@ -1298,7 +1298,7 @@ git commit -m "feat(api): map OFF/UPCitemdb responses to internal product shape"
 - Create: `api/src/services/products/off-client.ts`
 - Modify: `api/src/services/external/breakers.ts` (register call site)
 
-- [ ] **Step 1: Write `api/src/services/products/off-client.ts`**
+- [x] **Step 1: Write `api/src/services/products/off-client.ts`**
 
 ```ts
 import { getJson, HttpError } from '../../lib/http.js';
@@ -1341,7 +1341,7 @@ export async function lookupOff(barcode: string): Promise<ExternalProductData | 
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/services/products/off-client.ts
@@ -1356,7 +1356,7 @@ git commit -m "feat(api): Open Food Facts client with circuit breaker"
 - Create: `api/src/services/products/upcitemdb-client.ts`
 - Modify: `api/src/services/external/breakers.ts` (register call site)
 
-- [ ] **Step 1: Write `api/src/services/products/upcitemdb-client.ts`**
+- [x] **Step 1: Write `api/src/services/products/upcitemdb-client.ts`**
 
 ```ts
 import { getJson, HttpError } from '../../lib/http.js';
@@ -1395,7 +1395,7 @@ export async function lookupUpcitemdb(barcode: string): Promise<ExternalProductD
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/services/products/upcitemdb-client.ts
@@ -1409,7 +1409,7 @@ git commit -m "feat(api): UPCitemdb client with circuit breaker"
 **Files:**
 - Create: `api/src/services/products/lookup.ts`
 
-- [ ] **Step 1: Write `api/src/services/products/lookup.ts`**
+- [x] **Step 1: Write `api/src/services/products/lookup.ts`**
 
 ```ts
 import type { Product } from '@prisma/client';
@@ -1486,7 +1486,7 @@ async function persistExternal(data: ExternalProductData): Promise<Product> {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/services/products/lookup.ts
@@ -1504,7 +1504,7 @@ All routes mount under `/v1/products`. Every handler requires auth via `app.requ
 **Files:**
 - Create: `api/src/services/products/serializer.ts`
 
-- [ ] **Step 1: Write `api/src/services/products/serializer.ts`**
+- [x] **Step 1: Write `api/src/services/products/serializer.ts`**
 
 ```ts
 import type { Product } from '@prisma/client';
@@ -1532,7 +1532,7 @@ export function toApiProduct(p: Product): ApiProduct {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/services/products/serializer.ts
@@ -1549,7 +1549,7 @@ git commit -m "feat(api): product serializer"
 - Create: `api/tests/integration/products-lookup.test.ts`
 - Modify: `api/src/server.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/products-lookup.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/products-lookup.test.ts`**
 
 ```ts
 import { describe, expect, it, vi } from 'vitest';
@@ -1622,13 +1622,13 @@ describe('POST /v1/products/lookup', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-lookup.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/routes/products/lookup.ts`**
+- [x] **Step 3: Write `api/src/routes/products/lookup.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -1673,7 +1673,7 @@ export async function lookupRoute(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 4: Write `api/src/routes/products/index.ts`**
+- [x] **Step 4: Write `api/src/routes/products/index.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -1684,7 +1684,7 @@ export async function productRoutes(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 5: Mount in `api/src/server.ts`**
+- [x] **Step 5: Mount in `api/src/server.ts`**
 
 Add the import near the other route imports:
 ```ts
@@ -1695,14 +1695,14 @@ Add registration after the existing `authRoutes` registration:
 await app.register(productRoutes, { prefix: '/v1/products' });
 ```
 
-- [ ] **Step 6: Run, verify pass**
+- [x] **Step 6: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-lookup.test.ts
 ```
 Expected: 4 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/src/routes/products api/src/server.ts api/tests/integration/products-lookup.test.ts
@@ -1719,7 +1719,7 @@ git commit -m "feat(api): POST /v1/products/lookup"
 - Create: `api/tests/integration/products-search.test.ts`
 - Modify: `api/src/routes/products/index.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/products-search.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/products-search.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1769,13 +1769,13 @@ describe('GET /v1/products/search', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-search.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/services/products/search.ts`**
+- [x] **Step 3: Write `api/src/services/products/search.ts`**
 
 ```ts
 import type { Product } from '@prisma/client';
@@ -1796,7 +1796,7 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
 }
 ```
 
-- [ ] **Step 4: Write `api/src/routes/products/search.ts`**
+- [x] **Step 4: Write `api/src/routes/products/search.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -1821,7 +1821,7 @@ export async function searchRoute(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 5: Mount in `api/src/routes/products/index.ts`**
+- [x] **Step 5: Mount in `api/src/routes/products/index.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -1834,14 +1834,14 @@ export async function productRoutes(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 6: Run, verify pass**
+- [x] **Step 6: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-search.test.ts
 ```
 Expected: 3 passed.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/src/services/products/search.ts api/src/routes/products
@@ -1857,7 +1857,7 @@ git commit -m "feat(api): GET /v1/products/search with pg_trgm"
 - Create: `api/tests/integration/products-get.test.ts`
 - Modify: `api/src/routes/products/index.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/products-get.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/products-get.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -1898,13 +1898,13 @@ describe('GET /v1/products/:id', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-get.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/routes/products/get.ts`**
+- [x] **Step 3: Write `api/src/routes/products/get.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -1935,7 +1935,7 @@ export async function getProductRoute(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 4: Mount in `api/src/routes/products/index.ts`**
+- [x] **Step 4: Mount in `api/src/routes/products/index.ts`**
 
 Add import and registration so the file reads:
 ```ts
@@ -1951,13 +1951,13 @@ export async function productRoutes(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 5: Run, verify pass**
+- [x] **Step 5: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-get.test.ts
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/src/routes/products/get.ts api/src/routes/products/index.ts api/tests/integration/products-get.test.ts
@@ -1973,7 +1973,7 @@ git commit -m "feat(api): GET /v1/products/:id (topReviews stub for M1)"
 - Create: `api/tests/integration/products-create.test.ts`
 - Modify: `api/src/routes/products/index.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/products-create.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/products-create.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2033,13 +2033,13 @@ describe('POST /v1/products', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-create.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/routes/products/create.ts`**
+- [x] **Step 3: Write `api/src/routes/products/create.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -2081,7 +2081,7 @@ export async function createProductRoute(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 4: Mount in `api/src/routes/products/index.ts`**
+- [x] **Step 4: Mount in `api/src/routes/products/index.ts`**
 
 Append:
 ```ts
@@ -2090,13 +2090,13 @@ import { createProductRoute } from './create.js';
   await app.register(createProductRoute);
 ```
 
-- [ ] **Step 5: Run, verify pass**
+- [x] **Step 5: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-create.test.ts
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/src/routes/products/create.ts api/src/routes/products/index.ts api/tests/integration/products-create.test.ts
@@ -2112,7 +2112,7 @@ git commit -m "feat(api): POST /v1/products (manual user-sourced)"
 - Create: `api/tests/integration/products-patch.test.ts`
 - Modify: `api/src/routes/products/index.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/products-patch.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/products-patch.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2176,13 +2176,13 @@ describe('PATCH /v1/products/:id', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-patch.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/routes/products/patch.ts`**
+- [x] **Step 3: Write `api/src/routes/products/patch.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
@@ -2225,7 +2225,7 @@ export async function patchProductRoute(app: FastifyInstance) {
 }
 ```
 
-- [ ] **Step 4: Mount in `api/src/routes/products/index.ts`**
+- [x] **Step 4: Mount in `api/src/routes/products/index.ts`**
 
 ```ts
 import { patchProductRoute } from './patch.js';
@@ -2233,13 +2233,13 @@ import { patchProductRoute } from './patch.js';
   await app.register(patchProductRoute);
 ```
 
-- [ ] **Step 5: Run, verify pass**
+- [x] **Step 5: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/products-patch.test.ts
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/src/routes/products/patch.ts api/src/routes/products/index.ts api/tests/integration/products-patch.test.ts
