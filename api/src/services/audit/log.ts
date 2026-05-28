@@ -26,10 +26,7 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
       action: input.action,
       targetType: input.targetType,
       targetId: input.targetId,
-      diff:
-        input.diff === undefined
-          ? Prisma.JsonNull
-          : (input.diff as Prisma.InputJsonValue),
+      diff: input.diff === undefined ? Prisma.JsonNull : (input.diff as Prisma.InputJsonValue),
       requestId: input.requestId ?? null,
       ip: input.ip ?? null,
     },
