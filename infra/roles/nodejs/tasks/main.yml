@@ -1,0 +1,30 @@
+---
+- name: Add NodeSource apt key
+  ansible.builtin.get_url:
+    url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+    dest: /etc/apt/trusted.gpg.d/nodesource.asc
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Add NodeSource 20.x apt repo
+  ansible.builtin.apt_repository:
+    repo: deb https://deb.nodesource.com/node_20.x nodistro main
+    state: present
+    filename: nodesource
+
+- name: Install Node.js 20
+  ansible.builtin.apt:
+    name: nodejs
+    state: present
+    update_cache: true
+
+- name: Enable corepack
+  ansible.builtin.command: corepack enable
+  register: nodejs_corepack_enable
+  changed_when: false
+
+- name: Activate pnpm 9 via corepack
+  ansible.builtin.command: corepack prepare pnpm@9 --activate
+  register: nodejs_corepack_pnpm
+  changed_when: false

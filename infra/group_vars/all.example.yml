@@ -1,0 +1,74 @@
+---
+# Copy this file to all.yml and customise before running the playbook.
+# Real production secrets (DB passwords, JWT keys, OAuth, SMTP) live in
+# /etc/pantry/secrets/api.env on the host — NEVER in this file.
+
+# ---------------------------------------------------------------------------
+# Domain / TLS
+# ---------------------------------------------------------------------------
+domain_root: linhkienkts.com
+api_domain: "api.{{ domain_root }}"
+admin_domain: "admin.{{ domain_root }}"
+# Email used for Let's Encrypt registration; expiry warnings will go here.
+letsencrypt_email: ops@{{ domain_root }}
+
+# ---------------------------------------------------------------------------
+# Admin vhost IP allowlist (CIDR list)
+#
+# First deploy: leave the list empty so the role renders an empty allowlist
+# include (admin/allowlist.conf is commented). Add CIDRs once you know the
+# operator egress IP. The admin vhost falls back to TLS-only access if the
+# include is left empty.
+# ---------------------------------------------------------------------------
+admin_allowlist: []
+
+# ---------------------------------------------------------------------------
+# App user, paths, deploy secrets
+# ---------------------------------------------------------------------------
+app_user: pantry
+app_group: pantry
+app_root: /opt/pantry
+config_dir: /etc/pantry
+secrets_dir: "{{ config_dir }}/secrets"
+
+# Listen ports of the two Node services behind nginx (must match the env files
+# rendered by the secrets role). Localhost-bound; nginx is the only public
+# entrypoint.
+api_port: 4000
+admin_port: 4001
+
+# Public key in /home/<app_user>/.ssh/authorized_keys for the GitHub Actions
+# deploy job. Generated locally during first apply (see infra/README.md).
+deploy_ssh_authorized_key: ""
+
+# ---------------------------------------------------------------------------
+# Postgres
+# ---------------------------------------------------------------------------
+postgres_db_name: pantry
+postgres_app_role: pantry_app
+# Tuning targets for the 8 GB / 2 vCPU box.
+postgres_shared_buffers: 2GB
+postgres_effective_cache_size: 6GB
+
+# ---------------------------------------------------------------------------
+# Backup destination
+#
+# Default driver is age + rclone. For Hetzner Storage Box restic mode, set
+# backup_driver: restic and configure restic_repository / restic_password_file
+# in /etc/pantry/secrets/backup.env on the host (see infra/scripts/backup.sh).
+# ---------------------------------------------------------------------------
+backup_driver: age_rclone           # age_rclone | restic
+backup_age_recipient: ""             # e.g. "age1xxxxxxxxx..." (filled after age-keygen)
+backup_rclone_remote: "b2:pantry-backups"
+backup_local_dir: /var/backups/pantry
+
+# ---------------------------------------------------------------------------
+# Optional integrations — left disabled for the first deploy.
+# Uncomment and set the matching values once accounts exist, then re-apply.
+# ---------------------------------------------------------------------------
+# smtp_enabled: true
+# smtp_host: smtp.example.com
+# smtp_port: 587
+
+# oauth_google_enabled: false
+# oauth_apple_enabled: false

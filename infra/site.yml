@@ -1,0 +1,22 @@
+---
+- name: Provision Pantry VPS
+  hosts: linhkienkts
+  become: true
+
+  pre_tasks:
+    - name: Assert supported Ubuntu version
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_distribution_version in ['22.04', '24.04']
+        fail_msg: Only Ubuntu 22.04 and 24.04 LTS are supported.
+
+  roles:
+    - { role: common, tags: [common, base] }
+    - { role: postgres, tags: [postgres, db] }
+    - { role: redis, tags: [redis, cache] }
+    - { role: nodejs, tags: [nodejs, runtime] }
+    - { role: secrets, tags: [secrets] }
+    - { role: app, tags: [app, systemd] }
+    - { role: nginx, tags: [nginx, web] }
+    - { role: certbot, tags: [certbot, tls] }

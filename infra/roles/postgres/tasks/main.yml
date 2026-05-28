@@ -1,0 +1,158 @@
+---
+# Postgres 16 from PGDG. Role:
+#   - installs PG, locks it to localhost
+#   - tunes shared_buffers / effective_cache_size for an 8 GB box
+#   - generates the pantry_app password ONCE on first apply, persists to
+#     {{ secrets_dir }}/postgres_password (root:root, 0600), and reads it back on
+#     every later run so re-applies do NOT rotate the live DB password
+#   - creates the database, app role, readonly role, and required extensions
+- name: Add PGDG apt key
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /etc/apt/trusted.gpg.d/postgresql.asc
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Add PGDG apt repo
+  ansible.builtin.apt_repository:
+    repo: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    state: present
+    filename: pgdg
+
+- name: Install Postgres 16
+  ansible.builtin.apt:
+    name:
+      - postgresql-16
+      - postgresql-client-16
+    state: present
+    update_cache: true
+
+- name: Ensure postgres service running and enabled
+  ansible.builtin.service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Listen on localhost only
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/16/main/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = 'localhost'"
+  notify: Restart postgresql
+
+- name: Tune shared_buffers
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/16/main/postgresql.conf
+    regexp: "^#?shared_buffers"
+    line: "shared_buffers = {{ postgres_shared_buffers }}"
+  notify: Restart postgresql
+
+- name: Tune effective_cache_size
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/16/main/postgresql.conf
+    regexp: "^#?effective_cache_size"
+    line: "effective_cache_size = {{ postgres_effective_cache_size }}"
+  notify: Restart postgresql
+
+- name: Install pg_hba.conf (scram, local only)
+  ansible.builtin.template:
+    src: pg_hba.conf.j2
+    dest: /etc/postgresql/16/main/pg_hba.conf
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: Restart postgresql
+
+# ---------------------------------------------------------------------------
+# Persisted DB password (amendment 3): mint once, reuse forever.
+#
+# Wrong pattern (resets the live password on every run, breaks the running
+# app):
+#     pantry_app_password: "{{ lookup('password', '/dev/null length=32') }}"
+#
+# Correct pattern (idempotent across re-applies):
+#     1. stat the persisted file
+#     2. if absent → mint, write to root:root 0600 file
+#     3. if present → slurp + decode and reuse
+# ---------------------------------------------------------------------------
+- name: Stat persisted Postgres password file
+  ansible.builtin.stat:
+    path: "{{ secrets_dir }}/postgres_password"
+  register: postgres_pg_password_stat
+
+- name: Mint a new Postgres password on first run only
+  ansible.builtin.set_fact:
+    postgres_pg_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
+  when: not postgres_pg_password_stat.stat.exists
+  no_log: true
+
+- name: Persist the new Postgres password (root:root 0600)
+  ansible.builtin.copy:
+    content: "{{ postgres_pg_password }}"
+    dest: "{{ secrets_dir }}/postgres_password"
+    owner: root
+    group: root
+    mode: "0600"
+  when: not postgres_pg_password_stat.stat.exists
+  no_log: true
+
+- name: Slurp persisted Postgres password (later runs)
+  ansible.builtin.slurp:
+    src: "{{ secrets_dir }}/postgres_password"
+  register: postgres_pg_password_slurped
+  when: postgres_pg_password_stat.stat.exists
+  no_log: true
+
+- name: Reuse persisted Postgres password (later runs)
+  ansible.builtin.set_fact:
+    postgres_pg_password: "{{ postgres_pg_password_slurped.content | b64decode | trim }}"
+  when: postgres_pg_password_stat.stat.exists
+  no_log: true
+
+- name: Create pantry database
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_db_name }}"
+    encoding: UTF8
+    lc_collate: en_US.UTF-8
+    lc_ctype: en_US.UTF-8
+    template: template0
+    state: present
+  become: true
+  become_user: postgres
+
+- name: Create pantry_app role (no superuser)
+  community.postgresql.postgresql_user:
+    db: "{{ postgres_db_name }}"
+    name: "{{ postgres_app_role }}"
+    password: "{{ postgres_pg_password }}"
+    role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+    state: present
+  become: true
+  become_user: postgres
+  no_log: true
+
+- name: Grant all on pantry to pantry_app
+  community.postgresql.postgresql_privs:
+    db: "{{ postgres_db_name }}"
+    role: "{{ postgres_app_role }}"
+    type: database
+    privs: ALL
+  become: true
+  become_user: postgres
+
+- name: Enable pg_trgm extension
+  community.postgresql.postgresql_ext:
+    db: "{{ postgres_db_name }}"
+    name: pg_trgm
+    state: present
+  become: true
+  become_user: postgres
+
+- name: Enable pgcrypto extension
+  community.postgresql.postgresql_ext:
+    db: "{{ postgres_db_name }}"
+    name: pgcrypto
+    state: present
+  become: true
+  become_user: postgres

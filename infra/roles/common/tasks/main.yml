@@ -1,0 +1,121 @@
+---
+- name: Set timezone to UTC
+  community.general.timezone:
+    name: UTC
+
+- name: Update apt cache (daily)
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 86400
+
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - ufw
+      - fail2ban
+      - logrotate
+      - rsync
+      - unattended-upgrades
+      - age
+      - rclone
+      - python3-psycopg2
+      - acl
+    state: present
+
+- name: Create app group
+  ansible.builtin.group:
+    name: "{{ app_group }}"
+    system: true
+    state: present
+
+- name: Create app user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: true
+    shell: /bin/bash
+    home: "/home/{{ app_user }}"
+    create_home: true
+    state: present
+
+- name: Ensure app directory tree exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0755"
+  loop:
+    - "{{ app_root }}"
+    - "{{ app_root }}/releases"
+    - "{{ app_root }}/shared"
+    - /var/log/pantry
+    - /var/backups/pantry
+
+- name: Ensure /etc/pantry exists with strict perms (root-owned)
+  ansible.builtin.file:
+    path: "{{ config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure /etc/pantry/secrets exists with strict perms (root-only)
+  ansible.builtin.file:
+    path: "{{ secrets_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Configure ufw default policies
+  community.general.ufw:
+    direction: "{{ item.direction }}"
+    policy: "{{ item.policy }}"
+  loop:
+    - { direction: incoming, policy: deny }
+    - { direction: outgoing, policy: allow }
+
+- name: Allow required incoming ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"
+    - "80"
+    - "443"
+
+- name: Enable ufw
+  community.general.ufw:
+    state: enabled
+    logging: low
+
+- name: Configure fail2ban sshd jail
+  ansible.builtin.copy:
+    dest: /etc/fail2ban/jail.d/sshd.local
+    mode: "0644"
+    owner: root
+    group: root
+    content: |
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+      logpath = %(sshd_log)s
+      maxretry = 5
+      findtime = 600
+      bantime = 3600
+  notify: Restart fail2ban
+
+- name: Install logrotate config for pantry
+  ansible.builtin.copy:
+    src: logrotate-pantry
+    dest: /etc/logrotate.d/pantry
+    mode: "0644"
+    owner: root
+    group: root
