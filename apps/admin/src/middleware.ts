@@ -1,12 +1,13 @@
 // apps/admin/src/middleware.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { COOKIE_NAMES } from './lib/cookies';
+import { buildPublicUrl } from './lib/request-origin';
 
 const PUBLIC_PATHS = ['/login'];
 const PUBLIC_PREFIXES = ['/_next', '/api/auth', '/favicon'];
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
 
   if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
@@ -16,16 +17,13 @@ export function middleware(req: NextRequest) {
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
 
   if (!hasAccess && !isPublicPage) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', pathname);
+    const url = buildPublicUrl(req.headers, '/login');
+    url.searchParams.set('next', pathname + search);
     return NextResponse.redirect(url);
   }
 
   if (hasAccess && isPublicPage) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/';
-    url.search = '';
+    const url = buildPublicUrl(req.headers, '/');
     return NextResponse.redirect(url);
   }
 

@@ -1,8 +1,9 @@
 // apps/admin/src/app/api/auth/refresh-redirect/route.ts
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getAdminEnv } from '@/lib/env';
 import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
+import { buildPublicUrl } from '@/lib/request-origin';
 
 const ACCESS_MAX_AGE_SEC = 60 * 15;
 const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
@@ -17,11 +18,12 @@ export async function GET(req: Request) {
   const env = getAdminEnv();
   const url = new URL(req.url);
   const next = safeNext(url.searchParams.get('next'));
+  const reqHeaders = await headers();
 
   const cookieStore = await cookies();
   const refresh = cookieStore.get(COOKIE_NAMES.refresh)?.value;
   if (!refresh) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(buildPublicUrl(reqHeaders, '/login'));
   }
 
   const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/refresh`, {
@@ -30,7 +32,7 @@ export async function GET(req: Request) {
     body: JSON.stringify({ refreshToken: refresh }),
   });
   if (!upstream.ok) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(buildPublicUrl(reqHeaders, '/login'));
   }
 
   const body = (await upstream.json()) as {
@@ -38,11 +40,11 @@ export async function GET(req: Request) {
   };
   const tokens = body.tokens;
   if (!tokens) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(buildPublicUrl(reqHeaders, '/login'));
   }
 
   // A Route Handler response MAY set cookies (unlike a Server Component render).
-  const res = NextResponse.redirect(new URL(next, req.url));
+  const res = NextResponse.redirect(buildPublicUrl(reqHeaders, next));
   res.headers.append(
     'Set-Cookie',
     buildSetCookie({
