@@ -8,6 +8,7 @@ import { registerCors } from './plugins/cors.js';
 import { registerRateLimit } from './plugins/rate-limit.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { authPlugin } from './plugins/auth.js';
+import { idempotencyPlugin } from './plugins/idempotency.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
@@ -49,6 +50,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // The auth plugin's onRequest hook must populate req.user BEFORE the rate
   // limiter runs so the limiter can pick the per-user vs per-IP budget.
   await app.register(authPlugin);
+  await app.register(idempotencyPlugin);
   if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
 

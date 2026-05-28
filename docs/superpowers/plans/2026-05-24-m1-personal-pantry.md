@@ -2256,7 +2256,7 @@ git commit -m "feat(api): PATCH /v1/products/:id queues product_edits row"
 - Create: `api/src/plugins/idempotency.ts`
 - Create: `api/tests/integration/idempotency.test.ts`
 
-- [ ] **Step 1: Write the failing test `api/tests/integration/idempotency.test.ts`**
+- [x] **Step 1: Write the failing test `api/tests/integration/idempotency.test.ts`**
 
 ```ts
 import { describe, expect, it } from 'vitest';
@@ -2323,7 +2323,7 @@ describe('idempotency plugin', () => {
 pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
 ```
 
-- [ ] **Step 3: Write `api/src/plugins/idempotency.ts`**
+- [x] **Step 3: Write `api/src/plugins/idempotency.ts`**
 
 ```ts
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -2396,7 +2396,7 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
 });
 ```
 
-- [ ] **Step 4: Register in `api/src/server.ts`**
+- [x] **Step 4: Register in `api/src/server.ts`**
 
 After `await app.register(authPlugin);` add:
 ```ts
@@ -2412,7 +2412,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
 ```
 Expected: 4 passed.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/src/plugins/idempotency.ts api/src/server.ts api/tests/integration/idempotency.test.ts
