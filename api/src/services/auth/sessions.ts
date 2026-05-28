@@ -1,4 +1,10 @@
-import { Prisma, type Session } from '@prisma/client';
+// @prisma/client v5 ships CJS only; Node-ESM rejects named runtime imports.
+// We separate the runtime value (Prisma.JsonNull) from the type namespace
+// (Prisma.SessionUncheckedCreateInput, Prisma.InputJsonValue) — TypeScript
+// erases the type-only import, so only `prismaPkg` survives at runtime.
+import type { Prisma, Session } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+const PrismaRuntime = prismaPkg.Prisma;
 import { getPrisma } from '../../db.js';
 import { hashToken } from '../../utils/random.js';
 import { issueRefreshToken } from './tokens.js';
@@ -19,7 +25,9 @@ export async function createSession(
     refreshTokenHash: issued.hash,
     expiresAt: issued.expiresAt,
     ip: ctx.ip ?? null,
-    deviceInfo: ctx.deviceInfo ? (ctx.deviceInfo as Prisma.InputJsonValue) : Prisma.JsonNull,
+    deviceInfo: ctx.deviceInfo
+      ? (ctx.deviceInfo as Prisma.InputJsonValue)
+      : PrismaRuntime.JsonNull,
   };
   const session = await prisma.session.create({ data });
   return { session, refreshToken: issued.token };
@@ -48,7 +56,9 @@ export async function rotateSession(
     expiresAt: issued.expiresAt,
     ip: current.ip,
     deviceInfo:
-      current.deviceInfo === null ? Prisma.JsonNull : (current.deviceInfo as Prisma.InputJsonValue),
+      current.deviceInfo === null
+        ? PrismaRuntime.JsonNull
+        : (current.deviceInfo as Prisma.InputJsonValue),
   };
   const [, session] = await prisma.$transaction([
     prisma.session.update({

@@ -1,4 +1,10 @@
-import { Prisma } from '@prisma/client';
+// @prisma/client v5 ships CJS only; Node-ESM rejects named runtime imports.
+// We separate the runtime value (Prisma.JsonNull) from the type namespace
+// (Prisma.InputJsonValue, etc) — TypeScript erases the type-only import,
+// so only `prismaPkg` survives at runtime.
+import type { Prisma } from '@prisma/client';
+import prismaPkg from '@prisma/client';
+const PrismaRuntime = prismaPkg.Prisma;
 import { getPrisma } from '../../db.js';
 
 export interface AuditLogInput {
@@ -26,7 +32,10 @@ export async function writeAuditLog(input: AuditLogInput): Promise<void> {
       action: input.action,
       targetType: input.targetType,
       targetId: input.targetId,
-      diff: input.diff === undefined ? Prisma.JsonNull : (input.diff as Prisma.InputJsonValue),
+      diff:
+        input.diff === undefined
+          ? PrismaRuntime.JsonNull
+          : (input.diff as Prisma.InputJsonValue),
       requestId: input.requestId ?? null,
       ip: input.ip ?? null,
     },

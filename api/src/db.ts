@@ -1,4 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+// @prisma/client v5 ships CJS only; under Node-ESM the named import fails at
+// runtime. Destructuring from the default keeps Vitest, tsx and `node dist/`
+// all happy.
+import prismaPkg from '@prisma/client';
+const { PrismaClient } = prismaPkg;
+type PrismaClient = InstanceType<typeof PrismaClient>;
 import { logger } from './logger.js';
 
 let _prisma: PrismaClient | undefined;
