@@ -45,4 +45,20 @@ describe('GET /v1/auth/me', () => {
     expect(res.statusCode).toBe(401);
     await app.close();
   });
+
+  it('PATCH /v1/me updates profile', async () => {
+    const app = await buildServer();
+    const t = await authedTokens(app);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/me',
+      headers: { authorization: `Bearer ${t.accessToken}` },
+      payload: { firstName: 'New', themePreference: 'bento' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.firstName).toBe('New');
+    expect(body.themePreference).toBe('bento');
+    await app.close();
+  });
 });
