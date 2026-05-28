@@ -506,7 +506,7 @@ git commit -m "feat(shared): add record + push-token Zod schemas"
 **Files:**
 - Modify: `api/prisma/schema.prisma`
 
-- [ ] **Step 1: Add enums above the existing `User` model**
+- [x] **Step 1: Add enums above the existing `User` model**
 
 In `api/prisma/schema.prisma`, after the existing `AuthCredentialType` enum, append:
 
@@ -551,7 +551,7 @@ enum PushLogStatus {
 }
 ```
 
-- [ ] **Step 2: Add `notificationPreferences` field + relations to existing `User` model**
+- [x] **Step 2: Add `notificationPreferences` field + relations to existing `User` model**
 
 In the `User` model block, after the `totpEnabledAt` line add:
 ```prisma
@@ -569,7 +569,7 @@ In the relations section of `User` append:
 
 > Note: M0a's `User` model may already declare `pushLogs PushLog[]`. If so, do not duplicate — keep one entry. The `productEditsResolver` relation back-link is required for the renamed `ProductEdit.resolvedBy` foreign key introduced below; if M0a never wrote `pushLogs`, this M1 step adds it.
 
-- [ ] **Step 3: Add the new models at the bottom of `schema.prisma`**
+- [x] **Step 3: Add the new models at the bottom of `schema.prisma`**
 
 ```prisma
 model Product {
@@ -667,7 +667,7 @@ model PushLog {
 }
 ```
 
-- [ ] **Step 4: Convert `PushToken.platform` from `String` to the `PushPlatform` enum (D27)**
+- [x] **Step 4: Convert `PushToken.platform` from `String` to the `PushPlatform` enum (D27)**
 
 M0a ships `PushToken.platform` as a plain `String` column. M1 owns the conversion to the new `PushPlatform` enum. Update the model in `api/prisma/schema.prisma` so it matches exactly:
 
@@ -697,7 +697,7 @@ ALTER TABLE push_tokens
 
 > Note: M0a's existing `platform` values are already exactly `'ios'` or `'android'` (validated by M0a's Zod schema), so the cast is a straight one-to-one — no data backfill or scrubbing required. If the column has any other historical value, the cast will throw and you should fail fast and clean the row before re-running.
 
-- [ ] **Step 5: Generate Prisma client**
+- [x] **Step 5: Generate Prisma client**
 
 ```bash
 pnpm --filter @pantry/api exec prisma generate
