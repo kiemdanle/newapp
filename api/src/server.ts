@@ -14,6 +14,8 @@ import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
 import { productRoutes } from './routes/products/index.js';
 import { recordRoutes } from './routes/records/index.js';
+import { reviewsRoutes } from './routes/reviews/index.js';
+import { reportsRoutes } from './routes/reports/index.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 
 const REDACT_PATHS = [
@@ -66,6 +68,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(meRoutes, { prefix: '/v1/me' });
   await app.register(productRoutes, { prefix: '/v1/products' });
   await app.register(recordRoutes, { prefix: '/v1/records' });
+  await app.register(reviewsRoutes, { prefix: '/v1' });
+  await app.register(reportsRoutes, { prefix: '/v1' });
 
   return app;
 }
