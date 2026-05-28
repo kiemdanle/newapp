@@ -4,6 +4,7 @@ import { getConfig } from '../../config.js';
 import { getRedis } from '../../redis.js';
 import { registerRoute } from './register.js';
 import { loginRoute } from './login.js';
+import { refreshRoute } from './refresh.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const cfg = getConfig();
@@ -19,4 +20,5 @@ export async function authRoutes(app: FastifyInstance) {
   }
   await app.register(registerRoute);
   await app.register(loginRoute);
+  await app.register(refreshRoute);
 }
