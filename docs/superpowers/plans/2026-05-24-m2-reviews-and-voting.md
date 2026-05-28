@@ -4,24 +4,86 @@
 
 **Goal:** Build the user-facing reviews surface: reviews CRUD, voting with Wilson lower-bound scoring, automatic profanity-based moderation and report submission, debounced background recalc workers, and the mobile screens (browse, product detail, reviews list, review form, report modal). Admin resolution of reports is M3 — this milestone ships only user-side submission and the auto-hide threshold.
 
-**Architecture:** Three new Postgres tables (`reviews`, `review_votes`, `reports`) managed via Prisma migration. Fastify routes under `/v1/products/:id/reviews`, `/v1/reviews/:id`, `/v1/reviews/:id/vote`, `/v1/me/reviews`, `/v1/reports`. Two pure-function services (`wilson.ts`, `profanity.ts`) with rigorous unit tests. Two BullMQ workers (`score-recalc` debounced 30s per review via Redis sentinel keys, `product-rating-recalc` per product). Mobile screens are read-mostly via TanStack Query (server is source of truth); only the user's own review writes go through the offline write queue introduced in M1. A new system user is seeded so the `moderation-flag` worker can author auto-flagged reports.
+**Architecture:** Three new Postgres tables (`reviews`, `review_votes`, `reports`) managed via Prisma migration. Fastify routes under `/v1/products/:id/reviews`, `/v1/reviews/:id`, `/v1/reviews/:id/vote`, `/v1/me/reviews`, `/v1/reports`. Two pure-function services (`wilson.ts`, `profanity.ts`) with rigorous unit tests. Two BullMQ workers (`score-recalc` debounced 30s per review via Redis sentinel keys, `product-rating-recalc` per product). Mobile screens are read-mostly via TanStack Query (server is source of truth). A user's own review writes (create/edit/delete) are online-only TanStack mutations and do NOT route through the M1 offline write queue — spec §2.11's offline-queue line is amended for reviews. A new system user is seeded so the `moderation-flag` worker can author auto-flagged reports.
 
 **Tech Stack:** Fastify 4, Prisma 5, Postgres 16, Redis 7, BullMQ 5, Zod 3, `obscenity` 0.4 (pure-JS profanity filter, no native deps), Vitest 2 + Supertest 7 (API), Expo SDK + Expo Router + Zustand + TanStack Query + NativeWind (mobile), React Native Testing Library 12 (component tests), Maestro (E2E).
 
 **Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.6–2.8, 4.3, 5 (reviews / review_votes / reports), 6.4, 6.5, 7. Read before starting.
 
+---
+
+## Feature additions — 2026-05-26
+
+**Two-criteria review ratings (replaces the single `rating`).** A review now carries two required 1–5 scores instead of one:
+
+- **Wire contract (camelCase):** review create/update bodies require `tasteRating` and `valueRating` (both 1–5; `body` stays optional); review responses expose `tasteRating` and `valueRating`.
+- **DB columns (snake_case via `@map`):** the `reviews` table replaces `rating smallint` with `taste_rating smallint` + `value_rating smallint`, **both NOT NULL, range 1–5** (CHECK constraints).
+- **Product aggregation:** the `product-rating-recalc` worker computes, over visible reviews, `taste_avg` + `value_avg` (`numeric(3,2)`) and `review_count`, writing all three to `products`. The old single `rating_avg`/`rating_count` write is replaced. (M1 is being updated in parallel to provide the `products.taste_avg` / `products.value_avg` / `products.review_count` columns this worker consumes.)
+- **Sort:** the three sort modes are unchanged. Vote-based Wilson `score` (helpfulness) is UNCHANGED. The "highest rating" sort ranks by the average of the two criteria, `(taste_rating + value_rating) / 2`.
+- **Mobile:** the review form collects two required 1–5 star inputs (taste, value); product detail + reviews list show both criteria and the product's `tasteAvg` / `valueAvg`.
+
+All other behavior (voting, Wilson helpfulness scoring, profanity auto-flag, reports, auto-hide) is unchanged. Field names used throughout: `tasteRating` / `valueRating` (wire); `taste_rating` / `value_rating` (DB); `products.taste_avg` / `value_avg` / `review_count`.
+
+---
+
+## Validation amendments — 2026-05-26
+
+These changes reconcile this plan with the canonical M1 contracts and the spec, so M2 compiles and runs without depending on milestones that ship later:
+
+- **Workers register in M1's canonical registry.** M1 owns the central worker entry point at `api/src/workers/runner.ts` (exporting `startWorkers()` / `stopWorkers()`). M2 adds its three processor modules under `api/src/workers/` and registers them there. The separate `api/src/queues/workers.ts` registry this plan previously proposed is removed — it duplicated M1's runner.
+- **Auto-hide threshold is hardcoded to the spec value (`> 3`).** The reports repository no longer imports `getSetting` / `SETTING_KEYS` from the settings service, which only ships in M3. The literal threshold from spec §2.8 (`reportCount > 3`) lives directly in `maybeAutoHide`. M3 may later add a configurable override defaulting to 3; no settings import is introduced now.
+- **Moderation worker test asserts `'hidden'`.** The review status enum is `visible | hidden | deleted` (no `pending`). The moderation-flag worker sets `hidden`, and the Phase H integration test asserts that value.
+- **Token + queue-connection consumption confirmed.** Tests consume `issueAccessToken` as a bare string and pass `connection: getQueueConnection()` (raw `ConnectionOptions`). Both already match the canonical M0a/M1 contracts; left unchanged.
+- **A user's own review writes are online-only.** Review create/edit/delete by the author are online-only TanStack mutations (server is source of truth); spec §2.11's offline-queue line is amended for reviews — these writes do not route through the M1 offline write queue.
+
 **Prerequisites:**
+
+Per the backend-first execution order, prereqs split by track. Track A (backend phases A–H) does NOT depend on M0c — phases A–H touch only `api/`, `packages/shared`, and Postgres. M0c is required only when Track B (mobile phases I–L) begins.
+
+**Track A (backend, build now) prerequisites:**
 
 - **M0a** complete: shared package, error/AppError, config, db/redis singletons, error-handler, auth plugin (`req.user`, `app.requireAuth`), users repository (`toApiUser`), random/hashToken utils, test harness (`tests/helpers/setup.ts`, `tests/helpers/factories.ts`).
 - **M0b** complete: auth routes (so integration tests can sign up + log in users).
+- **M1** backend phases (A–I) complete: `products` table + product routes + Idempotency-Key Fastify plugin (`api/src/plugins/idempotency.ts`), BullMQ wiring (queues live under `api/src/queues/` per D10 — `getQueueConnection` is exported from `api/src/queues/index.ts`, alongside a `getAllQueues()` registry; central worker registration lives in `api/src/workers/runner.ts`, exporting `startWorkers()` / `stopWorkers()`).
+
+**Track B (mobile, deferred) — additional prerequisites:**
+
 - **M0c** complete: mobile app shell with auth-gated `(app)` group, tab navigator, theme provider, API client (`apps/mobile/src/api/client.ts`), TanStack Query provider, secure-store-backed session.
-- **M1** complete: `products` table + product routes + Idempotency-Key Fastify plugin (`api/src/plugins/idempotency.ts`), BullMQ wiring (queues live under `api/src/queues/` per D10 — `getQueueConnection` is exported from `api/src/queues/index.ts`, alongside a `getAllQueues()` registry; central worker registration lives in `api/src/queues/workers.ts`), WatermelonDB schema and offline write queue.
+- **M1** mobile phases (J–Q) complete: WatermelonDB schema and offline write queue.
 
 **Out of scope for M2 (handled elsewhere):**
 
 - Admin moderation queue, admin status changes on reviews, admin user actions — **M3**.
 - Theme polish across the new screens beyond consuming existing tokens, store submission — **M4**.
 - Real-time updates (vote counts pushed to other clients) — deferred per spec §12.
+
+---
+
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced into **two tracks**. Build the entire Backend + Admin track first, then the Mobile track.
+
+**Track A — Backend + Admin (build now).** Touches `api/`, `packages/shared`, and `apps/admin/`. (This milestone has no `apps/admin/` work — admin moderation is M3 — so Track A here is the API + shared-package phases.) Phases, in order:
+
+- **Phase A — Data model**
+- **Phase B — Wilson lower-bound math**
+- **Phase C — Profanity filter**
+- **Phase D — Review repository and helpers**
+- **Phase E — BullMQ workers**
+- **Phase F — Reviews HTTP routes**
+- **Phase G — Reports HTTP route**
+- **Phase H — Worker integration tests**
+
+**Track B — Mobile (DEFERRED).** Touches `apps/mobile/`, mobile components/screens/hooks, and Maestro. Phases, in order:
+
+- **Phase I — Mobile API client hooks**
+- **Phase J — Mobile components**
+- **Phase K — Mobile screens**
+- **Phase L — Maestro E2E**
+
+**Rule:** Do NOT implement Track B phases until the entire Backend + Admin track is complete and the Mobile track begins (starts with M0c). M0c (mobile app shell) is the entry point for the Mobile track; verify it is in place before starting Phase I.
+
+**Final-verification split (Phase M).** Phase M spans both tracks: its API steps (full API test suite, repo-wide typecheck/lint, manual API smoke, milestone tag) belong to **Track A**; its mobile-test step belongs to **Track B** and runs only after the Mobile track is complete.
 
 ---
 
@@ -46,10 +108,10 @@ pantry/
 │   │   ├── services/reviews/system-user.ts     ← getSystemUserId() cached
 │   │   ├── services/reviews/repository.ts      ← Prisma helpers + toApiReview
 │   │   ├── services/reports/repository.ts      ← toApiReport + auto-hide logic
-│   │   ├── queues/jobs/score-recalc.ts          ← debounced enqueue + processor
-│   │   ├── queues/jobs/moderation-flag.ts       ← processor
-│   │   ├── queues/jobs/product-rating-recalc.ts ← processor
-│   │   ├── queues/workers.ts                   ← MODIFY to register new workers
+│   │   ├── queues/jobs/score-recalc.ts          ← debounced enqueue + processor + startScoreRecalcWorker()
+│   │   ├── queues/jobs/moderation-flag.ts       ← processor + startModerationFlagWorker()
+│   │   ├── queues/jobs/product-rating-recalc.ts ← processor + startProductRatingWorker()
+│   │   ├── workers/runner.ts                   ← MODIFY (M1 canonical): register the 3 new workers in startWorkers()
 │   │   ├── queues/index.ts                     ← MODIFY: append the 3 new queues to getAllQueues() registry
 │   │   ├── routes/reviews/
 │   │   │   ├── index.ts                        ← mount + register sub-routes
@@ -112,7 +174,7 @@ pantry/
 - Every API route imports its Zod schema from `@pantry/shared`.
 - Every API route handler uses `req.user`, `app.requireAuth`, and `req.id` for logging.
 - No `console.log`. Use `req.log` (API) or the mobile logger.
-- Mobile data fetching: TanStack Query with `staleTime: 30_000` for review lists. Only the user's own *write* of a review goes through the offline write queue from M1.
+- Mobile data fetching: TanStack Query with `staleTime: 30_000` for review lists. A user's own review *writes* (create/edit/delete) are online-only TanStack mutations — server is source of truth — and are NOT routed through the M1 offline write queue (spec §2.11 amended for reviews).
 - All vote / report writes require `Idempotency-Key` from the M1 plugin.
 
 ---
@@ -124,7 +186,7 @@ pantry/
 **Files:**
 - Modify: `api/prisma/schema.prisma`
 
-- [ ] **Step 1: Open `api/prisma/schema.prisma` and append the new enums**
+- [x] **Step 1: Open `api/prisma/schema.prisma` and append the new enums**
 
 Add immediately above the existing `enum AuthCredentialType` block:
 
@@ -159,14 +221,15 @@ enum ReportStatus {
 }
 ```
 
-- [ ] **Step 2: Add the Review model at the bottom of the file**
+- [x] **Step 2: Add the Review model at the bottom of the file**
 
 ```prisma
 model Review {
   id            String       @id @default(uuid()) @db.Uuid
   userId        String       @db.Uuid
   productId     String       @db.Uuid
-  rating        Int          @db.SmallInt
+  tasteRating   Int          @map("taste_rating") @db.SmallInt
+  valueRating   Int          @map("value_rating") @db.SmallInt
   body          String?
   upvoteCount   Int          @default(0)
   downvoteCount Int          @default(0)
@@ -220,7 +283,7 @@ model Report {
 }
 ```
 
-- [ ] **Step 3: Add the new relations to the existing User model**
+- [x] **Step 3: Add the new relations to the existing User model**
 
 Find the `model User` block. After the existing `auditLogs` line, append:
 
@@ -231,7 +294,7 @@ Find the `model User` block. After the existing `auditLogs` line, append:
   reportsResolved  Report[]    @relation("ReportResolver")
 ```
 
-- [ ] **Step 4: Add the new relations to the existing Product model**
+- [x] **Step 4: Add the new relations to the existing Product model**
 
 Inside `model Product`, append:
 
@@ -239,7 +302,7 @@ Inside `model Product`, append:
   reviews Review[]
 ```
 
-- [ ] **Step 5: Format and validate the schema**
+- [x] **Step 5: Format and validate the schema**
 
 ```bash
 pnpm --filter @pantry/api exec prisma format
@@ -247,7 +310,7 @@ pnpm --filter @pantry/api exec prisma validate
 ```
 Expected: `The schema at api/prisma/schema.prisma is valid 🚀`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/prisma/schema.prisma
@@ -261,14 +324,26 @@ git commit -m "feat(api): add Review, ReviewVote, Report models"
 **Files:**
 - Create: `api/prisma/migrations/<ts>_reviews_votes_reports/migration.sql` (generated)
 
-- [ ] **Step 1: Create the migration**
+- [x] **Step 1: Create the migration**
 
 ```bash
 pnpm --filter @pantry/api exec prisma migrate dev --name reviews_votes_reports
 ```
 Expected: prints `Applying migration ...` and `✔ Generated Prisma Client`.
 
-- [ ] **Step 2: Verify the tables and indexes**
+- [x] **Step 1b: Append 1–5 CHECK constraints for the two rating columns**
+
+Prisma does not emit value-range CHECK constraints from the schema, so add them to the generated `migration.sql` (before re-applying / on a fresh `migrate dev`):
+
+```sql
+ALTER TABLE "reviews"
+  ADD CONSTRAINT "reviews_taste_rating_check" CHECK ("taste_rating" BETWEEN 1 AND 5),
+  ADD CONSTRAINT "reviews_value_rating_check" CHECK ("value_rating" BETWEEN 1 AND 5);
+```
+
+Both `taste_rating` and `value_rating` are NOT NULL (the Prisma `Int` fields are non-optional). Re-run `prisma migrate dev` if the file was edited after generation.
+
+- [x] **Step 2: Verify the tables and indexes**
 
 ```bash
 psql postgresql://pantry:pantry@localhost:5432/pantry -c "\dt"
@@ -278,7 +353,7 @@ psql postgresql://pantry:pantry@localhost:5432/pantry -c "\di reports*"
 ```
 Expected: `reviews`, `review_votes`, `reports` listed; the indexes include `reviews_productId_status_score_idx`, `reviews_userId_productId_key`, `review_votes_userId_reviewId_key`, `reports_targetType_targetId_status_idx`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/prisma/migrations
@@ -293,7 +368,7 @@ git commit -m "feat(api): migrate reviews, review_votes, reports tables"
 - Create or Modify: `api/prisma/seed.ts`
 - Modify: `api/package.json` (add `prisma.seed` if absent)
 
-- [ ] **Step 1: Read the existing `api/prisma/seed.ts` (if M1 created one) or create it**
+- [x] **Step 1: Read the existing `api/prisma/seed.ts` (if M1 created one) or create it**
 
 If the file does not exist, create `api/prisma/seed.ts` with this exact content:
 
@@ -337,7 +412,7 @@ main()
 
 If the file already exists from M1, ADD only the `SYSTEM_USER_ID` constant + upsert block inside `main()`; do not delete existing seeds.
 
-- [ ] **Step 2: Ensure `api/package.json` declares the seed**
+- [x] **Step 2: Ensure `api/package.json` declares the seed**
 
 Open `api/package.json`. If there is no top-level `"prisma"` key, add:
 
@@ -349,21 +424,21 @@ Open `api/package.json`. If there is no top-level `"prisma"` key, add:
 
 immediately before `"scripts"`.
 
-- [ ] **Step 3: Run the seed**
+- [x] **Step 3: Run the seed**
 
 ```bash
 pnpm --filter @pantry/api exec prisma db seed
 ```
 Expected: `Seeded system user 00000000-0000-0000-0000-000000000001`.
 
-- [ ] **Step 4: Verify it landed**
+- [x] **Step 4: Verify it landed**
 
 ```bash
 psql postgresql://pantry:pantry@localhost:5432/pantry -c "SELECT id, email FROM users WHERE id = '00000000-0000-0000-0000-000000000001';"
 ```
 Expected: one row with `email = system@pantry.local`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/prisma/seed.ts api/package.json
@@ -377,7 +452,7 @@ git commit -m "feat(api): seed system user for auto-flagged reports"
 **Files:**
 - Modify: `api/tests/helpers/setup.ts`
 
-- [ ] **Step 1: Open `api/tests/helpers/setup.ts`**
+- [x] **Step 1: Open `api/tests/helpers/setup.ts`**
 
 Find the `const tables = [` array. Replace it with the updated list:
 
@@ -400,7 +475,7 @@ const tables = [
 
 (If M1 already added `products` and `records` to this array, keep them between `auth_credentials` and `users`.)
 
-- [ ] **Step 2: Re-seed the system user inside `beforeEach`**
+- [x] **Step 2: Re-seed the system user inside `beforeEach`**
 
 Find the `beforeEach(async () => {` block. Inside it, AFTER the `flushdb()` call, append:
 
@@ -421,14 +496,14 @@ Find the `beforeEach(async () => {` block. Inside it, AFTER the `flushdb()` call
   });
 ```
 
-- [ ] **Step 3: Run the existing suite to confirm nothing broke**
+- [x] **Step 3: Run the existing suite to confirm nothing broke**
 
 ```bash
 pnpm --filter @pantry/api test
 ```
 Expected: all previously-passing tests still pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/tests/helpers/setup.ts
@@ -442,7 +517,7 @@ git commit -m "test(api): truncate reviews/votes/reports and reseed system user 
 **Files:**
 - Modify: `api/tests/helpers/factories.ts`
 
-- [ ] **Step 1: Open `api/tests/helpers/factories.ts` and append**
+- [x] **Step 1: Open `api/tests/helpers/factories.ts` and append**
 
 ```ts
 import type { Product, Review, ReviewVote } from '@prisma/client';
@@ -466,7 +541,8 @@ export async function makeProduct(overrides: Partial<{
 export async function makeReview(overrides: {
   userId: string;
   productId: string;
-  rating?: number;
+  tasteRating?: number;
+  valueRating?: number;
   body?: string;
   status?: 'visible' | 'hidden' | 'deleted';
   upvoteCount?: number;
@@ -478,7 +554,8 @@ export async function makeReview(overrides: {
     data: {
       userId: overrides.userId,
       productId: overrides.productId,
-      rating: overrides.rating ?? 5,
+      tasteRating: overrides.tasteRating ?? 5,
+      valueRating: overrides.valueRating ?? 5,
       body: overrides.body ?? 'A solid product.',
       status: overrides.status ?? 'visible',
       upvoteCount: overrides.upvoteCount ?? 0,
@@ -502,14 +579,14 @@ export async function makeVote(overrides: {
 
 NOTE: If M1's factories already export `makeProduct`, skip that block and keep theirs — it's fine as long as it returns a Prisma `Product`.
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/tests/helpers/factories.ts
@@ -526,7 +603,7 @@ git commit -m "test(api): add makeReview and makeVote factories"
 - Modify: `packages/shared/src/index.ts`
 - Modify: `packages/shared/src/schemas/error.ts`
 
-- [ ] **Step 1: Write `packages/shared/src/schemas/review.ts`**
+- [x] **Step 1: Write `packages/shared/src/schemas/review.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -545,7 +622,8 @@ export const reviewSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   productId: z.string().uuid(),
-  rating: ratingField,
+  tasteRating: ratingField,
+  valueRating: ratingField,
   body: z.string().nullable(),
   upvoteCount: z.number().int().nonnegative(),
   downvoteCount: z.number().int().nonnegative(),
@@ -567,19 +645,22 @@ export const reviewSchema = z.object({
 export type Review = z.infer<typeof reviewSchema>;
 
 export const reviewCreateSchema = z.object({
-  rating: ratingField,
+  tasteRating: ratingField,
+  valueRating: ratingField,
   body: bodyField,
 });
 export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
 
 export const reviewPatchSchema = z
   .object({
-    rating: ratingField.optional(),
+    tasteRating: ratingField.optional(),
+    valueRating: ratingField.optional(),
     body: bodyField,
   })
-  .refine((v) => v.rating !== undefined || v.body !== undefined, {
-    message: 'at least one field required',
-  });
+  .refine(
+    (v) => v.tasteRating !== undefined || v.valueRating !== undefined || v.body !== undefined,
+    { message: 'at least one field required' },
+  );
 export type ReviewPatch = z.infer<typeof reviewPatchSchema>;
 
 export const reviewVoteSchema = z.object({
@@ -595,7 +676,7 @@ export const reviewListQuerySchema = z.object({
 export type ReviewListQuery = z.infer<typeof reviewListQuerySchema>;
 ```
 
-- [ ] **Step 2: Write `packages/shared/src/schemas/report.ts`**
+- [x] **Step 2: Write `packages/shared/src/schemas/report.ts`**
 
 ```ts
 import { z } from 'zod';
@@ -630,7 +711,7 @@ export const reportCreateSchema = z.object({
 export type ReportCreate = z.infer<typeof reportCreateSchema>;
 ```
 
-- [ ] **Step 3: Add new error codes to `packages/shared/src/schemas/error.ts`**
+- [x] **Step 3: Add new error codes to `packages/shared/src/schemas/error.ts`**
 
 Open the file. Inside the `ERROR_CODES` object, add three new entries before the closing brace:
 
@@ -639,7 +720,7 @@ Open the file. Inside the `ERROR_CODES` object, add three new entries before the
   REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
 ```
 
-- [ ] **Step 4: Re-export both modules from `packages/shared/src/index.ts`**
+- [x] **Step 4: Re-export both modules from `packages/shared/src/index.ts`**
 
 Append:
 
@@ -648,14 +729,14 @@ export * from './schemas/review.js';
 export * from './schemas/report.js';
 ```
 
-- [ ] **Step 5: Typecheck the shared package**
+- [x] **Step 5: Typecheck the shared package**
 
 ```bash
 pnpm --filter @pantry/shared typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/shared/src
@@ -671,7 +752,7 @@ git commit -m "feat(shared): add review and report Zod schemas"
 **Files:**
 - Create: `api/tests/unit/wilson.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // api/tests/unit/wilson.test.ts
@@ -725,7 +806,7 @@ describe('wilsonLowerBound', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/wilson.test.ts
@@ -739,7 +820,7 @@ Expected: FAIL — `Cannot find module .../services/reviews/wilson.js`.
 **Files:**
 - Create: `api/src/services/reviews/wilson.ts`
 
-- [ ] **Step 1: Write `api/src/services/reviews/wilson.ts`**
+- [x] **Step 1: Write `api/src/services/reviews/wilson.ts`**
 
 ```ts
 /**
@@ -763,14 +844,14 @@ export function wilsonLowerBound(up: number, down: number, z = 1.96): number {
 }
 ```
 
-- [ ] **Step 2: Run, verify PASS**
+- [x] **Step 2: Run, verify PASS**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/wilson.test.ts
 ```
 Expected: 7 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/services/reviews/wilson.ts api/tests/unit/wilson.test.ts
@@ -786,14 +867,14 @@ git commit -m "feat(api): Wilson lower-bound scoring with unit tests"
 **Files:**
 - Modify: `api/package.json`
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 ```bash
 pnpm --filter @pantry/api add obscenity@^0.4.0
 ```
 Expected: `obscenity` appears under `dependencies` and the lockfile updates.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/package.json pnpm-lock.yaml
@@ -807,7 +888,7 @@ git commit -m "chore(api): add obscenity profanity filter dependency"
 **Files:**
 - Create: `api/tests/unit/profanity.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // api/tests/unit/profanity.test.ts
@@ -858,7 +939,7 @@ describe('containsProfanity', () => {
 });
 ```
 
-- [ ] **Step 2: Verify FAIL**
+- [x] **Step 2: Verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/profanity.test.ts
@@ -872,7 +953,7 @@ Expected: FAIL — module not found.
 **Files:**
 - Create: `api/src/services/reviews/profanity.ts`
 
-- [ ] **Step 1: Write `api/src/services/reviews/profanity.ts`**
+- [x] **Step 1: Write `api/src/services/reviews/profanity.ts`**
 
 ```ts
 import {
@@ -919,14 +1000,14 @@ export function containsProfanity(input: string | null | undefined): ProfanityRe
 }
 ```
 
-- [ ] **Step 2: Verify PASS**
+- [x] **Step 2: Verify PASS**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/profanity.test.ts
 ```
 Expected: 9 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/services/reviews/profanity.ts api/tests/unit/profanity.test.ts
@@ -984,7 +1065,8 @@ export function toApiReview(
     id: r.id,
     userId: r.userId,
     productId: r.productId,
-    rating: r.rating,
+    tasteRating: r.tasteRating,
+    valueRating: r.valueRating,
     body: r.body,
     upvoteCount: r.upvoteCount,
     downvoteCount: r.downvoteCount,
@@ -1032,18 +1114,14 @@ git commit -m "feat(api): review repository helpers (toApiReview)"
 import type { Report } from '@prisma/client';
 import type { Report as ApiReport, ReportTargetType } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
-import { getSetting, SETTING_KEYS } from '../settings/service.js';
 
-const DEFAULT_MODERATION_SETTINGS = { autoHideReportThreshold: 3 };
-
-async function getModerationSettings() {
-  try {
-    return await getSetting(SETTING_KEYS.MODERATION, DEFAULT_MODERATION_SETTINGS);
-  } catch {
-    // M3 hasn't shipped getSetting / SETTING_KEYS yet — fall back to defaults.
-    return DEFAULT_MODERATION_SETTINGS;
-  }
-}
+/**
+ * Spec §2.8: content auto-hides once it accumulates more than this many
+ * non-dismissed reports. Hardcoded here as the spec literal. A later milestone
+ * may introduce an admin-configurable override that defaults to this same value;
+ * no settings dependency is imported now (that module ships later).
+ */
+const AUTO_HIDE_REPORT_THRESHOLD = 3;
 
 export function toApiReport(r: Report): ApiReport {
   return {
@@ -1075,9 +1153,8 @@ export async function maybeAutoHide(
   const count = await prisma.report.count({
     where: { targetType, targetId, status: { in: ['open', 'resolved'] } },
   });
-  // D16: threshold is admin-configurable via M3's settings; default 3 if M3 hasn't seeded yet.
-  const settings = await getModerationSettings();
-  if (count <= settings.autoHideReportThreshold) return { hidden: false };
+  // Spec §2.8 literal: more than 3 non-dismissed reports auto-hides the target.
+  if (count <= AUTO_HIDE_REPORT_THRESHOLD) return { hidden: false };
 
   if (targetType === 'review') {
     const r = await prisma.review.findUnique({ where: { id: targetId } });
@@ -1113,7 +1190,7 @@ git commit -m "feat(api): report repository with auto-hide threshold helper"
 
 ## Phase E — BullMQ workers
 
-> **Assumption from M1 (per D10):** `api/src/queues/index.ts` exports `getQueueConnection(): ConnectionOptions` (or equivalent — internally backed by `getRedis()`) AND a `getAllQueues()` registry array. The central worker registration entry point lives at `api/src/queues/workers.ts`. M2's three new BullMQ queues (`score-recalc`, `moderation-flag`, `product-rating-recalc`) are appended to the `getAllQueues()` registry in Task E0 below so M1's queue dashboard / shutdown helpers cover them automatically.
+> **Assumption from M1 (per D10):** `api/src/queues/index.ts` exports `getQueueConnection(): ConnectionOptions` (raw BullMQ connection options, internally backed by `getRedis()`) AND a `getAllQueues()` registry array. The central worker registration entry point is M1's canonical `api/src/workers/runner.ts` (exports `startWorkers()` / `stopWorkers()`). M2's three new BullMQ queues (`score-recalc`, `moderation-flag`, `product-rating-recalc`) are appended to the `getAllQueues()` registry in Task E0 below so M1's queue dashboard / shutdown helpers cover them automatically, and the three workers are registered in `api/src/workers/runner.ts` (Task E5).
 
 ### Task E0: Register M2 queues in `getAllQueues()` (D10)
 
@@ -1367,17 +1444,19 @@ export async function processProductRatingRecalc(job: Job<ProductRatingData>): P
   const prisma = getPrisma();
   const agg = await prisma.review.aggregate({
     where: { productId, status: 'visible' },
-    _avg: { rating: true },
+    _avg: { tasteRating: true, valueRating: true },
     _count: { _all: true },
   });
-  const ratingCount = agg._count._all;
-  const ratingAvg = ratingCount > 0 ? Number(agg._avg.rating ?? 0) : 0;
+  const reviewCount = agg._count._all;
+  // numeric(3,2) in products.taste_avg / value_avg — keep two decimals.
+  const tasteAvg = reviewCount > 0 ? Number(agg._avg.tasteRating ?? 0) : 0;
+  const valueAvg = reviewCount > 0 ? Number(agg._avg.valueRating ?? 0) : 0;
   await prisma.product.update({
     where: { id: productId },
     data: {
-      ratingAvg,
-      ratingCount,
-      reviewCount: ratingCount,
+      tasteAvg,
+      valueAvg,
+      reviewCount,
     },
   });
 }
@@ -1494,46 +1573,37 @@ Expected: exit 0.
 
 ```bash
 git add api/src/queues/jobs/moderation-flag.ts
-git commit -m "feat(api): moderation-flag worker creates Report and sets pending"
+git commit -m "feat(api): moderation-flag worker creates Report and hides review"
 ```
 
 ---
 
-### Task E5: Register the three workers in the central entry
+### Task E5: Register the three workers in M1's canonical worker runner
 
 **Files:**
-- Modify: `api/src/queues/workers.ts`
+- Modify: `api/src/workers/runner.ts`
 
-- [ ] **Step 1: Open `api/src/queues/workers.ts`**
+> M1 owns the central worker entry point at `api/src/workers/runner.ts`, which already exports `startWorkers()` / `stopWorkers()` and registers M1's own workers. M2 does NOT create a second registry under `api/src/queues/` — it appends its three `startXxx()` calls into M1's existing `startWorkers()` array. The `startScoreRecalcWorker`, `startModerationFlagWorker`, and `startProductRatingWorker` factories are exported from their job modules (Tasks E1, E3, E4).
 
-If it does not yet export a `startWorkers()` function, create one. Add the imports and registrations:
+- [ ] **Step 1: Open `api/src/workers/runner.ts`**
+
+Add the imports alongside M1's existing worker imports:
 
 ```ts
-import type { Worker } from 'bullmq';
-import { startScoreRecalcWorker } from './jobs/score-recalc.js';
-import { startModerationFlagWorker } from './jobs/moderation-flag.js';
-import { startProductRatingWorker } from './jobs/product-rating-recalc.js';
+import { startScoreRecalcWorker } from '../queues/jobs/score-recalc.js';
+import { startModerationFlagWorker } from '../queues/jobs/moderation-flag.js';
+import { startProductRatingWorker } from '../queues/jobs/product-rating-recalc.js';
+```
 
-let started: Worker[] = [];
+Then MERGE the three new `startXxx()` calls into the existing `startWorkers()` array — do not remove or reorder M1's entries:
 
-export function startWorkers(): Worker[] {
-  if (started.length > 0) return started;
-  started = [
+```ts
     startScoreRecalcWorker(),
     startModerationFlagWorker(),
     startProductRatingWorker(),
-    // M1 workers (product-lookup, notification-*) stay above or below as already wired
-  ];
-  return started;
-}
-
-export async function stopWorkers(): Promise<void> {
-  await Promise.all(started.map((w) => w.close()));
-  started = [];
-}
 ```
 
-If `workers.ts` already exists with M1's workers, MERGE the three new `startXxx()` calls into the existing `started` array — do not remove M1's entries.
+`stopWorkers()` already closes every worker in the array, so no change is needed there.
 
 - [ ] **Step 2: Typecheck**
 
@@ -1544,7 +1614,7 @@ pnpm --filter @pantry/api typecheck
 - [ ] **Step 3: Commit**
 
 ```bash
-git add api/src/queues/workers.ts
+git add api/src/workers/runner.ts
 git commit -m "feat(api): register score-recalc, moderation-flag, product-rating-recalc workers"
 ```
 
@@ -1670,15 +1740,19 @@ export async function listForProductRoute(app: FastifyInstance) {
         }
       : { productId, status: 'visible' as const };
 
+    // "rating" ranks by the average of the two criteria: (taste_rating + value_rating) / 2.
+    // Postgres cannot order on a computed expression through Prisma's typed orderBy, so the
+    // "rating" sort is applied in-memory after fetching; "score" (Wilson helpfulness) and "new"
+    // continue to sort in the database and paginate by cursor.
     const orderBy =
       query.sort === 'new'
         ? [{ createdAt: 'desc' as const }]
         : query.sort === 'rating'
-          ? [{ rating: 'desc' as const }, { createdAt: 'desc' as const }]
+          ? [{ createdAt: 'desc' as const }]
           : [{ score: 'desc' as const }, { createdAt: 'desc' as const }];
 
     const cursor = query.cursor ? { id: query.cursor } : undefined;
-    const items = await prisma.review.findMany({
+    let items = await prisma.review.findMany({
       where,
       orderBy,
       take: query.limit + 1,
@@ -1686,6 +1760,13 @@ export async function listForProductRoute(app: FastifyInstance) {
       cursor,
       include: { user: { select: { id: true, firstName: true, avatarUrl: true } } },
     });
+
+    if (query.sort === 'rating') {
+      items = items.sort(
+        (a, b) =>
+          (b.tasteRating + b.valueRating) / 2 - (a.tasteRating + a.valueRating) / 2,
+      );
+    }
     const hasMore = items.length > query.limit;
     const page = hasMore ? items.slice(0, query.limit) : items;
 
@@ -1776,11 +1857,12 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 4, body: 'Great packaging' },
+      payload: { tasteRating: 4, valueRating: 3, body: 'Great packaging' },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().status).toBe('visible');
-    expect(res.json().rating).toBe(4);
+    expect(res.json().tasteRating).toBe(4);
+    expect(res.json().valueRating).toBe(3);
     await app.close();
   });
 
@@ -1792,7 +1874,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 1, body: 'this product is shit' },
+      payload: { tasteRating: 1, valueRating: 1, body: 'this product is shit' },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().status).toBe('hidden');
@@ -1808,13 +1890,13 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: h,
-      payload: { rating: 5 },
+      payload: { tasteRating: 5, valueRating: 5 },
     });
     const dup = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: h,
-      payload: { rating: 3 },
+      payload: { tasteRating: 3, valueRating: 3 },
     });
     expect(dup.statusCode).toBe(409);
     expect(dup.json().code).toBe('review_already_exists');
@@ -1827,7 +1909,7 @@ describe('POST /v1/products/:id/reviews', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
-      payload: { rating: 5 },
+      payload: { tasteRating: 5, valueRating: 5 },
     });
     expect(res.statusCode).toBe(401);
     await app.close();
@@ -1841,7 +1923,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 5, body: 'x'.repeat(2001) },
+      payload: { tasteRating: 5, valueRating: 5, body: 'x'.repeat(2001) },
     });
     expect(res.statusCode).toBe(400);
     await app.close();
@@ -1854,7 +1936,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/00000000-0000-0000-0000-0000000000ff/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 5 },
+      payload: { tasteRating: 5, valueRating: 5 },
     });
     expect(res.statusCode).toBe(404);
     await app.close();
@@ -1871,7 +1953,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 5 },
+      payload: { tasteRating: 5, valueRating: 5 },
     });
     const counts = await getProductRatingQueue().getJobCounts('waiting', 'delayed', 'active', 'completed');
     expect(counts.waiting + counts.delayed + counts.active + counts.completed).toBe(1);
@@ -1943,7 +2025,8 @@ export async function createReviewRoute(app: FastifyInstance) {
       data: {
         userId,
         productId,
-        rating: input.rating,
+        tasteRating: input.tasteRating,
+        valueRating: input.valueRating,
         body: input.body ?? null,
         status,
       },
@@ -2010,15 +2093,16 @@ describe('PATCH /v1/reviews/:id', () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
-    const r = await makeReview({ userId: user.id, productId: product.id, rating: 3, body: 'meh' });
+    const r = await makeReview({ userId: user.id, productId: product.id, tasteRating: 3, valueRating: 3, body: 'meh' });
     const res = await app.inject({
       method: 'PATCH',
       url: `/v1/reviews/${r.id}`,
       headers: await h(user.id),
-      payload: { rating: 5, body: 'changed my mind' },
+      payload: { tasteRating: 5, valueRating: 4, body: 'changed my mind' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().rating).toBe(5);
+    expect(res.json().tasteRating).toBe(5);
+    expect(res.json().valueRating).toBe(4);
     expect(res.json().body).toBe('changed my mind');
     await app.close();
   });
@@ -2033,7 +2117,7 @@ describe('PATCH /v1/reviews/:id', () => {
       method: 'PATCH',
       url: `/v1/reviews/${r.id}`,
       headers: await h(intruder.id),
-      payload: { rating: 1 },
+      payload: { tasteRating: 1, valueRating: 1 },
     });
     expect(res.statusCode).toBe(403);
     await app.close();
@@ -2062,7 +2146,7 @@ describe('PATCH /v1/reviews/:id', () => {
       method: 'PATCH',
       url: `/v1/reviews/00000000-0000-0000-0000-0000000000aa`,
       headers: await h(user.id),
-      payload: { rating: 5 },
+      payload: { tasteRating: 5, valueRating: 5 },
     });
     expect(res.statusCode).toBe(404);
     await app.close();
@@ -2128,7 +2212,8 @@ export async function updateReviewRoute(app: FastifyInstance) {
     const updated = await prisma.review.update({
       where: { id },
       data: {
-        ...(input.rating !== undefined ? { rating: input.rating } : {}),
+        ...(input.tasteRating !== undefined ? { tasteRating: input.tasteRating } : {}),
+        ...(input.valueRating !== undefined ? { valueRating: input.valueRating } : {}),
         ...(input.body !== undefined ? { body: newBody } : {}),
         status: nextStatus,
       },
@@ -2510,9 +2595,9 @@ describe('GET /v1/me/reviews', () => {
     const p1 = await makeProduct();
     const p2 = await makeProduct();
     const p3 = await makeProduct();
-    await makeReview({ userId: me.id, productId: p1.id, rating: 5 });
-    await makeReview({ userId: me.id, productId: p2.id, rating: 2, status: 'hidden' });
-    await makeReview({ userId: other.id, productId: p3.id, rating: 4 });
+    await makeReview({ userId: me.id, productId: p1.id, tasteRating: 5, valueRating: 5 });
+    await makeReview({ userId: me.id, productId: p2.id, tasteRating: 2, valueRating: 2, status: 'hidden' });
+    await makeReview({ userId: other.id, productId: p3.id, tasteRating: 4, valueRating: 4 });
     const res = await app.inject({ method: 'GET', url: '/v1/me/reviews', headers: await h(me.id) });
     expect(res.statusCode).toBe(200);
     const body = res.json();
@@ -2619,11 +2704,11 @@ it('returns up to 3 visible reviews ordered by Wilson score', async () => {
   const u1 = await makeUser({}), u2 = await makeUser({}), u3 = await makeUser({}), u4 = await makeUser({});
   const p = await makeProduct({});
   // four visible reviews with different scores; one hidden that must be excluded
-  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 5, body: 'A', status: 'visible', score: 0.95 } });
-  await getPrisma().review.create({ data: { userId: u2.id, productId: p.id, rating: 4, body: 'B', status: 'visible', score: 0.80 } });
-  await getPrisma().review.create({ data: { userId: u3.id, productId: p.id, rating: 3, body: 'C', status: 'visible', score: 0.60 } });
-  await getPrisma().review.create({ data: { userId: u4.id, productId: p.id, rating: 2, body: 'D', status: 'visible', score: 0.40 } });
-  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 1, body: 'hidden', status: 'hidden', score: 0.99 } });
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, tasteRating: 5, valueRating: 5, body: 'A', status: 'visible', score: 0.95 } });
+  await getPrisma().review.create({ data: { userId: u2.id, productId: p.id, tasteRating: 4, valueRating: 4, body: 'B', status: 'visible', score: 0.80 } });
+  await getPrisma().review.create({ data: { userId: u3.id, productId: p.id, tasteRating: 3, valueRating: 3, body: 'C', status: 'visible', score: 0.60 } });
+  await getPrisma().review.create({ data: { userId: u4.id, productId: p.id, tasteRating: 2, valueRating: 2, body: 'D', status: 'visible', score: 0.40 } });
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, tasteRating: 1, valueRating: 1, body: 'hidden', status: 'hidden', score: 0.99 } });
 
   const res = await ctx.app.inject({ method: 'GET', url: `/v1/products/${p.id}` });
   expect(res.statusCode).toBe(200);
@@ -2724,12 +2809,23 @@ describe('POST /v1/reports', () => {
     await app.close();
   });
 
-  it('respects the auto-hide threshold from settings', async () => {
-    // mock getSetting to return { autoHideReportThreshold: 5 }
-    vi.mocked(getSetting).mockResolvedValueOnce({ autoHideReportThreshold: 5 });
-    // seed 4 reports — should NOT auto-hide
-    // ...
-    // seed 6 reports — SHOULD auto-hide
+  it('does NOT auto-hide at exactly 3 reports (threshold is strictly > 3)', async () => {
+    const app = await buildServer();
+    const author = await makeUser({ email: `t3-${Date.now()}@t.l` });
+    const product = await makeProduct();
+    const review = await makeReview({ userId: author.id, productId: product.id });
+    for (let i = 0; i < 3; i += 1) {
+      const reporter = await makeUser({ email: `t3r${i}-${Date.now()}@t.l` });
+      await app.inject({
+        method: 'POST',
+        url: '/v1/reports',
+        headers: await h(reporter.id),
+        payload: { targetType: 'review', targetId: review.id, reason: 'spam' },
+      });
+    }
+    const after = await getPrisma().review.findUnique({ where: { id: review.id } });
+    expect(after?.status).toBe('visible');
+    await app.close();
   });
 
   it('returns 404 when targetType=review and targetId is unknown', async () => {
@@ -2985,7 +3081,7 @@ import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 describe('moderation-flag worker', () => {
-  it('marks profane reviews pending and inserts a system report', async () => {
+  it('hides profane reviews and inserts a system report', async () => {
     const user = await makeUser({ email: `mf-${Date.now()}@t.l` });
     const product = await makeProduct();
     const review = await makeReview({
@@ -2996,7 +3092,7 @@ describe('moderation-flag worker', () => {
     await processModerationFlag({ data: { reviewId: review.id } } as never);
 
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
-    expect(after?.status).toBe('pending');
+    expect(after?.status).toBe('hidden');
     const reports = await getPrisma().report.findMany({ where: { targetId: review.id } });
     expect(reports).toHaveLength(1);
     expect(reports[0]!.reporterId).toBe('00000000-0000-0000-0000-000000000001');
@@ -3052,31 +3148,32 @@ import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 describe('product-rating-recalc worker', () => {
-  it('averages visible reviews and ignores hidden/pending/deleted', async () => {
+  it('averages visible reviews and ignores hidden/deleted', async () => {
     const product = await makeProduct();
     const u1 = await makeUser({ email: `pr1-${Date.now()}@t.l` });
     const u2 = await makeUser({ email: `pr2-${Date.now()}@t.l` });
     const u3 = await makeUser({ email: `pr3-${Date.now()}@t.l` });
     const u4 = await makeUser({ email: `pr4-${Date.now()}@t.l` });
-    await makeReview({ userId: u1.id, productId: product.id, rating: 5 });
-    await makeReview({ userId: u2.id, productId: product.id, rating: 3 });
-    await makeReview({ userId: u3.id, productId: product.id, rating: 1, status: 'hidden' });
-    await makeReview({ userId: u4.id, productId: product.id, rating: 1, status: 'deleted' });
+    await makeReview({ userId: u1.id, productId: product.id, tasteRating: 5, valueRating: 3 });
+    await makeReview({ userId: u2.id, productId: product.id, tasteRating: 3, valueRating: 1 });
+    await makeReview({ userId: u3.id, productId: product.id, tasteRating: 1, valueRating: 1, status: 'hidden' });
+    await makeReview({ userId: u4.id, productId: product.id, tasteRating: 1, valueRating: 1, status: 'deleted' });
 
     await processProductRatingRecalc({ data: { productId: product.id } } as never);
 
     const after = await getPrisma().product.findUnique({ where: { id: product.id } });
-    expect(after?.ratingCount).toBe(2);
-    expect(Number(after?.ratingAvg)).toBeCloseTo(4, 2);
     expect(after?.reviewCount).toBe(2);
+    expect(Number(after?.tasteAvg)).toBeCloseTo(4, 2); // (5 + 3) / 2
+    expect(Number(after?.valueAvg)).toBeCloseTo(2, 2); // (3 + 1) / 2
   });
 
   it('handles a product with zero visible reviews', async () => {
     const product = await makeProduct();
     await processProductRatingRecalc({ data: { productId: product.id } } as never);
     const after = await getPrisma().product.findUnique({ where: { id: product.id } });
-    expect(after?.ratingCount).toBe(0);
-    expect(Number(after?.ratingAvg)).toBe(0);
+    expect(after?.reviewCount).toBe(0);
+    expect(Number(after?.tasteAvg)).toBe(0);
+    expect(Number(after?.valueAvg)).toBe(0);
   });
 });
 ```
@@ -3098,6 +3195,8 @@ git commit -m "test(api): product-rating-recalc denorm updates"
 ---
 
 ## Phase I — Mobile API client hooks
+
+_(Mobile track — deferred; see Execution order header.)_
 
 > **Assumption from M0c (per D2):** `apps/mobile/src/api/client.ts` exports an `apiClient` object with convenience methods `apiClient.get<T>(path)`, `.post<T>(path, body, opts?)`, `.patch<T>(path, body, opts?)`, `.delete<T>(path, opts?)`. The `path` argument is the route path WITHOUT the `/v1` prefix (the client prepends it). All methods return parsed JSON directly. Per D19, `apps/mobile/src/lib/idempotency.ts` is added in Task I0 below (M0c does not ship it) and exports `newIdempotencyKey()` returning a UUID via `expo-crypto`.
 
@@ -3298,8 +3397,8 @@ export interface ProductSummary {
   name: string;
   brand: string | null;
   imageUrl: string | null;
-  ratingAvg: number;
-  ratingCount: number;
+  tasteAvg: number;
+  valueAvg: number;
   reviewCount: number;
 }
 
@@ -3652,7 +3751,8 @@ const review: Review = {
   id: 'r-1',
   userId: 'u-1',
   productId: 'p-1',
-  rating: 4,
+  tasteRating: 4,
+  valueRating: 3,
   body: 'Solid pick.',
   upvoteCount: 3,
   downvoteCount: 1,
@@ -3738,7 +3838,8 @@ export function ReviewCard({ review, productId, onReport, onEdit, onDelete, isOw
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
         <Text style={{ color: t.colors.text, fontWeight: '600' }}>
-          {review.author?.firstName ?? 'User'} · {'★'.repeat(review.rating)}
+          {review.author?.firstName ?? 'User'} · Taste {'★'.repeat(review.tasteRating)} · Value{' '}
+          {'★'.repeat(review.valueRating)}
         </Text>
         {review.status !== 'visible' && (
           <Text style={{ color: t.colors.warning, fontSize: 12 }}>{review.status}</Text>
@@ -4183,7 +4284,8 @@ export default function BrowseScreen() {
           >
             <Text style={{ color: t.colors.text, fontWeight: '600' }}>{item.name}</Text>
             <Text style={{ color: t.colors.textMuted, fontSize: 12 }}>
-              {item.brand ?? 'Unknown brand'} · ★ {item.ratingAvg.toFixed(1)} ({item.reviewCount})
+              {item.brand ?? 'Unknown brand'} · Taste ★ {item.tasteAvg.toFixed(1)} · Value ★{' '}
+              {item.valueAvg.toFixed(1)} ({item.reviewCount})
             </Text>
           </Pressable>
         )}
@@ -4254,7 +4356,7 @@ export default function MyReviewsScreen() {
             }}
           >
             <Text style={{ color: t.colors.text, fontWeight: '600' }}>
-              {'★'.repeat(item.rating)} · {item.status}
+              Taste {'★'.repeat(item.tasteRating)} · Value {'★'.repeat(item.valueRating)} · {item.status}
             </Text>
             {item.body ? <Text style={{ color: t.colors.textMuted }}>{item.body}</Text> : null}
           </Pressable>
@@ -4344,8 +4446,8 @@ export default function ProductDetailScreen() {
                 {product.data.name}
               </Text>
               <Text style={{ color: t.colors.textMuted, marginTop: 2 }}>
-                {product.data.brand ?? 'Unknown brand'} · ★ {product.data.ratingAvg.toFixed(1)} (
-                {product.data.reviewCount})
+                {product.data.brand ?? 'Unknown brand'} · Taste ★ {product.data.tasteAvg.toFixed(1)} ·
+                Value ★ {product.data.valueAvg.toFixed(1)} ({product.data.reviewCount})
               </Text>
             </View>
             <Pressable
@@ -4448,7 +4550,8 @@ export default function ReviewFormScreen() {
     ? my.data?.pages.flatMap((p) => p.items).find((r) => r.id === reviewId)
     : my.data?.pages.flatMap((p) => p.items).find((r) => r.productId === productId);
 
-  const [rating, setRating] = useState<number>(existing?.rating ?? 0);
+  const [tasteRating, setTasteRating] = useState<number>(existing?.tasteRating ?? 0);
+  const [valueRating, setValueRating] = useState<number>(existing?.valueRating ?? 0);
   const [body, setBody] = useState<string>(existing?.body ?? '');
   const create = useCreateReview(productId);
   const update = useUpdateReview(productId);
@@ -4456,15 +4559,18 @@ export default function ReviewFormScreen() {
 
   async function submit() {
     setError(null);
-    if (rating < 1) {
-      setError('Please pick a rating.');
+    if (tasteRating < 1 || valueRating < 1) {
+      setError('Please rate both taste and value.');
       return;
     }
     try {
       if (existing) {
-        await update.mutateAsync({ id: existing.id, patch: { rating, body: body.trim() || undefined } });
+        await update.mutateAsync({
+          id: existing.id,
+          patch: { tasteRating, valueRating, body: body.trim() || undefined },
+        });
       } else {
-        await create.mutateAsync({ rating, body: body.trim() || undefined });
+        await create.mutateAsync({ tasteRating, valueRating, body: body.trim() || undefined });
       }
       router.back();
     } catch (e) {
@@ -4483,7 +4589,10 @@ export default function ReviewFormScreen() {
       <Text style={{ color: t.colors.text, fontSize: 22, fontWeight: '700' }}>
         {existing ? 'Edit your review' : 'Write a review'}
       </Text>
-      <StarRatingInput value={rating} onChange={setRating} disabled={pending} />
+      <Text style={{ color: t.colors.textMuted }}>Taste</Text>
+      <StarRatingInput value={tasteRating} onChange={setTasteRating} disabled={pending} />
+      <Text style={{ color: t.colors.textMuted }}>Value</Text>
+      <StarRatingInput value={valueRating} onChange={setValueRating} disabled={pending} />
       <TextInput
         placeholder="What did you think? (optional)"
         placeholderTextColor={t.colors.textMuted}
@@ -4660,7 +4769,7 @@ In one terminal: `pnpm --filter @pantry/api dev`. In another:
 curl -s -X POST http://localhost:4000/v1/products/<some-product-id>/reviews \
   -H "Authorization: Bearer <access-token-from-login>" \
   -H "Content-Type: application/json" \
-  -d '{"rating":5,"body":"good"}' | jq
+  -d '{"tasteRating":5,"valueRating":4,"body":"good"}' | jq
 ```
 Expected: HTTP 201 with the new review, `status: "visible"`.
 
@@ -4683,9 +4792,9 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 
 **1. Spec coverage**
 
-- §2.6 review CRUD with one per (user, product), editable, soft-delete, sort by Wilson — Tasks F1–F8, A1, A6.
+- §2.6 review CRUD with one per (user, product), editable, soft-delete, sort by Wilson — Tasks F1–F8, A1, A6. Reviews carry two required 1–5 criteria (`tasteRating`, `valueRating`); the "highest rating" sort ranks by `(taste_rating + value_rating) / 2`.
 - §2.7 voting one per (user, review), change/remove, denormalized counts + Wilson, debounced background job — Tasks F9, F10, E1, E2, H1.
-- §2.8 reporting (review/user/product), profanity auto-flag, `>3` reports auto-hide — Tasks G1, G2, E4, D3, H2.
+- §2.8 reporting (review/user/product), profanity auto-flag, `>3` reports auto-hide — Tasks G1, G2, E4, D3, H2. The auto-hide threshold is the spec literal `> 3`, hardcoded in `maybeAutoHide` (Task D3); no settings-service import (that module ships in M3).
 - §4.3 `score-recalc` debounced 30s + `moderation-flag` jobs — Tasks E1, E2, E4.
 - §5 reviews/review_votes/reports tables with required indexes — Task A1, verified A2.
 - §6.4 endpoints — Tasks F1–F10 (list, create, patch, delete, vote, unvote).
@@ -4701,6 +4810,7 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 **3. Type consistency**
 
 - API `Review.score` is `Decimal(7,6)` in Prisma → coerced via `Number(r.score)` in `toApiReview` → typed `number` in `reviewSchema` (range 0..1). Consistent end-to-end.
+- Two-criteria ratings are consistent end-to-end: Prisma `tasteRating`/`valueRating` (`@map("taste_rating")`/`@map("value_rating")`, NOT NULL `SmallInt` + 1–5 CHECK) → wire `tasteRating`/`valueRating` (1–5) in `reviewSchema` / `reviewCreateSchema` / `reviewPatchSchema` → exposed by `toApiReview` → consumed by the mobile form (two `StarRatingInput`s) and cards. The `product-rating-recalc` worker writes `products.taste_avg` / `value_avg` (`numeric(3,2)`) + `review_count`; the mobile `ProductSummary` reads `tasteAvg` / `valueAvg` / `reviewCount`. Vote-based Wilson `score` is unchanged by this; the "rating" sort uses the in-memory criteria average.
 - `value: -1 | 1` is the union everywhere: `reviewVoteSchema`, `castVote`, `useOptimisticVote`, `processScoreRecalc`. The optimistic hook's third option `0` is internal to the hook only and never leaves the mobile boundary.
 - `ReviewStatus` enum identical in Prisma (`visible | hidden | deleted`), Zod (`reviewStatusSchema`), and the mobile cards. Per D15, profanity auto-flag sets `status='hidden'` directly; there is no `pending` value.
 - `enqueueScoreRecalc` returns the literal union `'enqueued' | 'debounced'` (used by the debounce unit test).
@@ -4712,8 +4822,8 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 - `app.requireAuth` decorator → M0a (Task E8 of m0a plan).
 - `issueAccessToken`, `verifyAccessToken` → M0a Task E3.
 - `makeUser`, `getPrisma` test helpers → M0a Tasks D7, A5.
-- `Product` Prisma model + `products` table + `products/search` route → M1.
-- BullMQ `getQueueConnection()` and central `workers.ts` → M1.
+- `Product` Prisma model + `products` table + `products/search` route → M1. The `products.taste_avg` / `value_avg` (`numeric(3,2)`) + `review_count` columns the `product-rating-recalc` worker writes are provided by M1 (being updated in parallel); M2 consumes those names. The old single `rating_avg` / `rating_count` columns are no longer written.
+- BullMQ `getQueueConnection()` (raw `ConnectionOptions`) and the canonical worker runner `api/src/workers/runner.ts` (`startWorkers()` / `stopWorkers()`) → M1. M2 registers its workers there (Task E5), not in a separate `queues/workers.ts`.
 - Idempotency-Key plugin — M1 ships it; M2 opts in via `config: { idempotent: 'required' }` on the vote route (no manual header check).
 - Mobile `apiClient` (with `.get/.post/.patch/.delete`) and `useTheme` → M0c. Mobile `useSessionStore` → M0c (`apps/mobile/src/auth/sessionStore.ts`). Mobile `newIdempotencyKey` → M2 ships it (Task I0) since M0c does not.
 
@@ -4733,5 +4843,10 @@ M3 will:
 2. Add admin actions on the auto-hidden content: re-publish a `hidden` review, un-pend a product, ban users.
 3. Audit-log every resolution via `admin_audit_log`.
 4. Surface the auto-flagged reports authored by the M2 system user as a dedicated queue lane.
+5. Optionally introduce the settings service and an admin-configurable auto-hide threshold that defaults to 3, replacing the spec literal `> 3` that M2 hardcoded in `maybeAutoHide` (`api/src/services/reports/repository.ts`). M2 ships no settings import, so this is a clean additive change.
+
+Notes for M3:
+
+- M2's three background workers are registered in M1's canonical runner `api/src/workers/runner.ts` (not in any `api/src/queues/workers.ts`); M3 workers should register there too.
 
 When M3 ships, the moderation loop closes end-to-end.
