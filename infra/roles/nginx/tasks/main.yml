@@ -1,0 +1,104 @@
+---
+# Sequence-aware vhost rendering for the webroot ACME flow.
+#
+# certbot --webroot needs nginx serving HTTP on :80 BEFORE certs exist. We
+# handle that by stating cert files first; the templates render an HTTPS
+# server block only when the cert is already on disk.
+#
+# First apply: certs are absent → HTTP-only vhosts go up → certbot role
+#   obtains certs → re-run `ansible-playbook ... site.yml` (or run with
+#   `--tags nginx,certbot,tls`) to render the HTTPS block.
+# Subsequent applies: cert is present → full HTTP→HTTPS vhost renders.
+- name: Install nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Remove default vhost
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Ensure ACME webroot exists
+  ansible.builtin.file:
+    path: /var/www/letsencrypt
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Install shared rate-limit and proxy zones
+  ansible.builtin.copy:
+    dest: /etc/nginx/conf.d/pantry-shared.conf
+    mode: "0644"
+    owner: root
+    group: root
+    content: |
+      # Global rate-limit zones consumed by both vhosts.
+      limit_req_zone $binary_remote_addr zone=pantry_global:10m rate=30r/m;
+      limit_req_zone $binary_remote_addr zone=pantry_auth:10m rate=10r/m;
+      proxy_buffering on;
+      proxy_read_timeout 30s;
+  notify: Reload nginx
+
+- name: Install optional admin allowlist include (commented placeholder)
+  ansible.builtin.copy:
+    src: allowlist.conf
+    dest: /etc/nginx/snippets/pantry-admin-allowlist.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: Reload nginx
+
+- name: Stat API TLS cert
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ api_domain }}/fullchain.pem"
+  register: nginx_api_cert_stat
+
+- name: Stat admin TLS cert
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem"
+  register: nginx_admin_cert_stat
+
+- name: Install api vhost
+  ansible.builtin.template:
+    src: api.vhost.j2
+    dest: /etc/nginx/sites-available/api.conf
+    mode: "0644"
+    owner: root
+    group: root
+  vars:
+    api_tls_enabled: "{{ nginx_api_cert_stat.stat.exists }}"
+  notify: Reload nginx
+
+- name: Enable api vhost
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/api.conf
+    dest: /etc/nginx/sites-enabled/api.conf
+    state: link
+  notify: Reload nginx
+
+- name: Install admin vhost
+  ansible.builtin.template:
+    src: admin.vhost.j2
+    dest: /etc/nginx/sites-available/admin.conf
+    mode: "0644"
+    owner: root
+    group: root
+  vars:
+    admin_tls_enabled: "{{ nginx_admin_cert_stat.stat.exists }}"
+  notify: Reload nginx
+
+- name: Enable admin vhost
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/admin.conf
+    dest: /etc/nginx/sites-enabled/admin.conf
+    state: link
+  notify: Reload nginx
+
+- name: Ensure nginx running and enabled
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true

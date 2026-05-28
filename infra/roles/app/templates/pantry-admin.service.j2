@@ -1,0 +1,39 @@
+[Unit]
+Description=Pantry Admin (Next.js standalone)
+After=network.target pantry-api.service
+Wants=pantry-api.service
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+# Next.js standalone server lives at:
+#   apps/admin/.next/standalone/apps/admin/server.js
+# inside the release tree.
+WorkingDirectory={{ app_root }}/current/apps/admin/.next/standalone/apps/admin
+EnvironmentFile={{ secrets_dir }}/admin.env
+Environment=NODE_ENV=production
+Environment=PORT={{ admin_port }}
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/server.js
+# Restart-only (amendment 2): no ExecReload. SIGTERM + TimeoutStopSec=30 gives
+# the documented graceful drain window before SIGKILL.
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=30
+StandardOutput=append:/var/log/pantry/admin.log
+StandardError=append:/var/log/pantry/admin.log
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/pantry
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target

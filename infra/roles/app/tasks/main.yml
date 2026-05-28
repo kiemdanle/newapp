@@ -1,0 +1,95 @@
+---
+# App role: systemd units, sudoers, deploy SSH key, backup cron, and the
+# UptimeRobot operator reminder (amendment 5 — never automated).
+- name: Install pantry-api systemd unit
+  ansible.builtin.template:
+    src: pantry-api.service.j2
+    dest: /etc/systemd/system/pantry-api.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify:
+    - Reload systemd
+    - Restart pantry-api
+
+- name: Install pantry-admin systemd unit
+  ansible.builtin.template:
+    src: pantry-admin.service.j2
+    dest: /etc/systemd/system/pantry-admin.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify:
+    - Reload systemd
+    - Restart pantry-admin
+
+# Amendment 2: restart-only sudoers. The units are Type=simple with no
+# ExecReload, so `systemctl reload` would be a silent no-op. Deploys use
+# `systemctl restart` which sends SIGTERM and lets the process drain within
+# TimeoutStopSec=30. The fragment grants NOPASSWD on exactly six commands —
+# restart / start / stop for each unit, no wildcards, no broader sudo.
+- name: Install pantry sudoers fragment (validated with visudo)
+  ansible.builtin.template:
+    src: sudoers-pantry.j2
+    dest: /etc/sudoers.d/pantry
+    mode: "0440"
+    owner: root
+    group: root
+    validate: visudo -cf %s
+
+- name: Ensure app user .ssh directory exists for {{ app_user }}
+  ansible.builtin.file:
+    path: "/home/{{ app_user }}/.ssh"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0700"
+
+- name: Install GitHub Actions deploy authorized_keys
+  ansible.builtin.copy:
+    content: |
+      # Managed by Ansible. Used by .github/workflows/deploy.yml to ssh in as
+      # the {{ app_user }} user. Update group_vars/all.yml deploy_ssh_authorized_key
+      # then re-apply with --tags app to rotate.
+      {{ deploy_ssh_authorized_key }}
+    dest: "/home/{{ app_user }}/.ssh/authorized_keys"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0600"
+  when: deploy_ssh_authorized_key | length > 0
+
+- name: Ensure pantry-api enabled
+  ansible.builtin.service:
+    name: pantry-api
+    enabled: true
+
+- name: Ensure pantry-admin enabled
+  ansible.builtin.service:
+    name: pantry-admin
+    enabled: true
+
+- name: Install nightly backup cron at 03:17 UTC
+  ansible.builtin.cron:
+    name: pantry-backup
+    user: root
+    hour: "3"
+    minute: "17"
+    job: "{{ app_root }}/current/infra/scripts/backup.sh >> /var/log/pantry/backup.log 2>&1"
+
+# ---------------------------------------------------------------------------
+# UptimeRobot reminder (amendment 5)
+#
+# External uptime monitoring is intentionally NOT automated: it must keep
+# running when the host is down, so it cannot live on the host. The deploy
+# operator must — manually — create an UptimeRobot HTTP monitor on
+# https://{{ api_domain }}/health with a 5-minute interval and an email alert
+# contact, AFTER the first successful deploy.
+#
+# See infra/README.md → "Post-deploy: external uptime monitor".
+# ---------------------------------------------------------------------------
+- name: Remind operator to wire UptimeRobot /health monitor
+  ansible.builtin.debug:
+    msg: >-
+      MANUAL STEP after first deploy: create an UptimeRobot HTTP monitor on
+      https://{{ api_domain }}/health (5-minute interval, email alert contact).
+      See infra/README.md "Post-deploy: external uptime monitor".

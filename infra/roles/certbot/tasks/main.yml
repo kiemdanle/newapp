@@ -1,0 +1,59 @@
+---
+# Certbot uses the --webroot plugin (NOT --nginx). This means nginx must
+# already be serving HTTP on :80 with the /.well-known/acme-challenge/ alias
+# mapped to /var/www/letsencrypt before this role runs. The site.yml ordering
+# (nginx → certbot) ensures that.
+- name: Install certbot
+  ansible.builtin.apt:
+    name:
+      - certbot
+    state: present
+
+- name: Ensure ACME webroot exists
+  ansible.builtin.file:
+    path: /var/www/letsencrypt
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Obtain TLS cert for api domain
+  ansible.builtin.command: >-
+    certbot certonly --non-interactive --agree-tos
+    --email {{ letsencrypt_email }}
+    --webroot -w /var/www/letsencrypt
+    -d {{ api_domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ api_domain }}/fullchain.pem"
+
+- name: Obtain TLS cert for admin domain
+  ansible.builtin.command: >-
+    certbot certonly --non-interactive --agree-tos
+    --email {{ letsencrypt_email }}
+    --webroot -w /var/www/letsencrypt
+    -d {{ admin_domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem"
+
+- name: Install deploy hook to reload nginx on renew
+  ansible.builtin.copy:
+    src: reload-nginx.sh
+    dest: /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Install twice-daily renewal cron at 03:00 / 15:00 UTC
+  ansible.builtin.cron:
+    name: certbot-renew-pantry
+    user: root
+    hour: "3,15"
+    minute: "0"
+    job: "certbot renew --quiet --no-self-upgrade --deploy-hook /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh"
+
+- name: Ensure certbot.timer disabled (we use the cron above instead)
+  ansible.builtin.service:
+    name: certbot.timer
+    state: stopped
+    enabled: false
+  failed_when: false

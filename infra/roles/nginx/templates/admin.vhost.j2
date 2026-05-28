@@ -1,0 +1,85 @@
+# Admin vhost — proxies to the Next.js standalone server on 127.0.0.1:{{ admin_port }}.
+#
+# Rendered conditionally: if /etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem
+# is absent (first apply, certbot has not yet run), only the HTTP block is
+# emitted so certbot --webroot can solve the ACME challenge. After the cert
+# exists the full HTTPS block renders on the next apply.
+#
+# IP allowlist: an empty admin_allowlist defaults to allow-all (TLS still
+# required). Once you have a stable operator egress IP, add it to
+# group_vars/all.yml under admin_allowlist and re-apply.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ admin_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+{% if admin_tls_enabled | default(false) %}
+    location / { return 301 https://$host$request_uri; }
+{% else %}
+    location / { return 503; }
+{% endif %}
+}
+
+{% if admin_tls_enabled | default(false) %}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{ admin_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ admin_domain }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Frame-Options "DENY" always;
+
+    client_max_body_size 10m;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types
+        application/json
+        application/javascript
+        application/xml
+        text/css
+        text/plain
+        text/xml;
+
+    proxy_http_version 1.1;
+    proxy_read_timeout 30s;
+
+{% if admin_allowlist | default([]) | length > 0 %}
+    # IP allowlist — populated from group_vars `admin_allowlist`.
+{% for cidr in admin_allowlist %}
+    allow {{ cidr }};
+{% endfor %}
+    deny all;
+{% else %}
+    # admin_allowlist is empty — TLS-only access. See infra/README.md
+    # ("Locking down the admin vhost") to add CIDRs.
+{% endif %}
+
+    # Next.js standalone server: passes through /, /_next/*, /api/*, etc.
+    location / {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        # Cookies are SameSite=Lax + Secure; pass them unchanged.
+        proxy_pass http://127.0.0.1:{{ admin_port }};
+    }
+}
+{% endif %}

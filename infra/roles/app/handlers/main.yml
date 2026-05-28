@@ -1,0 +1,14 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart pantry-api
+  ansible.builtin.service:
+    name: pantry-api
+    state: restarted
+
+- name: Restart pantry-admin
+  ansible.builtin.service:
+    name: pantry-admin
+    state: restarted

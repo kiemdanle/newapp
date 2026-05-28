@@ -1,0 +1,9 @@
+# Managed by Ansible — do not edit. Validated with `visudo -cf` at install time.
+#
+# Restart-only (amendment 2). The pantry-{api,admin} units are Type=simple
+# with no ExecReload, so a `systemctl reload` is a silent no-op. Deploys
+# always use `systemctl restart`, which sends SIGTERM and lets the process
+# drain within TimeoutStopSec=30. We grant NOPASSWD on exactly six commands —
+# restart / start / stop for each unit — and nothing wider.
+{{ app_user }} ALL=(root) NOPASSWD: /bin/systemctl restart pantry-api.service, /bin/systemctl restart pantry-admin.service, /bin/systemctl start pantry-api.service, /bin/systemctl start pantry-admin.service, /bin/systemctl stop pantry-api.service, /bin/systemctl stop pantry-admin.service
+Defaults!/bin/systemctl !requiretty

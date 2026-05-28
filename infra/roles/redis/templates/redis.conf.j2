@@ -1,0 +1,25 @@
+# Managed by Ansible. Do not edit.
+bind 127.0.0.1 -::1
+protected-mode yes
+port 6379
+tcp-backlog 511
+timeout 0
+tcp-keepalive 300
+
+# Persistence: RDB only, no AOF
+save 900 1
+save 300 10
+save 60 10000
+appendonly no
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+dir /var/lib/redis
+
+# Memory
+maxmemory-policy allkeys-lru
+
+# Logging
+loglevel notice
+logfile /var/log/redis/redis-server.log
