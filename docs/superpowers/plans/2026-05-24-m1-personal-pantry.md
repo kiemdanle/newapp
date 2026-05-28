@@ -2317,7 +2317,7 @@ describe('idempotency plugin', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL**
+- [x] **Step 2: Run, verify FAIL**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
@@ -2405,7 +2405,7 @@ import { idempotencyPlugin } from './plugins/idempotency.js';
 await app.register(idempotencyPlugin);
 ```
 
-- [ ] **Step 5: Run, verify pass**
+- [x] **Step 5: Run, verify pass**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
