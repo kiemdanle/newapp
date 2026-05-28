@@ -1,0 +1,21 @@
+node_modules
+dist
+build
+.next
+.turbo
+.expo
+pnpm-lock.yaml
+api/prisma/migrations
+*.md
+
+# Out of scope for M0a (existing dirs not owned by this milestone)
+.claude/
+.superpowers/
+content/
+docs/
+apps/admin/
+plans/
+release-manifest.json
+
+# Workspace yaml uses 2-space tabs; prettier disagrees harmlessly
+pnpm-workspace.yaml
