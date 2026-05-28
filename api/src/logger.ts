@@ -11,10 +11,14 @@ const cfg = (() => {
 
 export const logger = pino({
   level: cfg?.logLevel ?? process.env.LOG_LEVEL ?? 'info',
-  transport:
-    cfg?.env === 'development'
-      ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:HH:MM:ss' } }
-      : undefined,
+  ...(cfg?.env === 'development'
+    ? {
+        transport: {
+          target: 'pino-pretty',
+          options: { colorize: true, translateTime: 'SYS:HH:MM:ss' },
+        },
+      }
+    : {}),
   redact: {
     paths: [
       'password',
