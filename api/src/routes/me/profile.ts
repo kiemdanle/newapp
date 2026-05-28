@@ -13,9 +13,7 @@ export async function profileRoute(app: FastifyInstance) {
         ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
         ...(input.country !== undefined ? { country: input.country } : {}),
         ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
-        ...(input.themePreference !== undefined
-          ? { themePreference: input.themePreference }
-          : {}),
+        ...(input.themePreference !== undefined ? { themePreference: input.themePreference } : {}),
       },
     });
     return toApiUser(user);

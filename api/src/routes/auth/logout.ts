@@ -1,9 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { refreshSchema } from '@pantry/shared';
-import {
-  findActiveSessionByToken,
-  revokeSession,
-} from '../../services/auth/sessions.js';
+import { findActiveSessionByToken, revokeSession } from '../../services/auth/sessions.js';
 
 export async function logoutRoute(app: FastifyInstance) {
   app.post('/logout', async (req, reply) => {

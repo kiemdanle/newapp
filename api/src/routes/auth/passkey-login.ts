@@ -1,16 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import {
-  passkeyLoginOptionsSchema,
-  passkeyLoginVerifySchema,
-  ERROR_CODES,
-} from '@pantry/shared';
+import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from '@pantry/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
-import {
-  buildAuthenticationOptions,
-  consumeAuthentication,
-} from '../../services/auth/passkey.js';
+import { buildAuthenticationOptions, consumeAuthentication } from '../../services/auth/passkey.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
 import { toApiUser } from '../../services/users/repository.js';
@@ -27,9 +20,7 @@ export async function passkeyLoginRoute(app: FastifyInstance) {
         const creds = await prisma.authCredential.findMany({
           where: { userId: user.id, type: 'passkey' },
         });
-        allowed = creds
-          .map((c) => c.providerUserId)
-          .filter((v): v is string => !!v);
+        allowed = creds.map((c) => c.providerUserId).filter((v): v is string => !!v);
         subject = `user:${user.id}`;
       }
     }
