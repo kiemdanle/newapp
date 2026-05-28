@@ -1,6 +1,48 @@
-.superpowers/
+# Deps
 node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+.next/
+.expo/
+.turbo/
+*.tsbuildinfo
+
+# Env
 .env
-.env.*
+.env.local
+.env.*.local
 !.env.example
+!.env.test.example
+
+# OS
 .DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+*.log
+pids/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+
+# Prisma
+api/prisma/migrations/dev/
+
+# Brainstorming artifacts
+.superpowers/
+
+# Mobile
+apps/mobile/ios/
+apps/mobile/android/
+
+# Misc
+*.pem
+.env.production

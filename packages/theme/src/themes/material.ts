@@ -1,0 +1,42 @@
+import type { Theme } from '../tokens.js';
+
+export const material: Theme = {
+  id: 'material',
+  name: 'Material You',
+  scheme: 'light',
+  colors: {
+    bg: '#f0e8ff',
+    bgElevated: '#ffffff',
+    bgGlass: '#ffffff',
+    border: '#e0e0e0',
+    text: '#1d1b20',
+    textMuted: '#65558f',
+    textInverse: '#ffffff',
+    primary: '#65558f',
+    primaryFg: '#ffffff',
+    accent: '#7c4dff',
+    success: '#1f5b1f',
+    warning: '#7a5b00',
+    danger: '#8b1538',
+    hero: '#65558f',
+    heroFg: '#ffffff',
+  },
+  radii: { none: 0, sm: 8, md: 16, lg: 24, xl: 28, pill: 999 },
+  shadows: {
+    none: 'none',
+    sm: '0 1px 2px rgba(0,0,0,0.05)',
+    md: '0 4px 12px rgba(101,85,143,0.18)',
+    lg: '0 6px 16px rgba(101,85,143,0.35)',
+    glow: '0 0 0 0 transparent',
+  },
+  typography: {
+    fontFamily: 'Roboto',
+    fontFamilyDisplay: 'Roboto',
+    weightRegular: 400,
+    weightMedium: 500,
+    weightBold: 700,
+    letterSpacingTight: -0.2,
+  },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
+  animation: { fast: 120, base: 200, slow: 300, themeSwitch: 200 },
+};

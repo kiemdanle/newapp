@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum ThemePreference {
+  aurora
+  bento
+  clay
+  material
+}
+
+enum AuthCredentialType {
+  password
+  google
+  apple
+  passkey
+}
+
+model User {
+  id              String          @id @default(uuid()) @db.Uuid
+  email           String          @unique
+  emailVerifiedAt DateTime?
+  passwordHash    String?
+  firstName       String
+  lastName        String
+  country         String?         @db.Char(2)
+  avatarUrl       String?
+  role            UserRole        @default(user)
+  status          UserStatus      @default(active)
+  themePreference ThemePreference @default(aurora)
+  totpSecret      String?
+  totpEnabledAt   DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  lastSeenAt      DateTime?
+
+  credentials       AuthCredential[]
+  sessions          Session[]
+  pushTokens        PushToken[]
+  emailTokens       EmailToken[]
+  passwordResets    PasswordReset[]
+  totpChallenges    TotpChallenge[]
+  totpRecoveryCodes TotpRecoveryCode[]
+  auditLogs         AdminAuditLog[]    @relation("AuditAdmin")
+
+  @@map("users")
+}
+
+model AuthCredential {
+  id             String             @id @default(uuid()) @db.Uuid
+  userId         String             @db.Uuid
+  type           AuthCredentialType
+  providerUserId String?
+  publicKey      Bytes?
+  counter        BigInt?            @default(0)
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+  lastUsedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([type, providerUserId])
+  @@index([userId])
+  @@map("auth_credentials")
+}
+
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String    @unique
+  deviceInfo       Json?
+  ip               String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model PushToken {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @db.Uuid
+  expoPushToken String    @unique
+  platform      String
+  deviceInfo    Json?
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_tokens")
+}
+
+/// Single-use email verification or login token.
+model EmailToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  purpose   String // 'verify_email'
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_tokens")
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_resets")
+}
+
+/// Short-lived intermediate token issued after a password login when admin TOTP is
+/// involved. `purpose` distinguishes a second-factor challenge for an admin who has
+/// TOTP enabled ('login') from a forced-enrollment token for an admin who must still
+/// set TOTP up ('enroll').
+model TotpChallenge {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  purpose    String    @default("login") // 'login' | 'enroll'
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("totp_challenges")
+}
+
+/// One hashed TOTP recovery code per row. Each code is single-use: `usedAt` is
+/// stamped when redeemed so the same code can never grant a second session.
+model TotpRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("totp_recovery_codes")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  adminId    String   @db.Uuid
+  action     String
+  targetType String
+  targetId   String
+  diff       Json?
+  requestId  String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  admin User @relation("AuditAdmin", fields: [adminId], references: [id])
+
+  @@index([adminId])
+  @@index([targetType, targetId])
+  @@map("admin_audit_log")
+}
