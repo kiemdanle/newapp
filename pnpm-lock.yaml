@@ -68,6 +68,9 @@ importers:
       nodemailer:
         specifier: ^6.9.0
         version: 6.10.1
+      obscenity:
+        specifier: ^0.4.0
+        version: 0.4.6
       opossum:
         specifier: ^8.1.0
         version: 8.5.0
@@ -2668,6 +2671,10 @@ packages:
 
   obliterator@2.0.5:
     resolution: {integrity: sha512-42CPE9AhahZRsMNslczq0ctAEtqk8Eka26QofnqC346BZdHDySk3LWka23LI7ULIw11NmltpiLagIq8gBozxTw==}
+
+  obscenity@0.4.6:
+    resolution: {integrity: sha512-pHk7kNN7j3L3zGhhGnwxjvXIGsPpLrcZl2r58fqWh/V/rH6b/dafscj2sMmAY+A/9/wPsocLmimgGk2DKeKsFQ==}
+    engines: {node: '>=18.0.0'}
 
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
@@ -5886,6 +5893,8 @@ snapshots:
       es-object-atoms: 1.1.2
 
   obliterator@2.0.5: {}
+
+  obscenity@0.4.6: {}
 
   on-exit-leak-free@2.1.2: {}
 
