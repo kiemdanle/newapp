@@ -19,9 +19,7 @@ export async function createSession(
     refreshTokenHash: issued.hash,
     expiresAt: issued.expiresAt,
     ip: ctx.ip ?? null,
-    deviceInfo: ctx.deviceInfo
-      ? (ctx.deviceInfo as Prisma.InputJsonValue)
-      : Prisma.JsonNull,
+    deviceInfo: ctx.deviceInfo ? (ctx.deviceInfo as Prisma.InputJsonValue) : Prisma.JsonNull,
   };
   const session = await prisma.session.create({ data });
   return { session, refreshToken: issued.token };
@@ -50,9 +48,7 @@ export async function rotateSession(
     expiresAt: issued.expiresAt,
     ip: current.ip,
     deviceInfo:
-      current.deviceInfo === null
-        ? Prisma.JsonNull
-        : (current.deviceInfo as Prisma.InputJsonValue),
+      current.deviceInfo === null ? Prisma.JsonNull : (current.deviceInfo as Prisma.InputJsonValue),
   };
   const [, session] = await prisma.$transaction([
     prisma.session.update({

@@ -7,12 +7,7 @@ export class AppError extends Error {
   title: string;
   detail?: string | undefined;
 
-  constructor(opts: {
-    status: number;
-    code: ErrorCode | string;
-    title: string;
-    detail?: string;
-  }) {
+  constructor(opts: { status: number; code: ErrorCode | string; title: string; detail?: string }) {
     super(opts.title);
     this.status = opts.status;
     this.code = opts.code;
