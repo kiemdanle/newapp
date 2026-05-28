@@ -25,9 +25,13 @@ const tables = [
   'totp_challenges',
   'password_resets',
   'email_tokens',
+  'push_logs',
   'push_tokens',
   'sessions',
   'auth_credentials',
+  'product_edits',
+  'records',
+  'products',
   'users',
 ];
 

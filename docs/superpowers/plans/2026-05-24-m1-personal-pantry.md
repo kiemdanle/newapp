@@ -704,7 +704,7 @@ pnpm --filter @pantry/api exec prisma generate
 ```
 Expected: `Generated Prisma Client` output.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/prisma/schema.prisma
@@ -718,14 +718,14 @@ git commit -m "feat(api): add products, product_edits, records, push_logs to Pri
 **Files:**
 - Create: `api/prisma/migrations/<timestamp>_m1_pantry/migration.sql`
 
-- [ ] **Step 1: Create the migration files via Prisma**
+- [x] **Step 1: Create the migration files via Prisma**
 
 ```bash
 pnpm --filter @pantry/api exec prisma migrate dev --name m1_pantry --create-only
 ```
 Expected: a new directory under `api/prisma/migrations/` ending in `_m1_pantry/`.
 
-- [ ] **Step 2: Append the `pg_trgm` extension + index + `PushPlatform` cast to the generated `migration.sql`**
+- [x] **Step 2: Append the `pg_trgm` extension + index + `PushPlatform` cast to the generated `migration.sql`**
 
 At the bottom of the new `migration.sql`, append:
 
@@ -748,28 +748,28 @@ ALTER TABLE push_tokens
 
 > If `prisma migrate dev --create-only` already emitted its own `ALTER TABLE push_tokens ALTER COLUMN platform TYPE "PushPlatform"` (without the `USING` clause), replace that line with the version above — Postgres rejects the no-USING variant when converting from `text`.
 
-- [ ] **Step 3: Apply the migration**
+- [x] **Step 3: Apply the migration**
 
 ```bash
 pnpm --filter @pantry/api exec prisma migrate dev
 ```
 Expected: `Database is now in sync with your schema.`
 
-- [ ] **Step 4: Verify tables in psql**
+- [x] **Step 4: Verify tables in psql**
 
 ```bash
 psql "$(grep DATABASE_URL api/.env | cut -d= -f2-)" -c "\dt"
 ```
 Expected output includes: `products`, `product_edits`, `records`, `push_logs`, `push_tokens`.
 
-- [ ] **Step 5: Verify the trigram index exists**
+- [x] **Step 5: Verify the trigram index exists**
 
 ```bash
 psql "$(grep DATABASE_URL api/.env | cut -d= -f2-)" -c "\di products_name_brand_trgm"
 ```
 Expected: one row, `gin` index.
 
-- [ ] **Step 6: Update test setup to truncate new tables**
+- [x] **Step 6: Update test setup to truncate new tables**
 
 In `api/tests/helpers/setup.ts`, replace the `tables` array (children first, parents last):
 
@@ -790,14 +790,14 @@ const tables = [
 ];
 ```
 
-- [ ] **Step 7: Run the existing test suite to confirm nothing broke**
+- [x] **Step 7: Run the existing test suite to confirm nothing broke**
 
 ```bash
 pnpm --filter @pantry/api test
 ```
 Expected: all M0a/M0b tests still pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/prisma/migrations api/tests/helpers/setup.ts
