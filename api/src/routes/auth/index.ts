@@ -13,6 +13,8 @@ import { forgotPasswordRoute } from './forgot-password.js';
 import { resetPasswordRoute } from './reset-password.js';
 import { oauthGoogleRoute } from './oauth-google.js';
 import { oauthAppleRoute } from './oauth-apple.js';
+import { passkeyRegisterRoute } from './passkey-register.js';
+import { passkeyLoginRoute } from './passkey-login.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const cfg = getConfig();
@@ -37,4 +39,6 @@ export async function authRoutes(app: FastifyInstance) {
   await app.register(resetPasswordRoute);
   await app.register(oauthGoogleRoute);
   await app.register(oauthAppleRoute);
+  await app.register(passkeyRegisterRoute);
+  await app.register(passkeyLoginRoute);
 }
