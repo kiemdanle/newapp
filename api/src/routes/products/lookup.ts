@@ -13,8 +13,8 @@ export async function lookupRoute(app: FastifyInstance) {
   app.post('/lookup', { onRequest: app.requireAuth }, async (req, reply) => {
     const input = productLookupRequestSchema.parse(req.body);
     const product = await lookupProduct({
-      barcode: input.barcode,
-      qr: input.qr,
+      ...(input.barcode !== undefined ? { barcode: input.barcode } : {}),
+      ...(input.qr !== undefined ? { qr: input.qr } : {}),
     });
     if (!product) {
       // Synchronous path missed. For barcode misses, enqueue a slow background

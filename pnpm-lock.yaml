@@ -93,6 +93,9 @@ importers:
       '@types/nodemailer':
         specifier: ^6.4.0
         version: 6.4.23
+      '@types/opossum':
+        specifier: ^8.1.9
+        version: 8.1.9
       '@types/qrcode':
         specifier: ^1.5.0
         version: 1.5.6
@@ -1193,6 +1196,9 @@ packages:
 
   '@types/nodemailer@6.4.23':
     resolution: {integrity: sha512-aFV3/NsYFLSx9mbb5gtirBSXJnAlrusoKNuPbxsASWc7vrKLmIrTQRpdcxNcSFL3VW2A2XpeLEavwb2qMi6nlQ==}
+
+  '@types/opossum@8.1.9':
+    resolution: {integrity: sha512-Jm/tYxuJFefiwRYs+/EOsUP3ktk0c8siMgAHPLnA4PXF4wKghzcjqf88dY+Xii5jId5Txw4JV0FMKTpjbd7KJA==}
 
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
@@ -4149,6 +4155,10 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/nodemailer@6.4.23':
+    dependencies:
+      '@types/node': 22.19.19
+
+  '@types/opossum@8.1.9':
     dependencies:
       '@types/node': 22.19.19
 
