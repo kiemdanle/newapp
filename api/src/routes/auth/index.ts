@@ -15,6 +15,7 @@ import { oauthGoogleRoute } from './oauth-google.js';
 import { oauthAppleRoute } from './oauth-apple.js';
 import { passkeyRegisterRoute } from './passkey-register.js';
 import { passkeyLoginRoute } from './passkey-login.js';
+import { totpRoutes } from './totp.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const cfg = getConfig();
@@ -41,4 +42,5 @@ export async function authRoutes(app: FastifyInstance) {
   await app.register(oauthAppleRoute);
   await app.register(passkeyRegisterRoute);
   await app.register(passkeyLoginRoute);
+  await app.register(totpRoutes);
 }
