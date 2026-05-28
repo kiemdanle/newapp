@@ -2,6 +2,9 @@ import type { Worker } from 'bullmq';
 import { startScheduleWorker } from './notification-schedule.js';
 import { startSendWorker } from './notification-send.js';
 import { startProductLookupWorker } from './product-lookup.js';
+import { startScoreRecalcWorker } from '../queues/jobs/score-recalc.js';
+import { startModerationFlagWorker } from '../queues/jobs/moderation-flag.js';
+import { startProductRatingWorker } from '../queues/jobs/product-rating-recalc.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
 
@@ -14,7 +17,14 @@ export function startWorkers(): Worker[] {
     logger.info('workers disabled in test env');
     return [];
   }
-  _workers = [startScheduleWorker(), startSendWorker(), startProductLookupWorker()];
+  _workers = [
+    startScheduleWorker(),
+    startSendWorker(),
+    startProductLookupWorker(),
+    startScoreRecalcWorker(),
+    startModerationFlagWorker(),
+    startProductRatingWorker(),
+  ];
   logger.info({ count: _workers.length }, 'workers started');
   return _workers;
 }
