@@ -1,0 +1,114 @@
+# API vhost — proxies HTTPS public traffic to 127.0.0.1:{{ api_port }}.
+#
+# Locks public surface to /, /v1/*, and the ACME challenge directory; anything
+# else returns 404. Uses HTTP/2, gzip on JSON+text, 30s read timeout, and the
+# shared rate-limit zones from /etc/nginx/conf.d/pantry-shared.conf.
+#
+# api_tls_enabled is true once /etc/letsencrypt/live/{{ api_domain }}/fullchain.pem
+# exists. On the very first apply (no cert yet) the role renders the HTTP-only
+# block so certbot --webroot can solve the challenge; the next apply re-renders
+# this template with the full HTTPS server block.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ api_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+{% if api_tls_enabled | default(false) %}
+    location / { return 301 https://$host$request_uri; }
+{% else %}
+    # No TLS cert yet; serve a 503 placeholder while certbot bootstraps.
+    location / { return 503; }
+{% endif %}
+}
+
+{% if api_tls_enabled | default(false) %}
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name {{ api_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ api_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ api_domain }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+
+    client_max_body_size 10m;
+
+    gzip on;
+    gzip_comp_level 5;
+    gzip_min_length 256;
+    gzip_proxied any;
+    gzip_vary on;
+    gzip_types
+        application/json
+        application/javascript
+        application/xml
+        text/css
+        text/plain
+        text/xml;
+
+    proxy_http_version 1.1;
+    proxy_read_timeout 30s;
+
+    # Auth surface: tighter rate limit
+    location /v1/auth/ {
+        limit_req zone=pantry_auth burst=5 nodelay;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:{{ api_port }};
+    }
+
+    # Health endpoints — exempt from rate limit so UptimeRobot / readiness
+    # probes never trip 503s during a burst.
+    location = /health {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:{{ api_port }};
+    }
+    location = /health/ready {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:{{ api_port }};
+    }
+
+    # Public versioned API surface
+    location /v1/ {
+        limit_req zone=pantry_global burst=20 nodelay;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:{{ api_port }};
+    }
+
+    # Root explicitly allowed — proxies to upstream root response (informational).
+    location = / {
+        limit_req zone=pantry_global burst=20 nodelay;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_pass http://127.0.0.1:{{ api_port }};
+    }
+
+    # Everything else: 404 (no leakage of admin / metrics / debug paths).
+    location / { return 404; }
+}
+{% endif %}
