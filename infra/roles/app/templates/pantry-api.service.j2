@@ -1,0 +1,35 @@
+[Unit]
+Description=Pantry API (Fastify)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_root }}/current/api
+EnvironmentFile={{ secrets_dir }}/api.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node {{ app_root }}/current/api/dist/server.js
+# Restart-only (amendment 2): no ExecReload. `systemctl restart` sends SIGTERM
+# and the process drains in-flight requests inside TimeoutStopSec=30 before
+# SIGKILL. `systemctl reload` would be a silent no-op for Type=simple.
+Restart=on-failure
+RestartSec=5s
+KillSignal=SIGTERM
+TimeoutStopSec=30
+StandardOutput=append:/var/log/pantry/api.log
+StandardError=append:/var/log/pantry/api.log
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/pantry
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+
+[Install]
+WantedBy=multi-user.target
