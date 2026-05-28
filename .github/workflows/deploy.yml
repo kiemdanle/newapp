@@ -1,0 +1,172 @@
+---
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Serialise deploys: never run two at once on the same host. cancel-in-progress
+# is intentionally false — preempting an in-flight deploy mid-rsync would leave
+# a half-written release tree.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pantry
+          POSTGRES_PASSWORD: pantry
+          POSTGRES_DB: pantry_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pantry -d pantry_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://pantry:pantry@localhost:5432/pantry_test
+      REDIS_URL: redis://localhost:6379/15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Seed test env
+        run: cp api/.env.test.example api/.env.test
+      - name: Generate prisma client
+        run: pnpm --filter @pantry/api exec prisma generate
+      - name: Apply migrations
+        run: pnpm --filter @pantry/api exec prisma migrate deploy
+      - name: Typecheck
+        run: pnpm -r typecheck
+      - name: Unit + integration tests
+        run: pnpm -r test
+
+  build:
+    name: build
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Generate prisma client
+        run: pnpm --filter @pantry/api exec prisma generate
+      - name: Build
+        run: pnpm -r build
+      - name: Package release tarball
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          tar \
+            --exclude='node_modules' \
+            --exclude='.next/cache' \
+            --exclude='.turbo' \
+            --exclude='.git' \
+            --exclude='**/tests' \
+            --exclude='**/playwright-report' \
+            -czf "out/pantry-${{ github.sha }}.tar.gz" \
+            api apps/admin packages infra \
+            package.json pnpm-lock.yaml pnpm-workspace.yaml \
+            turbo.json tsconfig.base.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pantry-release
+          path: out/pantry-${{ github.sha }}.tar.gz
+          retention-days: 14
+
+  deploy:
+    name: deploy
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: pantry-release
+          path: out
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload release tarball
+        env:
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+        run: |
+          set -euo pipefail
+          scp -i ~/.ssh/id_ed25519 \
+            "out/pantry-${{ github.sha }}.tar.gz" \
+            "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}:/tmp/"
+
+      - name: Extract on host and run deploy-remote.sh
+        env:
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          API_DOMAIN: ${{ secrets.API_DOMAIN }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_ed25519 "${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}" \
+            SHA="$SHA" API_DOMAIN="$API_DOMAIN" bash -s <<'REMOTE'
+          set -euo pipefail
+          # Order is load-bearing — see infra/scripts/deploy-remote.sh:
+          #   install (with dev) → migrate → prune → ln -sfn → restart → smoke
+          RELEASE_DIR="/opt/pantry/releases/$SHA"
+          mkdir -p "$RELEASE_DIR"
+          tar -xzf "/tmp/pantry-$SHA.tar.gz" -C "$RELEASE_DIR"
+          rm -f "/tmp/pantry-$SHA.tar.gz"
+          chmod +x "$RELEASE_DIR/infra/scripts/deploy-remote.sh"
+          "$RELEASE_DIR/infra/scripts/deploy-remote.sh" "$SHA" "$API_DOMAIN"
+          REMOTE
+
+      - name: Tag deploy
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release create "deploy-${{ github.sha }}" \
+            --target "${{ github.sha }}" \
+            --title "deploy ${{ github.sha }}" \
+            --notes "Deploy of ${{ github.sha }} succeeded." \
+            --prerelease || echo "release tag failed (non-fatal)"
