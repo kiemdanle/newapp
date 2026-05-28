@@ -20,6 +20,9 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
 
 // Truncate all tables in dependency order before each test
 const tables = [
+  'reports',
+  'review_votes',
+  'reviews',
   'admin_audit_log',
   'totp_recovery_codes',
   'totp_challenges',
@@ -51,6 +54,21 @@ beforeEach(async () => {
   );
   const redis = getRedis();
   await redis.flushdb();
+
+  // Re-seed system user (always present in production via prisma db seed)
+  await prisma.user.upsert({
+    where: { id: '00000000-0000-0000-0000-000000000001' },
+    update: {},
+    create: {
+      id: '00000000-0000-0000-0000-000000000001',
+      email: 'system@pantry.local',
+      firstName: 'System',
+      lastName: 'Bot',
+      emailVerifiedAt: new Date(),
+      role: 'user',
+      status: 'active',
+    },
+  });
 });
 
 afterAll(async () => {
