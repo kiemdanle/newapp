@@ -1,0 +1,42 @@
+import type { Theme } from '../tokens.js';
+
+export const bento: Theme = {
+  id: 'bento',
+  name: 'Bento Grid',
+  scheme: 'light',
+  colors: {
+    bg: '#f4f4f5',
+    bgElevated: '#ffffff',
+    bgGlass: '#ffffff',
+    border: '#e4e4e7',
+    text: '#0a0a0a',
+    textMuted: '#71717a',
+    textInverse: '#fafafa',
+    primary: '#0a0a0a',
+    primaryFg: '#ffffff',
+    accent: '#fbbf24',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#fb7185',
+    hero: '#0a0a0a',
+    heroFg: '#ffffff',
+  },
+  radii: { none: 0, sm: 8, md: 14, lg: 18, xl: 22, pill: 999 },
+  shadows: {
+    none: 'none',
+    sm: '0 1px 2px rgba(0,0,0,0.04)',
+    md: '0 2px 8px rgba(0,0,0,0.06)',
+    lg: '0 12px 32px -16px rgba(0,0,0,0.18)',
+    glow: '0 0 0 0 transparent',
+  },
+  typography: {
+    fontFamily: 'System',
+    fontFamilyDisplay: 'System',
+    weightRegular: 400,
+    weightMedium: 500,
+    weightBold: 700,
+    letterSpacingTight: -0.6,
+  },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 },
+  animation: { fast: 120, base: 200, slow: 300, themeSwitch: 200 },
+};

@@ -1,0 +1,42 @@
+import type { Theme } from '../tokens.js';
+
+export const clay: Theme = {
+  id: 'clay',
+  name: 'Soft Clay',
+  scheme: 'light',
+  colors: {
+    bg: '#fff7f0',
+    bgElevated: '#ffffff',
+    bgGlass: '#ffffff',
+    border: '#fde0c2',
+    text: '#5b3a1f',
+    textMuted: '#a47148',
+    textInverse: '#fff7f0',
+    primary: '#ea580c',
+    primaryFg: '#ffffff',
+    accent: '#fbbf24',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#dc2626',
+    hero: 'linear-gradient(145deg,#fed7aa,#fdba74)',
+    heroFg: '#5b3a1f',
+  },
+  radii: { none: 0, sm: 10, md: 16, lg: 22, xl: 28, pill: 999 },
+  shadows: {
+    none: 'none',
+    sm: '0 2px 6px rgba(180,83,9,0.06)',
+    md: '6px 6px 16px rgba(180,83,9,0.1)',
+    lg: '8px 8px 24px rgba(180,83,9,0.15)',
+    glow: '0 0 0 0 transparent',
+  },
+  typography: {
+    fontFamily: 'System',
+    fontFamilyDisplay: 'System',
+    weightRegular: 500,
+    weightMedium: 600,
+    weightBold: 800,
+    letterSpacingTight: -0.5,
+  },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 18, xl: 24, xxl: 32 },
+  animation: { fast: 150, base: 250, slow: 350, themeSwitch: 200 },
+};

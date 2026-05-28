@@ -1,0 +1,42 @@
+import type { Theme } from '../tokens.js';
+
+export const aurora: Theme = {
+  id: 'aurora',
+  name: 'Aurora Glass',
+  scheme: 'dark',
+  colors: {
+    bg: '#0b0a17',
+    bgElevated: 'rgba(255,255,255,0.06)',
+    bgGlass: 'rgba(255,255,255,0.08)',
+    border: 'rgba(255,255,255,0.12)',
+    text: '#fafafa',
+    textMuted: 'rgba(250,250,250,0.7)',
+    textInverse: '#0b0a17',
+    primary: '#a855f7',
+    primaryFg: '#ffffff',
+    accent: '#a5f3fc',
+    success: '#86efac',
+    warning: '#fbbf24',
+    danger: '#fb7185',
+    hero: 'rgba(255,255,255,0.08)',
+    heroFg: '#ffffff',
+  },
+  radii: { none: 0, sm: 8, md: 14, lg: 20, xl: 28, pill: 999 },
+  shadows: {
+    none: 'none',
+    sm: '0 2px 8px rgba(0,0,0,0.25)',
+    md: '0 8px 24px -8px rgba(124,58,237,0.45)',
+    lg: '0 24px 56px -20px rgba(124,58,237,0.6)',
+    glow: '0 0 32px rgba(168,85,247,0.45)',
+  },
+  typography: {
+    fontFamily: 'System',
+    fontFamilyDisplay: 'System',
+    weightRegular: 400,
+    weightMedium: 500,
+    weightBold: 700,
+    letterSpacingTight: -0.5,
+  },
+  spacing: { xs: 4, sm: 8, md: 12, lg: 18, xl: 24, xxl: 32 },
+  animation: { fast: 120, base: 220, slow: 320, themeSwitch: 200 },
+};
