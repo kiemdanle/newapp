@@ -1,6 +1,8 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import { randomUUID } from 'node:crypto';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { getConfig } from './config.js';
 import { registerCors } from './plugins/cors.js';
 import { registerRateLimit } from './plugins/rate-limit.js';
@@ -61,7 +63,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   return app;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Symlink-resilient entrypoint guard: under a symlinked deploy
+// (/opt/pantry/current → /opt/pantry/releases/<sha>), Node resolves
+// import.meta.url to the real path while process.argv[1] keeps the
+// symlinked path, so a strict string comparison never matches.
+// Compare resolved real paths instead.
+const entrypointReal = realpathSync(process.argv[1] ?? '');
+const moduleReal = realpathSync(fileURLToPath(import.meta.url));
+if (entrypointReal === moduleReal) {
   const cfg = getConfig();
   const app = await buildServer();
   await app.listen({ port: cfg.port, host: cfg.host });
