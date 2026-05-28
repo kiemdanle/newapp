@@ -26,9 +26,8 @@ server {
 
 {% if admin_tls_enabled | default(false) %}
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {{ admin_domain }};
 
     ssl_certificate     /etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem;
