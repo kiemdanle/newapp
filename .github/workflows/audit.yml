@@ -1,0 +1,47 @@
+name: audit
+
+on:
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run pnpm audit
+        id: audit
+        run: |
+          set +e
+          pnpm audit --json > audit.json
+          STATUS=$?
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Open issue on vulnerabilities
+        if: steps.audit.outputs.status != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = '```\n' + fs.readFileSync('audit.json', 'utf8').slice(0, 60000) + '\n```';
+            const title = `pnpm audit found vulnerabilities (${new Date().toISOString().slice(0,10)})`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ['security', 'deps'],
+              body,
+            });
