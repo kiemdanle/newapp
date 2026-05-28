@@ -1023,7 +1023,7 @@ git commit -m "feat(api): profanity filter wrapping obscenity with unit tests"
 **Files:**
 - Create: `api/src/services/reviews/system-user.ts`
 
-- [ ] **Step 1: Write `api/src/services/reviews/system-user.ts`**
+- [x] **Step 1: Write `api/src/services/reviews/system-user.ts`**
 
 ```ts
 /**
@@ -1033,7 +1033,7 @@ git commit -m "feat(api): profanity filter wrapping obscenity with unit tests"
 export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add api/src/services/reviews/system-user.ts
@@ -1047,7 +1047,7 @@ git commit -m "feat(api): expose system user id constant"
 **Files:**
 - Create: `api/src/services/reviews/repository.ts`
 
-- [ ] **Step 1: Write `api/src/services/reviews/repository.ts`**
+- [x] **Step 1: Write `api/src/services/reviews/repository.ts`**
 
 ```ts
 import type { Review, User } from '@prisma/client';
@@ -1087,14 +1087,14 @@ export function toApiReview(
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/services/reviews/repository.ts
@@ -1108,7 +1108,7 @@ git commit -m "feat(api): review repository helpers (toApiReview)"
 **Files:**
 - Create: `api/src/services/reports/repository.ts`
 
-- [ ] **Step 1: Write `api/src/services/reports/repository.ts`**
+- [x] **Step 1: Write `api/src/services/reports/repository.ts`**
 
 ```ts
 import type { Report } from '@prisma/client';
@@ -1172,14 +1172,14 @@ export async function maybeAutoHide(
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/services/reports/repository.ts
@@ -1199,7 +1199,7 @@ git commit -m "feat(api): report repository with auto-hide threshold helper"
 
 > **Decision D10:** M1 ships a registry array `getAllQueues()` inside `api/src/queues/index.ts`. M2's three new queues must be appended to it so M1's queue dashboard / graceful-shutdown / metrics helpers see them automatically. This task is a small follow-up step at the very end of Phase E (after Tasks E1, E3, E4 each define their queue factory) — but it's listed here so reviewers see the dependency up front. Each of Tasks E1/E3/E4 includes a reminder step that this registry must be updated once the worker module is in place.
 
-- [ ] **Step 1: Open `api/src/queues/index.ts` and append imports**
+- [x] **Step 1: Open `api/src/queues/index.ts` and append imports**
 
 ```ts
 import { SCORE_RECALC_QUEUE, getScoreRecalcQueue } from './jobs/score-recalc.js';
@@ -1207,7 +1207,7 @@ import { MODERATION_FLAG_QUEUE, getModerationFlagQueue } from './jobs/moderation
 import { PRODUCT_RATING_RECALC_QUEUE, getProductRatingQueue } from './jobs/product-rating-recalc.js';
 ```
 
-- [ ] **Step 2: Append to the `getAllQueues()` registry array**
+- [x] **Step 2: Append to the `getAllQueues()` registry array**
 
 Find the array returned by `getAllQueues()` (or the module-level `QUEUES` const it iterates) and append:
 
@@ -1217,14 +1217,14 @@ Find the array returned by `getAllQueues()` (or the module-level `QUEUES` const 
   { name: PRODUCT_RATING_RECALC_QUEUE, queue: getProductRatingQueue() },
 ```
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add api/src/queues/index.ts
@@ -1238,7 +1238,7 @@ git commit -m "feat(api): register M2 queues in getAllQueues() registry"
 **Files:**
 - Create: `api/src/queues/jobs/score-recalc.ts`
 
-- [ ] **Step 1: Write the module**
+- [x] **Step 1: Write the module**
 
 ```ts
 // api/src/queues/jobs/score-recalc.ts
@@ -1315,14 +1315,14 @@ export function startScoreRecalcWorker(): Worker<ScoreRecalcData> {
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/queues/jobs/score-recalc.ts
@@ -1336,7 +1336,7 @@ git commit -m "feat(api): score-recalc job with 30s debounce per review"
 **Files:**
 - Create: `api/tests/unit/score-recalc-debounce.test.ts`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```ts
 // api/tests/unit/score-recalc-debounce.test.ts
@@ -1378,14 +1378,14 @@ describe('enqueueScoreRecalc debounce', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify PASS**
+- [x] **Step 2: Run, verify PASS**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/unit/score-recalc-debounce.test.ts
 ```
 Expected: 3 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/tests/unit/score-recalc-debounce.test.ts
@@ -1399,7 +1399,7 @@ git commit -m "test(api): score-recalc debounce via Redis NX key"
 **Files:**
 - Create: `api/src/queues/jobs/product-rating-recalc.ts`
 
-- [ ] **Step 1: Write the module**
+- [x] **Step 1: Write the module**
 
 ```ts
 // api/src/queues/jobs/product-rating-recalc.ts
@@ -1470,14 +1470,14 @@ export function startProductRatingWorker(): Worker<ProductRatingData> {
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/queues/jobs/product-rating-recalc.ts
@@ -1491,7 +1491,7 @@ git commit -m "feat(api): product-rating-recalc job"
 **Files:**
 - Create: `api/src/queues/jobs/moderation-flag.ts`
 
-- [ ] **Step 1: Write the module**
+- [x] **Step 1: Write the module**
 
 ```ts
 // api/src/queues/jobs/moderation-flag.ts
@@ -1562,14 +1562,14 @@ export function startModerationFlagWorker(): Worker<ModerationFlagData> {
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 Expected: exit 0.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/queues/jobs/moderation-flag.ts
@@ -1585,7 +1585,7 @@ git commit -m "feat(api): moderation-flag worker creates Report and hides review
 
 > M1 owns the central worker entry point at `api/src/workers/runner.ts`, which already exports `startWorkers()` / `stopWorkers()` and registers M1's own workers. M2 does NOT create a second registry under `api/src/queues/` — it appends its three `startXxx()` calls into M1's existing `startWorkers()` array. The `startScoreRecalcWorker`, `startModerationFlagWorker`, and `startProductRatingWorker` factories are exported from their job modules (Tasks E1, E3, E4).
 
-- [ ] **Step 1: Open `api/src/workers/runner.ts`**
+- [x] **Step 1: Open `api/src/workers/runner.ts`**
 
 Add the imports alongside M1's existing worker imports:
 
@@ -1605,13 +1605,13 @@ Then MERGE the three new `startXxx()` calls into the existing `startWorkers()` a
 
 `stopWorkers()` already closes every worker in the array, so no change is needed there.
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 ```bash
 pnpm --filter @pantry/api typecheck
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/src/workers/runner.ts
@@ -2982,7 +2982,7 @@ git commit -m "feat(api): POST /v1/reports with auto-hide threshold"
 **Files:**
 - Create: `api/tests/integration/score-recalc-worker.test.ts`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```ts
 // api/tests/integration/score-recalc-worker.test.ts
@@ -3050,14 +3050,14 @@ describe('score-recalc worker', () => {
 });
 ```
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/score-recalc-worker.test.ts
 ```
 Expected: 2 passed (the worker code from Task E1 makes this pass without further changes).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/tests/integration/score-recalc-worker.test.ts
@@ -3071,7 +3071,7 @@ git commit -m "test(api): score-recalc worker updates denorm counts + Wilson"
 **Files:**
 - Create: `api/tests/integration/moderation-flag-worker.test.ts`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```ts
 // api/tests/integration/moderation-flag-worker.test.ts
@@ -3117,14 +3117,14 @@ describe('moderation-flag worker', () => {
 });
 ```
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/moderation-flag-worker.test.ts
 ```
 Expected: 2 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/tests/integration/moderation-flag-worker.test.ts
@@ -3138,7 +3138,7 @@ git commit -m "test(api): moderation-flag worker creates system report"
 **Files:**
 - Create: `api/tests/integration/product-rating-recalc-worker.test.ts`
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 ```ts
 // api/tests/integration/product-rating-recalc-worker.test.ts
@@ -3178,14 +3178,14 @@ describe('product-rating-recalc worker', () => {
 });
 ```
 
-- [ ] **Step 2: Run**
+- [x] **Step 2: Run**
 
 ```bash
 pnpm --filter @pantry/api exec vitest run tests/integration/product-rating-recalc-worker.test.ts
 ```
 Expected: 2 passed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add api/tests/integration/product-rating-recalc-worker.test.ts
