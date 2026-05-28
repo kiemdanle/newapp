@@ -36,7 +36,7 @@ export async function listForProductRoute(app: FastifyInstance) {
       orderBy,
       take: query.limit + 1,
       skip: cursor ? 1 : 0,
-      cursor,
+      ...(cursor ? { cursor } : {}),
       include: { user: { select: { id: true, firstName: true, avatarUrl: true } } },
     });
 
