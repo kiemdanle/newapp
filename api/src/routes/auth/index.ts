@@ -11,6 +11,7 @@ import { verifyEmailRoute } from './verify-email.js';
 import { resendVerificationRoute } from './resend-verification.js';
 import { forgotPasswordRoute } from './forgot-password.js';
 import { resetPasswordRoute } from './reset-password.js';
+import { oauthGoogleRoute } from './oauth-google.js';
 
 export async function authRoutes(app: FastifyInstance) {
   const cfg = getConfig();
@@ -33,4 +34,5 @@ export async function authRoutes(app: FastifyInstance) {
   await app.register(resendVerificationRoute);
   await app.register(forgotPasswordRoute);
   await app.register(resetPasswordRoute);
+  await app.register(oauthGoogleRoute);
 }
