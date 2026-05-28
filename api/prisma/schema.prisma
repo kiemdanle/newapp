@@ -25,6 +25,33 @@ enum ThemePreference {
   material
 }
 
+enum ReviewStatus {
+  visible
+  hidden
+  deleted
+
+  @@map("review_status")
+}
+
+enum ReportTargetType {
+  review
+  user
+  product
+}
+
+enum ReportReason {
+  spam
+  abuse
+  incorrect
+  other
+}
+
+enum ReportStatus {
+  open
+  resolved
+  dismissed
+}
+
 enum AuthCredentialType {
   password
   google
@@ -72,37 +99,41 @@ enum PushLogStatus {
 }
 
 model User {
-  id              String          @id @default(uuid()) @db.Uuid
-  email           String          @unique
-  emailVerifiedAt DateTime?
-  passwordHash    String?
-  firstName       String
-  lastName        String
-  country         String?         @db.Char(2)
-  avatarUrl       String?
-  role            UserRole        @default(user)
-  status          UserStatus      @default(active)
-  themePreference ThemePreference @default(aurora)
-  totpSecret      String?
-  totpEnabledAt   DateTime?
+  id                      String          @id @default(uuid()) @db.Uuid
+  email                   String          @unique
+  emailVerifiedAt         DateTime?
+  passwordHash            String?
+  firstName               String
+  lastName                String
+  country                 String?         @db.Char(2)
+  avatarUrl               String?
+  role                    UserRole        @default(user)
+  status                  UserStatus      @default(active)
+  themePreference         ThemePreference @default(aurora)
+  totpSecret              String?
+  totpEnabledAt           DateTime?
   notificationPreferences Json?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  lastSeenAt      DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  lastSeenAt              DateTime?
 
-  credentials       AuthCredential[]
-  sessions          Session[]
-  pushTokens        PushToken[]
-  emailTokens       EmailToken[]
-  passwordResets    PasswordReset[]
-  totpChallenges    TotpChallenge[]
-  totpRecoveryCodes TotpRecoveryCode[]
-  auditLogs         AdminAuditLog[]    @relation("AuditAdmin")
-  products             Product[]     @relation("ProductCreator")
+  credentials          AuthCredential[]
+  sessions             Session[]
+  pushTokens           PushToken[]
+  emailTokens          EmailToken[]
+  passwordResets       PasswordReset[]
+  totpChallenges       TotpChallenge[]
+  totpRecoveryCodes    TotpRecoveryCode[]
+  auditLogs            AdminAuditLog[]    @relation("AuditAdmin")
+  products             Product[]          @relation("ProductCreator")
   records              Record[]
-  productEditsAuthored ProductEdit[] @relation("ProductEditAuthor")
-  productEditsResolved ProductEdit[] @relation("ProductEditResolver")
+  productEditsAuthored ProductEdit[]      @relation("ProductEditAuthor")
+  productEditsResolved ProductEdit[]      @relation("ProductEditResolver")
   pushLogs             PushLog[]
+  reviews              Review[]
+  reviewVotes          ReviewVote[]
+  reportsFiled         Report[]           @relation("ReportReporter")
+  reportsResolved      Report[]           @relation("ReportResolver")
 
   @@map("users")
 }
@@ -240,30 +271,31 @@ model AdminAuditLog {
 }
 
 model Product {
-  id                    String        @id @default(uuid()) @db.Uuid
-  barcode               String?       @unique
-  qrPayload             String?       @unique @map("qr_payload")
-  name                  String
-  brand                 String?
-  category              String?
-  imageUrl              String?       @map("image_url")
-  defaultShelfLifeDays  Int?          @map("default_shelf_life_days")
-  source                ProductSource
-  sourceId              String?       @map("source_id")
-  tasteAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("taste_avg")
-  valueAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("value_avg")
-  reviewCount           Int           @default(0) @map("review_count")
-  createdByUserId       String?       @db.Uuid @map("created_by_user_id")
-  status                ProductStatus @default(active)
-  mergedIntoProductId   String?       @db.Uuid @map("merged_into_product_id")
-  createdAt             DateTime      @default(now()) @map("created_at")
-  updatedAt             DateTime      @updatedAt @map("updated_at")
+  id                   String        @id @default(uuid()) @db.Uuid
+  barcode              String?       @unique
+  qrPayload            String?       @unique @map("qr_payload")
+  name                 String
+  brand                String?
+  category             String?
+  imageUrl             String?       @map("image_url")
+  defaultShelfLifeDays Int?          @map("default_shelf_life_days")
+  source               ProductSource
+  sourceId             String?       @map("source_id")
+  tasteAvg             Decimal       @default(0) @map("taste_avg") @db.Decimal(3, 2)
+  valueAvg             Decimal       @default(0) @map("value_avg") @db.Decimal(3, 2)
+  reviewCount          Int           @default(0) @map("review_count")
+  createdByUserId      String?       @map("created_by_user_id") @db.Uuid
+  status               ProductStatus @default(active)
+  mergedIntoProductId  String?       @map("merged_into_product_id") @db.Uuid
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
 
-  createdBy   User?         @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  mergedInto  Product?      @relation("ProductMerge", fields: [mergedIntoProductId], references: [id], onDelete: SetNull)
-  mergedFrom  Product[]     @relation("ProductMerge")
-  records     Record[]
-  edits       ProductEdit[]
+  createdBy  User?         @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  mergedInto Product?      @relation("ProductMerge", fields: [mergedIntoProductId], references: [id], onDelete: SetNull)
+  mergedFrom Product[]     @relation("ProductMerge")
+  records    Record[]
+  edits      ProductEdit[]
+  reviews    Review[]
 
   @@index([source, sourceId])
   @@map("products")
@@ -271,11 +303,11 @@ model Product {
 
 model ProductEdit {
   id          String            @id @default(uuid()) @db.Uuid
-  productId   String            @db.Uuid @map("product_id")
-  submittedBy String            @db.Uuid @map("submitted_by")
+  productId   String            @map("product_id") @db.Uuid
+  submittedBy String            @map("submitted_by") @db.Uuid
   proposed    Json
   status      ProductEditStatus @default(pending)
-  resolvedBy  String?           @db.Uuid @map("resolved_by")
+  resolvedBy  String?           @map("resolved_by") @db.Uuid
   resolvedAt  DateTime?         @map("resolved_at")
   notes       String?
   createdAt   DateTime          @default(now()) @map("created_at")
@@ -290,22 +322,22 @@ model ProductEdit {
 }
 
 model Record {
-  id            String       @id @default(uuid()) @db.Uuid
-  userId        String       @db.Uuid @map("user_id")
-  productId     String?      @db.Uuid @map("product_id")
-  customName    String?      @map("custom_name")
-  expiryDate    DateTime     @db.Date @map("expiry_date")
-  purchaseDate  DateTime?    @db.Date @map("purchase_date")
-  quantity      Decimal      @db.Decimal(12, 3) @default(1)
-  unit          String       @default("pcs")
-  notes         String?
-  photoUrl      String?      @map("photo_url")
-  status        RecordStatus @default(active)
-  notifyAt      Json         @default("[]") @map("notify_at")
-  clientId      String       @unique @db.Uuid @map("client_id")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
-  consumedAt    DateTime?    @map("consumed_at")
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  productId    String?      @map("product_id") @db.Uuid
+  customName   String?      @map("custom_name")
+  expiryDate   DateTime     @map("expiry_date") @db.Date
+  purchaseDate DateTime?    @map("purchase_date") @db.Date
+  quantity     Decimal      @default(1) @db.Decimal(12, 3)
+  unit         String       @default("pcs")
+  notes        String?
+  photoUrl     String?      @map("photo_url")
+  status       RecordStatus @default(active)
+  notifyAt     Json         @default("[]") @map("notify_at")
+  clientId     String       @unique @map("client_id") @db.Uuid
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  consumedAt   DateTime?    @map("consumed_at")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -316,14 +348,14 @@ model Record {
 }
 
 model PushLog {
-  id            String        @id @default(uuid()) @db.Uuid
-  userId        String        @db.Uuid @map("user_id")
-  recordId      String?       @db.Uuid @map("record_id")
-  expoTicketId  String?       @map("expo_ticket_id")
-  templateKey   String        @map("template_key")
-  status        PushLogStatus
-  errorMessage  String?       @map("error_message")
-  createdAt     DateTime      @default(now()) @map("created_at")
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  recordId     String?       @map("record_id") @db.Uuid
+  expoTicketId String?       @map("expo_ticket_id")
+  templateKey  String        @map("template_key")
+  status       PushLogStatus
+  errorMessage String?       @map("error_message")
+  createdAt    DateTime      @default(now()) @map("created_at")
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   record Record? @relation(fields: [recordId], references: [id], onDelete: SetNull)
@@ -331,4 +363,62 @@ model PushLog {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status, createdAt(sort: Desc)])
   @@map("push_logs")
+}
+
+model Review {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  productId     String       @map("product_id") @db.Uuid
+  tasteRating   Int          @map("taste_rating") @db.SmallInt
+  valueRating   Int          @map("value_rating") @db.SmallInt
+  body          String?
+  upvoteCount   Int          @default(0) @map("upvote_count")
+  downvoteCount Int          @default(0) @map("downvote_count")
+  score         Decimal      @default(0) @db.Decimal(7, 6)
+  status        ReviewStatus @default(visible)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  votes   ReviewVote[]
+
+  @@unique([userId, productId])
+  @@index([productId, status, score(sort: Desc)])
+  @@map("reviews")
+}
+
+model ReviewVote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  reviewId  String   @map("review_id") @db.Uuid
+  value     Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@index([reviewId])
+  @@map("review_votes")
+}
+
+model Report {
+  id                String           @id @default(uuid()) @db.Uuid
+  reporterId        String           @map("reporter_id") @db.Uuid
+  targetType        ReportTargetType @map("target_type")
+  targetId          String           @map("target_id") @db.Uuid
+  reason            ReportReason
+  body              String?
+  status            ReportStatus     @default(open)
+  resolvedByAdminId String?          @map("resolved_by_admin_id") @db.Uuid
+  resolvedAt        DateTime?        @map("resolved_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  reporter        User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedByAdmin User? @relation("ReportResolver", fields: [resolvedByAdminId], references: [id])
+
+  @@index([targetType, targetId, status])
+  @@index([status, createdAt])
+  @@map("reports")
 }
