@@ -13,6 +13,7 @@ import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
 import { recordRoutes } from './routes/records/index.js';
+import { startWorkers, stopWorkers } from './workers/runner.js';
 
 const REDACT_PATHS = [
   'password',
@@ -77,5 +78,9 @@ const moduleReal = realpathSync(fileURLToPath(import.meta.url));
 if (entrypointReal === moduleReal) {
   const cfg = getConfig();
   const app = await buildServer();
+  startWorkers();
+  app.addHook('onClose', async () => {
+    await stopWorkers();
+  });
   await app.listen({ port: cfg.port, host: cfg.host });
 }
