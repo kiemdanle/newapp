@@ -26,14 +26,16 @@ export function TotpEnrollForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
-  const startedRef = useRef(false);
+  const startedForRef = useRef<string | null>(null);
 
-  // Start enrollment on mount: fetch secret/QR/recovery codes (shown once).
-  // Guarded so React Strict Mode's double effect invocation only enrolls once.
+  // Fetch the secret/QR/recovery codes once per challenge. Keying the guard on
+  // the challenge dedupes React Strict Mode's double effect invocation while
+  // still re-fetching if the challenge changes. No cancelled-flag cleanup: under
+  // Strict Mode that cleanup fires between the two invocations and suppresses the
+  // only in-flight response, stranding the form on "Preparing enrollment…".
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    let cancelled = false;
+    if (startedForRef.current === enrollmentChallenge) return;
+    startedForRef.current = enrollmentChallenge;
     (async () => {
       try {
         const res = await fetch('/api/auth/totp/enroll', {
@@ -43,14 +45,11 @@ export function TotpEnrollForm({
         });
         const body = (await res.json()) as EnrollPayload & { code?: string };
         if (!res.ok) throw new Error(body.code ?? 'enroll_failed');
-        if (!cancelled) setEnroll(body);
+        setEnroll(body);
       } catch (err) {
-        if (!cancelled) setError((err as Error).message);
+        setError((err as Error).message);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [enrollmentChallenge]);
 
   async function onSubmit(e: FormEvent) {
