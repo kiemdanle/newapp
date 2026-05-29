@@ -66,6 +66,40 @@ describe('TOTP', () => {
     await app.close();
   });
 
+  it('repeated enroll returns the same secret, and its code verifies', async () => {
+    const app = await buildServer();
+    const admin = await makeAdmin();
+    await getPrisma().authCredential.create({
+      data: { userId: admin.id, type: 'password' },
+    });
+    const enrollmentChallenge = await loginForEnrollment(app);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/totp/enroll',
+      payload: { enrollmentChallenge },
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/totp/enroll',
+      payload: { enrollmentChallenge },
+    });
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    const s1 = first.json().secret as string;
+    const s2 = second.json().secret as string;
+    expect(s2).toBe(s1);
+
+    // The code derived from the (stable) displayed secret must verify.
+    const verify = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/totp/verify-enrollment',
+      payload: { enrollmentChallenge, code: authenticator.generate(s1) },
+    });
+    expect(verify.statusCode).toBe(204);
+    await app.close();
+  });
+
   it('admin enroll → verify-enrollment persists hashed recovery codes', async () => {
     const app = await buildServer();
     const admin = await makeAdmin();

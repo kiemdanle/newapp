@@ -1,7 +1,7 @@
 // apps/admin/src/app/login/totp-enroll-form.tsx
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +26,13 @@ export function TotpEnrollForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  const startedRef = useRef(false);
 
   // Start enrollment on mount: fetch secret/QR/recovery codes (shown once).
+  // Guarded so React Strict Mode's double effect invocation only enrolls once.
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
     let cancelled = false;
     (async () => {
       try {
