@@ -9,7 +9,7 @@ import {
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
-import { buildEnrollment, verifyTotp } from '../../services/auth/totp.js';
+import { buildEnrollment, verifyTotp, diagnoseTotp } from '../../services/auth/totp.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
 import { toApiUser } from '../../services/users/repository.js';
@@ -129,6 +129,15 @@ export async function totpRoutes(app: FastifyInstance) {
       });
     }
     if (!verifyTotp(pending.encryptedSecret, input.code)) {
+      try {
+        const d = diagnoseTotp(pending.encryptedSecret, input.code);
+        req.log.warn(
+          { delta: d.delta, codeLen: input.code.length, matchesExpectedNow: d.expectedNow === input.code },
+          'totp enrollment verify failed — diagnostic (delta=null means code is from a DIFFERENT secret; nonzero means clock skew of delta*30s)',
+        );
+      } catch (e) {
+        req.log.warn({ err: (e as Error).message }, 'totp diagnostic threw');
+      }
       throw new AppError({
         status: 401,
         code: ERROR_CODES.INVALID_TOTP,
