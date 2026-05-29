@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-theme="aurora">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pantry Mockup — All Screens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="_shared.css" />
+  <style>
+    body {
+      padding: 60px 32px;
+      align-items: flex-start;
+      background: var(--screen-bg);
+      min-height: 100vh;
+    }
+    .hub-header { max-width: 1200px; margin: 0 auto 36px; }
+    .hub-header h1 { font-family: 'Space Grotesk', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: -0.02em; }
+    .hub-header p { color: var(--text-secondary); margin-top: 6px; }
+    .hub-section { max-width: 1200px; margin: 0 auto 36px; }
+    .hub-section h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--text-secondary); margin-bottom: 14px;
+    }
+    .hub-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 20px;
+    }
+    .hub-tile {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      backdrop-filter: var(--card-blur);
+      box-shadow: var(--card-shadow);
+      transition: transform 100ms;
+    }
+    .hub-tile:hover { transform: translateY(-2px); }
+    .hub-tile .frame-wrap {
+      width: 180px;
+      height: 380px;
+      overflow: hidden;
+      border-radius: 24px;
+      margin-bottom: 12px;
+      background: var(--screen-bg);
+      box-shadow: 0 8px 20px rgba(80, 70, 200, 0.10);
+      position: relative;
+    }
+    .hub-tile iframe {
+      width: 480px;
+      height: 1010px;
+      border: 0;
+      background: transparent;
+      pointer-events: none;
+      transform: scale(0.375);
+      transform-origin: top left;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .hub-tile .tile-label { font-size: 13px; font-weight: 600; text-align: center; }
+    .hub-tile .tile-num { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="hub-header">
+    <h1>Pantry — Mobile Mockups</h1>
+    <p>Every screen of the Pantry App mobile experience. Click a tile to open it full-size.</p>
+  </div>
+
+  <div class="hub-section">
+    <h2>Onboarding &amp; auth</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="01-welcome.html"><div class="frame-wrap"><iframe src="01-welcome.html" loading="lazy"></iframe></div><div class="tile-label">Welcome</div><div class="tile-num">01</div></a>
+      <a class="hub-tile" href="02-sign-up.html"><div class="frame-wrap"><iframe src="02-sign-up.html" loading="lazy"></iframe></div><div class="tile-label">Sign up</div><div class="tile-num">02</div></a>
+      <a class="hub-tile" href="03-sign-in.html"><div class="frame-wrap"><iframe src="03-sign-in.html" loading="lazy"></iframe></div><div class="tile-label">Sign in</div><div class="tile-num">03</div></a>
+      <a class="hub-tile" href="04-verify-email.html"><div class="frame-wrap"><iframe src="04-verify-email.html" loading="lazy"></iframe></div><div class="tile-label">Verify email</div><div class="tile-num">04</div></a>
+      <a class="hub-tile" href="05-forgot-password.html"><div class="frame-wrap"><iframe src="05-forgot-password.html" loading="lazy"></iframe></div><div class="tile-label">Forgot password</div><div class="tile-num">05</div></a>
+      <a class="hub-tile" href="06-reset-password.html"><div class="frame-wrap"><iframe src="06-reset-password.html" loading="lazy"></iframe></div><div class="tile-label">Reset password</div><div class="tile-num">06</div></a>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>Main tabs</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="07-home.html"><div class="frame-wrap"><iframe src="07-home.html" loading="lazy"></iframe></div><div class="tile-label">Home</div><div class="tile-num">07</div></a>
+      <a class="hub-tile" href="08-browse.html"><div class="frame-wrap"><iframe src="08-browse.html" loading="lazy"></iframe></div><div class="tile-label">Browse</div><div class="tile-num">08</div></a>
+      <a class="hub-tile" href="09-reviews.html"><div class="frame-wrap"><iframe src="09-reviews.html" loading="lazy"></iframe></div><div class="tile-label">Reviews</div><div class="tile-num">09</div></a>
+      <a class="hub-tile" href="10-profile.html"><div class="frame-wrap"><iframe src="10-profile.html" loading="lazy"></iframe></div><div class="tile-label">Profile</div><div class="tile-num">10</div></a>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>Pantry flow</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="11-fab-sheet.html"><div class="frame-wrap"><iframe src="11-fab-sheet.html" loading="lazy"></iframe></div><div class="tile-label">FAB sheet</div><div class="tile-num">11</div></a>
+      <a class="hub-tile" href="12-scan.html"><div class="frame-wrap"><iframe src="12-scan.html" loading="lazy"></iframe></div><div class="tile-label">Scan</div><div class="tile-num">12</div></a>
+      <a class="hub-tile" href="13-scan-result.html"><div class="frame-wrap"><iframe src="13-scan-result.html" loading="lazy"></iframe></div><div class="tile-label">Scan result</div><div class="tile-num">13</div></a>
+      <a class="hub-tile" href="14-expiry-capture.html"><div class="frame-wrap"><iframe src="14-expiry-capture.html" loading="lazy"></iframe></div><div class="tile-label">Set expiry</div><div class="tile-num">14</div></a>
+      <a class="hub-tile" href="15-manual-entry.html"><div class="frame-wrap"><iframe src="15-manual-entry.html" loading="lazy"></iframe></div><div class="tile-label">Add manually</div><div class="tile-num">15</div></a>
+      <a class="hub-tile" href="16-record-detail.html"><div class="frame-wrap"><iframe src="16-record-detail.html" loading="lazy"></iframe></div><div class="tile-label">Record</div><div class="tile-num">16</div></a>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>Product &amp; reviews</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="17-product-detail.html"><div class="frame-wrap"><iframe src="17-product-detail.html" loading="lazy"></iframe></div><div class="tile-label">Product detail</div><div class="tile-num">17</div></a>
+      <a class="hub-tile" href="18-write-review.html"><div class="frame-wrap"><iframe src="18-write-review.html" loading="lazy"></iframe></div><div class="tile-label">Write review</div><div class="tile-num">18</div></a>
+      <a class="hub-tile" href="19-report-modal.html"><div class="frame-wrap"><iframe src="19-report-modal.html" loading="lazy"></iframe></div><div class="tile-label">Report</div><div class="tile-num">19</div></a>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>Settings</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="20-settings.html"><div class="frame-wrap"><iframe src="20-settings.html" loading="lazy"></iframe></div><div class="tile-label">Settings</div><div class="tile-num">20</div></a>
+      <a class="hub-tile" href="21-theme-picker.html"><div class="frame-wrap"><iframe src="21-theme-picker.html" loading="lazy"></iframe></div><div class="tile-label">Theme picker</div><div class="tile-num">21</div></a>
+      <a class="hub-tile" href="22-notifications.html"><div class="frame-wrap"><iframe src="22-notifications.html" loading="lazy"></iframe></div><div class="tile-label">Notifications</div><div class="tile-num">22</div></a>
+      <a class="hub-tile" href="23-account.html"><div class="frame-wrap"><iframe src="23-account.html" loading="lazy"></iframe></div><div class="tile-label">Account</div><div class="tile-num">23</div></a>
+    </div>
+  </div>
+
+  <div class="hub-section">
+    <h2>Special</h2>
+    <div class="hub-grid">
+      <a class="hub-tile" href="24-empty-home.html"><div class="frame-wrap"><iframe src="24-empty-home.html" loading="lazy"></iframe></div><div class="tile-label">Empty + tutorial</div><div class="tile-num">24</div></a>
+      <a class="hub-tile" href="25-push-preview.html"><div class="frame-wrap"><iframe src="25-push-preview.html" loading="lazy"></iframe></div><div class="tile-label">Push preview</div><div class="tile-num">25</div></a>
+    </div>
+  </div>
+</body>
+</html>
