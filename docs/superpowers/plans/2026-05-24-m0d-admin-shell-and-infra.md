@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the Next.js 15 admin app shell (login + TOTP + session middleware + CSRF + stub pages for every M3 route), add the `admin_audit_log` Prisma table + audit helper, provision the single VPS end-to-end with Ansible (Postgres, Redis, Node, nginx, certbot, systemd, secrets, ufw, fail2ban), wire a `main`-branch deploy pipeline (test → build → atomic symlink flip with rollback), and automate encrypted offsite backups with a 7/4/3 daily/weekly/monthly rotation.
 
-**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`pantry_admin_csrf` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/pantry/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl reload` swap traffic, with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
+**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`pantry_admin_csrf` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/pantry/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl restart` swap traffic (the units stop on `SIGTERM` with `TimeoutStopSec=30`, giving the process its graceful drain window before the kill), with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
 
 **Tech Stack:** Next.js 15 (App Router, standalone output), TypeScript 5 strict, Tailwind CSS 3, shadcn/ui, TanStack Query 5, TanStack Table 8, Zod 3, Playwright 1.45+, Vitest 2, Ansible 2.15+, Ubuntu 22.04/24.04 LTS, PostgreSQL 16, Redis 7, Node 20 LTS, nginx, certbot, systemd, ufw, fail2ban, age, rclone, GitHub Actions, Renovate.
 
@@ -19,7 +19,7 @@
 
 **Cross-milestone dependencies this plan relies on:**
 
-- `GET /health` and `GET /health/ready` from M0a — verified in Task A2 before the deploy smoke test is wired
+- `GET /health` and `GET /health/ready` from M0a — verified in Task A1 before the deploy smoke test is wired
 - `POST /v1/auth/login` returning either `{user, tokens}` or `{requiresTotp: true, challengeToken}` from M0b
 - `POST /v1/auth/totp/challenge-verify` exchanging `{challengeToken, code}` for `{user, tokens}` from M0b
 - `GET /v1/auth/me` and `POST /v1/auth/refresh` from M0b
@@ -31,6 +31,32 @@
 - All feature work (records, products, reviews) — M1/M2
 - The bodies of admin pages and the `/v1/admin/*` routes themselves — M3 (this plan only ships stubbed pages and the audit-log helper they will call)
 - Theme polish, store submission, restore-drill checklist, full runbooks — M4
+
+---
+
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A, step 3 (admin shell + infra + deploy — entire plan; backend becomes deployable here).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+A validation pass corrected six issues in this plan. In plain terms:
+
+1. **Deploy migrations no longer run after the Prisma CLI is removed.** The host deploy previously pruned dev dependencies (which include the Prisma CLI) and only then ran `prisma migrate deploy`, which would fail. The deploy now installs all dependencies, runs the migration, and prunes dev dependencies last. The runbook prose and step numbering were updated to match.
+
+2. **Deploys now restart instead of "reload".** The systemd units are simple processes with no reload behaviour, so the old `systemctl reload` did nothing and the "graceful drain" claim was false. The deploy (and rollback) now use `systemctl restart`, which sends `SIGTERM` and lets the process drain within `TimeoutStopSec=30`. Unit templates, sudoers prose, and architecture text were aligned.
+
+3. **The database password is generated once and reused.** The Ansible task used a lookup that minted a brand-new password on every run when the variable was unset, which would reset the live database password and break the running app. The postgres role now persists the password to a root-only file on the host and reads it back on later runs, so re-applies are idempotent.
+
+4. **Token refresh moved out of server-component render.** The admin session helper set cookies during a Server Component render, which Next.js 15 forbids and which caused a refresh→redirect loop. Refresh now happens in a dedicated Route Handler (`/api/auth/refresh-redirect`) where setting cookies is allowed; the render simply redirects there and back.
+
+5. **External uptime monitoring is now specified.** An UptimeRobot HTTP monitor on `GET /health` (5-minute interval, email alerts) is documented in the infra runbook and surfaced as an operator reminder in the app role.
+
+6. **Fresh-admin TOTP enrollment flow is now handled.** M0b now enforces that admins always have TOTP, so a freshly-promoted admin's login returns a third branch — `{ requiresTotpEnrollment, enrollmentChallenge }` — that the admin web did not handle. The login proxy now propagates it, two new no-session Route Handlers proxy `/v1/auth/totp/enroll` and `/v1/auth/totp/verify-enrollment`, and a new enrollment step in the login form shows the QR code plus the 10 one-time recovery codes ("shown only once") and, after the 204 confirm, sends the admin back to sign in again (no session is granted at enrollment).
+
+The self-review checklist below was updated to reflect all six.
 
 ---
 
@@ -65,6 +91,7 @@ pantry/
 │       │   │   ├── page.tsx                              ← / overview stub
 │       │   │   ├── login/page.tsx
 │       │   │   ├── login/totp-form.tsx
+│       │   │   ├── login/totp-enroll-form.tsx            ← fresh-admin TOTP enrollment (QR + recovery codes)
 │       │   │   ├── (admin)/layout.tsx                    ← header + sidebar
 │       │   │   ├── (admin)/users/page.tsx
 │       │   │   ├── (admin)/users/[id]/page.tsx
@@ -88,10 +115,13 @@ pantry/
 │       │   │   ├── (admin)/settings/moderation/page.tsx
 │       │   │   ├── (admin)/settings/admins/page.tsx
 │       │   │   └── api/
-│       │   │       ├── auth/login/route.ts               ← Route Handler proxy → cookies
-│       │   │       ├── auth/totp/route.ts                ← Route Handler proxy → cookies
+│       │   │       ├── auth/login/route.ts               ← Route Handler proxy → cookies (+ TOTP challenge/enrollment branches)
+│       │   │       ├── auth/totp/route.ts                ← Route Handler proxy → cookies (challenge-verify)
+│       │   │       ├── auth/totp/enroll/route.ts         ← Route Handler proxy (no session) → QR + recovery codes
+│       │   │       ├── auth/totp/verify-enrollment/route.ts ← Route Handler proxy (no session) → 204 passthrough
 │       │   │       ├── auth/logout/route.ts
 │       │   │       ├── auth/refresh/route.ts
+│       │   │       ├── auth/refresh-redirect/route.ts    ← GET refresh→cookie set→redirect (used by server render on 401)
 │       │   │       └── auth/me/route.ts
 │       │   ├── components/
 │       │   │   ├── header.tsx
@@ -241,6 +271,21 @@ export const adminTotpRequestSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
 export type AdminTotpRequest = z.infer<typeof adminTotpRequestSchema>;
+
+// Fresh-admin TOTP enrollment (M0b enforces "admins always have TOTP").
+// `enrollmentChallenge` is single-use, 10-min TTL, gated server-side.
+export const adminTotpEnrollRequestSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+});
+export type AdminTotpEnrollRequest = z.infer<typeof adminTotpEnrollRequestSchema>;
+
+export const adminTotpVerifyEnrollmentRequestSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+  code: z.string().regex(/^\d{6}$/),
+});
+export type AdminTotpVerifyEnrollmentRequest = z.infer<
+  typeof adminTotpVerifyEnrollmentRequestSchema
+>;
 ```
 
 - [ ] **Step 2: Append export in `packages/shared/src/index.ts`**
@@ -262,7 +307,7 @@ Expected: exit 0.
 
 ```bash
 git add packages/shared
-git commit -m "feat(admin): add admin login + TOTP request schemas to @pantry/shared"
+git commit -m "feat(admin): add admin login + TOTP (challenge + enrollment) request schemas to @pantry/shared"
 ```
 
 ---
@@ -1486,7 +1531,17 @@ export async function POST(req: Request) {
     );
   }
 
-  // Case 2: full login (shouldn't happen for admin role; defensive)
+  // Case 2: freshly-promoted admin with no TOTP yet — must enroll before any
+  // session is granted. Propagate the enrollmentChallenge to the client; NO
+  // cookies/session are issued here (mirrors the requiresTotp branch above).
+  if (body.requiresTotpEnrollment === true && typeof body.enrollmentChallenge === 'string') {
+    return NextResponse.json(
+      { requiresTotpEnrollment: true, enrollmentChallenge: body.enrollmentChallenge },
+      { status: 200 },
+    );
+  }
+
+  // Case 3: full login (shouldn't happen for admin role; defensive)
   return finalizeSession(body, env);
 }
 
@@ -1561,7 +1616,7 @@ Expected: exit 0.
 
 ```bash
 git add apps/admin/src/app/api/auth/login/route.ts
-git commit -m "feat(admin): POST /api/auth/login proxy that emits cookies on success"
+git commit -m "feat(admin): POST /api/auth/login proxy emits cookies on success, propagates TOTP challenge + enrollment branches"
 ```
 
 ---
@@ -1619,6 +1674,122 @@ Expected: exit 0.
 ```bash
 git add apps/admin/src/app/api/auth/totp/route.ts
 git commit -m "feat(admin): POST /api/auth/totp exchanges challenge+code for cookies"
+```
+
+---
+
+### Task E2b: `POST /api/auth/totp/enroll` Route Handler
+
+**Files:**
+- Create: `apps/admin/src/app/api/auth/totp/enroll/route.ts`
+
+This proxies the M0b enrollment-start endpoint. It is reached by a freshly-promoted admin (no TOTP yet) during the enrollment step. It issues NO cookies/session — it simply forwards the `enrollmentChallenge` and returns the enrollment payload (secret, QR data URL, and the 10 one-time recovery codes) to the client. The recovery codes are shown ONCE here and are never returned again, so they must reach the browser unaltered.
+
+- [ ] **Step 1: Write the Route Handler**
+
+```ts
+// apps/admin/src/app/api/auth/totp/enroll/route.ts
+import { NextResponse } from 'next/server';
+import { adminTotpEnrollRequestSchema } from '@pantry/shared';
+import { getAdminEnv } from '@/lib/env';
+
+export async function POST(req: Request) {
+  const env = getAdminEnv();
+  let parsed;
+  try {
+    parsed = adminTotpEnrollRequestSchema.parse(await req.json());
+  } catch (err) {
+    return NextResponse.json(
+      { code: 'validation_error', detail: (err as Error).message },
+      { status: 400 },
+    );
+  }
+
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/enroll`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(parsed),
+  });
+  const body = (await upstream.json()) as Record<string, unknown>;
+
+  // No cookies/session here — gated by the enrollmentChallenge, not a session.
+  // Pass the upstream payload straight through (secret, qrCodeDataUrl, recoveryCodes).
+  return NextResponse.json(body, { status: upstream.status });
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @pantry/admin typecheck
+```
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/api/auth/totp/enroll/route.ts
+git commit -m "feat(admin): POST /api/auth/totp/enroll proxy (no session) returns QR + recovery codes"
+```
+
+---
+
+### Task E2c: `POST /api/auth/totp/verify-enrollment` Route Handler
+
+**Files:**
+- Create: `apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts`
+
+This proxies the M0b enrollment-confirm endpoint. On success the upstream returns **HTTP 204 with an empty body** and grants NO session (the admin must log in again with their password afterward). We forward the upstream status verbatim and emit no cookies. We must NOT call `upstream.json()` on a 204 (there is no body).
+
+- [ ] **Step 1: Write the Route Handler**
+
+```ts
+// apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts
+import { NextResponse } from 'next/server';
+import { adminTotpVerifyEnrollmentRequestSchema } from '@pantry/shared';
+import { getAdminEnv } from '@/lib/env';
+
+export async function POST(req: Request) {
+  const env = getAdminEnv();
+  let parsed;
+  try {
+    parsed = adminTotpVerifyEnrollmentRequestSchema.parse(await req.json());
+  } catch (err) {
+    return NextResponse.json(
+      { code: 'validation_error', detail: (err as Error).message },
+      { status: 400 },
+    );
+  }
+
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/verify-enrollment`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(parsed),
+  });
+
+  // Success is 204 empty; do not attempt to parse a body. No session is granted —
+  // the client must return to the password step and log in again.
+  if (upstream.status === 204) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  const body = (await upstream.json().catch(() => ({}))) as Record<string, unknown>;
+  return NextResponse.json(body, { status: upstream.status });
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @pantry/admin typecheck
+```
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts
+git commit -m "feat(admin): POST /api/auth/totp/verify-enrollment proxy (204 passthrough, no session)"
 ```
 
 ---
@@ -1910,6 +2081,179 @@ git commit -m "feat(admin): TOTP code entry form (client component)"
 
 ---
 
+### Task F1b: TOTP enrollment client form component
+
+**Files:**
+- Create: `apps/admin/src/app/login/totp-enroll-form.tsx`
+
+Shown to a freshly-promoted admin (login returned `requiresTotpEnrollment`). On mount it POSTs the `enrollmentChallenge` to `/api/auth/totp/enroll`, renders the returned `qrCodeDataUrl` QR image plus the 10 plaintext `recoveryCodes` with a "save these now — shown only once" warning, then collects the 6-digit code and POSTs `{ enrollmentChallenge, code }` to `/api/auth/totp/verify-enrollment`. On the 204 success it does NOT get a session — it calls `onEnrolled()` so the login flow returns the admin to the password step to sign in again.
+
+- [ ] **Step 1: Write the component**
+
+```tsx
+// apps/admin/src/app/login/totp-enroll-form.tsx
+'use client';
+
+import { useEffect, useState, type FormEvent } from 'react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert } from '@/components/ui/alert';
+
+interface EnrollPayload {
+  secret: string;
+  qrCodeDataUrl: string;
+  recoveryCodes: string[];
+}
+
+export function TotpEnrollForm({
+  enrollmentChallenge,
+  onEnrolled,
+}: {
+  enrollmentChallenge: string;
+  onEnrolled: () => void;
+}) {
+  const [enroll, setEnroll] = useState<EnrollPayload | null>(null);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Start enrollment on mount: fetch secret/QR/recovery codes (shown once).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/totp/enroll', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ enrollmentChallenge }),
+        });
+        const body = (await res.json()) as EnrollPayload & { code?: string };
+        if (!res.ok) throw new Error(body.code ?? 'enroll_failed');
+        if (!cancelled) setEnroll(body);
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enrollmentChallenge]);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/totp/verify-enrollment', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enrollmentChallenge, code }),
+      });
+      // Success is 204 empty; no session is granted — the admin must re-login.
+      if (res.status === 204) {
+        setDone(true);
+        return;
+      }
+      const body = (await res.json().catch(() => ({}))) as { code?: string };
+      throw new Error(body.code ?? 'verify_enrollment_failed');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="space-y-4">
+        <Alert>TOTP enabled — please sign in again.</Alert>
+        <Button type="button" className="w-full" onClick={onEnrolled}>
+          Back to sign in
+        </Button>
+      </div>
+    );
+  }
+
+  if (error && !enroll) {
+    return <Alert variant="destructive">{error}</Alert>;
+  }
+
+  if (!enroll) {
+    return <p className="text-sm text-muted-foreground">Preparing enrollment…</p>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p className="text-sm font-medium">1. Scan this QR code in your authenticator app</p>
+        <Image
+          src={enroll.qrCodeDataUrl}
+          alt="TOTP enrollment QR code"
+          width={192}
+          height={192}
+          unoptimized
+          className="rounded border"
+        />
+        <p className="break-all text-xs text-muted-foreground">
+          Manual key: <code>{enroll.secret}</code>
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">2. Save your recovery codes</p>
+        <Alert variant="destructive">
+          Save these now — they are shown only once and will not be displayed again.
+        </Alert>
+        <ul className="grid grid-cols-2 gap-1 rounded border bg-muted p-3 font-mono text-xs">
+          {enroll.recoveryCodes.map((rc) => (
+            <li key={rc}>{rc}</li>
+          ))}
+        </ul>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <p className="text-sm font-medium">3. Enter the 6-digit code to confirm</p>
+        <div className="space-y-2">
+          <Label htmlFor="enroll-code">Authenticator code</Label>
+          <Input
+            id="enroll-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          />
+        </div>
+        {error && <Alert variant="destructive">{error}</Alert>}
+        <Button type="submit" disabled={busy || code.length !== 6} className="w-full">
+          {busy ? 'Confirming…' : 'Confirm enrollment'}
+        </Button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @pantry/admin typecheck
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/login/totp-enroll-form.tsx
+git commit -m "feat(admin): TOTP enrollment form (QR + recovery codes, client component)"
+```
+
+---
+
 ### Task F2: Login page (email + password + TOTP step)
 
 **Files:**
@@ -1929,8 +2273,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { TotpForm } from './totp-form';
+import { TotpEnrollForm } from './totp-enroll-form';
 
-type Step = 'credentials' | 'totp';
+type Step = 'credentials' | 'totp' | 'enroll';
 
 export function LoginForm() {
   const router = useRouter();
@@ -1938,6 +2283,7 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [enrollmentChallenge, setEnrollmentChallenge] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -1954,10 +2300,18 @@ export function LoginForm() {
       const body = (await res.json()) as {
         requiresTotp?: boolean;
         challengeToken?: string;
+        requiresTotpEnrollment?: boolean;
+        enrollmentChallenge?: string;
         code?: string;
       };
       if (!res.ok) {
         throw new Error(body.code ?? 'login_failed');
+      }
+      // Fresh admin without TOTP yet: enroll first, no session granted.
+      if (body.requiresTotpEnrollment && body.enrollmentChallenge) {
+        setEnrollmentChallenge(body.enrollmentChallenge);
+        setStep('enroll');
+        return;
       }
       if (body.requiresTotp && body.challengeToken) {
         setChallengeToken(body.challengeToken);
@@ -1971,6 +2325,25 @@ export function LoginForm() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // After enrollment the API grants NO session, so return to the password step.
+  // The admin signs in again; that login then yields { requiresTotp, challengeToken }.
+  function backToCredentialsAfterEnroll() {
+    setEnrollmentChallenge(null);
+    setChallengeToken(null);
+    setPassword('');
+    setError(null);
+    setStep('credentials');
+  }
+
+  if (step === 'enroll' && enrollmentChallenge) {
+    return (
+      <TotpEnrollForm
+        enrollmentChallenge={enrollmentChallenge}
+        onEnrolled={backToCredentialsAfterEnroll}
+      />
+    );
   }
 
   if (step === 'totp' && challengeToken) {
@@ -2042,7 +2415,7 @@ Expected: exit 0, no warnings, includes the `/login` route in the build summary.
 
 ```bash
 git add apps/admin/src/app/login
-git commit -m "feat(admin): login page with email/password and TOTP step"
+git commit -m "feat(admin): login page with email/password, TOTP challenge, and TOTP enrollment steps"
 ```
 
 ---
@@ -2122,7 +2495,9 @@ git commit -m "feat(admin): middleware redirects unauthenticated requests to /lo
 - Create: `apps/admin/src/app/(admin)/layout.tsx`
 - Create: `apps/admin/src/lib/session.ts`
 
-The layout calls `/v1/auth/me`. On 401, it attempts a single refresh via the API, and if that also fails it redirects to `/login`. It also enforces `role === 'admin'`.
+The layout calls `/v1/auth/me`. On 401 it does NOT try to mint and persist new tokens from inside the render — Next.js 15 forbids writing cookies during a Server Component render, and attempting it (or quietly swallowing the error) produces a refresh→redirect loop. Instead the layout redirects the browser to `/api/auth/refresh-redirect`, a Route Handler where setting cookies is allowed; that handler refreshes the tokens, persists the new cookies, and bounces back to the originally requested path. Only if there is no usable refresh cookie at all do we send the user to `/login`. The layout still enforces `role === 'admin'`.
+
+This keeps all cookie writes inside Route Handlers (the only place Next.js 15 permits them) and removes the previous in-render `cookieStore.set` calls.
 
 - [ ] **Step 1: Write `apps/admin/src/lib/session.ts`**
 
@@ -2131,8 +2506,7 @@ The layout calls `/v1/auth/me`. On 401, it attempts a single refresh via the API
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ApiError, apiServerFetch } from './api';
-import { buildSetCookie, COOKIE_NAMES } from './cookies';
-import { getAdminEnv } from './env';
+import { COOKIE_NAMES } from './cookies';
 
 export interface AdminMe {
   id: string;
@@ -2143,72 +2517,105 @@ export interface AdminMe {
 }
 
 /**
- * Server-side helper used by admin pages. Fetches /v1/auth/me; on 401 it
- * attempts one refresh and retries; on second failure it redirects to /login.
- * It also enforces role === 'admin'.
+ * Server-side helper used by admin pages. Fetches /v1/auth/me; on 401 it hands
+ * off to the /api/auth/refresh-redirect Route Handler (the only place cookies
+ * may be written) which refreshes and returns to `next`. It also enforces
+ * role === 'admin'. This function NEVER writes cookies — doing so during a
+ * Server Component render is forbidden in Next.js 15 and causes a redirect loop.
  */
-export async function requireAdminSession(): Promise<AdminMe> {
+export async function requireAdminSession(currentPath = '/'): Promise<AdminMe> {
   try {
     const me = await apiServerFetch<AdminMe>('/v1/auth/me');
     if (me.role !== 'admin') redirect('/login');
     return me;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await tryRefresh();
-      if (refreshed) {
-        const me = await apiServerFetch<AdminMe>('/v1/auth/me');
-        if (me.role !== 'admin') redirect('/login');
-        return me;
+      const cookieStore = await cookies();
+      const hasRefresh = Boolean(cookieStore.get(COOKIE_NAMES.refresh)?.value);
+      if (hasRefresh) {
+        // Hand off to a Route Handler that may legally set cookies, then return here.
+        redirect(`/api/auth/refresh-redirect?next=${encodeURIComponent(currentPath)}`);
       }
     }
     redirect('/login');
   }
 }
+```
 
-async function tryRefresh(): Promise<boolean> {
+The token refresh itself lives in a Route Handler created below. The handler reuses the same refresh-and-persist logic the browser already calls via `POST /api/auth/refresh` (Task E3); it differs only in that it is reached by a GET redirect and responds with a redirect back to `next`.
+
+- [ ] **Step 1b: Write `apps/admin/src/app/api/auth/refresh-redirect/route.ts`**
+
+```ts
+// apps/admin/src/app/api/auth/refresh-redirect/route.ts
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getAdminEnv } from '@/lib/env';
+import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
+
+const ACCESS_MAX_AGE_SEC = 60 * 15;
+const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
+
+function safeNext(raw: string | null): string {
+  // Only allow same-origin absolute paths to avoid open-redirect.
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  return '/';
+}
+
+export async function GET(req: Request) {
   const env = getAdminEnv();
+  const url = new URL(req.url);
+  const next = safeNext(url.searchParams.get('next'));
+
   const cookieStore = await cookies();
   const refresh = cookieStore.get(COOKIE_NAMES.refresh)?.value;
-  if (!refresh) return false;
+  if (!refresh) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  const res = await fetch(`${env.apiBaseUrl}/v1/auth/refresh`, {
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/refresh`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ refreshToken: refresh }),
   });
-  if (!res.ok) return false;
+  if (!upstream.ok) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  const body = (await res.json()) as { tokens?: { accessToken: string; refreshToken: string } };
+  const body = (await upstream.json()) as { tokens?: { accessToken: string; refreshToken: string } };
   const tokens = body.tokens;
-  if (!tokens) return false;
+  if (!tokens) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  // Next.js Server Components cannot set cookies outside Route Handlers/Server Actions.
-  // We mutate the request's own cookie store so the subsequent /v1/auth/me call in
-  // the same render uses the new access token, and we set the persistent cookies
-  // via a header on the eventual response by stashing them on `headers()` won't work
-  // here either — so we rely on the next user-triggered Route Handler call to persist
-  // them. For the immediate retry within this render we update the in-memory store.
-  cookieStore.set(COOKIE_NAMES.access, tokens.accessToken, {
-    httpOnly: true,
-    secure: env.cookieSecure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 15,
-    domain: env.cookieDomain,
-  });
-  cookieStore.set(COOKIE_NAMES.refresh, tokens.refreshToken, {
-    httpOnly: true,
-    secure: env.cookieSecure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30,
-    domain: env.cookieDomain,
-  });
-  return true;
+  // A Route Handler response MAY set cookies (unlike a Server Component render).
+  const res = NextResponse.redirect(new URL(next, req.url));
+  res.headers.append(
+    'Set-Cookie',
+    buildSetCookie({
+      name: COOKIE_NAMES.access,
+      value: tokens.accessToken,
+      maxAgeSec: ACCESS_MAX_AGE_SEC,
+      httpOnly: true,
+      secure: env.cookieSecure,
+      sameSite: 'lax',
+      domain: env.cookieDomain,
+    }),
+  );
+  res.headers.append(
+    'Set-Cookie',
+    buildSetCookie({
+      name: COOKIE_NAMES.refresh,
+      value: tokens.refreshToken,
+      maxAgeSec: REFRESH_MAX_AGE_SEC,
+      httpOnly: true,
+      secure: env.cookieSecure,
+      sameSite: 'lax',
+      domain: env.cookieDomain,
+    }),
+  );
+  return res;
 }
-
-// Re-export buildSetCookie for callers that need the raw header form.
-export { buildSetCookie };
 ```
 
 - [ ] **Step 2: Write a temporary header/sidebar skeleton (replaced richer in Task H1)**
@@ -3023,14 +3430,16 @@ GitHub Actions runs on every push to `main` (see `.github/workflows/deploy.yml`)
 It:
 
 1. Runs all unit + integration tests in CI (Postgres + Redis service containers).
-2. Builds api and admin, prunes dev deps, packages a tarball.
+2. Builds api and admin, packages a tarball.
 3. SSHes to the host as the `deploy` user.
 4. Extracts to `/opt/pantry/releases/<sha>/`.
-5. Runs `prisma migrate deploy`.
-6. Flips `/opt/pantry/current` atomically (`ln -sfn`).
-7. `sudo systemctl reload pantry-api pantry-admin`.
-8. Smokes `https://api.<domain>/health/ready` 5× with exponential backoff.
-9. On failure: re-flips the symlink to the previous release and reloads.
+5. Installs the FULL dependency set (`pnpm install --frozen-lockfile`) so the Prisma CLI (a dev dependency) is available.
+6. Runs `prisma migrate deploy` while the Prisma CLI is still present.
+7. Prunes dev deps on the host (`pnpm install --prod --frozen-lockfile`) — AFTER migrations, never before.
+8. Flips `/opt/pantry/current` atomically (`ln -sfn`).
+9. `sudo systemctl restart pantry-api pantry-admin` (the units stop on `SIGTERM` with `TimeoutStopSec=30`, giving the graceful drain window; they have no `ExecReload`, so a `reload` would be a no-op).
+10. Smokes `https://api.<domain>/health/ready` 5× with exponential backoff.
+11. On failure: re-flips the symlink to the previous release and restarts.
 
 ### SSH setup
 
@@ -3045,12 +3454,29 @@ Store the private key in the repo's GitHub Actions secret `DEPLOY_SSH_KEY`.
 
 ### sudoers
 
-The `app` role installs `/etc/sudoers.d/pantry` allowing `pantryapp` to reload
-exactly two units and nothing else:
+The `app` role installs `/etc/sudoers.d/pantry` allowing `pantryapp` to restart
+(and reload, for completeness) exactly two units and nothing else. The deploy
+uses `restart` because the units are `Type=simple` with no `ExecReload`:
 
 ```
-pantryapp ALL=(root) NOPASSWD: /bin/systemctl reload pantry-api, /bin/systemctl reload pantry-admin
+pantryapp ALL=(root) NOPASSWD: /bin/systemctl reload pantry-api, /bin/systemctl reload pantry-admin, /bin/systemctl restart pantry-api, /bin/systemctl restart pantry-admin
 ```
+
+## Uptime monitoring
+
+External uptime monitoring is provided by UptimeRobot (free tier). This is a
+manual, one-time setup step that lives outside the host (so it can alert even
+when the host is down) and MUST be completed before the deploy is considered
+live:
+
+1. Create an UptimeRobot HTTP(s) monitor for `https://api.<domain>/health`.
+2. Set the check interval to 5 minutes.
+3. Add an email alert contact (the ops email) so a missed `/health` triggers a
+   notification.
+
+`/health` (liveness) is used rather than `/health/ready` so the monitor flags a
+hard-down process even while dependencies are mid-restart. Record the monitor
+URL/ID in the ops notes once created.
 
 ## Backups
 
@@ -3304,10 +3730,40 @@ mkdir -p infra/roles/postgres/{tasks,handlers,templates}
     mode: "0640"
   notify: restart postgresql
 
-- name: Generate pantry_app DB password if not present
+# The DB password must be generated ONCE and reused on every subsequent run.
+# `lookup('password', '/dev/null')` would mint a NEW password each run, silently
+# resetting the live role's password and breaking the already-running app. We
+# persist the generated password to a root-only file on the host and read it back
+# on later runs, so the value is stable across re-applies.
+- name: Read persisted pantry_app DB password if it already exists
+  ansible.builtin.slurp:
+    src: /etc/pantry/db_password
+  register: pantry_app_password_file
+  failed_when: false
+
+- name: Use the persisted DB password when present
+  ansible.builtin.set_fact:
+    pantry_app_password: "{{ (pantry_app_password_file.content | b64decode | trim) }}"
+  when:
+    - pantry_app_password is not defined
+    - pantry_app_password_file.content is defined
+
+- name: Generate pantry_app DB password on first run only
   ansible.builtin.set_fact:
     pantry_app_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
-  when: pantry_app_password is not defined
+  when:
+    - pantry_app_password is not defined
+    - pantry_app_password_file.content is not defined
+
+- name: Persist the DB password so future runs reuse it (root-only)
+  ansible.builtin.copy:
+    content: "{{ pantry_app_password }}"
+    dest: /etc/pantry/db_password
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: pantry_app_password_file.content is not defined
 
 - name: Create pantry database
   community.postgresql.postgresql_db:
@@ -3890,6 +4346,17 @@ mkdir -p infra/roles/app/{tasks,handlers,templates}
     hour: "3"
     minute: "0"
     job: "{{ app_root }}/current/infra/scripts/backup.sh >> /var/log/pantry/backup.log 2>&1"
+
+# External uptime monitoring is an off-host manual step (it must keep working
+# when the host is down, so Ansible cannot fully automate it). Operator action:
+# create an UptimeRobot HTTP monitor on https://api.<domain>/health, 5-minute
+# interval, with an email alert contact. See infra/README.md "Uptime monitoring".
+- name: Remind operator to wire UptimeRobot /health monitoring
+  ansible.builtin.debug:
+    msg: >-
+      Manual step: ensure an UptimeRobot HTTP monitor exists for
+      https://api.{{ domain | default('<domain>') }}/health at a 5-minute
+      interval with an email alert contact (see infra/README.md).
 ```
 
 - [ ] **Step 3: Write `infra/roles/app/handlers/main.yml`**
@@ -3926,6 +4393,9 @@ Group={{ app_group }}
 WorkingDirectory={{ app_root }}/current/api
 EnvironmentFile={{ config_dir }}/.env.production
 ExecStart=/usr/bin/node {{ app_root }}/current/api/dist/server.js
+# No ExecReload: this unit is restart-only. Deploys use `systemctl restart`,
+# which sends SIGTERM; the server drains in-flight requests within TimeoutStopSec
+# before SIGKILL. A `systemctl reload` would be a silent no-op for Type=simple.
 Restart=always
 RestartSec=2
 KillSignal=SIGTERM
@@ -3964,6 +4434,9 @@ EnvironmentFile={{ config_dir }}/.env.production
 Environment=PORT=4001
 Environment=HOSTNAME=127.0.0.1
 ExecStart=/usr/bin/node {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/server.js
+# No ExecReload: this unit is restart-only. Deploys use `systemctl restart`,
+# which sends SIGTERM; the server drains in-flight requests within TimeoutStopSec
+# before SIGKILL. A `systemctl reload` would be a silent no-op for Type=simple.
 Restart=always
 RestartSec=2
 KillSignal=SIGTERM
@@ -4296,27 +4769,35 @@ fi
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# 1. Install prod deps in the release (deterministic; same lockfile)
-log "installing prod deps"
+# 1. Install the FULL dependency set first. The Prisma CLI lives in
+#    devDependencies, so migrations must run while it is still installed —
+#    `pnpm install --prod` (step 3) prunes it away. Order is load-bearing:
+#    install (with dev) → migrate → prune. Never run migrate after the prune.
+log "installing all deps (dev included, needed for prisma CLI)"
 cd "$NEW"
-pnpm install --prod --frozen-lockfile
+pnpm install --frozen-lockfile
 
-# 2. Run migrations
+# 2. Run migrations while the Prisma CLI is still present
 log "running prisma migrate deploy"
 cd "$NEW/api"
 pnpm exec prisma migrate deploy
 cd "$NEW"
 
-# 3. Atomic symlink flip
+# 3. Prune dev dependencies now that migrations are done
+log "pruning dev deps"
+pnpm install --prod --frozen-lockfile
+
+# 4. Atomic symlink flip
 log "flipping symlink"
 ln -sfn "$NEW" "$CURRENT"
 
-# 4. Graceful reload
-log "reloading services"
-sudo /bin/systemctl reload pantry-api
-sudo /bin/systemctl reload pantry-admin
+# 5. Restart services (SIGTERM + TimeoutStopSec=30 gives the documented
+#    graceful drain window; the units have no ExecReload, so `reload` is a no-op)
+log "restarting services"
+sudo /bin/systemctl restart pantry-api
+sudo /bin/systemctl restart pantry-admin
 
-# 5. Smoke test with backoff
+# 6. Smoke test with backoff
 smoke() {
     local i delay url="https://${API_DOMAIN}/health/ready"
     for i in 1 2 3 4 5; do
@@ -4335,8 +4816,8 @@ if ! smoke; then
     log "SMOKE FAILED — rolling back"
     if [[ -n "$PREV" ]]; then
         ln -sfn "$PREV" "$CURRENT"
-        sudo /bin/systemctl reload pantry-api
-        sudo /bin/systemctl reload pantry-admin
+        sudo /bin/systemctl restart pantry-api
+        sudo /bin/systemctl restart pantry-admin
         log "rolled back to $PREV"
     else
         log "no previous release to roll back to"
@@ -4344,7 +4825,7 @@ if ! smoke; then
     exit 1
 fi
 
-# 6. Prune old releases (keep last 5)
+# 7. Prune old releases (keep last 5)
 cd "$APP_ROOT/releases"
 ls -1t | tail -n +6 | xargs -r rm -rf
 log "deploy complete: $SHA"
@@ -4745,8 +5226,10 @@ git tag m0d-complete
 - [ ] `pnpm --filter @pantry/admin test:e2e` runs 2 Playwright tests, both passing against a real seeded admin user with TOTP enrolled.
 - [ ] `pnpm --filter @pantry/admin build` emits `apps/admin/.next/standalone/apps/admin/server.js` (the path referenced by `pantry-admin.service.j2`).
 - [ ] Every spec §8.3 route is stubbed: `/`, `/users`, `/users/[id]`, `/products`, `/products/[id]`, `/products/pending`, `/reviews`, `/reviews/[id]`, `/reports`, `/reports/[id]`, `/analytics/{overview,scans,reviews,geography}`, `/system/{queue,push,api-errors,external-apis}`, `/settings/{feature-flags,notification-templates,moderation,admins}`.
+- [ ] The login flow handles all three M0b login-response branches: full `{user,tokens}`, `{requiresTotp, challengeToken}` (existing TOTP), and `{requiresTotpEnrollment, enrollmentChallenge}` (fresh admin with no TOTP yet).
+- [ ] The enrollment step (`TotpEnrollForm` + `/api/auth/totp/enroll` and `/api/auth/totp/verify-enrollment` proxies) issues NO session, renders the `qrCodeDataUrl` QR and the 10 `recoveryCodes` with a "shown only once" warning, and on the 204 verify-enrollment returns the admin to the password step to sign in again.
 - [ ] `apps/admin/src/middleware.ts` redirects unauthenticated requests to `/login` and authenticated requests away from `/login`.
-- [ ] `apps/admin/src/lib/session.ts` enforces `role === 'admin'` and performs one refresh-on-401 retry before redirecting.
+- [ ] `apps/admin/src/lib/session.ts` enforces `role === 'admin'` and, on 401, hands off to the `/api/auth/refresh-redirect` Route Handler (it NEVER writes cookies during render — Next.js 15 forbids that and it would cause a refresh→redirect loop); only a missing refresh cookie sends the user to `/login`.
 - [ ] Tokens are stored ONLY in HTTP-only cookies (`pantry_admin_access`, `pantry_admin_refresh`); the CSRF cookie (`pantry_admin_csrf`) is intentionally NOT HTTP-only.
 - [ ] All mutating Route Handlers (`/api/auth/refresh`, `/api/auth/logout`) verify the double-submit CSRF token via `isCsrfValid`.
 - [ ] `admin_audit_log` table exists in the Prisma schema and the `writeAuditLog` service inserts into it (verified by integration tests).
@@ -4754,10 +5237,12 @@ git tag m0d-complete
 - [ ] `infra/inventory.example.ini` and `infra/group_vars/all.example.yml` carry only placeholder values; no real domains, IPs, or secrets are committed.
 - [ ] nginx vhost `admin.<domain>` enforces the IP allowlist via per-CIDR `allow` lines followed by `deny all`.
 - [ ] nginx vhost `api.<domain>` applies stricter rate-limit zone `pantry_auth` to `/v1/auth/`.
-- [ ] systemd units use `EnvironmentFile=/etc/pantry/.env.production`, run as `pantryapp`, set `TimeoutStopSec=30`, and enable systemd hardening flags.
+- [ ] systemd units use `EnvironmentFile=/etc/pantry/.env.production`, run as `pantryapp`, set `TimeoutStopSec=30`, enable systemd hardening flags, and are restart-only (no `ExecReload`; deploy uses `systemctl restart` and relies on SIGTERM + `TimeoutStopSec` for graceful drain).
 - [ ] `/etc/sudoers.d/pantry` allows `pantryapp` to reload/restart ONLY `pantry-api` and `pantry-admin` and is validated by `visudo -cf`.
+- [ ] The postgres role generates the `pantry_app` DB password ONCE and persists it to `/etc/pantry/db_password` (root-only), reusing it on re-runs — it does NOT regenerate via `lookup('password','/dev/null')` each apply.
+- [ ] An off-host UptimeRobot HTTP monitor pings `https://api.<domain>/health` every 5 minutes with an email alert contact (documented in `infra/README.md` + the app role reminds the operator).
 - [ ] `.github/workflows/deploy.yml` runs tests with real Postgres + Redis service containers, builds, ships a tarball, and invokes `deploy-remote.sh`.
-- [ ] `deploy-remote.sh` does atomic `ln -sfn`, smoke-tests `/health/ready` with backoff, and flips back to the previous release on failure.
+- [ ] `deploy-remote.sh` installs the full dependency set, runs `prisma migrate deploy` while the Prisma CLI is still present, prunes dev deps only AFTER migrating, does atomic `ln -sfn`, smoke-tests `/health/ready` with backoff, and flips back to the previous release on failure.
 - [ ] `infra/scripts/backup.sh` pipes `pg_dump | age | rclone` and applies the 7/4/3 daily/weekly/monthly rotation locally AND remotely.
 - [ ] `infra/scripts/restore.sh` decrypts (local-or-remote) and runs `pg_restore`.
 - [ ] `renovate.json` validates as JSON, groups dev deps, and automerges patches.

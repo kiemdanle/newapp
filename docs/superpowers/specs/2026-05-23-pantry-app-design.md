@@ -6,6 +6,24 @@
 
 ---
 
+## Validation amendments — 2026-05-26
+
+Two contract clarifications resolved during plan validation. They refine this spec; the implementation plans (M0–M4) follow these:
+
+1. **API field casing is camelCase.** The data-model (§5) and API (§6) tables below spell columns/fields in snake_case for readability, but the **wire contract** (JSON request/response bodies consumed by the TS mobile and admin clients) uses **camelCase** — e.g. `requiresTotp`, `themePreference`, `emailVerifiedAt`. Database column names remain snake_case via Prisma `@map`. Stable error `code` strings (§6.8) stay snake_case (e.g. `email_not_verified`), as they are identifiers, not field names.
+2. **Review writes are online-only.** §2.11's conflict-policy line lists "my reviews" under last-write-wins offline data. This is amended: a user's own review create/edit/delete are **online-only** TanStack mutations (server is the source of truth), because reviews require server-side validation (one-per-product uniqueness, profanity moderation, vote integrity). The offline write queue covers `records` only. Reads of reviews remain cached locally.
+
+## Feature additions — 2026-05-26
+
+Approved new-feature decisions. These extend the spec; details live in the sections noted:
+
+1. **Notification default changed (§2.5).** Default reminder schedule is now 3 days before, 1 day before, and on the expiry day (`offsetsDays` `[3, 1, 0]`), down from 7/1/0. Per-user/per-record overrides unchanged.
+2. **Reviews now have two required criteria (§2.6, §5).** Each review requires a taste rating (1–5) and a value rating (1–5), plus an optional written body. Product detail shows both averages (`tasteAvg`, `valueAvg`). The `reviews` table replaces `rating` with `taste_rating` + `value_rating`; the `products` table replaces `rating_avg`/`rating_count` with `taste_avg` + `value_avg` (and keeps `review_count`).
+3. **New v1.x social/growth features added (§2.12–§2.15, §13 M5–M8).** Four milestones layered on top of v1 M0–M4: deal sharing (deals on catalog products with price/store/photo/expiry, browsable feed, up/down votes via `deal_votes`, reportable); blessing/giveaway (free local pickup, request → giver picks recipient → mutual transaction rating, coordination by pickup note + push, no in-app chat); referral rewards (in-app points + badges, no payments, native share sheet with referral deep link); household sharing (households group members who share a pantry, records can belong to a household with owner/member roles + invites, server-authoritative for shared household records).
+4. **Households moved in-scope (§12).** "Multi-user shared pantries (households)" removed from the out-of-scope list — now delivered as milestone M8.
+
+---
+
 ## 1. Overview
 
 A cross-platform mobile app (iOS + Android) that lets users:
@@ -66,12 +84,13 @@ OCR runs entirely on-device. No image data is sent to the backend.
 ### 2.5 Notifications
 
 - Push notifications via Expo Push Notifications service.
-- Default schedule per record: 7 days before expiry, 1 day before, on expiry day. User can adjust globally or per record.
+- Default schedule per record: 3 days before expiry, 1 day before, on expiry day (default `offsetsDays` `[3, 1, 0]`). User can adjust globally or per record.
 - Scheduled jobs are computed when a record is created/updated and stored in `records.notify_at`. BullMQ delayed jobs fire them via Expo Push.
 
 ### 2.6 Reviews
 
-- A review is **one rating (1–5 stars, required) and an optional written body** attached to a `(user, product)` pair.
+- A review has **two required criteria — taste (1–5) and value (1–5)** — plus an optional written body, attached to a `(user, product)` pair.
+- Product detail shows both averages: `tasteAvg` and `valueAvg`.
 - One review per user per product. Editable. Soft-deletable.
 - Reviews display sorted by Wilson score by default; "Newest" and "Highest rating" are alternative sorts.
 
@@ -109,6 +128,33 @@ OCR runs entirely on-device. No image data is sent to the backend.
 - Sync triggers: app foreground, network reconnect, after every local write, every 5 min while foregrounded.
 - Sync uses `?since=<timestamp>` for delta pulls.
 - Conflict policy: last-write-wins on user-owned data (records, my reviews); server wins on shared data (product details, vote counts on others' reviews).
+
+### 2.12 Deal sharing (v1.x — M5)
+
+- A deal links to a catalog product and carries a price, a store (free-text name/location), and an optional photo and/or expiry.
+- Deals appear in a **country-scoped** browsable feed — filtered by the viewer's `users.country` (derived from IP at signup, §2.9); a viewer with no country sees a global fallback. No precise geolocation is used.
+- Other users can upvote/downvote a deal (one vote per user per deal, tracked in `deal_votes`); a user can change or remove their vote.
+- Deals are reportable like other content.
+
+### 2.13 Blessing / giveaway (v1.x — M6)
+
+- A user can list an item for free local pickup, optionally linked to a pantry record. Giveaways appear in a **country-scoped** feed (by the viewer's `users.country`, global fallback when absent).
+- Other users request the item; the giver picks a recipient. Pickup notes from claimants are withheld from the giver until a claim is selected.
+- Handover is two-phase: the giver marks the item handed off and the recipient confirms receipt before the giveaway completes. Both parties then leave a **blind** mutual transaction rating (giver↔recipient).
+- Coordination happens via a pickup note plus push notifications — there is no in-app chat.
+
+### 2.14 Referral rewards (v1.x — M7)
+
+- Referral attribution rewards users with in-app points and badges, shown on the user's **own** profile only — there is no public leaderboard in v1.x. No payments or cash rewards. Anti-abuse: a per-day conversion velocity cap plus IP/device clustering checks.
+- Users share the app through the native share sheet (WhatsApp, Telegram, etc.), carrying a referral **code**; the code attributes new signups to the referrer. (Auto-opening universal/app links are deferred — the shared code is entered in-app at signup.)
+
+### 2.15 Household sharing (v1.x — M8)
+
+- A household groups members who share a pantry. A user may belong to multiple households.
+- A record can belong to a household (full shared pantry): members can add, edit, and consume shared records.
+- Roles: owner and member. Joining is via **owner-approved** invite requests — a leaked invite link alone does not grant access; the owner approves each join request.
+- Shared household records are server-authoritative (no offline last-write-wins for household-owned records).
+- Expiry reminders for a shared record fan out to **all current household members**, each using their own reminder schedule (default `[3,1,0]`); membership changes reschedule accordingly.
 
 ---
 
@@ -257,8 +303,8 @@ Shared catalog. One row per unique scannable item.
 | default_shelf_life_days | int | optional hint for new records |
 | source | enum | `off`, `upcitemdb`, `user` |
 | source_id | text | |
-| rating_avg | numeric(3,2) | denormalized |
-| rating_count | int | denormalized |
+| taste_avg | numeric(3,2) | denormalized |
+| value_avg | numeric(3,2) | denormalized |
 | review_count | int | denormalized |
 | created_by_user_id | uuid fk users | |
 | status | enum | `active`, `pending`, `merged_into` |
@@ -295,7 +341,8 @@ A user's personal pantry items. Private.
 | id | uuid pk | |
 | user_id | uuid fk users | |
 | product_id | uuid fk products | |
-| rating | smallint | 1–5, required |
+| taste_rating | smallint | 1–5, required |
+| value_rating | smallint | 1–5, required |
 | body | text | nullable |
 | upvote_count | int | denormalized |
 | downvote_count | int | denormalized |
@@ -621,7 +668,7 @@ Next.js 15 (App Router) + TypeScript + Tailwind + shadcn/ui + TanStack Query + T
 | Layer | Tool | Scope |
 |---|---|---|
 | API unit | Vitest | services, validators, score math |
-| API integration | Vitest + Supertest + testcontainers Postgres | full request cycles against real DB |
+| API integration | Vitest + Supertest + dedicated test Postgres database | full request cycles against real DB; locally a separate `pantry_test` schema, in CI a GitHub Actions Postgres service |
 | API contract | Zod schemas in `packages/shared` | mobile + admin can't drift |
 | Mobile unit | Vitest | hooks, stores, utilities |
 | Mobile component | React Native Testing Library | screens render and behave |
@@ -697,7 +744,6 @@ Runbooks in `docs/runbooks/`:
 - Tags or custom categories
 - Shopping list / restock suggestions
 - Recipes / meal planning from expiring items
-- Multi-user shared pantries (households)
 - Web app for end users (mobile-only)
 - Server-Sent Events / WebSockets for admin (polling instead)
 - Third-party analytics
@@ -710,10 +756,22 @@ These are deliberately deferred. The architecture does not preclude any of them.
 
 ## 13. Milestones
 
-The implementation plan(s) will divide work into:
+> **Build order (2026-05-26): backend + admin first.** Execution runs in two tracks — the entire **Backend + Admin track** (all `api/` + `apps/admin/` work) is built, tested, and deployed before **any** mobile work begins (the **Mobile track**). The vertical milestones (M1, M2, M5–M8) are split: their backend/admin phases run in the first track, their mobile phases in the second. Authoritative sequence: `docs/superpowers/plans/2026-05-26-build-order-backend-first.md`. Each plan carries an `## Execution order — backend-first` header with its per-phase split.
+>
+> - **Track A (Backend + Admin):** M0a → M0b → M0d → M1 (backend) → M2 (backend) → M3 → M5–M8 (backend + admin).
+> - **Track B (Mobile):** M0c → M1 (mobile) → M2 (mobile) → M5–M8 (screens) → M4.
+
+The milestones divide work into:
 
 - **M0 — Infra + Auth.** Provision VPS, scaffold monorepo, Postgres + Redis + Fastify skeleton, all auth methods (password, Google, Apple, passkeys), Expo app shell with auth flow, theme system foundation.
 - **M1 — Personal pantry.** Product lookup with OFF + UPCitemdb, scan flow (barcode + QR), records CRUD, manual + OCR expiry, push notifications, offline-first sync.
 - **M2 — Reviews + voting.** Reviews CRUD, voting, Wilson score, product detail screen with reviews list, profanity filter, report submission.
 - **M3 — Admin.** Next.js admin app, all dashboard pages, moderation queue, audit log, analytics, system health.
 - **M4 — Polish + launch.** All four themes implemented end-to-end, accessibility audit, App Store + Play Store submission, runbooks, restore drill, soft launch.
+
+The following v1.x social/growth milestones layer on top of the v1 M0–M4 set:
+
+- **M5 — Deal sharing.** Deals linked to catalog products with price + store + optional photo/expiry, browsable feed, up/down voting (`deal_votes`), reportable.
+- **M6 — Blessing / giveaway.** List items for free local pickup, request → giver picks recipient → mutual transaction rating, coordination via pickup note + push (no in-app chat).
+- **M7 — Referral + app sharing.** Referral attribution with in-app points + badges (no payments), native share sheet with referral deep link.
+- **M8 — Household sharing.** Households grouping members who share a pantry; records can belong to a household with owner/member roles and invites; server-authoritative shared records.

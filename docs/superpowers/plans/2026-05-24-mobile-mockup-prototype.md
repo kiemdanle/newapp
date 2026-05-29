@@ -2067,7 +2067,7 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
   <div class="section-title">Reminder schedule</div>
   <div class="card" style="margin-bottom:18px;">
     <div class="stack">
-      <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>7 days before</span><input type="checkbox" checked /></label>
+      <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>3 days before</span><input type="checkbox" checked /></label>
       <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>1 day before</span><input type="checkbox" checked /></label>
       <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⚠</span>On expiry day</span><input type="checkbox" checked /></label>
     </div>

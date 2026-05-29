@@ -21,6 +21,23 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A, step 1 (foundation — entire plan).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+A review pass tightened five things in this plan; apply them as written:
+
+1. **Access token is a plain string.** `issueAccessToken(payload)` returns the signed JWT as a bare `string` (not `{ token, expiresIn }`, and there is no second options/override argument). Routes that report `expiresIn` to clients read it from `getConfig().jwt.accessTtlSeconds`. This keeps M0b route code and downstream tests from having to unwrap a `.token` field.
+2. **Rate limiting is real and configurable.** New `RATE_LIMIT_*` config knobs drive three tiers: 60/min per authenticated user, 30/min per IP globally, and a tighter 10/min per IP on `/v1/auth/*`. The limiter is never fully disabled — tests set generous global numbers and a low auth-scope number so a test can still prove the auth limiter trips.
+3. **Recovery codes get a home.** A new `totp_recovery_codes` table stores hashed, single-use recovery codes (one row per code). M0b persists them at enrollment and redeems them.
+4. **Email verification + admin-TOTP gates land in M0b.** The login route there refuses sign-in for unverified emails and forces TOTP enrollment for admins who have not yet set it up; the supporting schema and config live here.
+
+---
+
 ## File map
 
 This plan creates the following files. Files in **bold** carry significant logic; the rest are wiring. Mobile, admin, and infra files are deferred to M0c/M0d.
@@ -564,6 +581,13 @@ export const totpChallengeSchema = z.object({
 });
 export type TotpChallenge = z.infer<typeof totpChallengeSchema>;
 
+/** Returned by login for an admin who must still set up TOTP before any session. */
+export const totpEnrollmentRequiredSchema = z.object({
+  requiresTotpEnrollment: z.literal(true),
+  enrollmentChallenge: z.string(),
+});
+export type TotpEnrollmentRequired = z.infer<typeof totpEnrollmentRequiredSchema>;
+
 // --- Email + password ---
 
 export const registerSchema = z.object({
@@ -631,7 +655,11 @@ export const passkeyLoginVerifySchema = z.object({
 
 // --- TOTP (admin) ---
 
-export const totpEnrollSchema = z.object({});
+// Enrollment is authorized by the single-use `enrollmentChallenge` issued by the
+// login route to an admin who has not yet set up TOTP.
+export const totpEnrollSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+});
 export const totpEnrollResponseSchema = z.object({
   secret: z.string(),
   qrCodeDataUrl: z.string(),
@@ -640,11 +668,17 @@ export const totpEnrollResponseSchema = z.object({
 export type TotpEnrollResponse = z.infer<typeof totpEnrollResponseSchema>;
 
 export const totpVerifyEnrollmentSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
 });
 export const totpChallengeVerifySchema = z.object({
   challengeToken: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
+});
+/** Redeem a one-time recovery code in place of a TOTP code during login. */
+export const totpRecoveryVerifySchema = z.object({
+  challengeToken: z.string().min(1),
+  recoveryCode: z.string().min(1),
 });
 ```
 
@@ -685,7 +719,9 @@ export const ERROR_CODES = {
   INVALID_TOKEN: 'invalid_token',
   TOKEN_EXPIRED: 'token_expired',
   REQUIRES_TOTP: 'requires_totp',
+  REQUIRES_TOTP_ENROLLMENT: 'requires_totp_enrollment',
   INVALID_TOTP: 'invalid_totp',
+  INVALID_RECOVERY_CODE: 'invalid_recovery_code',
   PASSKEY_VERIFICATION_FAILED: 'passkey_verification_failed',
 } as const;
 
@@ -1271,6 +1307,12 @@ JWT_AUDIENCE=pantry-app
 REFRESH_TOKEN_TTL_DAYS=30
 TOTP_ENCRYPTION_KEY=change-me-32-bytes-base64
 
+# Rate limiting (per 1-minute window)
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_PER_USER_PER_MIN=60
+RATE_LIMIT_PER_IP_PER_MIN=30
+RATE_LIMIT_AUTH_PER_IP_PER_MIN=10
+
 # OAuth
 GOOGLE_CLIENT_ID=
 APPLE_CLIENT_ID=
@@ -1313,6 +1355,13 @@ JWT_ISSUER=pantry-api
 JWT_AUDIENCE=pantry-app
 REFRESH_TOKEN_TTL_DAYS=30
 TOTP_ENCRYPTION_KEY=dGVzdC1rZXktMzItYnl0ZXMtZm9yLXRvdHAtYWVzZ2NtMTI=
+# Rate limiter stays ON in tests. The global per-user/per-IP budgets are set high
+# so they don't interfere with multi-request test flows, while the /v1/auth/* per-IP
+# budget is kept low so a dedicated test can assert it actually triggers.
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_PER_USER_PER_MIN=1000
+RATE_LIMIT_PER_IP_PER_MIN=1000
+RATE_LIMIT_AUTH_PER_IP_PER_MIN=5
 GOOGLE_CLIENT_ID=test-google-client-id
 APPLE_CLIENT_ID=test-apple-client-id
 APPLE_TEAM_ID=TESTTEAM
@@ -1397,6 +1446,10 @@ describe('config', () => {
     JWT_AUDIENCE: 'pantry-app',
     REFRESH_TOKEN_TTL_DAYS: '30',
     TOTP_ENCRYPTION_KEY: Buffer.from('a'.repeat(32)).toString('base64'),
+    RATE_LIMIT_ENABLED: 'true',
+    RATE_LIMIT_PER_USER_PER_MIN: '60',
+    RATE_LIMIT_PER_IP_PER_MIN: '30',
+    RATE_LIMIT_AUTH_PER_IP_PER_MIN: '10',
     GOOGLE_CLIENT_ID: 'g',
     APPLE_CLIENT_ID: 'a',
     APPLE_TEAM_ID: 'T',
@@ -1419,6 +1472,10 @@ describe('config', () => {
     expect(cfg.jwt.accessSecret).toHaveLength(32);
     expect(cfg.totp.encryptionKey).toBeInstanceOf(Buffer);
     expect(cfg.totp.encryptionKey.length).toBe(32);
+    expect(cfg.rateLimit.enabled).toBe(true);
+    expect(cfg.rateLimit.perUserPerMin).toBe(60);
+    expect(cfg.rateLimit.perIpPerMin).toBe(30);
+    expect(cfg.rateLimit.authPerIpPerMin).toBe(10);
   });
 
   it('rejects a JWT secret shorter than 32 bytes', () => {
@@ -1459,6 +1516,16 @@ const envSchema = z.object({
   JWT_ISSUER: z.string().default('pantry-api'),
   JWT_AUDIENCE: z.string().default('pantry-app'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+
+  // Rate limiting (per 1-minute window). Kept configurable so tests can tune
+  // them rather than disabling the limiter outright.
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  RATE_LIMIT_PER_USER_PER_MIN: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_PER_IP_PER_MIN: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_AUTH_PER_IP_PER_MIN: z.coerce.number().int().positive().default(10),
 
   TOTP_ENCRYPTION_KEY: z
     .string()
@@ -1503,6 +1570,12 @@ export interface Config {
     refreshTtlDays: number;
   };
   totp: { encryptionKey: Buffer };
+  rateLimit: {
+    enabled: boolean;
+    perUserPerMin: number;
+    perIpPerMin: number;
+    authPerIpPerMin: number;
+  };
   oauth: {
     googleClientId: string;
     appleClientId: string;
@@ -1532,6 +1605,12 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       refreshTtlDays: e.REFRESH_TOKEN_TTL_DAYS,
     },
     totp: { encryptionKey: Buffer.from(e.TOTP_ENCRYPTION_KEY, 'base64') },
+    rateLimit: {
+      enabled: e.RATE_LIMIT_ENABLED,
+      perUserPerMin: e.RATE_LIMIT_PER_USER_PER_MIN,
+      perIpPerMin: e.RATE_LIMIT_PER_IP_PER_MIN,
+      authPerIpPerMin: e.RATE_LIMIT_AUTH_PER_IP_PER_MIN,
+    },
     oauth: {
       googleClientId: e.GOOGLE_CLIENT_ID,
       appleClientId: e.APPLE_CLIENT_ID,
@@ -1742,6 +1821,7 @@ model User {
   emailTokens  EmailToken[]
   passwordResets PasswordReset[]
   totpChallenges TotpChallenge[]
+  totpRecoveryCodes TotpRecoveryCode[]
   auditLogs    AdminAuditLog[]  @relation("AuditAdmin")
 
   @@map("users")
@@ -1827,11 +1907,15 @@ model PasswordReset {
   @@map("password_resets")
 }
 
-/// Short-lived intermediate token after password login when admin TOTP is required.
+/// Short-lived intermediate token issued after a password login when admin TOTP is
+/// involved. `purpose` distinguishes a second-factor challenge for an admin who has
+/// TOTP enabled ('login') from a forced-enrollment token for an admin who must still
+/// set TOTP up ('enroll').
 model TotpChallenge {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
   tokenHash String   @unique
+  purpose   String   @default("login") // 'login' | 'enroll'
   expiresAt DateTime
   consumedAt DateTime?
   createdAt DateTime @default(now())
@@ -1840,6 +1924,21 @@ model TotpChallenge {
 
   @@index([userId])
   @@map("totp_challenges")
+}
+
+/// One hashed TOTP recovery code per row. Each code is single-use: `usedAt` is
+/// stamped when redeemed so the same code can never grant a second session.
+model TotpRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("totp_recovery_codes")
 }
 
 model AdminAuditLog {
@@ -1942,7 +2041,7 @@ Expected: creates migration directory, applies it, prints `✔ Generated Prisma 
 ```bash
 psql postgresql://pantry:pantry@localhost:5432/pantry -c "\dt"
 ```
-Expected: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `admin_audit_log`.
+Expected: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `totp_recovery_codes`, `admin_audit_log`.
 
 - [ ] **Step 3: Commit migration files**
 
@@ -2004,6 +2103,7 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
 // Truncate all tables in dependency order before each test
 const tables = [
   'admin_audit_log',
+  'totp_recovery_codes',
   'totp_challenges',
   'password_resets',
   'email_tokens',
@@ -2269,21 +2369,49 @@ export async function registerCors(app: FastifyInstance) {
 
 - [ ] **Step 2: Write `api/src/plugins/rate-limit.ts`**
 
+The global limiter enforces two tiers in one key: **60 requests/min per authenticated
+user** when a bearer identity is present, and **30 requests/min per IP** for anonymous
+traffic. A tighter **10 requests/min per IP** is layered onto the `/v1/auth/*` scope
+via a per-route config (`authRateLimitConfig`) that M0b attaches when it registers the
+auth routes. All three numbers come from config, so tests tune them rather than
+disabling the limiter — the limiter stays on in every environment.
+
 ```ts
 import rateLimit from '@fastify/rate-limit';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, RouteShorthandOptions } from 'fastify';
+import { getConfig } from '../config.js';
 import { getRedis } from '../redis.js';
 
 export async function registerRateLimit(app: FastifyInstance) {
+  const cfg = getConfig();
   await app.register(rateLimit, {
     global: true,
-    max: 60,
+    // Authenticated callers get the higher per-user budget; anonymous traffic
+    // is held to the stricter per-IP budget.
+    max: (req) => (req.user?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin),
     timeWindow: '1 minute',
     redis: getRedis(),
     nameSpace: 'rl:global:',
-    keyGenerator: (req) => `${req.ip}:${(req as any).user?.id ?? 'anon'}`,
+    keyGenerator: (req) => (req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`),
     addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true },
   });
+}
+
+/**
+ * Per-route rate-limit config for the `/v1/auth/*` scope: a tighter per-IP budget
+ * applied on top of the global limiter to slow credential-stuffing / brute force.
+ * M0b spreads this into the route options when registering the auth plugin.
+ */
+export function authRateLimitConfig(app: FastifyInstance): RouteShorthandOptions['config'] {
+  const cfg = getConfig();
+  return {
+    rateLimit: {
+      max: cfg.rateLimit.authPerIpPerMin,
+      timeWindow: '1 minute',
+      nameSpace: 'rl:auth:',
+      keyGenerator: (req) => `ip:${req.ip}`,
+    },
+  };
 }
 ```
 
@@ -2313,7 +2441,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(helmet, { global: true });
   await registerCors(app);
-  if (cfg.env !== 'test') await registerRateLimit(app);
+  if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
 
   app.addHook('onSend', async (req, reply) => {
@@ -2584,7 +2712,7 @@ git commit -m "feat(api): argon2id password hashing service"
 - Create: `api/src/services/auth/tokens.ts`
 - Create: `api/tests/unit/tokens.test.ts`
 
-`issueAccessToken(payload, opts?)` takes an `AccessTokenPayload` (`{ sub, role }`) and an optional `{ expiresIn }` override (seconds). It returns `{ token, expiresIn }`; when `opts.expiresIn` is omitted it falls back to `cfg.jwt.accessTtlSeconds`. M3 uses the override (`{ expiresIn: 15 * 60 }`) for the admin impersonate route; all other call sites in M0/M1/M2 pass no options and inherit the configured TTL.
+`issueAccessToken(payload)` takes an `AccessTokenPayload` (`{ sub, role }`) and returns the signed JWT **as a bare string**. The token's TTL always comes from `cfg.jwt.accessTtlSeconds`. Routes that hand tokens back to clients build `tokens = { accessToken: issueAccessToken({...}), refreshToken, expiresIn: cfg.jwt.accessTtlSeconds }` — so the `expiresIn` reported to clients is read from config at the call site, not returned by `issueAccessToken`. Returning a string (rather than an object) keeps every call site uniform: route handlers, the auth decorator, and downstream M1/M2/M3 code all treat the access token as a string and never have to unwrap a `.token` field.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2598,30 +2726,28 @@ import { getConfig, resetConfigForTests } from '../../src/config.js';
 beforeAll(() => resetConfigForTests());
 
 describe('tokens', () => {
-  it('issues and verifies an access token', async () => {
-    const { token, expiresIn } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+  it('issues a JWT string and verifies it', async () => {
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    expect(typeof token).toBe('string');
     const claims = await verifyAccessToken(token);
     expect(claims.sub).toBe('user-1');
     expect(claims.role).toBe('user');
-    expect(expiresIn).toBe(getConfig().jwt.accessTtlSeconds);
   });
 
   it('rejects a tampered access token', async () => {
-    const { token } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
     const tampered = token.slice(0, -2) + 'XX';
     await expect(verifyAccessToken(tampered)).rejects.toThrow();
   });
 
-  it('honors an explicit expiresIn override', async () => {
-    const { token, expiresIn } = await issueAccessToken(
-      { sub: 'user-1', role: 'admin' },
-      { expiresIn: 60 },
-    );
-    expect(expiresIn).toBe(60);
+  it('signs the token with the configured access TTL', async () => {
+    const token = await issueAccessToken({ sub: 'user-1', role: 'admin' });
     const decoded = decodeJwt(token);
     expect(decoded.exp).toBeDefined();
     expect(decoded.iat).toBeDefined();
-    expect((decoded.exp as number) - (decoded.iat as number)).toBe(60);
+    expect((decoded.exp as number) - (decoded.iat as number)).toBe(
+      getConfig().jwt.accessTtlSeconds,
+    );
   });
 
   it('issueRefreshToken returns { token, hash, expiresAt }', () => {
@@ -2654,43 +2780,28 @@ export interface AccessTokenPayload {
 /** Backward-compatible alias retained for any callers that still import AccessClaims. */
 export type AccessClaims = AccessTokenPayload;
 
-export interface IssueAccessTokenOptions {
-  /** Override the default TTL (seconds). Defaults to `cfg.jwt.accessTtlSeconds`. */
-  expiresIn?: number;
-}
-
-export interface IssuedAccessToken {
-  token: string;
-  expiresIn: number;
-}
-
 function secretKey(): Uint8Array {
   return new TextEncoder().encode(getConfig().jwt.accessSecret);
 }
 
 /**
- * Issue a signed JWT access token.
+ * Issue a signed JWT access token and return it as a bare string.
  *
- * When `opts.expiresIn` is supplied, it is used as the token TTL in seconds;
- * otherwise the default `cfg.jwt.accessTtlSeconds` is used. The returned
- * `expiresIn` always reflects the TTL actually applied to the token, so
- * callers can forward it to clients without re-deriving it from config.
+ * The TTL is always `cfg.jwt.accessTtlSeconds`. Callers that need to report
+ * `expiresIn` to a client read it from config (`getConfig().jwt.accessTtlSeconds`)
+ * at the call site; this function deliberately returns only the token so every
+ * call site treats the access token uniformly as a string.
  */
-export async function issueAccessToken(
-  payload: AccessTokenPayload,
-  opts?: IssueAccessTokenOptions,
-): Promise<IssuedAccessToken> {
+export async function issueAccessToken(payload: AccessTokenPayload): Promise<string> {
   const cfg = getConfig();
-  const expiresIn = opts?.expiresIn ?? cfg.jwt.accessTtlSeconds;
-  const token = await new SignJWT({ role: payload.role })
+  return new SignJWT({ role: payload.role })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setIssuer(cfg.jwt.issuer)
     .setAudience(cfg.jwt.audience)
     .setIssuedAt()
-    .setExpirationTime(`${expiresIn}s`)
+    .setExpirationTime(`${cfg.jwt.accessTtlSeconds}s`)
     .sign(secretKey());
-  return { token, expiresIn };
 }
 
 export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
@@ -3209,13 +3320,14 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
 
 - [ ] **Step 2: Register the plugin in `api/src/server.ts`**
 
-Find:
+The auth plugin's `onRequest` hook must populate `req.user` **before** the rate
+limiter runs, so the limiter can pick the per-user vs per-IP budget. Register it
+right after CORS and before `registerRateLimit`:
+
 ```ts
-await registerErrorHandler(app);
-```
-Add immediately after:
-```ts
+await registerCors(app);
 await app.register(authPlugin);
+if (cfg.rateLimit.enabled) await registerRateLimit(app);
 ```
 And at the top:
 ```ts
@@ -3311,10 +3423,13 @@ git tag m0a-complete
 - [ ] All 8 test files above pass.
 - [ ] `pnpm typecheck` passes for every workspace package.
 - [ ] `prisma migrate status` reports up-to-date.
-- [ ] `psql ... -c '\dt'` lists all M0 tables: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `admin_audit_log`.
+- [ ] `psql ... -c '\dt'` lists all M0 tables: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `totp_recovery_codes`, `admin_audit_log`.
 - [ ] `.env.test.example` and `.env.example` are committed; no real secrets are committed.
 - [ ] No `console.log` calls anywhere in `api/src/**` (use `logger`).
 - [ ] All four theme files implement the `Theme` contract from `packages/theme/src/tokens.ts`.
+- [ ] `issueAccessToken(payload)` returns the JWT as a bare **string** (no `{ token, expiresIn }` object, no second options argument). Callers read `expiresIn` from `getConfig().jwt.accessTtlSeconds`.
+- [ ] Rate-limit tiers are config-driven (`RATE_LIMIT_*`): 60/min per authenticated user, 30/min per IP globally, 10/min per IP on `/v1/auth/*`. The limiter is never fully disabled — tests tune the numbers via `.env.test`.
+- [ ] The `totp_recovery_codes` table stores hashed, single-use recovery codes (one row per code, `usedAt` stamped on redemption). M0b persists them at enrollment and redeems them.
 
 ---
 
@@ -3322,10 +3437,10 @@ git tag m0a-complete
 
 M0b will:
 
-1. Add Phase F: HTTP routes for register, login, refresh, logout, me, verify-email, resend-verification, forgot-password, reset-password.
+1. Add Phase F: HTTP routes for register, login, refresh, logout, me, verify-email, resend-verification, forgot-password, reset-password. The login route gates on email verification (returns 403 `email_not_verified` for unverified users) and, for admins without TOTP yet enabled, returns an enrollment-required state instead of a full session.
 2. Add Phase G: OAuth (Google + Apple) with `id_token` verification services and routes.
 3. Add Phase H: passkey (WebAuthn) services and routes (register options/verify, login options/verify) using `@simplewebauthn/server`.
-4. Add Phase I: TOTP enrollment and challenge-verify routes (admin-only) using `otplib` and the AES-GCM utility from this plan.
+4. Add Phase I: TOTP enrollment, challenge-verify, and recovery-code redemption routes (admin-only) using `otplib` and the AES-GCM utility from this plan. Recovery codes are persisted (hashed) in the `totp_recovery_codes` table built here and redeemed one-time.
 
-Every M0b route gets a Vitest integration test using the harness built in M0a (Task D7). When M0b is complete, the API exposes the full auth surface from spec section 6.1.
+Every M0b route gets a Vitest integration test using the harness built in M0a (Task D7). Each route that returns tokens builds `tokens = { accessToken: issueAccessToken({...}), refreshToken, expiresIn: cfg.jwt.accessTtlSeconds }` — `issueAccessToken` returns a string, so the access token is never unwrapped from an object. When M0b is complete, the API exposes the full auth surface from spec sections 2.1, 6.1, and 6.8 (rate limits), with admin accounts always protected by TOTP per 8.2.
 

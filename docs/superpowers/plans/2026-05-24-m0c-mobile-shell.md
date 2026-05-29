@@ -29,6 +29,26 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track B, step 1 (mobile shell + auth + theme — entire plan; first mobile work, starts only after Track A is done).** Track B order: M0c → M1 (mobile) → M2 (mobile) → M5–M8 (screens) → M4. All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+Four corrections were applied after a validation pass. Each is reflected in the relevant phase below; this section is the plain-language summary:
+
+1. **Tailwind token module is plain JavaScript, not TypeScript.** `tailwind.config.js` is evaluated by Metro/Tailwind with no TypeScript transpiler in the loop, so it cannot `require()` a `.ts` file. The Aurora token mapping now lives in a committed plain CommonJS module, `apps/mobile/src/theme/tailwind-tokens.cjs`, and the config requires that. A tiny `tailwind-tokens.ts` re-export keeps the value available to TypeScript code that wants it.
+
+2. **Refresh single-flight clears synchronously.** The API client previously cleared the in-flight refresh promise via `setTimeout(0)`, which leaves a multi-tick window where a freshly rotated access token can race a concurrent 401. The promise is now cleared synchronously inside a `finally` block; concurrent 401s `await` the single in-flight refresh and then replay against the rotated token. The single-flight test asserts this with truly concurrent requests.
+
+3. **Passkey registration flow added.** M0c previously built passkey *login* only. It now also builds passkey *registration* — `POST /v1/auth/passkey/register/options` then `/v1/auth/passkey/register/verify` (both from M0b) — exposed as an "Add a passkey" action on the account/settings surface and covered by a unit test.
+
+4. **Settings index screen added.** `app/(app)/settings/index.tsx` is the parent settings hub that links to Theme (live in M0c) plus Notifications and Account (per spec §7.2; their detail screens land in later milestones). Profile's "Settings" button now routes here instead of straight to Theme.
+
+---
+
 ## File map
 
 Files in **bold** carry significant logic; the rest are scaffolding or wiring. Tests live next to the code they cover or under `tests/`.
@@ -72,7 +92,9 @@ apps/mobile/
 │       │   ├── reviews.tsx                         ← M2 stub
 │       │   └── profile.tsx                         ← settings link
 │       └── settings/
-│           └── theme.tsx                           ← four preview cards
+│           ├── index.tsx                           ← settings hub (links to theme/notifications/account)
+│           ├── theme.tsx                            ← four preview cards
+│           └── add-passkey.tsx                      ← passkey registration action
 └── src/
     ├── api/
     │   ├── **client.ts**                           ← fetch wrapper w/ refresh
@@ -84,12 +106,13 @@ apps/mobile/
     │   ├── **session-store.ts**                    ← Zustand auth session
     │   ├── **google.ts**                           ← google-signin adapter
     │   ├── **apple.ts**                            ← apple-authentication adapter
-    │   └── **passkey.ts**                          ← react-native-passkey adapter
+    │   └── **passkey.ts**                          ← react-native-passkey adapter (login + registration)
     ├── theme/
     │   ├── **store.ts**                            ← Zustand theme store
     │   ├── **ThemeProvider.tsx**                   ← cross-fade theme provider (exports ThemeProvider, useTheme, useThemeSwitcher)
     │   ├── useTheme.ts                             ← re-export of useTheme from ThemeProvider
-    │   └── tailwind-tokens.ts                     ← maps tokens → tailwind colors
+    │   ├── **tailwind-tokens.cjs**                 ← plain CommonJS token map consumed by tailwind.config.js
+    │   └── tailwind-tokens.ts                     ← TS re-export of the .cjs token map
     ├── components/
     │   ├── Button.tsx
     │   ├── TextField.tsx
@@ -373,48 +396,65 @@ git commit -m "feat(mobile): expo dynamic config, eas, babel, metro"
 - Create: `apps/mobile/tailwind.config.js`
 - Create: `apps/mobile/global.css`
 - Create: `apps/mobile/nativewind-env.d.ts`
+- Create: `apps/mobile/src/theme/tailwind-tokens.cjs`
 - Create: `apps/mobile/src/theme/tailwind-tokens.ts`
 
-- [ ] **Step 1: Write `apps/mobile/src/theme/tailwind-tokens.ts`**
+> **Why a `.cjs` module here:** `tailwind.config.js` is evaluated by Metro/Tailwind in a plain Node/CommonJS context with no TypeScript transpiler in the loop. Requiring a `.ts` file from the config breaks the build. The token mapping therefore lives in a plain CommonJS module that the config can `require()` directly; a thin `.ts` re-export keeps the same value available to TypeScript code that wants it. The Aurora hex values are inlined into the `.cjs` so the config has no dependency on the workspace `@pantry/theme` build output at config-eval time.
 
-```ts
-import { aurora } from '@pantry/theme';
-
-/**
- * Tailwind needs static class names at build time, so we feed it the Aurora
- * palette as the default token set. Runtime theme switching is handled by the
- * theme provider injecting CSS-variable-like values via context; the Tailwind
- * config is only the bootstrap baseline.
- */
-export const tailwindTokens = {
-  colors: {
-    bg: aurora.colors.bg,
-    'bg-elevated': aurora.colors.bgElevated,
-    'bg-glass': aurora.colors.bgGlass,
-    border: aurora.colors.border,
-    fg: aurora.colors.text,
-    'fg-muted': aurora.colors.textMuted,
-    primary: aurora.colors.primary,
-    'primary-fg': aurora.colors.primaryFg,
-    accent: aurora.colors.accent,
-    success: aurora.colors.success,
-    warning: aurora.colors.warning,
-    danger: aurora.colors.danger,
-  },
-  borderRadius: {
-    sm: `${aurora.radii.sm}px`,
-    md: `${aurora.radii.md}px`,
-    lg: `${aurora.radii.lg}px`,
-    xl: `${aurora.radii.xl}px`,
-    pill: `${aurora.radii.pill}px`,
-  },
-};
-```
-
-- [ ] **Step 2: Write `apps/mobile/tailwind.config.js`**
+- [ ] **Step 1: Write `apps/mobile/src/theme/tailwind-tokens.cjs`**
 
 ```js
-const { tailwindTokens } = require('./src/theme/tailwind-tokens.ts');
+// Plain CommonJS so tailwind.config.js can require() it without a TS transpiler.
+// These are the Aurora Glass token values (the build-time default palette).
+// Keep in sync with @pantry/theme's `aurora` export; runtime theme switching is
+// handled by the theme provider via context, so this is only the static baseline.
+const tailwindTokens = {
+  colors: {
+    bg: '#0b0a17',
+    'bg-elevated': '#16142a',
+    'bg-glass': 'rgba(32, 28, 64, 0.55)',
+    border: '#2a2747',
+    fg: '#f4f3ff',
+    'fg-muted': '#a6a3c8',
+    primary: '#7c6cff',
+    'primary-fg': '#0b0a17',
+    accent: '#3ad7ff',
+    success: '#36d399',
+    warning: '#fbbd23',
+    danger: '#f87272',
+  },
+  borderRadius: {
+    sm: '8px',
+    md: '12px',
+    lg: '20px',
+    xl: '28px',
+    pill: '999px',
+  },
+};
+
+module.exports = { tailwindTokens };
+```
+
+- [ ] **Step 2: Write `apps/mobile/src/theme/tailwind-tokens.ts`** (TS re-export so TypeScript code can import the same value with types)
+
+```ts
+// Re-export the plain-JS token map so TypeScript importers get a typed handle
+// to the exact same object tailwind.config.js consumes.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { tailwindTokens } = require('./tailwind-tokens.cjs') as {
+  tailwindTokens: {
+    colors: Record<string, string>;
+    borderRadius: Record<string, string>;
+  };
+};
+
+export { tailwindTokens };
+```
+
+- [ ] **Step 3: Write `apps/mobile/tailwind.config.js`**
+
+```js
+const { tailwindTokens } = require('./src/theme/tailwind-tokens.cjs');
 
 module.exports = {
   content: [
@@ -429,7 +469,7 @@ module.exports = {
 };
 ```
 
-- [ ] **Step 3: Write `apps/mobile/global.css`**
+- [ ] **Step 4: Write `apps/mobile/global.css`**
 
 ```css
 @tailwind base;
@@ -437,24 +477,25 @@ module.exports = {
 @tailwind utilities;
 ```
 
-- [ ] **Step 4: Write `apps/mobile/nativewind-env.d.ts`**
+- [ ] **Step 5: Write `apps/mobile/nativewind-env.d.ts`**
 
 ```ts
 /// <reference types="nativewind/types" />
 ```
 
-- [ ] **Step 5: Typecheck**
+- [ ] **Step 6: Typecheck and confirm the config resolves without a TS transpiler**
 
 ```bash
 pnpm --filter @pantry/mobile typecheck
+node -e "require('./apps/mobile/tailwind.config.js'); console.log('tailwind config ok')"
 ```
-Expected: exit 0.
+Expected: typecheck exits 0; the `node -e` prints `tailwind config ok` (proving the config loads in a plain CommonJS context without needing TypeScript).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(mobile): nativewind + tailwind config wired to @pantry/theme"
+git commit -m "feat(mobile): nativewind + tailwind config wired to @pantry/theme tokens"
 ```
 
 ---
@@ -1080,7 +1121,7 @@ describe('apiClient — refresh on 401', () => {
     expect(await secureStore.getRefreshToken()).toBeNull();
   });
 
-  it('only refreshes once even with concurrent failing requests', async () => {
+  it('only refreshes once even with concurrent failing requests, and both replays use the rotated token', async () => {
     await secureStore.setAccessToken('expired');
     await secureStore.setRefreshToken('refresh-1');
     const f = queueFetch(
@@ -1096,11 +1137,24 @@ describe('apiClient — refresh on 401', () => {
     ]);
     expect(r1).toEqual({ a: 1 });
     expect(r2).toEqual({ b: 2 });
-    // Verify only ONE refresh call (the third call in the queue)
+    // Exactly ONE refresh call — the single-flight promise was shared.
     const refreshCalls = f.mock.calls.filter(([url]) =>
       String(url).endsWith('/v1/auth/refresh'),
     );
     expect(refreshCalls).toHaveLength(1);
+    // Both replays must carry the rotated access token. This is what the
+    // synchronous clear guarantees: there is no tick in which a replay races
+    // the rotation and re-sends the stale token.
+    const replayCalls = f.mock.calls.filter(([url]) => {
+      const s = String(url);
+      return s.endsWith('/v1/a') || s.endsWith('/v1/b');
+    });
+    for (const [, init] of replayCalls) {
+      expect((init as RequestInit).headers as Record<string, string>).toMatchObject({
+        Authorization: 'Bearer new',
+      });
+    }
+    expect(await secureStore.getAccessToken()).toBe('new');
   });
 });
 ```
@@ -1173,6 +1227,11 @@ export function setOnSignOut(cb: () => void) {
 }
 
 async function refreshTokensOnce(): Promise<boolean> {
+  // Single-flight: every concurrent 401 awaits the SAME promise. Whoever arrives
+  // first creates it; everyone else gets the in-flight one. Because the promise
+  // is only cleared synchronously in the finally below (after the rotated tokens
+  // are already written to secure-store), there is no multi-tick window in which
+  // a late caller can miss the rotation and kick off a second refresh.
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     const refresh = await secureStore.getRefreshToken();
@@ -1197,10 +1256,11 @@ async function refreshTokensOnce(): Promise<boolean> {
       onSignOut?.();
       return false;
     } finally {
-      // delay clearing until microtask flush so concurrent callers can await
-      setTimeout(() => {
-        refreshInFlight = null;
-      }, 0);
+      // Clear synchronously: by the time this runs the rotated tokens are already
+      // persisted, so any request that awaited this promise replays against the
+      // new access token, and a request that arrives afterwards starts a fresh
+      // single-flight only if it genuinely 401s again.
+      refreshInFlight = null;
     }
   })();
   return refreshInFlight;
@@ -1369,6 +1429,16 @@ export const authEndpoints = {
       path: '/auth/passkey/login/verify',
       body: { assertionResponse },
       skipAuth: true,
+    }),
+  // Registration adds a passkey credential to the *currently authenticated*
+  // account, so these calls carry the access token (no skipAuth).
+  passkeyRegisterOptions: () =>
+    apiClient.request<unknown>({ method: 'POST', path: '/auth/passkey/register/options' }),
+  passkeyRegisterVerify: (attestationResponse: unknown) =>
+    apiClient.request<{ ok: true }>({
+      method: 'POST',
+      path: '/auth/passkey/register/verify',
+      body: { attestationResponse },
     }),
 };
 
@@ -2501,7 +2571,7 @@ export default function AuthLayout() {
 }
 ```
 
-- [ ] **Step 2: Write `apps/mobile/app/(app)/_layout.tsx`**
+- [ ] **Step 2: Write `apps/mobile/app/(app)/_layout.tsx`** (the settings hub and add-passkey screens are added to this Stack in Task I3 once those routes exist)
 
 ```tsx
 import React from 'react';
@@ -2691,13 +2761,26 @@ export async function signInWithPasskey(email?: string) {
   const assertion = await Passkey.authenticate(options as never);
   return authEndpoints.passkeyLoginVerify(assertion);
 }
+
+/**
+ * Registers a NEW passkey on the currently signed-in account. Used from sign-up
+ * (offer to add a passkey right after account creation) and from the settings
+ * "Add a passkey" action. The register endpoints are authenticated, so the
+ * caller must already hold a valid session.
+ */
+export async function registerPasskey(): Promise<void> {
+  const options = await authEndpoints.passkeyRegisterOptions();
+  // react-native-passkey expects PublicKeyCredentialCreationOptionsJSON
+  const attestation = await Passkey.register(options as never);
+  await authEndpoints.passkeyRegisterVerify(attestation);
+}
 ```
 
 - [ ] **Step 2: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(mobile): passkey login adapter"
+git commit -m "feat(mobile): passkey login + registration adapter"
 ```
 
 ---
@@ -3654,6 +3737,303 @@ git commit -m "feat(mobile): settings/theme with four-card preview switcher"
 
 ---
 
+### Task I3: Settings index (hub) screen
+
+Per spec §7.2 the settings folder has a parent `index.tsx` that links to the individual settings screens. M0c ships the Theme screen plus an "Add a passkey" action; Notifications and Account detail screens land in later milestones, but their entries appear here now (routing to placeholders that those milestones fill in).
+
+**Files:**
+- Create: `apps/mobile/app/(app)/settings/index.tsx`
+- Create: `apps/mobile/app/(app)/settings/index.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+// apps/mobile/app/(app)/settings/index.test.tsx
+import React from 'react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fireEvent, render } from '@testing-library/react-native';
+import SettingsIndex from './index';
+import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { initThemeStore, useThemeStore } from '../../../src/theme/store';
+import { router } from '../../../tests/mocks/expo-router';
+import { __reset } from '../../../tests/mocks/expo-secure-store';
+
+function wrap(node: React.ReactNode) {
+  return <ThemeProvider>{node}</ThemeProvider>;
+}
+
+describe('<SettingsIndex />', () => {
+  beforeEach(async () => {
+    __reset();
+    vi.clearAllMocks();
+    useThemeStore.setState({ themeId: 'aurora', hydrated: false });
+    await initThemeStore();
+  });
+
+  it('renders a row for theme, notifications, and account', () => {
+    const { getByTestId } = render(wrap(<SettingsIndex />));
+    expect(getByTestId('settings-row-theme')).toBeTruthy();
+    expect(getByTestId('settings-row-notifications')).toBeTruthy();
+    expect(getByTestId('settings-row-account')).toBeTruthy();
+  });
+
+  it('tapping Theme routes to the theme screen', () => {
+    const { getByTestId } = render(wrap(<SettingsIndex />));
+    fireEvent.press(getByTestId('settings-row-theme'));
+    expect(router.push).toHaveBeenCalledWith('/(app)/settings/theme');
+  });
+});
+```
+
+- [ ] **Step 2: Verify FAIL**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run "app/(app)/settings/index.test.tsx"
+```
+
+- [ ] **Step 3: Write `apps/mobile/app/(app)/settings/index.tsx`**
+
+```tsx
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter, type Href } from 'expo-router';
+import { Screen } from '../../../src/components/Screen';
+import { useTheme } from '../../../src/theme/useTheme';
+
+interface Row {
+  key: string;
+  label: string;
+  subtitle: string;
+  href: Href;
+}
+
+const ROWS: Row[] = [
+  { key: 'theme', label: 'Theme', subtitle: 'Pick one of four looks', href: '/(app)/settings/theme' },
+  { key: 'notifications', label: 'Notifications', subtitle: 'Expiry reminders and alerts', href: '/(app)/settings/notifications' },
+  { key: 'account', label: 'Account', subtitle: 'Email, password, and passkeys', href: '/(app)/settings/account' },
+];
+
+export default function SettingsIndex() {
+  const router = useRouter();
+  const theme = useTheme();
+  return (
+    <Screen>
+      <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>Settings</Text>
+      <View style={{ gap: 10 }}>
+        {ROWS.map((row) => (
+          <Pressable
+            key={row.key}
+            testID={`settings-row-${row.key}`}
+            accessibilityRole="button"
+            accessibilityLabel={row.label}
+            onPress={() => router.push(row.href)}
+            style={({ pressed }) => [
+              styles.row,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>{row.label}</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{row.subtitle}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  row: { borderWidth: 1, padding: 16, gap: 4 },
+});
+```
+
+- [ ] **Step 4: Register the route in `apps/mobile/app/(app)/_layout.tsx`** — add the `settings/index` and `settings/add-passkey` screens alongside the existing `settings/theme` entry:
+
+```tsx
+import React from 'react';
+import { Stack } from 'expo-router';
+
+export default function AppLayout() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="settings/index" options={{ headerShown: true, title: 'Settings' }} />
+      <Stack.Screen name="settings/theme" options={{ headerShown: true, title: 'Theme' }} />
+      <Stack.Screen name="settings/add-passkey" options={{ headerShown: true, title: 'Add a passkey' }} />
+    </Stack>
+  );
+}
+```
+
+- [ ] **Step 5: Point Profile's "Settings" button at the hub.** In `apps/mobile/app/(app)/(tabs)/profile.tsx`, change the theme shortcut button into a Settings button that routes to the hub:
+
+```tsx
+<Button testID="profile-settings" label="Settings" variant="secondary" onPress={() => router.push('/(app)/settings/index')} />
+```
+
+(Replaces the previous `testID="profile-theme"` button that linked straight to `/(app)/settings/theme`.)
+
+- [ ] **Step 6: Verify PASS + typecheck**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run "app/(app)/settings/index.test.tsx"
+pnpm --filter @pantry/mobile typecheck
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "feat(mobile): settings hub screen linking theme, notifications, account"
+```
+
+---
+
+### Task I4: Add-passkey screen (passkey registration, TDD)
+
+Implements the passkey *registration* flow (spec §2.1 / §7.3): from the settings/account surface a signed-in user can add a passkey credential to their account via `POST /v1/auth/passkey/register/options` then `/v1/auth/passkey/register/verify`. The screen uses the `registerPasskey` adapter from Task G3.
+
+**Files:**
+- Create: `apps/mobile/app/(app)/settings/add-passkey.tsx`
+- Create: `apps/mobile/app/(app)/settings/add-passkey.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+// apps/mobile/app/(app)/settings/add-passkey.test.tsx
+import React from 'react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
+import AddPasskey from './add-passkey';
+import { ThemeProvider } from '../../../src/theme/ThemeProvider';
+import { initThemeStore, useThemeStore } from '../../../src/theme/store';
+import { useSessionStore } from '../../../src/auth/session-store';
+import { jsonResponse, problemResponse, queueFetch } from '../../../tests/mocks/fetch';
+import { __reset } from '../../../tests/mocks/expo-secure-store';
+import { Passkey } from 'react-native-passkey';
+import { secureStore } from '../../../src/auth/secure-store';
+
+function wrap(node: React.ReactNode) {
+  return <ThemeProvider>{node}</ThemeProvider>;
+}
+
+describe('<AddPasskey />', () => {
+  beforeEach(async () => {
+    __reset();
+    vi.clearAllMocks();
+    useThemeStore.setState({ themeId: 'aurora', hydrated: false });
+    await initThemeStore();
+    useSessionStore.setState({ user: null, accessToken: 'a', refreshToken: 'r', hydrated: true });
+    await secureStore.setAccessToken('a');
+  });
+
+  it('on success: requests options, registers, verifies, shows confirmation', async () => {
+    (Passkey.register as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'cred-1' });
+    queueFetch(
+      jsonResponse({ challenge: 'abc', rp: { id: 'localhost' } }), // register/options
+      jsonResponse({ ok: true }), // register/verify
+    );
+    const { getByTestId, findByText } = render(wrap(<AddPasskey />));
+    await act(async () => {
+      fireEvent.press(getByTestId('add-passkey-submit'));
+    });
+    await waitFor(() => expect(Passkey.register).toHaveBeenCalledOnce());
+    expect(await findByText(/passkey added/i)).toBeTruthy();
+  });
+
+  it('on register/options error: surfaces the message and never calls Passkey.register', async () => {
+    queueFetch(problemResponse('passkey_not_allowed', 400, 'Passkeys are not allowed here'));
+    const { getByTestId, findByText } = render(wrap(<AddPasskey />));
+    await act(async () => {
+      fireEvent.press(getByTestId('add-passkey-submit'));
+    });
+    expect(await findByText('Passkeys are not allowed here')).toBeTruthy();
+    expect(Passkey.register).not.toHaveBeenCalled();
+  });
+});
+```
+
+- [ ] **Step 2: Verify FAIL**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run "app/(app)/settings/add-passkey.test.tsx"
+```
+
+- [ ] **Step 3: Write `apps/mobile/app/(app)/settings/add-passkey.tsx`**
+
+```tsx
+import React, { useState } from 'react';
+import { Text } from 'react-native';
+import { Screen } from '../../../src/components/Screen';
+import { Button } from '../../../src/components/Button';
+import { ErrorText } from '../../../src/components/ErrorText';
+import { registerPasskey } from '../../../src/auth/passkey';
+import { isApiError } from '../../../src/api/errors';
+import { useTheme } from '../../../src/theme/useTheme';
+
+export default function AddPasskey() {
+  const theme = useTheme();
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onAdd() {
+    setError(null);
+    setLoading(true);
+    try {
+      await registerPasskey();
+      setDone(true);
+    } catch (e) {
+      setError(isApiError(e) ? e.title : 'Could not add a passkey');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Screen>
+      <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>Add a passkey</Text>
+      <Text style={{ color: theme.colors.textMuted, lineHeight: 22 }}>
+        Use Face ID, Touch ID, or your device PIN to sign in next time — no password needed.
+      </Text>
+      {done ? <Text style={{ color: theme.colors.success }}>Passkey added. You can now sign in with it.</Text> : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
+      {!done ? (
+        <Button testID="add-passkey-submit" label="Create a passkey" onPress={onAdd} loading={loading} />
+      ) : null}
+    </Screen>
+  );
+}
+```
+
+- [ ] **Step 4: Add an "Add a passkey" entry on the Account surface.** The Account detail screen is a later milestone, so for M0c wire the entry from the Settings hub directly. In `apps/mobile/app/(app)/settings/index.tsx`, append a fourth row pointing at `/(app)/settings/add-passkey`:
+
+```tsx
+{ key: 'add-passkey', label: 'Add a passkey', subtitle: 'Sign in with Face ID / Touch ID', href: '/(app)/settings/add-passkey' },
+```
+
+(Add it to the `ROWS` array; the `settings-row-account` test still passes because it only asserts the three core rows exist.)
+
+- [ ] **Step 5: Verify PASS + typecheck**
+
+```bash
+pnpm --filter @pantry/mobile exec vitest run "app/(app)/settings/add-passkey.test.tsx"
+pnpm --filter @pantry/mobile typecheck
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A
+git commit -m "feat(mobile): passkey registration screen wired into settings"
+```
+
+---
+
 ## Phase J — End-to-end + CI
 
 ### Task J1: Maestro E2E happy path
@@ -3738,6 +4118,8 @@ Expected: every file passes. As of M0c, the suite is:
 - `app/(auth)/sign-up.test.tsx` — 3 tests
 - `app/(auth)/sign-in.test.tsx` — 4 tests
 - `app/(app)/settings/theme.test.tsx` — 2 tests
+- `app/(app)/settings/index.test.tsx` — 2 tests
+- `app/(app)/settings/add-passkey.test.tsx` — 2 tests
 
 - [ ] **Step 2: Typecheck the whole repo**
 
@@ -3889,15 +4271,18 @@ git tag m0c-complete
 ## Self-review checklist (run before declaring M0c done)
 
 - [ ] **Spec coverage** — every requirement is implemented:
-  - §2.1 Authentication: email+password sign-up/sign-in/verify/forgot/reset ✓ (H2–H6), Google ✓ (G1+H3), Apple ✓ (G2+H3, iOS-gated), passkeys ✓ (G3+H3), tokens in `expo-secure-store` ✓ (B1).
+  - §2.1 Authentication: email+password sign-up/sign-in/verify/forgot/reset ✓ (H2–H6), Google ✓ (G1+H3), Apple ✓ (G2+H3, iOS-gated), passkey login ✓ (G3+H3), passkey registration ✓ (G3+I4), tokens in `expo-secure-store` ✓ (B1).
   - §2.10 Theming: four themes, switcher, 200ms cross-fade, local persist + server sync ✓ (C1–C3, I2).
-  - §6.1 Auth: every endpoint listed in scope is reachable via `authEndpoints` ✓ (B6).
+  - §6.1 Auth: every endpoint listed in scope is reachable via `authEndpoints` — including `/auth/passkey/register/options` and `/auth/passkey/register/verify` ✓ (B6).
   - §6.6 `PATCH /v1/me`: used for theme sync ✓ (C3, B6).
   - §7.1 Stack: Expo Router + Zustand + TanStack Query + NativeWind + `expo-secure-store` + social SDKs + passkey ✓ (A1–F1).
-  - §7.2 Folder structure: matches `app/(auth)`, `app/(app)/(tabs)`, `app/(app)/settings/`, `src/api/`, `src/auth/`, `src/components/`, `src/theme/` ✓.
+  - §7.2 Folder structure: matches `app/(auth)`, `app/(app)/(tabs)`, `app/(app)/settings/` (now with the `settings/index.tsx` hub ✓, I3), `src/api/`, `src/auth/`, `src/components/`, `src/theme/` ✓.
+  - §7.3 Core flows: settings hub → theme → preview ✓ (I3, I2); add-a-passkey action ✓ (I4).
   - §7.5 Theme system: `useTheme()` backed by Zustand, 200ms cross-fade, persists to secure-store + syncs to server ✓ (C1–C3).
+- [ ] **Build-time Tailwind config loads without a transpiler** — `tailwind.config.js` requires the plain CommonJS `src/theme/tailwind-tokens.cjs` (NOT a `.ts` file), so Metro/Tailwind evaluate it with no TypeScript step. Verified by the `node -e "require('./apps/mobile/tailwind.config.js')"` probe in A3 ✓.
+- [ ] **Refresh single-flight has no race** — `refreshInFlight` is cleared synchronously in `finally` (no `setTimeout`); concurrent 401s share one refresh and both replays carry the rotated access token, asserted by the concurrent-request test in B4 ✓.
 - [ ] **Placeholder scan** — no "TBD", "TODO" (except the explicit M4 Maestro TODO in CI), "fill in details", or "see Task N" exists in any code block above. Every step shows the actual code.
-- [ ] **Type consistency** — function names match across tasks: `secureStore.setAccessToken/getAccessToken/clearAll`, `useSessionStore.signIn/signOut`, `useThemeStore.setTheme`, `initThemeStore`, `hydrateSession`, `apiClient.request`, `setOnSignOut`, `wireApiClient`, `signInWithGoogle/Apple/Passkey`, `authEndpoints.*`, `meEndpoints.update`, `parseAuthDeepLink`, `fieldErrors`. Schema imports are `registerSchema`, `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema` — all real exports from `@pantry/shared` per M0a Task B2.
+- [ ] **Type consistency** — function names match across tasks: `secureStore.setAccessToken/getAccessToken/clearAll`, `useSessionStore.signIn/signOut`, `useThemeStore.setTheme`, `initThemeStore`, `hydrateSession`, `apiClient.request`, `setOnSignOut`, `wireApiClient`, `signInWithGoogle/Apple/Passkey`, `registerPasskey`, `authEndpoints.*` (incl. `passkeyRegisterOptions/passkeyRegisterVerify`), `meEndpoints.update`, `parseAuthDeepLink`, `fieldErrors`. The Tailwind token map is exported as `{ tailwindTokens }` from both `tailwind-tokens.cjs` and the `tailwind-tokens.ts` re-export. Schema imports are `registerSchema`, `loginSchema`, `forgotPasswordSchema`, `resetPasswordSchema` — all real exports from `@pantry/shared` per M0a Task B2.
 - [ ] **WatermelonDB** — install only; no models or sync engine. M1 will pick this up.
 - [ ] **Only Aurora Glass is polished UI**, but theme provider + switcher work for all four token sets (verified by `theme.test.tsx` rendering each `themeId` and the settings screen rendering all four cards).
 - [ ] **Mobile CI** runs lint (skip placeholder), typecheck, and Vitest on every PR. Maestro is documented as nightly-deferred per scope.
@@ -3911,6 +4296,7 @@ git tag m0c-complete
   - Adding the scan camera flow at `app/(app)/scan.tsx`.
   - Filling in `home.tsx` and `browse.tsx` with real record + product UIs.
   - Adding country auto-detection on first launch using the M0a backend service.
-  - Wiring push notifications and the `me/push-token` endpoint.
+  - Wiring push notifications and the `me/push-token` endpoint, and building the `settings/notifications.tsx` detail screen the settings hub already links to.
+  - Building the `settings/account.tsx` detail screen (email/password/linked-credential management); the settings hub links to it, and passkey registration is already shipped (`settings/add-passkey.tsx`, the `registerPasskey` adapter, and the `/auth/passkey/register/*` endpoint helpers) so account management only needs to surface and list existing credentials.
 - **M2** fills `reviews.tsx`, `product/[id].tsx`, and the review/vote flow.
 - **M4** ships Bento / Soft Clay / Material You per-screen polish, enables the Maestro CI job, and finishes the EAS production profile in `eas.json`.

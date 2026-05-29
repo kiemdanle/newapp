@@ -136,7 +136,7 @@ Numbered for file order; grouped for the nav hub.
 ### Settings (4)
 20. **Settings index** — list grouped into Preferences (Theme, Notifications, Language [disabled]), Account (Email, Password, Linked accounts, Country), Data (Export my data [placeholder], Delete account), About (Version, Terms, Privacy, OSS licenses). Footer: "Sign out" red text full-width
 21. **Theme picker** — four large vertically-stacked preview cards. Each card renders a miniature home screen in that theme (real Aurora frosted glass, real Bento tiles, real Clay 3D depth, real MD3 chips). Selected card has a cyan ring. Tapping a card cross-fades the *page chrome and the settings screen behind* over 200ms. "Save" button at the bottom. **This is the centerpiece of the prototype.**
-22. **Notifications settings** — master "Push notifications" toggle. Default reminder schedule: three checkboxes (7 days before, 1 day before, on expiry day). Quiet hours start/end pickers. "Test notification" button at the bottom
+22. **Notifications settings** — master "Push notifications" toggle. Default reminder schedule: three checkboxes (3 days before, 1 day before, on expiry day). Quiet hours start/end pickers. "Test notification" button at the bottom
 23. **Account** — same content as Account section of Settings index, promoted to its own screen for the deep-link case. Linked-accounts toggles are **visual only** with note: "At least one credential must remain linked"
 
 ### Special (2)

@@ -20,6 +20,21 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track B, final step (polish + launch: themes, a11y, store — entire plan).** Track B order: M0c → M1 (mobile) → M2 (mobile) → M5–M8 (screens) → M4. All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+These corrections were applied after a validation pass. They are folded into the relevant tasks below; this list is a plain-language summary.
+
+1. **Security-review login assertion uses camelCase.** The admin-login TOTP check in `security-review.md` (Task referencing the production login curl) now reads `jq .requiresTotp` instead of `requires_totp`. The API contract returns the field in camelCase (`requiresTotp`), so the snake_case probe would always be `null` and the check would silently never fire.
+2. **WCAG AA contrast test expanded (Task F1).** The contrast test previously checked only ~6 normal-text pairs at 4.5:1 and omitted `text.muted` foregrounds and non-text/UI-border pairs. It now also asserts `text.muted` on surface/background at 4.5:1 (WCAG 1.4.3) and `border`/`accent` boundary pairs at 3:1 (WCAG 1.4.11), each pair carrying its own threshold. Importantly, no theme hex is changed to make the test pass: where expanded pairs fail (e.g. Bento `text.muted` ≈ #8A8A8A on white ≈ 3.5:1), the task records them under a clearly-flagged "Palette sign-off required" note and waits for the user to approve a re-tune or exemption before any token is edited. The test coverage is added now; the color tokens are left unchanged pending sign-off.
+
+---
+
 ## File map
 
 This plan **creates** the following files and **modifies** many existing screens to consume tokens. Bold files contain runbook or legal content written out in full inside the plan.
@@ -1764,6 +1779,13 @@ pnpm -C apps/mobile add -D wcag-contrast @types/wcag-contrast
 
 - [ ] **Step 2: Write failing test**
 
+The test must cover all three WCAG 2.1 contrast obligations, not just normal text:
+
+- **Normal text — 4.5:1 (1.4.3 AA).** Includes `text.primary`, `text.secondary`, **and `text.muted`** foregrounds. Muted greys are easy to overlook; the light-theme muted hex (e.g. Bento `text.muted` ≈ `#8A8A8A` on white surface ≈ 3.5:1) very likely fails AA and was previously untested, letting CI go green on a real violation.
+- **Non-text / UI components and borders — 3:1 (1.4.11 AA).** Includes the `border` token against the surfaces it divides, and the `accent` fill against the background it sits on (button/FAB boundary).
+
+Each pair therefore carries its own threshold rather than a single hardcoded `4.5`.
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { hex } from 'wcag-contrast';
@@ -1771,25 +1793,36 @@ import { aurora, bento, clay, material } from '@pantry/theme';
 
 const themes = { aurora, bento, clay, material };
 
+// [foreground, background, minRatio]
+// 4.5 → normal text (WCAG 1.4.3). 3 → non-text / UI components + borders (WCAG 1.4.11).
 const PAIRS = [
-  ['text.primary',  'surface'],
-  ['text.primary',  'background'],
-  ['text.secondary','surface'],
-  ['text.onAccent', 'accent'],
-  ['status.danger', 'surface'],
-  ['status.success','surface'],
+  // Normal text
+  ['text.primary',   'surface',    4.5],
+  ['text.primary',   'background', 4.5],
+  ['text.secondary', 'surface',    4.5],
+  ['text.secondary', 'background', 4.5],
+  ['text.muted',     'surface',    4.5],
+  ['text.muted',     'background', 4.5],
+  ['text.onAccent',  'accent',     4.5],
+  ['status.danger',  'surface',    4.5],
+  ['status.success', 'surface',    4.5],
+  // Non-text / UI components and borders (3:1)
+  ['border',         'surface',    3],
+  ['border',         'background', 3],
+  ['accent',         'background', 3],
+  ['accent',         'surface',    3],
 ] as const;
 
 function get(t: any, path: string) {
   return path.split('.').reduce((o, k) => o[k], t.colors);
 }
 
-describe('WCAG AA contrast (>= 4.5 for normal text)', () => {
+describe('WCAG AA contrast (text 4.5:1, non-text/borders 3:1)', () => {
   for (const [tname, t] of Object.entries(themes)) {
-    for (const [fg, bg] of PAIRS) {
-      it(`${tname}: ${fg} on ${bg}`, () => {
+    for (const [fg, bg, min] of PAIRS) {
+      it(`${tname}: ${fg} on ${bg} (>= ${min})`, () => {
         const ratio = hex(get(t, fg), get(t, bg));
-        expect(ratio).toBeGreaterThanOrEqual(4.5);
+        expect(ratio).toBeGreaterThanOrEqual(min);
       });
     }
   }
@@ -1801,22 +1834,33 @@ describe('WCAG AA contrast (>= 4.5 for normal text)', () => {
 ```bash
 pnpm -C apps/mobile test -- contrast
 ```
-Expected: FAIL on any low-contrast pair (e.g., `text.secondary on surface` in bento or clay).
+Expected: FAIL on any low-contrast pair. The newly-added muted-text and border pairs are the likely failures (e.g. Bento `text.muted` ≈ `#8A8A8A` on `#FFFFFF` surface ≈ 3.5:1 < 4.5).
 
-- [ ] **Step 4: Fix theme tokens until all pass**
+- [ ] **Step 4: Triage failures — do NOT silently re-tune user-chosen hex**
 
-For every failing pair, darken the foreground (or lighten the background) in the relevant `packages/theme/src/themes/*.ts`. Re-run snapshots in Phase B (`-u`) to refresh. Iterate until green.
+The theme hex values (background/surface/accent/text/border per theme) are user-chosen design decisions. Adjusting them changes the look of a shipped theme, so they MUST NOT be changed to make the test pass without sign-off.
+
+For each failing pair:
+1. Record the theme, the pair, the current hex values, and the measured ratio.
+2. Add the failure to the **"Palette sign-off required"** note below (`apps/mobile/docs/theme-audit.md` is the home for it; reference it from this task).
+3. Leave the token unchanged until the user approves a specific re-tune (darken foreground / lighten background) or an exemption (e.g. muted text used only for genuinely decorative/disabled states that fall outside the 4.5:1 obligation).
+
+> **Palette sign-off required.** The expanded contrast test surfaces pairs that likely fail AA at the correct thresholds. List every failing `theme: fg on bg = measured ratio (threshold)` here and resolve each with the user before M4 ships. Known suspect: Bento `text.muted` (#8A8A8A) on surface (#FFFFFF) ≈ 3.5:1 vs 4.5:1 required. Options per pair: (a) darken the foreground token, (b) lighten the background token, (c) document that the token is used only for decorative/disabled UI exempt from 1.4.3. Do not edit any theme hex in `packages/theme/src/themes/*.ts` until the user picks an option.
+
+- [ ] **Step 5: Once sign-off is recorded, apply only the approved changes and re-run**
+
+Apply only the hex edits the user approved (if any), refresh Phase B snapshots (`-u`) for affected themes, and re-run until green. Pairs the user exempted are removed from `PAIRS` with an inline comment citing the sign-off, not silently.
 
 ```bash
 pnpm -C apps/mobile test -- contrast
 ```
-Expected: PASS for all 24 assertions.
+Expected: PASS for all asserted pairs.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/mobile/tests/unit/contrast.test.ts apps/mobile/package.json apps/mobile/pnpm-lock.yaml packages/theme/src/themes packages/theme/src/themes/__snapshots__
-git commit -m "test(theme): WCAG AA contrast assertions + token adjustments"
+git add apps/mobile/tests/unit/contrast.test.ts apps/mobile/package.json apps/mobile/pnpm-lock.yaml apps/mobile/docs/theme-audit.md packages/theme/src/themes packages/theme/src/themes/__snapshots__
+git commit -m "test(theme): WCAG AA contrast assertions for text, muted text, and borders"
 ```
 
 ---
@@ -3005,13 +3049,13 @@ LAST_GOOD=<sha>
 ln -sfn /opt/pantry/releases/$LAST_GOOD /opt/pantry/current
 ```
 
-## 3. Reload services (10 seconds)
+## 3. Restart services (10 seconds)
 
 ```bash
-sudo systemctl reload pantry-api pantry-admin
+sudo systemctl restart pantry-api pantry-admin
 ```
 
-`reload` triggers a graceful in-flight drain via the SIGTERM handler (see `api/src/server.ts`). Active requests complete; new requests use the rolled-back binary.
+`systemctl restart` sends `SIGTERM` to each unit; the units stop with `TimeoutStopSec=30`, giving the in-flight handler in `api/src/server.ts` its graceful drain window before SIGKILL. Active requests complete; new requests use the rolled-back binary. (`reload` is a no-op for these `Type=simple` units — they have no `ExecReload`.)
 
 ## 4. Smoke test (30 seconds)
 
@@ -3144,10 +3188,7 @@ sudo -i
 nano /etc/pantry/.env.production
 # Set: JWT_ACCESS_SECRET=<NEW>
 # Save, exit
-systemctl reload pantry-api pantry-admin
-```
-
-> **v1 behavior:** rotating `JWT_ACCESS_SECRET` is a hard cutover. All access tokens signed under the old key fail verification immediately and every client must re-authenticate.
+systemctl restart pantry-api pantry-admin All access tokens signed under the old key fail verification immediately and every client must re-authenticate.
 >
 > **Future enhancement:** implement a previous-key grace mechanism (e.g., `JWT_ACCESS_SECRET_PREVIOUS`) for zero-downtime JWT rotation. Not in v1.
 
@@ -3221,13 +3262,13 @@ git commit -m "docs(infra): revoke-all-sessions emergency runbook"
 - `OAUTH_GOOGLE_CLIENT_SECRET`
 - `OAUTH_APPLE_PRIVATE_KEY`
 
-All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pantry-api pantry-admin`.
+All edits to `/etc/pantry/.env.production` are followed by `systemctl restart pantry-api pantry-admin` (these `Type=simple` units have no `ExecReload`, so a `reload` would be a silent no-op; restart sends SIGTERM and lets the process drain within `TimeoutStopSec=30`).
 
 ## JWT signing key
 
 1. Generate: `openssl rand -base64 64`
 2. Set the new value as `JWT_ACCESS_SECRET` in `/etc/pantry/.env.production`
-3. `systemctl reload pantry-api pantry-admin`
+3. `systemctl restart pantry-api pantry-admin`
 4. **All sessions are forced to re-authenticate.** This is a hard cutover in v1.
 
 > **Future enhancement:** implement a previous-key grace period (e.g., `JWT_ACCESS_SECRET_PREVIOUS` accepted on verify only) for zero-downtime JWT rotation. For v1, all sessions are forced to re-auth after rotation.
@@ -3240,7 +3281,7 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
    ALTER ROLE pantry_app WITH PASSWORD '<new>';
    ```
 3. Update `DATABASE_URL` in `.env.production`
-4. `systemctl reload pantry-api pantry-admin`
+4. `systemctl restart pantry-api pantry-admin`
 5. Verify: `curl https://api.pantry.example/health/ready` returns `db: true`
 
 ## Redis password
@@ -3248,7 +3289,7 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 1. Generate: `openssl rand -base64 32`
 2. Edit `/etc/redis/redis.conf` → `requirepass <new>`
 3. Edit `/etc/pantry/.env.production` → `REDIS_URL=redis://:<new>@localhost:6379`
-4. `systemctl reload redis-server pantry-api`
+4. `systemctl restart redis-server pantry-api`
 5. Verify: `curl https://api.pantry.example/health/ready` returns `redis: true`
 
 ## Backblaze B2 application key (used by rclone)
@@ -3271,14 +3312,14 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 1. Generate new keypair on a workstation: `age-keygen -o pantry-age-$(date +%Y%m%d).key`
 2. The output file contains both the secret key and the public recipient (`# public key: age1...`).
 3. Update `BACKUP_AGE_RECIPIENT` in `/etc/pantry/.env.production` to the new `age1...` recipient string
-4. `systemctl reload pantry-api`
+4. `systemctl restart pantry-api`
 5. Store the new private key in 1Password under "Pantry Backups → Age key (current)". Move the previous one to "Age key (N-1)". Keep two generations so that historic backups under the old recipient can still be decrypted during a restore drill.
 6. After the next quarterly restore drill passes with the new key, the old generation may be archived but never deleted while any backups encrypted under it still exist.
 
 ## SMTP password
 
 1. Rotate at the SMTP provider (e.g., Postmark / SES)
-2. Update `SMTP_PASSWORD`, reload
+2. Update `SMTP_PASSWORD`, restart
 3. Send a test verification email to your own address
 
 ## Expo access token
@@ -3651,8 +3692,8 @@ Run before first launch, then quarterly. Every item has a command + expected out
   ```bash
   curl -s -X POST https://api.pantry.example/v1/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@pantry.example","password":"<correct>"}' | jq .requires_totp
-  # Expected: true
+    -d '{"email":"admin@pantry.example","password":"<correct>"}' | jq .requiresTotp
+  # Expected: true (login response uses camelCase `requiresTotp` per the API contract)
   ```
 
 - [ ] **Admin audit log is append-only (no UPDATE/DELETE grants)**
@@ -4044,7 +4085,7 @@ Run against the M4 task list from the prompt.
 | 6. Theme switch animation      | C1                          | ✓ |
 | 7. Theme preview cards         | C2                          | ✓ |
 | 8. Per-theme RNTL snapshots    | E1–E8                       | ✓ |
-| 9. Contrast audit              | F1                          | ✓ |
+| 9. Contrast audit              | F1 (text 4.5:1 + muted text + border/non-text 3:1) | ✓ |
 | 10. a11y labels + lint + touch | F2, F3                      | ✓ |
 | 11. Screen reader manual test  | F4                          | ✓ |
 | 12. Large text                 | F5                          | ✓ |
@@ -4062,13 +4103,15 @@ Run against the M4 task list from the prompt.
 | 24. UptimeRobot                | I6                          | ✓ |
 | 25. Security review            | J1                          | ✓ |
 | 26. Soft launch                | J2                          | ✓ |
-| 27. Contrast unit tests        | F1                          | ✓ |
+| 27. Contrast unit tests        | F1 (per-pair thresholds; failing pairs flagged for palette sign-off, no hex changed) | ✓ |
 | 28. RNTL snapshot tests        | B4–B7, E1–E8                | ✓ |
 | 29. ESLint a11y in CI          | F2, K1                      | ✓ |
 | 30. Maestro mid-flow switch    | K2                          | ✓ |
 | 31. Release checklist          | J3, K1                      | ✓ |
 
 **Placeholder scan:** searched for "TODO", "TBD", "fill in", "implement later", "add appropriate", "similar to" — none present in plan body. Runbook and store-submission contents are written in full inside the plan.
+
+**Validation amendments (2026-05-26):** (a) Security-review login probe corrected to camelCase `requiresTotp` (was `requires_totp`, which would always read `null`). (b) Contrast test (F1) expanded to cover `text.muted` foregrounds at 4.5:1 and `border`/`accent` non-text boundaries at 3:1; failing pairs (e.g. Bento `text.muted` ≈ #8A8A8A on white) are recorded under a "Palette sign-off required" note rather than silently re-tuned — no user-chosen theme hex was changed.
 
 - **Cross-plan check (M4 self-review #21):** theme token type names match M0a's `Theme` interface (no invented `ThemeTokens`); mobile API base-URL env var matches M0c's `EXPO_PUBLIC_API_BASE_URL`; backup tooling matches M0d (`rclone`, `b2:pantry-backups`); JWT env matches M0a (`JWT_ACCESS_SECRET`); Redis env matches M0a (`REDIS_URL`); feature flag `maintenanceBanner` matches M3's seed.
 
