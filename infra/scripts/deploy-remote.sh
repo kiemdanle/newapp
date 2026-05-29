@@ -45,9 +45,13 @@ log "deploy start: sha=$SHA prev=${PREV:-<none>}"
 #    a devDependency, so migrations must run while it is still installed.
 #    Step 3 prunes dev deps. Order is load-bearing: install → migrate → prune.
 #    Never run migrate after the prune.
+#    NODE_ENV is unset for this step — pnpm 9 honors NODE_ENV=production by
+#    skipping devDependencies (silently), which would strip the Prisma CLI
+#    and break Step 2. Restored to "production" for the rest of the script
+#    so the prune step still does the right thing.
 log "[1/7] pnpm install --frozen-lockfile (full, dev included)"
 cd "$NEW"
-pnpm install --frozen-lockfile
+NODE_ENV=development pnpm install --frozen-lockfile
 
 # 2. Run migrations while the Prisma CLI is still present.
 log "[2/7] pnpm --filter @pantry/api exec prisma generate && migrate deploy"
