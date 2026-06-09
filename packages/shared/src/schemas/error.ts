@@ -37,6 +37,8 @@ export const ERROR_CODES = {
 
   // Reviews + reports
   REVIEW_ALREADY_EXISTS: 'review_already_exists',
+  REVIEW_NOT_FOUND: 'review_not_found',
+  REVIEW_HAS_NO_COMMENT: 'review_has_no_comment',
   REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
 } as const;
 

@@ -1,30 +1,30 @@
 import { z } from 'zod';
 
-// Per D15 — 3 values only. Profanity auto-flag sets status='hidden' directly.
 export const reviewStatusSchema = z.enum(['visible', 'hidden', 'deleted']);
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
+
+export const reviewRatingSchema = z.enum(['buy_again', 'buy_again_on_sale', 'wont_buy']);
+export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 
 export const reviewSortSchema = z.enum(['score', 'new', 'rating']).default('score');
 export type ReviewSort = z.infer<typeof reviewSortSchema>;
 
-const ratingField = z.number().int().min(1).max(5);
 const bodyField = z.string().trim().max(2000).optional();
 
 export const reviewSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   productId: z.string().uuid(),
-  tasteRating: ratingField,
-  valueRating: ratingField,
+  rating: reviewRatingSchema,
   body: z.string().nullable(),
-  upvoteCount: z.number().int().nonnegative(),
-  downvoteCount: z.number().int().nonnegative(),
+  helpfulCount: z.number().int().nonnegative(),
+  notHelpfulCount: z.number().int().nonnegative(),
   score: z.number().min(0).max(1),
   status: reviewStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  /** Present on lists when the caller is authenticated; null if no vote. */
-  myVote: z.union([z.literal(-1), z.literal(1)]).nullable().optional(),
+  /** Present on lists when the caller is authenticated; null if no vote cast. */
+  myVote: z.enum(['helpful', 'not_helpful']).nullable().optional(),
   /** Light author projection — first name + avatar only, never email. */
   author: z
     .object({
@@ -37,30 +37,32 @@ export const reviewSchema = z.object({
 export type Review = z.infer<typeof reviewSchema>;
 
 export const reviewCreateSchema = z.object({
-  tasteRating: ratingField,
-  valueRating: ratingField,
+  rating: reviewRatingSchema,
   body: bodyField,
 });
 export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
 
 export const reviewPatchSchema = z
   .object({
-    tasteRating: ratingField.optional(),
-    valueRating: ratingField.optional(),
+    rating: reviewRatingSchema.optional(),
     body: bodyField,
   })
   .refine(
-    (v) => v.tasteRating !== undefined || v.valueRating !== undefined || v.body !== undefined,
+    (v) => v.rating !== undefined || v.body !== undefined,
     { message: 'at least one field required' },
   );
 export type ReviewPatch = z.infer<typeof reviewPatchSchema>;
 
 export const reviewVoteSchema = z.object({
-  value: z.union([z.literal(-1), z.literal(1)]),
+  value: z.enum(['helpful', 'not_helpful']),
 });
 export type ReviewVote = z.infer<typeof reviewVoteSchema>;
 
-/** Alias kept for symmetry with the file-ownership map (vote.ts split). */
+export const reviewHelpfulSchema = z.object({
+  helpful: z.boolean(),
+});
+export type ReviewHelpful = z.infer<typeof reviewHelpfulSchema>;
+
 export const voteSchema = reviewVoteSchema;
 export type Vote = ReviewVote;
 
