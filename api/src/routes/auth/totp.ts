@@ -9,19 +9,19 @@ import {
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
-import { buildEnrollment, verifyTotp } from '../../services/auth/totp.js';
+import { buildEnrollment, verifyTotp, diagnoseTotp } from '../../services/auth/totp.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
 import { toApiUser } from '../../services/users/repository.js';
 import { hashToken } from '../../utils/random.js';
 
-interface PendingEnrollment {
-  encryptedSecret: string;
-  rawSecret: string;
-  recoveryCodes: string[];
-}
-
-const PENDING_ENROLLMENTS = new Map<string, PendingEnrollment>();
+const PENDING_ENROLLMENTS = new Map<string, Awaited<ReturnType<typeof buildEnrollment>>>();
+// In-flight build promises, keyed by userId. Memoizing the promise makes
+// /totp/enroll idempotent: concurrent or repeated calls (e.g. a client effect
+// that fires twice) reuse one secret instead of each generating a fresh one
+// and clobbering the other — which would leave the displayed key and the
+// server-held secret divergent and fail verification.
+const ENROLLMENT_BUILDS = new Map<string, Promise<Awaited<ReturnType<typeof buildEnrollment>>>>();
 
 /** Resolve and validate an admin enrollment challenge (purpose 'enroll'). */
 async function resolveEnrollmentChallenge(enrollmentChallenge: string) {
@@ -86,12 +86,29 @@ export async function totpRoutes(app: FastifyInstance) {
   app.post('/totp/enroll', async (req) => {
     const input = totpEnrollSchema.parse(req.body);
     const { user } = await resolveEnrollmentChallenge(input.enrollmentChallenge);
-    const enrollment = await buildEnrollment(user.email);
-    PENDING_ENROLLMENTS.set(user.id, {
-      encryptedSecret: enrollment.encryptedSecret,
-      rawSecret: enrollment.rawSecret,
-      recoveryCodes: enrollment.recoveryCodes,
-    });
+
+    // Idempotent per user: if an enrollment already exists (or is being built),
+    // reuse it so a double-fired client request can't strand two secrets.
+    const existing = PENDING_ENROLLMENTS.get(user.id);
+    if (existing) {
+      return {
+        secret: existing.rawSecret,
+        qrCodeDataUrl: existing.qrCodeDataUrl,
+        recoveryCodes: existing.recoveryCodes,
+      };
+    }
+    let build = ENROLLMENT_BUILDS.get(user.id);
+    if (!build) {
+      build = buildEnrollment(user.email);
+      ENROLLMENT_BUILDS.set(user.id, build);
+    }
+    let enrollment;
+    try {
+      enrollment = await build;
+    } finally {
+      ENROLLMENT_BUILDS.delete(user.id);
+    }
+    PENDING_ENROLLMENTS.set(user.id, enrollment);
     return {
       secret: enrollment.rawSecret,
       qrCodeDataUrl: enrollment.qrCodeDataUrl,
@@ -112,6 +129,15 @@ export async function totpRoutes(app: FastifyInstance) {
       });
     }
     if (!verifyTotp(pending.encryptedSecret, input.code)) {
+      try {
+        const d = diagnoseTotp(pending.encryptedSecret, input.code);
+        req.log.warn(
+          { delta: d.delta, codeLen: input.code.length, matchesExpectedNow: d.expectedNow === input.code },
+          'totp enrollment verify failed — diagnostic (delta=null means code is from a DIFFERENT secret; nonzero means clock skew of delta*30s)',
+        );
+      } catch (e) {
+        req.log.warn({ err: (e as Error).message }, 'totp diagnostic threw');
+      }
       throw new AppError({
         status: 401,
         code: ERROR_CODES.INVALID_TOTP,

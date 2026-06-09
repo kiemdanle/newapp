@@ -9,7 +9,16 @@ const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
 const ACCESS_MAX_AGE_SEC = 60 * 15;
 
 export async function POST(req: Request) {
-  const env = getAdminEnv();
+  let env: ReturnType<typeof getAdminEnv>;
+  try {
+    env = getAdminEnv();
+  } catch (err) {
+    return NextResponse.json(
+      { code: 'config_error', detail: (err as Error).message },
+      { status: 500 },
+    );
+  }
+
   let parsed;
   try {
     parsed = adminLoginRequestSchema.parse(await req.json());
@@ -25,7 +34,7 @@ export async function POST(req: Request) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(parsed),
   });
-  const body = (await upstream.json()) as Record<string, unknown>;
+  const body = (await upstream.json().catch(() => ({}))) as Record<string, unknown>;
 
   if (!upstream.ok) {
     return NextResponse.json(body, { status: upstream.status });

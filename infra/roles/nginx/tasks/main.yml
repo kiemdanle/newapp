@@ -40,6 +40,12 @@
       limit_req_zone $binary_remote_addr zone=pantry_auth:10m rate=10r/m;
       proxy_buffering on;
       proxy_read_timeout 30s;
+      # WebSocket upgrade map: emits "upgrade" when the client requested it,
+      # "close" otherwise so non-WS requests don't break keep-alive.
+      map $http_upgrade $connection_upgrade {
+          default upgrade;
+          ''      close;
+      }
   notify: Reload nginx
 
 - name: Install optional admin allowlist include (commented placeholder)
