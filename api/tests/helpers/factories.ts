@@ -8,6 +8,7 @@ export async function makeUser(
     lastName: string;
     emailVerified: boolean;
     role: 'user' | 'admin';
+    country: string | null;
   }> = {},
 ) {
   const prisma = getPrisma();
@@ -18,6 +19,7 @@ export async function makeUser(
       lastName: overrides.lastName ?? 'User',
       emailVerifiedAt: overrides.emailVerified ? new Date() : null,
       role: overrides.role ?? 'user',
+      ...(overrides.country !== undefined ? { country: overrides.country } : {}),
     },
   });
 }
@@ -81,12 +83,11 @@ export async function makeRecord(
 export async function makeReview(overrides: {
   userId: string;
   productId: string;
-  tasteRating?: number;
-  valueRating?: number;
+  rating?: 'buy_again' | 'buy_again_on_sale' | 'wont_buy';
   body?: string | null;
   status?: 'visible' | 'hidden' | 'deleted';
-  upvoteCount?: number;
-  downvoteCount?: number;
+  helpfulCount?: number;
+  notHelpfulCount?: number;
   score?: number;
 }) {
   const prisma = getPrisma();
@@ -94,12 +95,11 @@ export async function makeReview(overrides: {
     data: {
       userId: overrides.userId,
       productId: overrides.productId,
-      tasteRating: overrides.tasteRating ?? 5,
-      valueRating: overrides.valueRating ?? 5,
-      body: overrides.body ?? 'A solid product.',
+      rating: overrides.rating ?? 'buy_again',
+      body: overrides.body !== undefined ? overrides.body : 'A solid product.',
       status: overrides.status ?? 'visible',
-      upvoteCount: overrides.upvoteCount ?? 0,
-      downvoteCount: overrides.downvoteCount ?? 0,
+      helpfulCount: overrides.helpfulCount ?? 0,
+      notHelpfulCount: overrides.notHelpfulCount ?? 0,
       score: overrides.score ?? 0,
     },
   });
@@ -108,7 +108,7 @@ export async function makeReview(overrides: {
 export async function makeVote(overrides: {
   userId: string;
   reviewId: string;
-  value: 1 | -1;
+  value: 'helpful' | 'not_helpful';
 }) {
   const prisma = getPrisma();
   return prisma.reviewVote.create({
@@ -117,5 +117,156 @@ export async function makeVote(overrides: {
       reviewId: overrides.reviewId,
       value: overrides.value,
     },
+  });
+}
+
+export async function makeDeal(overrides: {
+  userId: string;
+  productId: string;
+  price?: number;
+  currency?: string;
+  storeName?: string;
+  photoUrl?: string | null;
+  expiryDate?: Date | null;
+  note?: string | null;
+  country?: string | null;
+  status?: 'visible' | 'hidden' | 'deleted';
+  upvoteCount?: number;
+  downvoteCount?: number;
+  score?: number;
+}) {
+  const prisma = getPrisma();
+  return prisma.deal.create({
+    data: {
+      userId: overrides.userId,
+      productId: overrides.productId,
+      price: overrides.price ?? 4.99,
+      currency: overrides.currency ?? 'USD',
+      storeName: overrides.storeName ?? 'Corner Mart',
+      photoUrl: overrides.photoUrl ?? null,
+      expiryDate: overrides.expiryDate ?? null,
+      note: overrides.note ?? null,
+      country: overrides.country !== undefined ? overrides.country : null,
+      status: overrides.status ?? 'visible',
+      upvoteCount: overrides.upvoteCount ?? 0,
+      downvoteCount: overrides.downvoteCount ?? 0,
+      score: overrides.score ?? 0,
+    },
+  });
+}
+
+export async function makeDealVote(overrides: {
+  userId: string;
+  dealId: string;
+  value: 1 | -1;
+}) {
+  const prisma = getPrisma();
+  return prisma.dealVote.create({
+    data: { userId: overrides.userId, dealId: overrides.dealId, value: overrides.value },
+  });
+}
+
+export async function makeGiveaway(overrides: {
+  giverUserId: string;
+  productId?: string;
+  recordId?: string;
+  title?: string;
+  description?: string;
+  locationText?: string;
+  country?: string | null;
+  status?: 'open' | 'claimed' | 'handed_off' | 'completed' | 'cancelled';
+}) {
+  const prisma = getPrisma();
+  return prisma.giveaway.create({
+    data: {
+      giverUserId: overrides.giverUserId,
+      productId: overrides.productId ?? null,
+      recordId: overrides.recordId ?? null,
+      title: overrides.title ?? 'Free pasta, best before next week',
+      description: overrides.description ?? null,
+      locationText: overrides.locationText ?? 'Near Central Station',
+      country: overrides.country !== undefined ? overrides.country : null,
+      status: overrides.status ?? 'open',
+    },
+  });
+}
+
+export async function makeClaim(overrides: {
+  giveawayId: string;
+  claimerUserId: string;
+  pickupNote?: string;
+  status?: 'requested' | 'selected' | 'rejected';
+}) {
+  const prisma = getPrisma();
+  return prisma.giveawayClaim.create({
+    data: {
+      giveawayId: overrides.giveawayId,
+      claimerUserId: overrides.claimerUserId,
+      pickupNote: overrides.pickupNote ?? 'Can pick up after 6pm.',
+      status: overrides.status ?? 'requested',
+    },
+  });
+}
+
+export async function makeTransactionRating(overrides: {
+  giveawayId: string;
+  raterUserId: string;
+  rateeUserId: string;
+  raterRole: 'giver' | 'recipient';
+  stars?: number;
+  comment?: string;
+}) {
+  const prisma = getPrisma();
+  return prisma.transactionRating.create({
+    data: {
+      giveawayId: overrides.giveawayId,
+      raterUserId: overrides.raterUserId,
+      rateeUserId: overrides.rateeUserId,
+      raterRole: overrides.raterRole,
+      stars: overrides.stars ?? 5,
+      comment: overrides.comment ?? null,
+    },
+  });
+}
+
+export async function makeReferral(overrides: {
+  referrerUserId: string;
+  referredUserId: string;
+  referralCode: string;
+  status?: 'pending' | 'activated';
+}) {
+  const prisma = getPrisma();
+  return prisma.referral.create({
+    data: {
+      referrerUserId: overrides.referrerUserId,
+      referredUserId: overrides.referredUserId,
+      referralCode: overrides.referralCode,
+      status: overrides.status ?? 'pending',
+    },
+  });
+}
+
+export async function makeUserWithCode(code: string): Promise<{ id: string; referralCode: string }> {
+  const u = await makeUser({ emailVerified: true });
+  const prisma = getPrisma();
+  await prisma.user.update({ where: { id: u.id }, data: { referralCode: code } });
+  return { id: u.id, referralCode: code };
+}
+
+export async function makeHousehold(ownerUserId: string, overrides: Partial<{ name: string }> = {}) {
+  const prisma = getPrisma();
+  const household = await prisma.household.create({
+    data: { name: overrides.name ?? 'Test Household', ownerUserId },
+  });
+  await prisma.householdMember.create({
+    data: { householdId: household.id, userId: ownerUserId, role: 'owner' },
+  });
+  return household;
+}
+
+export async function makeMembership(householdId: string, userId: string, overrides: Partial<{ role: 'owner' | 'member' }> = {}) {
+  const prisma = getPrisma();
+  return prisma.householdMember.create({
+    data: { householdId, userId, role: overrides.role ?? 'member' },
   });
 }

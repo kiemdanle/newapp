@@ -29,3 +29,15 @@ export const updateProfileSchema = z.object({
   themePreference: themePreferenceSchema.optional(),
 });
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+
+export const meUsageResponseSchema = z.object({
+  itemCount: z.number().int().min(0),
+  itemLimit: z.number().int().positive(),
+  readOnly: z.boolean(),
+});
+export type MeUsageResponse = z.infer<typeof meUsageResponseSchema>;
+
+export const countrySuggestionSchema = z.object({
+  country: z.string().length(2).nullable(),
+});
+export type CountrySuggestion = z.infer<typeof countrySuggestionSchema>;

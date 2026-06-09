@@ -16,6 +16,13 @@ import { productRoutes } from './routes/products/index.js';
 import { recordRoutes } from './routes/records/index.js';
 import { reviewsRoutes } from './routes/reviews/index.js';
 import { reportsRoutes } from './routes/reports/index.js';
+import { dealsRoutes } from './routes/deals/index.js';
+import { giveawaysRoutes } from './routes/giveaways/index.js';
+import { userReputationRoute } from './routes/users/reputation.js';
+import { referralRoutes } from './routes/referrals/index.js';
+import { householdsRoutes } from './routes/households/index.js';
+import { adminRoutes } from './routes/admin/index.js';
+import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 
 const REDACT_PATHS = [
@@ -56,6 +63,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // limiter runs so the limiter can pick the per-user vs per-IP budget.
   await app.register(authPlugin);
   await app.register(idempotencyPlugin);
+  await app.register(apiErrorRecorderPlugin);
   if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
 
@@ -70,6 +78,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(recordRoutes, { prefix: '/v1/records' });
   await app.register(reviewsRoutes, { prefix: '/v1' });
   await app.register(reportsRoutes, { prefix: '/v1' });
+  await app.register(dealsRoutes, { prefix: '/v1' });
+  await app.register(giveawaysRoutes, { prefix: '/v1' });
+  await app.register(userReputationRoute, { prefix: '/v1' });
+  await app.register(referralRoutes, { prefix: '/v1' });
+  await app.register(householdsRoutes, { prefix: '/v1' });
+  await app.register(adminRoutes, { prefix: '/v1/admin' });
 
   return app;
 }

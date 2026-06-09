@@ -40,6 +40,39 @@ export const ERROR_CODES = {
   REVIEW_NOT_FOUND: 'review_not_found',
   REVIEW_HAS_NO_COMMENT: 'review_has_no_comment',
   REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
+
+  // Pantry item cap
+  ITEM_LIMIT_REACHED: 'item_limit_reached',
+
+  // Deals
+  DEAL_NOT_FOUND: 'deal_not_found',
+  CANNOT_VOTE_OWN_DEAL: 'cannot_vote_own_deal',
+
+  // Giveaways
+  GIVEAWAY_NOT_OPEN: 'giveaway_not_open',
+  GIVEAWAY_INVALID_TRANSITION: 'giveaway_invalid_transition',
+  CLAIM_ALREADY_EXISTS: 'claim_already_exists',
+  CLAIM_NOT_FOUND: 'claim_not_found',
+  HANDOFF_NOT_ALLOWED: 'handoff_not_allowed',
+  CONFIRM_NOT_ALLOWED: 'confirm_not_allowed',
+  RATING_NOT_READY: 'rating_not_ready',
+  RATING_ALREADY_EXISTS: 'rating_already_exists',
+  RATING_NOT_ALLOWED: 'rating_not_allowed',
+
+  // Referrals
+  REFERRAL_CODE_NOT_FOUND: 'referral_code_not_found',
+  SELF_REFERRAL_NOT_ALLOWED: 'self_referral_not_allowed',
+  REFERRAL_ALREADY_ATTRIBUTED: 'referral_already_attributed',
+
+  // Households
+  HOUSEHOLD_NOT_FOUND: 'household_not_found',
+  HOUSEHOLD_NOT_MEMBER: 'household_not_member',
+  HOUSEHOLD_FORBIDDEN: 'household_forbidden',
+  HOUSEHOLD_OWNER_CANNOT_LEAVE: 'household_owner_cannot_leave',
+  MEMBER_NOT_FOUND: 'member_not_found',
+  RECORD_HOUSEHOLD_FORBIDDEN: 'record_household_forbidden',
 } as const;
+
+export const ITEM_LIMIT = 50;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

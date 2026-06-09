@@ -1,12 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
-import { recordCreateSchema, ERROR_CODES } from '@pantry/shared';
+import { recordCreateSchema, ERROR_CODES, ITEM_LIMIT } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
+import { maybeActivateReferral } from '../../services/referrals/referral-service.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
   app.post(
@@ -24,6 +25,19 @@ export async function createRecordRoute(app: FastifyInstance) {
       const offsets =
         input.notificationOffsetsDays ?? resolveOffsetsForUser(user?.notificationPreferences);
       const notifyAt = computeNotifyAt(new Date(input.expiryDate), offsets);
+
+      // Active-record cap: free accounts are limited to ITEM_LIMIT active items.
+      // Consumed/discarded records do not count — only items the user still tracks.
+      const activeCount = await getPrisma().record.count({
+        where: { userId, status: 'active' },
+      });
+      if (activeCount >= ITEM_LIMIT) {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.ITEM_LIMIT_REACHED,
+          title: `Item limit of ${ITEM_LIMIT} reached`,
+        });
+      }
 
       try {
         const row = await getPrisma().record.create({
@@ -46,6 +60,9 @@ export async function createRecordRoute(app: FastifyInstance) {
           { recordId: row.id },
           { jobId: `schedule__${row.id}`, removeOnComplete: true, removeOnFail: 100 },
         );
+        // Passive referral activation: when the referred user reaches 5 lifetime
+        // records, mark their pending referral as activated (no rewards in v1.x).
+        await maybeActivateReferral(userId).catch(() => {});
         return reply.status(201).send(toApiRecord(row));
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

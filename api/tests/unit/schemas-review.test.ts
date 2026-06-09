@@ -15,66 +15,51 @@ describe('reviewStatusSchema', () => {
     expect(reviewStatusSchema.parse('deleted')).toBe('deleted');
   });
 
-  it('rejects pending — not a valid status per D15', () => {
+  it('rejects unknown status', () => {
     expect(() => reviewStatusSchema.parse('pending')).toThrow();
   });
 });
 
 describe('reviewCreateSchema', () => {
-  it('accepts both ratings 1–5 with optional body', () => {
-    const r = reviewCreateSchema.parse({
-      tasteRating: 4,
-      valueRating: 5,
-      body: 'tasty',
-    });
-    expect(r).toEqual({ tasteRating: 4, valueRating: 5, body: 'tasty' });
+  it('accepts a valid rating with optional body', () => {
+    const r = reviewCreateSchema.parse({ rating: 'buy_again', body: 'great' });
+    expect(r).toEqual({ rating: 'buy_again', body: 'great' });
   });
 
   it('accepts missing body', () => {
-    const r = reviewCreateSchema.parse({ tasteRating: 1, valueRating: 1 });
-    expect(r.tasteRating).toBe(1);
-    expect(r.valueRating).toBe(1);
+    const r = reviewCreateSchema.parse({ rating: 'wont_buy' });
+    expect(r.rating).toBe('wont_buy');
     expect(r.body).toBeUndefined();
   });
 
-  it('rejects rating 0 or 6 on either field', () => {
-    expect(() => reviewCreateSchema.parse({ tasteRating: 0, valueRating: 3 })).toThrow();
-    expect(() => reviewCreateSchema.parse({ tasteRating: 3, valueRating: 6 })).toThrow();
+  it('rejects unknown rating value', () => {
+    expect(() => reviewCreateSchema.parse({ rating: 'meh' })).toThrow();
   });
 
-  it('rejects non-integer ratings', () => {
-    expect(() => reviewCreateSchema.parse({ tasteRating: 3.5, valueRating: 3 })).toThrow();
+  it('rejects missing rating', () => {
+    expect(() => reviewCreateSchema.parse({})).toThrow();
   });
 
   it('rejects body over 2000 chars', () => {
     expect(() =>
-      reviewCreateSchema.parse({
-        tasteRating: 5,
-        valueRating: 5,
-        body: 'x'.repeat(2001),
-      }),
+      reviewCreateSchema.parse({ rating: 'buy_again', body: 'x'.repeat(2001) }),
     ).toThrow();
-  });
-
-  it('rejects missing tasteRating or valueRating (NOT NULL pair)', () => {
-    expect(() => reviewCreateSchema.parse({ valueRating: 3 })).toThrow();
-    expect(() => reviewCreateSchema.parse({ tasteRating: 3 })).toThrow();
   });
 });
 
 describe('reviewPatchSchema', () => {
-  it('accepts a single field', () => {
-    expect(reviewPatchSchema.parse({ tasteRating: 4 })).toEqual({ tasteRating: 4 });
-    expect(reviewPatchSchema.parse({ valueRating: 4 })).toEqual({ valueRating: 4 });
+  it('accepts rating only', () => {
+    expect(reviewPatchSchema.parse({ rating: 'buy_again_on_sale' })).toEqual({
+      rating: 'buy_again_on_sale',
+    });
+  });
+
+  it('accepts body only', () => {
     expect(reviewPatchSchema.parse({ body: 'updated' })).toEqual({ body: 'updated' });
   });
 
   it('rejects an empty patch', () => {
     expect(() => reviewPatchSchema.parse({})).toThrow();
-  });
-
-  it('rejects rating out of range', () => {
-    expect(() => reviewPatchSchema.parse({ tasteRating: 7 })).toThrow();
   });
 });
 
@@ -90,7 +75,7 @@ describe('reviewSortSchema', () => {
   });
 
   it('rejects unknown sorts', () => {
-    expect(() => reviewSortSchema.parse('helpful')).toThrow();
+    expect(() => reviewSortSchema.parse('popular')).toThrow();
   });
 });
 
@@ -111,11 +96,10 @@ describe('reviewSchema', () => {
     id: '00000000-0000-0000-0000-000000000aaa',
     userId: '00000000-0000-0000-0000-000000000bbb',
     productId: '00000000-0000-0000-0000-000000000ccc',
-    tasteRating: 5,
-    valueRating: 4,
+    rating: 'buy_again' as const,
     body: null,
-    upvoteCount: 0,
-    downvoteCount: 0,
+    helpfulCount: 0,
+    notHelpfulCount: 0,
     score: 0,
     status: 'visible' as const,
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -126,15 +110,14 @@ describe('reviewSchema', () => {
     expect(reviewSchema.parse(base).status).toBe('visible');
   });
 
-  it('parses myVote ±1 and null', () => {
-    expect(reviewSchema.parse({ ...base, myVote: 1 }).myVote).toBe(1);
-    expect(reviewSchema.parse({ ...base, myVote: -1 }).myVote).toBe(-1);
+  it('parses myVote helpful/not_helpful and null', () => {
+    expect(reviewSchema.parse({ ...base, myVote: 'helpful' }).myVote).toBe('helpful');
+    expect(reviewSchema.parse({ ...base, myVote: 'not_helpful' }).myVote).toBe('not_helpful');
     expect(reviewSchema.parse({ ...base, myVote: null }).myVote).toBeNull();
   });
 
-  it('rejects myVote 0 or 2', () => {
-    expect(() => reviewSchema.parse({ ...base, myVote: 0 })).toThrow();
-    expect(() => reviewSchema.parse({ ...base, myVote: 2 })).toThrow();
+  it('rejects unknown myVote', () => {
+    expect(() => reviewSchema.parse({ ...base, myVote: 1 })).toThrow();
   });
 
   it('rejects score > 1', () => {

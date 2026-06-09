@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" data-theme="expyrico">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile — Expyrico Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="_shared.css" />
+  <link rel="stylesheet" href="_frame.css" />
+  <link rel="stylesheet" href="_components.css" />
+</head>
+<body>
+  <a class="back-link" href="00-nav-hub.html">← All screens</a>
+  <div class="device" data-screen-title="Profile">
+    <div class="bezel">
+      <div class="dynamic-island"></div>
+      <div class="status-bar">
+        <span class="sb-time">9:41</span>
+        <span class="sb-right">
+          <svg class="sb-signal" viewBox="0 0 18 12" aria-hidden="true"><rect x="0" y="8" width="3" height="4" rx="0.5"/><rect x="4" y="6" width="3" height="6" rx="0.5"/><rect x="8" y="3" width="3" height="9" rx="0.5"/><rect x="12" y="0" width="3" height="12" rx="0.5"/></svg>
+          <svg class="sb-wifi" viewBox="0 0 16 12" aria-hidden="true"><path d="M8 11.2a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm0-3.6a2.4 2.4 0 0 0-1.7.7l-1-1A3.9 3.9 0 0 1 8 6a3.9 3.9 0 0 1 2.7 1.1l-1 1A2.4 2.4 0 0 0 8 7.6Zm0-3.6a6 6 0 0 0-4.2 1.7l-1-1A7.5 7.5 0 0 1 8 2.4a7.5 7.5 0 0 1 5.2 2.1l-1 1A6 6 0 0 0 8 4Z"/></svg>
+          <span class="sb-battery"><span class="sb-battery-fill"></span></span>
+        </span>
+      </div>
+      <main class="screen">
+        <div class="screen-content">
+          <div style="text-align:center;margin-bottom:20px;padding-top:8px;">
+            <div class="rc-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto 10px;background:linear-gradient(135deg,#4BAE8A,#3A8F6F);">AK</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:600;">Alex Kim</div>
+            <div class="body-sm">🇺🇸 United States</div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px;">
+            <div class="card tight" style="text-align:center;">
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;">42</div>
+              <div class="body-sm">items</div>
+            </div>
+            <div class="card tight" style="text-align:center;">
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;">18</div>
+              <div class="body-sm">reviews</div>
+            </div>
+            <div class="card tight" style="text-align:center;">
+              <div style="font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;">127</div>
+              <div class="body-sm">helpful</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:4px 16px;">
+            <a class="list-row" href="20-settings.html"><span class="lr-icon">⚙</span><span class="lr-title">Settings</span><span class="lr-chevron">›</span></a>
+            <a class="list-row" href="22-notifications.html"><span class="lr-icon">🔔</span><span class="lr-title">Notifications</span><span class="lr-chevron">›</span></a>
+            <a class="list-row" href="21-theme-picker.html"><span class="lr-icon">🎨</span><span class="lr-title">Theme</span><span class="lr-chevron">›</span></a>
+            <a class="list-row" href="23-account.html"><span class="lr-icon">👤</span><span class="lr-title">Account</span><span class="lr-chevron">›</span></a>
+            <a class="list-row" href="#"><span class="lr-icon">ℹ</span><span class="lr-title">About</span><span class="lr-chevron">›</span></a>
+            <a class="list-row danger" href="01-welcome.html"><span class="lr-icon">⎋</span><span class="lr-title">Sign out</span></a>
+          </div>
+        </div>
+        <nav class="tab-bar">
+          <a class="tab" href="07-home.html">
+            <span class="tab-icon">🏠</span>
+            <span>Home</span>
+          </a>
+          <a class="tab" href="08-browse.html">
+            <span class="tab-icon">🔎</span>
+            <span>Browse</span>
+          </a>
+          <a class="tab" href="09-reviews.html">
+            <span class="tab-icon">★</span>
+            <span>Reviews</span>
+          </a>
+          <a class="tab active" href="10-profile.html">
+            <span class="tab-icon">👤</span>
+            <span>Profile</span>
+          </a>
+        </nav>
+      </main>
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+  <p class="caption">Profile — <code>10-profile.html</code></p>
+</body>
+</html>

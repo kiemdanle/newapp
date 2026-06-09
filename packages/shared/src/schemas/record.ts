@@ -12,6 +12,7 @@ export const recordSchema = z.object({
   clientId: z.string().uuid(),
   userId: z.string().uuid(),
   productId: z.string().uuid().nullable(),
+  householdId: z.string().uuid().nullable(),
   customName: z.string().nullable(),
   expiryDate: isoDate,
   purchaseDate: isoDate.nullable(),

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const reportTargetTypeSchema = z.enum(['review', 'user', 'product']);
+export const reportTargetTypeSchema = z.enum(['review', 'user', 'product', 'deal', 'giveaway']);
 export type ReportTargetType = z.infer<typeof reportTargetTypeSchema>;
 
 export const reportReasonSchema = z.enum(['spam', 'abuse', 'incorrect', 'other']);

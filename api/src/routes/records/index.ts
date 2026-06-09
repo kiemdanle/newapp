@@ -4,11 +4,13 @@ import { listRecordsRoute } from './list.js';
 import { patchRecordRoute } from './patch.js';
 import { deleteRecordRoute } from './delete.js';
 import { syncRecordsRoute } from './sync.js';
+import { duplicateRecordRoute } from './duplicate.js';
 
 export async function recordRoutes(app: FastifyInstance) {
   await app.register(listRecordsRoute);
+  await app.register(syncRecordsRoute);
   await app.register(createRecordRoute);
   await app.register(patchRecordRoute);
   await app.register(deleteRecordRoute);
-  await app.register(syncRecordsRoute);
+  await app.register(duplicateRecordRoute);
 }

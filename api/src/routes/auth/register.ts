@@ -10,6 +10,7 @@ import { sendVerificationEmail } from '../../services/auth/email.js';
 import { detectCountryFromIp } from '../../services/country/detect.js';
 import { toApiUser } from '../../services/users/repository.js';
 import { hashToken, randomToken } from '../../utils/random.js';
+import { generateUniqueReferralCode } from '../../services/referrals/referral-code.js';
 
 export async function registerRoute(app: FastifyInstance) {
   app.post('/register', async (req, reply) => {
@@ -25,8 +26,26 @@ export async function registerRoute(app: FastifyInstance) {
       });
     }
 
+    // Resolve referrer when a referralCode is supplied.
+    let referrer: { id: string; referralCode: string } | null = null;
+    if (input.referralCode) {
+      const r = await prisma.user.findUnique({
+        where: { referralCode: input.referralCode },
+        select: { id: true, referralCode: true },
+      });
+      if (!r) {
+        throw new AppError({
+          status: 404,
+          code: ERROR_CODES.REFERRAL_CODE_NOT_FOUND,
+          title: 'Referral code not found',
+        });
+      }
+      referrer = { id: r.id, referralCode: r.referralCode! };
+    }
+
     const passwordHash = await hashPassword(input.password);
     const country = await detectCountryFromIp(req.ip).catch(() => null);
+    const newUserCode = await generateUniqueReferralCode();
 
     const user = await prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
@@ -36,11 +55,22 @@ export async function registerRoute(app: FastifyInstance) {
           firstName: input.firstName,
           lastName: input.lastName,
           country,
+          referralCode: newUserCode,
+          ...(referrer ? { referredByUserId: referrer.id } : {}),
         },
       });
-      await tx.authCredential.create({
-        data: { userId: u.id, type: 'password' },
-      });
+      await tx.authCredential.create({ data: { userId: u.id, type: 'password' } });
+      // Attribution: create a pending referral row if a referrer was supplied.
+      if (referrer) {
+        await tx.referral.create({
+          data: {
+            referrerUserId: referrer.id,
+            referredUserId: u.id,
+            referralCode: referrer.referralCode!,
+            signupIp: req.ip ?? null,
+          },
+        });
+      }
       return u;
     });
 

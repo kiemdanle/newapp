@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Bring the Pantry app to a shippable state: implement the three secondary themes (Bento Grid, Soft Clay, Material You) across every mobile screen, complete the WCAG AA + screen-reader + large-text accessibility pass, set up EAS Build/Update profiles, prepare the iOS + Android store submissions, write every operational runbook (rollback, restore, secrets, sessions, incidents, uptime), run a security review and the soft-launch checklist.
+**Goal:** Bring the Expyrico app to a shippable state: implement the three secondary themes (Bento Grid, Soft Clay, Material You) across every mobile screen, complete the WCAG AA + screen-reader + large-text accessibility pass, set up EAS Build/Update profiles, prepare the iOS + Android store submissions, write every operational runbook (rollback, restore, secrets, sessions, incidents, uptime), run a security review and the soft-launch checklist.
 
 **Architecture:** No new product features — M4 is polish + ops. Theme work edits screens built in M0c/M1/M2 to consume tokens correctly and adds three new visual treatments on top of the existing `ThemeProvider` cross-fade. Accessibility work is a sweep across the same screens plus token contrast tests. The rest is documentation: runbooks under `docs/runbooks/`, store-submission notes under `apps/mobile/docs/`, and legal text under `docs/legal/`.
 
-**Tech Stack:** Expo SDK latest, Expo Router, NativeWind, `@pantry/theme`, Reanimated 3, React Native Testing Library (RNTL), Vitest, Maestro, `wcag-contrast`, `eslint-plugin-react-native-a11y`, EAS Build, EAS Update, App Store Connect, Google Play Console, UptimeRobot.
+**Tech Stack:** Expo SDK latest, Expo Router, NativeWind, `@expyrico/theme`, Reanimated 3, React Native Testing Library (RNTL), Vitest, Maestro, `wcag-contrast`, `eslint-plugin-react-native-a11y`, EAS Build, EAS Update, App Store Connect, Google Play Console, UptimeRobot.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.10, 3, 7.5, 10.2, 11, 13.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` sections 2.10, 3, 7.5, 10.2, 11, 13.
 
-**Prerequisite:** M0a, M0b, M0c, M0d, M1, M2, and M3 complete. Aurora Glass theme polished. All screens functional. Deploy pipeline live. Backups configured.
+**Prerequisite:** M0a, M0b, M0c, M0d, M1, M2, and M3 complete. Expyrico theme polished. All screens functional. Deploy pipeline live. Backups configured.
 
 **Out of scope for M4:**
 - New product features (anything beyond M3)
@@ -20,12 +20,27 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track B, final step (polish + launch: themes, a11y, store — entire plan).** Track B order: M0c → M1 (mobile) → M2 (mobile) → M5–M8 (screens) → M4. All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+These corrections were applied after a validation pass. They are folded into the relevant tasks below; this list is a plain-language summary.
+
+1. **Security-review login assertion uses camelCase.** The admin-login TOTP check in `security-review.md` (Task referencing the production login curl) now reads `jq .requiresTotp` instead of `requires_totp`. The API contract returns the field in camelCase (`requiresTotp`), so the snake_case probe would always be `null` and the check would silently never fire.
+2. **WCAG AA contrast test expanded (Task F1).** The contrast test previously checked only ~6 normal-text pairs at 4.5:1 and omitted `text.muted` foregrounds and non-text/UI-border pairs. It now also asserts `text.muted` on surface/background at 4.5:1 (WCAG 1.4.3) and `border`/`accent` boundary pairs at 3:1 (WCAG 1.4.11), each pair carrying its own threshold. Importantly, no theme hex is changed to make the test pass: where expanded pairs fail (e.g. Bento `text.muted` ≈ #8A8A8A on white ≈ 3.5:1), the task records them under a clearly-flagged "Palette sign-off required" note and waits for the user to approve a re-tune or exemption before any token is edited. The test coverage is added now; the color tokens are left unchanged pending sign-off.
+
+---
+
 ## File map
 
 This plan **creates** the following files and **modifies** many existing screens to consume tokens. Bold files contain runbook or legal content written out in full inside the plan.
 
 ```
-pantry/
+expyrico/
 ├── apps/mobile/
 │   ├── eas.json                                            CREATE
 │   ├── app.config.ts                                       MODIFY (adaptive icon, splash, plugins, channels)
@@ -82,7 +97,7 @@ pantry/
 │       └── flows/theme-switch.yaml                         CREATE
 ├── packages/theme/
 │   ├── src/tokens.ts                                       MODIFY (add elevation.clay, MD3 elevation, type ramp)
-│   ├── src/themes/aurora.ts                                MODIFY (provide values for new tokens)
+│   ├── src/themes/expyrico.ts                                MODIFY (provide values for new tokens)
 │   ├── src/themes/bento.ts                                 MODIFY (full implementation)
 │   ├── src/themes/clay.ts                                  MODIFY (full implementation)
 │   └── src/themes/material.ts                              MODIFY (full implementation)
@@ -209,7 +224,7 @@ Add to `packages/theme/src/tokens.test.ts`:
 
 ```ts
 import { describe, it, expectTypeOf } from 'vitest';
-import type { Theme, ClayElevation, MD3Elevation, TypeRamp } from '@pantry/theme';
+import type { Theme, ClayElevation, MD3Elevation, TypeRamp } from '@expyrico/theme';
 
 describe('extended token shape', () => {
   it('exposes ClayElevation with rim + base + ambient', () => {
@@ -282,10 +297,10 @@ export type TypeRamp = {
 //   elevation: { clay: ClayElevation; md3: MD3Elevation };
 //   typeRamp: TypeRamp;
 //
-// The four shipped themes (aurora/bento/clay/material) — created in M0a — are extended in Phase B below
+// The four shipped themes (expyrico/bento/clay/material) — created in M0a — are extended in Phase B below
 // to provide values for the new fields. No theme files are duplicated.
 
-export type { Theme } from '@pantry/theme';
+export type { Theme } from '@expyrico/theme';
 ```
 
 - [ ] **Step 5: Run the typecheck test, watch it pass**
@@ -304,33 +319,33 @@ git commit -m "feat(theme): extend tokens with ClayElevation, MD3Elevation, Type
 
 ---
 
-### Task A3: Provide new token values in `aurora.ts`
+### Task A3: Provide new token values in `expyrico.ts`
 
 **Files:**
-- Modify: `packages/theme/src/themes/aurora.ts`
+- Modify: `packages/theme/src/themes/expyrico.ts`
 
-- [ ] **Step 1: Write a failing test that aurora has no `undefined` tokens**
+- [ ] **Step 1: Write a failing test that expyrico has no `undefined` tokens**
 
-Add to `packages/theme/src/themes/aurora.test.ts`:
+Add to `packages/theme/src/themes/expyrico.test.ts`:
 
 ```ts
 import { describe, it, expect } from 'vitest';
-import { aurora } from './aurora.js';
+import { expyrico } from './expyrico.js';
 
-describe('aurora theme provides every token', () => {
+describe('expyrico theme provides every token', () => {
   it('elevation.clay', () => {
-    expect(aurora.elevation.clay.rim).toBeTruthy();
-    expect(aurora.elevation.clay.base).toBeTruthy();
-    expect(aurora.elevation.clay.ambient).toBeTruthy();
+    expect(expyrico.elevation.clay.rim).toBeTruthy();
+    expect(expyrico.elevation.clay.base).toBeTruthy();
+    expect(expyrico.elevation.clay.ambient).toBeTruthy();
   });
   it('elevation.md3', () => {
     for (const k of ['level0','level1','level2','level3','level4','level5'] as const) {
-      expect(aurora.elevation.md3[k]).toBeTruthy();
+      expect(expyrico.elevation.md3[k]).toBeTruthy();
     }
   });
   it('typeRamp.bodyLarge has size + lineHeight', () => {
-    expect(aurora.typeRamp.bodyLarge.fontSize).toBeGreaterThan(0);
-    expect(aurora.typeRamp.bodyLarge.lineHeight).toBeGreaterThan(0);
+    expect(expyrico.typeRamp.bodyLarge.fontSize).toBeGreaterThan(0);
+    expect(expyrico.typeRamp.bodyLarge.lineHeight).toBeGreaterThan(0);
   });
 });
 ```
@@ -338,13 +353,13 @@ describe('aurora theme provides every token', () => {
 - [ ] **Step 2: Run, watch fail**
 
 ```bash
-pnpm -C packages/theme test -- aurora
+pnpm -C packages/theme test -- expyrico
 ```
 Expected: FAIL.
 
-- [ ] **Step 3: Add values to `aurora.ts`**
+- [ ] **Step 3: Add values to `expyrico.ts`**
 
-Aurora is glass — its clay elevation is intentionally low-impact (no theme should ever request clay tokens on aurora, but defaults are required so `useTheme()` never returns undefined). MD3 levels also fall back to soft glass surfaces.
+The Expyrico default theme is light — its clay elevation is intentionally low-impact (no theme should ever request clay tokens on expyrico, but defaults are required so `useTheme()` never returns undefined). MD3 levels also fall back to soft glass surfaces.
 
 ```ts
 elevation: {
@@ -384,15 +399,15 @@ typeRamp: {
 - [ ] **Step 4: Run, watch pass**
 
 ```bash
-pnpm -C packages/theme test -- aurora
+pnpm -C packages/theme test -- expyrico
 ```
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/theme/src/themes/aurora.ts packages/theme/src/themes/aurora.test.ts
-git commit -m "feat(theme): backfill new tokens for aurora"
+git add packages/theme/src/themes/expyrico.ts packages/theme/src/themes/expyrico.test.ts
+git commit -m "feat(theme): backfill new tokens for expyrico"
 ```
 
 ---
@@ -435,7 +450,7 @@ describe('parseShadow', () => {
 });
 ```
 
-- [ ] **Step 2: Run, verify FAIL** — `pnpm --filter @pantry/mobile test shadow`
+- [ ] **Step 2: Run, verify FAIL** — `pnpm --filter @expyrico/mobile test shadow`
 
 - [ ] **Step 3: Implement**
 
@@ -487,7 +502,7 @@ export function parseShadow(css: string): RNShadowProps {
 }
 ```
 
-- [ ] **Step 4: Run, verify PASS** — `pnpm --filter @pantry/mobile test shadow`
+- [ ] **Step 4: Run, verify PASS** — `pnpm --filter @expyrico/mobile test shadow`
 
 - [ ] **Step 5: Commit**
 
@@ -541,7 +556,7 @@ Expected: FAIL (values mismatch).
 - [ ] **Step 3: Implement `bento.ts`**
 
 ```ts
-import type { Theme } from '@pantry/theme';
+import type { Theme } from '@expyrico/theme';
 
 export const bento: Theme = {
   name: 'bento',
@@ -655,7 +670,7 @@ pnpm -C packages/theme test -- clay
 - [ ] **Step 3: Implement `clay.ts`**
 
 ```ts
-import type { Theme } from '@pantry/theme';
+import type { Theme } from '@expyrico/theme';
 
 export const clay: Theme = {
   name: 'clay',
@@ -777,7 +792,7 @@ pnpm -C packages/theme test -- material
 - [ ] **Step 3: Implement `material.ts`**
 
 ```ts
-import type { Theme } from '@pantry/theme';
+import type { Theme } from '@expyrico/theme';
 
 export const material: Theme = {
   name: 'material',
@@ -871,7 +886,7 @@ import { BentoTile } from '../../../src/components/BentoTile';
 import { renderWithTheme } from '../../helpers/renderWithTheme';
 
 describe('BentoTile', () => {
-  it.each(['aurora','bento','clay','material'] as const)('renders in %s theme', (theme) => {
+  it.each(['expyrico','bento','clay','material'] as const)('renders in %s theme', (theme) => {
     const tree = renderWithTheme(
       <BentoTile size="md" accent={false} title="Milk" subtitle="Expires Fri" />,
       theme,
@@ -888,7 +903,7 @@ import { render } from '@testing-library/react-native';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import type { ReactElement } from 'react';
 
-export function renderWithTheme(ui: ReactElement, themeName: 'aurora'|'bento'|'clay'|'material') {
+export function renderWithTheme(ui: ReactElement, themeName: 'expyrico'|'bento'|'clay'|'material') {
   return render(<ThemeProvider initial={themeName}>{ui}</ThemeProvider>);
 }
 ```
@@ -995,7 +1010,7 @@ import { ClayCard } from '../../../src/components/ClayCard';
 import { Text } from 'react-native';
 
 describe('ClayCard', () => {
-  it.each(['aurora','bento','clay','material'] as const)('renders in %s', (theme) => {
+  it.each(['expyrico','bento','clay','material'] as const)('renders in %s', (theme) => {
     const tree = renderWithTheme(
       <ClayCard><Text>Hello</Text></ClayCard>, theme,
     ).toJSON();
@@ -1073,7 +1088,7 @@ import { renderWithTheme } from '../../helpers/renderWithTheme';
 import { ClayButton } from '../../../src/components/ClayButton';
 
 describe('ClayButton', () => {
-  it.each(['aurora','bento','clay','material'] as const)('renders in %s', (theme) => {
+  it.each(['expyrico','bento','clay','material'] as const)('renders in %s', (theme) => {
     expect(renderWithTheme(
       <ClayButton title="Save" onPress={() => {}} />, theme,
     ).toJSON()).toMatchSnapshot();
@@ -1166,7 +1181,7 @@ import { MD3ListRow } from '../../../src/components/MD3ListRow';
 import { MD3FAB } from '../../../src/components/MD3FAB';
 import { MD3TextField } from '../../../src/components/MD3TextField';
 
-describe.each(['aurora','bento','clay','material'] as const)('MD3 primitives in %s', (theme) => {
+describe.each(['expyrico','bento','clay','material'] as const)('MD3 primitives in %s', (theme) => {
   it('MD3Chip', () => {
     expect(renderWithTheme(<MD3Chip label="Dairy" selected />, theme).toJSON()).toMatchSnapshot();
   });
@@ -1398,11 +1413,11 @@ describe('ThemeProvider', () => {
   it('cross-fades 200ms between themes', async () => {
     vi.useFakeTimers();
     const { getByTestId } = render(
-      <ThemeProvider initial="aurora"><Probe /></ThemeProvider>,
+      <ThemeProvider initial="expyrico"><Probe /></ThemeProvider>,
     );
-    expect(getByTestId('probe').props.children).toBe('aurora');
+    expect(getByTestId('probe').props.children).toBe('expyrico');
     act(() => { getByTestId('probe').props.onPress(); });
-    expect(getByTestId('probe').props.children).toBe('aurora'); // mid-fade old value still readable
+    expect(getByTestId('probe').props.children).toBe('expyrico'); // mid-fade old value still readable
     act(() => { vi.advanceTimersByTime(220); });
     expect(getByTestId('probe').props.children).toBe('clay');
   });
@@ -1419,16 +1434,16 @@ Expected: FAIL — either missing `useThemeSwitcher` or no cross-fade timing.
 - [ ] **Step 3: Verify/patch `ThemeProvider.tsx` to wire all 4 themes + 200ms cross-fade**
 
 Open `apps/mobile/src/theme/ThemeProvider.tsx`. Confirm:
-- imports `aurora`, `bento`, `clay`, `material` from `@pantry/theme`
+- imports `expyrico`, `bento`, `clay`, `material` from `@expyrico/theme`
 - the `themes` registry includes all four
 - on `setTheme`, runs Animated/Reanimated `withTiming({ duration: 200 })` cross-fade between an absolute-positioned overlay holding the previous token context and the new one
 
 Required minimum patch (only if missing):
 
 ```tsx
-import { aurora, bento, clay, material } from '@pantry/theme';
+import { expyrico, bento, clay, material } from '@expyrico/theme';
 
-const THEMES = { aurora, bento, clay, material } as const;
+const THEMES = { expyrico, bento, clay, material } as const;
 export type ThemeName = keyof typeof THEMES;
 
 // In setTheme:
@@ -1468,8 +1483,8 @@ import { renderWithTheme } from '../../helpers/renderWithTheme';
 import { ThemePreviewCard } from '../../../src/components/ThemePreviewCard';
 
 describe('ThemePreviewCard', () => {
-  it.each(['aurora','bento','clay','material'] as const)('previews %s', (theme) => {
-    expect(renderWithTheme(<ThemePreviewCard preview={theme} selected={false} onSelect={() => {}} />, 'aurora').toJSON()).toMatchSnapshot();
+  it.each(['expyrico','bento','clay','material'] as const)('previews %s', (theme) => {
+    expect(renderWithTheme(<ThemePreviewCard preview={theme} selected={false} onSelect={() => {}} />, 'expyrico').toJSON()).toMatchSnapshot();
   });
 });
 ```
@@ -1484,10 +1499,10 @@ pnpm -C apps/mobile test -- ThemePreviewCard
 
 ```tsx
 import { Pressable, View, Text } from 'react-native';
-import { aurora, bento, clay, material } from '@pantry/theme';
+import { expyrico, bento, clay, material } from '@expyrico/theme';
 import type { ThemeName } from '../theme/ThemeProvider';
 
-const map = { aurora, bento, clay, material } as const;
+const map = { expyrico, bento, clay, material } as const;
 
 type Props = { preview: ThemeName; selected: boolean; onSelect: () => void };
 
@@ -1548,7 +1563,7 @@ import { ScrollView, View, Text } from 'react-native';
 import { useThemeSwitcher } from '../../../src/theme/ThemeProvider';
 import { ThemePreviewCard } from '../../../src/components/ThemePreviewCard';
 
-const ALL = ['aurora','bento','clay','material'] as const;
+const ALL = ['expyrico','bento','clay','material'] as const;
 
 export default function ThemeScreen() {
   const { theme, setTheme } = useThemeSwitcher();
@@ -1660,7 +1675,7 @@ One commit per screen:
 - [ ] D4  `(auth)/sign-up.tsx`
 - [ ] D5  `(auth)/forgot-password.tsx`
 - [ ] D6  `(auth)/verify-email.tsx`
-- [ ] D7  `(app)/(tabs)/home.tsx` — when active theme is `bento`, render records as a 2-col grid of `<BentoTile>`. When `clay`, wrap each record in `<ClayCard>`. When `material`, use `<MD3ListRow>`. Aurora keeps existing GlassCard.
+- [ ] D7  `(app)/(tabs)/home.tsx` — when active theme is `bento`, render records as a 2-col grid of `<BentoTile>`. When `clay`, wrap each record in `<ClayCard>`. When `material`, use `<MD3ListRow>`. Expyrico keeps the existing card.
 - [ ] D8  `(app)/(tabs)/browse.tsx`
 - [ ] D9  `(app)/(tabs)/reviews.tsx`
 - [ ] D10 `(app)/(tabs)/profile.tsx`
@@ -1700,7 +1715,7 @@ git commit --allow-empty -m "chore(mobile): theme audit complete — zero hex li
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import Welcome from '../../app/(auth)/welcome';
 
-describe.each(['aurora','bento','clay','material'] as const)('welcome in %s', (theme) => {
+describe.each(['expyrico','bento','clay','material'] as const)('welcome in %s', (theme) => {
   it('snapshot', () => {
     expect(renderWithTheme(<Welcome />, theme).toJSON()).toMatchSnapshot();
   });
@@ -1764,32 +1779,50 @@ pnpm -C apps/mobile add -D wcag-contrast @types/wcag-contrast
 
 - [ ] **Step 2: Write failing test**
 
+The test must cover all three WCAG 2.1 contrast obligations, not just normal text:
+
+- **Normal text — 4.5:1 (1.4.3 AA).** Includes `text.primary`, `text.secondary`, **and `text.muted`** foregrounds. Muted greys are easy to overlook; the light-theme muted hex (e.g. Bento `text.muted` ≈ `#8A8A8A` on white surface ≈ 3.5:1) very likely fails AA and was previously untested, letting CI go green on a real violation.
+- **Non-text / UI components and borders — 3:1 (1.4.11 AA).** Includes the `border` token against the surfaces it divides, and the `accent` fill against the background it sits on (button/FAB boundary).
+
+Each pair therefore carries its own threshold rather than a single hardcoded `4.5`.
+
 ```ts
 import { describe, it, expect } from 'vitest';
 import { hex } from 'wcag-contrast';
-import { aurora, bento, clay, material } from '@pantry/theme';
+import { expyrico, bento, clay, material } from '@expyrico/theme';
 
-const themes = { aurora, bento, clay, material };
+const themes = { expyrico, bento, clay, material };
 
+// [foreground, background, minRatio]
+// 4.5 → normal text (WCAG 1.4.3). 3 → non-text / UI components + borders (WCAG 1.4.11).
 const PAIRS = [
-  ['text.primary',  'surface'],
-  ['text.primary',  'background'],
-  ['text.secondary','surface'],
-  ['text.onAccent', 'accent'],
-  ['status.danger', 'surface'],
-  ['status.success','surface'],
+  // Normal text
+  ['text.primary',   'surface',    4.5],
+  ['text.primary',   'background', 4.5],
+  ['text.secondary', 'surface',    4.5],
+  ['text.secondary', 'background', 4.5],
+  ['text.muted',     'surface',    4.5],
+  ['text.muted',     'background', 4.5],
+  ['text.onAccent',  'accent',     4.5],
+  ['status.danger',  'surface',    4.5],
+  ['status.success', 'surface',    4.5],
+  // Non-text / UI components and borders (3:1)
+  ['border',         'surface',    3],
+  ['border',         'background', 3],
+  ['accent',         'background', 3],
+  ['accent',         'surface',    3],
 ] as const;
 
 function get(t: any, path: string) {
   return path.split('.').reduce((o, k) => o[k], t.colors);
 }
 
-describe('WCAG AA contrast (>= 4.5 for normal text)', () => {
+describe('WCAG AA contrast (text 4.5:1, non-text/borders 3:1)', () => {
   for (const [tname, t] of Object.entries(themes)) {
-    for (const [fg, bg] of PAIRS) {
-      it(`${tname}: ${fg} on ${bg}`, () => {
+    for (const [fg, bg, min] of PAIRS) {
+      it(`${tname}: ${fg} on ${bg} (>= ${min})`, () => {
         const ratio = hex(get(t, fg), get(t, bg));
-        expect(ratio).toBeGreaterThanOrEqual(4.5);
+        expect(ratio).toBeGreaterThanOrEqual(min);
       });
     }
   }
@@ -1801,22 +1834,33 @@ describe('WCAG AA contrast (>= 4.5 for normal text)', () => {
 ```bash
 pnpm -C apps/mobile test -- contrast
 ```
-Expected: FAIL on any low-contrast pair (e.g., `text.secondary on surface` in bento or clay).
+Expected: FAIL on any low-contrast pair. The newly-added muted-text and border pairs are the likely failures (e.g. Bento `text.muted` ≈ `#8A8A8A` on `#FFFFFF` surface ≈ 3.5:1 < 4.5).
 
-- [ ] **Step 4: Fix theme tokens until all pass**
+- [ ] **Step 4: Triage failures — do NOT silently re-tune user-chosen hex**
 
-For every failing pair, darken the foreground (or lighten the background) in the relevant `packages/theme/src/themes/*.ts`. Re-run snapshots in Phase B (`-u`) to refresh. Iterate until green.
+The theme hex values (background/surface/accent/text/border per theme) are user-chosen design decisions. Adjusting them changes the look of a shipped theme, so they MUST NOT be changed to make the test pass without sign-off.
+
+For each failing pair:
+1. Record the theme, the pair, the current hex values, and the measured ratio.
+2. Add the failure to the **"Palette sign-off required"** note below (`apps/mobile/docs/theme-audit.md` is the home for it; reference it from this task).
+3. Leave the token unchanged until the user approves a specific re-tune (darken foreground / lighten background) or an exemption (e.g. muted text used only for genuinely decorative/disabled states that fall outside the 4.5:1 obligation).
+
+> **Palette sign-off required.** The expanded contrast test surfaces pairs that likely fail AA at the correct thresholds. List every failing `theme: fg on bg = measured ratio (threshold)` here and resolve each with the user before M4 ships. Known suspect: Bento `text.muted` (#8A8A8A) on surface (#FFFFFF) ≈ 3.5:1 vs 4.5:1 required. Options per pair: (a) darken the foreground token, (b) lighten the background token, (c) document that the token is used only for decorative/disabled UI exempt from 1.4.3. Do not edit any theme hex in `packages/theme/src/themes/*.ts` until the user picks an option.
+
+- [ ] **Step 5: Once sign-off is recorded, apply only the approved changes and re-run**
+
+Apply only the hex edits the user approved (if any), refresh Phase B snapshots (`-u`) for affected themes, and re-run until green. Pairs the user exempted are removed from `PAIRS` with an inline comment citing the sign-off, not silently.
 
 ```bash
 pnpm -C apps/mobile test -- contrast
 ```
-Expected: PASS for all 24 assertions.
+Expected: PASS for all asserted pairs.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/mobile/tests/unit/contrast.test.ts apps/mobile/package.json apps/mobile/pnpm-lock.yaml packages/theme/src/themes packages/theme/src/themes/__snapshots__
-git commit -m "test(theme): WCAG AA contrast assertions + token adjustments"
+git add apps/mobile/tests/unit/contrast.test.ts apps/mobile/package.json apps/mobile/pnpm-lock.yaml apps/mobile/docs/theme-audit.md packages/theme/src/themes packages/theme/src/themes/__snapshots__
+git commit -m "test(theme): WCAG AA contrast assertions for text, muted text, and borders"
 ```
 
 ---
@@ -1958,7 +2002,7 @@ If only one platform is available, document which was tested in the release PR a
 Walk this flow with VoiceOver/TalkBack on. Confirm every numbered item.
 
 ### 1. Welcome
-- [ ] "Welcome to Pantry, heading" announced first
+- [ ] "Welcome to Expyrico, heading" announced first
 - [ ] "Sign up, button" focusable, distinct from "Sign in, button"
 - [ ] Background visual elements are not announced
 
@@ -2083,7 +2127,7 @@ git commit -m "feat(mobile): cap font scaling at 1.5x and document large-text be
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.expyrico.example"
       }
     },
     "preview": {
@@ -2091,20 +2135,20 @@ git commit -m "feat(mobile): cap font scaling at 1.5x and document large-text be
       "channel": "preview",
       "ios": { "simulator": false },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.expyrico.example"
       }
     },
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.pantry.example"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.expyrico.example"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "release@pantry.example",
+        "appleId": "release@expyrico.example",
         "ascAppId": "REPLACE_WITH_APPLE_APP_ID",
         "appleTeamId": "REPLACE_WITH_TEAM_ID"
       },
@@ -2186,10 +2230,10 @@ Design deliverables required before production build. Hand to the designer (or D
 
 ## Source assets
 
-- [ ] `assets/icon-source.png` — 1024×1024, sRGB, no alpha, no rounded corners. Centered logo with ~10% safe-area margin. Background = Aurora purple `#5B3FFF`.
+- [ ] `assets/icon-source.png` — 1024×1024, sRGB, no alpha, no rounded corners. Centered logo with ~10% safe-area margin. Background = Fresh Sage `#4BAE8A`.
 - [ ] `assets/adaptive-foreground.png` — 1024×1024, transparent background, logo fits in centered 66% safe zone (Android adaptive masking)
-- [ ] `assets/adaptive-background.png` — 1024×1024, solid Aurora purple `#5B3FFF`
-- [ ] `assets/splash-source.png` — 1284×2778 (iPhone 14 Pro Max). Centered logo. Background = `#0E0E14`.
+- [ ] `assets/adaptive-background.png` — 1024×1024, solid Fresh Sage `#4BAE8A`
+- [ ] `assets/splash-source.png` — 1284×2778 (iPhone 14 Pro Max). Centered logo. Background = Fresh Sage `#4BAE8A`.
 - [ ] `assets/notification-icon.png` — 96×96, white silhouette on transparent (Android notification tray)
 - [ ] `assets/favicon.png` — 48×48 (admin web)
 
@@ -2204,7 +2248,7 @@ Run `pnpm -C apps/mobile expo prebuild` after dropping the source files in `asse
 - [ ] Empty-state for reviews: "Nothing reviewed yet"
 - [ ] Error illustration for offline
 
-All in flat 2-color SVG using the Aurora accent palette. Bundle inline as React components in `apps/mobile/src/components/illustrations/`.
+All in flat 2-color SVG using the Expyrico accent palette (Fresh Sage `#4BAE8A` + Honey `#F5A623`). Bundle inline as React components in `apps/mobile/src/components/illustrations/`.
 
 ## Sign-off
 
@@ -2224,7 +2268,7 @@ android: {
     foregroundImage: './assets/adaptive-foreground.png',
     backgroundImage: './assets/adaptive-background.png',
   },
-  package: 'com.pantry.app',
+  package: 'com.expyrico.app',
 },
 plugins: [
   ['expo-splash-screen', {
@@ -2263,9 +2307,9 @@ Source of truth for shipping mobile builds. Follow start-to-finish.
 ## Prerequisites
 
 - `eas-cli` installed: `npm i -g eas-cli`
-- Logged in: `eas login` (account must be Pantry org owner or admin)
-- Apple Developer team membership for Pantry
-- Google Play Console access for `com.pantry.app`
+- Logged in: `eas login` (account must be Expyrico org owner or admin)
+- Apple Developer team membership for Expyrico
+- Google Play Console access for `com.expyrico.app`
 
 ## Channels
 
@@ -2350,13 +2394,13 @@ Walk through end-to-end. First-time submission takes ~3 hours of operator time s
 
 ## App Store Connect setup
 
-1. Sign in at https://appstoreconnect.apple.com with the Pantry Apple ID
+1. Sign in at https://appstoreconnect.apple.com with the Expyrico Apple ID
 2. **My Apps → "+"** → New App
 3. Fields:
    - Platform: iOS
-   - Name: **Pantry**
+   - Name: **Expyrico**
    - Primary Language: English (U.S.)
-   - Bundle ID: `com.pantry.app` (must match `ios.bundleIdentifier` in `app.config.ts`)
+   - Bundle ID: `com.expyrico.app` (must match `ios.bundleIdentifier` in `app.config.ts`)
    - SKU: `pantry-ios-001`
    - User Access: Full Access
 
@@ -2366,10 +2410,10 @@ Set in `app.config.ts → ios.infoPlist`:
 
 ```ts
 infoPlist: {
-  NSCameraUsageDescription: 'Pantry uses the camera to scan product barcodes and QR codes, and to read printed expiry dates.',
-  NSPhotoLibraryUsageDescription: 'Pantry can read an expiry date from a photo you already took.',
-  NSPhotoLibraryAddUsageDescription: 'Pantry saves an optional photo of your item with the record.',
-  NSUserNotificationsUsageDescription: 'Pantry notifies you before items expire so nothing goes to waste.',
+  NSCameraUsageDescription: 'Expyrico uses the camera to scan product barcodes and QR codes, and to read printed expiry dates.',
+  NSPhotoLibraryUsageDescription: 'Expyrico can read an expiry date from a photo you already took.',
+  NSPhotoLibraryAddUsageDescription: 'Expyrico saves an optional photo of your item with the record.',
+  NSUserNotificationsUsageDescription: 'Expyrico notifies you before items expire so nothing goes to waste.',
   ITSAppUsesNonExemptEncryption: false,
 }
 ```
@@ -2390,7 +2434,7 @@ Required device sizes (provide PNGs, no transparency, no alpha):
 | 12.9" iPad    | 2048 × 2732      | 3–10  |
 
 Recommended screens to capture:
-1. Aurora Glass home with 4 records
+1. Expyrico home with 4 records
 2. Scan screen with viewfinder
 3. Product detail with reviews
 4. Theme switcher showing 4 previews
@@ -2404,9 +2448,9 @@ Capture on a real device via Xcode → Devices → Take Screenshot, or via the i
 - **Promotional text (170 chars):** "Scan groceries, set expiry dates, get reminders before they go bad. Rate products with the community. Privacy-first: no analytics, your pantry stays yours."
 - **Description (4000 chars):** see `/docs/legal/store-description-ios.md` (write in Task G7 if not present; for first submission a 1-paragraph version is acceptable)
 - **Keywords (100 chars):** `pantry,expiry,expiration,grocery,barcode,scan,food,waste,reminder,fridge`
-- **Support URL:** https://pantry.example/support
-- **Marketing URL:** https://pantry.example
-- **Privacy Policy URL:** https://pantry.example/privacy (must match `/docs/legal/privacy-policy.md`)
+- **Support URL:** https://expyrico.example/support
+- **Marketing URL:** https://expyrico.example
+- **Privacy Policy URL:** https://expyrico.example/privacy (must match `/docs/legal/privacy-policy.md`)
 
 ## Privacy nutrition label
 
@@ -2430,13 +2474,13 @@ Apple → "App Privacy" → answers:
 ## App Review information
 
 - Sign-in required: Yes
-- Demo account: `appreview@pantry.example` / password from 1Password vault
-- Notes: "Pantry tracks personal grocery expiry dates. Test by tapping the scan FAB and entering any barcode (e.g., 5449000000996 for Coca-Cola)."
+- Demo account: `appreview@expyrico.example` / password from 1Password vault
+- Notes: "Expyrico tracks personal grocery expiry dates. Test by tapping the scan FAB and entering any barcode (e.g., 5449000000996 for Coca-Cola)."
 
 ## TestFlight
 
 1. After EAS build uploads, the build appears under **TestFlight → iOS** in ~30 min (processing).
-2. **Internal Testing → "+"** group "Pantry team" → add team Apple IDs. No review required, builds available instantly.
+2. **Internal Testing → "+"** group "Expyrico team" → add team Apple IDs. No review required, builds available instantly.
 3. **External Testing → "+"** group "Beta testers" → add up to 10k testers. Requires Beta App Review (24–48h first time, ~few hours after).
 4. Provide "What to Test" notes per build.
 
@@ -2478,10 +2522,10 @@ Walk through end-to-end. First-time setup ~2 hours of operator time.
 
 ## Play Console setup
 
-1. Sign in at https://play.google.com/console with the Pantry developer account ($25 one-time fee)
+1. Sign in at https://play.google.com/console with the Expyrico developer account ($25 one-time fee)
 2. **Create app**
 3. Fields:
-   - App name: **Pantry**
+   - App name: **Expyrico**
    - Default language: English (United States)
    - App / Game: App
    - Free / Paid: Free
@@ -2500,7 +2544,7 @@ Android requires target API 34 (Android 14) as of August 2024. Verify in `app.co
 
 ```ts
 android: {
-  package: 'com.pantry.app',
+  package: 'com.expyrico.app',
   compileSdkVersion: 34,
   targetSdkVersion: 34,
   // ...
@@ -2513,7 +2557,7 @@ EAS manages the Android upload key. App-signing key is held by Google Play (Play
 
 ## Store listing
 
-- **App name:** Pantry
+- **App name:** Expyrico
 - **Short description (80 chars):** "Track expiry dates. Rate products. Stop wasting food."
 - **Full description (4000 chars):** see `/docs/legal/store-description-android.md` (first version: 1-paragraph acceptable)
 - **App icon:** 512×512 PNG, 32-bit, no alpha — from `assets/icon-source.png`
@@ -2561,11 +2605,11 @@ Third parties:
 
 ## App access
 
-Sign-in required → provide demo account: `appreview@pantry.example` / password from 1Password.
+Sign-in required → provide demo account: `appreview@expyrico.example` / password from 1Password.
 
 ## Privacy Policy
 
-URL: https://pantry.example/privacy (must be live before submission; mirror of `/docs/legal/privacy-policy.md`).
+URL: https://expyrico.example/privacy (must be live before submission; mirror of `/docs/legal/privacy-policy.md`).
 
 ## Release tracks
 
@@ -2618,19 +2662,19 @@ git commit -m "docs(mobile): Android Play Store submission runbook"
 - [ ] **Step 1: Write the full policy**
 
 ```markdown
-# Pantry Privacy Policy
+# Expyrico Privacy Policy
 
 **Effective date:** 2026-06-01
 **Last updated:** 2026-06-01
 
-This Privacy Policy explains what data Pantry ("we", "us") collects, how we use it, and the choices you have. Pantry is a self-hosted personal pantry tracker. We do not sell your data. We do not embed third-party analytics.
+This Privacy Policy explains what data Expyrico ("we", "us") collects, how we use it, and the choices you have. Expyrico is a self-hosted personal pantry tracker. We do not sell your data. We do not embed third-party analytics.
 
 ## 1. Information we collect
 
 ### 1.1 Information you provide
 
 - **Account information:** email address, password (stored as an argon2 hash), and optionally first name, last name, country, and avatar image.
-- **Pantry records:** items you add (name or scanned product, quantity, expiry date, optional photo, optional notes). These are private to your account.
+- **Expyrico records:** items you add (name or scanned product, quantity, expiry date, optional photo, optional notes). These are private to your account.
 - **Reviews and votes:** ratings (1–5 stars) and optional written reviews you submit on products, plus your upvotes and downvotes on others' reviews. These are publicly visible alongside your display name.
 - **Reports:** if you flag a review, user, or product, we keep the report text for moderation.
 - **Communication:** if you contact support, we keep the message you send us.
@@ -2659,7 +2703,7 @@ We do not use your data to train AI models. We do not sell or rent your data. We
 
 ## 3. How information is shared
 
-- **Public on the platform:** your display name, reviews, votes, and the products you have created entries for are visible to other Pantry users.
+- **Public on the platform:** your display name, reviews, votes, and the products you have created entries for are visible to other Expyrico users.
 - **Service providers:**
   - **Open Food Facts** / **UPCitemdb** — receive only the barcode value during lookups
   - **Expo Push** (Expo / EAS) — receives your push token and notification payload
@@ -2671,7 +2715,7 @@ We do not transfer your data to any other third party.
 ## 4. Data retention
 
 - **Account data:** until you delete your account
-- **Pantry records:** until you delete them, or for 90 days after account deletion in encrypted backups
+- **Expyrico records:** until you delete them, or for 90 days after account deletion in encrypted backups
 - **Reviews:** retained even after account deletion (anonymized to "[deleted user]") so vote counts on others' reviews remain meaningful. You can delete individual reviews any time.
 - **Logs:** 7 days
 - **Backups:** rolling 7 daily / 4 weekly / 3 monthly (max 90 days)
@@ -2699,11 +2743,11 @@ No system is perfectly secure. If we ever experience a breach affecting your dat
 
 ## 7. Children
 
-Pantry is rated 4+ on iOS and Everyone on Android. We do not knowingly collect data from children under 13. If we learn we have collected such data, we will delete it.
+Expyrico is rated 4+ on iOS and Everyone on Android. We do not knowingly collect data from children under 13. If we learn we have collected such data, we will delete it.
 
 ## 8. International users
 
-Our servers are located in the European Union. By using Pantry from outside the EU, you consent to your information being processed in the EU under GDPR-equivalent protections.
+Our servers are located in the European Union. By using Expyrico from outside the EU, you consent to your information being processed in the EU under GDPR-equivalent protections.
 
 ## 9. Changes
 
@@ -2711,7 +2755,7 @@ We may update this policy from time to time. We will notify you in the app of ma
 
 ## 10. Contact
 
-Questions? Email **privacy@pantry.example**.
+Questions? Email **privacy@expyrico.example**.
 ```
 
 - [ ] **Step 2: Commit**
@@ -2732,12 +2776,12 @@ git commit -m "docs(legal): publish privacy policy"
 - [ ] **Step 1: Write the full terms**
 
 ```markdown
-# Pantry Terms of Service
+# Expyrico Terms of Service
 
 **Effective date:** 2026-06-01
 **Last updated:** 2026-06-01
 
-Welcome to Pantry. By creating an account or using the app, you agree to these Terms. If you don't agree, don't use the service.
+Welcome to Expyrico. By creating an account or using the app, you agree to these Terms. If you don't agree, don't use the service.
 
 ## 1. Eligibility
 
@@ -2746,7 +2790,7 @@ You must be at least 13 years old. If you are between 13 and the age of majority
 ## 2. Your account
 
 - You are responsible for keeping your password secret. Use a unique password.
-- You are responsible for activity under your account. Tell us immediately at **security@pantry.example** if you believe your account has been compromised.
+- You are responsible for activity under your account. Tell us immediately at **security@expyrico.example** if you believe your account has been compromised.
 - One person, one account. Do not impersonate anyone.
 
 ## 3. Acceptable use
@@ -2764,11 +2808,11 @@ We may suspend or terminate accounts that violate these rules. Severe violations
 
 ## 4. Your content
 
-You retain ownership of the records, reviews, votes, and other content you submit. By submitting content, you grant Pantry a non-exclusive, worldwide, royalty-free license to host, store, reproduce, and display it for the sole purpose of operating the service. This license ends when you delete the content (with the caveat in §4 of the Privacy Policy: reviews remain visible as `[deleted user]` to preserve vote integrity).
+You retain ownership of the records, reviews, votes, and other content you submit. By submitting content, you grant Expyrico a non-exclusive, worldwide, royalty-free license to host, store, reproduce, and display it for the sole purpose of operating the service. This license ends when you delete the content (with the caveat in §4 of the Privacy Policy: reviews remain visible as `[deleted user]` to preserve vote integrity).
 
 ## 5. Our content
 
-The Pantry app, including its design, code, themes, and trademarks, is owned by the operator and protected by copyright. You may not copy or redistribute it without permission.
+The Expyrico app, including its design, code, themes, and trademarks, is owned by the operator and protected by copyright. You may not copy or redistribute it without permission.
 
 ## 6. Third-party data
 
@@ -2776,13 +2820,13 @@ Product information may come from **Open Food Facts** (Open Database License) an
 
 ## 7. Disclaimers
 
-The service is provided **"as is" and "as available"**. Pantry is a personal pantry tracker. It is not medical advice, food-safety advice, or nutritional advice. Always trust your senses and labels before consuming food.
+The service is provided **"as is" and "as available"**. Expyrico is a personal pantry tracker. It is not medical advice, food-safety advice, or nutritional advice. Always trust your senses and labels before consuming food.
 
 To the extent permitted by law, we disclaim all warranties, express or implied, including merchantability, fitness for a particular purpose, and non-infringement.
 
 ## 8. Limitation of liability
 
-To the extent permitted by law, the operator's total liability for any claim arising from your use of Pantry is limited to the amount you paid for the service in the 12 months preceding the claim (which is $0 for the free tier).
+To the extent permitted by law, the operator's total liability for any claim arising from your use of Expyrico is limited to the amount you paid for the service in the 12 months preceding the claim (which is $0 for the free tier).
 
 We are not liable for indirect, incidental, consequential, or punitive damages — including, without limitation, lost data, missed reminders, or food spoilage.
 
@@ -2800,7 +2844,7 @@ These Terms are governed by the laws of the jurisdiction the operator is registe
 
 ## 12. Contact
 
-Questions? **legal@pantry.example**.
+Questions? **legal@expyrico.example**.
 ```
 
 - [ ] **Step 2: Commit**
@@ -2895,7 +2939,7 @@ Expected: pg_restore prints object counts; exit code 0. Some "already exists" wa
 Capture prod row counts beforehand. From your laptop with prod read-only access:
 
 ```bash
-ssh pantryapp@prod-host \
+ssh expyrico@prod-host \
   "sudo -u postgres psql -d pantry -At -c \"SELECT 'users', count(*) FROM users UNION ALL \
                                             SELECT 'records', count(*) FROM records UNION ALL \
                                             SELECT 'reviews', count(*) FROM reviews UNION ALL \
@@ -2949,7 +2993,7 @@ Append a line to `docs/runbooks/restore-drill-log.md`:
 
 ## If anything fails
 
-- **Backup file missing in S3:** investigate `backup.sh` logs on prod under `/var/log/pantry/backup.log`. Re-run `infra/scripts/backup.sh` manually.
+- **Backup file missing in S3:** investigate `backup.sh` logs on prod under `/var/log/expyrico/backup.log`. Re-run `infra/scripts/backup.sh` manually.
 - **age decryption fails:** the recipient key has rotated and the backup was made under the old key. Recover the old key from 1Password (we keep the previous 2 generations). Schedule a re-encryption pass.
 - **pg_restore errors:** capture the full output. Check that scratch Postgres version matches prod (both 16). Re-run with `--verbose`.
 - **Row counts differ wildly:** treat this as a P1 incident. The backup pipeline is producing partial dumps. Page on-call.
@@ -2981,19 +3025,19 @@ git commit -m "docs(infra): quarterly restore drill runbook"
 
 ## Prerequisites
 
-- SSH access to the prod host as `pantryapp` (key in 1Password)
+- SSH access to the prod host as `expyrico` (key in 1Password)
 - Knowledge of the previous good SHA — find via GitHub Actions runs on `main` filtered to "success"
 
 ## 1. Identify the last good SHA (30 seconds)
 
-Open https://github.com/pantry-org/pantry/actions?query=branch%3Amain+is%3Asuccess. Note the SHA from the deploy job that was green before the bad one.
+Open https://github.com/expyrico-org/expyrico/actions?query=branch%3Amain+is%3Asuccess. Note the SHA from the deploy job that was green before the bad one.
 
 Alternatively on the host:
 
 ```bash
-ssh pantryapp@prod-host
-ls -1 /opt/pantry/releases/ | sort | tail -5
-readlink /opt/pantry/current
+ssh expyrico@prod-host
+ls -1 /opt/expyrico/releases/ | sort | tail -5
+readlink /opt/expyrico/current
 ```
 
 The directory above the current symlink target is your rollback target.
@@ -3002,24 +3046,24 @@ The directory above the current symlink target is your rollback target.
 
 ```bash
 LAST_GOOD=<sha>
-ln -sfn /opt/pantry/releases/$LAST_GOOD /opt/pantry/current
+ln -sfn /opt/expyrico/releases/$LAST_GOOD /opt/expyrico/current
 ```
 
-## 3. Reload services (10 seconds)
+## 3. Restart services (10 seconds)
 
 ```bash
-sudo systemctl reload pantry-api pantry-admin
+sudo systemctl restart expyrico-api expyrico-admin
 ```
 
-`reload` triggers a graceful in-flight drain via the SIGTERM handler (see `api/src/server.ts`). Active requests complete; new requests use the rolled-back binary.
+`systemctl restart` sends `SIGTERM` to each unit; the units stop with `TimeoutStopSec=30`, giving the in-flight handler in `api/src/server.ts` its graceful drain window before SIGKILL. Active requests complete; new requests use the rolled-back binary. (`reload` is a no-op for these `Type=simple` units — they have no `ExecReload`.)
 
 ## 4. Smoke test (30 seconds)
 
 ```bash
-curl -fsS https://api.pantry.example/health/ready
+curl -fsS https://api.expyrico.example/health/ready
 # Expected: {"status":"ok","db":true,"redis":true}
 
-curl -fsS https://api.pantry.example/v1/products/search?q=milk -H "Authorization: Bearer <test-token>"
+curl -fsS https://api.expyrico.example/v1/products/search?q=milk -H "Authorization: Bearer <test-token>"
 # Expected: 200 with results array
 ```
 
@@ -3028,14 +3072,14 @@ curl -fsS https://api.pantry.example/v1/products/search?q=milk -H "Authorization
 Tail logs:
 
 ```bash
-sudo journalctl -u pantry-api -f --since "1 minute ago" | grep -E '"level":(40|50)'
+sudo journalctl -u expyrico-api -f --since "1 minute ago" | grep -E '"level":(40|50)'
 ```
 
 Expected: error rate drops back to baseline within 60 seconds. If not, you rolled back to a SHA that's also broken — try one further back.
 
 ## 6. Announce
 
-- Post in #incidents: "Rolled back pantry-api + pantry-admin to <sha>. Smoke tests green."
+- Post in #incidents: "Rolled back expyrico-api + expyrico-admin to <sha>. Smoke tests green."
 - Open a ticket to investigate root cause of the bad deploy. Block re-deploy of the bad SHA.
 
 ---
@@ -3061,7 +3105,7 @@ Expected: error rate drops back to baseline within 60 seconds. If not, you rolle
 
 ```bash
 # On the prod host:
-ssh pantryapp@prod-host
+ssh expyrico@prod-host
 # Pull the most recent pre-incident dump
 rclone copy b2:pantry-backups/daily/2026-05-23.age /tmp/
 mv /tmp/2026-05-23.age /tmp/backup.dump.age
@@ -3119,7 +3163,7 @@ git commit -m "docs(infra): deploy rollback runbook with Prisma considerations"
 ## 1. Mark every session revoked (DB)
 
 ```bash
-ssh pantryapp@prod-host
+ssh expyrico@prod-host
 sudo -u postgres psql -d pantry <<'SQL'
 BEGIN;
 UPDATE sessions
@@ -3141,13 +3185,10 @@ The access token (15 min lifetime) is signed with the key in `JWT_ACCESS_SECRET`
 NEW=$(openssl rand -base64 64 | tr -d '\n')
 # Edit the env file
 sudo -i
-nano /etc/pantry/.env.production
+nano /etc/expyrico/.env.production
 # Set: JWT_ACCESS_SECRET=<NEW>
 # Save, exit
-systemctl reload pantry-api pantry-admin
-```
-
-> **v1 behavior:** rotating `JWT_ACCESS_SECRET` is a hard cutover. All access tokens signed under the old key fail verification immediately and every client must re-authenticate.
+systemctl restart expyrico-api expyrico-admin All access tokens signed under the old key fail verification immediately and every client must re-authenticate.
 >
 > **Future enhancement:** implement a previous-key grace mechanism (e.g., `JWT_ACCESS_SECRET_PREVIOUS`) for zero-downtime JWT rotation. Not in v1.
 
@@ -3155,13 +3196,13 @@ systemctl reload pantry-api pantry-admin
 
 ```bash
 # Existing token must now fail:
-curl -i https://api.pantry.example/v1/auth/me -H "Authorization: Bearer <old-token>"
+curl -i https://api.expyrico.example/v1/auth/me -H "Authorization: Bearer <old-token>"
 # Expected: 401 Unauthorized
 
 # New sign-in must work:
-curl -i https://api.pantry.example/v1/auth/login \
+curl -i https://api.expyrico.example/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"appreview@pantry.example","password":"<demo>"}'
+  -d '{"email":"appreview@expyrico.example","password":"<demo>"}'
 # Expected: 200 with new tokens
 ```
 
@@ -3170,7 +3211,7 @@ curl -i https://api.pantry.example/v1/auth/login \
 Post to status page and in-app banner. Use the admin UI or PATCH the feature flag directly with the Zod-validated body shape:
 
 ```bash
-curl -X PATCH https://admin.pantry.example/api/feature-flags \
+curl -X PATCH https://admin.expyrico.example/api/feature-flags \
   -H "Content-Type: application/json" \
   -d '{ "maintenanceBanner": "For security reasons we have signed everyone out. Please sign in again. Your data is unaffected." }'
 ```
@@ -3209,25 +3250,25 @@ git commit -m "docs(infra): revoke-all-sessions emergency runbook"
 
 **Cadence:** annual + on any suspected compromise.
 
-**Inventory** (in `/etc/pantry/.env.production`):
+**Inventory** (in `/etc/expyrico/.env.production`):
 
 - `JWT_ACCESS_SECRET` (HS256 signing key for access tokens)
 - `DATABASE_URL` password (the `pantry_app` Postgres role)
 - `REDIS_URL` (full URL incl. password: `redis://[:password@]localhost:6379`)
 - `BACKUP_AGE_RECIPIENT` (age public recipient string for encrypting backups)
-- B2 application key (used by `rclone` to upload backups; lives in `~/.config/rclone/rclone.conf` for the `pantryapp` user, NOT in `.env.production`)
+- B2 application key (used by `rclone` to upload backups; lives in `~/.config/rclone/rclone.conf` for the `expyrico` user, NOT in `.env.production`)
 - `SMTP_PASSWORD`
 - `EXPO_ACCESS_TOKEN` (push delivery)
 - `OAUTH_GOOGLE_CLIENT_SECRET`
 - `OAUTH_APPLE_PRIVATE_KEY`
 
-All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pantry-api pantry-admin`.
+All edits to `/etc/expyrico/.env.production` are followed by `systemctl restart expyrico-api expyrico-admin` (these `Type=simple` units have no `ExecReload`, so a `reload` would be a silent no-op; restart sends SIGTERM and lets the process drain within `TimeoutStopSec=30`).
 
 ## JWT signing key
 
 1. Generate: `openssl rand -base64 64`
-2. Set the new value as `JWT_ACCESS_SECRET` in `/etc/pantry/.env.production`
-3. `systemctl reload pantry-api pantry-admin`
+2. Set the new value as `JWT_ACCESS_SECRET` in `/etc/expyrico/.env.production`
+3. `systemctl restart expyrico-api expyrico-admin`
 4. **All sessions are forced to re-authenticate.** This is a hard cutover in v1.
 
 > **Future enhancement:** implement a previous-key grace period (e.g., `JWT_ACCESS_SECRET_PREVIOUS` accepted on verify only) for zero-downtime JWT rotation. For v1, all sessions are forced to re-auth after rotation.
@@ -3240,16 +3281,16 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
    ALTER ROLE pantry_app WITH PASSWORD '<new>';
    ```
 3. Update `DATABASE_URL` in `.env.production`
-4. `systemctl reload pantry-api pantry-admin`
-5. Verify: `curl https://api.pantry.example/health/ready` returns `db: true`
+4. `systemctl restart expyrico-api expyrico-admin`
+5. Verify: `curl https://api.expyrico.example/health/ready` returns `db: true`
 
 ## Redis password
 
 1. Generate: `openssl rand -base64 32`
 2. Edit `/etc/redis/redis.conf` → `requirepass <new>`
-3. Edit `/etc/pantry/.env.production` → `REDIS_URL=redis://:<new>@localhost:6379`
-4. `systemctl reload redis-server pantry-api`
-5. Verify: `curl https://api.pantry.example/health/ready` returns `redis: true`
+3. Edit `/etc/expyrico/.env.production` → `REDIS_URL=redis://:<new>@localhost:6379`
+4. `systemctl restart redis-server expyrico-api`
+5. Verify: `curl https://api.expyrico.example/health/ready` returns `redis: true`
 
 ## Backblaze B2 application key (used by rclone)
 
@@ -3262,7 +3303,7 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
    key = <new-application-key>
    ```
 3. Test: `rclone lsf b2:pantry-backups/`
-4. Trigger a manual backup: `sudo -u pantryapp /opt/pantry/current/infra/scripts/backup.sh`
+4. Trigger a manual backup: `sudo -u expyrico /opt/expyrico/current/infra/scripts/backup.sh`
 5. Confirm a new file lands at `b2:pantry-backups/daily/$(date -u +%Y-%m-%d).age`
 6. Revoke the old application key in the B2 console
 
@@ -3270,15 +3311,15 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 
 1. Generate new keypair on a workstation: `age-keygen -o pantry-age-$(date +%Y%m%d).key`
 2. The output file contains both the secret key and the public recipient (`# public key: age1...`).
-3. Update `BACKUP_AGE_RECIPIENT` in `/etc/pantry/.env.production` to the new `age1...` recipient string
-4. `systemctl reload pantry-api`
-5. Store the new private key in 1Password under "Pantry Backups → Age key (current)". Move the previous one to "Age key (N-1)". Keep two generations so that historic backups under the old recipient can still be decrypted during a restore drill.
+3. Update `BACKUP_AGE_RECIPIENT` in `/etc/expyrico/.env.production` to the new `age1...` recipient string
+4. `systemctl restart expyrico-api`
+5. Store the new private key in 1Password under "Expyrico Backups → Age key (current)". Move the previous one to "Age key (N-1)". Keep two generations so that historic backups under the old recipient can still be decrypted during a restore drill.
 6. After the next quarterly restore drill passes with the new key, the old generation may be archived but never deleted while any backups encrypted under it still exist.
 
 ## SMTP password
 
 1. Rotate at the SMTP provider (e.g., Postmark / SES)
-2. Update `SMTP_PASSWORD`, reload
+2. Update `SMTP_PASSWORD`, restart
 3. Send a test verification email to your own address
 
 ## Expo access token
@@ -3298,9 +3339,9 @@ All edits to `/etc/pantry/.env.production` are followed by `systemctl reload pan
 ## Verify after each rotation
 
 ```bash
-curl -fsS https://api.pantry.example/health/ready
+curl -fsS https://api.expyrico.example/health/ready
 # Expected: {"status":"ok","db":true,"redis":true}
-sudo journalctl -u pantry-api --since "2 minutes ago" | grep -i error
+sudo journalctl -u expyrico-api --since "2 minutes ago" | grep -i error
 # Expected: no auth/connection errors
 ```
 
@@ -3349,14 +3390,14 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 
 - Post in #incidents Slack/Discord with `[INC YYYY-MM-DD-NN] S<n>: <one-line summary>`
 - Open a ticket; this is your scratchpad and the seed for the postmortem
-- If S1/S2: enable the maintenance banner via `/admin/settings/feature-flags → maintenanceBanner = "We are investigating an issue. Updates at status.pantry.example."` (string value; set `null` to clear). The PATCH body shape is `{ "maintenanceBanner": "..." }`, Zod-validated against M3's `feature_flags` seed.
+- If S1/S2: enable the maintenance banner via `/admin/settings/feature-flags → maintenanceBanner = "We are investigating an issue. Updates at status.expyrico.example."` (string value; set `null` to clear). The PATCH body shape is `{ "maintenanceBanner": "..." }`, Zod-validated against M3's `feature_flags` seed.
 
 ### 2. Triage (first 15 min)
 
-- What changed recently? Check the latest deploy SHA: `readlink /opt/pantry/current`
+- What changed recently? Check the latest deploy SHA: `readlink /opt/expyrico/current`
 - Is `/health/ready` returning ok?
 - Are DB and Redis up? `systemctl status postgresql redis-server`
-- Tail logs: `sudo journalctl -u pantry-api -f --since "10 minutes ago"`
+- Tail logs: `sudo journalctl -u expyrico-api -f --since "10 minutes ago"`
 - Check `/admin/system/queue-health` and `/admin/system/api-errors`
 - If recent deploy + symptoms started right after: ROLLBACK first, investigate second (see `rollback.md`)
 
@@ -3366,22 +3407,22 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 
 **External:**
 
-- Update the status page (Statuspage-lite at `https://status.pantry.example`). Post: investigating → identified → monitoring → resolved.
+- Update the status page (Statuspage-lite at `https://status.expyrico.example`). Post: investigating → identified → monitoring → resolved.
 - For S1/S2 with > 30 min impact, email affected users from the operator inbox using this template:
 
   ```
-  Subject: Pantry — service disruption update
+  Subject: Expyrico — service disruption update
 
   Hi,
 
-  Between <start UTC> and <end UTC>, Pantry was <briefly degraded / unavailable / unable to deliver push notifications>.
+  Between <start UTC> and <end UTC>, Expyrico was <briefly degraded / unavailable / unable to deliver push notifications>.
   We have identified the cause as <one sentence, plain language> and the service has been restored.
 
   Your data is safe. <If true: No records or reviews were lost.>
 
   We are sorry for the disruption.
 
-  — The Pantry team
+  — The Expyrico team
   ```
 
 ### 4. Mitigate
@@ -3466,15 +3507,15 @@ Goal: be paged within 5 minutes of `/health` failing.
 
 ## Monitors
 
-1. **API liveness** — HTTPS GET `https://api.pantry.example/health` every 5 min, expect 200
-2. **API readiness** — HTTPS GET `https://api.pantry.example/health/ready` every 5 min, expect 200 AND `db:true` AND `redis:true` (use "keyword exists" check)
-3. **Admin landing** — HTTPS GET `https://admin.pantry.example/login` every 5 min, expect 200
+1. **API liveness** — HTTPS GET `https://api.expyrico.example/health` every 5 min, expect 200
+2. **API readiness** — HTTPS GET `https://api.expyrico.example/health/ready` every 5 min, expect 200 AND `db:true` AND `redis:true` (use "keyword exists" check)
+3. **Admin landing** — HTTPS GET `https://admin.expyrico.example/login` every 5 min, expect 200
 
 ## Alert contacts
 
 ### Primary: email
 
-Add `ops@pantry.example` (forwards to operator personal email + on-call phone via Gmail filter).
+Add `ops@expyrico.example` (forwards to operator personal email + on-call phone via Gmail filter).
 
 ### Secondary: choose one of Telegram or Discord
 
@@ -3482,7 +3523,7 @@ Add `ops@pantry.example` (forwards to operator personal email + on-call phone vi
 
 1. Open Telegram, message `@BotFather`, run `/newbot`, name it `PantryAlertBot`
 2. Save the bot token
-3. Create a private channel `Pantry Alerts`, add the bot as admin
+3. Create a private channel `Expyrico Alerts`, add the bot as admin
 4. Get the channel ID:
    ```bash
    curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | jq '.result[].channel_post.chat.id'
@@ -3530,9 +3571,9 @@ UptimeRobot → Maintenance Windows → Add → set start/end UTC.
 
 Once per quarter:
 
-1. Disable the API briefly (`sudo systemctl stop pantry-api`)
+1. Disable the API briefly (`sudo systemctl stop expyrico-api`)
 2. Confirm alert lands within 5 minutes on every channel
-3. Re-enable: `sudo systemctl start pantry-api`
+3. Re-enable: `sudo systemctl start expyrico-api`
 4. Confirm UptimeRobot status returns to "up"
 
 Log the drill in `docs/runbooks/uptime-drill-log.md`.
@@ -3565,26 +3606,26 @@ Run before first launch, then quarterly. Every item has a command + expected out
 
 - [ ] **HSTS header present**
   ```bash
-  curl -sI https://api.pantry.example/health | grep -i strict-transport-security
+  curl -sI https://api.expyrico.example/health | grep -i strict-transport-security
   # Expected: strict-transport-security: max-age=31536000; includeSubDomains; preload
   ```
 
 - [ ] **TLS 1.2+ only (TLS 1.0/1.1 disabled)**
   ```bash
-  nmap --script ssl-enum-ciphers -p 443 api.pantry.example | grep -E 'TLSv1\.[01]'
+  nmap --script ssl-enum-ciphers -p 443 api.expyrico.example | grep -E 'TLSv1\.[01]'
   # Expected: no output (no TLS 1.0/1.1 lines)
   ```
 
 - [ ] **Request body size cap enforced (1 MB default; 5 MB on avatar upload route)**
   ```bash
-  head -c 6000000 /dev/urandom | base64 | curl -sI -X POST https://api.pantry.example/v1/auth/login \
+  head -c 6000000 /dev/urandom | base64 | curl -sI -X POST https://api.expyrico.example/v1/auth/login \
     -H "Content-Type: application/json" --data-binary @-
   # Expected: 413 Payload Too Large
   ```
 
 - [ ] **Rate limit fires on /v1/auth/***
   ```bash
-  for i in $(seq 1 15); do curl -sI -X POST https://api.pantry.example/v1/auth/login \
+  for i in $(seq 1 15); do curl -sI -X POST https://api.expyrico.example/v1/auth/login \
     -H "Content-Type: application/json" -d '{"email":"x@x.com","password":"x"}'; done | grep -c '429'
   # Expected: at least 5 (default limit is 10/min/IP per spec §6.8)
   ```
@@ -3593,19 +3634,19 @@ Run before first launch, then quarterly. Every item has a command + expected out
 
 - [ ] **Localhost only**
   ```bash
-  ssh pantryapp@prod-host "sudo ss -tlnp | grep ':5432'"
+  ssh expyrico@prod-host "sudo ss -tlnp | grep ':5432'"
   # Expected: only 127.0.0.1:5432, no 0.0.0.0:5432
   ```
 
 - [ ] **App user has no superuser**
   ```bash
-  ssh pantryapp@prod-host "sudo -u postgres psql -At -c \"SELECT rolsuper FROM pg_roles WHERE rolname='pantry_app';\""
+  ssh expyrico@prod-host "sudo -u postgres psql -At -c \"SELECT rolsuper FROM pg_roles WHERE rolname='pantry_app';\""
   # Expected: f
   ```
 
 - [ ] **Read-only role exists for ad-hoc queries**
   ```bash
-  ssh pantryapp@prod-host "sudo -u postgres psql -At -c \"SELECT 1 FROM pg_roles WHERE rolname='pantry_ro';\""
+  ssh expyrico@prod-host "sudo -u postgres psql -At -c \"SELECT 1 FROM pg_roles WHERE rolname='pantry_ro';\""
   # Expected: 1
   ```
 
@@ -3613,28 +3654,28 @@ Run before first launch, then quarterly. Every item has a command + expected out
 
 - [ ] **ufw allows only 22, 80, 443**
   ```bash
-  ssh pantryapp@prod-host "sudo ufw status numbered"
+  ssh expyrico@prod-host "sudo ufw status numbered"
   # Expected: lines for 22, 80, 443 ALLOW; everything else default deny
   ```
 
 - [ ] **fail2ban active on ssh**
   ```bash
-  ssh pantryapp@prod-host "sudo fail2ban-client status sshd"
+  ssh expyrico@prod-host "sudo fail2ban-client status sshd"
   # Expected: Currently banned: <some int>, Total banned: <some int>
   ```
 
 ## Secrets
 
-- [ ] **`/etc/pantry/.env.production` is mode 600 owned by pantryapp**
+- [ ] **`/etc/expyrico/.env.production` is mode 600 owned by expyrico**
   ```bash
-  ssh pantryapp@prod-host "stat -c '%a %U:%G' /etc/pantry/.env.production"
-  # Expected: 600 pantryapp:pantryapp
+  ssh expyrico@prod-host "stat -c '%a %U:%G' /etc/expyrico/.env.production"
+  # Expected: 600 expyrico:expyrico
   ```
 
 - [ ] **No secrets in logs (grep the journal for env var values)**
   ```bash
   # Pick one safe sentinel from the env file, e.g., first 8 chars of JWT key
-  ssh pantryapp@prod-host "sudo journalctl -u pantry-api --since '1 day ago' | grep -F '<sentinel>' | head"
+  ssh expyrico@prod-host "sudo journalctl -u expyrico-api --since '1 day ago' | grep -F '<sentinel>' | head"
   # Expected: empty output
   ```
 
@@ -3642,22 +3683,22 @@ Run before first launch, then quarterly. Every item has a command + expected out
 
 - [ ] **Admin nginx vhost enforces IP allowlist**
   ```bash
-  curl -sI https://admin.pantry.example/login
+  curl -sI https://admin.expyrico.example/login
   # Expected from a non-allowlisted IP: 403
   # Expected from an allowlisted IP: 200
   ```
 
 - [ ] **TOTP required for admin accounts**
   ```bash
-  curl -s -X POST https://api.pantry.example/v1/auth/login \
+  curl -s -X POST https://api.expyrico.example/v1/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"email":"admin@pantry.example","password":"<correct>"}' | jq .requires_totp
-  # Expected: true
+    -d '{"email":"admin@expyrico.example","password":"<correct>"}' | jq .requiresTotp
+  # Expected: true (login response uses camelCase `requiresTotp` per the API contract)
   ```
 
 - [ ] **Admin audit log is append-only (no UPDATE/DELETE grants)**
   ```bash
-  ssh pantryapp@prod-host "sudo -u postgres psql -d pantry -At -c \"
+  ssh expyrico@prod-host "sudo -u postgres psql -d pantry -At -c \"
     SELECT privilege_type FROM information_schema.role_table_grants
     WHERE grantee='pantry_app' AND table_name='admin_audit_log';
   \""
@@ -3673,14 +3714,14 @@ Run before first launch, then quarterly. Every item has a command + expected out
   ```
 
 - [ ] **Renovate bot is enabled and producing PRs**
-  Check https://github.com/pantry-org/pantry/pulls?q=is%3Apr+author%3Arenovate
+  Check https://github.com/expyrico-org/expyrico/pulls?q=is%3Apr+author%3Arenovate
   Expected: at least one PR in the last 30 days
 
 ## Mobile
 
-- [ ] **App talks only to api.pantry.example**
+- [ ] **App talks only to api.expyrico.example**
   ```bash
-  grep -RIn 'http://\|https://' apps/mobile/src | grep -v 'api.pantry.example\|expo.dev\|openfoodfacts\|upcitemdb'
+  grep -RIn 'http://\|https://' apps/mobile/src | grep -v 'api.expyrico.example\|expo.dev\|openfoodfacts\|upcitemdb'
   # Expected: empty
   ```
 
@@ -3722,14 +3763,14 @@ A 14-day staged launch to keep blast radius small while real users exercise the 
 
 - [ ] All M0–M4 plans complete; `git tag m4-complete` set
 - [ ] Most recent restore drill PASSED within the last 30 days (see `restore-drill.md`)
-- [ ] `infra/scripts/backup.sh` is on a daily cron under `pantryapp`, last 7 backups present in S3
+- [ ] `infra/scripts/backup.sh` is on a daily cron under `expyrico`, last 7 backups present in S3
 - [ ] `infra/scripts/restore.sh` tested in the drill
 - [ ] Every runbook in `docs/runbooks/` reviewed end-to-end by the operator
 - [ ] Security review checklist (`security-review.md`) green
-- [ ] Status page live at `https://status.pantry.example` with all monitors green
+- [ ] Status page live at `https://status.expyrico.example` with all monitors green
 - [ ] UptimeRobot monitors firing; quarterly drill scheduled
 - [ ] Privacy policy + terms live at the URLs given in `ios-submission.md` / `android-submission.md`
-- [ ] Demo App Review account `appreview@pantry.example` provisioned, password in 1Password
+- [ ] Demo App Review account `appreview@expyrico.example` provisioned, password in 1Password
 - [ ] Apple Sign In and Google Sign In tested end-to-end on TestFlight build
 - [ ] Push notification delivered end-to-end on TestFlight build
 - [ ] Manual a11y checklist passed on TestFlight + Play Internal builds
@@ -3755,11 +3796,11 @@ A 14-day staged launch to keep blast radius small while real users exercise the 
   - [ ] Scan a barcode → lookup hits OFF → save record → home shows it
   - [ ] Review a product → submit → review visible
   - [ ] Vote on someone else's review → count increments
-  - [ ] Switch theme: Aurora → Bento → Clay → Material → back to Aurora
+  - [ ] Switch theme: Expyrico → Bento → Clay → Material → back to Expyrico
   - [ ] Sign out → sign back in
 - [ ] Watch `/admin/system/api-errors` — should stay near zero
 - [ ] Watch `/admin/system/queue-health` — depth should stay near zero
-- [ ] Watch `journalctl -u pantry-api -f` for unusual error patterns
+- [ ] Watch `journalctl -u expyrico-api -f` for unusual error patterns
 - [ ] Post launch announcement
 
 ### Afternoon
@@ -3914,16 +3955,16 @@ git commit -m "ci(infra): a11y lint + per-theme snapshot job"
 - [ ] **Step 1: Write the flow**
 
 ```yaml
-appId: com.pantry.app
+appId: com.expyrico.app
 ---
 - launchApp:
     clearState: true
 - tapOn: "Sign in"
-- inputText: "appreview@pantry.example"
+- inputText: "appreview@expyrico.example"
 - tapOn: "Email"   # focus next field
 - inputText: "<demo-password>"
 - tapOn: "Sign in, button"
-- assertVisible: "Your pantry"           # aurora home rendered
+- assertVisible: "Your pantry"           # expyrico home rendered
 
 # Switch to Bento mid-session
 - tapOn: "Profile, tab"
@@ -4044,7 +4085,7 @@ Run against the M4 task list from the prompt.
 | 6. Theme switch animation      | C1                          | ✓ |
 | 7. Theme preview cards         | C2                          | ✓ |
 | 8. Per-theme RNTL snapshots    | E1–E8                       | ✓ |
-| 9. Contrast audit              | F1                          | ✓ |
+| 9. Contrast audit              | F1 (text 4.5:1 + muted text + border/non-text 3:1) | ✓ |
 | 10. a11y labels + lint + touch | F2, F3                      | ✓ |
 | 11. Screen reader manual test  | F4                          | ✓ |
 | 12. Large text                 | F5                          | ✓ |
@@ -4062,13 +4103,15 @@ Run against the M4 task list from the prompt.
 | 24. UptimeRobot                | I6                          | ✓ |
 | 25. Security review            | J1                          | ✓ |
 | 26. Soft launch                | J2                          | ✓ |
-| 27. Contrast unit tests        | F1                          | ✓ |
+| 27. Contrast unit tests        | F1 (per-pair thresholds; failing pairs flagged for palette sign-off, no hex changed) | ✓ |
 | 28. RNTL snapshot tests        | B4–B7, E1–E8                | ✓ |
 | 29. ESLint a11y in CI          | F2, K1                      | ✓ |
 | 30. Maestro mid-flow switch    | K2                          | ✓ |
 | 31. Release checklist          | J3, K1                      | ✓ |
 
 **Placeholder scan:** searched for "TODO", "TBD", "fill in", "implement later", "add appropriate", "similar to" — none present in plan body. Runbook and store-submission contents are written in full inside the plan.
+
+**Validation amendments (2026-05-26):** (a) Security-review login probe corrected to camelCase `requiresTotp` (was `requires_totp`, which would always read `null`). (b) Contrast test (F1) expanded to cover `text.muted` foregrounds at 4.5:1 and `border`/`accent` non-text boundaries at 3:1; failing pairs (e.g. Bento `text.muted` ≈ #8A8A8A on white) are recorded under a "Palette sign-off required" note rather than silently re-tuned — no user-chosen theme hex was changed.
 
 - **Cross-plan check (M4 self-review #21):** theme token type names match M0a's `Theme` interface (no invented `ThemeTokens`); mobile API base-URL env var matches M0c's `EXPO_PUBLIC_API_BASE_URL`; backup tooling matches M0d (`rclone`, `b2:pantry-backups`); JWT env matches M0a (`JWT_ACCESS_SECRET`); Redis env matches M0a (`REDIS_URL`); feature flag `maintenanceBanner` matches M3's seed.
 

@@ -20,6 +20,14 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
 
 // Truncate all tables in dependency order before each test
 const tables = [
+  'api_errors',
+  'notification_outbox',
+  'transaction_ratings',
+  'giveaway_claims',
+  'giveaways',
+  'referrals',
+  'deal_votes',
+  'deals',
   'reports',
   'review_votes',
   'reviews',
@@ -33,18 +41,18 @@ const tables = [
   'sessions',
   'auth_credentials',
   'product_edits',
+  'household_members',
   'records',
   'products',
+  'households',
   'users',
+  'notification_templates',
+  'settings',
 ];
 
 beforeAll(async () => {
-  // Run pending migrations
-  const { execSync } = await import('node:child_process');
-  execSync('pnpm --filter @pantry/api exec prisma migrate deploy', {
-    stdio: 'pipe',
-    env: { ...process.env },
-  });
+  // Migrations are applied manually to pantry_test (pantry user lacks _prisma_migrations write access).
+  // The test DB schema is kept in sync via manual DDL scripts run before the test suite.
 });
 
 beforeEach(async () => {

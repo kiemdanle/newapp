@@ -60,16 +60,16 @@ export async function processScoreRecalc(
     where: { reviewId },
     _count: { _all: true },
   });
-  let up = 0;
-  let down = 0;
+  let helpful = 0;
+  let notHelpful = 0;
   for (const row of agg) {
-    if (row.value === 1) up = row._count._all;
-    else if (row.value === -1) down = row._count._all;
+    if (row.value === 'helpful') helpful = row._count._all;
+    else if (row.value === 'not_helpful') notHelpful = row._count._all;
   }
-  const score = wilsonLowerBound(up, down);
+  const score = wilsonLowerBound(helpful, notHelpful);
   await prisma.review.update({
     where: { id: reviewId },
-    data: { upvoteCount: up, downvoteCount: down, score },
+    data: { helpfulCount: helpful, notHelpfulCount: notHelpful, score },
   });
 }
 

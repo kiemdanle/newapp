@@ -29,16 +29,15 @@ describe('score-recalc worker', () => {
     const v1 = await makeUser({ email: `wv1-${Date.now()}@t.l` });
     const v2 = await makeUser({ email: `wv2-${Date.now()}@t.l` });
     const v3 = await makeUser({ email: `wv3-${Date.now()}@t.l` });
-    await makeVote({ userId: v1.id, reviewId: review.id, value: 1 });
-    await makeVote({ userId: v2.id, reviewId: review.id, value: 1 });
-    await makeVote({ userId: v3.id, reviewId: review.id, value: -1 });
+    await makeVote({ userId: v1.id, reviewId: review.id, value: 'helpful' });
+    await makeVote({ userId: v2.id, reviewId: review.id, value: 'helpful' });
+    await makeVote({ userId: v3.id, reviewId: review.id, value: 'not_helpful' });
 
-    // Process inline (skip the 30s delay)
     await processScoreRecalc({ data: { reviewId: review.id } } as never);
 
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
-    expect(after?.upvoteCount).toBe(2);
-    expect(after?.downvoteCount).toBe(1);
+    expect(after?.helpfulCount).toBe(2);
+    expect(after?.notHelpfulCount).toBe(1);
     expect(Number(after?.score)).toBeGreaterThan(0);
     expect(Number(after?.score)).toBeLessThan(1);
   });
@@ -48,7 +47,7 @@ describe('score-recalc worker', () => {
     const product = await makeProduct();
     const review = await makeReview({ userId: author.id, productId: product.id });
     const v1 = await makeUser({ email: `wb1-${Date.now()}@t.l` });
-    await makeVote({ userId: v1.id, reviewId: review.id, value: 1 });
+    await makeVote({ userId: v1.id, reviewId: review.id, value: 'helpful' });
 
     worker = new Worker(SCORE_RECALC_QUEUE, processScoreRecalc, {
       connection: getQueueConnection(),
@@ -57,6 +56,6 @@ describe('score-recalc worker', () => {
     await new Promise<void>((resolve) => worker.on('completed', () => resolve()));
 
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
-    expect(after?.upvoteCount).toBe(1);
+    expect(after?.helpfulCount).toBe(1);
   });
 });

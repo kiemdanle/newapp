@@ -33,10 +33,20 @@ enum ReviewStatus {
   @@map("review_status")
 }
 
+enum ReviewRating {
+  buy_again
+  buy_again_on_sale
+  wont_buy
+
+  @@map("review_rating")
+}
+
 enum ReportTargetType {
   review
   user
   product
+  deal
+  giveaway
 }
 
 enum ReportReason {
@@ -134,6 +144,23 @@ model User {
   reviewVotes          ReviewVote[]
   reportsFiled         Report[]           @relation("ReportReporter")
   reportsResolved      Report[]           @relation("ReportResolver")
+  deals                Deal[]
+  dealVotes            DealVote[]
+  giverRatingAvg       Decimal?          @map("giver_rating_avg") @db.Decimal(3, 2)
+  recipientRatingAvg   Decimal?          @map("recipient_rating_avg") @db.Decimal(3, 2)
+  transactionCount     Int               @default(0) @map("transaction_count")
+  giveaways            Giveaway[]        @relation("GiveawayGiver")
+  giveawayClaims       GiveawayClaim[]   @relation("GiveawayClaimer")
+  ratingsGiven         TransactionRating[] @relation("RatingRater")
+  ratingsReceived      TransactionRating[] @relation("RatingRatee")
+  referralCode         String?             @unique @map("referral_code")
+  referredByUserId     String?             @map("referred_by_user_id") @db.Uuid
+  referredBy           User?               @relation("UserReferredBy", fields: [referredByUserId], references: [id])
+  referredUsers        User[]              @relation("UserReferredBy")
+  referralsMade        Referral[]          @relation("ReferralsMade")
+  referralReceived     Referral?           @relation("ReferralReceived")
+  householdsOwned      Household[]         @relation("HouseholdOwner")
+  householdMemberships HouseholdMember[]
 
   @@map("users")
 }
@@ -281,8 +308,11 @@ model Product {
   defaultShelfLifeDays Int?          @map("default_shelf_life_days")
   source               ProductSource
   sourceId             String?       @map("source_id")
-  tasteAvg             Decimal       @default(0) @map("taste_avg") @db.Decimal(3, 2)
-  valueAvg             Decimal       @default(0) @map("value_avg") @db.Decimal(3, 2)
+  isCommunityEligible  Boolean       @default(false) @map("is_community_eligible")
+  buyAgainCount        Int           @default(0) @map("buy_again_count")
+  buyAgainOnSaleCount  Int           @default(0) @map("buy_again_on_sale_count")
+  wontBuyCount         Int           @default(0) @map("wont_buy_count")
+  ratingCount          Int           @default(0) @map("rating_count")
   reviewCount          Int           @default(0) @map("review_count")
   createdByUserId      String?       @map("created_by_user_id") @db.Uuid
   status               ProductStatus @default(active)
@@ -296,6 +326,8 @@ model Product {
   records    Record[]
   edits      ProductEdit[]
   reviews    Review[]
+  deals      Deal[]
+  giveaways  Giveaway[]
 
   @@index([source, sourceId])
   @@map("products")
@@ -326,10 +358,13 @@ model Record {
   userId       String       @map("user_id") @db.Uuid
   productId    String?      @map("product_id") @db.Uuid
   customName   String?      @map("custom_name")
+  category     String?
   expiryDate   DateTime     @map("expiry_date") @db.Date
   purchaseDate DateTime?    @map("purchase_date") @db.Date
   quantity     Decimal      @default(1) @db.Decimal(12, 3)
   unit         String       @default("pcs")
+  price        Decimal?     @db.Decimal(10, 2)
+  store        String?
   notes        String?
   photoUrl     String?      @map("photo_url")
   status       RecordStatus @default(active)
@@ -337,13 +372,18 @@ model Record {
   clientId     String       @unique @map("client_id") @db.Uuid
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
-  consumedAt   DateTime?    @map("consumed_at")
+  consumedAt    DateTime?    @map("consumed_at")
+  householdId   String?      @db.Uuid @map("household_id")
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product  Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
-  pushLogs PushLog[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  pushLogs  PushLog[]
+  giveaways Giveaway[]
+  household Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
 
   @@index([userId, status, expiryDate])
+  @@index([householdId, status, expiryDate])
+  @@index([householdId, updatedAt])
   @@map("records")
 }
 
@@ -366,18 +406,17 @@ model PushLog {
 }
 
 model Review {
-  id            String       @id @default(uuid()) @db.Uuid
-  userId        String       @map("user_id") @db.Uuid
-  productId     String       @map("product_id") @db.Uuid
-  tasteRating   Int          @map("taste_rating") @db.SmallInt
-  valueRating   Int          @map("value_rating") @db.SmallInt
-  body          String?
-  upvoteCount   Int          @default(0) @map("upvote_count")
-  downvoteCount Int          @default(0) @map("downvote_count")
-  score         Decimal      @default(0) @db.Decimal(7, 6)
-  status        ReviewStatus @default(visible)
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  productId      String       @map("product_id") @db.Uuid
+  rating         ReviewRating
+  body           String?
+  helpfulCount   Int          @default(0) @map("helpful_count")
+  notHelpfulCount Int         @default(0) @map("not_helpful_count")
+  score          Decimal      @default(0) @db.Decimal(7, 6)
+  status         ReviewStatus @default(visible)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -392,7 +431,7 @@ model ReviewVote {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   reviewId  String   @map("review_id") @db.Uuid
-  value     Int      @db.SmallInt
+  value     String   // 'helpful' | 'not_helpful'
   createdAt DateTime @default(now()) @map("created_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -421,4 +460,257 @@ model Report {
   @@index([targetType, targetId, status])
   @@index([status, createdAt])
   @@map("reports")
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@map("settings")
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique
+  title     String
+  body      String
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  updatedBy String?  @db.Uuid
+
+  @@map("notification_templates")
+}
+
+model ApiError {
+  id         String   @id @default(uuid()) @db.Uuid
+  route      String
+  method     String
+  status     Int
+  code       String?
+  message    String?
+  requestId  String?
+  userId     String?  @db.Uuid
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([route, status])
+  @@map("api_errors")
+}
+
+enum DealStatus {
+  visible
+  hidden
+  deleted
+
+  @@map("deal_status")
+}
+
+model Deal {
+  id            String     @id @default(uuid()) @db.Uuid
+  userId        String     @db.Uuid @map("user_id")
+  productId     String     @db.Uuid @map("product_id")
+  price         Decimal    @db.Decimal(10, 2)
+  currency      String     @db.Char(3)
+  storeName     String     @map("store_name")
+  photoUrl      String?    @map("photo_url")
+  expiryDate    DateTime?  @map("expiry_date") @db.Date
+  note          String?
+  country       String?    @db.Char(2)
+  upvoteCount   Int        @default(0) @map("upvote_count")
+  downvoteCount Int        @default(0) @map("downvote_count")
+  score         Decimal    @default(0) @db.Decimal(7, 6)
+  status        DealStatus @default(visible)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  user    User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  votes   DealVote[]
+
+  @@index([status, score(sort: Desc), createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([country, status, score(sort: Desc), createdAt(sort: Desc)])
+  @@index([productId])
+  @@map("deals")
+}
+
+model DealVote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid @map("user_id")
+  dealId    String   @db.Uuid @map("deal_id")
+  value     Int      @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dealId])
+  @@index([dealId])
+  @@map("deal_votes")
+}
+
+enum GiveawayStatus {
+  open
+  claimed
+  handed_off
+  completed
+  cancelled
+
+  @@map("giveaway_status")
+}
+
+enum GiveawayClaimStatus {
+  requested
+  selected
+  rejected
+
+  @@map("giveaway_claim_status")
+}
+
+enum TransactionRaterRole {
+  giver
+  recipient
+
+  @@map("transaction_rater_role")
+}
+
+model Giveaway {
+  id             String         @id @default(uuid()) @db.Uuid
+  giverUserId    String         @map("giver_user_id") @db.Uuid
+  productId      String?        @map("product_id") @db.Uuid
+  recordId       String?        @map("record_id") @db.Uuid
+  title          String
+  description    String?
+  photoUrl       String?        @map("photo_url")
+  locationText   String         @map("location_text")
+  country        String?        @db.Char(2)
+  status         GiveawayStatus @default(open)
+  claimExpiresAt DateTime?      @map("claim_expires_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  handedOffAt    DateTime?      @map("handed_off_at")
+  confirmedAt    DateTime?      @map("confirmed_at")
+  completedAt    DateTime?      @map("completed_at")
+
+  giver   User              @relation("GiveawayGiver", fields: [giverUserId], references: [id], onDelete: Cascade)
+  product Product?          @relation(fields: [productId], references: [id])
+  record  Record?           @relation(fields: [recordId], references: [id])
+  claims  GiveawayClaim[]
+  ratings TransactionRating[]
+
+  @@index([country, status, createdAt(sort: Desc)])
+  @@index([giverUserId, status])
+  @@index([status, claimExpiresAt])
+  @@map("giveaways")
+}
+
+model GiveawayClaim {
+  id            String              @id @default(uuid()) @db.Uuid
+  giveawayId    String              @map("giveaway_id") @db.Uuid
+  claimerUserId String              @map("claimer_user_id") @db.Uuid
+  pickupNote    String?             @map("pickup_note")
+  status        GiveawayClaimStatus @default(requested)
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  claimer  User     @relation("GiveawayClaimer", fields: [claimerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, claimerUserId])
+  @@index([giveawayId, status])
+  @@map("giveaway_claims")
+}
+
+model TransactionRating {
+  id          String               @id @default(uuid()) @db.Uuid
+  giveawayId  String               @map("giveaway_id") @db.Uuid
+  raterUserId String               @map("rater_user_id") @db.Uuid
+  rateeUserId String               @map("ratee_user_id") @db.Uuid
+  raterRole   TransactionRaterRole @map("rater_role")
+  stars       Int                  @db.SmallInt
+  comment     String?
+  revealedAt  DateTime?            @map("revealed_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  giveaway Giveaway @relation(fields: [giveawayId], references: [id], onDelete: Cascade)
+  rater    User     @relation("RatingRater", fields: [raterUserId], references: [id], onDelete: Cascade)
+  ratee    User     @relation("RatingRatee", fields: [rateeUserId], references: [id], onDelete: Cascade)
+
+  @@unique([giveawayId, raterUserId])
+  @@index([rateeUserId])
+  @@map("transaction_ratings")
+}
+
+model NotificationOutbox {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  templateKey  String    @map("template_key")
+  payload      Json
+  dispatchedAt DateTime? @map("dispatched_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([dispatchedAt, createdAt])
+  @@map("notification_outbox")
+}
+
+enum ReferralStatus {
+  pending
+  activated
+
+  @@map("referral_status")
+}
+
+model Referral {
+  id             String         @id @default(uuid()) @db.Uuid
+  referrerUserId String         @map("referrer_user_id") @db.Uuid
+  referredUserId String         @unique @map("referred_user_id") @db.Uuid
+  referralCode   String         @map("referral_code")
+  status         ReferralStatus @default(pending)
+  signupIp       String?        @map("signup_ip")
+  activatedAt    DateTime?      @map("activated_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  referrer User @relation("ReferralsMade", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referred User @relation("ReferralReceived", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerUserId, status])
+  @@map("referrals")
+}
+
+enum HouseholdRole {
+  owner
+  member
+
+  @@map("household_role")
+}
+
+model Household {
+  id          String            @id @default(uuid()) @db.Uuid
+  name        String
+  ownerUserId String            @db.Uuid @map("owner_user_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  owner   User              @relation("HouseholdOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  members HouseholdMember[]
+  records Record[]
+
+  @@index([ownerUserId])
+  @@map("households")
+}
+
+model HouseholdMember {
+  id          String        @id @default(uuid()) @db.Uuid
+  householdId String        @db.Uuid @map("household_id")
+  userId      String        @db.Uuid @map("user_id")
+  role        HouseholdRole @default(member)
+  joinedAt    DateTime      @default(now()) @map("joined_at")
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId])
+  @@map("household_members")
 }

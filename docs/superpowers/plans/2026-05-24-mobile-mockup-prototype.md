@@ -1,14 +1,14 @@
-# Pantry Mobile Mockup Prototype Implementation Plan
+# Expyrico Mobile Mockup Prototype Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a static, clickable HTML prototype of all 25 Pantry App mobile screens, viewable in a desktop browser, with a working four-theme picker on the Theme Picker screen.
+**Goal:** Build a static, clickable HTML prototype of all 28 Expyrico mobile screens, viewable in a desktop browser, with a working four-theme picker on the Theme Picker screen.
 
 **Architecture:** Plain HTML/CSS/JS files served as static content. Each screen is one self-contained HTML file that embeds a shared iPhone 15 Pro device frame, links to four shared assets (`_shared.css`, `_frame.css`, `_components.css`, `_themes.js`), and contains screen-specific body markup. The nav hub (`00-nav-hub.html`) is the entry point. No build step, no framework. The Theme Picker is the only screen with runtime behavior — a 200ms cross-fade between the four theme variable bundles defined in `_shared.css`.
 
 **Tech Stack:** HTML5, modern CSS (custom properties, `backdrop-filter`, CSS grid, flexbox), vanilla JS. No bundler. No dependencies.
 
-**Source spec:** `docs/superpowers/specs/2026-05-24-mobile-mockup-design.md` — authoritative for all visual decisions. This plan implements that spec.
+**Source spec:** `docs/superpowers/specs/2026-05-24-expyrico-mockup-design.md` — authoritative for all visual decisions. This plan implements that spec.
 
 **Working directory:** All output files live in `.superpowers/brainstorm/68898-1779595911/content/` (path mandated by spec §3). This directory is gitignored — the prototype files themselves are NOT committed. Each task commits the plan/progress, not the prototype binaries.
 
@@ -24,11 +24,11 @@ Every screen file (`01-welcome.html` … `25-push-preview.html`) follows this ex
 
 ```html
 <!doctype html>
-<html lang="en" data-theme="aurora">
+<html lang="en" data-theme="expyrico">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SCREEN_TITLE — Pantry Mockup</title>
+  <title>SCREEN_TITLE — Expyrico Mockup</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
@@ -118,48 +118,45 @@ h1, h2, h3, h4, h5 {
   letter-spacing: -0.01em;
 }
 
-/* ===== Aurora Glass (default) ===== */
-[data-theme="aurora"] {
-  --page-bg: #F8F7FC;
+/* ===== Expyrico (default) ===== */
+[data-theme="expyrico"] {
+  --page-bg: #F0F0ED;
 
-  --screen-bg:
-    radial-gradient(at 20% 10%, #E0E7FF 0%, transparent 50%),
-    radial-gradient(at 80% 20%, #FED7AA 0%, transparent 45%),
-    radial-gradient(at 50% 90%, #D1FAE5 0%, transparent 55%),
-    #F5F3FF;
+  --screen-bg: #FAFAF8;
 
-  --grain-overlay: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.04 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --grain-overlay: none;
 
-  --card-bg: rgba(255, 255, 255, 0.60);
-  --card-border: rgba(255, 255, 255, 0.45);
-  --card-shadow: 0 8px 32px rgba(80, 70, 200, 0.10);
-  --card-radius: 24px;
-  --card-blur: blur(20px);
+  --card-bg: #FFFFFF;
+  --card-border: #F0F0ED;
+  --card-shadow: 0 8px 24px rgba(44, 44, 40, 0.10);
+  --card-radius: 20px;
+  --card-blur: none;
 
-  --pill-radius: 16px;
+  --pill-radius: 14px;
   --round-radius: 999px;
 
-  --accent: #06B6D4;
-  --accent-soft: rgba(6, 182, 212, 0.12);
-  --accent-ring: rgba(6, 182, 212, 0.40);
-  --danger: #EC4899;
-  --success: #10B981;
-  --warning: #F59E0B;
+  --accent: #F5A623;
+  --accent-soft: #FEEFC3;
+  --accent-ring: rgba(245, 166, 35, 0.40);
+  --primary: #4BAE8A;
+  --danger: #E0442A;
+  --success: #4BAE8A;
+  --warning: #F5A623;
 
-  --text-primary: rgba(26, 26, 46, 0.90);
-  --text-secondary: rgba(26, 26, 46, 0.60);
-  --text-tertiary: rgba(26, 26, 46, 0.40);
+  --text-primary: #2C2C28;
+  --text-secondary: #8C8C85;
+  --text-tertiary: rgba(140, 140, 133, 0.7);
   --text-on-accent: #FFFFFF;
 
-  --urgency-fresh: #10B981;
-  --urgency-soon: #F59E0B;
-  --urgency-urgent: #EF4444;
+  --urgency-fresh: #4BAE8A;
+  --urgency-soon: #F5A623;
+  --urgency-urgent: #E0442A;
 
-  --tabbar-bg: rgba(255, 255, 255, 0.75);
-  --tabbar-border: rgba(0, 0, 0, 0.06);
+  --tabbar-bg: #FFFFFF;
+  --tabbar-border: #F0F0ED;
 
-  --input-bg: rgba(255, 255, 255, 0.70);
-  --input-border: rgba(26, 26, 46, 0.12);
+  --input-bg: #FFFFFF;
+  --input-border: #F0F0ED;
 }
 
 /* ===== Bento Grid ===== */
@@ -658,7 +655,7 @@ textarea.input { min-height: 96px; resize: none; line-height: 1.5; }
 .product-card .pc-name { font-size: 14px; font-weight: 600; }
 .product-card .pc-brand { font-size: 12px; color: var(--text-secondary); }
 
-/* ===== Pantry item card ===== */
+/* ===== pantry item card ===== */
 .pantry-item {
   display: flex;
   align-items: center;
@@ -853,7 +850,7 @@ All "view in browser" steps below mean: open `http://localhost:52271/<file>.html
 ```html
 <div class="screen-content no-tabbar" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-top:120px;">
   <div style="font-size:96px;margin-bottom:16px;transform:rotate(-12deg);">🥛</div>
-  <h1 class="h1" style="margin-bottom:8px;">Pantry</h1>
+  <h1 class="h1" style="margin-bottom:8px;">Expyrico</h1>
   <p class="body" style="max-width:280px;color:var(--text-secondary);margin-bottom:48px;">
     Track what you have. Know what's about to expire. Find what's worth buying again.
   </p>
@@ -870,7 +867,7 @@ Open `http://localhost:52271/01-welcome.html`
 
 - [ ] **Step 3: Visual verification checklist**
 
-  - Aurora gradient background visible behind the device
+  - Expyrico Warm White background visible behind the device
   - Tilted carton emoji renders centered
   - Two CTAs stack vertically, primary on top
   - "Get started" routes to sign-up, "I have an account" routes to sign-in (click both, then back)
@@ -1413,7 +1410,7 @@ Tab bar: Reviews active.
 ```html
 <div class="screen-content">
   <div style="text-align:center;margin-bottom:20px;padding-top:8px;">
-    <div class="rc-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto 10px;background:linear-gradient(135deg,#06B6D4,#8B5CF6);">AK</div>
+    <div class="rc-avatar" style="width:80px;height:80px;font-size:30px;margin:0 auto 10px;background:linear-gradient(135deg,#4BAE8A,#3A8F6F);">AK</div>
     <div style="font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:600;">Alex Kim</div>
     <div class="body-sm">🇺🇸 United States</div>
   </div>
@@ -1515,7 +1512,7 @@ Body — wrap the Home `.screen-content` (copy verbatim from Task 13's `.screen-
     <span style="position:absolute;bottom:-3px;left:-3px;width:24px;height:24px;border-bottom:4px solid var(--accent);border-left:4px solid var(--accent);border-bottom-left-radius:32px;"></span>
     <span style="position:absolute;bottom:-3px;right:-3px;width:24px;height:24px;border-bottom:4px solid var(--accent);border-right:4px solid var(--accent);border-bottom-right-radius:32px;"></span>
     <!-- scanning line -->
-    <span style="position:absolute;left:8%;right:8%;top:50%;height:2px;background:linear-gradient(90deg,transparent,#06B6D4,transparent);box-shadow:0 0 12px #06B6D4;"></span>
+    <span style="position:absolute;left:8%;right:8%;top:50%;height:2px;background:linear-gradient(90deg,transparent,#4BAE8A,transparent);box-shadow:0 0 12px #4BAE8A;"></span>
   </div>
 
   <!-- top bar -->
@@ -1754,7 +1751,7 @@ Body — wrap the Home `.screen-content` (copy verbatim from Task 13's `.screen-
   <div class="stack">
     <div class="card review-card">
       <div class="rc-head">
-        <div class="rc-avatar" style="background:linear-gradient(135deg,#F59E0B,#EC4899);">MS</div>
+        <div class="rc-avatar" style="background:linear-gradient(135deg,#F5A623,#E0442A);">MS</div>
         <div style="flex:1;">
           <div class="rc-name">Maria S. 🇪🇸</div>
           <div class="rc-meta">2 mo ago</div>
@@ -1771,7 +1768,7 @@ Body — wrap the Home `.screen-content` (copy verbatim from Task 13's `.screen-
 
     <div class="card review-card">
       <div class="rc-head">
-        <div class="rc-avatar" style="background:linear-gradient(135deg,#06B6D4,#3B82F6);">JT</div>
+        <div class="rc-avatar" style="background:linear-gradient(135deg,#4BAE8A,#F5A623);">JT</div>
         <div style="flex:1;">
           <div class="rc-name">James T. 🇺🇸</div>
           <div class="rc-meta">3 wk ago</div>
@@ -1788,7 +1785,7 @@ Body — wrap the Home `.screen-content` (copy verbatim from Task 13's `.screen-
 
     <div class="card review-card">
       <div class="rc-head">
-        <div class="rc-avatar" style="background:linear-gradient(135deg,#10B981,#06B6D4);">YK</div>
+        <div class="rc-avatar" style="background:linear-gradient(135deg,#3A8F6F,#4BAE8A);">YK</div>
         <div style="flex:1;">
           <div class="rc-name">Yuki K. 🇯🇵</div>
           <div class="rc-meta">5 mo ago</div>
@@ -1904,7 +1901,7 @@ Include the Product Detail `.screen-content` (copy from Task 23) followed by:
 
   <div class="section-title">Preferences</div>
   <div class="card" style="padding:4px 16px;margin-bottom:14px;">
-    <a class="list-row" href="21-theme-picker.html"><span class="lr-icon">🎨</span><span class="lr-title">Theme</span><span class="muted">Aurora Glass</span><span class="lr-chevron">›</span></a>
+    <a class="list-row" href="21-theme-picker.html"><span class="lr-icon">🎨</span><span class="lr-title">Theme</span><span class="muted">Expyrico</span><span class="lr-chevron">›</span></a>
     <a class="list-row" href="22-notifications.html"><span class="lr-icon">🔔</span><span class="lr-title">Notifications</span><span class="lr-chevron">›</span></a>
     <div class="list-row" style="opacity:0.5;"><span class="lr-icon">🌐</span><span class="lr-title">Language</span><span class="muted">English (coming)</span></div>
   </div>
@@ -1955,20 +1952,16 @@ Include the Product Detail `.screen-content` (copy from Task 23) followed by:
 
   <div class="stack-lg" style="margin-bottom:18px;">
     <!-- Each card is a tiny home-screen miniature in its own theme -->
-    <div data-theme-card="aurora" class="theme-card is-selected"
-         style="border-radius:24px;padding:14px;cursor:pointer;border:3px solid var(--accent);box-shadow:0 0 0 4px var(--accent-ring);
-                background:
-                  radial-gradient(at 20% 10%, #E0E7FF 0%, transparent 50%),
-                  radial-gradient(at 80% 20%, #FED7AA 0%, transparent 45%),
-                  radial-gradient(at 50% 90%, #D1FAE5 0%, transparent 55%),
-                  #F5F3FF;">
+    <div data-theme-card="expyrico" class="theme-card is-selected"
+         style="border-radius:20px;padding:14px;cursor:pointer;border:3px solid var(--accent);box-shadow:0 0 0 4px var(--accent-ring);
+                background: #FAFAF8;">
       <div class="row-between" style="margin-bottom:10px;">
-        <strong style="font-family:'Space Grotesk',sans-serif;font-size:15px;color:#1A1A2E;">Aurora Glass</strong>
-        <span style="font-size:11px;color:rgba(26,26,46,0.6);">Light · Glassmorphism</span>
+        <strong style="font-family:'Space Grotesk',sans-serif;font-size:15px;color:#2C2C28;">Expyrico</strong>
+        <span style="font-size:11px;color:#8C8C85;">Light · Fresh Sage</span>
       </div>
       <div style="display:flex;gap:8px;">
-        <div style="flex:1;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.45);backdrop-filter:blur(20px);padding:10px;border-radius:16px;color:#1A1A2E;font-size:11px;">🥛 Milk · Today</div>
-        <div style="flex:1;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.45);backdrop-filter:blur(20px);padding:10px;border-radius:16px;color:#1A1A2E;font-size:11px;">🥖 Bread · 3 days</div>
+        <div style="flex:1;background:#FFFFFF;border:1px solid #F0F0ED;padding:10px;border-radius:14px;color:#2C2C28;font-size:11px;border-left:4px solid #E0442A;">🥛 Milk · Today</div>
+        <div style="flex:1;background:#FFFFFF;border:1px solid #F0F0ED;padding:10px;border-radius:14px;color:#2C2C28;font-size:11px;border-left:4px solid #F5A623;">🥖 Bread · 3 days</div>
       </div>
     </div>
 
@@ -2031,11 +2024,11 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
 
   - Settings is visible behind a dimmed scrim
   - Four theme cards are visible inside the sheet, each a realistic miniature in its own visual language
-  - The Aurora card is selected initially (cyan ring)
+  - The Expyrico card is selected initially (Fresh Sage ring)
   - Click "Bento Grid": the screen behind the sheet cross-fades to bento tokens (white surface, indigo accent on the tab bar/FAB) over 200ms; the Bento card now has the cyan ring
   - Click "Soft Clay": cross-fade to peach surface, chunky shadows on the Settings cards behind
   - Click "Material You": cross-fade to MD3 purple seed
-  - Click "Aurora Glass": cross-fade back to gradient mesh + frosted glass
+  - Click "Expyrico": cross-fade back to the Expyrico Warm White surface
   - "Save" routes back to `/20-settings.html`
 
 - [ ] **Step 4: Commit** `git commit --allow-empty -m "chore(mockup): screen 21 theme-picker (centerpiece)"`
@@ -2067,7 +2060,7 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
   <div class="section-title">Reminder schedule</div>
   <div class="card" style="margin-bottom:18px;">
     <div class="stack">
-      <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>7 days before</span><input type="checkbox" checked /></label>
+      <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>3 days before</span><input type="checkbox" checked /></label>
       <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⏰</span>1 day before</span><input type="checkbox" checked /></label>
       <label class="checkbox" style="justify-content:space-between;"><span><span style="margin-right:8px;">⚠</span>On expiry day</span><input type="checkbox" checked /></label>
     </div>
@@ -2195,10 +2188,10 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
   <!-- Notifications -->
   <div style="margin-top:32px;padding:0 14px;display:flex;flex-direction:column;gap:8px;">
     <div style="background:rgba(255,255,255,0.18);backdrop-filter:blur(20px);border-radius:18px;padding:12px 14px;display:flex;gap:10px;border:1px solid rgba(255,255,255,0.10);">
-      <div style="width:36px;height:36px;border-radius:10px;background:#06B6D4;display:flex;align-items:center;justify-content:center;font-size:18px;">🥛</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:#4BAE8A;display:flex;align-items:center;justify-content:center;font-size:18px;">🥛</div>
       <div style="flex:1;min-width:0;">
         <div class="row-between" style="margin-bottom:2px;">
-          <span style="font-size:13px;font-weight:600;">Pantry</span>
+          <span style="font-size:13px;font-weight:600;">Expyrico</span>
           <span style="font-size:11px;opacity:0.7;">now</span>
         </div>
         <div style="font-size:14px;font-weight:600;margin-bottom:2px;">Milk expires tomorrow</div>
@@ -2207,10 +2200,10 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
     </div>
 
     <div style="background:rgba(255,255,255,0.18);backdrop-filter:blur(20px);border-radius:18px;padding:12px 14px;display:flex;gap:10px;border:1px solid rgba(255,255,255,0.10);">
-      <div style="width:36px;height:36px;border-radius:10px;background:#EF4444;display:flex;align-items:center;justify-content:center;font-size:18px;">⚠</div>
+      <div style="width:36px;height:36px;border-radius:10px;background:#E0442A;display:flex;align-items:center;justify-content:center;font-size:18px;">⚠</div>
       <div style="flex:1;min-width:0;">
         <div class="row-between" style="margin-bottom:2px;">
-          <span style="font-size:13px;font-weight:600;">Pantry</span>
+          <span style="font-size:13px;font-weight:600;">Expyrico</span>
           <span style="font-size:11px;opacity:0.7;">7m ago</span>
         </div>
         <div style="font-size:14px;font-weight:600;margin-bottom:2px;">3 items expire today</div>
@@ -2242,11 +2235,11 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
 
 ```html
 <!doctype html>
-<html lang="en" data-theme="aurora">
+<html lang="en" data-theme="expyrico">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pantry Mockup — All Screens</title>
+  <title>Expyrico Mockup — All Screens</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" />
   <link rel="stylesheet" href="_shared.css" />
@@ -2310,8 +2303,8 @@ Also add `<script src="_themes.js" defer></script>` inside `<head>`.
 </head>
 <body>
   <div class="hub-header">
-    <h1>Pantry — Mobile Mockups</h1>
-    <p>Every screen of the Pantry App mobile experience. Click a tile to open it full-size.</p>
+    <h1>Expyrico — Mobile Mockups</h1>
+    <p>Every screen of the Expyrico mobile experience. Click a tile to open it full-size.</p>
   </div>
 
   <div class="hub-section">
@@ -2419,7 +2412,7 @@ grep -RniE "(^|[^a-zA-Z])(Nestlé|Coca-Cola|Pepsi|Kraft|Yoplait|Danone)" .superp
 ```
 Expected: `no real brand names found`.
 
-- [ ] **Step 5: Verify Aurora glass renders**
+- [ ] **Step 5: Verify Expyrico theme renders**
 
 Open `/07-home.html`. Confirm:
 - Multi-stop radial gradient background visible
@@ -2462,8 +2455,8 @@ Expected: a connection-refused error or non-200 response.
 | Spec section | Tasks |
 |---|---|
 | §3 Output and delivery (file map, naming, server) | Task 5 (server), all per-screen tasks |
-| §4 Visual language — Aurora Glass | Task 1 (`_shared.css`), Task 3 (`_components.css`), Task 33.5 (verification) |
-| §4 Pantry urgency colors | Task 1 (variables), Task 3 (`.pantry-item::before`), Task 13 (Home applies them) |
+| §4 Visual language — Expyrico | Task 1 (`_shared.css`), Task 3 (`_components.css`), Task 33.5 (verification) |
+| §4 pantry status colors | Task 1 (variables), Task 3 (`.pantry-item::before`), Task 13 (Home applies them) |
 | §5 Phone frame and chrome | Task 2 (`_frame.css`), scaffold above |
 | §6 Onboarding & auth (screens 1–6) | Tasks 6–11 |
 | §6 Main app tabs (screens 7–10) | Tasks 13–16 (12 = shared tab-bar snippet) |
@@ -2479,7 +2472,7 @@ Expected: a connection-refused error or non-200 response.
 | §11 Acceptance criteria (2) nav bidirectional | Task 33.2 |
 | §11 Acceptance criteria (3) theme cross-fade | Task 33.3 |
 | §11 Acceptance criteria (4) synthetic content | Task 33.4 |
-| §11 Acceptance criteria (5) Aurora visible features | Task 33.5 |
+| §11 Acceptance criteria (5) Expyrico visible features | Task 33.5 |
 | §11 Acceptance criteria (6) push copy | Task 33.6 |
 
 ---
@@ -2488,6 +2481,6 @@ Expected: a connection-refused error or non-200 response.
 
 - **All output files are gitignored.** The `.superpowers/` directory is in `.gitignore`. Per-task commits are `--allow-empty` markers tracking plan progress; the prototype binaries themselves never enter git history. This is intentional and matches the spec.
 - **No copy-paste of the device frame is needed beyond the scaffold.** Each screen file is ~80–200 lines including the scaffold; per-screen body content is what each task above specifies.
-- **The Theme Picker is the only screen requiring `_themes.js`.** Every other screen omits the script tag. Aurora is hardcoded as the initial `data-theme` on `<html>` everywhere.
+- **The Theme Picker is the only screen requiring `_themes.js`.** Every other screen omits the script tag. Expyrico is hardcoded as the initial `data-theme` on `<html>` everywhere.
 - **If a step's URL link routes to a screen built in a later task**, the link will 404 until that task lands. This is expected during incremental development — re-verify the link after the target screen exists.
 - **Browser:** any Chromium-based browser (Chrome, Edge, Brave, Arc). `backdrop-filter` is required and is supported in all modern Chromium browsers.

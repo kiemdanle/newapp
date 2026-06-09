@@ -46,3 +46,17 @@ apps/mobile/android/
 # Misc
 *.pem
 .env.production
+
+# Backup / restic credentials — never commit
+restic_*.env
+*.restic.env
+
+# Ansible — real inventory + group_vars hold secrets
+infra/inventory.ini
+infra/group_vars/all.yml
+infra/group_vars/*.yml
+!infra/group_vars/*.example.yml
+
+# AI tooling (local, not project source)
+.claude/
+.codegraph/

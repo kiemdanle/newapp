@@ -4,15 +4,46 @@
 
 **Goal:** Build every HTTP auth route from spec section 6.1, plus `PATCH /v1/me` from 6.6. By the end of M0b, the API supports email/password sign-up + sign-in (with email verification + forgot-password), token refresh, sign-out, the `me` endpoint, Google + Apple OAuth, passkeys (WebAuthn), and TOTP enrollment + challenge-verify for admins.
 
-**Architecture:** All routes are Fastify handlers under `/v1/auth/*` and `/v1/me`. Each route validates input with the Zod schemas from `@pantry/shared` (built in M0a) and uses the service layer (passwords, tokens, sessions, email, country-detect, users repository) also built in M0a. Every route gets a failing Vitest integration test against the real Postgres test database before implementation.
+**Architecture:** All routes are Fastify handlers under `/v1/auth/*` and `/v1/me`. Each route validates input with the Zod schemas from `@expyrico/shared` (built in M0a) and uses the service layer (passwords, tokens, sessions, email, country-detect, users repository) also built in M0a. Every route gets a failing Vitest integration test against the real Postgres test database before implementation.
 
 **Tech Stack:** Fastify 4, Prisma 5, jose, argon2, `@simplewebauthn/server`, `otplib`, `qrcode`, `undici` (for Google JWKS fetch), Zod 3.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.1, 6.1, 6.6, 6.8.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` sections 2.1, 6.1, 6.6, 6.8.
 
 **Prerequisite:** M0a complete (`git tag m0a-complete` exists). This plan picks up from there.
 
 **Out of scope for M0b:** the mobile and admin clients (M0c, M0d). The admin endpoints from 6.7 (separate milestone, M3).
+
+---
+
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A, step 2 (auth routes — entire plan).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+A review pass tightened this plan in five places; the route code and tests below already
+reflect them:
+
+1. **Access token is a plain string.** `issueAccessToken({...})` (from M0a) returns the
+   JWT as a `string`. Every route assembles `tokens = { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds }` — no `.token` unwrapping and no hardcoded `expiresIn: 900`. The `authResultSchema` token shape stays `{ accessToken, refreshToken, expiresIn }` (camelCase).
+2. **Email verification gate on login (§2.1).** After the password check, login rejects
+   an unverified email (`emailVerifiedAt == null`) with 403 `email_not_verified`. A failing
+   test is added first (TDD).
+3. **Admins always require TOTP (§8.2).** A freshly-promoted admin with no TOTP gets
+   `{ requiresTotpEnrollment: true, enrollmentChallenge }` and **no** session at the
+   password step. The enrollment challenge (single-use, stored in `totp_challenges` with
+   purpose `enroll`) authorizes the enroll + verify-enrollment routes; a full session is
+   only granted after a later TOTP (or recovery-code) challenge succeeds.
+4. **Persisted, redeemable recovery codes.** Recovery codes generated at enrollment are
+   stored hashed in `totp_recovery_codes` (M0a) and consumed one-time via a new
+   `POST /v1/auth/totp/recovery-verify` route.
+5. **Enforced auth rate limits (§6.8).** The `/v1/auth/*` scope carries a tighter per-IP
+   budget (config: `RATE_LIMIT_AUTH_PER_IP_PER_MIN`) layered on the global limiter. The
+   limiter stays enabled in tests (numbers tuned via `.env.test`), and `rate-limit.test.ts`
+   asserts the auth limiter trips with a 429.
 
 ---
 
@@ -55,6 +86,7 @@ api/
     ├── me.test.ts
     ├── verify-email.test.ts
     ├── forgot-reset.test.ts
+    ├── rate-limit.test.ts
     ├── oauth-google.test.ts
     ├── oauth-apple.test.ts
     ├── passkey.test.ts
@@ -67,7 +99,7 @@ api/
 
 - TDD: write the failing integration test, watch it fail, implement, watch it pass, commit.
 - Conventional commits, scope `api`.
-- Every route imports its Zod schema from `@pantry/shared`.
+- Every route imports its Zod schema from `@expyrico/shared`.
 - Every route handler uses `req.user`, `req.ip`, and `app.requireAuth` / `app.requireAdmin` from the M0a auth plugin.
 - No `console.log`. Use `req.log`.
 
@@ -152,7 +184,7 @@ describe('POST /v1/auth/register', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/register.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/register.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/auth/register.ts`**
@@ -163,7 +195,8 @@ import {
   registerSchema,
   authResultSchema,
   ERROR_CODES,
-} from '@pantry/shared';
+} from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { hashPassword } from '../../services/auth/passwords.js';
@@ -225,7 +258,7 @@ export async function registerRoute(app: FastifyInstance) {
     return reply.status(201).send(
       authResultSchema.parse({
         user: toApiUser(user),
-        tokens: { accessToken, refreshToken, expiresIn: 900 },
+        tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
       }),
     );
   });
@@ -234,11 +267,30 @@ export async function registerRoute(app: FastifyInstance) {
 
 - [ ] **Step 4: Write `api/src/routes/auth/index.ts`**
 
+The auth plugin registers its own encapsulated rate limiter so the tighter per-IP
+budget for `/v1/auth/*` (from config: `authPerIpPerMin`) applies on top of the global
+limiter. It is gated on `cfg.rateLimit.enabled` so it stays on in every environment
+(tests tune the number rather than disabling it).
+
 ```ts
 import type { FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
+import { getConfig } from '../../config.js';
+import { getRedis } from '../../redis.js';
 import { registerRoute } from './register.js';
 
 export async function authRoutes(app: FastifyInstance) {
+  const cfg = getConfig();
+  if (cfg.rateLimit.enabled) {
+    // Encapsulated to this plugin scope → only affects /v1/auth/* routes.
+    await app.register(rateLimit, {
+      max: cfg.rateLimit.authPerIpPerMin,
+      timeWindow: '1 minute',
+      redis: getRedis(),
+      nameSpace: 'rl:auth:',
+      keyGenerator: (req) => `ip:${req.ip}`,
+    });
+  }
   await app.register(registerRoute);
 }
 ```
@@ -257,7 +309,7 @@ import { authRoutes } from './routes/auth/index.js';
 - [ ] **Step 6: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/register.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/register.test.ts
 ```
 
 - [ ] **Step 7: Commit**
@@ -282,19 +334,29 @@ git commit -m "feat(api): POST /v1/auth/register"
 // api/tests/integration/login.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
+import { getPrisma } from '../../src/db.js';
 
-async function register(app: Awaited<ReturnType<typeof buildServer>>, email: string, password = 'correct-horse-battery-staple') {
+/**
+ * Register, then mark the email verified — sign-in now requires a verified email,
+ * so the standard "happy path" fixture has to clear that gate first.
+ */
+async function registerVerified(
+  app: Awaited<ReturnType<typeof buildServer>>,
+  email: string,
+  password = 'correct-horse-battery-staple',
+) {
   await app.inject({
     method: 'POST',
     url: '/v1/auth/register',
     payload: { email, password, firstName: 'A', lastName: 'B' },
   });
+  await getPrisma().user.update({ where: { email }, data: { emailVerifiedAt: new Date() } });
 }
 
 describe('POST /v1/auth/login', () => {
-  it('returns tokens for correct password', async () => {
+  it('returns tokens for correct password (verified user)', async () => {
     const app = await buildServer();
-    await register(app, 'login@example.com');
+    await registerVerified(app, 'login@example.com');
     const res = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
@@ -305,9 +367,33 @@ describe('POST /v1/auth/login', () => {
     await app.close();
   });
 
+  it('rejects sign-in for an unverified email with 403 email_not_verified', async () => {
+    const app = await buildServer();
+    // Register only — do NOT verify. The user exists with the right password but
+    // has never confirmed their email, so sign-in must be refused.
+    await app.inject({
+      method: 'POST',
+      url: '/v1/auth/register',
+      payload: {
+        email: 'unverified@example.com',
+        password: 'correct-horse-battery-staple',
+        firstName: 'A',
+        lastName: 'B',
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'unverified@example.com', password: 'correct-horse-battery-staple' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('email_not_verified');
+    await app.close();
+  });
+
   it('rejects wrong password with 401 invalid_credentials', async () => {
     const app = await buildServer();
-    await register(app, 'login2@example.com');
+    await registerVerified(app, 'login2@example.com');
     const res = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
@@ -330,10 +416,8 @@ describe('POST /v1/auth/login', () => {
     await app.close();
   });
 
-  it('returns requires_totp for admin users', async () => {
+  it('returns a TOTP challenge for an admin who already enabled TOTP', async () => {
     const app = await buildServer();
-    // Direct DB insertion of an admin with password
-    const { getPrisma } = await import('../../src/db.js');
     const { hashPassword } = await import('../../src/services/auth/passwords.js');
     const hash = await hashPassword('admin-password-1234');
     const admin = await getPrisma().user.create({
@@ -358,6 +442,38 @@ describe('POST /v1/auth/login', () => {
     const body = res.json();
     expect(body.requiresTotp).toBe(true);
     expect(body.challengeToken).toBeTruthy();
+    // No full session is issued at the password step.
+    expect(body.tokens).toBeUndefined();
+    await app.close();
+  });
+
+  it('forces TOTP enrollment for an admin who has not set up TOTP yet (no full session)', async () => {
+    const app = await buildServer();
+    const { hashPassword } = await import('../../src/services/auth/passwords.js');
+    const hash = await hashPassword('admin-password-1234');
+    // Freshly-promoted admin: verified email, password set, but totpEnabledAt is null.
+    const admin = await getPrisma().user.create({
+      data: {
+        email: 'newadmin@example.com',
+        passwordHash: hash,
+        firstName: 'New',
+        lastName: 'Admin',
+        role: 'admin',
+        emailVerifiedAt: new Date(),
+      },
+    });
+    await getPrisma().authCredential.create({ data: { userId: admin.id, type: 'password' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'newadmin@example.com', password: 'admin-password-1234' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.requiresTotpEnrollment).toBe(true);
+    expect(body.enrollmentChallenge).toBeTruthy();
+    // Critically: no tokens / full session granted before TOTP is set up.
+    expect(body.tokens).toBeUndefined();
     await app.close();
   });
 });
@@ -367,9 +483,28 @@ describe('POST /v1/auth/login', () => {
 
 - [ ] **Step 3: Write `api/src/routes/auth/login.ts`**
 
+**Sign-in gates (spec §2.1 and §8.2):** after the password check, login enforces two
+rules before any full session is issued:
+
+- **Email must be verified.** If `user.emailVerifiedAt == null`, throw `AppError` 403
+  with code `email_not_verified`. (OAuth sign-in sets `emailVerifiedAt` at account
+  creation, so this only affects password accounts that never confirmed their email.)
+- **Admins always use TOTP.** If `user.role === 'admin'`:
+  - If TOTP is already enabled (`totpEnabledAt != null`), return a TOTP *challenge*
+    (`{ requiresTotp: true, challengeToken }`) — the existing challenge-verify flow.
+  - If TOTP is **not** enabled yet (`totpEnabledAt == null`), do **not** issue a
+    session. Return an *enrollment-required* state
+    (`{ requiresTotpEnrollment: true, enrollmentChallenge }`). The `enrollmentChallenge`
+    is a single-use, short-lived token (stored hashed in `totp_challenges`) that the
+    admin presents to the TOTP enroll/verify-enrollment routes. Only after enrollment
+    completes and a subsequent login passes the TOTP challenge does the admin receive a
+    full session. This guarantees a freshly-promoted admin can never hold a
+    password-only session.
+
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, loginSchema } from '@pantry/shared';
+import { ERROR_CODES, loginSchema } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { verifyPassword } from '../../services/auth/passwords.js';
@@ -395,24 +530,48 @@ export async function loginRoute(app: FastifyInstance) {
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw INVALID;
 
-    // Admin: TOTP required if enabled
-    if (user.role === 'admin' && user.totpSecret && user.totpEnabledAt) {
-      const challengeToken = randomToken(24);
+    // Email verification is required before any sign-in (§2.1).
+    if (!user.emailVerifiedAt) {
+      throw new AppError({
+        status: 403,
+        code: ERROR_CODES.EMAIL_NOT_VERIFIED,
+        title: 'Please verify your email before signing in',
+      });
+    }
+
+    // Admins always require TOTP (§8.2).
+    if (user.role === 'admin') {
+      if (user.totpSecret && user.totpEnabledAt) {
+        // TOTP already enabled → second-factor challenge.
+        const challengeToken = randomToken(24);
+        await prisma.totpChallenge.create({
+          data: {
+            userId: user.id,
+            tokenHash: hashToken(challengeToken),
+            purpose: 'login',
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          },
+        });
+        return reply.send({ requiresTotp: true, challengeToken });
+      }
+      // TOTP not set up yet → force enrollment; do NOT issue a session.
+      const enrollmentChallenge = randomToken(24);
       await prisma.totpChallenge.create({
         data: {
           userId: user.id,
-          tokenHash: hashToken(challengeToken),
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          tokenHash: hashToken(enrollmentChallenge),
+          purpose: 'enroll',
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
       });
-      return reply.send({ requiresTotp: true, challengeToken });
+      return reply.send({ requiresTotpEnrollment: true, enrollmentChallenge });
     }
 
     const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -420,13 +579,27 @@ export async function loginRoute(app: FastifyInstance) {
 
 - [ ] **Step 4: Mount in `api/src/routes/auth/index.ts`**
 
-Replace contents with:
+Keep the scoped rate limiter from Task F1 at the top; just register the new route after
+the existing ones. Replace contents with:
 ```ts
 import type { FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
+import { getConfig } from '../../config.js';
+import { getRedis } from '../../redis.js';
 import { registerRoute } from './register.js';
 import { loginRoute } from './login.js';
 
 export async function authRoutes(app: FastifyInstance) {
+  const cfg = getConfig();
+  if (cfg.rateLimit.enabled) {
+    await app.register(rateLimit, {
+      max: cfg.rateLimit.authPerIpPerMin,
+      timeWindow: '1 minute',
+      redis: getRedis(),
+      nameSpace: 'rl:auth:',
+      keyGenerator: (req) => `ip:${req.ip}`,
+    });
+  }
   await app.register(registerRoute);
   await app.register(loginRoute);
 }
@@ -435,7 +608,7 @@ export async function authRoutes(app: FastifyInstance) {
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/login.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/login.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -460,6 +633,7 @@ git commit -m "feat(api): POST /v1/auth/login (with admin TOTP challenge)"
 // api/tests/integration/refresh.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
+import { getPrisma } from '../../src/db.js';
 
 async function loginAndGetTokens(app: Awaited<ReturnType<typeof buildServer>>) {
   await app.inject({
@@ -471,6 +645,11 @@ async function loginAndGetTokens(app: Awaited<ReturnType<typeof buildServer>>) {
       firstName: 'A',
       lastName: 'B',
     },
+  });
+  // Sign-in requires a verified email.
+  await getPrisma().user.update({
+    where: { email: 'r@example.com' },
+    data: { emailVerifiedAt: new Date() },
   });
   const res = await app.inject({
     method: 'POST',
@@ -530,14 +709,15 @@ describe('POST /v1/auth/refresh', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/refresh.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/refresh.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/auth/refresh.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, refreshSchema } from '@pantry/shared';
+import { ERROR_CODES, refreshSchema } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { findActiveSessionByToken, rotateSession } from '../../services/auth/sessions.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
@@ -558,7 +738,7 @@ export async function refreshRoute(app: FastifyInstance) {
     const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken: next.refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken: next.refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -566,24 +746,40 @@ export async function refreshRoute(app: FastifyInstance) {
 
 - [ ] **Step 4: Mount in `api/src/routes/auth/index.ts`**
 
-Update to:
+Keep the scoped rate limiter at the top. Update to:
 ```ts
 import type { FastifyInstance } from 'fastify';
+import rateLimit from '@fastify/rate-limit';
+import { getConfig } from '../../config.js';
+import { getRedis } from '../../redis.js';
 import { registerRoute } from './register.js';
 import { loginRoute } from './login.js';
 import { refreshRoute } from './refresh.js';
 
 export async function authRoutes(app: FastifyInstance) {
+  const cfg = getConfig();
+  if (cfg.rateLimit.enabled) {
+    await app.register(rateLimit, {
+      max: cfg.rateLimit.authPerIpPerMin,
+      timeWindow: '1 minute',
+      redis: getRedis(),
+      nameSpace: 'rl:auth:',
+      keyGenerator: (req) => `ip:${req.ip}`,
+    });
+  }
   await app.register(registerRoute);
   await app.register(loginRoute);
   await app.register(refreshRoute);
 }
 ```
 
+> Subsequent tasks add `import` + `await app.register(...)` lines for each new route
+> below `refreshRoute`; leave the scoped rate-limiter block at the top intact.
+
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/refresh.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/refresh.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -608,6 +804,7 @@ git commit -m "feat(api): POST /v1/auth/refresh with rotation"
 // api/tests/integration/logout.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
+import { getPrisma } from '../../src/db.js';
 
 describe('POST /v1/auth/logout', () => {
   it('revokes the refresh token', async () => {
@@ -621,6 +818,11 @@ describe('POST /v1/auth/logout', () => {
         firstName: 'A',
         lastName: 'B',
       },
+    });
+    // Sign-in requires a verified email.
+    await getPrisma().user.update({
+      where: { email: 'lo@example.com' },
+      data: { emailVerifiedAt: new Date() },
     });
     const login = await app.inject({
       method: 'POST',
@@ -664,7 +866,7 @@ describe('POST /v1/auth/logout', () => {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { refreshSchema } from '@pantry/shared';
+import { refreshSchema } from '@expyrico/shared';
 import { findActiveSessionByToken, revokeSession } from '../../services/auth/sessions.js';
 
 export async function logoutRoute(app: FastifyInstance) {
@@ -684,7 +886,7 @@ Add `import { logoutRoute } from './logout.js';` and `await app.register(logoutR
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/logout.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/logout.test.ts
 git add -A && git commit -m "feat(api): POST /v1/auth/logout"
 ```
 
@@ -703,6 +905,7 @@ git add -A && git commit -m "feat(api): POST /v1/auth/logout"
 // api/tests/integration/me.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
+import { getPrisma } from '../../src/db.js';
 
 async function authedTokens(app: Awaited<ReturnType<typeof buildServer>>) {
   await app.inject({
@@ -714,6 +917,11 @@ async function authedTokens(app: Awaited<ReturnType<typeof buildServer>>) {
       firstName: 'Me',
       lastName: 'User',
     },
+  });
+  // Sign-in requires a verified email.
+  await getPrisma().user.update({
+    where: { email: 'me@example.com' },
+    data: { emailVerifiedAt: new Date() },
   });
   const login = await app.inject({
     method: 'POST',
@@ -753,7 +961,7 @@ describe('GET /v1/auth/me', () => {
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { AppError } from '../../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { findUserById, toApiUser } from '../../services/users/repository.js';
 
 export async function meRoute(app: FastifyInstance) {
@@ -773,7 +981,7 @@ import { meRoute } from './me.js';
 await app.register(meRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/me.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/me.test.ts
 git add -A && git commit -m "feat(api): GET /v1/auth/me"
 ```
 
@@ -906,7 +1114,7 @@ describe('email verification', () => {
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { hashToken } from '../../utils/random.js';
@@ -938,7 +1146,7 @@ export async function verifyEmailRoute(app: FastifyInstance) {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { resendVerificationSchema } from '@pantry/shared';
+import { resendVerificationSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 import { sendVerificationEmail } from '../../services/auth/email.js';
@@ -976,7 +1184,7 @@ await app.register(verifyEmailRoute);
 await app.register(resendVerificationRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/verify-email.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/verify-email.test.ts
 git add -A && git commit -m "feat(api): email verification + resend"
 ```
 
@@ -1036,6 +1244,11 @@ describe('forgot/reset password', () => {
     });
     expect(res.statusCode).toBe(204);
 
+    // Sign-in requires a verified email — mark it verified before logging in.
+    await getPrisma().user.update({
+      where: { email: 'fr@example.com' },
+      data: { emailVerifiedAt: new Date() },
+    });
     const login = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
@@ -1077,7 +1290,7 @@ describe('forgot/reset password', () => {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { forgotPasswordSchema } from '@pantry/shared';
+import { forgotPasswordSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 import { sendPasswordResetEmail } from '../../services/auth/email.js';
@@ -1107,7 +1320,7 @@ export async function forgotPasswordRoute(app: FastifyInstance) {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { resetPasswordSchema, ERROR_CODES } from '@pantry/shared';
+import { resetPasswordSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { hashToken } from '../../utils/random.js';
@@ -1144,8 +1357,64 @@ await app.register(forgotPasswordRoute);
 await app.register(resetPasswordRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/forgot-reset.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/forgot-reset.test.ts
 git add -A && git commit -m "feat(api): forgot/reset password with session revocation"
+```
+
+---
+
+### Task F8: Auth-scope rate limit triggers
+
+The `/v1/auth/*` routes carry a tighter per-IP budget than the rest of the API to slow
+credential stuffing and brute force. The limiter is never disabled in tests — `.env.test`
+sets the global budgets high and the auth-scope budget low (`RATE_LIMIT_AUTH_PER_IP_PER_MIN=5`)
+so this test can prove the auth limiter trips while ordinary multi-request flows are
+unaffected.
+
+**Files:**
+- Create: `api/tests/integration/rate-limit.test.ts`
+
+- [ ] **Step 1: Write the test**
+
+```ts
+// api/tests/integration/rate-limit.test.ts
+import { describe, expect, it } from 'vitest';
+import { buildServer } from '../../src/server.js';
+import { getConfig } from '../../src/config.js';
+
+describe('auth rate limiting', () => {
+  it('returns 429 once the per-IP /v1/auth/* budget is exceeded', async () => {
+    const app = await buildServer();
+    const limit = getConfig().rateLimit.authPerIpPerMin;
+    // Hit a cheap auth endpoint (login with bad creds) until the budget is spent.
+    let last = 200;
+    for (let i = 0; i < limit + 1; i++) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/auth/login',
+        payload: { email: 'nobody@example.com', password: 'correct-horse-battery-staple' },
+        headers: { 'x-forwarded-for': '203.0.113.7' },
+      });
+      last = res.statusCode;
+    }
+    expect(last).toBe(429);
+    await app.close();
+  });
+});
+```
+
+- [ ] **Step 2: Verify pass**
+
+```bash
+pnpm --filter @expyrico/api exec vitest run tests/integration/rate-limit.test.ts
+```
+Expected: passes. Note: `beforeEach` flushes Redis (M0a Task D7), so the limiter
+counter starts fresh per test.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add -A && git commit -m "test(api): assert /v1/auth/* rate limit triggers"
 ```
 
 ---
@@ -1202,7 +1471,7 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdenti
 - [ ] **Step 2: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 git add -A && git commit -m "feat(api): Google id_token verification service"
 ```
 
@@ -1338,7 +1607,8 @@ describe('POST /v1/auth/oauth/google', () => {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { oauthGoogleSchema, ERROR_CODES } from '@pantry/shared';
+import { oauthGoogleSchema, ERROR_CODES } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { verifyGoogleIdToken } from '../../services/auth/google.js';
@@ -1419,7 +1689,7 @@ export async function oauthGoogleRoute(app: FastifyInstance) {
 
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -1433,7 +1703,7 @@ import { oauthGoogleRoute } from './oauth-google.js';
 await app.register(oauthGoogleRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/oauth-google.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/oauth-google.test.ts
 git add -A && git commit -m "feat(api): POST /v1/auth/oauth/google"
 ```
 
@@ -1485,7 +1755,7 @@ export async function verifyAppleIdentityToken(token: string): Promise<AppleIden
 - [ ] **Step 2: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 git add -A && git commit -m "feat(api): Apple identity_token verification service"
 ```
 
@@ -1585,7 +1855,8 @@ describe('POST /v1/auth/oauth/apple', () => {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { oauthAppleSchema, ERROR_CODES } from '@pantry/shared';
+import { oauthAppleSchema, ERROR_CODES } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { verifyAppleIdentityToken } from '../../services/auth/apple.js';
@@ -1660,7 +1931,7 @@ export async function oauthAppleRoute(app: FastifyInstance) {
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -1674,7 +1945,7 @@ import { oauthAppleRoute } from './oauth-apple.js';
 await app.register(oauthAppleRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/oauth-apple.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/oauth-apple.test.ts
 git add -A && git commit -m "feat(api): POST /v1/auth/oauth/apple"
 ```
 
@@ -1784,7 +2055,7 @@ export async function consumeAuthentication(
 - [ ] **Step 2: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 git add -A && git commit -m "feat(api): passkey (WebAuthn) service wrappers"
 ```
 
@@ -1803,6 +2074,7 @@ git add -A && git commit -m "feat(api): passkey (WebAuthn) service wrappers"
 // api/tests/integration/passkey.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
+import { getPrisma } from '../../src/db.js';
 
 describe('passkey routes', () => {
   it('register/options requires auth', async () => {
@@ -1818,6 +2090,11 @@ describe('passkey routes', () => {
       method: 'POST',
       url: '/v1/auth/register',
       payload: { email: 'p@example.com', password: 'correct-horse-battery-staple', firstName: 'A', lastName: 'B' },
+    });
+    // Sign-in requires a verified email.
+    await getPrisma().user.update({
+      where: { email: 'p@example.com' },
+      data: { emailVerifiedAt: new Date() },
     });
     const login = await app.inject({
       method: 'POST',
@@ -1858,7 +2135,7 @@ describe('passkey routes', () => {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { passkeyRegisterVerifySchema, ERROR_CODES } from '@pantry/shared';
+import { passkeyRegisterVerifySchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { buildRegistrationOptions, consumeRegistration } from '../../services/auth/passkey.js';
@@ -1924,7 +2201,7 @@ await app.register(passkeyRegisterRoute);
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/passkey.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/passkey.test.ts
 git add -A && git commit -m "feat(api): passkey register options + verify"
 ```
 
@@ -1940,7 +2217,8 @@ git add -A && git commit -m "feat(api): passkey register options + verify"
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from '@pantry/shared';
+import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { buildAuthenticationOptions, consumeAuthentication } from '../../services/auth/passkey.js';
@@ -2019,7 +2297,7 @@ export async function passkeyLoginRoute(app: FastifyInstance) {
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -2032,7 +2310,7 @@ import { passkeyLoginRoute } from './passkey-login.js';
 await app.register(passkeyLoginRoute);
 ```
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/passkey.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/passkey.test.ts
 git add -A && git commit -m "feat(api): passkey login options + verify"
 ```
 
@@ -2066,7 +2344,7 @@ export interface TotpEnrollment {
 export async function buildEnrollment(email: string): Promise<TotpEnrollment> {
   const cfg = getConfig();
   const rawSecret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(email, 'Pantry Admin', rawSecret);
+  const otpauth = authenticator.keyuri(email, 'Expyrico Admin', rawSecret);
   const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
   const encryptedSecret = encrypt(rawSecret, cfg.totp.encryptionKey);
   const recoveryCodes = Array.from({ length: 10 }, () => randomToken(8).slice(0, 10));
@@ -2087,7 +2365,7 @@ export function verifyTotp(encryptedSecret: string, code: string): boolean {
 - [ ] **Step 2: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 git add -A && git commit -m "feat(api): TOTP service with otplib + AES-GCM"
 ```
 
@@ -2124,66 +2402,82 @@ async function makeAdmin() {
   });
 }
 
+/** Password-login a fresh admin and return the forced-enrollment challenge. */
+async function loginForEnrollment(app: Awaited<ReturnType<typeof buildServer>>) {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/login',
+    payload: { email: 'admin@example.com', password: 'admin-password-1234' },
+  });
+  expect(res.statusCode).toBe(200);
+  const body = res.json();
+  // A fresh admin gets no session — only an enrollment challenge.
+  expect(body.requiresTotpEnrollment).toBe(true);
+  expect(body.tokens).toBeUndefined();
+  return body.enrollmentChallenge as string;
+}
+
+/** Full enrollment: returns the raw secret + recovery codes for later assertions. */
+async function enroll(app: Awaited<ReturnType<typeof buildServer>>) {
+  const enrollmentChallenge = await loginForEnrollment(app);
+  const res = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/totp/enroll',
+    payload: { enrollmentChallenge },
+  });
+  expect(res.statusCode).toBe(200);
+  const { qrCodeDataUrl, secret, recoveryCodes } = res.json();
+  expect(qrCodeDataUrl).toContain('data:image/png');
+  expect(secret).toBeTruthy();
+  expect(recoveryCodes).toHaveLength(10);
+  const verify = await app.inject({
+    method: 'POST',
+    url: '/v1/auth/totp/verify-enrollment',
+    payload: { enrollmentChallenge, code: authenticator.generate(secret) },
+  });
+  expect(verify.statusCode).toBe(204);
+  return { secret: secret as string, recoveryCodes: recoveryCodes as string[] };
+}
+
 describe('TOTP', () => {
-  it('enroll requires admin', async () => {
+  it('enroll rejects a missing/invalid enrollment challenge', async () => {
     const app = await buildServer();
-    // Regular user
-    await app.inject({
-      method: 'POST',
-      url: '/v1/auth/register',
-      payload: { email: 'u@example.com', password: 'correct-horse-battery-staple', firstName: 'A', lastName: 'B' },
-    });
-    const login = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/login',
-      payload: { email: 'u@example.com', password: 'correct-horse-battery-staple' },
-    });
-    const tok = login.json().tokens.accessToken;
     const res = await app.inject({
       method: 'POST',
       url: '/v1/auth/totp/enroll',
-      headers: { authorization: `Bearer ${tok}` },
+      payload: { enrollmentChallenge: 'not-a-real-challenge' },
     });
-    expect(res.statusCode).toBe(403);
+    expect(res.statusCode).toBe(401);
     await app.close();
   });
 
-  it('admin enroll → verify-enrollment → login → challenge-verify', async () => {
+  it('admin enroll → verify-enrollment persists hashed recovery codes', async () => {
     const app = await buildServer();
     const admin = await makeAdmin();
     await getPrisma().authCredential.create({ data: { userId: admin.id, type: 'password' } });
 
-    // Login (no TOTP yet → full session)
-    const login1 = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/login',
-      payload: { email: 'admin@example.com', password: 'admin-password-1234' },
-    });
-    expect(login1.statusCode).toBe(200);
-    const tok = login1.json().tokens.accessToken;
+    const { recoveryCodes } = await enroll(app);
 
-    // Enroll
-    const enroll = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/totp/enroll',
-      headers: { authorization: `Bearer ${tok}` },
-    });
-    expect(enroll.statusCode).toBe(200);
-    const { qrCodeDataUrl, secret } = enroll.json();
-    expect(qrCodeDataUrl).toContain('data:image/png');
-    expect(secret).toBeTruthy();
+    const stored = await getPrisma().totpRecoveryCode.findMany({ where: { userId: admin.id } });
+    expect(stored).toHaveLength(10);
+    // Codes are stored hashed, never in plaintext.
+    for (const row of stored) {
+      expect(recoveryCodes).not.toContain(row.codeHash);
+      expect(row.usedAt).toBeNull();
+    }
+    // The user is now flagged as TOTP-enabled.
+    const after = await getPrisma().user.findUnique({ where: { id: admin.id } });
+    expect(after?.totpEnabledAt).not.toBeNull();
+    await app.close();
+  });
 
-    // Verify enrollment
-    const code = authenticator.generate(secret);
-    const verifyEnroll = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/totp/verify-enrollment',
-      headers: { authorization: `Bearer ${tok}` },
-      payload: { code },
-    });
-    expect(verifyEnroll.statusCode).toBe(204);
+  it('enabled admin: login → TOTP challenge-verify grants a session', async () => {
+    const app = await buildServer();
+    const admin = await makeAdmin();
+    await getPrisma().authCredential.create({ data: { userId: admin.id, type: 'password' } });
+    const { secret } = await enroll(app);
 
-    // Now login again — should require TOTP
+    // Login again — now TOTP is enabled → second-factor challenge.
     const login2 = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
@@ -2191,9 +2485,9 @@ describe('TOTP', () => {
     });
     const challenge = login2.json();
     expect(challenge.requiresTotp).toBe(true);
+    expect(challenge.tokens).toBeUndefined();
     const challengeToken = challenge.challengeToken;
 
-    // Wrong code
     const wrong = await app.inject({
       method: 'POST',
       url: '/v1/auth/totp/challenge-verify',
@@ -2201,7 +2495,6 @@ describe('TOTP', () => {
     });
     expect(wrong.statusCode).toBe(401);
 
-    // Right code
     const right = await app.inject({
       method: 'POST',
       url: '/v1/auth/totp/challenge-verify',
@@ -2216,25 +2509,8 @@ describe('TOTP', () => {
     const app = await buildServer();
     const admin = await makeAdmin();
     await getPrisma().authCredential.create({ data: { userId: admin.id, type: 'password' } });
-    // Enroll inline
-    const login1 = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/login',
-      payload: { email: 'admin@example.com', password: 'admin-password-1234' },
-    });
-    const tok = login1.json().tokens.accessToken;
-    const enroll = await app.inject({
-      method: 'POST',
-      url: '/v1/auth/totp/enroll',
-      headers: { authorization: `Bearer ${tok}` },
-    });
-    const { secret } = enroll.json();
-    await app.inject({
-      method: 'POST',
-      url: '/v1/auth/totp/verify-enrollment',
-      headers: { authorization: `Bearer ${tok}` },
-      payload: { code: authenticator.generate(secret) },
-    });
+    const { secret } = await enroll(app);
+
     const login2 = await app.inject({
       method: 'POST',
       url: '/v1/auth/login',
@@ -2254,6 +2530,46 @@ describe('TOTP', () => {
     expect(replay.statusCode).toBe(401);
     await app.close();
   });
+
+  it('a recovery code can be redeemed once to grant a session, then is rejected on reuse', async () => {
+    const app = await buildServer();
+    const admin = await makeAdmin();
+    await getPrisma().authCredential.create({ data: { userId: admin.id, type: 'password' } });
+    const { recoveryCodes } = await enroll(app);
+    const code = recoveryCodes[0]!;
+
+    // Login → TOTP challenge.
+    const login2 = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'admin@example.com', password: 'admin-password-1234' },
+    });
+    const ct = login2.json().challengeToken;
+
+    // Redeem the recovery code in place of a TOTP code → full session.
+    const redeem = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/totp/recovery-verify',
+      payload: { challengeToken: ct, recoveryCode: code },
+    });
+    expect(redeem.statusCode).toBe(200);
+    expect(redeem.json().tokens.accessToken).toBeTruthy();
+
+    // The consumed code is now marked used and cannot be redeemed again.
+    const login3 = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/login',
+      payload: { email: 'admin@example.com', password: 'admin-password-1234' },
+    });
+    const ct3 = login3.json().challengeToken;
+    const reuse = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/totp/recovery-verify',
+      payload: { challengeToken: ct3, recoveryCode: code },
+    });
+    expect(reuse.statusCode).toBe(401);
+    await app.close();
+  });
 });
 ```
 
@@ -2261,14 +2577,29 @@ describe('TOTP', () => {
 
 - [ ] **Step 3: Write `api/src/routes/auth/totp.ts`**
 
+**Design notes for this route:**
+
+- Enrollment is authorized by the single-use `enrollmentChallenge` issued by the login
+  route (purpose `enroll`), **not** by an admin bearer token — a freshly-promoted admin
+  has no full session until TOTP is set up, so there is no admin token to present yet.
+- `verify-enrollment` persists the hashed recovery codes generated during `enroll` into
+  `totp_recovery_codes` (one row per code). They are stored hashed and are single-use.
+- `challenge-verify` accepts a TOTP code; `recovery-verify` accepts a one-time recovery
+  code in its place. Both consume the login challenge (purpose `login`) and grant a
+  full session.
+- The pending enrollment (raw/encrypted secret + plaintext recovery codes) is held in a
+  short-lived in-memory map keyed by userId between `enroll` and `verify-enrollment`.
+
 ```ts
 import type { FastifyInstance } from 'fastify';
 import {
   totpEnrollSchema,
   totpVerifyEnrollmentSchema,
   totpChallengeVerifySchema,
+  totpRecoveryVerifySchema,
   ERROR_CODES,
-} from '@pantry/shared';
+} from '@expyrico/shared';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { buildEnrollment, verifyTotp } from '../../services/auth/totp.js';
@@ -2279,16 +2610,55 @@ import { hashToken } from '../../utils/random.js';
 
 const PENDING_ENROLLMENTS = new Map<string, { encryptedSecret: string; rawSecret: string; recoveryCodes: string[] }>();
 
+/** Resolve and validate an admin enrollment challenge (purpose 'enroll'). */
+async function resolveEnrollmentChallenge(enrollmentChallenge: string) {
+  const prisma = getPrisma();
+  const challenge = await prisma.totpChallenge.findUnique({
+    where: { tokenHash: hashToken(enrollmentChallenge) },
+  });
+  if (
+    !challenge ||
+    challenge.purpose !== 'enroll' ||
+    challenge.consumedAt ||
+    challenge.expiresAt.getTime() < Date.now()
+  ) {
+    throw new AppError({ status: 401, code: ERROR_CODES.INVALID_TOKEN, title: 'Invalid or expired enrollment challenge' });
+  }
+  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
+  if (!user || user.role !== 'admin' || user.status !== 'active') {
+    throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+  }
+  return { challenge, user };
+}
+
+/** Resolve and validate a login challenge (purpose 'login') for an enabled admin. */
+async function resolveLoginChallenge(challengeToken: string) {
+  const prisma = getPrisma();
+  const challenge = await prisma.totpChallenge.findUnique({
+    where: { tokenHash: hashToken(challengeToken) },
+  });
+  if (
+    !challenge ||
+    challenge.purpose !== 'login' ||
+    challenge.consumedAt ||
+    challenge.expiresAt.getTime() < Date.now()
+  ) {
+    throw new AppError({ status: 401, code: ERROR_CODES.INVALID_TOKEN, title: 'Invalid or expired challenge' });
+  }
+  const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
+  if (!user || !user.totpSecret || user.status !== 'active') {
+    throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+  }
+  return { challenge, user };
+}
+
 export async function totpRoutes(app: FastifyInstance) {
-  // POST /v1/auth/totp/enroll  — admin only
-  app.post('/totp/enroll', { onRequest: [app.requireAdmin] }, async (req) => {
-    totpEnrollSchema.parse(req.body ?? {});
-    const userId = req.user!.id;
-    const prisma = getPrisma();
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+  // POST /v1/auth/totp/enroll  — authorized by the enrollment challenge
+  app.post('/totp/enroll', async (req) => {
+    const input = totpEnrollSchema.parse(req.body);
+    const { user } = await resolveEnrollmentChallenge(input.enrollmentChallenge);
     const enrollment = await buildEnrollment(user.email);
-    PENDING_ENROLLMENTS.set(userId, {
+    PENDING_ENROLLMENTS.set(user.id, {
       encryptedSecret: enrollment.encryptedSecret,
       rawSecret: enrollment.rawSecret,
       recoveryCodes: enrollment.recoveryCodes,
@@ -2300,45 +2670,44 @@ export async function totpRoutes(app: FastifyInstance) {
     };
   });
 
-  // POST /v1/auth/totp/verify-enrollment  — admin only
-  app.post('/totp/verify-enrollment', { onRequest: [app.requireAdmin] }, async (req, reply) => {
+  // POST /v1/auth/totp/verify-enrollment  — authorized by the enrollment challenge
+  app.post('/totp/verify-enrollment', async (req, reply) => {
     const input = totpVerifyEnrollmentSchema.parse(req.body);
-    const userId = req.user!.id;
-    const pending = PENDING_ENROLLMENTS.get(userId);
+    const { challenge, user } = await resolveEnrollmentChallenge(input.enrollmentChallenge);
+    const pending = PENDING_ENROLLMENTS.get(user.id);
     if (!pending) {
       throw new AppError({ status: 400, code: ERROR_CODES.INVALID_TOTP, title: 'No pending enrollment' });
     }
     if (!verifyTotp(pending.encryptedSecret, input.code)) {
       throw new AppError({ status: 401, code: ERROR_CODES.INVALID_TOTP, title: 'Invalid TOTP code' });
     }
-    await getPrisma().user.update({
-      where: { id: userId },
-      data: {
-        totpSecret: pending.encryptedSecret,
-        totpEnabledAt: new Date(),
-      },
-    });
-    PENDING_ENROLLMENTS.delete(userId);
+    const prisma = getPrisma();
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { totpSecret: pending.encryptedSecret, totpEnabledAt: new Date() },
+      }),
+      // Persist each recovery code hashed; consumed one-time at redemption.
+      prisma.totpRecoveryCode.createMany({
+        data: pending.recoveryCodes.map((c) => ({ userId: user.id, codeHash: hashToken(c) })),
+      }),
+      prisma.totpChallenge.update({
+        where: { id: challenge.id },
+        data: { consumedAt: new Date() },
+      }),
+    ]);
+    PENDING_ENROLLMENTS.delete(user.id);
     return reply.status(204).send();
   });
 
-  // POST /v1/auth/totp/challenge-verify  — public
+  // POST /v1/auth/totp/challenge-verify  — public, requires a valid login challenge
   app.post('/totp/challenge-verify', async (req, reply) => {
     const input = totpChallengeVerifySchema.parse(req.body);
-    const prisma = getPrisma();
-    const challenge = await prisma.totpChallenge.findUnique({
-      where: { tokenHash: hashToken(input.challengeToken) },
-    });
-    if (!challenge || challenge.consumedAt || challenge.expiresAt.getTime() < Date.now()) {
-      throw new AppError({ status: 401, code: ERROR_CODES.INVALID_TOKEN, title: 'Invalid or expired challenge' });
-    }
-    const user = await prisma.user.findUnique({ where: { id: challenge.userId } });
-    if (!user || !user.totpSecret || user.status !== 'active') {
-      throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
-    }
-    if (!verifyTotp(user.totpSecret, input.code)) {
+    const { challenge, user } = await resolveLoginChallenge(input.challengeToken);
+    if (!verifyTotp(user.totpSecret!, input.code)) {
       throw new AppError({ status: 401, code: ERROR_CODES.INVALID_TOTP, title: 'Invalid TOTP code' });
     }
+    const prisma = getPrisma();
     await prisma.totpChallenge.update({
       where: { id: challenge.id },
       data: { consumedAt: new Date() },
@@ -2347,7 +2716,30 @@ export async function totpRoutes(app: FastifyInstance) {
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
     return reply.send({
       user: toApiUser(user),
-      tokens: { accessToken, refreshToken, expiresIn: 900 },
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
+    });
+  });
+
+  // POST /v1/auth/totp/recovery-verify  — redeem a one-time recovery code
+  app.post('/totp/recovery-verify', async (req, reply) => {
+    const input = totpRecoveryVerifySchema.parse(req.body);
+    const { challenge, user } = await resolveLoginChallenge(input.challengeToken);
+    const prisma = getPrisma();
+    const row = await prisma.totpRecoveryCode.findUnique({
+      where: { codeHash: hashToken(input.recoveryCode) },
+    });
+    if (!row || row.userId !== user.id || row.usedAt) {
+      throw new AppError({ status: 401, code: ERROR_CODES.INVALID_RECOVERY_CODE, title: 'Invalid recovery code' });
+    }
+    await prisma.$transaction([
+      prisma.totpRecoveryCode.update({ where: { id: row.id }, data: { usedAt: new Date() } }),
+      prisma.totpChallenge.update({ where: { id: challenge.id }, data: { consumedAt: new Date() } }),
+    ]);
+    const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
+    const { refreshToken } = await createSession(user.id, { ip: req.ip });
+    return reply.send({
+      user: toApiUser(user),
+      tokens: { accessToken, refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds },
     });
   });
 }
@@ -2363,7 +2755,7 @@ await app.register(totpRoutes);
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/totp.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/totp.test.ts
 git add -A && git commit -m "feat(api): TOTP enroll, verify-enrollment, challenge-verify"
 ```
 
@@ -2382,7 +2774,7 @@ git add -A && git commit -m "feat(api): TOTP enroll, verify-enrollment, challeng
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { updateProfileSchema } from '@pantry/shared';
+import { updateProfileSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiUser } from '../../services/users/repository.js';
 
@@ -2447,7 +2839,7 @@ it('PATCH /v1/me updates profile', async () => {
 - [ ] **Step 5: Verify + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/me.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/me.test.ts
 git add -A && git commit -m "feat(api): PATCH /v1/me profile updates"
 ```
 
@@ -2460,10 +2852,10 @@ git add -A && git commit -m "feat(api): PATCH /v1/me profile updates"
 - [ ] **Step 1: Full test run**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: every M0a test still passing, plus M0b's new tests:
-- register, login, refresh, logout, me, verify-email, forgot-reset, oauth-google, oauth-apple, passkey, totp.
+- register, login, refresh, logout, me, verify-email, forgot-reset, rate-limit, oauth-google, oauth-apple, passkey, totp.
 
 - [ ] **Step 2: Typecheck**
 
@@ -2474,7 +2866,7 @@ pnpm typecheck
 - [ ] **Step 3: Boot smoke**
 
 ```bash
-pnpm --filter @pantry/api dev
+pnpm --filter @expyrico/api dev
 ```
 Then in another terminal:
 ```bash
@@ -2494,10 +2886,15 @@ git tag m0b-complete
 
 ## Self-review checklist
 
-- [ ] All 11 integration test files in M0b pass.
+- [ ] All 12 integration test files in M0b pass.
 - [ ] `pnpm typecheck` is clean.
 - [ ] No route file imports raw `process.env` (must go through `getConfig()`).
 - [ ] No route file calls `console.*` (must use `req.log`).
+- [ ] Every route that returns tokens builds `{ accessToken: issueAccessToken({...}), refreshToken, expiresIn: getConfig().jwt.accessTtlSeconds }` — `issueAccessToken` returns a **string**, never an object. No `.token` unwrapping, no hardcoded `expiresIn: 900`.
+- [ ] Login refuses an unverified email with 403 `email_not_verified` (verified in `login.test.ts`).
+- [ ] An admin without TOTP enabled gets `{ requiresTotpEnrollment: true, enrollmentChallenge }` and **no** session at the password step; full session only after enrollment + TOTP challenge (verified in `login.test.ts` and `totp.test.ts`).
+- [ ] Auth-scope rate limit triggers a 429 on `/v1/auth/*` and is not disabled in tests (verified in `rate-limit.test.ts`).
+- [ ] TOTP recovery codes are persisted hashed at enrollment and are single-use: redeeming one grants a session and the same code is rejected on reuse (verified in `totp.test.ts`).
 - [ ] Email-leak resistance: `forgot-password` and `resend-verification` always return 204 regardless of whether the email exists.
 - [ ] Session revocation on password reset works (verified in `forgot-reset.test.ts`).
 - [ ] Refresh-token replay is detected and rejected (verified in `refresh.test.ts`).
@@ -2509,7 +2906,7 @@ git tag m0b-complete
 
 M0c builds the Expo mobile app shell:
 
-- Theme provider consuming `@pantry/theme`, with a working in-app theme switcher
+- Theme provider consuming `@expyrico/theme`, with a working in-app theme switcher
 - Auth Zustand store with secure-store persistence
 - Fetch wrapper with automatic token refresh on 401
 - TanStack Query hooks for every M0b auth route

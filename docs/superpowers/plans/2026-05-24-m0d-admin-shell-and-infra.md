@@ -4,11 +4,11 @@
 
 **Goal:** Stand up the Next.js 15 admin app shell (login + TOTP + session middleware + CSRF + stub pages for every M3 route), add the `admin_audit_log` Prisma table + audit helper, provision the single VPS end-to-end with Ansible (Postgres, Redis, Node, nginx, certbot, systemd, secrets, ufw, fail2ban), wire a `main`-branch deploy pipeline (test → build → atomic symlink flip with rollback), and automate encrypted offsite backups with a 7/4/3 daily/weekly/monthly rotation.
 
-**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`pantry_admin_csrf` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/pantry/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl reload` swap traffic, with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
+**Architecture:** Admin runs as a separate Next.js 15 standalone server on `127.0.0.1:4001` behind an nginx vhost (`admin.<domain>`) with TLS + IP allowlist. Tokens live in HTTP-only cookies set by Next.js Route Handlers that proxy `/v1/auth/*` from the Fastify API. CSRF uses a double-submit cookie pattern (`expyrico_admin_csrf` cookie + matching `X-CSRF-Token` header). The host is a non-Dockerized Ubuntu 22.04/24.04 LTS VPS provisioned by an idempotent Ansible playbook. GitHub Actions builds artifacts and rsyncs them to `/opt/expyrico/releases/<sha>/`; an atomic `ln -sfn` flip + `systemctl restart` swap traffic (the units stop on `SIGTERM` with `TimeoutStopSec=30`, giving the process its graceful drain window before the kill), with smoke tests against `/health/ready` and automatic symlink rollback on failure. Backups are `pg_dump | age | rclone` with a local rotation script.
 
 **Tech Stack:** Next.js 15 (App Router, standalone output), TypeScript 5 strict, Tailwind CSS 3, shadcn/ui, TanStack Query 5, TanStack Table 8, Zod 3, Playwright 1.45+, Vitest 2, Ansible 2.15+, Ubuntu 22.04/24.04 LTS, PostgreSQL 16, Redis 7, Node 20 LTS, nginx, certbot, systemd, ufw, fail2ban, age, rclone, GitHub Actions, Renovate.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md`. Read sections 3 (non-functional), 4.2 (runtime topology), 5 (`admin_audit_log` row), 6.7 (admin endpoint list — referenced only; bodies are M3), 8 (admin dashboard), 10 (deployment), 11 (observability) before starting.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md`. Read sections 3 (non-functional), 4.2 (runtime topology), 5 (`admin_audit_log` row), 6.7 (admin endpoint list — referenced only; bodies are M3), 8 (admin dashboard), 10 (deployment), 11 (observability) before starting.
 
 **Sister plans (executed in parallel during M0):**
 
@@ -19,11 +19,11 @@
 
 **Cross-milestone dependencies this plan relies on:**
 
-- `GET /health` and `GET /health/ready` from M0a — verified in Task A2 before the deploy smoke test is wired
+- `GET /health` and `GET /health/ready` from M0a — verified in Task A1 before the deploy smoke test is wired
 - `POST /v1/auth/login` returning either `{user, tokens}` or `{requiresTotp: true, challengeToken}` from M0b
 - `POST /v1/auth/totp/challenge-verify` exchanging `{challengeToken, code}` for `{user, tokens}` from M0b
 - `GET /v1/auth/me` and `POST /v1/auth/refresh` from M0b
-- Shared Zod schemas in `@pantry/shared` from M0a (extended here for admin login forms only)
+- Shared Zod schemas in `@expyrico/shared` from M0a (extended here for admin login forms only)
 
 **Out of scope (other milestones):**
 
@@ -34,12 +34,38 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A, step 3 (admin shell + infra + deploy — entire plan; backend becomes deployable here).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+A validation pass corrected six issues in this plan. In plain terms:
+
+1. **Deploy migrations no longer run after the Prisma CLI is removed.** The host deploy previously pruned dev dependencies (which include the Prisma CLI) and only then ran `prisma migrate deploy`, which would fail. The deploy now installs all dependencies, runs the migration, and prunes dev dependencies last. The runbook prose and step numbering were updated to match.
+
+2. **Deploys now restart instead of "reload".** The systemd units are simple processes with no reload behaviour, so the old `systemctl reload` did nothing and the "graceful drain" claim was false. The deploy (and rollback) now use `systemctl restart`, which sends `SIGTERM` and lets the process drain within `TimeoutStopSec=30`. Unit templates, sudoers prose, and architecture text were aligned.
+
+3. **The database password is generated once and reused.** The Ansible task used a lookup that minted a brand-new password on every run when the variable was unset, which would reset the live database password and break the running app. The postgres role now persists the password to a root-only file on the host and reads it back on later runs, so re-applies are idempotent.
+
+4. **Token refresh moved out of server-component render.** The admin session helper set cookies during a Server Component render, which Next.js 15 forbids and which caused a refresh→redirect loop. Refresh now happens in a dedicated Route Handler (`/api/auth/refresh-redirect`) where setting cookies is allowed; the render simply redirects there and back.
+
+5. **External uptime monitoring is now specified.** An UptimeRobot HTTP monitor on `GET /health` (5-minute interval, email alerts) is documented in the infra runbook and surfaced as an operator reminder in the app role.
+
+6. **Fresh-admin TOTP enrollment flow is now handled.** M0b now enforces that admins always have TOTP, so a freshly-promoted admin's login returns a third branch — `{ requiresTotpEnrollment, enrollmentChallenge }` — that the admin web did not handle. The login proxy now propagates it, two new no-session Route Handlers proxy `/v1/auth/totp/enroll` and `/v1/auth/totp/verify-enrollment`, and a new enrollment step in the login form shows the QR code plus the 10 one-time recovery codes ("shown only once") and, after the 204 confirm, sends the admin back to sign in again (no session is granted at enrollment).
+
+The self-review checklist below was updated to reflect all six.
+
+---
+
 ## File map
 
 Files in **bold** carry significant logic; the rest are config, wiring, or stubs.
 
 ```
-pantry/
+expyrico/
 ├── api/
 │   ├── prisma/schema.prisma                              ← extended (admin_audit_log)
 │   ├── prisma/migrations/<ts>_admin_audit_log/           ← generated
@@ -65,6 +91,7 @@ pantry/
 │       │   │   ├── page.tsx                              ← / overview stub
 │       │   │   ├── login/page.tsx
 │       │   │   ├── login/totp-form.tsx
+│       │   │   ├── login/totp-enroll-form.tsx            ← fresh-admin TOTP enrollment (QR + recovery codes)
 │       │   │   ├── (admin)/layout.tsx                    ← header + sidebar
 │       │   │   ├── (admin)/users/page.tsx
 │       │   │   ├── (admin)/users/[id]/page.tsx
@@ -88,10 +115,13 @@ pantry/
 │       │   │   ├── (admin)/settings/moderation/page.tsx
 │       │   │   ├── (admin)/settings/admins/page.tsx
 │       │   │   └── api/
-│       │   │       ├── auth/login/route.ts               ← Route Handler proxy → cookies
-│       │   │       ├── auth/totp/route.ts                ← Route Handler proxy → cookies
+│       │   │       ├── auth/login/route.ts               ← Route Handler proxy → cookies (+ TOTP challenge/enrollment branches)
+│       │   │       ├── auth/totp/route.ts                ← Route Handler proxy → cookies (challenge-verify)
+│       │   │       ├── auth/totp/enroll/route.ts         ← Route Handler proxy (no session) → QR + recovery codes
+│       │   │       ├── auth/totp/verify-enrollment/route.ts ← Route Handler proxy (no session) → 204 passthrough
 │       │   │       ├── auth/logout/route.ts
 │       │   │       ├── auth/refresh/route.ts
+│       │   │       ├── auth/refresh-redirect/route.ts    ← GET refresh→cookie set→redirect (used by server render on 401)
 │       │   │       └── auth/me/route.ts
 │       │   ├── components/
 │       │   │   ├── header.tsx
@@ -147,8 +177,8 @@ pantry/
 │   │   ├── app/
 │   │   │   ├── tasks/main.yml
 │   │   │   ├── handlers/main.yml
-│   │   │   ├── templates/pantry-api.service.j2
-│   │   │   ├── templates/pantry-admin.service.j2
+│   │   │   ├── templates/expyrico-api.service.j2
+│   │   │   ├── templates/expyrico-admin.service.j2
 │   │   │   └── templates/sudoers-pantry.j2
 │   │   └── secrets/
 │   │       └── tasks/main.yml
@@ -174,7 +204,7 @@ pantry/
 - **Commit after every passing task**, never accumulate.
 - **No `console.log` in admin source.** Use `console.error` only inside catch blocks in Route Handlers — surfaced through Next.js server logs.
 - **No localStorage for tokens.** Tokens always travel through HTTP-only cookies set by the Next.js Route Handlers in `src/app/api/auth/*`.
-- **Type safety end-to-end.** Admin imports Zod schemas from `@pantry/shared`. New admin-only schemas live in `packages/shared/src/schemas/admin.ts`.
+- **Type safety end-to-end.** Admin imports Zod schemas from `@expyrico/shared`. New admin-only schemas live in `packages/shared/src/schemas/admin.ts`.
 - **Idempotent Ansible.** Every role MUST be safely re-runnable; verification step `ansible-playbook --check` reports zero changes after a fresh apply.
 - **No Docker anywhere.** All services run as native systemd units.
 - **Ubuntu 22.04 and 24.04 LTS both supported.** When a task differs by version, use `ansible_distribution_version` gates.
@@ -198,7 +228,7 @@ Expected: the file defines `GET /health` returning `{ status: 'ok' }` and `GET /
 - [ ] **Step 2: Verify both endpoints respond locally**
 
 ```bash
-pnpm --filter @pantry/api dev &
+pnpm --filter @expyrico/api dev &
 sleep 3
 curl -fsS http://localhost:4000/health
 curl -fsS http://localhost:4000/health/ready
@@ -219,7 +249,7 @@ Expected: `login.ts` returns `{ requiresTotp: true, challengeToken }` when the u
 
 ## Phase B — Shared admin schemas
 
-### Task B1: Add admin-form schemas to `@pantry/shared`
+### Task B1: Add admin-form schemas to `@expyrico/shared`
 
 **Files:**
 - Create: `packages/shared/src/schemas/admin.ts`
@@ -241,6 +271,21 @@ export const adminTotpRequestSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
 export type AdminTotpRequest = z.infer<typeof adminTotpRequestSchema>;
+
+// Fresh-admin TOTP enrollment (M0b enforces "admins always have TOTP").
+// `enrollmentChallenge` is single-use, 10-min TTL, gated server-side.
+export const adminTotpEnrollRequestSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+});
+export type AdminTotpEnrollRequest = z.infer<typeof adminTotpEnrollRequestSchema>;
+
+export const adminTotpVerifyEnrollmentRequestSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+  code: z.string().regex(/^\d{6}$/),
+});
+export type AdminTotpVerifyEnrollmentRequest = z.infer<
+  typeof adminTotpVerifyEnrollmentRequestSchema
+>;
 ```
 
 - [ ] **Step 2: Append export in `packages/shared/src/index.ts`**
@@ -254,7 +299,7 @@ export * from './schemas/admin.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: exit 0.
 
@@ -262,7 +307,7 @@ Expected: exit 0.
 
 ```bash
 git add packages/shared
-git commit -m "feat(admin): add admin login + TOTP request schemas to @pantry/shared"
+git commit -m "feat(admin): add admin login + TOTP (challenge + enrollment) request schemas to @expyrico/shared"
 ```
 
 ---
@@ -358,7 +403,7 @@ describe('writeAuditLog', () => {
 - [ ] **Step 2: Run the test, verify it fails**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/audit-log.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/audit-log.test.ts
 ```
 Expected: FAIL — `Cannot find module '../../src/services/audit/log.js'`.
 
@@ -418,7 +463,7 @@ mkdir -p api/src/services/audit
 - [ ] **Step 3: Run the test, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/audit-log.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/audit-log.test.ts
 ```
 Expected: 3 passed.
 
@@ -480,7 +525,7 @@ mkdir -p apps/admin/src/{app,components,lib} apps/admin/tests/{unit,e2e}
 
 ```json
 {
-  "name": "@pantry/admin",
+  "name": "@expyrico/admin",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -494,7 +539,7 @@ mkdir -p apps/admin/src/{app,components,lib} apps/admin/tests/{unit,e2e}
     "clean": "rm -rf .next .turbo node_modules/.cache"
   },
   "dependencies": {
-    "@pantry/shared": "workspace:*",
+    "@expyrico/shared": "workspace:*",
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@tanstack/react-query": "^5.51.0",
@@ -556,7 +601,7 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  transpilePackages: ['@pantry/shared'],
+  transpilePackages: ['@expyrico/shared'],
 };
 
 export default nextConfig;
@@ -694,8 +739,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Pantry Admin',
-  description: 'Pantry administration dashboard',
+  title: 'Expyrico Admin',
+  description: 'Expyrico administration dashboard',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -713,7 +758,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 export default function HomePage() {
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-semibold">Pantry Admin</h1>
+      <h1 className="text-2xl font-semibold">Expyrico Admin</h1>
       <p className="mt-2 text-muted-foreground">
         Overview dashboard. This page is implemented in M3.
       </p>
@@ -732,7 +777,7 @@ Expected: lockfile updated, no errors.
 - [ ] **Step 14: Build to verify the scaffold compiles**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: prints `Compiled successfully`, produces `apps/admin/.next/standalone/`.
 
@@ -741,11 +786,11 @@ Expected: prints `Compiled successfully`, produces `apps/admin/.next/standalone/
 This catches mis-specified `standalone` output paths (Next.js writes the server to `.next/standalone/apps/admin/server.js` in a monorepo, NOT `.next/standalone/server.js`) BEFORE we wire systemd + nginx and discover the path is wrong in production. We curl `/` (the temporary page) since `/login` doesn't exist yet — a richer login smoke runs in Task F2 / Task I3.
 
 ```bash
-pnpm --filter @pantry/admin build && \
+pnpm --filter @expyrico/admin build && \
   node apps/admin/.next/standalone/apps/admin/server.js -p 4001 &
 SMOKE_PID=$!
 sleep 2
-curl -fsS http://localhost:4001/ | grep -q "Pantry Admin"
+curl -fsS http://localhost:4001/ | grep -q "Expyrico Admin"
 SMOKE_RC=$?
 kill $SMOKE_PID 2>/dev/null || true
 wait $SMOKE_PID 2>/dev/null || true
@@ -916,7 +961,7 @@ Alert.displayName = 'Alert';
 - [ ] **Step 6: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1011,7 +1056,7 @@ describe('parseAdminEnv', () => {
 - [ ] **Step 5: Run the test, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/env.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/env.test.ts
 ```
 Expected: FAIL — `Cannot find module '@/lib/env'`.
 
@@ -1057,7 +1102,7 @@ export function getAdminEnv(): AdminEnv {
 - [ ] **Step 7: Run the test, verify pass**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/env.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/env.test.ts
 ```
 Expected: 3 passed.
 
@@ -1086,7 +1131,7 @@ describe('cookies', () => {
   it('exposes stable cookie names', () => {
     expect(COOKIE_NAMES.access).toBe('pantry_admin_access');
     expect(COOKIE_NAMES.refresh).toBe('pantry_admin_refresh');
-    expect(COOKIE_NAMES.csrf).toBe('pantry_admin_csrf');
+    expect(COOKIE_NAMES.csrf).toBe('expyrico_admin_csrf');
   });
 
   it('builds an HTTP-only access cookie with a TTL', () => {
@@ -1136,7 +1181,7 @@ describe('cookies', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/cookies.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/cookies.test.ts
 ```
 
 - [ ] **Step 3: Write `apps/admin/src/lib/cookies.ts`**
@@ -1145,7 +1190,7 @@ pnpm --filter @pantry/admin exec vitest run tests/unit/cookies.test.ts
 export const COOKIE_NAMES = {
   access: 'pantry_admin_access',
   refresh: 'pantry_admin_refresh',
-  csrf: 'pantry_admin_csrf',
+  csrf: 'expyrico_admin_csrf',
 } as const;
 
 export interface SetCookieOptions {
@@ -1174,7 +1219,7 @@ export function buildSetCookie(opts: SetCookieOptions): string {
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/cookies.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/cookies.test.ts
 ```
 Expected: 4 passed.
 
@@ -1228,7 +1273,7 @@ describe('csrf', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/csrf.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/csrf.test.ts
 ```
 
 - [ ] **Step 3: Write `apps/admin/src/lib/csrf.ts`**
@@ -1261,7 +1306,7 @@ export function isCsrfValid(
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run tests/unit/csrf.test.ts
+pnpm --filter @expyrico/admin exec vitest run tests/unit/csrf.test.ts
 ```
 Expected: 4 passed.
 
@@ -1348,7 +1393,7 @@ export async function apiServerFetch<T>(path: string, opts: ApiOptions = {}): Pr
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1422,7 +1467,7 @@ export async function apiBrowserFetch<T>(path: string, opts: BrowserApiOptions =
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1447,7 +1492,7 @@ git commit -m "feat(admin): browser API client with CSRF header forwarding"
 ```ts
 // apps/admin/src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
-import { adminLoginRequestSchema } from '@pantry/shared';
+import { adminLoginRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
 import { generateCsrfToken } from '@/lib/csrf';
@@ -1486,7 +1531,17 @@ export async function POST(req: Request) {
     );
   }
 
-  // Case 2: full login (shouldn't happen for admin role; defensive)
+  // Case 2: freshly-promoted admin with no TOTP yet — must enroll before any
+  // session is granted. Propagate the enrollmentChallenge to the client; NO
+  // cookies/session are issued here (mirrors the requiresTotp branch above).
+  if (body.requiresTotpEnrollment === true && typeof body.enrollmentChallenge === 'string') {
+    return NextResponse.json(
+      { requiresTotpEnrollment: true, enrollmentChallenge: body.enrollmentChallenge },
+      { status: 200 },
+    );
+  }
+
+  // Case 3: full login (shouldn't happen for admin role; defensive)
   return finalizeSession(body, env);
 }
 
@@ -1553,7 +1608,7 @@ export function finalizeSession(
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1561,7 +1616,7 @@ Expected: exit 0.
 
 ```bash
 git add apps/admin/src/app/api/auth/login/route.ts
-git commit -m "feat(admin): POST /api/auth/login proxy that emits cookies on success"
+git commit -m "feat(admin): POST /api/auth/login proxy emits cookies on success, propagates TOTP challenge + enrollment branches"
 ```
 
 ---
@@ -1576,7 +1631,7 @@ git commit -m "feat(admin): POST /api/auth/login proxy that emits cookies on suc
 ```ts
 // apps/admin/src/app/api/auth/totp/route.ts
 import { NextResponse } from 'next/server';
-import { adminTotpRequestSchema } from '@pantry/shared';
+import { adminTotpRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 import { finalizeSession } from '../login/route';
 
@@ -1610,7 +1665,7 @@ export async function POST(req: Request) {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1619,6 +1674,122 @@ Expected: exit 0.
 ```bash
 git add apps/admin/src/app/api/auth/totp/route.ts
 git commit -m "feat(admin): POST /api/auth/totp exchanges challenge+code for cookies"
+```
+
+---
+
+### Task E2b: `POST /api/auth/totp/enroll` Route Handler
+
+**Files:**
+- Create: `apps/admin/src/app/api/auth/totp/enroll/route.ts`
+
+This proxies the M0b enrollment-start endpoint. It is reached by a freshly-promoted admin (no TOTP yet) during the enrollment step. It issues NO cookies/session — it simply forwards the `enrollmentChallenge` and returns the enrollment payload (secret, QR data URL, and the 10 one-time recovery codes) to the client. The recovery codes are shown ONCE here and are never returned again, so they must reach the browser unaltered.
+
+- [ ] **Step 1: Write the Route Handler**
+
+```ts
+// apps/admin/src/app/api/auth/totp/enroll/route.ts
+import { NextResponse } from 'next/server';
+import { adminTotpEnrollRequestSchema } from '@expyrico/shared';
+import { getAdminEnv } from '@/lib/env';
+
+export async function POST(req: Request) {
+  const env = getAdminEnv();
+  let parsed;
+  try {
+    parsed = adminTotpEnrollRequestSchema.parse(await req.json());
+  } catch (err) {
+    return NextResponse.json(
+      { code: 'validation_error', detail: (err as Error).message },
+      { status: 400 },
+    );
+  }
+
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/enroll`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(parsed),
+  });
+  const body = (await upstream.json()) as Record<string, unknown>;
+
+  // No cookies/session here — gated by the enrollmentChallenge, not a session.
+  // Pass the upstream payload straight through (secret, qrCodeDataUrl, recoveryCodes).
+  return NextResponse.json(body, { status: upstream.status });
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @expyrico/admin typecheck
+```
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/api/auth/totp/enroll/route.ts
+git commit -m "feat(admin): POST /api/auth/totp/enroll proxy (no session) returns QR + recovery codes"
+```
+
+---
+
+### Task E2c: `POST /api/auth/totp/verify-enrollment` Route Handler
+
+**Files:**
+- Create: `apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts`
+
+This proxies the M0b enrollment-confirm endpoint. On success the upstream returns **HTTP 204 with an empty body** and grants NO session (the admin must log in again with their password afterward). We forward the upstream status verbatim and emit no cookies. We must NOT call `upstream.json()` on a 204 (there is no body).
+
+- [ ] **Step 1: Write the Route Handler**
+
+```ts
+// apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts
+import { NextResponse } from 'next/server';
+import { adminTotpVerifyEnrollmentRequestSchema } from '@expyrico/shared';
+import { getAdminEnv } from '@/lib/env';
+
+export async function POST(req: Request) {
+  const env = getAdminEnv();
+  let parsed;
+  try {
+    parsed = adminTotpVerifyEnrollmentRequestSchema.parse(await req.json());
+  } catch (err) {
+    return NextResponse.json(
+      { code: 'validation_error', detail: (err as Error).message },
+      { status: 400 },
+    );
+  }
+
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/totp/verify-enrollment`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(parsed),
+  });
+
+  // Success is 204 empty; do not attempt to parse a body. No session is granted —
+  // the client must return to the password step and log in again.
+  if (upstream.status === 204) {
+    return new NextResponse(null, { status: 204 });
+  }
+
+  const body = (await upstream.json().catch(() => ({}))) as Record<string, unknown>;
+  return NextResponse.json(body, { status: upstream.status });
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @expyrico/admin typecheck
+```
+Expected: exit 0.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts
+git commit -m "feat(admin): POST /api/auth/totp/verify-enrollment proxy (204 passthrough, no session)"
 ```
 
 ---
@@ -1699,7 +1870,7 @@ export async function POST(req: Request) {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -1767,7 +1938,7 @@ export async function POST(req: Request) {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -1810,7 +1981,7 @@ export async function GET() {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -1898,7 +2069,7 @@ export function TotpForm({ challengeToken }: { challengeToken: string }) {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -1906,6 +2077,179 @@ pnpm --filter @pantry/admin typecheck
 ```bash
 git add apps/admin/src/app/login/totp-form.tsx
 git commit -m "feat(admin): TOTP code entry form (client component)"
+```
+
+---
+
+### Task F1b: TOTP enrollment client form component
+
+**Files:**
+- Create: `apps/admin/src/app/login/totp-enroll-form.tsx`
+
+Shown to a freshly-promoted admin (login returned `requiresTotpEnrollment`). On mount it POSTs the `enrollmentChallenge` to `/api/auth/totp/enroll`, renders the returned `qrCodeDataUrl` QR image plus the 10 plaintext `recoveryCodes` with a "save these now — shown only once" warning, then collects the 6-digit code and POSTs `{ enrollmentChallenge, code }` to `/api/auth/totp/verify-enrollment`. On the 204 success it does NOT get a session — it calls `onEnrolled()` so the login flow returns the admin to the password step to sign in again.
+
+- [ ] **Step 1: Write the component**
+
+```tsx
+// apps/admin/src/app/login/totp-enroll-form.tsx
+'use client';
+
+import { useEffect, useState, type FormEvent } from 'react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert } from '@/components/ui/alert';
+
+interface EnrollPayload {
+  secret: string;
+  qrCodeDataUrl: string;
+  recoveryCodes: string[];
+}
+
+export function TotpEnrollForm({
+  enrollmentChallenge,
+  onEnrolled,
+}: {
+  enrollmentChallenge: string;
+  onEnrolled: () => void;
+}) {
+  const [enroll, setEnroll] = useState<EnrollPayload | null>(null);
+  const [code, setCode] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  // Start enrollment on mount: fetch secret/QR/recovery codes (shown once).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/totp/enroll', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ enrollmentChallenge }),
+        });
+        const body = (await res.json()) as EnrollPayload & { code?: string };
+        if (!res.ok) throw new Error(body.code ?? 'enroll_failed');
+        if (!cancelled) setEnroll(body);
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enrollmentChallenge]);
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/totp/verify-enrollment', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ enrollmentChallenge, code }),
+      });
+      // Success is 204 empty; no session is granted — the admin must re-login.
+      if (res.status === 204) {
+        setDone(true);
+        return;
+      }
+      const body = (await res.json().catch(() => ({}))) as { code?: string };
+      throw new Error(body.code ?? 'verify_enrollment_failed');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="space-y-4">
+        <Alert>TOTP enabled — please sign in again.</Alert>
+        <Button type="button" className="w-full" onClick={onEnrolled}>
+          Back to sign in
+        </Button>
+      </div>
+    );
+  }
+
+  if (error && !enroll) {
+    return <Alert variant="destructive">{error}</Alert>;
+  }
+
+  if (!enroll) {
+    return <p className="text-sm text-muted-foreground">Preparing enrollment…</p>;
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <p className="text-sm font-medium">1. Scan this QR code in your authenticator app</p>
+        <Image
+          src={enroll.qrCodeDataUrl}
+          alt="TOTP enrollment QR code"
+          width={192}
+          height={192}
+          unoptimized
+          className="rounded border"
+        />
+        <p className="break-all text-xs text-muted-foreground">
+          Manual key: <code>{enroll.secret}</code>
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium">2. Save your recovery codes</p>
+        <Alert variant="destructive">
+          Save these now — they are shown only once and will not be displayed again.
+        </Alert>
+        <ul className="grid grid-cols-2 gap-1 rounded border bg-muted p-3 font-mono text-xs">
+          {enroll.recoveryCodes.map((rc) => (
+            <li key={rc}>{rc}</li>
+          ))}
+        </ul>
+      </div>
+
+      <form onSubmit={onSubmit} className="space-y-4">
+        <p className="text-sm font-medium">3. Enter the 6-digit code to confirm</p>
+        <div className="space-y-2">
+          <Label htmlFor="enroll-code">Authenticator code</Label>
+          <Input
+            id="enroll-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            required
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          />
+        </div>
+        {error && <Alert variant="destructive">{error}</Alert>}
+        <Button type="submit" disabled={busy || code.length !== 6} className="w-full">
+          {busy ? 'Confirming…' : 'Confirm enrollment'}
+        </Button>
+      </form>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Typecheck**
+
+```bash
+pnpm --filter @expyrico/admin typecheck
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/admin/src/app/login/totp-enroll-form.tsx
+git commit -m "feat(admin): TOTP enrollment form (QR + recovery codes, client component)"
 ```
 
 ---
@@ -1929,8 +2273,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
 import { TotpForm } from './totp-form';
+import { TotpEnrollForm } from './totp-enroll-form';
 
-type Step = 'credentials' | 'totp';
+type Step = 'credentials' | 'totp' | 'enroll';
 
 export function LoginForm() {
   const router = useRouter();
@@ -1938,6 +2283,7 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [challengeToken, setChallengeToken] = useState<string | null>(null);
+  const [enrollmentChallenge, setEnrollmentChallenge] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -1954,10 +2300,18 @@ export function LoginForm() {
       const body = (await res.json()) as {
         requiresTotp?: boolean;
         challengeToken?: string;
+        requiresTotpEnrollment?: boolean;
+        enrollmentChallenge?: string;
         code?: string;
       };
       if (!res.ok) {
         throw new Error(body.code ?? 'login_failed');
+      }
+      // Fresh admin without TOTP yet: enroll first, no session granted.
+      if (body.requiresTotpEnrollment && body.enrollmentChallenge) {
+        setEnrollmentChallenge(body.enrollmentChallenge);
+        setStep('enroll');
+        return;
       }
       if (body.requiresTotp && body.challengeToken) {
         setChallengeToken(body.challengeToken);
@@ -1971,6 +2325,25 @@ export function LoginForm() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // After enrollment the API grants NO session, so return to the password step.
+  // The admin signs in again; that login then yields { requiresTotp, challengeToken }.
+  function backToCredentialsAfterEnroll() {
+    setEnrollmentChallenge(null);
+    setChallengeToken(null);
+    setPassword('');
+    setError(null);
+    setStep('credentials');
+  }
+
+  if (step === 'enroll' && enrollmentChallenge) {
+    return (
+      <TotpEnrollForm
+        enrollmentChallenge={enrollmentChallenge}
+        onEnrolled={backToCredentialsAfterEnroll}
+      />
+    );
   }
 
   if (step === 'totp' && challengeToken) {
@@ -2022,7 +2395,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted p-6">
       <div className="w-full max-w-sm rounded-lg border bg-card p-8 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold">Pantry Admin</h1>
+        <h1 className="mb-1 text-xl font-semibold">Expyrico Admin</h1>
         <p className="mb-6 text-sm text-muted-foreground">Sign in to continue.</p>
         <LoginForm />
       </div>
@@ -2034,7 +2407,7 @@ export default function LoginPage() {
 - [ ] **Step 3: Build the app to confirm both files compile**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: exit 0, no warnings, includes the `/login` route in the build summary.
 
@@ -2042,7 +2415,7 @@ Expected: exit 0, no warnings, includes the `/login` route in the build summary.
 
 ```bash
 git add apps/admin/src/app/login
-git commit -m "feat(admin): login page with email/password and TOTP step"
+git commit -m "feat(admin): login page with email/password, TOTP challenge, and TOTP enrollment steps"
 ```
 
 ---
@@ -2103,7 +2476,7 @@ export const config = {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 Expected: exit 0.
 
@@ -2122,7 +2495,9 @@ git commit -m "feat(admin): middleware redirects unauthenticated requests to /lo
 - Create: `apps/admin/src/app/(admin)/layout.tsx`
 - Create: `apps/admin/src/lib/session.ts`
 
-The layout calls `/v1/auth/me`. On 401, it attempts a single refresh via the API, and if that also fails it redirects to `/login`. It also enforces `role === 'admin'`.
+The layout calls `/v1/auth/me`. On 401 it does NOT try to mint and persist new tokens from inside the render — Next.js 15 forbids writing cookies during a Server Component render, and attempting it (or quietly swallowing the error) produces a refresh→redirect loop. Instead the layout redirects the browser to `/api/auth/refresh-redirect`, a Route Handler where setting cookies is allowed; that handler refreshes the tokens, persists the new cookies, and bounces back to the originally requested path. Only if there is no usable refresh cookie at all do we send the user to `/login`. The layout still enforces `role === 'admin'`.
+
+This keeps all cookie writes inside Route Handlers (the only place Next.js 15 permits them) and removes the previous in-render `cookieStore.set` calls.
 
 - [ ] **Step 1: Write `apps/admin/src/lib/session.ts`**
 
@@ -2131,8 +2506,7 @@ The layout calls `/v1/auth/me`. On 401, it attempts a single refresh via the API
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ApiError, apiServerFetch } from './api';
-import { buildSetCookie, COOKIE_NAMES } from './cookies';
-import { getAdminEnv } from './env';
+import { COOKIE_NAMES } from './cookies';
 
 export interface AdminMe {
   id: string;
@@ -2143,72 +2517,105 @@ export interface AdminMe {
 }
 
 /**
- * Server-side helper used by admin pages. Fetches /v1/auth/me; on 401 it
- * attempts one refresh and retries; on second failure it redirects to /login.
- * It also enforces role === 'admin'.
+ * Server-side helper used by admin pages. Fetches /v1/auth/me; on 401 it hands
+ * off to the /api/auth/refresh-redirect Route Handler (the only place cookies
+ * may be written) which refreshes and returns to `next`. It also enforces
+ * role === 'admin'. This function NEVER writes cookies — doing so during a
+ * Server Component render is forbidden in Next.js 15 and causes a redirect loop.
  */
-export async function requireAdminSession(): Promise<AdminMe> {
+export async function requireAdminSession(currentPath = '/'): Promise<AdminMe> {
   try {
     const me = await apiServerFetch<AdminMe>('/v1/auth/me');
     if (me.role !== 'admin') redirect('/login');
     return me;
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await tryRefresh();
-      if (refreshed) {
-        const me = await apiServerFetch<AdminMe>('/v1/auth/me');
-        if (me.role !== 'admin') redirect('/login');
-        return me;
+      const cookieStore = await cookies();
+      const hasRefresh = Boolean(cookieStore.get(COOKIE_NAMES.refresh)?.value);
+      if (hasRefresh) {
+        // Hand off to a Route Handler that may legally set cookies, then return here.
+        redirect(`/api/auth/refresh-redirect?next=${encodeURIComponent(currentPath)}`);
       }
     }
     redirect('/login');
   }
 }
+```
 
-async function tryRefresh(): Promise<boolean> {
+The token refresh itself lives in a Route Handler created below. The handler reuses the same refresh-and-persist logic the browser already calls via `POST /api/auth/refresh` (Task E3); it differs only in that it is reached by a GET redirect and responds with a redirect back to `next`.
+
+- [ ] **Step 1b: Write `apps/admin/src/app/api/auth/refresh-redirect/route.ts`**
+
+```ts
+// apps/admin/src/app/api/auth/refresh-redirect/route.ts
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getAdminEnv } from '@/lib/env';
+import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
+
+const ACCESS_MAX_AGE_SEC = 60 * 15;
+const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
+
+function safeNext(raw: string | null): string {
+  // Only allow same-origin absolute paths to avoid open-redirect.
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  return '/';
+}
+
+export async function GET(req: Request) {
   const env = getAdminEnv();
+  const url = new URL(req.url);
+  const next = safeNext(url.searchParams.get('next'));
+
   const cookieStore = await cookies();
   const refresh = cookieStore.get(COOKIE_NAMES.refresh)?.value;
-  if (!refresh) return false;
+  if (!refresh) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  const res = await fetch(`${env.apiBaseUrl}/v1/auth/refresh`, {
+  const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/refresh`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ refreshToken: refresh }),
   });
-  if (!res.ok) return false;
+  if (!upstream.ok) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  const body = (await res.json()) as { tokens?: { accessToken: string; refreshToken: string } };
+  const body = (await upstream.json()) as { tokens?: { accessToken: string; refreshToken: string } };
   const tokens = body.tokens;
-  if (!tokens) return false;
+  if (!tokens) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 
-  // Next.js Server Components cannot set cookies outside Route Handlers/Server Actions.
-  // We mutate the request's own cookie store so the subsequent /v1/auth/me call in
-  // the same render uses the new access token, and we set the persistent cookies
-  // via a header on the eventual response by stashing them on `headers()` won't work
-  // here either — so we rely on the next user-triggered Route Handler call to persist
-  // them. For the immediate retry within this render we update the in-memory store.
-  cookieStore.set(COOKIE_NAMES.access, tokens.accessToken, {
-    httpOnly: true,
-    secure: env.cookieSecure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 15,
-    domain: env.cookieDomain,
-  });
-  cookieStore.set(COOKIE_NAMES.refresh, tokens.refreshToken, {
-    httpOnly: true,
-    secure: env.cookieSecure,
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30,
-    domain: env.cookieDomain,
-  });
-  return true;
+  // A Route Handler response MAY set cookies (unlike a Server Component render).
+  const res = NextResponse.redirect(new URL(next, req.url));
+  res.headers.append(
+    'Set-Cookie',
+    buildSetCookie({
+      name: COOKIE_NAMES.access,
+      value: tokens.accessToken,
+      maxAgeSec: ACCESS_MAX_AGE_SEC,
+      httpOnly: true,
+      secure: env.cookieSecure,
+      sameSite: 'lax',
+      domain: env.cookieDomain,
+    }),
+  );
+  res.headers.append(
+    'Set-Cookie',
+    buildSetCookie({
+      name: COOKIE_NAMES.refresh,
+      value: tokens.refreshToken,
+      maxAgeSec: REFRESH_MAX_AGE_SEC,
+      httpOnly: true,
+      secure: env.cookieSecure,
+      sameSite: 'lax',
+      domain: env.cookieDomain,
+    }),
+  );
+  return res;
 }
-
-// Re-export buildSetCookie for callers that need the raw header form.
-export { buildSetCookie };
 ```
 
 - [ ] **Step 2: Write a temporary header/sidebar skeleton (replaced richer in Task H1)**
@@ -2220,7 +2627,7 @@ Create `apps/admin/src/components/header.tsx`:
 export function Header({ email }: { email: string }) {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-6">
-      <div className="text-sm font-semibold">Pantry Admin</div>
+      <div className="text-sm font-semibold">Expyrico Admin</div>
       <div className="text-sm text-muted-foreground">{email}</div>
     </header>
   );
@@ -2353,8 +2760,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 - [ ] **Step 5: Typecheck + build**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin typecheck
+pnpm --filter @expyrico/admin build
 ```
 Expected: both succeed.
 
@@ -2392,7 +2799,7 @@ export default function OverviewPage() {
 - [ ] **Step 3: Build to confirm route map is correct**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: build summary shows `/` and no longer warns about duplicate roots.
 
@@ -2676,7 +3083,7 @@ export default function SettingsAdminsPage() {
 - [ ] **Step 2: Build to confirm every route is wired**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: build summary lists all of: `/`, `/login`, `/users`, `/users/[id]`, `/products`, `/products/[id]`, `/products/pending`, `/reviews`, `/reviews/[id]`, `/reports`, `/reports/[id]`, `/analytics/overview`, `/analytics/scans`, `/analytics/reviews`, `/analytics/geography`, `/system/queue`, `/system/push`, `/system/api-errors`, `/system/external-apis`, `/settings/feature-flags`, `/settings/notification-templates`, `/settings/moderation`, `/settings/admins`, and the API routes under `/api/auth/*`.
 
@@ -2713,13 +3120,13 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'pnpm --filter @pantry/api dev',
+      command: 'pnpm --filter @expyrico/api dev',
       port: 4000,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
     {
-      command: 'pnpm --filter @pantry/admin dev',
+      command: 'pnpm --filter @expyrico/admin dev',
       port: 4001,
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
@@ -2739,7 +3146,7 @@ import { randomUUID } from 'node:crypto';
 import { authenticator } from 'otplib';
 import argon2 from 'argon2';
 
-export const SEEDED_ADMIN_EMAIL = 'e2e-admin@pantry.local';
+export const SEEDED_ADMIN_EMAIL = 'e2e-admin@expyrico.local';
 export const SEEDED_ADMIN_PASSWORD = 'e2e-admin-pw-1234';
 export const SEEDED_TOTP_SECRET = 'JBSWY3DPEHPK3PXP'; // RFC 4226 test vector
 
@@ -2754,13 +3161,13 @@ export async function seedAdmin(): Promise<void> {
     DELETE FROM users WHERE email = '${SEEDED_ADMIN_EMAIL}';
     INSERT INTO users (id, email, password_hash, first_name, last_name, role, status, theme_preference,
                        totp_secret, totp_enabled_at, email_verified_at, created_at, updated_at)
-    VALUES ('${id}', '${SEEDED_ADMIN_EMAIL}', '${escaped}', 'E2E', 'Admin', 'admin', 'active', 'aurora',
+    VALUES ('${id}', '${SEEDED_ADMIN_EMAIL}', '${escaped}', 'E2E', 'Admin', 'admin', 'active', 'expyrico',
             '${SEEDED_TOTP_SECRET}', NOW(), NOW(), NOW(), NOW());
     INSERT INTO auth_credentials (id, user_id, type, created_at)
     VALUES ('${credId}', '${id}', 'password', NOW());
   `;
 
-  execSync(`psql "${process.env.DATABASE_URL ?? 'postgresql://pantry:pantry@localhost:5432/pantry'}" -v ON_ERROR_STOP=1 -c "${sql.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, {
+  execSync(`psql "${process.env.DATABASE_URL ?? 'postgresql://expyrico:expyrico@localhost:5432/expyrico'}" -v ON_ERROR_STOP=1 -c "${sql.replace(/"/g, '\\"').replace(/\n/g, ' ')}"`, {
     stdio: 'pipe',
   });
 }
@@ -2788,7 +3195,7 @@ pnpm install
 - [ ] **Step 4: Install Playwright browsers (one-time per machine)**
 
 ```bash
-pnpm --filter @pantry/admin exec playwright install --with-deps chromium
+pnpm --filter @expyrico/admin exec playwright install --with-deps chromium
 ```
 Expected: prints `chromium 1.xxx is already installed.` or a download summary.
 
@@ -2846,7 +3253,7 @@ test('unauthenticated visit to / is redirected to /login', async ({ page, contex
 - [ ] **Step 2: Run the E2E suite**
 
 ```bash
-pnpm --filter @pantry/admin test:e2e
+pnpm --filter @expyrico/admin test:e2e
 ```
 Expected: 2 tests passed. (Playwright will boot both `api` and `admin` automatically via the webServer block.)
 
@@ -2864,14 +3271,14 @@ git commit -m "test(admin): e2e login flow with TOTP"
 - [ ] **Step 1: Unit tests**
 
 ```bash
-pnpm --filter @pantry/admin test
+pnpm --filter @expyrico/admin test
 ```
 Expected: 3 files (`env.test.ts`, `cookies.test.ts`, `csrf.test.ts`) pass.
 
 - [ ] **Step 2: E2E tests**
 
 ```bash
-pnpm --filter @pantry/admin test:e2e
+pnpm --filter @expyrico/admin test:e2e
 ```
 Expected: 2 tests pass.
 
@@ -2955,10 +3362,10 @@ postgres_shared_buffers: 2GB
 postgres_effective_cache_size: 6GB
 
 # Application paths
-app_root: /opt/pantry
-app_user: pantryapp
-app_group: pantryapp
-config_dir: /etc/pantry
+app_root: /opt/expyrico
+app_user: expyrico
+app_group: expyrico
+config_dir: /etc/expyrico
 
 # rclone remote name (configured manually with `rclone config` on the box)
 rclone_remote: b2:pantry-backups
@@ -2968,7 +3375,7 @@ rclone_remote: b2:pantry-backups
 
 ```yaml
 ---
-- name: Provision Pantry VPS
+- name: Provision Expyrico VPS
   hosts: pantry
   become: true
   pre_tasks:
@@ -2992,11 +3399,11 @@ rclone_remote: b2:pantry-backups
 - [ ] **Step 6: Write `infra/README.md`**
 
 ```markdown
-# Pantry infra
+# Expyrico infra
 
 Ansible playbook that takes a fresh Ubuntu 22.04 or 24.04 LTS VPS and produces a
-running Pantry stack: Postgres 16, Redis 7, Node 20 LTS, nginx, certbot,
-systemd-managed `pantry-api` and `pantry-admin` services, ufw, fail2ban,
+running Expyrico stack: Postgres 16, Redis 7, Node 20 LTS, nginx, certbot,
+systemd-managed `expyrico-api` and `expyrico-admin` services, ufw, fail2ban,
 encrypted nightly backups.
 
 ## One-shot provision
@@ -3012,8 +3419,8 @@ The play is idempotent; re-running on a healthy host should report `changed=0`.
 
 ## Secrets
 
-Before first deploy, place `/etc/pantry/.env.production` on the host (mode 600,
-owned by `pantryapp:pantryapp`). Use the same env vars as `api/.env.example` and
+Before first deploy, place `/etc/expyrico/.env.production` on the host (mode 600,
+owned by `expyrico:expyrico`). Use the same env vars as `api/.env.example` and
 `apps/admin/.env.example`. The `secrets` role asserts the file exists; it does
 not generate secrets for you.
 
@@ -3023,19 +3430,21 @@ GitHub Actions runs on every push to `main` (see `.github/workflows/deploy.yml`)
 It:
 
 1. Runs all unit + integration tests in CI (Postgres + Redis service containers).
-2. Builds api and admin, prunes dev deps, packages a tarball.
+2. Builds api and admin, packages a tarball.
 3. SSHes to the host as the `deploy` user.
-4. Extracts to `/opt/pantry/releases/<sha>/`.
-5. Runs `prisma migrate deploy`.
-6. Flips `/opt/pantry/current` atomically (`ln -sfn`).
-7. `sudo systemctl reload pantry-api pantry-admin`.
-8. Smokes `https://api.<domain>/health/ready` 5× with exponential backoff.
-9. On failure: re-flips the symlink to the previous release and reloads.
+4. Extracts to `/opt/expyrico/releases/<sha>/`.
+5. Installs the FULL dependency set (`pnpm install --frozen-lockfile`) so the Prisma CLI (a dev dependency) is available.
+6. Runs `prisma migrate deploy` while the Prisma CLI is still present.
+7. Prunes dev deps on the host (`pnpm install --prod --frozen-lockfile`) — AFTER migrations, never before.
+8. Flips `/opt/expyrico/current` atomically (`ln -sfn`).
+9. `sudo systemctl restart expyrico-api expyrico-admin` (the units stop on `SIGTERM` with `TimeoutStopSec=30`, giving the graceful drain window; they have no `ExecReload`, so a `reload` would be a no-op).
+10. Smokes `https://api.<domain>/health/ready` 5× with exponential backoff.
+11. On failure: re-flips the symlink to the previous release and restarts.
 
 ### SSH setup
 
 Create a dedicated `deploy` SSH key pair locally. Add the public key to
-`/home/pantryapp/.ssh/authorized_keys` on the host with a `from=` restriction:
+`/home/expyrico/.ssh/authorized_keys` on the host with a `from=` restriction:
 
 ```
 from="<github-actions-egress-cidr>",no-port-forwarding,no-agent-forwarding,no-X11-forwarding,no-pty ssh-ed25519 AAAA... deploy@github
@@ -3045,12 +3454,29 @@ Store the private key in the repo's GitHub Actions secret `DEPLOY_SSH_KEY`.
 
 ### sudoers
 
-The `app` role installs `/etc/sudoers.d/pantry` allowing `pantryapp` to reload
-exactly two units and nothing else:
+The `app` role installs `/etc/sudoers.d/pantry` allowing `expyrico` to restart
+(and reload, for completeness) exactly two units and nothing else. The deploy
+uses `restart` because the units are `Type=simple` with no `ExecReload`:
 
 ```
-pantryapp ALL=(root) NOPASSWD: /bin/systemctl reload pantry-api, /bin/systemctl reload pantry-admin
+expyrico ALL=(root) NOPASSWD: /bin/systemctl reload expyrico-api, /bin/systemctl reload expyrico-admin, /bin/systemctl restart expyrico-api, /bin/systemctl restart expyrico-admin
 ```
+
+## Uptime monitoring
+
+External uptime monitoring is provided by UptimeRobot (free tier). This is a
+manual, one-time setup step that lives outside the host (so it can alert even
+when the host is down) and MUST be completed before the deploy is considered
+live:
+
+1. Create an UptimeRobot HTTP(s) monitor for `https://api.<domain>/health`.
+2. Set the check interval to 5 minutes.
+3. Add an email alert contact (the ops email) so a missed `/health` triggers a
+   notification.
+
+`/health` (liveness) is used rather than `/health/ready` so the monitor flags a
+hard-down process even while dependencies are mid-restart. Record the monitor
+URL/ID in the ops notes once created.
 
 ## Backups
 
@@ -3144,10 +3570,10 @@ mkdir -p infra/roles/common/{tasks,handlers,files}
     - "{{ app_root }}"
     - "{{ app_root }}/releases"
     - "{{ app_root }}/shared"
-    - "/var/log/pantry"
-    - "/var/backups/pantry"
+    - "/var/log/expyrico"
+    - "/var/backups/expyrico"
 
-- name: Ensure /etc/pantry exists with strict perms
+- name: Ensure /etc/expyrico exists with strict perms
   ansible.builtin.file:
     path: "{{ config_dir }}"
     state: directory
@@ -3210,7 +3636,7 @@ mkdir -p infra/roles/common/{tasks,handlers,files}
 - [ ] **Step 4: Write `infra/roles/common/files/logrotate-pantry`**
 
 ```
-/var/log/pantry/*.log {
+/var/log/expyrico/*.log {
     daily
     rotate 7
     missingok
@@ -3218,7 +3644,7 @@ mkdir -p infra/roles/common/{tasks,handlers,files}
     compress
     delaycompress
     copytruncate
-    su pantryapp pantryapp
+    su expyrico expyrico
 }
 ```
 
@@ -3304,10 +3730,40 @@ mkdir -p infra/roles/postgres/{tasks,handlers,templates}
     mode: "0640"
   notify: restart postgresql
 
-- name: Generate pantry_app DB password if not present
+# The DB password must be generated ONCE and reused on every subsequent run.
+# `lookup('password', '/dev/null')` would mint a NEW password each run, silently
+# resetting the live role's password and breaking the already-running app. We
+# persist the generated password to a root-only file on the host and read it back
+# on later runs, so the value is stable across re-applies.
+- name: Read persisted pantry_app DB password if it already exists
+  ansible.builtin.slurp:
+    src: /etc/expyrico/db_password
+  register: pantry_app_password_file
+  failed_when: false
+
+- name: Use the persisted DB password when present
+  ansible.builtin.set_fact:
+    pantry_app_password: "{{ (pantry_app_password_file.content | b64decode | trim) }}"
+  when:
+    - pantry_app_password is not defined
+    - pantry_app_password_file.content is defined
+
+- name: Generate pantry_app DB password on first run only
   ansible.builtin.set_fact:
     pantry_app_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits') }}"
-  when: pantry_app_password is not defined
+  when:
+    - pantry_app_password is not defined
+    - pantry_app_password_file.content is not defined
+
+- name: Persist the DB password so future runs reuse it (root-only)
+  ansible.builtin.copy:
+    content: "{{ pantry_app_password }}"
+    dest: /etc/expyrico/db_password
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  when: pantry_app_password_file.content is not defined
 
 - name: Create pantry database
   community.postgresql.postgresql_db:
@@ -3586,7 +4042,7 @@ mkdir -p infra/roles/nginx/{tasks,handlers,templates,files}
     content: |
       # Global rate-limit zones consumed by both vhosts.
       limit_req_zone $binary_remote_addr zone=pantry_global:10m rate=30r/m;
-      limit_req_zone $binary_remote_addr zone=pantry_auth:10m rate=10r/m;
+      limit_req_zone $binary_remote_addr zone=expyrico_auth:10m rate=10r/m;
       proxy_buffering on;
       proxy_read_timeout 30s;
   notify: reload nginx
@@ -3670,7 +4126,7 @@ server {
     client_max_body_size 10m;
 
     location /v1/auth/ {
-        limit_req zone=pantry_auth burst=5 nodelay;
+        limit_req zone=expyrico_auth burst=5 nodelay;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -3832,8 +4288,8 @@ git commit -m "feat(infra): certbot role with renew-hook nginx reload"
 **Files:**
 - Create: `infra/roles/app/tasks/main.yml`
 - Create: `infra/roles/app/handlers/main.yml`
-- Create: `infra/roles/app/templates/pantry-api.service.j2`
-- Create: `infra/roles/app/templates/pantry-admin.service.j2`
+- Create: `infra/roles/app/templates/expyrico-api.service.j2`
+- Create: `infra/roles/app/templates/expyrico-admin.service.j2`
 - Create: `infra/roles/app/templates/sudoers-pantry.j2`
 
 - [ ] **Step 1: Create directories**
@@ -3846,23 +4302,23 @@ mkdir -p infra/roles/app/{tasks,handlers,templates}
 
 ```yaml
 ---
-- name: Install pantry-api systemd unit
+- name: Install expyrico-api systemd unit
   ansible.builtin.template:
-    src: pantry-api.service.j2
-    dest: /etc/systemd/system/pantry-api.service
+    src: expyrico-api.service.j2
+    dest: /etc/systemd/system/expyrico-api.service
     mode: "0644"
   notify:
     - reload systemd
-    - restart pantry-api
+    - restart expyrico-api
 
-- name: Install pantry-admin systemd unit
+- name: Install expyrico-admin systemd unit
   ansible.builtin.template:
-    src: pantry-admin.service.j2
-    dest: /etc/systemd/system/pantry-admin.service
+    src: expyrico-admin.service.j2
+    dest: /etc/systemd/system/expyrico-admin.service
     mode: "0644"
   notify:
     - reload systemd
-    - restart pantry-admin
+    - restart expyrico-admin
 
 - name: Install pantry sudoers fragment
   ansible.builtin.template:
@@ -3873,14 +4329,14 @@ mkdir -p infra/roles/app/{tasks,handlers,templates}
     group: root
     validate: visudo -cf %s
 
-- name: Ensure pantry-api enabled
+- name: Ensure expyrico-api enabled
   ansible.builtin.service:
-    name: pantry-api
+    name: expyrico-api
     enabled: true
 
-- name: Ensure pantry-admin enabled
+- name: Ensure expyrico-admin enabled
   ansible.builtin.service:
-    name: pantry-admin
+    name: expyrico-admin
     enabled: true
 
 - name: Install nightly backup cron
@@ -3889,7 +4345,18 @@ mkdir -p infra/roles/app/{tasks,handlers,templates}
     user: root
     hour: "3"
     minute: "0"
-    job: "{{ app_root }}/current/infra/scripts/backup.sh >> /var/log/pantry/backup.log 2>&1"
+    job: "{{ app_root }}/current/infra/scripts/backup.sh >> /var/log/expyrico/backup.log 2>&1"
+
+# External uptime monitoring is an off-host manual step (it must keep working
+# when the host is down, so Ansible cannot fully automate it). Operator action:
+# create an UptimeRobot HTTP monitor on https://api.<domain>/health, 5-minute
+# interval, with an email alert contact. See infra/README.md "Uptime monitoring".
+- name: Remind operator to wire UptimeRobot /health monitoring
+  ansible.builtin.debug:
+    msg: >-
+      Manual step: ensure an UptimeRobot HTTP monitor exists for
+      https://api.{{ domain | default('<domain>') }}/health at a 5-minute
+      interval with an email alert contact (see infra/README.md).
 ```
 
 - [ ] **Step 3: Write `infra/roles/app/handlers/main.yml`**
@@ -3900,22 +4367,22 @@ mkdir -p infra/roles/app/{tasks,handlers,templates}
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: restart pantry-api
+- name: restart expyrico-api
   ansible.builtin.service:
-    name: pantry-api
+    name: expyrico-api
     state: restarted
 
-- name: restart pantry-admin
+- name: restart expyrico-admin
   ansible.builtin.service:
-    name: pantry-admin
+    name: expyrico-admin
     state: restarted
 ```
 
-- [ ] **Step 4: Write `infra/roles/app/templates/pantry-api.service.j2`**
+- [ ] **Step 4: Write `infra/roles/app/templates/expyrico-api.service.j2`**
 
 ```ini
 [Unit]
-Description=Pantry API (Fastify)
+Description=Expyrico API (Fastify)
 After=network.target postgresql.service redis-server.service
 Wants=postgresql.service redis-server.service
 
@@ -3926,19 +4393,22 @@ Group={{ app_group }}
 WorkingDirectory={{ app_root }}/current/api
 EnvironmentFile={{ config_dir }}/.env.production
 ExecStart=/usr/bin/node {{ app_root }}/current/api/dist/server.js
+# No ExecReload: this unit is restart-only. Deploys use `systemctl restart`,
+# which sends SIGTERM; the server drains in-flight requests within TimeoutStopSec
+# before SIGKILL. A `systemctl reload` would be a silent no-op for Type=simple.
 Restart=always
 RestartSec=2
 KillSignal=SIGTERM
 TimeoutStopSec=30
-StandardOutput=append:/var/log/pantry/api.log
-StandardError=append:/var/log/pantry/api.log
+StandardOutput=append:/var/log/expyrico/api.log
+StandardError=append:/var/log/expyrico/api.log
 
 # Hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/log/pantry
+ReadWritePaths=/var/log/expyrico
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
@@ -3947,13 +4417,13 @@ ProtectControlGroups=true
 WantedBy=multi-user.target
 ```
 
-- [ ] **Step 5: Write `infra/roles/app/templates/pantry-admin.service.j2`**
+- [ ] **Step 5: Write `infra/roles/app/templates/expyrico-admin.service.j2`**
 
 ```ini
 [Unit]
-Description=Pantry Admin (Next.js)
-After=network.target pantry-api.service
-Wants=pantry-api.service
+Description=Expyrico Admin (Next.js)
+After=network.target expyrico-api.service
+Wants=expyrico-api.service
 
 [Service]
 Type=simple
@@ -3964,18 +4434,21 @@ EnvironmentFile={{ config_dir }}/.env.production
 Environment=PORT=4001
 Environment=HOSTNAME=127.0.0.1
 ExecStart=/usr/bin/node {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/server.js
+# No ExecReload: this unit is restart-only. Deploys use `systemctl restart`,
+# which sends SIGTERM; the server drains in-flight requests within TimeoutStopSec
+# before SIGKILL. A `systemctl reload` would be a silent no-op for Type=simple.
 Restart=always
 RestartSec=2
 KillSignal=SIGTERM
 TimeoutStopSec=30
-StandardOutput=append:/var/log/pantry/admin.log
-StandardError=append:/var/log/pantry/admin.log
+StandardOutput=append:/var/log/expyrico/admin.log
+StandardError=append:/var/log/expyrico/admin.log
 
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/log/pantry
+ReadWritePaths=/var/log/expyrico
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
@@ -3988,7 +4461,7 @@ WantedBy=multi-user.target
 
 ```
 # Managed by Ansible — do not edit.
-{{ app_user }} ALL=(root) NOPASSWD: /bin/systemctl reload pantry-api, /bin/systemctl reload pantry-admin, /bin/systemctl restart pantry-api, /bin/systemctl restart pantry-admin
+{{ app_user }} ALL=(root) NOPASSWD: /bin/systemctl reload expyrico-api, /bin/systemctl reload expyrico-admin, /bin/systemctl restart expyrico-api, /bin/systemctl restart expyrico-admin
 Defaults!/bin/systemctl !requiretty
 ```
 
@@ -4006,7 +4479,7 @@ git commit -m "feat(infra): app role (systemd units, sudoers, backup cron)"
 **Files:**
 - Create: `infra/roles/secrets/tasks/main.yml`
 
-The role does NOT generate or push secrets; it asserts the operator has placed `/etc/pantry/.env.production` on the host with mode 600 owned by `pantryapp:pantryapp`. This keeps secrets out of git and out of Ansible's logs.
+The role does NOT generate or push secrets; it asserts the operator has placed `/etc/expyrico/.env.production` on the host with mode 600 owned by `expyrico:expyrico`. This keeps secrets out of git and out of Ansible's logs.
 
 - [ ] **Step 1: Create directory**
 
@@ -4018,7 +4491,7 @@ mkdir -p infra/roles/secrets/tasks
 
 ```yaml
 ---
-- name: Check /etc/pantry/.env.production exists
+- name: Check /etc/expyrico/.env.production exists
   ansible.builtin.stat:
     path: "{{ config_dir }}/.env.production"
   register: env_prod
@@ -4060,21 +4533,21 @@ git commit -m "feat(infra): secrets role asserts env file presence and perms"
 ```bash
 #!/usr/bin/env bash
 #
-# Nightly Pantry backup. Run as root via cron from /etc/pantry/.env.production-aware path.
+# Nightly Expyrico backup. Run as root via cron from /etc/expyrico/.env.production-aware path.
 #
-#   pg_dump --format=custom pantry  →  age -r <recipient>  →  /var/backups/pantry/YYYY-MM-DD.age
+#   pg_dump --format=custom pantry  →  age -r <recipient>  →  /var/backups/expyrico/YYYY-MM-DD.age
 #   rclone copy to <remote>:<bucket>/daily/
 #   Rotation: keep 7 daily, 4 weekly (Sundays), 3 monthly (1st of month)
 #
-# Environment (sourced from /etc/pantry/.env.production):
+# Environment (sourced from /etc/expyrico/.env.production):
 #   DATABASE_URL                 — Postgres connection string for pg_dump
 #   BACKUP_AGE_RECIPIENT         — age public key
 #   BACKUP_RCLONE_REMOTE         — e.g., b2:pantry-backups
-#   BACKUP_LOCAL_DIR             — default /var/backups/pantry
+#   BACKUP_LOCAL_DIR             — default /var/backups/expyrico
 
 set -euo pipefail
 
-ENV_FILE=/etc/pantry/.env.production
+ENV_FILE=/etc/expyrico/.env.production
 if [[ ! -r "$ENV_FILE" ]]; then
     echo "Cannot read $ENV_FILE" >&2
     exit 1
@@ -4086,7 +4559,7 @@ set -a; source "$ENV_FILE"; set +a
 : "${BACKUP_AGE_RECIPIENT:?BACKUP_AGE_RECIPIENT is required}"
 : "${BACKUP_RCLONE_REMOTE:?BACKUP_RCLONE_REMOTE is required}"
 
-LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/pantry}"
+LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/expyrico}"
 mkdir -p "$LOCAL_DIR"/{daily,weekly,monthly}
 
 TODAY=$(date -u +%F)        # YYYY-MM-DD
@@ -4183,18 +4656,18 @@ git commit -m "feat(infra): nightly backup script (pg_dump | age | rclone, 7/4/3
 ```bash
 #!/usr/bin/env bash
 #
-# Restore the encrypted Pantry backup for a given date into the configured DB.
+# Restore the encrypted Expyrico backup for a given date into the configured DB.
 #
 # Usage:
 #   ./restore.sh <YYYY-MM-DD> [daily|weekly|monthly]
 #
-# Requires AGE_IDENTITY_FILE in /etc/pantry/.env.production pointing to the
+# Requires AGE_IDENTITY_FILE in /etc/expyrico/.env.production pointing to the
 # age private key file (mode 600). Will pg_restore into DATABASE_URL,
 # overwriting existing data — caller is responsible for confirming target.
 
 set -euo pipefail
 
-ENV_FILE=/etc/pantry/.env.production
+ENV_FILE=/etc/expyrico/.env.production
 # shellcheck disable=SC1090
 set -a; source "$ENV_FILE"; set +a
 
@@ -4204,7 +4677,7 @@ set -a; source "$ENV_FILE"; set +a
 
 DATE="${1:?date YYYY-MM-DD is required}"
 TIER="${2:-daily}"
-LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/pantry}"
+LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/expyrico}"
 
 case "$TIER" in
     daily|weekly|monthly) ;;
@@ -4262,15 +4735,15 @@ git commit -m "feat(infra): restore.sh decrypts age + pg_restore from local or r
 **Files:**
 - Create: `infra/scripts/deploy-remote.sh`
 
-This script lives in the repo and is rsynced to the host as part of each release, but the GitHub Actions job invokes the copy already on disk (`/opt/pantry/releases/<sha>/infra/scripts/deploy-remote.sh`). Atomic symlink flip with health-check rollback.
+This script lives in the repo and is rsynced to the host as part of each release, but the GitHub Actions job invokes the copy already on disk (`/opt/expyrico/releases/<sha>/infra/scripts/deploy-remote.sh`). Atomic symlink flip with health-check rollback.
 
 - [ ] **Step 1: Write `infra/scripts/deploy-remote.sh`**
 
 ```bash
 #!/usr/bin/env bash
 #
-# Run on the VPS as the `pantryapp` user. Assumes a freshly-rsynced release
-# directory at /opt/pantry/releases/<SHA>/ that contains the full repo with
+# Run on the VPS as the `expyrico` user. Assumes a freshly-rsynced release
+# directory at /opt/expyrico/releases/<SHA>/ that contains the full repo with
 # api/dist and apps/admin/.next/standalone already built.
 #
 # Usage: ./deploy-remote.sh <SHA> <API_DOMAIN>
@@ -4279,7 +4752,7 @@ set -euo pipefail
 
 SHA="${1:?sha required}"
 API_DOMAIN="${2:?api domain required}"
-APP_ROOT=/opt/pantry
+APP_ROOT=/opt/expyrico
 NEW="$APP_ROOT/releases/$SHA"
 CURRENT="$APP_ROOT/current"
 
@@ -4296,27 +4769,35 @@ fi
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# 1. Install prod deps in the release (deterministic; same lockfile)
-log "installing prod deps"
+# 1. Install the FULL dependency set first. The Prisma CLI lives in
+#    devDependencies, so migrations must run while it is still installed —
+#    `pnpm install --prod` (step 3) prunes it away. Order is load-bearing:
+#    install (with dev) → migrate → prune. Never run migrate after the prune.
+log "installing all deps (dev included, needed for prisma CLI)"
 cd "$NEW"
-pnpm install --prod --frozen-lockfile
+pnpm install --frozen-lockfile
 
-# 2. Run migrations
+# 2. Run migrations while the Prisma CLI is still present
 log "running prisma migrate deploy"
 cd "$NEW/api"
 pnpm exec prisma migrate deploy
 cd "$NEW"
 
-# 3. Atomic symlink flip
+# 3. Prune dev dependencies now that migrations are done
+log "pruning dev deps"
+pnpm install --prod --frozen-lockfile
+
+# 4. Atomic symlink flip
 log "flipping symlink"
 ln -sfn "$NEW" "$CURRENT"
 
-# 4. Graceful reload
-log "reloading services"
-sudo /bin/systemctl reload pantry-api
-sudo /bin/systemctl reload pantry-admin
+# 5. Restart services (SIGTERM + TimeoutStopSec=30 gives the documented
+#    graceful drain window; the units have no ExecReload, so `reload` is a no-op)
+log "restarting services"
+sudo /bin/systemctl restart expyrico-api
+sudo /bin/systemctl restart expyrico-admin
 
-# 5. Smoke test with backoff
+# 6. Smoke test with backoff
 smoke() {
     local i delay url="https://${API_DOMAIN}/health/ready"
     for i in 1 2 3 4 5; do
@@ -4335,8 +4816,8 @@ if ! smoke; then
     log "SMOKE FAILED — rolling back"
     if [[ -n "$PREV" ]]; then
         ln -sfn "$PREV" "$CURRENT"
-        sudo /bin/systemctl reload pantry-api
-        sudo /bin/systemctl reload pantry-admin
+        sudo /bin/systemctl restart expyrico-api
+        sudo /bin/systemctl restart expyrico-admin
         log "rolled back to $PREV"
     else
         log "no previous release to roll back to"
@@ -4344,7 +4825,7 @@ if ! smoke; then
     exit 1
 fi
 
-# 6. Prune old releases (keep last 5)
+# 7. Prune old releases (keep last 5)
 cd "$APP_ROOT/releases"
 ls -1t | tail -n +6 | xargs -r rm -rf
 log "deploy complete: $SHA"
@@ -4404,17 +4885,17 @@ jobs:
         env:
           POSTGRES_USER: pantry
           POSTGRES_PASSWORD: pantry
-          POSTGRES_DB: pantry_test
+          POSTGRES_DB: expyrico_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd "pg_isready -U pantry -d pantry_test"
+          --health-cmd "pg_isready -U pantry -d expyrico_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
       redis:
         image: redis:7
         ports: ['6379:6379']
         options: --health-cmd "redis-cli ping" --health-interval 5s
     env:
-      DATABASE_URL: postgresql://pantry:pantry@localhost:5432/pantry_test
+      DATABASE_URL: postgresql://expyrico:expyrico@localhost:5432/expyrico_test
       REDIS_URL: redis://localhost:6379/15
     steps:
       - uses: actions/checkout@v4
@@ -4426,8 +4907,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: cp api/.env.test.example api/.env.test
-      - run: pnpm --filter @pantry/api exec prisma generate
-      - run: pnpm --filter @pantry/api exec prisma migrate deploy
+      - run: pnpm --filter @expyrico/api exec prisma generate
+      - run: pnpm --filter @expyrico/api exec prisma migrate deploy
       - run: pnpm -r typecheck
       - run: pnpm -r test
 
@@ -4445,7 +4926,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @pantry/api exec prisma generate
+      - run: pnpm --filter @expyrico/api exec prisma generate
       - run: pnpm -r build
       - name: Package release tarball
         run: |
@@ -4481,19 +4962,19 @@ jobs:
         run: |
           set -euo pipefail
           scp -i ~/.ssh/id_ed25519 out/pantry-${{ github.sha }}.tar.gz \
-              pantryapp@${{ secrets.DEPLOY_HOST }}:/tmp/
+              expyrico@${{ secrets.DEPLOY_HOST }}:/tmp/
 
       - name: Extract on host and run deploy
         run: |
           set -euo pipefail
           SHA=${{ github.sha }}
-          ssh -i ~/.ssh/id_ed25519 pantryapp@${{ secrets.DEPLOY_HOST }} bash <<EOF
+          ssh -i ~/.ssh/id_ed25519 expyrico@${{ secrets.DEPLOY_HOST }} bash <<EOF
           set -euo pipefail
-          mkdir -p /opt/pantry/releases/$SHA
-          tar -xzf /tmp/pantry-$SHA.tar.gz -C /opt/pantry/releases/$SHA
+          mkdir -p /opt/expyrico/releases/$SHA
+          tar -xzf /tmp/pantry-$SHA.tar.gz -C /opt/expyrico/releases/$SHA
           rm -f /tmp/pantry-$SHA.tar.gz
-          chmod +x /opt/pantry/releases/$SHA/infra/scripts/deploy-remote.sh
-          /opt/pantry/releases/$SHA/infra/scripts/deploy-remote.sh $SHA ${{ secrets.API_DOMAIN }}
+          chmod +x /opt/expyrico/releases/$SHA/infra/scripts/deploy-remote.sh
+          /opt/expyrico/releases/$SHA/infra/scripts/deploy-remote.sh $SHA ${{ secrets.API_DOMAIN }}
           EOF
 ```
 
@@ -4656,7 +5137,7 @@ git commit -m "chore(infra): weekly pnpm audit workflow that files an issue on v
 - [ ] **Step 1: Generate Prisma client**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 
 - [ ] **Step 2: Typecheck the whole repo**
@@ -4664,26 +5145,26 @@ pnpm --filter @pantry/api exec prisma generate
 ```bash
 pnpm typecheck
 ```
-Expected: every workspace package exits 0 — including `@pantry/admin`.
+Expected: every workspace package exits 0 — including `@expyrico/admin`.
 
 - [ ] **Step 3: Run API tests**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: every M0a/M0b test plus the new `tests/integration/audit-log.test.ts` (3 tests) passes.
 
 - [ ] **Step 4: Run admin unit tests**
 
 ```bash
-pnpm --filter @pantry/admin test
+pnpm --filter @expyrico/admin test
 ```
 Expected: `env.test.ts` (3), `cookies.test.ts` (4), `csrf.test.ts` (4) — 11 tests total pass.
 
 - [ ] **Step 5: Run admin E2E**
 
 ```bash
-pnpm --filter @pantry/admin test:e2e
+pnpm --filter @expyrico/admin test:e2e
 ```
 Expected: 2 tests pass (login flow + unauthenticated redirect).
 
@@ -4692,7 +5173,7 @@ Expected: 2 tests pass (login flow + unauthenticated redirect).
 ```bash
 pnpm -r build
 ```
-Expected: `@pantry/api` produces `api/dist/`; `@pantry/admin` produces `apps/admin/.next/standalone/`.
+Expected: `@expyrico/api` produces `api/dist/`; `@expyrico/admin` produces `apps/admin/.next/standalone/`.
 
 - [ ] **Step 7: Ansible syntax check (if installed)**
 
@@ -4739,25 +5220,29 @@ git tag m0d-complete
 
 ## Self-review checklist (run before declaring M0d done)
 
-- [ ] `pnpm typecheck` is green for every workspace package, including `@pantry/admin`.
-- [ ] `pnpm --filter @pantry/api test` runs the M0a/M0b tests + 3 new `audit-log.test.ts` tests, all passing.
-- [ ] `pnpm --filter @pantry/admin test` runs 11 unit tests, all passing.
-- [ ] `pnpm --filter @pantry/admin test:e2e` runs 2 Playwright tests, both passing against a real seeded admin user with TOTP enrolled.
-- [ ] `pnpm --filter @pantry/admin build` emits `apps/admin/.next/standalone/apps/admin/server.js` (the path referenced by `pantry-admin.service.j2`).
+- [ ] `pnpm typecheck` is green for every workspace package, including `@expyrico/admin`.
+- [ ] `pnpm --filter @expyrico/api test` runs the M0a/M0b tests + 3 new `audit-log.test.ts` tests, all passing.
+- [ ] `pnpm --filter @expyrico/admin test` runs 11 unit tests, all passing.
+- [ ] `pnpm --filter @expyrico/admin test:e2e` runs 2 Playwright tests, both passing against a real seeded admin user with TOTP enrolled.
+- [ ] `pnpm --filter @expyrico/admin build` emits `apps/admin/.next/standalone/apps/admin/server.js` (the path referenced by `expyrico-admin.service.j2`).
 - [ ] Every spec §8.3 route is stubbed: `/`, `/users`, `/users/[id]`, `/products`, `/products/[id]`, `/products/pending`, `/reviews`, `/reviews/[id]`, `/reports`, `/reports/[id]`, `/analytics/{overview,scans,reviews,geography}`, `/system/{queue,push,api-errors,external-apis}`, `/settings/{feature-flags,notification-templates,moderation,admins}`.
+- [ ] The login flow handles all three M0b login-response branches: full `{user,tokens}`, `{requiresTotp, challengeToken}` (existing TOTP), and `{requiresTotpEnrollment, enrollmentChallenge}` (fresh admin with no TOTP yet).
+- [ ] The enrollment step (`TotpEnrollForm` + `/api/auth/totp/enroll` and `/api/auth/totp/verify-enrollment` proxies) issues NO session, renders the `qrCodeDataUrl` QR and the 10 `recoveryCodes` with a "shown only once" warning, and on the 204 verify-enrollment returns the admin to the password step to sign in again.
 - [ ] `apps/admin/src/middleware.ts` redirects unauthenticated requests to `/login` and authenticated requests away from `/login`.
-- [ ] `apps/admin/src/lib/session.ts` enforces `role === 'admin'` and performs one refresh-on-401 retry before redirecting.
-- [ ] Tokens are stored ONLY in HTTP-only cookies (`pantry_admin_access`, `pantry_admin_refresh`); the CSRF cookie (`pantry_admin_csrf`) is intentionally NOT HTTP-only.
+- [ ] `apps/admin/src/lib/session.ts` enforces `role === 'admin'` and, on 401, hands off to the `/api/auth/refresh-redirect` Route Handler (it NEVER writes cookies during render — Next.js 15 forbids that and it would cause a refresh→redirect loop); only a missing refresh cookie sends the user to `/login`.
+- [ ] Tokens are stored ONLY in HTTP-only cookies (`pantry_admin_access`, `pantry_admin_refresh`); the CSRF cookie (`expyrico_admin_csrf`) is intentionally NOT HTTP-only.
 - [ ] All mutating Route Handlers (`/api/auth/refresh`, `/api/auth/logout`) verify the double-submit CSRF token via `isCsrfValid`.
 - [ ] `admin_audit_log` table exists in the Prisma schema and the `writeAuditLog` service inserts into it (verified by integration tests).
 - [ ] Ansible roles `common`, `postgres`, `redis`, `nodejs`, `nginx`, `certbot`, `app`, `secrets` exist and `site.yml` composes them in dependency order.
 - [ ] `infra/inventory.example.ini` and `infra/group_vars/all.example.yml` carry only placeholder values; no real domains, IPs, or secrets are committed.
 - [ ] nginx vhost `admin.<domain>` enforces the IP allowlist via per-CIDR `allow` lines followed by `deny all`.
-- [ ] nginx vhost `api.<domain>` applies stricter rate-limit zone `pantry_auth` to `/v1/auth/`.
-- [ ] systemd units use `EnvironmentFile=/etc/pantry/.env.production`, run as `pantryapp`, set `TimeoutStopSec=30`, and enable systemd hardening flags.
-- [ ] `/etc/sudoers.d/pantry` allows `pantryapp` to reload/restart ONLY `pantry-api` and `pantry-admin` and is validated by `visudo -cf`.
+- [ ] nginx vhost `api.<domain>` applies stricter rate-limit zone `expyrico_auth` to `/v1/auth/`.
+- [ ] systemd units use `EnvironmentFile=/etc/expyrico/.env.production`, run as `expyrico`, set `TimeoutStopSec=30`, enable systemd hardening flags, and are restart-only (no `ExecReload`; deploy uses `systemctl restart` and relies on SIGTERM + `TimeoutStopSec` for graceful drain).
+- [ ] `/etc/sudoers.d/pantry` allows `expyrico` to reload/restart ONLY `expyrico-api` and `expyrico-admin` and is validated by `visudo -cf`.
+- [ ] The postgres role generates the `pantry_app` DB password ONCE and persists it to `/etc/expyrico/db_password` (root-only), reusing it on re-runs — it does NOT regenerate via `lookup('password','/dev/null')` each apply.
+- [ ] An off-host UptimeRobot HTTP monitor pings `https://api.<domain>/health` every 5 minutes with an email alert contact (documented in `infra/README.md` + the app role reminds the operator).
 - [ ] `.github/workflows/deploy.yml` runs tests with real Postgres + Redis service containers, builds, ships a tarball, and invokes `deploy-remote.sh`.
-- [ ] `deploy-remote.sh` does atomic `ln -sfn`, smoke-tests `/health/ready` with backoff, and flips back to the previous release on failure.
+- [ ] `deploy-remote.sh` installs the full dependency set, runs `prisma migrate deploy` while the Prisma CLI is still present, prunes dev deps only AFTER migrating, does atomic `ln -sfn`, smoke-tests `/health/ready` with backoff, and flips back to the previous release on failure.
 - [ ] `infra/scripts/backup.sh` pipes `pg_dump | age | rclone` and applies the 7/4/3 daily/weekly/monthly rotation locally AND remotely.
 - [ ] `infra/scripts/restore.sh` decrypts (local-or-remote) and runs `pg_restore`.
 - [ ] `renovate.json` validates as JSON, groups dev deps, and automerges patches.

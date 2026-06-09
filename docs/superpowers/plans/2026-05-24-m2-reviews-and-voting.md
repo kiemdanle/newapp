@@ -1,18 +1,45 @@
-# M2 — Reviews + Voting Implementation Plan
+# M2 — Reviews + Ratings Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the user-facing reviews surface: reviews CRUD, voting with Wilson lower-bound scoring, automatic profanity-based moderation and report submission, debounced background recalc workers, and the mobile screens (browse, product detail, reviews list, review form, report modal). Admin resolution of reports is M3 — this milestone ships only user-side submission and the auto-hide threshold.
 
-**Architecture:** Three new Postgres tables (`reviews`, `review_votes`, `reports`) managed via Prisma migration. Fastify routes under `/v1/products/:id/reviews`, `/v1/reviews/:id`, `/v1/reviews/:id/vote`, `/v1/me/reviews`, `/v1/reports`. Two pure-function services (`wilson.ts`, `profanity.ts`) with rigorous unit tests. Two BullMQ workers (`score-recalc` debounced 30s per review via Redis sentinel keys, `product-rating-recalc` per product). Mobile screens are read-mostly via TanStack Query (server is source of truth). A user's own review writes (create/edit/delete) are online-only TanStack mutations and do NOT route through the M1 offline write queue — spec §2.11's offline-queue line is amended for reviews. A new system user is seeded so the `moderation-flag` worker can author auto-flagged reports.
+**Architecture:** Three new Postgres tables (`reviews`, `review_votes`, `reports`) plus a `product_rating_country` rollup, managed via Prisma migration. A rating is one three-option enum per `(user, product)` with an optional comment; helpful/not-helpful voting applies only to comment-bearing reviews. Fastify routes under `/v1/products/:id/reviews`, `/v1/reviews/:id`, `/v1/reviews/:id/helpful`, `/v1/me/reviews`, `/v1/reports`. Two pure-function services (`wilson.ts`, `profanity.ts`) with rigorous unit tests. BullMQ workers (`score-recalc` debounced 30s per review via Redis sentinel keys, `product-rating-recalc` per product — maintains global + per-country tallies). Mobile screens are read-mostly via TanStack Query (server is source of truth). A user's own review writes (create/edit/delete) are online-only TanStack mutations and do NOT route through the M1 offline write queue — spec §2.11's offline-queue line is amended for reviews. A new system user is seeded so the `moderation-flag` worker can author auto-flagged reports.
 
 **Tech Stack:** Fastify 4, Prisma 5, Postgres 16, Redis 7, BullMQ 5, Zod 3, `obscenity` 0.4 (pure-JS profanity filter, no native deps), Vitest 2 + Supertest 7 (API), Expo SDK + Expo Router + Zustand + TanStack Query + NativeWind (mobile), React Native Testing Library 12 (component tests), Maestro (E2E).
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.6–2.8, 4.3, 5 (reviews / review_votes / reports), 6.4, 6.5, 7. Read before starting.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` sections 2.6–2.8, 4.3, 5 (reviews / review_votes / reports), 6.4, 6.5, 7. Read before starting.
 
 ---
 
-## Feature additions — 2026-05-26
+## Requirement revision — 2026-06-08 (Expyrico)
+
+Canonical contract: `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` (2026-06-08 revision §2.6/§2.7). **This block supersedes the 2026-05-26 "Feature additions" block below in its entirety** (taste/value is gone). The 2026-05-26 "Validation amendments" block still applies except where it names taste/value or up/down votes.
+
+**1. Three-option rating replaces taste+value (and the original single score).** A rating is one enum choice per `(user, product)`:
+
+- **Wire (camelCase):** create/update bodies require `rating ∈ 'buy_again' | 'buy_again_on_sale' | 'wont_buy'`; `comment` (was `body`) stays optional. Responses expose `rating` + `comment`.
+- **DB (snake_case):** the `reviews` table has `rating` (a Postgres enum `review_rating`, NOT NULL) and `body` (nullable, the comment). No `taste_rating` / `value_rating`.
+- **Eligibility:** a rating may only be created for a product where `is_community_eligible = true` (barcode-sourced, M1). Manual personal-notes-only products reject rating writes (`422 not_community_eligible`).
+
+**2. Helpful / Not-helpful replaces up/down voting.**
+
+- `review_votes.value smallint (-1|1)` becomes `review_votes.helpful boolean`. Endpoints: `POST/DELETE /v1/reviews/:id/helpful` with `{ helpful: boolean }`.
+- Voting is allowed **only on reviews that have a comment** (`body IS NOT NULL`); a vote on a comment-less rating returns `422 review_has_no_comment`.
+- `reviews.upvote_count` / `downvote_count` become `helpful_count` / `not_helpful_count`. The Wilson `score` is now the lower bound over helpful vs not-helpful (helpfulness ranking) — math unchanged, inputs renamed.
+- Helpful votes are **independent** of whether the voter submitted their own rating, and are **never** counted in the rating aggregate.
+
+**3. Country-scoped 3-percentage aggregate.** `GET /v1/products/:id/reviews` returns an `aggregate` computed only from raters (not helpful votes), filtered by the requester's `users.country`: `{ buyAgainPct, buyAgainOnSalePct, wontBuyPct, ratingCount }`. The `rating-recalc` worker maintains the per-country rollup + the global `products` tallies (`buy_again_count`, `buy_again_on_sale_count`, `wont_buy_count`, `rating_count`, `review_count`) defined in M1.
+
+**4. Sort modes.** Default `helpful` (Wilson over helpful/not-helpful), plus `new`. The old "highest rating" sort is **removed** (a 3-way categorical has no single-axis ranking).
+
+**5. Mobile.** The review form is a **three-option radio** (not star inputs) + optional comment; product detail shows the 3-percentage aggregate; review cards show the rater's option pill and Helpful/Not-helpful only when a comment is present.
+
+---
+
+## Feature additions — 2026-05-26  ⚠️ SUPERSEDED (see 2026-06-08 revision above)
+
+> The two-criteria taste+value model described here was replaced on 2026-06-08 by the three-option rating. Retained only as change history — **do not implement the taste/value contract below.**
 
 **Two-criteria review ratings (replaces the single `rating`).** A review now carries two required 1–5 scores instead of one:
 
@@ -92,7 +119,7 @@ The project is re-sequenced into **two tracks**. Build the entire Backend + Admi
 This plan creates the following files. Files in **bold** carry the load-bearing logic.
 
 ```
-pantry/
+expyrico/
 ├── packages/shared/src/schemas/
 │   ├── review.ts                               ← Zod review schemas (NEW)
 │   └── report.ts                               ← Zod report schemas (NEW)
@@ -119,7 +146,7 @@ pantry/
 │   │   │   ├── create.ts                       ← POST /v1/products/:id/reviews
 │   │   │   ├── update.ts                       ← PATCH /v1/reviews/:id
 │   │   │   ├── delete.ts                       ← DELETE /v1/reviews/:id
-│   │   │   ├── vote.ts                         ← POST/DELETE /v1/reviews/:id/vote
+│   │   │   ├── helpful.ts                      ← POST/DELETE /v1/reviews/:id/helpful
 │   │   │   └── my-reviews.ts                   ← GET /v1/me/reviews
 │   │   ├── routes/reports/
 │   │   │   ├── index.ts
@@ -133,24 +160,24 @@ pantry/
 │       ├── integration/reviews-create.test.ts
 │       ├── integration/reviews-update.test.ts
 │       ├── integration/reviews-delete.test.ts
-│       ├── integration/reviews-vote.test.ts
+│       ├── integration/reviews-helpful.test.ts
 │       ├── integration/my-reviews.test.ts
 │       ├── integration/reports-create.test.ts
 │       ├── integration/score-recalc-worker.test.ts
 │       ├── integration/moderation-flag-worker.test.ts
 │       ├── integration/product-rating-recalc-worker.test.ts
-│       └── helpers/factories.ts                ← +makeProduct, makeReview, makeVote (MODIFY)
+│       └── helpers/factories.ts                ← +makeProduct, makeReview, makeVote (helpful boolean) (MODIFY)
 └── apps/mobile/
     ├── src/api/
     │   ├── reviews.ts                          ← TanStack hooks
     │   ├── products-search.ts
     │   └── reports.ts
     ├── src/features/reviews/
-    │   ├── ReviewCard.tsx                      ← inline vote + long-press
+    │   ├── ReviewCard.tsx                      ← inline helpful vote + long-press
     │   ├── ReviewList.tsx
-    │   ├── StarRatingInput.tsx
+    │   ├── RatingChoiceInput.tsx
     │   ├── SortTabs.tsx
-    │   └── useOptimisticVote.ts
+    │   └── useOptimisticHelpful.ts
     ├── src/features/reports/
     │   └── ReportModal.tsx
     ├── app/(app)/(tabs)/browse.tsx             ← MODIFY (placeholder from M0c)
@@ -159,7 +186,7 @@ pantry/
     ├── app/(app)/product/[id]/review.tsx       ← NEW
     └── __tests__/
         ├── ReviewCard.test.tsx
-        ├── StarRatingInput.test.tsx
+        ├── RatingChoiceInput.test.tsx
         └── ReportModal.test.tsx
 └── apps/mobile/.maestro/
     └── reviews-flow.yaml                       ← E2E
@@ -171,7 +198,7 @@ pantry/
 
 - TDD: write failing test, watch it fail, implement minimal code, watch it pass, commit. No batched commits across features.
 - Conventional commits, scopes `shared`, `api`, `mobile`.
-- Every API route imports its Zod schema from `@pantry/shared`.
+- Every API route imports its Zod schema from `@expyrico/shared`.
 - Every API route handler uses `req.user`, `app.requireAuth`, and `req.id` for logging.
 - No `console.log`. Use `req.log` (API) or the mobile logger.
 - Mobile data fetching: TanStack Query with `staleTime: 30_000` for review lists. A user's own review *writes* (create/edit/delete) are online-only TanStack mutations — server is source of truth — and are NOT routed through the M1 offline write queue (spec §2.11 amended for reviews).
@@ -201,6 +228,14 @@ enum ReviewStatus {
   @@map("review_status")
 }
 
+enum ReviewRating {
+  buy_again
+  buy_again_on_sale
+  wont_buy
+
+  @@map("review_rating")
+}
+
 enum ReportTargetType {
   review
   user
@@ -225,18 +260,17 @@ enum ReportStatus {
 
 ```prisma
 model Review {
-  id            String       @id @default(uuid()) @db.Uuid
-  userId        String       @db.Uuid
-  productId     String       @db.Uuid
-  tasteRating   Int          @map("taste_rating") @db.SmallInt
-  valueRating   Int          @map("value_rating") @db.SmallInt
-  body          String?
-  upvoteCount   Int          @default(0)
-  downvoteCount Int          @default(0)
-  score         Decimal      @default(0) @db.Decimal(7, 6)
-  status        ReviewStatus @default(visible)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id              String       @id @default(uuid()) @db.Uuid
+  userId          String       @db.Uuid
+  productId       String       @db.Uuid
+  rating          ReviewRating @map("rating")
+  body            String?
+  helpfulCount    Int          @default(0) @map("helpful_count")
+  notHelpfulCount Int          @default(0) @map("not_helpful_count")
+  score           Decimal      @default(0) @db.Decimal(7, 6)
+  status          ReviewStatus @default(visible)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -251,7 +285,7 @@ model ReviewVote {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
   reviewId  String   @db.Uuid
-  value     Int      @db.SmallInt
+  helpful   Boolean  @map("helpful")
   createdAt DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -260,6 +294,22 @@ model ReviewVote {
   @@unique([userId, reviewId])
   @@index([reviewId])
   @@map("review_votes")
+}
+
+model ProductRatingCountry {
+  id                  String  @id @default(uuid()) @db.Uuid
+  productId           String  @db.Uuid @map("product_id")
+  country             String  @db.Char(2)
+  buyAgainCount       Int     @default(0) @map("buy_again_count")
+  buyAgainOnSaleCount Int     @default(0) @map("buy_again_on_sale_count")
+  wontBuyCount        Int     @default(0) @map("wont_buy_count")
+  ratingCount         Int     @default(0) @map("rating_count")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, country])
+  @@index([productId])
+  @@map("product_rating_country")
 }
 
 model Report {
@@ -299,14 +349,15 @@ Find the `model User` block. After the existing `auditLogs` line, append:
 Inside `model Product`, append:
 
 ```prisma
-  reviews Review[]
+  reviews               Review[]
+  productRatingCountries ProductRatingCountry[]
 ```
 
 - [x] **Step 5: Format and validate the schema**
 
 ```bash
-pnpm --filter @pantry/api exec prisma format
-pnpm --filter @pantry/api exec prisma validate
+pnpm --filter @expyrico/api exec prisma format
+pnpm --filter @expyrico/api exec prisma validate
 ```
 Expected: `The schema at api/prisma/schema.prisma is valid 🚀`.
 
@@ -327,29 +378,21 @@ git commit -m "feat(api): add Review, ReviewVote, Report models"
 - [x] **Step 1: Create the migration**
 
 ```bash
-pnpm --filter @pantry/api exec prisma migrate dev --name reviews_votes_reports
+pnpm --filter @expyrico/api exec prisma migrate dev --name reviews_votes_reports
 ```
 Expected: prints `Applying migration ...` and `✔ Generated Prisma Client`.
 
-- [x] **Step 1b: Append 1–5 CHECK constraints for the two rating columns**
+- [x] **Step 1b: Rating is a Postgres enum — no CHECK constraint needed**
 
-Prisma does not emit value-range CHECK constraints from the schema, so add them to the generated `migration.sql` (before re-applying / on a fresh `migrate dev`):
-
-```sql
-ALTER TABLE "reviews"
-  ADD CONSTRAINT "reviews_taste_rating_check" CHECK ("taste_rating" BETWEEN 1 AND 5),
-  ADD CONSTRAINT "reviews_value_rating_check" CHECK ("value_rating" BETWEEN 1 AND 5);
-```
-
-Both `taste_rating` and `value_rating` are NOT NULL (the Prisma `Int` fields are non-optional). Re-run `prisma migrate dev` if the file was edited after generation.
+The `rating` column is a `review_rating` enum (`buy_again | buy_again_on_sale | wont_buy`), NOT NULL, so Postgres enforces the domain natively — no value-range CHECK to append. (The old taste/value 1–5 CHECK constraints are removed with the taste/value columns.) Confirm Prisma emitted `CREATE TYPE "review_rating" AS ENUM (...)` in the generated `migration.sql`.
 
 - [x] **Step 2: Verify the tables and indexes**
 
 ```bash
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "\dt"
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "\di reviews*"
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "\di review_votes*"
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "\di reports*"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "\dt"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "\di reviews*"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "\di review_votes*"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "\di reports*"
 ```
 Expected: `reviews`, `review_votes`, `reports` listed; the indexes include `reviews_productId_status_score_idx`, `reviews_userId_productId_key`, `review_votes_userId_reviewId_key`, `reports_targetType_targetId_status_idx`.
 
@@ -389,7 +432,7 @@ async function main() {
     update: {},
     create: {
       id: SYSTEM_USER_ID,
-      email: 'system@pantry.local',
+      email: 'system@expyrico.local',
       firstName: 'System',
       lastName: 'Bot',
       emailVerifiedAt: new Date(),
@@ -427,16 +470,16 @@ immediately before `"scripts"`.
 - [x] **Step 3: Run the seed**
 
 ```bash
-pnpm --filter @pantry/api exec prisma db seed
+pnpm --filter @expyrico/api exec prisma db seed
 ```
 Expected: `Seeded system user 00000000-0000-0000-0000-000000000001`.
 
 - [x] **Step 4: Verify it landed**
 
 ```bash
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "SELECT id, email FROM users WHERE id = '00000000-0000-0000-0000-000000000001';"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "SELECT id, email FROM users WHERE id = '00000000-0000-0000-0000-000000000001';"
 ```
-Expected: one row with `email = system@pantry.local`.
+Expected: one row with `email = system@expyrico.local`.
 
 - [x] **Step 5: Commit**
 
@@ -486,7 +529,7 @@ Find the `beforeEach(async () => {` block. Inside it, AFTER the `flushdb()` call
     update: {},
     create: {
       id: '00000000-0000-0000-0000-000000000001',
-      email: 'system@pantry.local',
+      email: 'system@expyrico.local',
       firstName: 'System',
       lastName: 'Bot',
       emailVerifiedAt: new Date(),
@@ -499,7 +542,7 @@ Find the `beforeEach(async () => {` block. Inside it, AFTER the `flushdb()` call
 - [x] **Step 3: Run the existing suite to confirm nothing broke**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: all previously-passing tests still pass.
 
@@ -526,6 +569,7 @@ export async function makeProduct(overrides: Partial<{
   name: string;
   brand: string;
   barcode: string;
+  isCommunityEligible: boolean;
 }> = {}): Promise<Product> {
   const prisma = getPrisma();
   return prisma.product.create({
@@ -534,6 +578,9 @@ export async function makeProduct(overrides: Partial<{
       brand: overrides.brand ?? 'Acme',
       barcode: overrides.barcode ?? `BC-${randomUUID()}`,
       source: 'user',
+      // Reviews require a community-eligible product; default true so review
+      // factories work out of the box. Pass false to test the rejection path.
+      isCommunityEligible: overrides.isCommunityEligible ?? true,
     },
   });
 }
@@ -541,12 +588,11 @@ export async function makeProduct(overrides: Partial<{
 export async function makeReview(overrides: {
   userId: string;
   productId: string;
-  tasteRating?: number;
-  valueRating?: number;
+  rating?: 'buy_again' | 'buy_again_on_sale' | 'wont_buy';
   body?: string;
   status?: 'visible' | 'hidden' | 'deleted';
-  upvoteCount?: number;
-  downvoteCount?: number;
+  helpfulCount?: number;
+  notHelpfulCount?: number;
   score?: number;
 }): Promise<Review> {
   const prisma = getPrisma();
@@ -554,12 +600,11 @@ export async function makeReview(overrides: {
     data: {
       userId: overrides.userId,
       productId: overrides.productId,
-      tasteRating: overrides.tasteRating ?? 5,
-      valueRating: overrides.valueRating ?? 5,
+      rating: overrides.rating ?? 'buy_again',
       body: overrides.body ?? 'A solid product.',
       status: overrides.status ?? 'visible',
-      upvoteCount: overrides.upvoteCount ?? 0,
-      downvoteCount: overrides.downvoteCount ?? 0,
+      helpfulCount: overrides.helpfulCount ?? 0,
+      notHelpfulCount: overrides.notHelpfulCount ?? 0,
       score: overrides.score ?? 0,
     },
   });
@@ -568,11 +613,11 @@ export async function makeReview(overrides: {
 export async function makeVote(overrides: {
   userId: string;
   reviewId: string;
-  value: 1 | -1;
+  helpful: boolean;
 }): Promise<ReviewVote> {
   const prisma = getPrisma();
   return prisma.reviewVote.create({
-    data: { userId: overrides.userId, reviewId: overrides.reviewId, value: overrides.value },
+    data: { userId: overrides.userId, reviewId: overrides.reviewId, helpful: overrides.helpful },
   });
 }
 ```
@@ -582,7 +627,7 @@ NOTE: If M1's factories already export `makeProduct`, skip that block and keep t
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -595,7 +640,7 @@ git commit -m "test(api): add makeReview and makeVote factories"
 
 ---
 
-### Task A6: Zod schemas in `@pantry/shared`
+### Task A6: Zod schemas in `@expyrico/shared`
 
 **Files:**
 - Create: `packages/shared/src/schemas/review.ts`
@@ -612,27 +657,27 @@ import { z } from 'zod';
 export const reviewStatusSchema = z.enum(['visible', 'hidden', 'deleted']);
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 
-export const reviewSortSchema = z.enum(['score', 'new', 'rating']).default('score');
+export const reviewSortSchema = z.enum(['helpful', 'new']).default('helpful');
 export type ReviewSort = z.infer<typeof reviewSortSchema>;
 
-const ratingField = z.number().int().min(1).max(5);
+export const reviewRatingSchema = z.enum(['buy_again', 'buy_again_on_sale', 'wont_buy']);
+export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 const bodyField = z.string().trim().max(2000).optional();
 
 export const reviewSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   productId: z.string().uuid(),
-  tasteRating: ratingField,
-  valueRating: ratingField,
+  rating: reviewRatingSchema,
   body: z.string().nullable(),
-  upvoteCount: z.number().int().nonnegative(),
-  downvoteCount: z.number().int().nonnegative(),
+  helpfulCount: z.number().int().nonnegative(),
+  notHelpfulCount: z.number().int().nonnegative(),
   score: z.number().min(0).max(1),
   status: reviewStatusSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  /** Present on lists when the caller is authenticated; null if no vote. */
-  myVote: z.union([z.literal(-1), z.literal(1)]).nullable().optional(),
+  /** Present on lists when the caller is authenticated; null if no vote. Only meaningful when body is non-null. */
+  myVote: z.boolean().nullable().optional(),
   /** Light author projection — first name + avatar only, never email. */
   author: z
     .object({
@@ -644,29 +689,35 @@ export const reviewSchema = z.object({
 });
 export type Review = z.infer<typeof reviewSchema>;
 
+/** Country-scoped rating aggregate (raters only; helpful votes excluded). */
+export const reviewAggregateSchema = z.object({
+  buyAgainPct: z.number().min(0).max(100),
+  buyAgainOnSalePct: z.number().min(0).max(100),
+  wontBuyPct: z.number().min(0).max(100),
+  ratingCount: z.number().int().nonnegative(),
+});
+export type ReviewAggregate = z.infer<typeof reviewAggregateSchema>;
+
 export const reviewCreateSchema = z.object({
-  tasteRating: ratingField,
-  valueRating: ratingField,
+  rating: reviewRatingSchema,
   body: bodyField,
 });
 export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
 
 export const reviewPatchSchema = z
   .object({
-    tasteRating: ratingField.optional(),
-    valueRating: ratingField.optional(),
+    rating: reviewRatingSchema.optional(),
     body: bodyField,
   })
-  .refine(
-    (v) => v.tasteRating !== undefined || v.valueRating !== undefined || v.body !== undefined,
-    { message: 'at least one field required' },
-  );
+  .refine((v) => v.rating !== undefined || v.body !== undefined, {
+    message: 'at least one field required',
+  });
 export type ReviewPatch = z.infer<typeof reviewPatchSchema>;
 
-export const reviewVoteSchema = z.object({
-  value: z.union([z.literal(-1), z.literal(1)]),
+export const reviewHelpfulSchema = z.object({
+  helpful: z.boolean(),
 });
-export type ReviewVote = z.infer<typeof reviewVoteSchema>;
+export type ReviewHelpful = z.infer<typeof reviewHelpfulSchema>;
 
 export const reviewListQuerySchema = z.object({
   sort: reviewSortSchema,
@@ -718,6 +769,8 @@ Open the file. Inside the `ERROR_CODES` object, add three new entries before the
 ```ts
   REVIEW_ALREADY_EXISTS: 'review_already_exists',
   REPORT_TARGET_NOT_FOUND: 'report_target_not_found',
+  NOT_COMMUNITY_ELIGIBLE: 'not_community_eligible',
+  REVIEW_HAS_NO_COMMENT: 'review_has_no_comment',
 ```
 
 - [x] **Step 4: Re-export both modules from `packages/shared/src/index.ts`**
@@ -732,7 +785,7 @@ export * from './schemas/report.js';
 - [x] **Step 5: Typecheck the shared package**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: exit 0.
 
@@ -764,26 +817,26 @@ describe('wilsonLowerBound', () => {
     expect(wilsonLowerBound(0, 0)).toBe(0);
   });
 
-  it('returns a value < 1 even with all upvotes', () => {
+  it('returns a value < 1 even with all-helpful votes', () => {
     const s = wilsonLowerBound(100, 0);
     expect(s).toBeGreaterThan(0.9);
     expect(s).toBeLessThan(1);
   });
 
-  it('returns a small value with all downvotes', () => {
+  it('returns a small value with all not-helpful votes', () => {
     const s = wilsonLowerBound(0, 100);
     expect(s).toBeLessThan(0.05);
     expect(s).toBeGreaterThanOrEqual(0);
   });
 
-  it('returns approximately 0.2 for equal up/down at n=10', () => {
+  it('returns approximately 0.2 for equal helpful/not-helpful at n=10', () => {
     // Classic z=1.96 Wilson lower bound for 5/10 ≈ 0.2366
     const s = wilsonLowerBound(5, 5);
     expect(s).toBeGreaterThan(0.2);
     expect(s).toBeLessThan(0.3);
   });
 
-  it('is monotonic in upvote share at fixed total', () => {
+  it('is monotonic in helpful share at fixed total', () => {
     const a = wilsonLowerBound(6, 4);
     const b = wilsonLowerBound(7, 3);
     const c = wilsonLowerBound(8, 2);
@@ -792,7 +845,7 @@ describe('wilsonLowerBound', () => {
   });
 
   it('penalises small samples', () => {
-    // 1 upvote out of 1 should score lower than 100 upvotes out of 100
+    // 1 helpful out of 1 should score lower than 100 helpful out of 100
     expect(wilsonLowerBound(1, 0)).toBeLessThan(wilsonLowerBound(100, 0));
   });
 
@@ -809,7 +862,7 @@ describe('wilsonLowerBound', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/wilson.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/wilson.test.ts
 ```
 Expected: FAIL — `Cannot find module .../services/reviews/wilson.js`.
 
@@ -847,7 +900,7 @@ export function wilsonLowerBound(up: number, down: number, z = 1.96): number {
 - [x] **Step 2: Run, verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/wilson.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/wilson.test.ts
 ```
 Expected: 7 passed.
 
@@ -870,7 +923,7 @@ git commit -m "feat(api): Wilson lower-bound scoring with unit tests"
 - [x] **Step 1: Add the dependency**
 
 ```bash
-pnpm --filter @pantry/api add obscenity@^0.4.0
+pnpm --filter @expyrico/api add obscenity@^0.4.0
 ```
 Expected: `obscenity` appears under `dependencies` and the lockfile updates.
 
@@ -942,7 +995,7 @@ describe('containsProfanity', () => {
 - [x] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/profanity.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/profanity.test.ts
 ```
 Expected: FAIL — module not found.
 
@@ -1003,7 +1056,7 @@ export function containsProfanity(input: string | null | undefined): ProfanityRe
 - [x] **Step 2: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/profanity.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/profanity.test.ts
 ```
 Expected: 9 passed.
 
@@ -1051,7 +1104,7 @@ git commit -m "feat(api): expose system user id constant"
 
 ```ts
 import type { Review, User } from '@prisma/client';
-import type { Review as ApiReview } from '@pantry/shared';
+import type { Review as ApiReview } from '@expyrico/shared';
 
 type ReviewWithAuthor = Review & {
   user?: Pick<User, 'id' | 'firstName' | 'avatarUrl'> | null;
@@ -1059,17 +1112,16 @@ type ReviewWithAuthor = Review & {
 
 export function toApiReview(
   r: ReviewWithAuthor,
-  opts: { myVote?: -1 | 1 | null } = {},
+  opts: { myVote?: boolean | null } = {},
 ): ApiReview {
   const out: ApiReview = {
     id: r.id,
     userId: r.userId,
     productId: r.productId,
-    tasteRating: r.tasteRating,
-    valueRating: r.valueRating,
+    rating: r.rating,
     body: r.body,
-    upvoteCount: r.upvoteCount,
-    downvoteCount: r.downvoteCount,
+    helpfulCount: r.helpfulCount,
+    notHelpfulCount: r.notHelpfulCount,
     score: Number(r.score),
     status: r.status,
     createdAt: r.createdAt.toISOString(),
@@ -1090,7 +1142,7 @@ export function toApiReview(
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1112,7 +1164,7 @@ git commit -m "feat(api): review repository helpers (toApiReview)"
 
 ```ts
 import type { Report } from '@prisma/client';
-import type { Report as ApiReport, ReportTargetType } from '@pantry/shared';
+import type { Report as ApiReport, ReportTargetType } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 /**
@@ -1175,7 +1227,7 @@ export async function maybeAutoHide(
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1220,7 +1272,7 @@ Find the array returned by `getAllQueues()` (or the module-level `QUEUES` const 
 - [x] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1290,20 +1342,20 @@ export async function processScoreRecalc(job: Job<ScoreRecalcData>): Promise<voi
   const { reviewId } = job.data;
   const prisma = getPrisma();
   const agg = await prisma.reviewVote.groupBy({
-    by: ['value'],
+    by: ['helpful'],
     where: { reviewId },
     _count: { _all: true },
   });
-  let up = 0;
-  let down = 0;
+  let helpful = 0;
+  let notHelpful = 0;
   for (const row of agg) {
-    if (row.value === 1) up = row._count._all;
-    else if (row.value === -1) down = row._count._all;
+    if (row.helpful === true) helpful = row._count._all;
+    else if (row.helpful === false) notHelpful = row._count._all;
   }
-  const score = wilsonLowerBound(up, down);
+  const score = wilsonLowerBound(helpful, notHelpful);
   await prisma.review.update({
     where: { id: reviewId },
-    data: { upvoteCount: up, downvoteCount: down, score },
+    data: { helpfulCount: helpful, notHelpfulCount: notHelpful, score },
   });
 }
 
@@ -1318,7 +1370,7 @@ export function startScoreRecalcWorker(): Worker<ScoreRecalcData> {
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1381,7 +1433,7 @@ describe('enqueueScoreRecalc debounce', () => {
 - [x] **Step 2: Run, verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/score-recalc-debounce.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/score-recalc-debounce.test.ts
 ```
 Expected: 3 passed.
 
@@ -1413,6 +1465,30 @@ interface ProductRatingData {
   productId: string;
 }
 
+type Rating = 'buy_again' | 'buy_again_on_sale' | 'wont_buy';
+
+/** Collapse (country, rating, n) rows into one row-per-country with the three tallies. */
+function rollupRows(
+  productId: string,
+  rows: { country: string | null; rating: string; n: bigint }[],
+): { productId: string; country: string; buyAgainCount: number; buyAgainOnSaleCount: number; wontBuyCount: number; ratingCount: number }[] {
+  const byCountry = new Map<string, { buy_again: number; buy_again_on_sale: number; wont_buy: number }>();
+  for (const r of rows) {
+    const country = r.country ?? 'XX'; // 'XX' bucket for raters with no country
+    const cur = byCountry.get(country) ?? { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
+    cur[r.rating as Rating] = Number(r.n);
+    byCountry.set(country, cur);
+  }
+  return [...byCountry.entries()].map(([country, t]) => ({
+    productId,
+    country,
+    buyAgainCount: t.buy_again,
+    buyAgainOnSaleCount: t.buy_again_on_sale,
+    wontBuyCount: t.wont_buy,
+    ratingCount: t.buy_again + t.buy_again_on_sale + t.wont_buy,
+  }));
+}
+
 let _queue: Queue<ProductRatingData> | undefined;
 export function getProductRatingQueue(): Queue<ProductRatingData> {
   if (!_queue) {
@@ -1442,23 +1518,50 @@ export async function enqueueProductRatingRecalc(productId: string): Promise<voi
 export async function processProductRatingRecalc(job: Job<ProductRatingData>): Promise<void> {
   const { productId } = job.data;
   const prisma = getPrisma();
-  const agg = await prisma.review.aggregate({
+
+  // Global tallies across all visible ratings (denormalized onto products).
+  const byRating = await prisma.review.groupBy({
+    by: ['rating'],
     where: { productId, status: 'visible' },
-    _avg: { tasteRating: true, valueRating: true },
     _count: { _all: true },
   });
-  const reviewCount = agg._count._all;
-  // numeric(3,2) in products.taste_avg / value_avg — keep two decimals.
-  const tasteAvg = reviewCount > 0 ? Number(agg._avg.tasteRating ?? 0) : 0;
-  const valueAvg = reviewCount > 0 ? Number(agg._avg.valueRating ?? 0) : 0;
+  const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
+  for (const row of byRating) tally[row.rating] = row._count._all;
+  const ratingCount = tally.buy_again + tally.buy_again_on_sale + tally.wont_buy;
+
+  // review_count = ratings that include a comment (body not null).
+  const reviewCount = await prisma.review.count({
+    where: { productId, status: 'visible', body: { not: null } },
+  });
+
   await prisma.product.update({
     where: { id: productId },
     data: {
-      tasteAvg,
-      valueAvg,
+      buyAgainCount: tally.buy_again,
+      buyAgainOnSaleCount: tally.buy_again_on_sale,
+      wontBuyCount: tally.wont_buy,
+      ratingCount,
       reviewCount,
     },
   });
+
+  // Per-country rollup (spec §5/§2.6): the aggregate shown on product detail is
+  // country-scoped, so maintain product_rating_country = counts grouped by the
+  // rater's users.country. Recompute the full set for this product in one pass.
+  const byCountry = await prisma.$queryRaw<
+    { country: string | null; rating: string; n: bigint }[]
+  >`
+    SELECT u.country, r.rating, COUNT(*) AS n
+    FROM reviews r JOIN users u ON u.id = r.user_id
+    WHERE r.product_id = ${productId}::uuid AND r.status = 'visible'
+    GROUP BY u.country, r.rating
+  `;
+  await prisma.$transaction([
+    prisma.productRatingCountry.deleteMany({ where: { productId } }),
+    ...rollupRows(productId, byCountry).map((row) =>
+      prisma.productRatingCountry.create({ data: row }),
+    ),
+  ]);
 }
 
 export function startProductRatingWorker(): Worker<ProductRatingData> {
@@ -1473,7 +1576,7 @@ export function startProductRatingWorker(): Worker<ProductRatingData> {
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1565,7 +1668,7 @@ export function startModerationFlagWorker(): Worker<ModerationFlagData> {
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1608,7 +1711,7 @@ Then MERGE the three new `startXxx()` calls into the existing `startWorkers()` a
 - [x] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [x] **Step 3: Commit**
@@ -1702,7 +1805,7 @@ describe('GET /v1/products/:id/reviews', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-list.test.ts
 ```
 Expected: 404s — route not yet mounted.
 
@@ -1720,9 +1823,10 @@ Expected: 404s — route not yet mounted.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { reviewListQuerySchema } from '@pantry/shared';
+import { reviewListQuerySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiReview } from '../../services/reviews/repository.js';
+import { getCountryAggregate } from '../../services/reviews/aggregate.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -1732,6 +1836,7 @@ export async function listForProductRoute(app: FastifyInstance) {
     const query = reviewListQuerySchema.parse(req.query);
     const prisma = getPrisma();
     const viewerId = req.user?.id ?? null;
+    const viewerCountry = req.user?.country ?? null;
 
     const where = viewerId
       ? {
@@ -1740,19 +1845,16 @@ export async function listForProductRoute(app: FastifyInstance) {
         }
       : { productId, status: 'visible' as const };
 
-    // "rating" ranks by the average of the two criteria: (taste_rating + value_rating) / 2.
-    // Postgres cannot order on a computed expression through Prisma's typed orderBy, so the
-    // "rating" sort is applied in-memory after fetching; "score" (Wilson helpfulness) and "new"
-    // continue to sort in the database and paginate by cursor.
+    // Two sorts: "helpful" (Wilson lower bound over helpful/not-helpful) and "new".
+    // A three-way categorical rating has no single-axis "highest" sort, so the old
+    // "rating" sort is removed. Both remaining sorts run in the DB and paginate by cursor.
     const orderBy =
       query.sort === 'new'
         ? [{ createdAt: 'desc' as const }]
-        : query.sort === 'rating'
-          ? [{ createdAt: 'desc' as const }]
-          : [{ score: 'desc' as const }, { createdAt: 'desc' as const }];
+        : [{ score: 'desc' as const }, { createdAt: 'desc' as const }];
 
     const cursor = query.cursor ? { id: query.cursor } : undefined;
-    let items = await prisma.review.findMany({
+    const items = await prisma.review.findMany({
       where,
       orderBy,
       take: query.limit + 1,
@@ -1761,25 +1863,23 @@ export async function listForProductRoute(app: FastifyInstance) {
       include: { user: { select: { id: true, firstName: true, avatarUrl: true } } },
     });
 
-    if (query.sort === 'rating') {
-      items = items.sort(
-        (a, b) =>
-          (b.tasteRating + b.valueRating) / 2 - (a.tasteRating + a.valueRating) / 2,
-      );
-    }
     const hasMore = items.length > query.limit;
     const page = hasMore ? items.slice(0, query.limit) : items;
 
-    // Hydrate viewer's vote
-    let myVotes = new Map<string, -1 | 1>();
+    // Hydrate viewer's helpful/not-helpful vote (only meaningful on commented reviews).
+    let myVotes = new Map<string, boolean>();
     if (viewerId && page.length > 0) {
       const votes = await prisma.reviewVote.findMany({
         where: { userId: viewerId, reviewId: { in: page.map((r) => r.id) } },
       });
-      myVotes = new Map(votes.map((v) => [v.reviewId, v.value as -1 | 1]));
+      myVotes = new Map(votes.map((v) => [v.reviewId, v.helpful]));
     }
 
+    // Country-scoped three-option aggregate (raters only; helpful votes excluded).
+    const aggregate = await getCountryAggregate(productId, viewerCountry);
+
     return {
+      aggregate,
       items: page.map((r) => toApiReview(r, { myVote: myVotes.get(r.id) ?? null })),
       cursor: hasMore ? page[page.length - 1]!.id : null,
     };
@@ -1815,7 +1915,7 @@ import { reviewsRoutes } from './routes/reviews/index.js';
 - [ ] **Step 4: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-list.test.ts
 ```
 Expected: 4 passed.
 
@@ -1825,6 +1925,73 @@ Expected: 4 passed.
 git add api/src/routes/reviews api/src/server.ts
 git commit -m "feat(api): GET /v1/products/:id/reviews with sort + cursor"
 ```
+
+---
+
+### Task F2a: Country-scoped aggregate service
+
+**Files:**
+- Create: `api/src/services/reviews/aggregate.ts`
+- Create: `api/tests/integration/reviews-aggregate.test.ts`
+
+The product-detail aggregate is computed only from raters and filtered by the viewer's country (spec §2.6). Reads the `product_rating_country` rollup maintained by `product-rating-recalc`; falls back to the global `products` tallies when the viewer has no country (or no rows exist for it).
+
+- [ ] **Step 1: Write `api/src/services/reviews/aggregate.ts`**
+
+```ts
+import type { ReviewAggregate } from '@expyrico/shared';
+import { getPrisma } from '../../db.js';
+
+function pct(n: number, total: number): number {
+  return total === 0 ? 0 : Math.round((n / total) * 100);
+}
+
+/**
+ * Three-option aggregate for a product, scoped to `country` when provided.
+ * Helpful/not-helpful votes are NOT part of this — raters only.
+ */
+export async function getCountryAggregate(
+  productId: string,
+  country: string | null,
+): Promise<ReviewAggregate> {
+  const prisma = getPrisma();
+  let buyAgain = 0;
+  let onSale = 0;
+  let wont = 0;
+
+  if (country) {
+    const row = await prisma.productRatingCountry.findUnique({
+      where: { productId_country: { productId, country } },
+    });
+    if (row) {
+      buyAgain = row.buyAgainCount;
+      onSale = row.buyAgainOnSaleCount;
+      wont = row.wontBuyCount;
+    }
+  }
+  // Fall back to global tallies when no country or no country-specific rows.
+  if (buyAgain + onSale + wont === 0) {
+    const p = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { buyAgainCount: true, buyAgainOnSaleCount: true, wontBuyCount: true },
+    });
+    buyAgain = p?.buyAgainCount ?? 0;
+    onSale = p?.buyAgainOnSaleCount ?? 0;
+    wont = p?.wontBuyCount ?? 0;
+  }
+
+  const total = buyAgain + onSale + wont;
+  return {
+    buyAgainPct: pct(buyAgain, total),
+    buyAgainOnSalePct: pct(onSale, total),
+    wontBuyPct: pct(wont, total),
+    ratingCount: total,
+  };
+}
+```
+
+- [ ] **Step 2: Test** — seed raters from two countries (e.g. 3×`buy_again` US, 1×`wont_buy` FR); assert a US viewer sees `buyAgainPct: 100, ratingCount: 3` and an FR viewer sees `wontBuyPct: 100, ratingCount: 1`. Percentages round to integers and the three may not sum to exactly 100 — acceptable (display rounds).
+- [ ] **Step 3: Commit.**
 
 ---
 
@@ -1857,12 +2024,11 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { tasteRating: 4, valueRating: 3, body: 'Great packaging' },
+      payload: { rating: 'buy_again', body: 'Great packaging' },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().status).toBe('visible');
-    expect(res.json().tasteRating).toBe(4);
-    expect(res.json().valueRating).toBe(3);
+    expect(res.json().rating).toBe('buy_again');
     await app.close();
   });
 
@@ -1874,7 +2040,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { tasteRating: 1, valueRating: 1, body: 'this product is shit' },
+      payload: { rating: 'wont_buy', body: 'this product is shit' },
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().status).toBe('hidden');
@@ -1890,13 +2056,13 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: h,
-      payload: { tasteRating: 5, valueRating: 5 },
+      payload: { rating: 'buy_again' },
     });
     const dup = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: h,
-      payload: { tasteRating: 3, valueRating: 3 },
+      payload: { rating: 'buy_again_on_sale' },
     });
     expect(dup.statusCode).toBe(409);
     expect(dup.json().code).toBe('review_already_exists');
@@ -1909,7 +2075,7 @@ describe('POST /v1/products/:id/reviews', () => {
     const res = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
-      payload: { tasteRating: 5, valueRating: 5 },
+      payload: { rating: 'buy_again' },
     });
     expect(res.statusCode).toBe(401);
     await app.close();
@@ -1923,7 +2089,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { tasteRating: 5, valueRating: 5, body: 'x'.repeat(2001) },
+      payload: { rating: 'buy_again', body: 'x'.repeat(2001) },
     });
     expect(res.statusCode).toBe(400);
     await app.close();
@@ -1936,7 +2102,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/00000000-0000-0000-0000-0000000000ff/reviews`,
       headers: await authHeader(user.id),
-      payload: { tasteRating: 5, valueRating: 5 },
+      payload: { rating: 'buy_again' },
     });
     expect(res.statusCode).toBe(404);
     await app.close();
@@ -1953,7 +2119,7 @@ describe('POST /v1/products/:id/reviews', () => {
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { tasteRating: 5, valueRating: 5 },
+      payload: { rating: 'buy_again' },
     });
     const counts = await getProductRatingQueue().getJobCounts('waiting', 'delayed', 'active', 'completed');
     expect(counts.waiting + counts.delayed + counts.active + counts.completed).toBe(1);
@@ -1966,7 +2132,7 @@ describe('POST /v1/products/:id/reviews', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-create.test.ts
 ```
 
 ---
@@ -1982,7 +2148,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/reviews-create.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, reviewCreateSchema } from '@pantry/shared';
+import { ERROR_CODES, reviewCreateSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';
@@ -2002,6 +2168,15 @@ export async function createReviewRoute(app: FastifyInstance) {
     const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) {
       throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+    }
+    // Community ratings are barcode-only (spec §2.6). Manual personal-notes-only
+    // products are not eligible.
+    if (!product.isCommunityEligible) {
+      throw new AppError({
+        status: 422,
+        code: ERROR_CODES.NOT_COMMUNITY_ELIGIBLE,
+        title: 'This product is not eligible for community ratings',
+      });
     }
 
     const existing = await prisma.review.findUnique({
@@ -2025,8 +2200,7 @@ export async function createReviewRoute(app: FastifyInstance) {
       data: {
         userId,
         productId,
-        tasteRating: input.tasteRating,
-        valueRating: input.valueRating,
+        rating: input.rating,
         body: input.body ?? null,
         status,
       },
@@ -2057,7 +2231,7 @@ export async function reviewsRoutes(app: FastifyInstance) {
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-create.test.ts
 ```
 Expected: 7 passed.
 
@@ -2093,16 +2267,15 @@ describe('PATCH /v1/reviews/:id', () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
-    const r = await makeReview({ userId: user.id, productId: product.id, tasteRating: 3, valueRating: 3, body: 'meh' });
+    const r = await makeReview({ userId: user.id, productId: product.id, rating: 'buy_again_on_sale', body: 'meh' });
     const res = await app.inject({
       method: 'PATCH',
       url: `/v1/reviews/${r.id}`,
       headers: await h(user.id),
-      payload: { tasteRating: 5, valueRating: 4, body: 'changed my mind' },
+      payload: { rating: 'buy_again', body: 'changed my mind' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().tasteRating).toBe(5);
-    expect(res.json().valueRating).toBe(4);
+    expect(res.json().rating).toBe('buy_again');
     expect(res.json().body).toBe('changed my mind');
     await app.close();
   });
@@ -2117,7 +2290,7 @@ describe('PATCH /v1/reviews/:id', () => {
       method: 'PATCH',
       url: `/v1/reviews/${r.id}`,
       headers: await h(intruder.id),
-      payload: { tasteRating: 1, valueRating: 1 },
+      payload: { rating: 'wont_buy' },
     });
     expect(res.statusCode).toBe(403);
     await app.close();
@@ -2146,7 +2319,7 @@ describe('PATCH /v1/reviews/:id', () => {
       method: 'PATCH',
       url: `/v1/reviews/00000000-0000-0000-0000-0000000000aa`,
       headers: await h(user.id),
-      payload: { tasteRating: 5, valueRating: 5 },
+      payload: { rating: 'buy_again' },
     });
     expect(res.statusCode).toBe(404);
     await app.close();
@@ -2157,7 +2330,7 @@ describe('PATCH /v1/reviews/:id', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-update.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-update.test.ts
 ```
 
 ---
@@ -2173,7 +2346,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/reviews-update.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, reviewPatchSchema } from '@pantry/shared';
+import { ERROR_CODES, reviewPatchSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';
@@ -2212,8 +2385,7 @@ export async function updateReviewRoute(app: FastifyInstance) {
     const updated = await prisma.review.update({
       where: { id },
       data: {
-        ...(input.tasteRating !== undefined ? { tasteRating: input.tasteRating } : {}),
-        ...(input.valueRating !== undefined ? { valueRating: input.valueRating } : {}),
+        ...(input.rating !== undefined ? { rating: input.rating } : {}),
         ...(input.body !== undefined ? { body: newBody } : {}),
         status: nextStatus,
       },
@@ -2241,7 +2413,7 @@ await app.register(updateReviewRoute);
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-update.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-update.test.ts
 ```
 Expected: 4 passed.
 
@@ -2302,7 +2474,7 @@ describe('DELETE /v1/reviews/:id', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-delete.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-delete.test.ts
 ```
 
 ---
@@ -2318,7 +2490,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/reviews-delete.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
@@ -2353,7 +2525,7 @@ await app.register(deleteReviewRoute);
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-delete.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-delete.test.ts
 ```
 Expected: 2 passed.
 
@@ -2366,15 +2538,15 @@ git commit -m "feat(api): DELETE /v1/reviews/:id soft-delete"
 
 ---
 
-### Task F9: POST/DELETE /v1/reviews/:id/vote — failing test
+### Task F9: POST/DELETE /v1/reviews/:id/helpful — failing test
 
 **Files:**
-- Create: `api/tests/integration/reviews-vote.test.ts`
+- Create: `api/tests/integration/reviews-helpful.test.ts`
 
 - [ ] **Step 1: Write the test**
 
 ```ts
-// api/tests/integration/reviews-vote.test.ts
+// api/tests/integration/reviews-helpful.test.ts
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
@@ -2384,20 +2556,20 @@ import { getPrisma } from '../../src/db.js';
 async function h(uid: string) {
   return {
     authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}`,
-    'idempotency-key': `vote-${uid}-${Date.now()}-${Math.random()}`,
+    'idempotency-key': `helpful-${uid}-${Date.now()}-${Math.random()}`,
   };
 }
 
-describe('POST /v1/reviews/:id/vote', () => {
-  it('inserts a +1 vote and is idempotent on upsert', async () => {
+describe('POST /v1/reviews/:id/helpful', () => {
+  it('inserts a helpful vote and is idempotent on upsert', async () => {
     const app = await buildServer();
     const author = await makeUser({ email: `va-${Date.now()}@t.l` });
     const voter = await makeUser({ email: `vv-${Date.now()}@t.l` });
     const product = await makeProduct();
-    const r = await makeReview({ userId: author.id, productId: product.id });
+    const r = await makeReview({ userId: author.id, productId: product.id, body: 'has a comment' });
     const headers = await h(voter.id);
-    const a = await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/vote`, headers, payload: { value: 1 } });
-    const b = await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/vote`, headers, payload: { value: 1 } });
+    const a = await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers, payload: { helpful: true } });
+    const b = await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers, payload: { helpful: true } });
     expect(a.statusCode).toBe(204);
     expect(b.statusCode).toBe(204);
     const votes = await getPrisma().reviewVote.count({ where: { reviewId: r.id } });
@@ -2405,17 +2577,34 @@ describe('POST /v1/reviews/:id/vote', () => {
     await app.close();
   });
 
-  it('switches a vote from +1 to -1 (still one row)', async () => {
+  it('switches a vote from helpful to not-helpful (still one row)', async () => {
     const app = await buildServer();
     const author = await makeUser({ email: `s1-${Date.now()}@t.l` });
     const voter = await makeUser({ email: `s2-${Date.now()}@t.l` });
     const product = await makeProduct();
-    const r = await makeReview({ userId: author.id, productId: product.id });
-    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/vote`, headers: await h(voter.id), payload: { value: 1 } });
-    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/vote`, headers: await h(voter.id), payload: { value: -1 } });
+    const r = await makeReview({ userId: author.id, productId: product.id, body: 'comment' });
+    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: true } });
+    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: false } });
     const all = await getPrisma().reviewVote.findMany({ where: { reviewId: r.id } });
     expect(all).toHaveLength(1);
-    expect(all[0]!.value).toBe(-1);
+    expect(all[0]!.helpful).toBe(false);
+    await app.close();
+  });
+
+  it('rejects voting on a review with no comment (422)', async () => {
+    const app = await buildServer();
+    const author = await makeUser({ email: `nc1-${Date.now()}@t.l` });
+    const voter = await makeUser({ email: `nc2-${Date.now()}@t.l` });
+    const product = await makeProduct();
+    // a rating with no comment — voting affordance must not exist
+    const r = await getPrisma().review.create({
+      data: { userId: author.id, productId: product.id, rating: 'buy_again', body: null, status: 'visible' },
+    });
+    const res = await app.inject({
+      method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: true },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().code).toBe('review_has_no_comment');
     await app.close();
   });
 
@@ -2423,12 +2612,12 @@ describe('POST /v1/reviews/:id/vote', () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
-    const r = await makeReview({ userId: user.id, productId: product.id });
+    const r = await makeReview({ userId: user.id, productId: product.id, body: 'mine' });
     const res = await app.inject({
       method: 'POST',
-      url: `/v1/reviews/${r.id}/vote`,
+      url: `/v1/reviews/${r.id}/helpful`,
       headers: await h(user.id),
-      payload: { value: 1 },
+      payload: { helpful: true },
     });
     expect(res.statusCode).toBe(403);
     await app.close();
@@ -2439,30 +2628,30 @@ describe('POST /v1/reviews/:id/vote', () => {
     const author = await makeUser({ email: `ik1-${Date.now()}@t.l` });
     const voter = await makeUser({ email: `ik2-${Date.now()}@t.l` });
     const product = await makeProduct();
-    const r = await makeReview({ userId: author.id, productId: product.id });
+    const r = await makeReview({ userId: author.id, productId: product.id, body: 'comment' });
     const token = await issueAccessToken({ sub: voter.id, role: 'user' });
     const res = await app.inject({
       method: 'POST',
-      url: `/v1/reviews/${r.id}/vote`,
+      url: `/v1/reviews/${r.id}/helpful`,
       headers: { authorization: `Bearer ${token}` },
-      payload: { value: 1 },
+      payload: { helpful: true },
     });
     expect(res.statusCode).toBe(400);
     await app.close();
   });
 });
 
-describe('DELETE /v1/reviews/:id/vote', () => {
+describe('DELETE /v1/reviews/:id/helpful', () => {
   it('removes the caller’s vote', async () => {
     const app = await buildServer();
     const author = await makeUser({ email: `d1-${Date.now()}@t.l` });
     const voter = await makeUser({ email: `d2-${Date.now()}@t.l` });
     const product = await makeProduct();
-    const r = await makeReview({ userId: author.id, productId: product.id });
-    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/vote`, headers: await h(voter.id), payload: { value: 1 } });
+    const r = await makeReview({ userId: author.id, productId: product.id, body: 'comment' });
+    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: true } });
     const del = await app.inject({
       method: 'DELETE',
-      url: `/v1/reviews/${r.id}/vote`,
+      url: `/v1/reviews/${r.id}/helpful`,
       headers: { authorization: `Bearer ${await issueAccessToken({ sub: voter.id, role: 'user' })}` },
     });
     expect(del.statusCode).toBe(204);
@@ -2476,45 +2665,52 @@ describe('DELETE /v1/reviews/:id/vote', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-vote.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-helpful.test.ts
 ```
 
 ---
 
-### Task F10: POST/DELETE /v1/reviews/:id/vote — implementation
+### Task F10: POST/DELETE /v1/reviews/:id/helpful — implementation
 
 **Files:**
-- Create: `api/src/routes/reviews/vote.ts`
+- Create: `api/src/routes/reviews/helpful.ts`
 - Modify: `api/src/routes/reviews/index.ts`
 
-- [ ] **Step 1: Write `api/src/routes/reviews/vote.ts`**
+- [ ] **Step 1: Write `api/src/routes/reviews/helpful.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, reviewVoteSchema } from '@pantry/shared';
+import { ERROR_CODES, reviewHelpfulSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { enqueueScoreRecalc } from '../../queues/jobs/score-recalc.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
-export async function voteRoutes(app: FastifyInstance) {
+export async function helpfulRoutes(app: FastifyInstance) {
   /**
-   * Spec §6.8: POST /v1/reviews/:id/vote requires Idempotency-Key.
+   * Spec §6.8: POST /v1/reviews/:id/helpful requires Idempotency-Key.
    * The M1 idempotency plugin reads the header into req.idempotencyKey;
    * a missing key surfaces as a 400.
    */
   app.post(
-    '/reviews/:id/vote',
+    '/reviews/:id/helpful',
     { onRequest: [app.requireAuth], config: { idempotent: 'required' } },
     async (req, reply) => {
-      // M1's idempotency plugin enforces the header automatically per `config.idempotent`.
       const { id: reviewId } = paramsSchema.parse(req.params);
-      const { value } = reviewVoteSchema.parse(req.body);
+      const { helpful } = reviewHelpfulSchema.parse(req.body);
       const prisma = getPrisma();
       const review = await prisma.review.findUnique({ where: { id: reviewId } });
       if (!review) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Review not found' });
+      // Helpful voting is only available on reviews that carry a comment (spec §2.7).
+      if (review.body === null) {
+        throw new AppError({
+          status: 422,
+          code: ERROR_CODES.REVIEW_HAS_NO_COMMENT,
+          title: 'This review has no comment to vote on',
+        });
+      }
       if (review.userId === req.user!.id) {
         throw new AppError({
           status: 403,
@@ -2524,8 +2720,8 @@ export async function voteRoutes(app: FastifyInstance) {
       }
       await prisma.reviewVote.upsert({
         where: { userId_reviewId: { userId: req.user!.id, reviewId } },
-        create: { userId: req.user!.id, reviewId, value },
-        update: { value },
+        create: { userId: req.user!.id, reviewId, helpful },
+        update: { helpful },
       });
       await enqueueScoreRecalc(reviewId);
       return reply.status(204).send();
@@ -2533,7 +2729,7 @@ export async function voteRoutes(app: FastifyInstance) {
   );
 
   app.delete(
-    '/reviews/:id/vote',
+    '/reviews/:id/helpful',
     { onRequest: [app.requireAuth] },
     async (req, reply) => {
       const { id: reviewId } = paramsSchema.parse(req.params);
@@ -2549,22 +2745,22 @@ export async function voteRoutes(app: FastifyInstance) {
 - [ ] **Step 2: Register in `api/src/routes/reviews/index.ts`**
 
 ```ts
-import { voteRoutes } from './vote.js';
-await app.register(voteRoutes);
+import { helpfulRoutes } from './helpful.js';
+await app.register(helpfulRoutes);
 ```
 
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reviews-vote.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reviews-helpful.test.ts
 ```
-Expected: 5 passed.
+Expected: 6 passed.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add api/src/routes/reviews
-git commit -m "feat(api): POST/DELETE /v1/reviews/:id/vote with idempotent upsert"
+git commit -m "feat(api): POST/DELETE /v1/reviews/:id/helpful with idempotent upsert"
 ```
 
 ---
@@ -2595,9 +2791,9 @@ describe('GET /v1/me/reviews', () => {
     const p1 = await makeProduct();
     const p2 = await makeProduct();
     const p3 = await makeProduct();
-    await makeReview({ userId: me.id, productId: p1.id, tasteRating: 5, valueRating: 5 });
-    await makeReview({ userId: me.id, productId: p2.id, tasteRating: 2, valueRating: 2, status: 'hidden' });
-    await makeReview({ userId: other.id, productId: p3.id, tasteRating: 4, valueRating: 4 });
+    await makeReview({ userId: me.id, productId: p1.id, rating: 'buy_again' });
+    await makeReview({ userId: me.id, productId: p2.id, rating: 'wont_buy', status: 'hidden' });
+    await makeReview({ userId: other.id, productId: p3.id, rating: 'buy_again' });
     const res = await app.inject({ method: 'GET', url: '/v1/me/reviews', headers: await h(me.id) });
     expect(res.statusCode).toBe(200);
     const body = res.json();
@@ -2618,7 +2814,7 @@ describe('GET /v1/me/reviews', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/my-reviews.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/my-reviews.test.ts
 ```
 
 ---
@@ -2675,7 +2871,7 @@ await app.register(myReviewsRoute);
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/my-reviews.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/my-reviews.test.ts
 ```
 Expected: 2 passed.
 
@@ -2704,11 +2900,11 @@ it('returns up to 3 visible reviews ordered by Wilson score', async () => {
   const u1 = await makeUser({}), u2 = await makeUser({}), u3 = await makeUser({}), u4 = await makeUser({});
   const p = await makeProduct({});
   // four visible reviews with different scores; one hidden that must be excluded
-  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, tasteRating: 5, valueRating: 5, body: 'A', status: 'visible', score: 0.95 } });
-  await getPrisma().review.create({ data: { userId: u2.id, productId: p.id, tasteRating: 4, valueRating: 4, body: 'B', status: 'visible', score: 0.80 } });
-  await getPrisma().review.create({ data: { userId: u3.id, productId: p.id, tasteRating: 3, valueRating: 3, body: 'C', status: 'visible', score: 0.60 } });
-  await getPrisma().review.create({ data: { userId: u4.id, productId: p.id, tasteRating: 2, valueRating: 2, body: 'D', status: 'visible', score: 0.40 } });
-  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, tasteRating: 1, valueRating: 1, body: 'hidden', status: 'hidden', score: 0.99 } });
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 'buy_again', body: 'A', status: 'visible', score: 0.95 } });
+  await getPrisma().review.create({ data: { userId: u2.id, productId: p.id, rating: 'buy_again', body: 'B', status: 'visible', score: 0.80 } });
+  await getPrisma().review.create({ data: { userId: u3.id, productId: p.id, rating: 'buy_again_on_sale', body: 'C', status: 'visible', score: 0.60 } });
+  await getPrisma().review.create({ data: { userId: u4.id, productId: p.id, rating: 'wont_buy', body: 'D', status: 'visible', score: 0.40 } });
+  await getPrisma().review.create({ data: { userId: u1.id, productId: p.id, rating: 'wont_buy', body: 'hidden', status: 'hidden', score: 0.99 } });
 
   const res = await ctx.app.inject({ method: 'GET', url: `/v1/products/${p.id}` });
   expect(res.statusCode).toBe(200);
@@ -2721,7 +2917,7 @@ it('returns up to 3 visible reviews ordered by Wilson score', async () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api test products-get
+pnpm --filter @expyrico/api test products-get
 ```
 
 - [ ] **Step 3: Replace the stub in the route handler**
@@ -2876,7 +3072,7 @@ describe('POST /v1/reports', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reports-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reports-create.test.ts
 ```
 
 ---
@@ -2892,7 +3088,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/reports-create.test.
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, reportCreateSchema } from '@pantry/shared';
+import { ERROR_CODES, reportCreateSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { maybeAutoHide, toApiReport } from '../../services/reports/repository.js';
@@ -2962,7 +3158,7 @@ await app.register(reportsRoutes, { prefix: '/v1' });
 - [ ] **Step 4: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/reports-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/reports-create.test.ts
 ```
 Expected: 5 passed.
 
@@ -3017,16 +3213,16 @@ describe('score-recalc worker', () => {
     const v1 = await makeUser({ email: `wv1-${Date.now()}@t.l` });
     const v2 = await makeUser({ email: `wv2-${Date.now()}@t.l` });
     const v3 = await makeUser({ email: `wv3-${Date.now()}@t.l` });
-    await makeVote({ userId: v1.id, reviewId: review.id, value: 1 });
-    await makeVote({ userId: v2.id, reviewId: review.id, value: 1 });
-    await makeVote({ userId: v3.id, reviewId: review.id, value: -1 });
+    await makeVote({ userId: v1.id, reviewId: review.id, helpful: true });
+    await makeVote({ userId: v2.id, reviewId: review.id, helpful: true });
+    await makeVote({ userId: v3.id, reviewId: review.id, helpful: false });
 
     // Process inline (skip the 30s delay)
     await processScoreRecalc({ data: { reviewId: review.id } } as never);
 
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
-    expect(after?.upvoteCount).toBe(2);
-    expect(after?.downvoteCount).toBe(1);
+    expect(after?.helpfulCount).toBe(2);
+    expect(after?.notHelpfulCount).toBe(1);
     expect(Number(after?.score)).toBeGreaterThan(0);
     expect(Number(after?.score)).toBeLessThan(1);
   });
@@ -3036,7 +3232,7 @@ describe('score-recalc worker', () => {
     const product = await makeProduct();
     const review = await makeReview({ userId: author.id, productId: product.id });
     const v1 = await makeUser({ email: `wb1-${Date.now()}@t.l` });
-    await makeVote({ userId: v1.id, reviewId: review.id, value: 1 });
+    await makeVote({ userId: v1.id, reviewId: review.id, helpful: true });
 
     worker = new Worker(SCORE_RECALC_QUEUE, processScoreRecalc, {
       connection: getQueueConnection(),
@@ -3045,7 +3241,7 @@ describe('score-recalc worker', () => {
     await new Promise<void>((resolve) => worker.on('completed', () => resolve()));
 
     const after = await getPrisma().review.findUnique({ where: { id: review.id } });
-    expect(after?.upvoteCount).toBe(1);
+    expect(after?.helpfulCount).toBe(1);
   });
 });
 ```
@@ -3053,7 +3249,7 @@ describe('score-recalc worker', () => {
 - [x] **Step 2: Run**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/score-recalc-worker.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/score-recalc-worker.test.ts
 ```
 Expected: 2 passed (the worker code from Task E1 makes this pass without further changes).
 
@@ -3120,7 +3316,7 @@ describe('moderation-flag worker', () => {
 - [x] **Step 2: Run**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/moderation-flag-worker.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/moderation-flag-worker.test.ts
 ```
 Expected: 2 passed.
 
@@ -3148,32 +3344,34 @@ import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 describe('product-rating-recalc worker', () => {
-  it('averages visible reviews and ignores hidden/deleted', async () => {
+  it('tallies visible ratings and ignores hidden/deleted', async () => {
     const product = await makeProduct();
     const u1 = await makeUser({ email: `pr1-${Date.now()}@t.l` });
     const u2 = await makeUser({ email: `pr2-${Date.now()}@t.l` });
     const u3 = await makeUser({ email: `pr3-${Date.now()}@t.l` });
     const u4 = await makeUser({ email: `pr4-${Date.now()}@t.l` });
-    await makeReview({ userId: u1.id, productId: product.id, tasteRating: 5, valueRating: 3 });
-    await makeReview({ userId: u2.id, productId: product.id, tasteRating: 3, valueRating: 1 });
-    await makeReview({ userId: u3.id, productId: product.id, tasteRating: 1, valueRating: 1, status: 'hidden' });
-    await makeReview({ userId: u4.id, productId: product.id, tasteRating: 1, valueRating: 1, status: 'deleted' });
+    await makeReview({ userId: u1.id, productId: product.id, rating: 'buy_again', body: 'great' });
+    await makeReview({ userId: u2.id, productId: product.id, rating: 'buy_again_on_sale' });
+    await makeReview({ userId: u3.id, productId: product.id, rating: 'wont_buy', status: 'hidden' });
+    await makeReview({ userId: u4.id, productId: product.id, rating: 'wont_buy', status: 'deleted' });
 
     await processProductRatingRecalc({ data: { productId: product.id } } as never);
 
     const after = await getPrisma().product.findUnique({ where: { id: product.id } });
-    expect(after?.reviewCount).toBe(2);
-    expect(Number(after?.tasteAvg)).toBeCloseTo(4, 2); // (5 + 3) / 2
-    expect(Number(after?.valueAvg)).toBeCloseTo(2, 2); // (3 + 1) / 2
+    expect(after?.ratingCount).toBe(2);          // two visible ratings
+    expect(after?.buyAgainCount).toBe(1);
+    expect(after?.buyAgainOnSaleCount).toBe(1);
+    expect(after?.wontBuyCount).toBe(0);         // hidden/deleted excluded
+    expect(after?.reviewCount).toBe(1);          // only one had a comment
   });
 
-  it('handles a product with zero visible reviews', async () => {
+  it('handles a product with zero visible ratings', async () => {
     const product = await makeProduct();
     await processProductRatingRecalc({ data: { productId: product.id } } as never);
     const after = await getPrisma().product.findUnique({ where: { id: product.id } });
+    expect(after?.ratingCount).toBe(0);
+    expect(after?.buyAgainCount).toBe(0);
     expect(after?.reviewCount).toBe(0);
-    expect(Number(after?.tasteAvg)).toBe(0);
-    expect(Number(after?.valueAvg)).toBe(0);
   });
 });
 ```
@@ -3181,7 +3379,7 @@ describe('product-rating-recalc worker', () => {
 - [x] **Step 2: Run**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/product-rating-recalc-worker.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/product-rating-recalc-worker.test.ts
 ```
 Expected: 2 passed.
 
@@ -3258,7 +3456,7 @@ describe('newIdempotencyKey', () => {
 - [ ] **Step 3: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/mobile test -- idempotency
+pnpm --filter @expyrico/mobile test -- idempotency
 ```
 Expected: 2 passed.
 
@@ -3286,13 +3484,13 @@ import type {
   ReviewCreate,
   ReviewPatch,
   ReviewSort,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
 
 type Page = { items: Review[]; cursor: string | null };
 
-export function useProductReviews(productId: string, sort: ReviewSort = 'score') {
+export function useProductReviews(productId: string, sort: ReviewSort = 'helpful') {
   return useInfiniteQuery<Page>({
     queryKey: ['reviews', productId, sort],
     initialPageParam: undefined as string | undefined,
@@ -3352,22 +3550,22 @@ export function useDeleteReview(productId: string) {
   });
 }
 
-/** Vote write — body is { value: -1 | 1 }; idempotency-key is generated per call. */
-export function castVote(reviewId: string, value: -1 | 1): Promise<void> {
-  return apiClient.post<void>(`/reviews/${reviewId}/vote`, { value }, {
+/** Helpful vote write — body is { helpful: boolean }; idempotency-key is generated per call. Only valid on reviews with a comment. */
+export function castHelpfulVote(reviewId: string, helpful: boolean): Promise<void> {
+  return apiClient.post<void>(`/reviews/${reviewId}/helpful`, { helpful }, {
     headers: { 'idempotency-key': newIdempotencyKey() },
   });
 }
 
-export function clearVote(reviewId: string): Promise<void> {
-  return apiClient.delete<void>(`/reviews/${reviewId}/vote`);
+export function clearHelpfulVote(reviewId: string): Promise<void> {
+  return apiClient.delete<void>(`/reviews/${reviewId}/helpful`);
 }
 ```
 
 - [ ] **Step 2: Typecheck the mobile package**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 Expected: exit 0.
 
@@ -3397,8 +3595,10 @@ export interface ProductSummary {
   name: string;
   brand: string | null;
   imageUrl: string | null;
-  tasteAvg: number;
-  valueAvg: number;
+  buyAgainCount: number;
+  buyAgainOnSaleCount: number;
+  wontBuyCount: number;
+  ratingCount: number;
   reviewCount: number;
 }
 
@@ -3442,7 +3642,7 @@ git commit -m "feat(mobile): product search and detail hooks"
 ```ts
 // apps/mobile/src/api/reports.ts
 import { useMutation } from '@tanstack/react-query';
-import type { Report, ReportCreate } from '@pantry/shared';
+import type { Report, ReportCreate } from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
 
@@ -3467,37 +3667,40 @@ git commit -m "feat(mobile): report mutation hook"
 
 ## Phase J — Mobile components
 
-### Task J1: StarRatingInput component
+### Task J1: RatingChoiceInput component
 
 **Files:**
-- Create: `apps/mobile/src/features/reviews/StarRatingInput.tsx`
-- Create: `apps/mobile/__tests__/StarRatingInput.test.tsx`
+- Create: `apps/mobile/src/features/reviews/RatingChoiceInput.tsx`
+- Create: `apps/mobile/__tests__/RatingChoiceInput.test.tsx`
+
+The three-option rating selector (replaces star inputs): "Will buy again" / "Will buy again on sale" / "Will not buy again".
 
 - [ ] **Step 1: Write the failing test**
 
 ```tsx
-// apps/mobile/__tests__/StarRatingInput.test.tsx
+// apps/mobile/__tests__/RatingChoiceInput.test.tsx
 import { fireEvent, render } from '@testing-library/react-native';
-import { StarRatingInput } from '../src/features/reviews/StarRatingInput';
+import { RatingChoiceInput } from '../src/features/reviews/RatingChoiceInput';
 
-describe('StarRatingInput', () => {
-  it('renders 5 stars', () => {
-    const { getAllByA11yRole } = render(<StarRatingInput value={0} onChange={() => {}} />);
-    expect(getAllByA11yRole('button')).toHaveLength(5);
+describe('RatingChoiceInput', () => {
+  it('renders the three options', () => {
+    const { getAllByA11yRole } = render(<RatingChoiceInput value={null} onChange={() => {}} />);
+    expect(getAllByA11yRole('radio')).toHaveLength(3);
   });
 
-  it('calls onChange(3) when third star is tapped', () => {
+  it('calls onChange with the enum value when an option is tapped', () => {
     const onChange = jest.fn();
-    const { getAllByA11yRole } = render(<StarRatingInput value={0} onChange={onChange} />);
-    fireEvent.press(getAllByA11yRole('button')[2]!);
-    expect(onChange).toHaveBeenCalledWith(3);
+    const { getByText } = render(<RatingChoiceInput value={null} onChange={onChange} />);
+    fireEvent.press(getByText('Will buy again on sale'));
+    expect(onChange).toHaveBeenCalledWith('buy_again_on_sale');
   });
 
-  it('reflects the current value via accessibility state', () => {
-    const { getAllByA11yRole } = render(<StarRatingInput value={4} onChange={() => {}} />);
-    const stars = getAllByA11yRole('button');
-    expect(stars[3]!.props.accessibilityState.selected).toBe(true);
-    expect(stars[4]!.props.accessibilityState.selected).toBe(false);
+  it('reflects the current selection via accessibility state', () => {
+    const { getAllByA11yRole } = render(<RatingChoiceInput value="wont_buy" onChange={() => {}} />);
+    const radios = getAllByA11yRole('radio');
+    // order: buy_again, buy_again_on_sale, wont_buy
+    expect(radios[2]!.props.accessibilityState.selected).toBe(true);
+    expect(radios[0]!.props.accessibilityState.selected).toBe(false);
   });
 });
 ```
@@ -3505,39 +3708,65 @@ describe('StarRatingInput', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile test -- StarRatingInput
+pnpm --filter @expyrico/mobile test -- RatingChoiceInput
 ```
 
 - [ ] **Step 3: Implement**
 
 ```tsx
-// apps/mobile/src/features/reviews/StarRatingInput.tsx
+// apps/mobile/src/features/reviews/RatingChoiceInput.tsx
 import { Pressable, View, Text } from 'react-native';
+import type { ReviewRating } from '@expyrico/shared';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
-  value: number;
-  onChange: (n: number) => void;
+  value: ReviewRating | null;
+  onChange: (r: ReviewRating) => void;
   disabled?: boolean;
 }
 
-export function StarRatingInput({ value, onChange, disabled }: Props) {
+const OPTIONS: { id: ReviewRating; label: string }[] = [
+  { id: 'buy_again', label: 'Will buy again' },
+  { id: 'buy_again_on_sale', label: 'Will buy again on sale' },
+  { id: 'wont_buy', label: 'Will not buy again' },
+];
+
+export function RatingChoiceInput({ value, onChange, disabled }: Props) {
+  const t = useTheme();
   return (
-    <View style={{ flexDirection: 'row', gap: 8 }} accessibilityLabel="rating">
-      {[1, 2, 3, 4, 5].map((n) => {
-        const filled = n <= value;
+    <View style={{ gap: 8 }} accessibilityLabel="rating">
+      {OPTIONS.map((o) => {
+        const selected = o.id === value;
         return (
           <Pressable
-            key={n}
-            accessibilityRole="button"
-            accessibilityLabel={`${n} star${n > 1 ? 's' : ''}`}
-            accessibilityState={{ selected: filled, disabled: !!disabled }}
+            key={o.id}
+            accessibilityRole="radio"
+            accessibilityState={{ selected, disabled: !!disabled }}
             disabled={disabled}
-            onPress={() => onChange(n)}
-            hitSlop={8}
+            onPress={() => onChange(o.id)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              padding: t.spacing.md,
+              borderRadius: t.radii.md,
+              borderWidth: 1,
+              borderColor: selected ? t.colors.primary : t.colors.border,
+              backgroundColor: selected ? t.colors.primaryLight : t.colors.bg,
+            }}
           >
-            <Text style={{ fontSize: 32, color: filled ? '#fbbf24' : '#52525b' }}>
-              {filled ? '★' : '☆'}
-            </Text>
+            <View
+              style={{
+                width: 20, height: 20, borderRadius: 10,
+                borderWidth: 2, borderColor: selected ? t.colors.primary : t.colors.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {selected ? (
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: t.colors.primary }} />
+              ) : null}
+            </View>
+            <Text style={{ color: t.colors.text }}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -3549,15 +3778,15 @@ export function StarRatingInput({ value, onChange, disabled }: Props) {
 - [ ] **Step 4: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/mobile test -- StarRatingInput
+pnpm --filter @expyrico/mobile test -- RatingChoiceInput
 ```
 Expected: 3 passed.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add apps/mobile/src/features/reviews/StarRatingInput.tsx apps/mobile/__tests__/StarRatingInput.test.tsx
-git commit -m "feat(mobile): StarRatingInput component"
+git add apps/mobile/src/features/reviews/RatingChoiceInput.tsx apps/mobile/__tests__/RatingChoiceInput.test.tsx
+git commit -m "feat(mobile): RatingChoiceInput three-option component"
 ```
 
 ---
@@ -3572,13 +3801,12 @@ git commit -m "feat(mobile): StarRatingInput component"
 ```tsx
 // apps/mobile/src/features/reviews/SortTabs.tsx
 import { Pressable, Text, View } from 'react-native';
-import type { ReviewSort } from '@pantry/shared';
+import type { ReviewSort } from '@expyrico/shared';
 import { useTheme } from '../../theme/useTheme';
 
 const OPTIONS: { id: ReviewSort; label: string }[] = [
-  { id: 'score', label: 'Top' },
+  { id: 'helpful', label: 'Most helpful' },
   { id: 'new', label: 'Newest' },
-  { id: 'rating', label: 'Rating' },
 ];
 
 export function SortTabs({ value, onChange }: { value: ReviewSort; onChange: (s: ReviewSort) => void }) {
@@ -3621,7 +3849,7 @@ export function SortTabs({ value, onChange }: { value: ReviewSort; onChange: (s:
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -3633,42 +3861,43 @@ git commit -m "feat(mobile): SortTabs for review list"
 
 ---
 
-### Task J3: useOptimisticVote hook
+### Task J3: useOptimisticHelpful hook
 
 **Files:**
-- Create: `apps/mobile/src/features/reviews/useOptimisticVote.ts`
+- Create: `apps/mobile/src/features/reviews/useOptimisticHelpful.ts`
 
 - [ ] **Step 1: Write the hook**
 
 ```ts
-// apps/mobile/src/features/reviews/useOptimisticVote.ts
+// apps/mobile/src/features/reviews/useOptimisticHelpful.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Review } from '@pantry/shared';
-import { castVote, clearVote } from '../../api/reviews';
+import type { Review } from '@expyrico/shared';
+import { castHelpfulVote, clearHelpfulVote } from '../../api/reviews';
 
 interface Args {
   reviewId: string;
   productId: string;
 }
 
-type Next = -1 | 1 | 0;
+/** next: true = helpful, false = not-helpful, null = clear */
+type Next = boolean | null;
 
 interface MutationVars {
   next: Next;
-  prev: -1 | 1 | null;
+  prev: boolean | null;
 }
 
 /**
  * Applies an optimistic update to every cached review-list page that contains
  * this review, then rolls back on failure.
  */
-export function useOptimisticVote({ reviewId, productId }: Args) {
+export function useOptimisticHelpful({ reviewId, productId }: Args) {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ next }: MutationVars) => {
-      if (next === 0) return clearVote(reviewId);
-      return castVote(reviewId, next);
+      if (next === null) return clearHelpfulVote(reviewId);
+      return castHelpfulVote(reviewId, next);
     },
     onMutate: async ({ next, prev }) => {
       await qc.cancelQueries({ queryKey: ['reviews', productId] });
@@ -3696,18 +3925,18 @@ export function useOptimisticVote({ reviewId, productId }: Args) {
   });
 }
 
-function applyDelta(review: Review, prev: -1 | 1 | null, next: Next): Review {
-  let up = review.upvoteCount;
-  let down = review.downvoteCount;
-  if (prev === 1) up -= 1;
-  if (prev === -1) down -= 1;
-  if (next === 1) up += 1;
-  if (next === -1) down += 1;
+function applyDelta(review: Review, prev: boolean | null, next: Next): Review {
+  let helpful = review.helpfulCount;
+  let notHelpful = review.notHelpfulCount;
+  if (prev === true) helpful -= 1;
+  if (prev === false) notHelpful -= 1;
+  if (next === true) helpful += 1;
+  if (next === false) notHelpful += 1;
   return {
     ...review,
-    upvoteCount: Math.max(0, up),
-    downvoteCount: Math.max(0, down),
-    myVote: next === 0 ? null : (next as -1 | 1),
+    helpfulCount: Math.max(0, helpful),
+    notHelpfulCount: Math.max(0, notHelpful),
+    myVote: next,
   };
 }
 ```
@@ -3715,14 +3944,14 @@ function applyDelta(review: Review, prev: -1 | 1 | null, next: Next): Review {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add apps/mobile/src/features/reviews/useOptimisticVote.ts
-git commit -m "feat(mobile): optimistic vote hook with rollback"
+git add apps/mobile/src/features/reviews/useOptimisticHelpful.ts
+git commit -m "feat(mobile): optimistic helpful-vote hook with rollback"
 ```
 
 ---
@@ -3740,22 +3969,21 @@ git commit -m "feat(mobile): optimistic vote hook with rollback"
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReviewCard } from '../src/features/reviews/ReviewCard';
-import type { Review } from '@pantry/shared';
+import type { Review } from '@expyrico/shared';
 
 jest.mock('../src/api/reviews', () => ({
-  castVote: jest.fn().mockResolvedValue(undefined),
-  clearVote: jest.fn().mockResolvedValue(undefined),
+  castHelpfulVote: jest.fn().mockResolvedValue(undefined),
+  clearHelpfulVote: jest.fn().mockResolvedValue(undefined),
 }));
 
 const review: Review = {
   id: 'r-1',
   userId: 'u-1',
   productId: 'p-1',
-  tasteRating: 4,
-  valueRating: 3,
+  rating: 'buy_again',
   body: 'Solid pick.',
-  upvoteCount: 3,
-  downvoteCount: 1,
+  helpfulCount: 3,
+  notHelpfulCount: 1,
   score: 0.4,
   status: 'visible',
   createdAt: '2026-05-24T00:00:00.000Z',
@@ -3770,12 +3998,21 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('ReviewCard', () => {
-  it('optimistically increments upvote count on thumb-up tap', async () => {
+  it('optimistically increments helpful count on helpful tap', async () => {
     const { getByLabelText, getByText } = render(
       wrap(<ReviewCard review={review} productId="p-1" onReport={() => {}} />),
     );
-    fireEvent.press(getByLabelText('upvote'));
+    fireEvent.press(getByLabelText('helpful'));
     await waitFor(() => expect(getByText('4')).toBeTruthy()); // 3 → 4
+  });
+
+  it('hides helpful/not-helpful when the review has no comment', () => {
+    const noComment: Review = { ...review, body: null };
+    const { queryByLabelText } = render(
+      wrap(<ReviewCard review={noComment} productId="p-1" onReport={() => {}} />),
+    );
+    expect(queryByLabelText('helpful')).toBeNull();
+    expect(queryByLabelText('not-helpful')).toBeNull();
   });
 
   it('opens the report sheet on long-press', () => {
@@ -3792,7 +4029,7 @@ describe('ReviewCard', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile test -- ReviewCard
+pnpm --filter @expyrico/mobile test -- ReviewCard
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/reviews/ReviewCard.tsx`**
@@ -3800,9 +4037,9 @@ pnpm --filter @pantry/mobile test -- ReviewCard
 ```tsx
 // apps/mobile/src/features/reviews/ReviewCard.tsx
 import { Pressable, Text, View } from 'react-native';
-import type { Review } from '@pantry/shared';
+import type { Review, ReviewRating } from '@expyrico/shared';
 import { useTheme } from '../../theme/useTheme';
-import { useOptimisticVote } from './useOptimisticVote';
+import { useOptimisticHelpful } from './useOptimisticHelpful';
 
 interface Props {
   review: Review;
@@ -3813,13 +4050,20 @@ interface Props {
   isOwn?: boolean;
 }
 
+const RATING_LABEL: Record<ReviewRating, string> = {
+  buy_again: 'Will buy again',
+  buy_again_on_sale: 'On sale only',
+  wont_buy: "Won't buy",
+};
+
 export function ReviewCard({ review, productId, onReport, onEdit, onDelete, isOwn }: Props) {
   const t = useTheme();
-  const vote = useOptimisticVote({ reviewId: review.id, productId });
+  const vote = useOptimisticHelpful({ reviewId: review.id, productId });
+  const hasComment = review.body !== null && review.body !== '';
 
-  function press(next: -1 | 1) {
+  function press(next: boolean) {
     const prev = review.myVote ?? null;
-    const effective = prev === next ? 0 : next;
+    const effective = prev === next ? null : next; // tapping the active choice clears it
     vote.mutate({ next: effective, prev });
   }
 
@@ -3838,40 +4082,40 @@ export function ReviewCard({ review, productId, onReport, onEdit, onDelete, isOw
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
         <Text style={{ color: t.colors.text, fontWeight: '600' }}>
-          {review.author?.firstName ?? 'User'} · Taste {'★'.repeat(review.tasteRating)} · Value{' '}
-          {'★'.repeat(review.valueRating)}
+          {review.author?.firstName ?? 'User'} · {RATING_LABEL[review.rating]}
         </Text>
         {review.status !== 'visible' && (
           <Text style={{ color: t.colors.warning, fontSize: 12 }}>{review.status}</Text>
         )}
       </View>
-      {review.body ? <Text style={{ color: t.colors.text }}>{review.body}</Text> : null}
+      {hasComment ? <Text style={{ color: t.colors.text }}>{review.body}</Text> : null}
       <View style={{ flexDirection: 'row', marginTop: 12, gap: 16, alignItems: 'center' }}>
-        {!isOwn && (
+        {/* Helpful / Not-helpful only on reviews that carry a comment (spec §2.7) */}
+        {!isOwn && hasComment && (
           <>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="upvote"
-              onPress={() => press(1)}
+              accessibilityLabel="helpful"
+              onPress={() => press(true)}
               hitSlop={8}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <Text style={{ color: review.myVote === 1 ? t.colors.success : t.colors.textMuted }}>
-                ▲
+              <Text style={{ color: review.myVote === true ? t.colors.success : t.colors.textMuted }}>
+                👍
               </Text>
-              <Text style={{ color: t.colors.text }}>{review.upvoteCount}</Text>
+              <Text style={{ color: t.colors.text }}>{review.helpfulCount}</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="downvote"
-              onPress={() => press(-1)}
+              accessibilityLabel="not-helpful"
+              onPress={() => press(false)}
               hitSlop={8}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
             >
-              <Text style={{ color: review.myVote === -1 ? t.colors.danger : t.colors.textMuted }}>
-                ▼
+              <Text style={{ color: review.myVote === false ? t.colors.danger : t.colors.textMuted }}>
+                👎
               </Text>
-              <Text style={{ color: t.colors.text }}>{review.downvoteCount}</Text>
+              <Text style={{ color: t.colors.text }}>{review.notHelpfulCount}</Text>
             </Pressable>
           </>
         )}
@@ -3894,7 +4138,7 @@ export function ReviewCard({ review, productId, onReport, onEdit, onDelete, isOw
 - [ ] **Step 4: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/mobile test -- ReviewCard
+pnpm --filter @expyrico/mobile test -- ReviewCard
 ```
 Expected: 2 passed.
 
@@ -3917,13 +4161,13 @@ git commit -m "feat(mobile): ReviewCard with optimistic vote and long-press repo
 ```tsx
 // apps/mobile/src/features/reviews/ReviewList.tsx
 import { ActivityIndicator, FlatList, Text, View } from 'react-native';
-import type { Review } from '@pantry/shared';
+import type { Review } from '@expyrico/shared';
 import { useProductReviews } from '../../api/reviews';
 import { ReviewCard } from './ReviewCard';
 import { SortTabs } from './SortTabs';
 import { useTheme } from '../../theme/useTheme';
 import { useState } from 'react';
-import type { ReviewSort } from '@pantry/shared';
+import type { ReviewSort } from '@expyrico/shared';
 
 interface Props {
   productId: string;
@@ -3979,7 +4223,7 @@ export function ReviewList({ productId, currentUserId, onReport, onEdit, onDelet
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -4049,7 +4293,7 @@ describe('ReportModal', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile test -- ReportModal
+pnpm --filter @expyrico/mobile test -- ReportModal
 ```
 
 - [ ] **Step 3: Implement**
@@ -4058,7 +4302,7 @@ pnpm --filter @pantry/mobile test -- ReportModal
 // apps/mobile/src/features/reports/ReportModal.tsx
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import type { ReportReason, ReportTargetType } from '@pantry/shared';
+import type { ReportReason, ReportTargetType } from '@expyrico/shared';
 import { useCreateReport } from '../../api/reports';
 import { useTheme } from '../../theme/useTheme';
 
@@ -4193,7 +4437,7 @@ export function ReportModal({ visible, target, onClose }: Props) {
 - [ ] **Step 4: Verify PASS**
 
 ```bash
-pnpm --filter @pantry/mobile test -- ReportModal
+pnpm --filter @expyrico/mobile test -- ReportModal
 ```
 Expected: 2 passed.
 
@@ -4284,8 +4528,11 @@ export default function BrowseScreen() {
           >
             <Text style={{ color: t.colors.text, fontWeight: '600' }}>{item.name}</Text>
             <Text style={{ color: t.colors.textMuted, fontSize: 12 }}>
-              {item.brand ?? 'Unknown brand'} · Taste ★ {item.tasteAvg.toFixed(1)} · Value ★{' '}
-              {item.valueAvg.toFixed(1)} ({item.reviewCount})
+              {item.brand ?? 'Unknown brand'} · {
+                item.ratingCount > 0
+                  ? `${Math.round((item.buyAgainCount / item.ratingCount) * 100)}% would buy again (${item.ratingCount})`
+                  : 'No ratings yet'
+              }
             </Text>
           </Pressable>
         )}
@@ -4305,7 +4552,7 @@ export default function BrowseScreen() {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -4328,8 +4575,15 @@ git commit -m "feat(mobile): Browse tab with debounced product search"
 // apps/mobile/app/(app)/(tabs)/reviews.tsx
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import type { ReviewRating } from '@expyrico/shared';
 import { useMyReviews } from '../../../src/api/reviews';
 import { useTheme } from '../../../src/theme/useTheme';
+
+const RATING_LABEL: Record<ReviewRating, string> = {
+  buy_again: 'Will buy again',
+  buy_again_on_sale: 'On sale only',
+  wont_buy: "Won't buy",
+};
 
 export default function MyReviewsScreen() {
   const t = useTheme();
@@ -4356,7 +4610,7 @@ export default function MyReviewsScreen() {
             }}
           >
             <Text style={{ color: t.colors.text, fontWeight: '600' }}>
-              Taste {'★'.repeat(item.tasteRating)} · Value {'★'.repeat(item.valueRating)} · {item.status}
+              {RATING_LABEL[item.rating]} · {item.status}
             </Text>
             {item.body ? <Text style={{ color: t.colors.textMuted }}>{item.body}</Text> : null}
           </Pressable>
@@ -4380,7 +4634,7 @@ export default function MyReviewsScreen() {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -4404,7 +4658,7 @@ git commit -m "feat(mobile): Reviews tab listing /v1/me/reviews"
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import type { Review } from '@pantry/shared';
+import type { Review } from '@expyrico/shared';
 import { useProduct } from '../../../src/api/products-search';
 import { useDeleteReview } from '../../../src/api/reviews';
 import { ReviewList } from '../../../src/features/reviews/ReviewList';
@@ -4446,8 +4700,11 @@ export default function ProductDetailScreen() {
                 {product.data.name}
               </Text>
               <Text style={{ color: t.colors.textMuted, marginTop: 2 }}>
-                {product.data.brand ?? 'Unknown brand'} · Taste ★ {product.data.tasteAvg.toFixed(1)} ·
-                Value ★ {product.data.valueAvg.toFixed(1)} ({product.data.reviewCount})
+                {product.data.brand ?? 'Unknown brand'} · {
+                  product.data.ratingCount > 0
+                    ? `${Math.round((product.data.buyAgainCount / product.data.ratingCount) * 100)}% would buy again (${product.data.ratingCount})`
+                    : 'No ratings yet'
+                }
               </Text>
             </View>
             <Pressable
@@ -4509,7 +4766,7 @@ export default function ProductDetailScreen() {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 Expected: exit 0.
 
@@ -4534,7 +4791,8 @@ git commit -m "feat(mobile): product detail screen with reviews + report"
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { StarRatingInput } from '../../../../src/features/reviews/StarRatingInput';
+import type { ReviewRating } from '@expyrico/shared';
+import { RatingChoiceInput } from '../../../../src/features/reviews/RatingChoiceInput';
 import {
   useCreateReview,
   useMyReviews,
@@ -4550,8 +4808,7 @@ export default function ReviewFormScreen() {
     ? my.data?.pages.flatMap((p) => p.items).find((r) => r.id === reviewId)
     : my.data?.pages.flatMap((p) => p.items).find((r) => r.productId === productId);
 
-  const [tasteRating, setTasteRating] = useState<number>(existing?.tasteRating ?? 0);
-  const [valueRating, setValueRating] = useState<number>(existing?.valueRating ?? 0);
+  const [rating, setRating] = useState<ReviewRating | null>(existing?.rating ?? null);
   const [body, setBody] = useState<string>(existing?.body ?? '');
   const create = useCreateReview(productId);
   const update = useUpdateReview(productId);
@@ -4559,25 +4816,28 @@ export default function ReviewFormScreen() {
 
   async function submit() {
     setError(null);
-    if (tasteRating < 1 || valueRating < 1) {
-      setError('Please rate both taste and value.');
+    if (rating === null) {
+      setError('Please choose an option.');
       return;
     }
     try {
       if (existing) {
         await update.mutateAsync({
           id: existing.id,
-          patch: { tasteRating, valueRating, body: body.trim() || undefined },
+          patch: { rating, body: body.trim() || undefined },
         });
       } else {
-        await create.mutateAsync({ tasteRating, valueRating, body: body.trim() || undefined });
+        await create.mutateAsync({ rating, body: body.trim() || undefined });
       }
       router.back();
     } catch (e) {
+      const code = e && typeof e === 'object' && 'code' in e ? (e as { code?: string }).code : undefined;
       const msg =
-        e && typeof e === 'object' && 'code' in e && (e as { code?: string }).code === 'review_already_exists'
-          ? 'You already reviewed this product.'
-          : 'Could not save your review.';
+        code === 'review_already_exists'
+          ? 'You already rated this product.'
+          : code === 'not_community_eligible'
+            ? 'This item is not eligible for community ratings.'
+            : 'Could not save your rating.';
       setError(msg);
     }
   }
@@ -4587,14 +4847,11 @@ export default function ReviewFormScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.bg, padding: t.spacing.lg, gap: t.spacing.lg }}>
       <Text style={{ color: t.colors.text, fontSize: 22, fontWeight: '700' }}>
-        {existing ? 'Edit your review' : 'Write a review'}
+        {existing ? 'Edit your rating' : 'Rate this product'}
       </Text>
-      <Text style={{ color: t.colors.textMuted }}>Taste</Text>
-      <StarRatingInput value={tasteRating} onChange={setTasteRating} disabled={pending} />
-      <Text style={{ color: t.colors.textMuted }}>Value</Text>
-      <StarRatingInput value={valueRating} onChange={setValueRating} disabled={pending} />
+      <RatingChoiceInput value={rating} onChange={setRating} disabled={pending} />
       <TextInput
-        placeholder="What did you think? (optional)"
+        placeholder="Add a comment? (optional)"
         placeholderTextColor={t.colors.textMuted}
         value={body}
         onChangeText={setBody}
@@ -4624,7 +4881,7 @@ export default function ReviewFormScreen() {
         }}
       >
         <Text style={{ color: t.colors.primaryFg, fontWeight: '600' }}>
-          {pending ? 'Saving…' : existing ? 'Save changes' : 'Post review'}
+          {pending ? 'Saving…' : existing ? 'Save changes' : 'Submit rating'}
         </Text>
       </Pressable>
     </View>
@@ -4635,7 +4892,7 @@ export default function ReviewFormScreen() {
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -4664,7 +4921,7 @@ Expected: at least one existing `.yaml` from M1 (scan/record flow). If `.maestro
 - [ ] **Step 2: Write `apps/mobile/.maestro/reviews-flow.yaml`**
 
 ```yaml
-appId: com.pantry.app
+appId: com.expyrico.app
 name: Reviews flow — open product, write, upvote, report
 tags:
   - reviews
@@ -4720,7 +4977,7 @@ git commit -m "test(mobile): Maestro E2E for review write + vote + report"
 - [ ] **Step 1: Run every API test**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: every test passes. New test files introduced by this plan:
 
@@ -4743,9 +5000,9 @@ All M0a/M0b/M1 tests must still pass.
 - [ ] **Step 2: Mobile tests**
 
 ```bash
-pnpm --filter @pantry/mobile test
+pnpm --filter @expyrico/mobile test
 ```
-Expected: `StarRatingInput.test.tsx` (3), `ReviewCard.test.tsx` (2), `ReportModal.test.tsx` (2), plus all prior tests pass.
+Expected: `RatingChoiceInput.test.tsx` (3), `ReviewCard.test.tsx` (3), `ReportModal.test.tsx` (2), plus all prior tests pass.
 
 - [ ] **Step 3: Repo-wide typecheck**
 
@@ -4763,20 +5020,20 @@ Expected: exit 0. If not: `pnpm exec prettier --write .` and re-check.
 
 - [ ] **Step 5: Manual smoke against the running API**
 
-In one terminal: `pnpm --filter @pantry/api dev`. In another:
+In one terminal: `pnpm --filter @expyrico/api dev`. In another:
 
 ```bash
 curl -s -X POST http://localhost:4000/v1/products/<some-product-id>/reviews \
   -H "Authorization: Bearer <access-token-from-login>" \
   -H "Content-Type: application/json" \
-  -d '{"tasteRating":5,"valueRating":4,"body":"good"}' | jq
+  -d '{"rating":"buy_again","body":"good"}' | jq
 ```
 Expected: HTTP 201 with the new review, `status: "visible"`.
 
 ```bash
-curl -s http://localhost:4000/v1/products/<some-product-id>/reviews?sort=score | jq
+curl -s http://localhost:4000/v1/products/<some-product-id>/reviews?sort=helpful | jq
 ```
-Expected: HTTP 200, the new review present, sorted by score.
+Expected: HTTP 200, an `aggregate` (three percentages + count) plus the review present, sorted by helpfulness.
 
 - [ ] **Step 6: Tag the milestone**
 
@@ -4792,12 +5049,12 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 
 **1. Spec coverage**
 
-- §2.6 review CRUD with one per (user, product), editable, soft-delete, sort by Wilson — Tasks F1–F8, A1, A6. Reviews carry two required 1–5 criteria (`tasteRating`, `valueRating`); the "highest rating" sort ranks by `(taste_rating + value_rating) / 2`.
-- §2.7 voting one per (user, review), change/remove, denormalized counts + Wilson, debounced background job — Tasks F9, F10, E1, E2, H1.
+- §2.6 rating CRUD with one per (user, product), editable, soft-delete, country-scoped 3-percentage aggregate, sort by helpfulness — Tasks F1–F8, F2a, A1, A6. A rating is one three-option enum (`buy_again` / `buy_again_on_sale` / `wont_buy`) with an optional comment; community ratings are barcode-only (`products.isCommunityEligible`).
+- §2.7 helpful/not-helpful voting one per (user, review), change/remove, only on commented reviews, denormalized counts + Wilson, debounced background job — Tasks F9, F10, E1, E2, H1. Helpful votes are excluded from the rating aggregate.
 - §2.8 reporting (review/user/product), profanity auto-flag, `>3` reports auto-hide — Tasks G1, G2, E4, D3, H2. The auto-hide threshold is the spec literal `> 3`, hardcoded in `maybeAutoHide` (Task D3); no settings-service import (that module ships in M3).
 - §4.3 `score-recalc` debounced 30s + `moderation-flag` jobs — Tasks E1, E2, E4.
-- §5 reviews/review_votes/reports tables with required indexes — Task A1, verified A2.
-- §6.4 endpoints — Tasks F1–F10 (list, create, patch, delete, vote, unvote).
+- §5 reviews/review_votes/reports/product_rating_country tables with required indexes — Task A1, verified A2.
+- §6.4 endpoints — Tasks F1–F10 (list+aggregate, create, patch, delete, helpful, un-helpful).
 - §6.5 `POST /reports` — Tasks G1, G2.
 - §7 mobile reviews surface — Tasks I1–I3, J1–J6, K1–K4, L1.
 
@@ -4810,8 +5067,8 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 **3. Type consistency**
 
 - API `Review.score` is `Decimal(7,6)` in Prisma → coerced via `Number(r.score)` in `toApiReview` → typed `number` in `reviewSchema` (range 0..1). Consistent end-to-end.
-- Two-criteria ratings are consistent end-to-end: Prisma `tasteRating`/`valueRating` (`@map("taste_rating")`/`@map("value_rating")`, NOT NULL `SmallInt` + 1–5 CHECK) → wire `tasteRating`/`valueRating` (1–5) in `reviewSchema` / `reviewCreateSchema` / `reviewPatchSchema` → exposed by `toApiReview` → consumed by the mobile form (two `StarRatingInput`s) and cards. The `product-rating-recalc` worker writes `products.taste_avg` / `value_avg` (`numeric(3,2)`) + `review_count`; the mobile `ProductSummary` reads `tasteAvg` / `valueAvg` / `reviewCount`. Vote-based Wilson `score` is unchanged by this; the "rating" sort uses the in-memory criteria average.
-- `value: -1 | 1` is the union everywhere: `reviewVoteSchema`, `castVote`, `useOptimisticVote`, `processScoreRecalc`. The optimistic hook's third option `0` is internal to the hook only and never leaves the mobile boundary.
+- Three-option ratings are consistent end-to-end: Prisma `rating` (`review_rating` enum, NOT NULL) → wire `rating` (`buy_again` / `buy_again_on_sale` / `wont_buy`) in `reviewSchema` / `reviewCreateSchema` / `reviewPatchSchema` → exposed by `toApiReview` → consumed by the mobile `RatingChoiceInput` and cards. The `product-rating-recalc` worker writes the global tallies (`products.buyAgainCount` / `buyAgainOnSaleCount` / `wontBuyCount` / `ratingCount` / `reviewCount`) plus the per-country `product_rating_country` rollup; `getCountryAggregate` serves the country-scoped 3-percentage aggregate. There are no taste/value columns.
+- `helpful: boolean` is the field everywhere: `reviewHelpfulSchema`, `castHelpfulVote`, `useOptimisticHelpful`, `processScoreRecalc`. The optimistic hook's `null` (clear) is internal to the hook only and never leaves the mobile boundary. Helpful voting is gated to reviews with a comment (`body !== null`).
 - `ReviewStatus` enum identical in Prisma (`visible | hidden | deleted`), Zod (`reviewStatusSchema`), and the mobile cards. Per D15, profanity auto-flag sets `status='hidden'` directly; there is no `pending` value.
 - `enqueueScoreRecalc` returns the literal union `'enqueued' | 'debounced'` (used by the debounce unit test).
 - `ReportTargetType` (`review | user | product`) is shared by Zod, Prisma enum, route handler, and `maybeAutoHide`.
@@ -4822,7 +5079,7 @@ Run through these before declaring M2 done. Findings (if any) are folded back in
 - `app.requireAuth` decorator → M0a (Task E8 of m0a plan).
 - `issueAccessToken`, `verifyAccessToken` → M0a Task E3.
 - `makeUser`, `getPrisma` test helpers → M0a Tasks D7, A5.
-- `Product` Prisma model + `products` table + `products/search` route → M1. The `products.taste_avg` / `value_avg` (`numeric(3,2)`) + `review_count` columns the `product-rating-recalc` worker writes are provided by M1 (being updated in parallel); M2 consumes those names. The old single `rating_avg` / `rating_count` columns are no longer written.
+- `Product` Prisma model + `products` table + `products/search` route → M1. The three-option tally columns (`buyAgainCount` / `buyAgainOnSaleCount` / `wontBuyCount` / `ratingCount` / `reviewCount`) and `isCommunityEligible` flag the `product-rating-recalc` worker reads/writes are provided by M1 (updated in parallel); M2 consumes those names. There are no `rating_avg` / `rating_count`-as-average or taste/value columns.
 - BullMQ `getQueueConnection()` (raw `ConnectionOptions`) and the canonical worker runner `api/src/workers/runner.ts` (`startWorkers()` / `stopWorkers()`) → M1. M2 registers its workers there (Task E5), not in a separate `queues/workers.ts`.
 - Idempotency-Key plugin — M1 ships it; M2 opts in via `config: { idempotent: 'required' }` on the vote route (no manual header check).
 - Mobile `apiClient` (with `.get/.post/.patch/.delete`) and `useTheme` → M0c. Mobile `useSessionStore` → M0c (`apps/mobile/src/auth/sessionStore.ts`). Mobile `newIdempotencyKey` → M2 ships it (Task I0) since M0c does not.

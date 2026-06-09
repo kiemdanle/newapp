@@ -1,0 +1,202 @@
+/* _shared.css — design tokens for four themes, base reset, typography */
+
+/* Base reset */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: var(--page-bg);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px 80px;
+}
+button { font: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+a { color: inherit; text-decoration: none; }
+input, textarea { font: inherit; }
+img { max-width: 100%; display: block; }
+
+h1, h2, h3, h4, h5 {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+/* ===== Expyrico (default) ===== */
+/* Brand palette: Fresh Sage #4BAE8A, Deep Sage #3A8F6F, Mint Mist #D6F0E6,
+   Warm White #FAFAF8, Honey #F5A623, Soft Butter #FEEFC3, Stone #F0F0ED,
+   Pebble #8C8C85, Almost Black #2C2C28. Status: Good #4BAE8A / Soon #F5A623 / Expired #E0442A. */
+[data-theme="expyrico"] {
+  --page-bg: #F0F0ED;          /* Stone — section background behind device */
+
+  --screen-bg: #FAFAF8;        /* Warm White — main surface */
+
+  --grain-overlay: none;
+
+  --card-bg: #FFFFFF;
+  --card-border: #F0F0ED;      /* Stone */
+  --card-shadow: 0 8px 24px rgba(44, 44, 40, 0.10);
+  --card-radius: 20px;
+  --card-blur: none;
+
+  --pill-radius: 14px;
+  --round-radius: 999px;
+
+  --primary: #4BAE8A;          /* Fresh Sage */
+  --primary-dark: #3A8F6F;     /* Deep Sage — pressed / text on light */
+  --primary-light: #D6F0E6;    /* Mint Mist — soft panels / success highlight */
+
+  --accent: #F5A623;           /* Honey — CTAs, badges */
+  --accent-soft: #FEEFC3;      /* Soft Butter — expiring-soon tile bg */
+  --accent-ring: rgba(245, 166, 35, 0.40);
+  --danger: #E0442A;           /* Alert Red — status only */
+  --success: #4BAE8A;          /* Good = Fresh Sage */
+  --warning: #F5A623;          /* Expiring soon = Honey */
+
+  --text-primary: #2C2C28;     /* Almost Black */
+  --text-secondary: #8C8C85;   /* Pebble */
+  --text-tertiary: rgba(140, 140, 133, 0.7);
+  --text-on-accent: #FFFFFF;
+
+  --urgency-fresh: #4BAE8A;    /* Good */
+  --urgency-soon: #F5A623;     /* Expiring soon */
+  --urgency-urgent: #E0442A;   /* Expired */
+
+  --tabbar-bg: #FFFFFF;
+  --tabbar-border: #F0F0ED;
+
+  --input-bg: #FFFFFF;
+  --input-border: #F0F0ED;
+}
+
+/* ===== Bento Grid ===== */
+[data-theme="bento"] {
+  --page-bg: #F2F2F2;
+  --screen-bg: #FAFAFA;
+  --grain-overlay: none;
+
+  --card-bg: #FFFFFF;
+  --card-border: rgba(0, 0, 0, 0.06);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --card-radius: 20px;
+  --card-blur: none;
+
+  --pill-radius: 12px;
+  --round-radius: 999px;
+
+  --accent: #4F46E5;
+  --accent-soft: rgba(79, 70, 229, 0.10);
+  --accent-ring: rgba(79, 70, 229, 0.45);
+  --danger: #E0442A;
+  --success: #4BAE8A;
+  --warning: #F5A623;
+
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --text-tertiary: #999999;
+  --text-on-accent: #FFFFFF;
+
+  --urgency-fresh: #4BAE8A;
+  --urgency-soon: #F5A623;
+  --urgency-urgent: #E0442A;
+
+  --tabbar-bg: #FFFFFF;
+  --tabbar-border: rgba(0, 0, 0, 0.08);
+
+  --input-bg: #FFFFFF;
+  --input-border: rgba(0, 0, 0, 0.10);
+}
+
+/* ===== Soft Clay ===== */
+[data-theme="clay"] {
+  --page-bg: #FFE5D9;
+  --screen-bg: #FFE5D9;
+  --grain-overlay: none;
+
+  --card-bg: #FFF1E6;
+  --card-border: rgba(255, 255, 255, 0.5);
+  --card-shadow:
+    8px 8px 20px rgba(180, 130, 100, 0.25),
+    -6px -6px 18px rgba(255, 255, 255, 0.85);
+  --card-radius: 32px;
+  --card-blur: none;
+
+  --pill-radius: 20px;
+  --round-radius: 999px;
+
+  --accent: #FF7A59;
+  --accent-soft: rgba(255, 122, 89, 0.15);
+  --accent-ring: rgba(255, 122, 89, 0.40);
+  --danger: #E0442A;
+  --success: #4BAE8A;
+  --warning: #F5A623;
+
+  --text-primary: #4A2C1F;
+  --text-secondary: rgba(74, 44, 31, 0.65);
+  --text-tertiary: rgba(74, 44, 31, 0.40);
+  --text-on-accent: #FFFFFF;
+
+  --urgency-fresh: #4BAE8A;
+  --urgency-soon: #F5A623;
+  --urgency-urgent: #E0442A;
+
+  --tabbar-bg: #FFF1E6;
+  --tabbar-border: rgba(74, 44, 31, 0.08);
+
+  --input-bg: #FFF8F2;
+  --input-border: rgba(74, 44, 31, 0.10);
+}
+
+/* ===== Material You ===== */
+[data-theme="material"] {
+  --page-bg: #F4EFF7;
+  --screen-bg: #FEF7FF;
+  --grain-overlay: none;
+
+  --card-bg: #F7F2FA;
+  --card-border: rgba(103, 80, 164, 0.08);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --card-radius: 16px;
+  --card-blur: none;
+
+  --pill-radius: 999px;
+  --round-radius: 999px;
+
+  --accent: #6750A4;
+  --accent-soft: #EADDFF;
+  --accent-ring: rgba(103, 80, 164, 0.45);
+  --danger: #E0442A;
+  --success: #4BAE8A;
+  --warning: #F5A623;
+
+  --text-primary: #1D1B20;
+  --text-secondary: #49454F;
+  --text-tertiary: #79747E;
+  --text-on-accent: #FFFFFF;
+
+  --urgency-fresh: #4BAE8A;
+  --urgency-soon: #F5A623;
+  --urgency-urgent: #E0442A;
+
+  --tabbar-bg: #FEF7FF;
+  --tabbar-border: rgba(0, 0, 0, 0.06);
+
+  --input-bg: #FEF7FF;
+  --input-border: rgba(0, 0, 0, 0.10);
+}
+
+/* Theme cross-fade for the Theme Picker */
+.bezel, .screen, .tab-bar, .fab, .card, .btn-primary, .input, .home-indicator, .status-bar {
+  transition:
+    background-color 200ms ease,
+    background 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}

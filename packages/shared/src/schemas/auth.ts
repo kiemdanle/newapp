@@ -41,6 +41,8 @@ export const registerSchema = z.object({
   password: passwordField,
   firstName: nameField,
   lastName: nameField,
+  // Optional referral attribution — absent for organic signups (v1 behavior unchanged).
+  referralCode: z.string().trim().toUpperCase().regex(/^[A-Z2-9]{8}$/).optional(),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 

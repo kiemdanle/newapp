@@ -4,11 +4,11 @@
 
 **Goal:** Stand up the monorepo, the shared Zod schemas, the four theme token files, the Fastify API foundation (config, db, redis, error handling, plugins, health), and all auth service-layer logic (passwords, tokens, sessions, email, country detection, users repo, auth decorator). At the end of M0a, you have a green test suite covering every pure-logic and service-layer auth concern; HTTP routes follow in M0b.
 
-**Architecture:** Monorepo (pnpm + Turborepo). Fastify 4 API with Zod-validated config, RFC 7807 errors, Helmet, CORS, Redis-backed rate limiting, and Prisma against Postgres 16. All M0 tables created via a single initial migration. Tests run against a real local Postgres `pantry_test` database; CI uses a Postgres service.
+**Architecture:** Monorepo (pnpm + Turborepo). Fastify 4 API with Zod-validated config, RFC 7807 errors, Helmet, CORS, Redis-backed rate limiting, and Prisma against Postgres 16. All M0 tables created via a single initial migration. Tests run against a real local Postgres `expyrico_test` database; CI uses a Postgres service.
 
 **Tech Stack:** Node 20 LTS, TypeScript 5, pnpm 9, Turborepo, Fastify 4, Prisma 5, Postgres 16, Redis 7, ioredis, Zod 3, argon2, jose, otplib, nodemailer, pino, Vitest.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md`. Read sections 1–4.3, 5, 6.8, 10.3, 11 before starting.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md`. Read sections 1–4.3, 5, 6.8, 10.3, 11 before starting.
 
 **M0 sub-plans (executed in order):**
 
@@ -21,12 +21,29 @@
 
 ---
 
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A, step 1 (foundation — entire plan).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Validation amendments — 2026-05-26
+
+A review pass tightened five things in this plan; apply them as written:
+
+1. **Access token is a plain string.** `issueAccessToken(payload)` returns the signed JWT as a bare `string` (not `{ token, expiresIn }`, and there is no second options/override argument). Routes that report `expiresIn` to clients read it from `getConfig().jwt.accessTtlSeconds`. This keeps M0b route code and downstream tests from having to unwrap a `.token` field.
+2. **Rate limiting is real and configurable.** New `RATE_LIMIT_*` config knobs drive three tiers: 60/min per authenticated user, 30/min per IP globally, and a tighter 10/min per IP on `/v1/auth/*`. The limiter is never fully disabled — tests set generous global numbers and a low auth-scope number so a test can still prove the auth limiter trips.
+3. **Recovery codes get a home.** A new `totp_recovery_codes` table stores hashed, single-use recovery codes (one row per code). M0b persists them at enrollment and redeems them.
+4. **Email verification + admin-TOTP gates land in M0b.** The login route there refuses sign-in for unverified emails and forces TOTP enrollment for admins who have not yet set it up; the supporting schema and config live here.
+
+---
+
 ## File map
 
 This plan creates the following files. Files in **bold** carry significant logic; the rest are wiring. Mobile, admin, and infra files are deferred to M0c/M0d.
 
 ```
-pantry/
+expyrico/
 ├── .gitignore
 ├── .editorconfig
 ├── .nvmrc
@@ -49,7 +66,7 @@ pantry/
 │       ├── tsconfig.json
 │       ├── src/index.ts
 │       ├── src/tokens.ts                            ← Token shape definition
-│       ├── src/themes/aurora.ts
+│       ├── src/themes/expyrico.ts
 │       ├── src/themes/bento.ts
 │       ├── src/themes/clay.ts
 │       └── src/themes/material.ts
@@ -101,7 +118,7 @@ pantry/
 - **Always-on TDD where logic exists.** Write the failing test first, run it, watch it fail, implement, run it again, watch it pass, commit. Where there is no testable logic (scaffolding, config files), write a minimal smoke check (e.g., `pnpm build`) and commit.
 - **Conventional commits.** `feat(scope): …`, `fix(scope): …`, `chore(scope): …`, `test(scope): …`. Scopes match top-level dirs: `repo`, `shared`, `theme`, `api`, `mobile`, `admin`, `infra`.
 - **Commit after every passing task**, not at the end of each phase. Frequent commits make rollback cheap.
-- **Test database.** Local: a separate `pantry_test` Postgres database (created in Task D5). CI: GitHub Actions Postgres service. The test setup truncates all tables (in dependency order) before each test.
+- **Test database.** Local: a separate `expyrico_test` Postgres database (created in Task D5). CI: GitHub Actions Postgres service. The test setup truncates all tables (in dependency order) before each test.
 - **No mocking the DB.** Integration tests run against a real Postgres. Unit tests are reserved for pure functions (hashing, encoding, encryption, etc.).
 - **Env vars** loaded via `src/config.ts` and validated with Zod. Missing vars fail fast at boot. Tests use `.env.test`.
 - **Type safety end-to-end.** API routes import Zod schemas from `packages/shared`. The mobile app and admin app import the same schemas to derive request/response types. No string-typing across boundaries.
@@ -316,7 +333,7 @@ packages:
 - [ ] **Step 11: Write `README.md`**
 
 ```markdown
-# Pantry
+# Expyrico
 
 Cross-platform mobile app for tracking product expiry dates with shared product reviews. Self-hosted backend.
 
@@ -326,7 +343,7 @@ Cross-platform mobile app for tracking product expiry dates with shared product 
 - `apps/mobile/` — Expo React Native app
 - `apps/admin/` — Next.js admin web UI
 - `packages/shared/` — Zod schemas and shared types
-- `packages/theme/` — Theme tokens (Aurora, Bento, Clay, Material)
+- `packages/theme/` — Theme tokens (Expyrico, Bento, Clay, Material)
 - `infra/` — Ansible provisioning and deploy scripts
 
 ## Develop
@@ -338,7 +355,7 @@ pnpm dev
 
 ## Spec
 
-`docs/superpowers/specs/2026-05-23-pantry-app-design.md`
+`docs/superpowers/specs/2026-05-23-expyrico-app-design.md`
 ```
 
 - [ ] **Step 12: Install root deps**
@@ -425,7 +442,7 @@ mkdir -p packages/shared/src
 
 ```json
 {
-  "name": "@pantry/shared",
+  "name": "@expyrico/shared",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -483,7 +500,7 @@ pnpm install
 
 ```bash
 git add -A
-git commit -m "feat(shared): scaffold @pantry/shared package"
+git commit -m "feat(shared): scaffold @expyrico/shared package"
 ```
 
 ---
@@ -503,7 +520,7 @@ import { z } from 'zod';
 
 export const userRoleSchema = z.enum(['user', 'admin']);
 export const userStatusSchema = z.enum(['active', 'suspended', 'deleted']);
-export const themePreferenceSchema = z.enum(['aurora', 'bento', 'clay', 'material']);
+export const themePreferenceSchema = z.enum(['expyrico', 'bento', 'clay', 'material']);
 
 export const userSchema = z.object({
   id: z.string().uuid(),
@@ -563,6 +580,13 @@ export const totpChallengeSchema = z.object({
   challengeToken: z.string(),
 });
 export type TotpChallenge = z.infer<typeof totpChallengeSchema>;
+
+/** Returned by login for an admin who must still set up TOTP before any session. */
+export const totpEnrollmentRequiredSchema = z.object({
+  requiresTotpEnrollment: z.literal(true),
+  enrollmentChallenge: z.string(),
+});
+export type TotpEnrollmentRequired = z.infer<typeof totpEnrollmentRequiredSchema>;
 
 // --- Email + password ---
 
@@ -631,7 +655,11 @@ export const passkeyLoginVerifySchema = z.object({
 
 // --- TOTP (admin) ---
 
-export const totpEnrollSchema = z.object({});
+// Enrollment is authorized by the single-use `enrollmentChallenge` issued by the
+// login route to an admin who has not yet set up TOTP.
+export const totpEnrollSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
+});
 export const totpEnrollResponseSchema = z.object({
   secret: z.string(),
   qrCodeDataUrl: z.string(),
@@ -640,11 +668,17 @@ export const totpEnrollResponseSchema = z.object({
 export type TotpEnrollResponse = z.infer<typeof totpEnrollResponseSchema>;
 
 export const totpVerifyEnrollmentSchema = z.object({
+  enrollmentChallenge: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
 });
 export const totpChallengeVerifySchema = z.object({
   challengeToken: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
+});
+/** Redeem a one-time recovery code in place of a TOTP code during login. */
+export const totpRecoveryVerifySchema = z.object({
+  challengeToken: z.string().min(1),
+  recoveryCode: z.string().min(1),
 });
 ```
 
@@ -685,7 +719,9 @@ export const ERROR_CODES = {
   INVALID_TOKEN: 'invalid_token',
   TOKEN_EXPIRED: 'token_expired',
   REQUIRES_TOTP: 'requires_totp',
+  REQUIRES_TOTP_ENROLLMENT: 'requires_totp_enrollment',
   INVALID_TOTP: 'invalid_totp',
+  INVALID_RECOVERY_CODE: 'invalid_recovery_code',
   PASSKEY_VERIFICATION_FAILED: 'passkey_verification_failed',
 } as const;
 
@@ -705,7 +741,7 @@ export type Paginated<T> = {
 - [ ] **Step 5: Typecheck the package**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: no output, exit 0.
 
@@ -738,7 +774,7 @@ mkdir -p packages/theme/src/themes
 
 ```json
 {
-  "name": "@pantry/theme",
+  "name": "@expyrico/theme",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -780,7 +816,7 @@ mkdir -p packages/theme/src/themes
 /**
  * Theme token shape. Every theme must implement this exact contract.
  */
-export type ThemeId = 'aurora' | 'bento' | 'clay' | 'material';
+export type ThemeId = 'expyrico' | 'bento' | 'clay' | 'material';
 
 export interface ColorTokens {
   bg: string;
@@ -860,74 +896,77 @@ export interface Theme {
 
 ```ts
 export * from './tokens.js';
-export { aurora } from './themes/aurora.js';
+export { expyrico } from './themes/expyrico.js';
 export { bento } from './themes/bento.js';
 export { clay } from './themes/clay.js';
 export { material } from './themes/material.js';
 
 import type { Theme, ThemeId } from './tokens.js';
-import { aurora } from './themes/aurora.js';
+import { expyrico } from './themes/expyrico.js';
 import { bento } from './themes/bento.js';
 import { clay } from './themes/clay.js';
 import { material } from './themes/material.js';
 
 export const themes: Record<ThemeId, Theme> = {
-  aurora,
+  expyrico,
   bento,
   clay,
   material,
 };
 
-export const themeList: Theme[] = [aurora, bento, clay, material];
+export const themeList: Theme[] = [expyrico, bento, clay, material];
 ```
 
 - [ ] **Step 6: Commit (will not typecheck yet — themes are next)**
 
 ```bash
 git add -A
-git commit -m "feat(theme): scaffold @pantry/theme with token contract"
+git commit -m "feat(theme): scaffold @expyrico/theme with token contract"
 ```
 
 ---
 
-### Task C2: Aurora Glass theme tokens
+### Task C2: Expyrico theme tokens (default)
 
 **Files:**
-- Create: `packages/theme/src/themes/aurora.ts`
+- Create: `packages/theme/src/themes/expyrico.ts`
 
-- [ ] **Step 1: Write `packages/theme/src/themes/aurora.ts`**
+- [ ] **Step 1: Write `packages/theme/src/themes/expyrico.ts`**
 
 ```ts
 import type { Theme } from '../tokens.js';
 
-export const aurora: Theme = {
-  id: 'aurora',
-  name: 'Aurora Glass',
-  scheme: 'dark',
+// Expyrico brand palette (design spec §2.10). Light scheme on Warm White.
+// Status colors are reserved: Good = primary Fresh Sage, Expiring soon = accent
+// Honey (Soft Butter tile bg), Expired = Alert Red (status only, never branding).
+export const expyrico: Theme = {
+  id: 'expyrico',
+  name: 'Expyrico',
+  scheme: 'light',
   colors: {
-    bg: '#0b0a17',
-    bgElevated: 'rgba(255,255,255,0.06)',
-    bgGlass: 'rgba(255,255,255,0.08)',
-    border: 'rgba(255,255,255,0.12)',
-    text: '#fafafa',
-    textMuted: 'rgba(250,250,250,0.7)',
-    textInverse: '#0b0a17',
-    primary: '#a855f7',
-    primaryFg: '#ffffff',
-    accent: '#a5f3fc',
-    success: '#86efac',
-    warning: '#fbbf24',
-    danger: '#fb7185',
-    hero: 'rgba(255,255,255,0.08)',
-    heroFg: '#ffffff',
+    bg: '#FAFAF8',                        // Warm White
+    bgElevated: '#FFFFFF',
+    bgGlass: '#F0F0ED',                   // Stone (section bg / dividers)
+    border: '#F0F0ED',                    // Stone
+    text: '#2C2C28',                      // Almost Black
+    textMuted: '#8C8C85',                 // Pebble
+    textInverse: '#FAFAF8',
+    primary: '#4BAE8A',                   // Fresh Sage
+    primaryFg: '#FFFFFF',
+    accent: '#F5A623',                    // Honey
+    success: '#4BAE8A',                   // Good = Fresh Sage
+    warning: '#F5A623',                   // Expiring soon = Honey
+    danger: '#E0442A',                    // Expired = Alert Red
+    hero: '#D6F0E6',                      // Mint Mist soft panel
+    heroFg: '#2C2C28',
   },
   radii: { none: 0, sm: 8, md: 14, lg: 20, xl: 28, pill: 999 },
   shadows: {
     none: 'none',
-    sm: '0 2px 8px rgba(0,0,0,0.25)',
-    md: '0 8px 24px -8px rgba(124,58,237,0.45)',
-    lg: '0 24px 56px -20px rgba(124,58,237,0.6)',
-    glow: '0 0 32px rgba(168,85,247,0.45)',
+    sm: '0 2px 8px rgba(44,44,40,0.06)',
+    md: '0 8px 24px -8px rgba(44,44,40,0.10)',
+    lg: '0 24px 56px -20px rgba(44,44,40,0.14)',
+    glow: '0 0 24px rgba(75,174,138,0.25)',
   },
   typography: {
     fontFamily: 'System',
@@ -946,7 +985,7 @@ export const aurora: Theme = {
 
 ```bash
 git add -A
-git commit -m "feat(theme): add Aurora Glass tokens"
+git commit -m "feat(theme): add Expyrico default theme tokens"
 ```
 
 ---
@@ -976,9 +1015,9 @@ export const bento: Theme = {
     primary: '#0a0a0a',
     primaryFg: '#ffffff',
     accent: '#fbbf24',
-    success: '#10b981',
-    warning: '#f59e0b',
-    danger: '#fb7185',
+    success: '#4BAE8A',                   // reserved: Good
+    warning: '#F5A623',                   // reserved: Expiring soon
+    danger: '#E0442A',                    // reserved: Expired
     hero: '#0a0a0a',
     heroFg: '#ffffff',
   },
@@ -1037,9 +1076,9 @@ export const clay: Theme = {
     primary: '#ea580c',
     primaryFg: '#ffffff',
     accent: '#fbbf24',
-    success: '#10b981',
-    warning: '#f59e0b',
-    danger: '#dc2626',
+    success: '#4BAE8A',                   // reserved: Good
+    warning: '#F5A623',                   // reserved: Expiring soon
+    danger: '#E0442A',                    // reserved: Expired
     hero: 'linear-gradient(145deg,#fed7aa,#fdba74)',
     heroFg: '#5b3a1f',
   },
@@ -1098,9 +1137,9 @@ export const material: Theme = {
     primary: '#65558f',
     primaryFg: '#ffffff',
     accent: '#7c4dff',
-    success: '#1f5b1f',
-    warning: '#7a5b00',
-    danger: '#8b1538',
+    success: '#4BAE8A',                   // reserved: Good
+    warning: '#F5A623',                   // reserved: Expiring soon
+    danger: '#E0442A',                    // reserved: Expired
     hero: '#65558f',
     heroFg: '#ffffff',
   },
@@ -1128,7 +1167,7 @@ export const material: Theme = {
 - [ ] **Step 2: Typecheck the theme package**
 
 ```bash
-pnpm --filter @pantry/theme typecheck
+pnpm --filter @expyrico/theme typecheck
 ```
 Expected: exit 0.
 
@@ -1162,7 +1201,7 @@ mkdir -p api/src/{plugins,routes,services,utils} api/tests/{helpers,unit,integra
 
 ```json
 {
-  "name": "@pantry/api",
+  "name": "@expyrico/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -1188,7 +1227,7 @@ mkdir -p api/src/{plugins,routes,services,utils} api/tests/{helpers,unit,integra
     "@fastify/cors": "^9.0.0",
     "@fastify/helmet": "^11.1.0",
     "@fastify/rate-limit": "^9.1.0",
-    "@pantry/shared": "workspace:*",
+    "@expyrico/shared": "workspace:*",
     "@prisma/client": "^5.18.0",
     "@simplewebauthn/server": "^10.0.0",
     "argon2": "^0.40.0",
@@ -1258,7 +1297,7 @@ HOST=0.0.0.0
 LOG_LEVEL=info
 
 # Postgres
-DATABASE_URL=postgresql://pantry:pantry@localhost:5432/pantry?schema=public
+DATABASE_URL=postgresql://expyrico:expyrico@localhost:5432/expyrico?schema=public
 
 # Redis
 REDIS_URL=redis://localhost:6379
@@ -1266,10 +1305,16 @@ REDIS_URL=redis://localhost:6379
 # Auth
 JWT_ACCESS_SECRET=change-me-32-bytes-minimum-aaaaaaa
 JWT_ACCESS_TTL_SECONDS=900
-JWT_ISSUER=pantry-api
+JWT_ISSUER=expyrico-api
 JWT_AUDIENCE=pantry-app
 REFRESH_TOKEN_TTL_DAYS=30
 TOTP_ENCRYPTION_KEY=change-me-32-bytes-base64
+
+# Rate limiting (per 1-minute window)
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_PER_USER_PER_MIN=60
+RATE_LIMIT_PER_IP_PER_MIN=30
+RATE_LIMIT_AUTH_PER_IP_PER_MIN=10
 
 # OAuth
 GOOGLE_CLIENT_ID=
@@ -1279,7 +1324,7 @@ APPLE_KEY_ID=
 
 # WebAuthn
 WEBAUTHN_RP_ID=localhost
-WEBAUTHN_RP_NAME=Pantry
+WEBAUTHN_RP_NAME=Expyrico
 WEBAUTHN_ORIGIN=http://localhost:8081
 
 # SMTP (for verification + reset emails)
@@ -1287,10 +1332,10 @@ SMTP_HOST=localhost
 SMTP_PORT=1025
 SMTP_USER=
 SMTP_PASS=
-SMTP_FROM="Pantry <no-reply@pantry.local>"
+SMTP_FROM="Expyrico <no-reply@expyrico.local>"
 
 # Frontend URLs (used in email links)
-APP_DEEP_LINK=pantry://
+APP_DEEP_LINK=expyrico://
 ADMIN_URL=http://localhost:4001
 
 # Country detection
@@ -1305,25 +1350,32 @@ NODE_ENV=test
 PORT=4100
 HOST=127.0.0.1
 LOG_LEVEL=silent
-DATABASE_URL=postgresql://pantry:pantry@localhost:5432/pantry_test?schema=public
+DATABASE_URL=postgresql://expyrico:expyrico@localhost:5432/expyrico_test?schema=public
 REDIS_URL=redis://localhost:6379/15
 JWT_ACCESS_SECRET=test-secret-32-bytes-aaaaaaaaaaa
 JWT_ACCESS_TTL_SECONDS=900
-JWT_ISSUER=pantry-api
+JWT_ISSUER=expyrico-api
 JWT_AUDIENCE=pantry-app
 REFRESH_TOKEN_TTL_DAYS=30
 TOTP_ENCRYPTION_KEY=dGVzdC1rZXktMzItYnl0ZXMtZm9yLXRvdHAtYWVzZ2NtMTI=
+# Rate limiter stays ON in tests. The global per-user/per-IP budgets are set high
+# so they don't interfere with multi-request test flows, while the /v1/auth/* per-IP
+# budget is kept low so a dedicated test can assert it actually triggers.
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_PER_USER_PER_MIN=1000
+RATE_LIMIT_PER_IP_PER_MIN=1000
+RATE_LIMIT_AUTH_PER_IP_PER_MIN=5
 GOOGLE_CLIENT_ID=test-google-client-id
 APPLE_CLIENT_ID=test-apple-client-id
 APPLE_TEAM_ID=TESTTEAM
 APPLE_KEY_ID=TESTKEY
 WEBAUTHN_RP_ID=localhost
-WEBAUTHN_RP_NAME=Pantry-Test
+WEBAUTHN_RP_NAME=Expyrico-Test
 WEBAUTHN_ORIGIN=http://localhost
 SMTP_HOST=localhost
 SMTP_PORT=1025
-SMTP_FROM=test@pantry.local
-APP_DEEP_LINK=pantry://
+SMTP_FROM=test@expyrico.local
+APP_DEEP_LINK=expyrico://
 ADMIN_URL=http://localhost:3000
 COUNTRY_DETECT_PRIMARY=https://ipapi.co
 COUNTRY_DETECT_FALLBACK=http://ip-api.com
@@ -1358,7 +1410,7 @@ pnpm install
 
 ```bash
 cp api/.env.example api/.env
-pnpm --filter @pantry/api exec tsx --eval "import('./src/server.ts').then(m => m.buildServer().then(a => a.inject({ method: 'GET', url: '/health' })).then(r => { console.log(r.statusCode, r.body); process.exit(0); }))"
+pnpm --filter @expyrico/api exec tsx --eval "import('./src/server.ts').then(m => m.buildServer().then(a => a.inject({ method: 'GET', url: '/health' })).then(r => { console.log(r.statusCode, r.body); process.exit(0); }))"
 ```
 Expected: prints `200 {"status":"ok"}`.
 
@@ -1397,17 +1449,21 @@ describe('config', () => {
     JWT_AUDIENCE: 'pantry-app',
     REFRESH_TOKEN_TTL_DAYS: '30',
     TOTP_ENCRYPTION_KEY: Buffer.from('a'.repeat(32)).toString('base64'),
+    RATE_LIMIT_ENABLED: 'true',
+    RATE_LIMIT_PER_USER_PER_MIN: '60',
+    RATE_LIMIT_PER_IP_PER_MIN: '30',
+    RATE_LIMIT_AUTH_PER_IP_PER_MIN: '10',
     GOOGLE_CLIENT_ID: 'g',
     APPLE_CLIENT_ID: 'a',
     APPLE_TEAM_ID: 'T',
     APPLE_KEY_ID: 'K',
     WEBAUTHN_RP_ID: 'localhost',
-    WEBAUTHN_RP_NAME: 'Pantry',
+    WEBAUTHN_RP_NAME: 'Expyrico',
     WEBAUTHN_ORIGIN: 'http://localhost',
     SMTP_HOST: 'localhost',
     SMTP_PORT: '1025',
     SMTP_FROM: 't@e.x',
-    APP_DEEP_LINK: 'pantry://',
+    APP_DEEP_LINK: 'expyrico://',
     ADMIN_URL: 'http://localhost:3000',
     COUNTRY_DETECT_PRIMARY: 'https://ipapi.co',
     COUNTRY_DETECT_FALLBACK: 'http://ip-api.com',
@@ -1419,6 +1475,10 @@ describe('config', () => {
     expect(cfg.jwt.accessSecret).toHaveLength(32);
     expect(cfg.totp.encryptionKey).toBeInstanceOf(Buffer);
     expect(cfg.totp.encryptionKey.length).toBe(32);
+    expect(cfg.rateLimit.enabled).toBe(true);
+    expect(cfg.rateLimit.perUserPerMin).toBe(60);
+    expect(cfg.rateLimit.perIpPerMin).toBe(30);
+    expect(cfg.rateLimit.authPerIpPerMin).toBe(10);
   });
 
   it('rejects a JWT secret shorter than 32 bytes', () => {
@@ -1436,7 +1496,7 @@ describe('config', () => {
 - [ ] **Step 2: Run the test to verify it fails**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/config.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/config.test.ts
 ```
 Expected: FAIL — `parseConfig` does not exist.
 
@@ -1456,9 +1516,19 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
-  JWT_ISSUER: z.string().default('pantry-api'),
+  JWT_ISSUER: z.string().default('expyrico-api'),
   JWT_AUDIENCE: z.string().default('pantry-app'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+
+  // Rate limiting (per 1-minute window). Kept configurable so tests can tune
+  // them rather than disabling the limiter outright.
+  RATE_LIMIT_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  RATE_LIMIT_PER_USER_PER_MIN: z.coerce.number().int().positive().default(60),
+  RATE_LIMIT_PER_IP_PER_MIN: z.coerce.number().int().positive().default(30),
+  RATE_LIMIT_AUTH_PER_IP_PER_MIN: z.coerce.number().int().positive().default(10),
 
   TOTP_ENCRYPTION_KEY: z
     .string()
@@ -1503,6 +1573,12 @@ export interface Config {
     refreshTtlDays: number;
   };
   totp: { encryptionKey: Buffer };
+  rateLimit: {
+    enabled: boolean;
+    perUserPerMin: number;
+    perIpPerMin: number;
+    authPerIpPerMin: number;
+  };
   oauth: {
     googleClientId: string;
     appleClientId: string;
@@ -1532,6 +1608,12 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       refreshTtlDays: e.REFRESH_TOKEN_TTL_DAYS,
     },
     totp: { encryptionKey: Buffer.from(e.TOTP_ENCRYPTION_KEY, 'base64') },
+    rateLimit: {
+      enabled: e.RATE_LIMIT_ENABLED,
+      perUserPerMin: e.RATE_LIMIT_PER_USER_PER_MIN,
+      perIpPerMin: e.RATE_LIMIT_PER_IP_PER_MIN,
+      authPerIpPerMin: e.RATE_LIMIT_AUTH_PER_IP_PER_MIN,
+    },
     oauth: {
       googleClientId: e.GOOGLE_CLIENT_ID,
       appleClientId: e.APPLE_CLIENT_ID,
@@ -1565,7 +1647,7 @@ export function resetConfigForTests() {
 - [ ] **Step 4: Run tests, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/config.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/config.test.ts
 ```
 Expected: 3 passed.
 
@@ -1663,7 +1745,7 @@ export async function disconnectRedis(): Promise<void> {
 - [ ] **Step 4: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Note: Prisma client doesn't exist yet — typecheck will FAIL with `Cannot find module '@prisma/client'`. That's expected; Task D4 generates it. Skip ahead.
 
@@ -1705,7 +1787,7 @@ enum UserStatus {
 }
 
 enum ThemePreference {
-  aurora
+  expyrico
   bento
   clay
   material
@@ -1729,7 +1811,7 @@ model User {
   avatarUrl       String?
   role            UserRole        @default(user)
   status          UserStatus      @default(active)
-  themePreference ThemePreference @default(aurora)
+  themePreference ThemePreference @default(expyrico)
   totpSecret      String?
   totpEnabledAt   DateTime?
   createdAt       DateTime        @default(now())
@@ -1742,6 +1824,7 @@ model User {
   emailTokens  EmailToken[]
   passwordResets PasswordReset[]
   totpChallenges TotpChallenge[]
+  totpRecoveryCodes TotpRecoveryCode[]
   auditLogs    AdminAuditLog[]  @relation("AuditAdmin")
 
   @@map("users")
@@ -1827,11 +1910,15 @@ model PasswordReset {
   @@map("password_resets")
 }
 
-/// Short-lived intermediate token after password login when admin TOTP is required.
+/// Short-lived intermediate token issued after a password login when admin TOTP is
+/// involved. `purpose` distinguishes a second-factor challenge for an admin who has
+/// TOTP enabled ('login') from a forced-enrollment token for an admin who must still
+/// set TOTP up ('enroll').
 model TotpChallenge {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid
   tokenHash String   @unique
+  purpose   String   @default("login") // 'login' | 'enroll'
   expiresAt DateTime
   consumedAt DateTime?
   createdAt DateTime @default(now())
@@ -1840,6 +1927,21 @@ model TotpChallenge {
 
   @@index([userId])
   @@map("totp_challenges")
+}
+
+/// One hashed TOTP recovery code per row. Each code is single-use: `usedAt` is
+/// stamped when redeemed so the same code can never grant a second session.
+model TotpRecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("totp_recovery_codes")
 }
 
 model AdminAuditLog {
@@ -1864,14 +1966,14 @@ model AdminAuditLog {
 - [ ] **Step 2: Generate the Prisma client**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 Expected: prints `✔ Generated Prisma Client`.
 
 - [ ] **Step 3: Re-typecheck (now should pass)**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -1908,15 +2010,15 @@ If not: `brew install redis && brew services start redis` (macOS) or `sudo apt i
 ```bash
 psql postgres -c "CREATE ROLE pantry WITH LOGIN PASSWORD 'pantry';"
 psql postgres -c "CREATE DATABASE pantry OWNER pantry;"
-psql postgres -c "CREATE DATABASE pantry_test OWNER pantry;"
+psql postgres -c "CREATE DATABASE expyrico_test OWNER pantry;"
 psql postgres -c "ALTER USER pantry CREATEDB;"
 ```
 
 - [ ] **Step 4: Verify connectivity**
 
 ```bash
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "SELECT 1;"
-psql postgresql://pantry:pantry@localhost:5432/pantry_test -c "SELECT 1;"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "SELECT 1;"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico_test -c "SELECT 1;"
 redis-cli ping
 ```
 Expected: `1`, `1`, `PONG`.
@@ -1933,16 +2035,16 @@ Expected: `1`, `1`, `PONG`.
 - [ ] **Step 1: Apply the migration to dev**
 
 ```bash
-pnpm --filter @pantry/api exec prisma migrate dev --name init
+pnpm --filter @expyrico/api exec prisma migrate dev --name init
 ```
 Expected: creates migration directory, applies it, prints `✔ Generated Prisma Client`.
 
 - [ ] **Step 2: Verify tables exist**
 
 ```bash
-psql postgresql://pantry:pantry@localhost:5432/pantry -c "\dt"
+psql postgresql://expyrico:expyrico@localhost:5432/expyrico -c "\dt"
 ```
-Expected: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `admin_audit_log`.
+Expected: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `totp_recovery_codes`, `admin_audit_log`.
 
 - [ ] **Step 3: Commit migration files**
 
@@ -2004,6 +2106,7 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
 // Truncate all tables in dependency order before each test
 const tables = [
   'admin_audit_log',
+  'totp_recovery_codes',
   'totp_challenges',
   'password_resets',
   'email_tokens',
@@ -2016,7 +2119,7 @@ const tables = [
 beforeAll(async () => {
   // Run pending migrations
   const { execSync } = await import('node:child_process');
-  execSync('pnpm --filter @pantry/api exec prisma migrate deploy', {
+  execSync('pnpm --filter @expyrico/api exec prisma migrate deploy', {
     stdio: 'pipe',
     env: { ...process.env },
   });
@@ -2087,7 +2190,7 @@ describe('GET /health', () => {
 - [ ] **Step 6: Run the test**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: 1 file, 1 test passed.
 
@@ -2144,14 +2247,14 @@ describe('toProblem', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/errors.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/errors.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/errors.ts`**
 
 ```ts
 import { ZodError } from 'zod';
-import type { Problem, ErrorCode } from '@pantry/shared';
+import type { Problem, ErrorCode } from '@expyrico/shared';
 
 export class AppError extends Error {
   status: number;
@@ -2196,7 +2299,7 @@ export function toProblem(err: unknown): Problem {
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/errors.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/errors.test.ts
 ```
 Expected: 3 passed.
 
@@ -2257,7 +2360,7 @@ export async function registerCors(app: FastifyInstance) {
       // Allow no-origin (mobile native fetch) and the admin URL only
       if (!origin) return cb(null, true);
       if (origin === cfg.frontend.adminUrl) return cb(null, true);
-      if (origin.startsWith('exp://') || origin.startsWith('pantry://')) return cb(null, true);
+      if (origin.startsWith('exp://') || origin.startsWith('expyrico://')) return cb(null, true);
       cb(new Error('CORS: origin not allowed'), false);
     },
     credentials: true,
@@ -2269,21 +2372,49 @@ export async function registerCors(app: FastifyInstance) {
 
 - [ ] **Step 2: Write `api/src/plugins/rate-limit.ts`**
 
+The global limiter enforces two tiers in one key: **60 requests/min per authenticated
+user** when a bearer identity is present, and **30 requests/min per IP** for anonymous
+traffic. A tighter **10 requests/min per IP** is layered onto the `/v1/auth/*` scope
+via a per-route config (`authRateLimitConfig`) that M0b attaches when it registers the
+auth routes. All three numbers come from config, so tests tune them rather than
+disabling the limiter — the limiter stays on in every environment.
+
 ```ts
 import rateLimit from '@fastify/rate-limit';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, RouteShorthandOptions } from 'fastify';
+import { getConfig } from '../config.js';
 import { getRedis } from '../redis.js';
 
 export async function registerRateLimit(app: FastifyInstance) {
+  const cfg = getConfig();
   await app.register(rateLimit, {
     global: true,
-    max: 60,
+    // Authenticated callers get the higher per-user budget; anonymous traffic
+    // is held to the stricter per-IP budget.
+    max: (req) => (req.user?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin),
     timeWindow: '1 minute',
     redis: getRedis(),
     nameSpace: 'rl:global:',
-    keyGenerator: (req) => `${req.ip}:${(req as any).user?.id ?? 'anon'}`,
+    keyGenerator: (req) => (req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`),
     addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true },
   });
+}
+
+/**
+ * Per-route rate-limit config for the `/v1/auth/*` scope: a tighter per-IP budget
+ * applied on top of the global limiter to slow credential-stuffing / brute force.
+ * M0b spreads this into the route options when registering the auth plugin.
+ */
+export function authRateLimitConfig(app: FastifyInstance): RouteShorthandOptions['config'] {
+  const cfg = getConfig();
+  return {
+    rateLimit: {
+      max: cfg.rateLimit.authPerIpPerMin,
+      timeWindow: '1 minute',
+      nameSpace: 'rl:auth:',
+      keyGenerator: (req) => `ip:${req.ip}`,
+    },
+  };
 }
 ```
 
@@ -2313,7 +2444,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(helmet, { global: true });
   await registerCors(app);
-  if (cfg.env !== 'test') await registerRateLimit(app);
+  if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
 
   app.addHook('onSend', async (req, reply) => {
@@ -2385,7 +2516,7 @@ describe('health', () => {
 - [ ] **Step 6: Run tests**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: all passing.
 
@@ -2454,7 +2585,7 @@ describe('encryption', () => {
 - [ ] **Step 3: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/encryption.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/encryption.test.ts
 ```
 
 - [ ] **Step 4: Write `api/src/utils/encryption.ts`**
@@ -2491,7 +2622,7 @@ export function decrypt(payload: string, key: Buffer): string {
 - [ ] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/encryption.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/encryption.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -2537,7 +2668,7 @@ describe('passwords', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/passwords.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/passwords.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/services/auth/passwords.ts`**
@@ -2566,7 +2697,7 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
 - [ ] **Step 4: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/passwords.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/passwords.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -2584,7 +2715,7 @@ git commit -m "feat(api): argon2id password hashing service"
 - Create: `api/src/services/auth/tokens.ts`
 - Create: `api/tests/unit/tokens.test.ts`
 
-`issueAccessToken(payload, opts?)` takes an `AccessTokenPayload` (`{ sub, role }`) and an optional `{ expiresIn }` override (seconds). It returns `{ token, expiresIn }`; when `opts.expiresIn` is omitted it falls back to `cfg.jwt.accessTtlSeconds`. M3 uses the override (`{ expiresIn: 15 * 60 }`) for the admin impersonate route; all other call sites in M0/M1/M2 pass no options and inherit the configured TTL.
+`issueAccessToken(payload)` takes an `AccessTokenPayload` (`{ sub, role }`) and returns the signed JWT **as a bare string**. The token's TTL always comes from `cfg.jwt.accessTtlSeconds`. Routes that hand tokens back to clients build `tokens = { accessToken: issueAccessToken({...}), refreshToken, expiresIn: cfg.jwt.accessTtlSeconds }` — so the `expiresIn` reported to clients is read from config at the call site, not returned by `issueAccessToken`. Returning a string (rather than an object) keeps every call site uniform: route handlers, the auth decorator, and downstream M1/M2/M3 code all treat the access token as a string and never have to unwrap a `.token` field.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2598,30 +2729,28 @@ import { getConfig, resetConfigForTests } from '../../src/config.js';
 beforeAll(() => resetConfigForTests());
 
 describe('tokens', () => {
-  it('issues and verifies an access token', async () => {
-    const { token, expiresIn } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+  it('issues a JWT string and verifies it', async () => {
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    expect(typeof token).toBe('string');
     const claims = await verifyAccessToken(token);
     expect(claims.sub).toBe('user-1');
     expect(claims.role).toBe('user');
-    expect(expiresIn).toBe(getConfig().jwt.accessTtlSeconds);
   });
 
   it('rejects a tampered access token', async () => {
-    const { token } = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
     const tampered = token.slice(0, -2) + 'XX';
     await expect(verifyAccessToken(tampered)).rejects.toThrow();
   });
 
-  it('honors an explicit expiresIn override', async () => {
-    const { token, expiresIn } = await issueAccessToken(
-      { sub: 'user-1', role: 'admin' },
-      { expiresIn: 60 },
-    );
-    expect(expiresIn).toBe(60);
+  it('signs the token with the configured access TTL', async () => {
+    const token = await issueAccessToken({ sub: 'user-1', role: 'admin' });
     const decoded = decodeJwt(token);
     expect(decoded.exp).toBeDefined();
     expect(decoded.iat).toBeDefined();
-    expect((decoded.exp as number) - (decoded.iat as number)).toBe(60);
+    expect((decoded.exp as number) - (decoded.iat as number)).toBe(
+      getConfig().jwt.accessTtlSeconds,
+    );
   });
 
   it('issueRefreshToken returns { token, hash, expiresAt }', () => {
@@ -2636,7 +2765,7 @@ describe('tokens', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/tokens.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/tokens.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/services/auth/tokens.ts`**
@@ -2654,43 +2783,28 @@ export interface AccessTokenPayload {
 /** Backward-compatible alias retained for any callers that still import AccessClaims. */
 export type AccessClaims = AccessTokenPayload;
 
-export interface IssueAccessTokenOptions {
-  /** Override the default TTL (seconds). Defaults to `cfg.jwt.accessTtlSeconds`. */
-  expiresIn?: number;
-}
-
-export interface IssuedAccessToken {
-  token: string;
-  expiresIn: number;
-}
-
 function secretKey(): Uint8Array {
   return new TextEncoder().encode(getConfig().jwt.accessSecret);
 }
 
 /**
- * Issue a signed JWT access token.
+ * Issue a signed JWT access token and return it as a bare string.
  *
- * When `opts.expiresIn` is supplied, it is used as the token TTL in seconds;
- * otherwise the default `cfg.jwt.accessTtlSeconds` is used. The returned
- * `expiresIn` always reflects the TTL actually applied to the token, so
- * callers can forward it to clients without re-deriving it from config.
+ * The TTL is always `cfg.jwt.accessTtlSeconds`. Callers that need to report
+ * `expiresIn` to a client read it from config (`getConfig().jwt.accessTtlSeconds`)
+ * at the call site; this function deliberately returns only the token so every
+ * call site treats the access token uniformly as a string.
  */
-export async function issueAccessToken(
-  payload: AccessTokenPayload,
-  opts?: IssueAccessTokenOptions,
-): Promise<IssuedAccessToken> {
+export async function issueAccessToken(payload: AccessTokenPayload): Promise<string> {
   const cfg = getConfig();
-  const expiresIn = opts?.expiresIn ?? cfg.jwt.accessTtlSeconds;
-  const token = await new SignJWT({ role: payload.role })
+  return new SignJWT({ role: payload.role })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setIssuer(cfg.jwt.issuer)
     .setAudience(cfg.jwt.audience)
     .setIssuedAt()
-    .setExpirationTime(`${expiresIn}s`)
+    .setExpirationTime(`${cfg.jwt.accessTtlSeconds}s`)
     .sign(secretKey());
-  return { token, expiresIn };
 }
 
 export async function verifyAccessToken(token: string): Promise<AccessTokenPayload> {
@@ -2723,7 +2837,7 @@ export function issueRefreshToken(): RefreshTokenIssue {
 - [ ] **Step 4: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/tokens.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/tokens.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -2779,7 +2893,7 @@ describe('sessions', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/sessions.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/sessions.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/services/auth/sessions.ts`**
@@ -2868,7 +2982,7 @@ export async function revokeAllSessions(userId: string): Promise<void> {
 - [ ] **Step 4: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/sessions.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/sessions.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -2917,7 +3031,7 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
-    subject: 'Verify your Pantry email',
+    subject: 'Verify your Expyrico email',
     text: `Verify your email by opening this link: ${link}\n\nOr in the app: ${fallbackDeepLink}`,
     html: `<p>Verify your email by clicking <a href="${link}">this link</a>.</p><p>Or open in the app: <a href="${fallbackDeepLink}">${fallbackDeepLink}</a></p>`,
   });
@@ -2933,7 +3047,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
-    subject: 'Reset your Pantry password',
+    subject: 'Reset your Expyrico password',
     text: `Reset your password: ${link}\n\nIf you didn't request this, ignore this email.`,
     html: `<p>Reset your password: <a href="${link}">${link}</a></p>`,
   });
@@ -2943,7 +3057,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -3085,7 +3199,7 @@ export async function detectCountryFromIp(ip: string, deps: Deps = {}): Promise<
 - [ ] **Step 4: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/country-detect.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/country-detect.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -3106,7 +3220,7 @@ git commit -m "feat(api): country detection with primary + fallback"
 
 ```ts
 import type { User } from '@prisma/client';
-import type { User as ApiUser } from '@pantry/shared';
+import type { User as ApiUser } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 export function toApiUser(u: User): ApiUser {
@@ -3161,7 +3275,7 @@ git commit -m "feat(api): users repository helpers"
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { AppError } from '../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { verifyAccessToken } from '../services/auth/tokens.js';
 import { findUserById } from '../services/users/repository.js';
 
@@ -3209,13 +3323,14 @@ export const authPlugin = fp(async (app: FastifyInstance) => {
 
 - [ ] **Step 2: Register the plugin in `api/src/server.ts`**
 
-Find:
+The auth plugin's `onRequest` hook must populate `req.user` **before** the rate
+limiter runs, so the limiter can pick the per-user vs per-IP budget. Register it
+right after CORS and before `registerRateLimit`:
+
 ```ts
-await registerErrorHandler(app);
-```
-Add immediately after:
-```ts
+await registerCors(app);
 await app.register(authPlugin);
+if (cfg.rateLimit.enabled) await registerRateLimit(app);
 ```
 And at the top:
 ```ts
@@ -3225,7 +3340,7 @@ import { authPlugin } from './plugins/auth.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [ ] **Step 4: Commit**
@@ -3245,13 +3360,13 @@ git commit -m "feat(api): auth decorator (requireAuth, requireAdmin)"
 - [ ] **Step 1: Generate Prisma client (just in case)**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 
 - [ ] **Step 2: Run all tests**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: every test in `tests/unit/` and `tests/integration/` passes. As of M0a:
 
@@ -3275,7 +3390,7 @@ Expected: every workspace package exits 0.
 
 In one terminal:
 ```bash
-pnpm --filter @pantry/api dev
+pnpm --filter @expyrico/api dev
 ```
 In another:
 ```bash
@@ -3311,10 +3426,13 @@ git tag m0a-complete
 - [ ] All 8 test files above pass.
 - [ ] `pnpm typecheck` passes for every workspace package.
 - [ ] `prisma migrate status` reports up-to-date.
-- [ ] `psql ... -c '\dt'` lists all M0 tables: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `admin_audit_log`.
+- [ ] `psql ... -c '\dt'` lists all M0 tables: `users`, `auth_credentials`, `sessions`, `push_tokens`, `email_tokens`, `password_resets`, `totp_challenges`, `totp_recovery_codes`, `admin_audit_log`.
 - [ ] `.env.test.example` and `.env.example` are committed; no real secrets are committed.
 - [ ] No `console.log` calls anywhere in `api/src/**` (use `logger`).
 - [ ] All four theme files implement the `Theme` contract from `packages/theme/src/tokens.ts`.
+- [ ] `issueAccessToken(payload)` returns the JWT as a bare **string** (no `{ token, expiresIn }` object, no second options argument). Callers read `expiresIn` from `getConfig().jwt.accessTtlSeconds`.
+- [ ] Rate-limit tiers are config-driven (`RATE_LIMIT_*`): 60/min per authenticated user, 30/min per IP globally, 10/min per IP on `/v1/auth/*`. The limiter is never fully disabled — tests tune the numbers via `.env.test`.
+- [ ] The `totp_recovery_codes` table stores hashed, single-use recovery codes (one row per code, `usedAt` stamped on redemption). M0b persists them at enrollment and redeems them.
 
 ---
 
@@ -3322,10 +3440,10 @@ git tag m0a-complete
 
 M0b will:
 
-1. Add Phase F: HTTP routes for register, login, refresh, logout, me, verify-email, resend-verification, forgot-password, reset-password.
+1. Add Phase F: HTTP routes for register, login, refresh, logout, me, verify-email, resend-verification, forgot-password, reset-password. The login route gates on email verification (returns 403 `email_not_verified` for unverified users) and, for admins without TOTP yet enabled, returns an enrollment-required state instead of a full session.
 2. Add Phase G: OAuth (Google + Apple) with `id_token` verification services and routes.
 3. Add Phase H: passkey (WebAuthn) services and routes (register options/verify, login options/verify) using `@simplewebauthn/server`.
-4. Add Phase I: TOTP enrollment and challenge-verify routes (admin-only) using `otplib` and the AES-GCM utility from this plan.
+4. Add Phase I: TOTP enrollment, challenge-verify, and recovery-code redemption routes (admin-only) using `otplib` and the AES-GCM utility from this plan. Recovery codes are persisted (hashed) in the `totp_recovery_codes` table built here and redeemed one-time.
 
-Every M0b route gets a Vitest integration test using the harness built in M0a (Task D7). When M0b is complete, the API exposes the full auth surface from spec section 6.1.
+Every M0b route gets a Vitest integration test using the harness built in M0a (Task D7). Each route that returns tokens builds `tokens = { accessToken: issueAccessToken({...}), refreshToken, expiresIn: cfg.jwt.accessTtlSeconds }` — `issueAccessToken` returns a string, so the access token is never unwrapped from an object. When M0b is complete, the API exposes the full auth surface from spec sections 2.1, 6.1, and 6.8 (rate limits), with admin accounts always protected by TOTP per 8.2.
 

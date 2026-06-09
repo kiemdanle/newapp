@@ -6,25 +6,18 @@ describe('reviewVoteSchema (a.k.a. voteSchema)', () => {
     expect(voteSchema).toBe(reviewVoteSchema);
   });
 
-  it('accepts +1 (upvote)', () => {
-    expect(reviewVoteSchema.parse({ value: 1 })).toEqual({ value: 1 });
+  it('accepts helpful', () => {
+    expect(reviewVoteSchema.parse({ value: 'helpful' })).toEqual({ value: 'helpful' });
   });
 
-  it('accepts -1 (downvote)', () => {
-    expect(reviewVoteSchema.parse({ value: -1 })).toEqual({ value: -1 });
+  it('accepts not_helpful', () => {
+    expect(reviewVoteSchema.parse({ value: 'not_helpful' })).toEqual({ value: 'not_helpful' });
   });
 
-  it('rejects 0 (no neutral vote)', () => {
-    expect(() => reviewVoteSchema.parse({ value: 0 })).toThrow();
-  });
-
-  it('rejects values outside ±1', () => {
-    expect(() => reviewVoteSchema.parse({ value: 2 })).toThrow();
-    expect(() => reviewVoteSchema.parse({ value: -2 })).toThrow();
-  });
-
-  it('rejects strings even when coercible', () => {
-    expect(() => reviewVoteSchema.parse({ value: '1' })).toThrow();
+  it('rejects unknown values', () => {
+    expect(() => reviewVoteSchema.parse({ value: 'neutral' })).toThrow();
+    expect(() => reviewVoteSchema.parse({ value: 1 })).toThrow();
+    expect(() => reviewVoteSchema.parse({ value: -1 })).toThrow();
   });
 
   it('rejects missing value', () => {

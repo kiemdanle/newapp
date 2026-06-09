@@ -2,6 +2,7 @@ import type { Record as PrismaRecord } from '@prisma/client';
 import type { RecordSyncBatch } from '@pantry/shared';
 import { getPrisma } from '../../db.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
+import { maybeActivateReferral } from '../referrals/referral-service.js';
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -76,6 +77,10 @@ export async function syncRecords(
       },
     });
   }
+
+  // After upserting, check if the user's referral should be activated.
+  // Passive activation: fires when the referred user reaches 5 lifetime records.
+  await maybeActivateReferral(userId).catch(() => {});
 
   // 3. Return server-side changes since `since`
   const sinceDate = batch.since ? new Date(batch.since) : new Date(0);

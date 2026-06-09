@@ -8,16 +8,62 @@
 
 **Tech Stack:** Fastify 4, Prisma 5, Zod 3, BullMQ, opossum, `@bull-board/api`, `@bull-board/fastify`, Next.js 15, TypeScript 5, Tailwind, shadcn/ui, TanStack Query 5, TanStack Table 8, recharts, Playwright, Vitest + Supertest.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md`. Read sections 2.8, 5 (`admin_audit_log`), 6.7, 8 before starting.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md`. Read sections 2.8, 5 (`admin_audit_log`), 6.7, 8 before starting.
 
 **Prerequisites (other milestones, assumed complete and merged):**
 
-- **M0a/M0b** — Fastify API foundation, `requireAuth`/`requireAdmin` decorators, sessions service (with `revokeAllSessions`), `users`, `sessions`, `admin_audit_log` tables, `@pantry/shared` Zod plumbing.
+- **M0a/M0b** — Fastify API foundation, `requireAuth`/`requireAdmin` decorators, sessions service (with `revokeAllSessions`), `users`, `sessions`, `admin_audit_log` tables, `@expyrico/shared` Zod plumbing.
 - **M0d** — Admin Next.js app shell, `/login` with TOTP, CSRF middleware, HTTP-only cookie session, the API client `lib/api.ts`, the `writeAuditLog({...})` low-level helper, page stubs at every route listed in spec §8.3, Ansible/nginx/systemd plumbing.
 - **M1** — `products`, `records`, `product_edits`, `push_logs` tables; BullMQ queues registered (`product-lookup`, `notification-schedule`, `notification-send`); opossum circuit breakers wrapping OFF/UPCitemdb/Expo Push exposed via `getBreaker(name)`.
-- **M2** — `reviews`, `review_votes`, `reports` tables; review status enum (`visible`, `hidden`, `deleted`); `moderation-flag` queue.
+- **M2** — `reviews`, `review_votes`, `reports`, `product_rating_country` tables; review status enum (`visible`, `hidden`, `deleted`); `moderation-flag` queue. A review carries a single three-option `rating` (`buy_again`/`buy_again_on_sale`/`wont_buy`) + optional `body` (comment) + helpful/not-helpful counts; the `rating-recalc` worker denormalizes the per-product tallies (`buy_again_count`/`buy_again_on_sale_count`/`wont_buy_count`/`rating_count`/`review_count`) and the per-country rollup.
 
 **Out of scope for M3:** anything not in spec §6.7 or §8. Mobile screens (M0c/M1/M2). Provisioning/deploy (M0d/M4).
+
+---
+
+## Execution order — backend-first (2026-05-26)
+
+The project is re-sequenced to build **backend + admin first (Track A)**, then **mobile (Track B)**. This file is **Track A (admin dashboard — entire plan: admin API + admin web; runs after M1/M2 backend).** Track A order: M0a → M0b → M0d → M1 (backend phases) → M2 (backend phases) → M3 → M5–M8 (backend + admin phases). All backend/admin (Track A) plans are built and deployed before ANY mobile (Track B) work begins.
+
+---
+
+## Requirement revision — 2026-06-08 (Expyrico)
+
+Canonical contract: `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` (2026-06-08 revision §2.6/§2.7). **This supersedes the 2026-05-26 "Feature additions" block below.** M2's rating model changed from taste+value to a single three-option rating, and voting from up/down to helpful/not-helpful. M3 consumes the new contract everywhere it showed ratings/votes:
+
+- **Admin reviews Zod** (`packages/shared/src/schemas/admin/reviews.ts`): `adminReviewRowSchema` exposes `rating` (`buy_again` / `buy_again_on_sale` / `wont_buy`) + `comment` (the body) + `helpfulCount` / `notHelpfulCount`; `adminReviewsQuerySchema` filters by `rating` (enum). No `tasteRating` / `valueRating`, no `upvoteCount` / `downvoteCount`.
+- **Admin reviews routes** (`/v1/admin/reviews` list, `/v1/admin/reviews/:id` get): return `rating` + helpful/not-helpful counts. The report `targetPreview` for a review carries `rating` + `comment`.
+- **Admin product surface:** products carry the three-option tallies `buyAgainCount` / `buyAgainOnSaleCount` / `wontBuyCount` / `ratingCount` + `reviewCount` and `isCommunityEligible` (provided by M1, denormalized by the M2 `rating-recalc` worker). The admin product row schema, list/get/patch routes, the product-merge recalc + merge response (tallies + `newRatingCount` / `newReviewCount`), and the products list page show the three-option breakdown (e.g. "% buy again"). No `rating_avg` / `rating_count`-as-average or taste/value columns.
+- **Analytics:** `/v1/admin/analytics/reviews` reports the three-option distribution (`buyAgainPct` / `buyAgainOnSalePct` / `wontBuyPct` over the window) alongside the existing `autoFlaggedRate`; the analytics reviews page shows the breakdown.
+- **Admin pages:** the reviews table shows a Rating column (three-option pill) + Helpful/Not-helpful counts with a rating filter; the review detail page shows the rating choice + comment + helpful/not-helpful.
+
+Field names used throughout: wire `rating` (enum) + `comment` + `helpfulCount` / `notHelpfulCount`; product `buyAgainCount` / `buyAgainOnSaleCount` / `wontBuyCount` / `ratingCount` / `reviewCount` + `isCommunityEligible`.
+
+---
+
+## Feature additions — 2026-05-26  ⚠️ SUPERSEDED (see 2026-06-08 revision above)
+
+> The two-criteria taste+value admin surface described here was replaced on 2026-06-08 by the three-option rating + helpful/not-helpful model. Retained only as change history — **do not implement the taste/value contract below.**
+
+**Two-criteria review ratings surface in admin (replaces the single `rating`).** M2 replaced the single review `rating` with two required 1–5 criteria; M3 consumes that everywhere it showed `rating`:
+
+- **Admin reviews Zod** (`packages/shared/src/schemas/admin/reviews.ts`): `adminReviewRowSchema` exposes `tasteRating` + `valueRating` (1–5); `adminReviewsQuerySchema` filters by `tasteRating` and/or `valueRating` (the old single `rating` filter is gone).
+- **Admin reviews routes** (`/v1/admin/reviews` list, `/v1/admin/reviews/:id` get): return both criteria. The report `targetPreview` for a review carries `tasteRating` + `valueRating`.
+- **Admin product surface:** products now carry `taste_avg` / `value_avg` (`numeric(3,2)`) + `review_count` (provided by M1, denormalized by the M2 `product-rating-recalc` worker). The admin product row schema, list/get/patch routes, the product-merge recalc + merge response (`newTasteAvg` / `newValueAvg` / `newReviewCount`), and the products list page show `tasteAvg` / `valueAvg`. The old `rating_avg` / `rating_count` are no longer read or written.
+- **Analytics:** `/v1/admin/analytics/reviews` adds window-mean `avgTaste` / `avgValue` (nullable) alongside the existing `autoFlaggedRate`; the analytics reviews page shows both.
+- **Admin pages:** the reviews table shows Taste + Value columns with separate filter inputs; the review detail page shows `Taste: x/5 · Value: y/5`.
+
+Field names used throughout: wire `tasteRating` / `valueRating`; product `tasteAvg` / `valueAvg` / `reviewCount` (DB `taste_avg` / `value_avg` / `review_count`).
+
+---
+
+## Validation amendments — 2026-05-26
+
+These corrections were applied after a validation pass. They are folded into the relevant tasks below; this list is a plain-language summary.
+
+1. **Admin API client naming is standardized.** The admin web app's typed client (Phase H, `apps/admin/src/lib/admin-api.ts`) exports two variants over M0d's low-level fetchers: `serverAdminApi` (built on `apiServerFetch`, for Server Components / data pages / server actions) and `browserAdminApi` (built on `apiBrowserFetch`, for Client Components / `'use client'` interactivity). Earlier draft page code imported a non-existent `{ adminApi }`, which would not compile. Every admin page now imports the correct variant for its component type: Server Components use `serverAdminApi`; `'use client'` islands use `browserAdminApi`.
+2. **Detail pages fetch by id instead of searching the list.** `/products/[id]` previously fetched via `list({ q: id })`, but `q` matches name/brand/barcode (not id), so valid products rendered "not found". `/reviews/[id]` previously read an unfiltered first page, so reviews past page 1 were unreachable. Two new audit-free by-id endpoints are added — `GET /v1/admin/products/:id` (Task C3a) and `GET /v1/admin/reviews/:id` (Task D2a) — each with an integration test, and both detail pages now fetch by id through the admin API client.
+3. **Queue-health + seeded system user confirmed (no change).** The system-health test already asserts the `product-rating-recalc` queue, and the users-list test already asserts the seeded system user `00000000-0000-0000-0000-000000000001` (both provided by M2). The plan text is consistent; left as-is.
 
 ---
 
@@ -26,7 +72,7 @@
 This plan adds the following files. Files in **bold** carry significant logic.
 
 ```
-pantry/
+expyrico/
 ├── packages/shared/
 │   └── src/schemas/admin/
 │       ├── common.ts                                ← cursor pagination, diff envelope
@@ -54,12 +100,14 @@ pantry/
 │   │   │   │   └── impersonate.ts
 │   │   │   ├── products/
 │   │   │   │   ├── list.ts
+│   │   │   │   ├── get.ts                           ← by-id fetch for detail page
 │   │   │   │   ├── patch.ts
 │   │   │   │   ├── merge.ts                         ← **transactional merge**
 │   │   │   │   ├── pending.ts
 │   │   │   │   └── pending-resolve.ts
 │   │   │   ├── reviews/
 │   │   │   │   ├── list.ts
+│   │   │   │   ├── get.ts                           ← by-id fetch for detail page
 │   │   │   │   └── status.ts
 │   │   │   ├── reports/
 │   │   │   │   ├── list.ts
@@ -94,10 +142,12 @@ pantry/
 │       ├── users-revoke.test.ts
 │       ├── users-impersonate.test.ts
 │       ├── products-list.test.ts
+│       ├── products-get.test.ts
 │       ├── products-patch.test.ts
 │       ├── products-merge.test.ts
 │       ├── products-pending.test.ts
 │       ├── reviews-list.test.ts
+│       ├── reviews-get.test.ts
 │       ├── reviews-status.test.ts
 │       ├── reports-list.test.ts
 │       ├── reports-resolve.test.ts
@@ -158,7 +208,7 @@ pantry/
   - `admin` — anything under `apps/admin/`.
   - `shared` — Zod schemas under `packages/shared/src/schemas/admin/`.
 - **Every admin mutation MUST call `req.auditLog(action, target, diff)` before returning.** Integration tests assert the row exists.
-- **All Zod schemas live in `@pantry/shared`** and are imported by both API routes and admin pages — no inline `z.object(...)` inside routes or pages.
+- **All Zod schemas live in `@expyrico/shared`** and are imported by both API routes and admin pages — no inline `z.object(...)` inside routes or pages.
 - **Cursor pagination everywhere.** Cursor is the base64-encoded `{createdAt, id}` of the last row. `limit` defaults to 50, max 200.
 - **Server vs Client components.** Default to Server Components for data fetching; mark `'use client'` only when the component owns local state (forms, tables with sorting, modals).
 - **TanStack Query** owns mutation invalidation. `queryKey` arrays follow `['admin', resource, ...filters]`.
@@ -219,14 +269,14 @@ model ApiError {
 - [ ] **Step 2: Generate the migration**
 
 ```bash
-pnpm --filter @pantry/api exec prisma migrate dev --name m3_admin_tables
+pnpm --filter @expyrico/api exec prisma migrate dev --name m3_admin_tables
 ```
 Expected: a new SQL file under `api/prisma/migrations/<ts>_m3_admin_tables/` and `Generated Prisma Client`.
 
 - [ ] **Step 3: Apply to the test database**
 
 ```bash
-DATABASE_URL=postgresql://pantry:pantry@localhost:5432/pantry_test pnpm --filter @pantry/api exec prisma migrate deploy
+DATABASE_URL=postgresql://expyrico:expyrico@localhost:5432/expyrico_test pnpm --filter @expyrico/api exec prisma migrate deploy
 ```
 
 - [ ] **Step 4: Commit**
@@ -304,7 +354,7 @@ In the `"scripts"` block, add:
 - [ ] **Step 3: Run the seed against dev DB**
 
 ```bash
-pnpm --filter @pantry/api seed:admin
+pnpm --filter @expyrico/api seed:admin
 ```
 Expected: completes without errors.
 
@@ -374,7 +424,7 @@ export * from './schemas/admin/common.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: exit 0.
 
@@ -419,7 +469,7 @@ import { adminRoutes } from './routes/admin/index.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 Expected: exit 0.
 
@@ -493,7 +543,7 @@ describe('admin-only plugin', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-admin-only.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/plugin-admin-only.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/plugins/admin-only.ts`**
@@ -524,7 +574,7 @@ export async function adminRoutes(app: FastifyInstance) {
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-admin-only.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/plugin-admin-only.test.ts
 ```
 Expected: all 3 tests pass.
 
@@ -590,7 +640,7 @@ describe('audit plugin', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-audit.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/plugin-audit.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/plugins/audit.ts`**
@@ -599,7 +649,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-audit.t
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { writeAuditLog } from '../services/audit/log.js'; // helper shipped in M0d (Phase C)
-import type { AuditDiff } from '@pantry/shared';
+import type { AuditDiff } from '@expyrico/shared';
 
 export type AuditTarget = { type: string; id: string };
 
@@ -643,7 +693,7 @@ export async function adminRoutes(app: FastifyInstance) {
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/plugin-audit.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/plugin-audit.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -791,7 +841,7 @@ export * from './schemas/admin/users.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 
 - [ ] **Step 4: Commit**
@@ -868,7 +918,7 @@ describe('GET /v1/admin/users', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-list.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/users/list.ts`**
@@ -881,7 +931,7 @@ import {
   adminUsersListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminUsersListRoute(app: FastifyInstance) {
@@ -952,7 +1002,7 @@ await app.register(adminUsersListRoute, { prefix: '/users' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-list.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1018,7 +1068,7 @@ describe('GET /v1/admin/users/:id', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-get.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-get.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/users/get.ts`**
@@ -1026,7 +1076,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-get.test
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminUserDetailSchema, ERROR_CODES } from '@pantry/shared';
+import { adminUserDetailSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -1089,7 +1139,7 @@ await app.register(adminUsersGetRoute, { prefix: '/users' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-get.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-get.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1157,7 +1207,7 @@ describe('PATCH /v1/admin/users/:id', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-patch.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/users/patch.ts`**
@@ -1165,7 +1215,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-patch.te
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminUserPatchSchema, adminUserRowSchema, ERROR_CODES } from '@pantry/shared';
+import { adminUserPatchSchema, adminUserRowSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -1216,7 +1266,7 @@ await app.register(adminUsersPatchRoute, { prefix: '/users' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-patch.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1274,7 +1324,7 @@ describe('POST /v1/admin/users/:id/sessions/revoke-all', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-revoke.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-revoke.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/users/revoke-sessions.ts`**
@@ -1309,7 +1359,7 @@ await app.register(adminUsersRevokeSessionsRoute, { prefix: '/users' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-revoke.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-revoke.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1364,7 +1414,7 @@ describe('POST /v1/admin/users/:id/impersonate', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-impersonate.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-impersonate.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/users/impersonate.ts`**
@@ -1372,7 +1422,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-imperson
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminUserImpersonateResponseSchema, ERROR_CODES } from '@pantry/shared';
+import { adminUserImpersonateResponseSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 import { issueAccessToken } from '../../../services/auth/tokens.js';
@@ -1407,7 +1457,7 @@ await app.register(adminUsersImpersonateRoute, { prefix: '/users' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/users-impersonate.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/users-impersonate.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1446,7 +1496,10 @@ export const adminProductRowSchema = z.object({
   imageUrl: z.string().nullable(),
   source: productSourceSchema,
   status: productStatusSchema,
-  ratingAvg: z.number().nullable(),
+  isCommunityEligible: z.boolean(),
+  buyAgainCount: z.number().int(),
+  buyAgainOnSaleCount: z.number().int(),
+  wontBuyCount: z.number().int(),
   ratingCount: z.number().int(),
   reviewCount: z.number().int(),
   createdAt: z.string().datetime(),
@@ -1479,8 +1532,11 @@ export const adminProductMergeResponseSchema = z.object({
   winnerId: z.string().uuid(),
   movedRecords: z.number().int(),
   movedReviews: z.number().int(),
-  newRatingCount: z.number().int(),
   newReviewCount: z.number().int(),
+  newRatingCount: z.number().int(),
+  newBuyAgainCount: z.number().int(),
+  newBuyAgainOnSaleCount: z.number().int(),
+  newWontBuyCount: z.number().int(),
 });
 
 export const adminProductEditRowSchema = z.object({
@@ -1513,7 +1569,7 @@ export * from './schemas/admin/products.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 
 - [ ] **Step 4: Commit**
@@ -1563,7 +1619,7 @@ describe('GET /v1/admin/products', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-list.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/products/list.ts`**
@@ -1576,7 +1632,7 @@ import {
   adminProductsListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminProductsListRoute(app: FastifyInstance) {
@@ -1613,7 +1669,10 @@ export async function adminProductsListRoute(app: FastifyInstance) {
       imageUrl: p.imageUrl,
       source: p.source,
       status: p.status,
-      ratingAvg: p.ratingAvg ? Number(p.ratingAvg) : null,
+      isCommunityEligible: p.isCommunityEligible,
+      buyAgainCount: p.buyAgainCount,
+      buyAgainOnSaleCount: p.buyAgainOnSaleCount,
+      wontBuyCount: p.wontBuyCount,
       ratingCount: p.ratingCount,
       reviewCount: p.reviewCount,
       createdAt: p.createdAt.toISOString(),
@@ -1637,7 +1696,7 @@ await app.register(adminProductsListRoute, { prefix: '/products' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-list.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1686,7 +1745,7 @@ describe('PATCH /v1/admin/products/:id', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-patch.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/products/patch.ts`**
@@ -1694,7 +1753,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-patch
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminProductPatchSchema, adminProductRowSchema, ERROR_CODES } from '@pantry/shared';
+import { adminProductPatchSchema, adminProductRowSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -1729,7 +1788,10 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
       imageUrl: after.imageUrl,
       source: after.source,
       status: after.status,
-      ratingAvg: after.ratingAvg ? Number(after.ratingAvg) : null,
+      isCommunityEligible: after.isCommunityEligible,
+      buyAgainCount: after.buyAgainCount,
+      buyAgainOnSaleCount: after.buyAgainOnSaleCount,
+      wontBuyCount: after.wontBuyCount,
       ratingCount: after.ratingCount,
       reviewCount: after.reviewCount,
       createdAt: after.createdAt.toISOString(),
@@ -1750,7 +1812,7 @@ await app.register(adminProductsPatchRoute, { prefix: '/products' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-patch.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -1758,6 +1820,116 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-patch
 ```bash
 git add api/src/routes/admin/products/patch.ts api/src/routes/admin/index.ts api/tests/integration/admin/products-patch.test.ts
 git commit -m "feat(api): PATCH /v1/admin/products/:id"
+```
+
+---
+
+### Task C3a: GET /v1/admin/products/:id (by-id fetch for detail page)
+
+The `/products/[id]` admin page must fetch a single product by its primary key. Searching the list with `q` does not work because `q` matches name/brand/barcode, never the id — so a valid product can render as "not found". This task adds a true by-id read. It is a GET, so it is **not** audit-logged.
+
+**Files:**
+- Create: `api/src/routes/admin/products/get.ts`
+- Create: `api/tests/integration/admin/products-get.test.ts`
+- Modify: `api/src/routes/admin/index.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// api/tests/integration/admin/products-get.test.ts
+import { describe, expect, it } from 'vitest';
+import { buildServer } from '../../../src/server.js';
+import { getPrisma } from '../../../src/db.js';
+import { makeAdmin } from '../../helpers/admin.js';
+
+describe('GET /v1/admin/products/:id', () => {
+  it('returns the product when it exists', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const p = await getPrisma().product.create({ data: { name: 'Milk', source: 'off', status: 'active' } });
+
+    const res = await app.inject({ method: 'GET', url: `/v1/admin/products/${p.id}`, headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().id).toBe(p.id);
+    expect(res.json().name).toBe('Milk');
+    await app.close();
+  });
+
+  it('returns 404 for a missing product', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/products/00000000-0000-0000-0000-000000000000', headers });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+```
+
+- [ ] **Step 2: Verify FAIL**
+
+```bash
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-get.test.ts
+```
+
+- [ ] **Step 3: Write `api/src/routes/admin/products/get.ts`**
+
+```ts
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { adminProductRowSchema, ERROR_CODES } from '@expyrico/shared';
+import { getPrisma } from '../../../db.js';
+import { AppError } from '../../../errors.js';
+
+const paramsSchema = z.object({ id: z.string().uuid() });
+
+export async function adminProductsGetRoute(app: FastifyInstance) {
+  app.get('/:id', async (req) => {
+    const { id } = paramsSchema.parse(req.params);
+    const p = await getPrisma().product.findUnique({ where: { id } });
+    if (!p) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+
+    return adminProductRowSchema.parse({
+      id: p.id,
+      barcode: p.barcode,
+      qrPayload: p.qrPayload,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      imageUrl: p.imageUrl,
+      source: p.source,
+      status: p.status,
+      isCommunityEligible: p.isCommunityEligible,
+      buyAgainCount: p.buyAgainCount,
+      buyAgainOnSaleCount: p.buyAgainOnSaleCount,
+      wontBuyCount: p.wontBuyCount,
+      ratingCount: p.ratingCount,
+      reviewCount: p.reviewCount,
+      createdAt: p.createdAt.toISOString(),
+      updatedAt: p.updatedAt.toISOString(),
+    });
+  });
+}
+```
+
+- [ ] **Step 4: Wire** in `api/src/routes/admin/index.ts` (register before the PATCH route so the `:id` GET is mounted under `/products`):
+
+```ts
+import { adminProductsGetRoute } from './products/get.js';
+// ...
+await app.register(adminProductsGetRoute, { prefix: '/products' });
+```
+
+- [ ] **Step 5: Verify pass**
+
+```bash
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-get.test.ts
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add api/src/routes/admin/products/get.ts api/src/routes/admin/index.ts api/tests/integration/admin/products-get.test.ts
+git commit -m "feat(api): GET /v1/admin/products/:id by-id fetch"
 ```
 
 ---
@@ -1796,13 +1968,13 @@ describe('POST /v1/admin/products/:id/merge', () => {
     });
     await prisma.review.createMany({
       data: [
-        { userId: u.id, productId: loser1.id, rating: 5, status: 'visible' },
+        { userId: u.id, productId: loser1.id, rating: 'buy_again', body: 'great', status: 'visible' },
         // Cannot also review loser2 as same user — uniqueness (user,product) would still hold post-merge,
-        // but spec says one review per (user, product). Different user reviews loser2:
+        // but spec says one rating per (user, product). Different user reviews loser2:
       ],
     });
     const u2 = await makeUser();
-    await prisma.review.create({ data: { userId: u2.id, productId: loser2.id, rating: 3, status: 'visible' } });
+    await prisma.review.create({ data: { userId: u2.id, productId: loser2.id, rating: 'wont_buy', status: 'visible' } });
 
     const res = await app.inject({
       method: 'POST',
@@ -1815,8 +1987,10 @@ describe('POST /v1/admin/products/:id/merge', () => {
     expect(body.winnerId).toBe(winner.id);
     expect(body.movedRecords).toBe(2);
     expect(body.movedReviews).toBe(2);
-    expect(body.newReviewCount).toBe(2);
     expect(body.newRatingCount).toBe(2);
+    expect(body.newBuyAgainCount).toBe(1);
+    expect(body.newWontBuyCount).toBe(1);
+    expect(body.newReviewCount).toBe(1); // only the buy_again rating had a comment
 
     expect(await prisma.record.count({ where: { productId: winner.id } })).toBe(2);
     expect(await prisma.review.count({ where: { productId: winner.id } })).toBe(2);
@@ -1852,7 +2026,7 @@ describe('POST /v1/admin/products/:id/merge', () => {
     const u = await makeUser();
     const winner = await prisma.product.create({ data: { name: 'W', source: 'off', status: 'active' } });
     const loser = await prisma.product.create({ data: { name: 'L', source: 'off', status: 'active' } });
-    const r = await prisma.review.create({ data: { userId: u.id, productId: loser.id, rating: 4, status: 'visible', upvoteCount: 3, downvoteCount: 1 } });
+    const r = await prisma.review.create({ data: { userId: u.id, productId: loser.id, rating: 'buy_again', body: 'good', status: 'visible', helpfulCount: 3, notHelpfulCount: 1 } });
 
     await app.inject({
       method: 'POST',
@@ -1862,8 +2036,8 @@ describe('POST /v1/admin/products/:id/merge', () => {
     });
     const moved = await prisma.review.findUniqueOrThrow({ where: { id: r.id } });
     expect(moved.productId).toBe(winner.id);
-    expect(moved.upvoteCount).toBe(3);
-    expect(moved.downvoteCount).toBe(1);
+    expect(moved.helpfulCount).toBe(3);
+    expect(moved.notHelpfulCount).toBe(1);
     await app.close();
   });
 });
@@ -1872,7 +2046,7 @@ describe('POST /v1/admin/products/:id/merge', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-merge.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-merge.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/services/admin/merge.ts`**
@@ -1884,8 +2058,11 @@ export type MergeResult = {
   winnerId: string;
   movedRecords: number;
   movedReviews: number;
-  newRatingCount: number;
   newReviewCount: number;
+  newRatingCount: number;
+  newBuyAgainCount: number;
+  newBuyAgainOnSaleCount: number;
+  newWontBuyCount: number;
 };
 
 export async function mergeProducts(winnerId: string, loserIds: string[]): Promise<MergeResult> {
@@ -1910,22 +2087,30 @@ export async function mergeProducts(winnerId: string, loserIds: string[]): Promi
       data: { productId: winnerId },
     });
 
-    // Recompute winner denorms
-    const agg = await tx.review.aggregate({
+    // Recompute winner denorms (three-option tallies + review_count).
+    const byRating = await tx.review.groupBy({
+      by: ['rating'],
       where: { productId: winnerId, status: 'visible' },
-      _avg: { rating: true },
       _count: { _all: true },
     });
-    const newReviewCount = agg._count._all;
-    const newRatingCount = newReviewCount;
-    const newRatingAvg = agg._avg.rating ?? null;
+    const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
+    for (const row of byRating) tally[row.rating] = row._count._all;
+    const newBuyAgainCount = tally.buy_again;
+    const newBuyAgainOnSaleCount = tally.buy_again_on_sale;
+    const newWontBuyCount = tally.wont_buy;
+    const newRatingCount = newBuyAgainCount + newBuyAgainOnSaleCount + newWontBuyCount;
+    const newReviewCount = await tx.review.count({
+      where: { productId: winnerId, status: 'visible', body: { not: null } },
+    });
 
     await tx.product.update({
       where: { id: winnerId },
       data: {
         reviewCount: newReviewCount,
         ratingCount: newRatingCount,
-        ratingAvg: newRatingAvg !== null ? Number(newRatingAvg).toFixed(2) : null,
+        buyAgainCount: newBuyAgainCount,
+        buyAgainOnSaleCount: newBuyAgainOnSaleCount,
+        wontBuyCount: newWontBuyCount,
       },
     });
 
@@ -1938,8 +2123,11 @@ export async function mergeProducts(winnerId: string, loserIds: string[]): Promi
       winnerId,
       movedRecords: movedRecords.count,
       movedReviews: movedReviews.count,
-      newRatingCount,
       newReviewCount,
+      newRatingCount,
+      newBuyAgainCount,
+      newBuyAgainOnSaleCount,
+      newWontBuyCount,
     };
   });
 }
@@ -1950,7 +2138,7 @@ export async function mergeProducts(winnerId: string, loserIds: string[]): Promi
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminProductMergeSchema, adminProductMergeResponseSchema, ERROR_CODES } from '@pantry/shared';
+import { adminProductMergeSchema, adminProductMergeResponseSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../../errors.js';
 import { mergeProducts } from '../../../services/admin/merge.js';
 
@@ -1981,7 +2169,7 @@ await app.register(adminProductsMergeRoute, { prefix: '/products' });
 - [ ] **Step 6: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-merge.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-merge.test.ts
 ```
 
 - [ ] **Step 7: Commit**
@@ -2067,7 +2255,7 @@ describe('admin pending product edits', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-pending.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-pending.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/products/pending.ts`**
@@ -2079,7 +2267,7 @@ import {
   adminProductEditsListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminProductsPendingListRoute(app: FastifyInstance) {
@@ -2117,7 +2305,7 @@ export async function adminProductsPendingListRoute(app: FastifyInstance) {
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminProductEditResolveSchema, ERROR_CODES } from '@pantry/shared';
+import { adminProductEditResolveSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -2171,7 +2359,7 @@ await app.register(adminProductsPendingResolveRoute, { prefix: '/products' });
 - [ ] **Step 6: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/products-pending.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/products-pending.test.ts
 ```
 
 - [ ] **Step 7: Commit**
@@ -2199,22 +2387,23 @@ import { z } from 'zod';
 import { cursorQuerySchema, cursorPageSchema } from './common.js';
 
 export const reviewStatusSchema = z.enum(['visible', 'hidden', 'deleted']);
+export const reviewRatingSchema = z.enum(['buy_again', 'buy_again_on_sale', 'wont_buy']);
 
 export const adminReviewRowSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   productId: z.string().uuid(),
-  rating: z.number().int().min(1).max(5),
-  body: z.string().nullable(),
-  upvoteCount: z.number().int(),
-  downvoteCount: z.number().int(),
+  rating: reviewRatingSchema,
+  comment: z.string().nullable(),
+  helpfulCount: z.number().int(),
+  notHelpfulCount: z.number().int(),
   status: reviewStatusSchema,
   createdAt: z.string().datetime(),
 });
 
 export const adminReviewsQuerySchema = cursorQuerySchema.extend({
   status: reviewStatusSchema.optional(),
-  rating: z.coerce.number().int().min(1).max(5).optional(),
+  rating: reviewRatingSchema.optional(),
   productId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
 });
@@ -2272,7 +2461,7 @@ export * from './schemas/admin/reports.js';
 - [ ] **Step 4: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 
 - [ ] **Step 5: Commit**
@@ -2301,7 +2490,7 @@ import { getPrisma } from '../../../src/db.js';
 import { makeAdmin, makeUser } from '../../helpers/admin.js';
 
 describe('GET /v1/admin/reviews', () => {
-  it('filters by status, rating, productId, userId', async () => {
+  it('filters by status, taste/value rating, productId, userId', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const prisma = getPrisma();
@@ -2309,11 +2498,11 @@ describe('GET /v1/admin/reviews', () => {
     const u = await makeUser();
     await prisma.review.createMany({
       data: [
-        { userId: u.id, productId: p.id, rating: 5, status: 'visible' },
+        { userId: u.id, productId: p.id, rating: 'buy_again', status: 'visible' },
       ],
     });
     const u2 = await makeUser();
-    await prisma.review.create({ data: { userId: u2.id, productId: p.id, rating: 1, status: 'hidden' } });
+    await prisma.review.create({ data: { userId: u2.id, productId: p.id, rating: 'wont_buy', status: 'hidden' } });
 
     const res = await app.inject({ method: 'GET', url: `/v1/admin/reviews?status=hidden`, headers });
     expect(res.statusCode).toBe(200);
@@ -2327,7 +2516,7 @@ describe('GET /v1/admin/reviews', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-list.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/reviews/list.ts`**
@@ -2340,7 +2529,7 @@ import {
   adminReviewsListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminReviewsListRoute(app: FastifyInstance) {
@@ -2365,9 +2554,9 @@ export async function adminReviewsListRoute(app: FastifyInstance) {
       userId: r.userId,
       productId: r.productId,
       rating: r.rating,
-      body: r.body,
-      upvoteCount: r.upvoteCount,
-      downvoteCount: r.downvoteCount,
+      comment: r.body,
+      helpfulCount: r.helpfulCount,
+      notHelpfulCount: r.notHelpfulCount,
       status: r.status,
       createdAt: r.createdAt.toISOString(),
     }));
@@ -2391,7 +2580,7 @@ await app.register(adminReviewsListRoute, { prefix: '/reviews' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-list.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -2399,6 +2588,113 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-list.t
 ```bash
 git add api/src/routes/admin/reviews/list.ts api/src/routes/admin/index.ts api/tests/integration/admin/reviews-list.test.ts
 git commit -m "feat(api): GET /v1/admin/reviews"
+```
+
+---
+
+### Task D2a: GET /v1/admin/reviews/:id (by-id fetch for detail page)
+
+The `/reviews/[id]` admin page must fetch a single review by its primary key. The earlier draft read an unfiltered first page of the list and searched it client-side, so any review past page 1 was unreachable. This task adds a true by-id read. It is a GET, so it is **not** audit-logged. The detail row shape matches `adminReviewRowSchema` used by the list.
+
+**Files:**
+- Create: `api/src/routes/admin/reviews/get.ts`
+- Create: `api/tests/integration/admin/reviews-get.test.ts`
+- Modify: `api/src/routes/admin/index.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// api/tests/integration/admin/reviews-get.test.ts
+import { describe, expect, it } from 'vitest';
+import { buildServer } from '../../../src/server.js';
+import { getPrisma } from '../../../src/db.js';
+import { makeAdmin, makeUser } from '../../helpers/admin.js';
+
+describe('GET /v1/admin/reviews/:id', () => {
+  it('returns the review when it exists', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const p = await prisma.product.create({ data: { name: 'P', source: 'off', status: 'active' } });
+    const u = await makeUser();
+    const r = await prisma.review.create({ data: { userId: u.id, productId: p.id, rating: 'buy_again', status: 'visible' } });
+
+    const res = await app.inject({ method: 'GET', url: `/v1/admin/reviews/${r.id}`, headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().id).toBe(r.id);
+    expect(res.json().rating).toBe('buy_again');
+    await app.close();
+  });
+
+  it('returns 404 for a missing review', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/reviews/00000000-0000-0000-0000-000000000000', headers });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+```
+
+- [ ] **Step 2: Verify FAIL**
+
+```bash
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-get.test.ts
+```
+
+- [ ] **Step 3: Write `api/src/routes/admin/reviews/get.ts`**
+
+```ts
+import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
+import { adminReviewRowSchema, ERROR_CODES } from '@expyrico/shared';
+import { getPrisma } from '../../../db.js';
+import { AppError } from '../../../errors.js';
+
+const paramsSchema = z.object({ id: z.string().uuid() });
+
+export async function adminReviewsGetRoute(app: FastifyInstance) {
+  app.get('/:id', async (req) => {
+    const { id } = paramsSchema.parse(req.params);
+    const r = await getPrisma().review.findUnique({ where: { id } });
+    if (!r) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Review not found' });
+
+    return adminReviewRowSchema.parse({
+      id: r.id,
+      userId: r.userId,
+      productId: r.productId,
+      rating: r.rating,
+      comment: r.body,
+      helpfulCount: r.helpfulCount,
+      notHelpfulCount: r.notHelpfulCount,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+    });
+  });
+}
+```
+
+> The `adminReviewRowSchema` is the per-item schema wrapped by `adminReviewsListSchema` in Task D1's shared schemas. If D1 only exported the list wrapper, also export the row schema (`adminReviewRowSchema`) so both the list and this by-id route share one source of truth.
+
+- [ ] **Step 4: Wire** in `api/src/routes/admin/index.ts` (register before the status route so `:id` GET is mounted under `/reviews`):
+
+```ts
+import { adminReviewsGetRoute } from './reviews/get.js';
+// ...
+await app.register(adminReviewsGetRoute, { prefix: '/reviews' });
+```
+
+- [ ] **Step 5: Verify pass**
+
+```bash
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-get.test.ts
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add api/src/routes/admin/reviews/get.ts api/src/routes/admin/index.ts api/tests/integration/admin/reviews-get.test.ts
+git commit -m "feat(api): GET /v1/admin/reviews/:id by-id fetch"
 ```
 
 ---
@@ -2426,7 +2722,7 @@ describe('PATCH /v1/admin/reviews/:id/status', () => {
     const prisma = getPrisma();
     const p = await prisma.product.create({ data: { name: 'P', source: 'off', status: 'active' } });
     const u = await makeUser();
-    const r = await prisma.review.create({ data: { userId: u.id, productId: p.id, rating: 4, status: 'visible' } });
+    const r = await prisma.review.create({ data: { userId: u.id, productId: p.id, rating: 'buy_again', status: 'visible' } });
 
     const res = await app.inject({ method: 'PATCH', url: `/v1/admin/reviews/${r.id}/status`, headers, payload: { status: 'hidden' } });
     expect(res.statusCode).toBe(200);
@@ -2442,7 +2738,7 @@ describe('PATCH /v1/admin/reviews/:id/status', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-status.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-status.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/reviews/status.ts`**
@@ -2450,7 +2746,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-status
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminReviewStatusPatchSchema, ERROR_CODES } from '@pantry/shared';
+import { adminReviewStatusPatchSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -2481,7 +2777,7 @@ await app.register(adminReviewsStatusRoute, { prefix: '/reviews' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reviews-status.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reviews-status.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -2517,7 +2813,7 @@ describe('GET /v1/admin/reports', () => {
     const reporter = await makeUser();
     const offender = await makeUser({ email: 'bad@example.com' });
     const p = await prisma.product.create({ data: { name: 'P', source: 'off', status: 'active' } });
-    const review = await prisma.review.create({ data: { userId: offender.id, productId: p.id, rating: 1, body: 'rude', status: 'visible' } });
+    const review = await prisma.review.create({ data: { userId: offender.id, productId: p.id, rating: 'wont_buy', body: 'rude', status: 'visible' } });
     await prisma.report.create({ data: { reporterId: reporter.id, targetType: 'review', targetId: review.id, reason: 'abuse', status: 'open' } });
 
     const res = await app.inject({ method: 'GET', url: '/v1/admin/reports?status=open', headers });
@@ -2533,7 +2829,7 @@ describe('GET /v1/admin/reports', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reports-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reports-list.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/reports/list.ts`**
@@ -2546,13 +2842,13 @@ import {
   adminReportsListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 async function buildPreview(prisma: ReturnType<typeof getPrisma>, targetType: string, targetId: string): Promise<Record<string, unknown> | null> {
   if (targetType === 'review') {
     const r = await prisma.review.findUnique({ where: { id: targetId }, select: { body: true, rating: true, status: true } });
-    return r ? { kind: 'review', body: r.body, rating: r.rating, status: r.status } : null;
+    return r ? { kind: 'review', comment: r.body, rating: r.rating, status: r.status } : null;
   }
   if (targetType === 'user') {
     const u = await prisma.user.findUnique({ where: { id: targetId }, select: { email: true, status: true } });
@@ -2614,7 +2910,7 @@ await app.register(adminReportsListRoute, { prefix: '/reports' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reports-list.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reports-list.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -2650,7 +2946,7 @@ describe('PATCH /v1/admin/reports/:id/resolve', () => {
     const reporter = await makeUser();
     const offender = await makeUser({ email: `off-${Date.now()}@example.com` });
     const p = await prisma.product.create({ data: { name: 'P', source: 'off', status: 'active' } });
-    const review = await prisma.review.create({ data: { userId: offender.id, productId: p.id, rating: 1, body: 'rude', status: 'visible' } });
+    const review = await prisma.review.create({ data: { userId: offender.id, productId: p.id, rating: 'wont_buy', body: 'rude', status: 'visible' } });
     const report = await prisma.report.create({ data: { reporterId: reporter.id, targetType: 'review', targetId: review.id, reason: 'abuse', status: 'open' } });
     return { app, admin, headers, prisma, offender, review, report };
   }
@@ -2694,7 +2990,7 @@ describe('PATCH /v1/admin/reports/:id/resolve', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reports-resolve.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reports-resolve.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/reports/resolve.ts`**
@@ -2702,7 +2998,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/reports-resolv
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminReportResolveSchema, ERROR_CODES } from '@pantry/shared';
+import { adminReportResolveSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -2768,7 +3064,7 @@ await app.register(adminReportsResolveRoute, { prefix: '/reports' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/reports-resolve.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/reports-resolve.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -2823,6 +3119,11 @@ export const analyticsReviewsSchema = z.object({
   range: analyticsRangeSchema,
   daily: z.array(analyticsDailyPointSchema),
   autoFlaggedRate: z.number(), // 0.0 - 1.0
+  // Three-option rating distribution over reviews created in the window (0 when none).
+  buyAgainPct: z.number().min(0).max(100),
+  buyAgainOnSalePct: z.number().min(0).max(100),
+  wontBuyPct: z.number().min(0).max(100),
+  ratingCount: z.number().int().nonnegative(),
 });
 
 export const analyticsGeographySchema = z.object({
@@ -2840,7 +3141,7 @@ export * from './schemas/admin/analytics.js';
 - [ ] **Step 3: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 git add packages/shared
 git commit -m "feat(shared): admin analytics zod schemas"
 ```
@@ -2919,14 +3220,27 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
     GROUP BY day ORDER BY day ASC
   `;
   // auto-flagged rate = reports where status='open' and reason='abuse' against reviews in window
-  const [allInWindow, autoFlagged] = await Promise.all([
+  const [allInWindow, autoFlagged, byRating] = await Promise.all([
     prisma.review.count({ where: { createdAt: { gte: since } } }),
     prisma.review.count({ where: { createdAt: { gte: since }, status: 'hidden' } }),
+    prisma.review.groupBy({
+      by: ['rating'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    }),
   ]);
+  const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
+  for (const row of byRating) tally[row.rating] = row._count._all;
+  const ratingCount = tally.buy_again + tally.buy_again_on_sale + tally.wont_buy;
+  const pct = (n: number) => (ratingCount === 0 ? 0 : Math.round((n / ratingCount) * 100));
   return {
     range,
     daily: rows.map((r) => ({ date: r.day.toISOString().slice(0, 10), count: Number(r.count) })),
     autoFlaggedRate: allInWindow === 0 ? 0 : autoFlagged / allInWindow,
+    buyAgainPct: pct(tally.buy_again),
+    buyAgainOnSalePct: pct(tally.buy_again_on_sale),
+    wontBuyPct: pct(tally.wont_buy),
+    ratingCount,
   };
 }
 
@@ -2947,7 +3261,7 @@ export async function geography(): Promise<{ top: { country: string; users: numb
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -3002,12 +3316,15 @@ describe('admin analytics', () => {
     await app.close();
   });
 
-  it('reviews returns daily + autoFlaggedRate', async () => {
+  it('reviews returns daily + autoFlaggedRate + rating distribution', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const res = await app.inject({ method: 'GET', url: '/v1/admin/analytics/reviews?range=7d', headers });
     expect(res.statusCode).toBe(200);
     expect(res.json().autoFlaggedRate).toBeGreaterThanOrEqual(0);
+    expect(res.json()).toHaveProperty('buyAgainPct');
+    expect(res.json()).toHaveProperty('wontBuyPct');
+    expect(res.json()).toHaveProperty('ratingCount');
     await app.close();
   });
 
@@ -3027,14 +3344,14 @@ describe('admin analytics', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/analytics.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/analytics.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/analytics/overview.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { analyticsOverviewSchema } from '@pantry/shared';
+import { analyticsOverviewSchema } from '@expyrico/shared';
 import { overview } from '../../../services/admin/analytics.js';
 
 export async function adminAnalyticsOverviewRoute(app: FastifyInstance) {
@@ -3047,7 +3364,7 @@ export async function adminAnalyticsOverviewRoute(app: FastifyInstance) {
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { analyticsRangeSchema, analyticsScansSchema } from '@pantry/shared';
+import { analyticsRangeSchema, analyticsScansSchema } from '@expyrico/shared';
 import { scansDaily } from '../../../services/admin/analytics.js';
 
 const querySchema = z.object({ range: analyticsRangeSchema.default('7d') });
@@ -3065,7 +3382,7 @@ export async function adminAnalyticsScansRoute(app: FastifyInstance) {
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { analyticsRangeSchema, analyticsReviewsSchema } from '@pantry/shared';
+import { analyticsRangeSchema, analyticsReviewsSchema } from '@expyrico/shared';
 import { reviewsDaily } from '../../../services/admin/analytics.js';
 
 const querySchema = z.object({ range: analyticsRangeSchema.default('7d') });
@@ -3082,7 +3399,7 @@ export async function adminAnalyticsReviewsRoute(app: FastifyInstance) {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { analyticsGeographySchema } from '@pantry/shared';
+import { analyticsGeographySchema } from '@expyrico/shared';
 import { geography } from '../../../services/admin/analytics.js';
 
 export async function adminAnalyticsGeographyRoute(app: FastifyInstance) {
@@ -3107,7 +3424,7 @@ await app.register(adminAnalyticsGeographyRoute, { prefix: '/analytics' });
 - [ ] **Step 8: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/analytics.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/analytics.test.ts
 ```
 
 - [ ] **Step 9: Commit**
@@ -3196,7 +3513,7 @@ export * from './schemas/admin/system.js';
 - [ ] **Step 3: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 git add packages/shared
 git commit -m "feat(shared): admin system zod schemas"
 ```
@@ -3253,7 +3570,7 @@ import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 - [ ] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [ ] **Step 4: Commit**
@@ -3299,14 +3616,14 @@ describe('GET /v1/admin/system/queue-health', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/system/queue-health.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { queueHealthSchema } from '@pantry/shared';
+import { queueHealthSchema } from '@expyrico/shared';
 import { getAllQueues } from '../../queues/index.js'; // exposed by M1 (api/src/queues/index.ts)
 
 export async function adminSystemQueueHealthRoute(app: FastifyInstance) {
@@ -3341,7 +3658,7 @@ await app.register(adminSystemQueueHealthRoute, { prefix: '/system' });
 - [ ] **Step 5: Verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 ```
 
 - [ ] **Step 6: Commit**
@@ -3391,7 +3708,7 @@ describe('GET /v1/admin/system/push-logs', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/system/push-logs.ts`**
@@ -3404,7 +3721,7 @@ import {
   pushLogsListSchema,
   encodeCursor,
   decodeCursor,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminSystemPushLogsRoute(app: FastifyInstance) {
@@ -3450,7 +3767,7 @@ await app.register(adminSystemPushLogsRoute, { prefix: '/system' });
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 git add api/src/routes/admin/system/push-logs.ts api/src/routes/admin/index.ts api/tests/integration/admin/system.test.ts
 git commit -m "feat(api): GET /v1/admin/system/push-logs"
 ```
@@ -3492,14 +3809,14 @@ describe('GET /v1/admin/system/api-errors', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/system/api-errors.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { apiErrorsQuerySchema, apiErrorsAggSchema } from '@pantry/shared';
+import { apiErrorsQuerySchema, apiErrorsAggSchema } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 function sinceFor(range: '24h' | '7d' | '30d'): Date {
@@ -3538,7 +3855,7 @@ await app.register(adminSystemApiErrorsRoute, { prefix: '/system' });
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 git add api/src/routes/admin/system/api-errors.ts api/src/routes/admin/index.ts api/tests/integration/admin/system.test.ts
 git commit -m "feat(api): GET /v1/admin/system/api-errors"
 ```
@@ -3597,14 +3914,14 @@ describe('GET /v1/admin/system/external-apis', () => {
 - [ ] **Step 3: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 ```
 
 - [ ] **Step 4: Write `api/src/routes/admin/system/external-apis.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { externalApiStateSchema } from '@pantry/shared';
+import { externalApiStateSchema } from '@expyrico/shared';
 import { snapshotBreakers } from '../../../services/admin/breakers.js';
 
 export async function adminSystemExternalApisRoute(app: FastifyInstance) {
@@ -3623,7 +3940,7 @@ await app.register(adminSystemExternalApisRoute, { prefix: '/system' });
 - [ ] **Step 6: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/system.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/system.test.ts
 git add api/src api/tests/integration/admin/system.test.ts
 git commit -m "feat(api): GET /v1/admin/system/external-apis (opossum stats)"
 ```
@@ -3640,7 +3957,7 @@ git commit -m "feat(api): GET /v1/admin/system/external-apis (opossum stats)"
 - [ ] **Step 1: Add dependencies**
 
 ```bash
-pnpm --filter @pantry/api add @bull-board/api @bull-board/fastify
+pnpm --filter @expyrico/api add @bull-board/api @bull-board/fastify
 ```
 
 - [ ] **Step 2: Write `api/src/routes/admin/system/bullboard.ts`**
@@ -3674,7 +3991,7 @@ await app.register(adminBullBoardRoute);
 - [ ] **Step 4: Smoke test**
 
 ```bash
-pnpm --filter @pantry/api dev &
+pnpm --filter @expyrico/api dev &
 sleep 2
 # Without admin auth this should 401 (gate is the admin-only plugin)
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4000/v1/admin/bullboard/
@@ -3761,7 +4078,7 @@ export * from './schemas/admin/settings.js';
 - [ ] **Step 3: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 git add packages/shared
 git commit -m "feat(shared): admin settings zod schemas"
 ```
@@ -3778,7 +4095,7 @@ git commit -m "feat(shared): admin settings zod schemas"
 ```ts
 import { z } from 'zod';
 import { getPrisma } from '../../db.js';
-import { featureFlagsSchema, moderationSettingsSchema } from '@pantry/shared';
+import { featureFlagsSchema, moderationSettingsSchema } from '@expyrico/shared';
 
 export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T): Promise<z.infer<T>> {
   const row = await getPrisma().setting.findUnique({ where: { key } });
@@ -3807,7 +4124,7 @@ export { featureFlagsSchema, moderationSettingsSchema };
 - [ ] **Step 2: Typecheck + commit**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 git add api/src/services/admin/settings.ts
 git commit -m "feat(api): typed settings service"
 ```
@@ -3905,14 +4222,14 @@ describe('admin settings — moderation', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/settings/feature-flags.ts`**
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { featureFlagsSchema } from '@pantry/shared';
+import { featureFlagsSchema } from '@expyrico/shared';
 import { getSetting, putSetting, SETTING_KEYS } from '../../../services/admin/settings.js';
 
 export async function adminFeatureFlagsRoute(app: FastifyInstance) {
@@ -3930,7 +4247,7 @@ export async function adminFeatureFlagsRoute(app: FastifyInstance) {
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { moderationSettingsSchema } from '@pantry/shared';
+import { moderationSettingsSchema } from '@expyrico/shared';
 import { getSetting, putSetting, SETTING_KEYS } from '../../../services/admin/settings.js';
 
 export async function adminModerationRoute(app: FastifyInstance) {
@@ -3957,7 +4274,7 @@ await app.register(adminModerationRoute, { prefix: '/settings' });
 - [ ] **Step 6: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 git add api/src api/tests/integration/admin/settings.test.ts
 git commit -m "feat(api): admin settings (feature-flags, moderation)"
 ```
@@ -4011,7 +4328,7 @@ describe('admin settings — notification templates', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/settings/notification-templates.ts`**
@@ -4019,7 +4336,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { notificationTemplateSchema, notificationTemplatePatchSchema, ERROR_CODES } from '@pantry/shared';
+import { notificationTemplateSchema, notificationTemplatePatchSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 
@@ -4064,7 +4381,7 @@ await app.register(adminNotificationTemplatesRoute, { prefix: '/settings' });
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 git add api/src api/tests/integration/admin/settings.test.ts
 git commit -m "feat(api): admin notification template GET/PATCH"
 ```
@@ -4104,7 +4421,7 @@ describe('sendAdminInviteEmail', () => {
 });
 ```
 
-- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @pantry/api test email`
+- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @expyrico/api test email`
 
 - [ ] **Step 4: Implement**
 
@@ -4114,9 +4431,9 @@ export async function sendAdminInviteEmail(input: { email: string; inviteUrl: st
   await transport.sendMail({
     from: cfg.smtp.from,
     to: input.email,
-    subject: "You've been invited to administer Pantry",
+    subject: "You've been invited to administer Expyrico",
     text: `Click to accept: ${input.inviteUrl}`,
-    html: `<p>You've been invited to administer Pantry. <a href="${input.inviteUrl}">Accept invite</a> (expires in 7 days).</p>`,
+    html: `<p>You've been invited to administer Expyrico. <a href="${input.inviteUrl}">Accept invite</a> (expires in 7 days).</p>`,
   });
 }
 ```
@@ -4183,7 +4500,7 @@ describe('admin settings — admins', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 ```
 
 - [ ] **Step 3: Write `api/src/routes/admin/settings/admins.ts`**
@@ -4191,7 +4508,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminRowSchema, adminInviteSchema, adminRevokeSchema, ERROR_CODES } from '@pantry/shared';
+import { adminRowSchema, adminInviteSchema, adminRevokeSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 import { sendAdminInviteEmail } from '../../../services/auth/email.js';
@@ -4259,7 +4576,7 @@ await app.register(adminAdminsRoute, { prefix: '/settings' });
 - [ ] **Step 5: Verify pass + commit**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/admin/settings.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/admin/settings.test.ts
 git add api/src api/tests/integration/admin/settings.test.ts api/prisma
 git commit -m "feat(api): admin settings/admins (list, invite, revoke)"
 ```
@@ -4268,7 +4585,7 @@ git commit -m "feat(api): admin settings/admins (list, invite, revoke)"
 
 ## Phase H — Admin web app: shared UI primitives and helpers
 
-> **Setup assumption:** M0d already installed shadcn/ui primitives (button, dialog, input, dropdown-menu, table, badge, toast, sonner). If a primitive used below is missing, run `pnpm --filter @pantry/admin exec shadcn@latest add <name>` and commit separately before the task that needs it.
+> **Setup assumption:** M0d already installed shadcn/ui primitives (button, dialog, input, dropdown-menu, table, badge, toast, sonner). If a primitive used below is missing, run `pnpm --filter @expyrico/admin exec shadcn@latest add <name>` and commit separately before the task that needs it.
 
 ### Task H1: Install client deps + utilities
 
@@ -4278,13 +4595,13 @@ git commit -m "feat(api): admin settings/admins (list, invite, revoke)"
 - [ ] **Step 1: Install dependencies**
 
 ```bash
-pnpm --filter @pantry/admin add @tanstack/react-query @tanstack/react-table recharts zod
+pnpm --filter @expyrico/admin add @tanstack/react-query @tanstack/react-table recharts zod
 ```
 
 - [ ] **Step 2: Verify install**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest --version >/dev/null 2>&1 || echo 'vitest not configured — using next test'
+pnpm --filter @expyrico/admin exec vitest --version >/dev/null 2>&1 || echo 'vitest not configured — using next test'
 ```
 
 - [ ] **Step 3: Commit**
@@ -4308,7 +4625,7 @@ git commit -m "chore(admin): add tanstack query/table + recharts"
 // which exports `apiServerFetch` (Server Components / server actions, forwards
 // the cookie header from the inbound request) and `apiBrowserFetch` (Client
 // Components, runs in the browser using fetch with credentials: 'include').
-// Each function returns a Promise<T> typed against @pantry/shared schemas.
+// Each function returns a Promise<T> typed against @expyrico/shared schemas.
 //
 // Both factories share the same shape so callers pick the right one for their
 // runtime: `serverAdminApi` for server-side fetches and `browserAdminApi` for
@@ -4325,6 +4642,7 @@ import {
   adminProductMergeResponseSchema,
   adminProductEditsListSchema,
   adminReviewsListSchema,
+  adminReviewRowSchema,
   adminReportsListSchema,
   analyticsOverviewSchema,
   analyticsScansSchema,
@@ -4338,7 +4656,7 @@ import {
   moderationSettingsSchema,
   notificationTemplateSchema,
   adminRowSchema,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { z } from 'zod';
 
 type Q = Record<string, string | number | undefined>;
@@ -4360,6 +4678,7 @@ function makeAdminApi(apiFetch: Fetcher) {
     },
     products: {
       list: (q: Q = {}) => apiFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
+      get: (id: string) => apiFetch(`/v1/admin/products/${id}`).then((r) => adminProductRowSchema.parse(r)),
       patch: (id: string, body: object) => apiFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body }).then((r) => adminProductRowSchema.parse(r)),
       merge: (winnerId: string, loserIds: string[]) => apiFetch(`/v1/admin/products/${winnerId}/merge`, { method: 'POST', body: { winnerId, loserIds } }).then((r) => adminProductMergeResponseSchema.parse(r)),
       pending: (q: Q = {}) => apiFetch(`/v1/admin/products/pending${qs(q)}`).then((r) => adminProductEditsListSchema.parse(r)),
@@ -4367,6 +4686,7 @@ function makeAdminApi(apiFetch: Fetcher) {
     },
     reviews: {
       list: (q: Q = {}) => apiFetch(`/v1/admin/reviews${qs(q)}`).then((r) => adminReviewsListSchema.parse(r)),
+      get: (id: string) => apiFetch(`/v1/admin/reviews/${id}`).then((r) => adminReviewRowSchema.parse(r)),
       setStatus: (id: string, status: 'visible' | 'hidden' | 'deleted') => apiFetch(`/v1/admin/reviews/${id}/status`, { method: 'PATCH', body: { status } }),
     },
     reports: {
@@ -4417,7 +4737,7 @@ export const browserAdminApi = makeAdminApi(apiBrowserFetch);
 - [ ] **Step 2: Typecheck**
 
 ```bash
-pnpm --filter @pantry/admin typecheck
+pnpm --filter @expyrico/admin typecheck
 ```
 
 - [ ] **Step 3: Commit**
@@ -4554,7 +4874,7 @@ describe('useBulkSelection', () => {
 - [ ] **Step 2: Verify FAIL**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run src/lib/use-bulk-selection.test.tsx
+pnpm --filter @expyrico/admin exec vitest run src/lib/use-bulk-selection.test.tsx
 ```
 
 - [ ] **Step 3: Write `apps/admin/src/lib/use-bulk-selection.ts`**
@@ -4583,7 +4903,7 @@ export function useBulkSelection<T>(items: readonly T[], idOf: (t: T) => string)
 - [ ] **Step 4: Verify pass**
 
 ```bash
-pnpm --filter @pantry/admin exec vitest run src/lib/use-bulk-selection.test.tsx
+pnpm --filter @expyrico/admin exec vitest run src/lib/use-bulk-selection.test.tsx
 ```
 
 - [ ] **Step 5: Commit**
@@ -4771,7 +5091,7 @@ git commit -m "feat(admin): KPI card, chart wrappers, status badge"
 
 ```tsx
 // apps/admin/src/app/(admin)/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 import { ChartLine } from '@/components/chart-line';
 
@@ -4779,8 +5099,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function OverviewPage() {
   const [overview, scans] = await Promise.all([
-    adminApi.analytics.overview(),
-    adminApi.analytics.scans('7d'),
+    serverAdminApi.analytics.overview(),
+    serverAdminApi.analytics.scans('7d'),
   ]);
   return (
     <div className="space-y-6">
@@ -4803,7 +5123,7 @@ export default async function OverviewPage() {
 - [ ] **Step 2: Build + smoke**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: exit 0.
 
@@ -4831,13 +5151,13 @@ import { ColumnDef } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import Link from 'next/link';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-type Row = Awaited<ReturnType<typeof adminApi.users.list>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.users.list>>['items'][number];
 
 const columns: ColumnDef<Row>[] = [
   { accessorKey: 'email', header: 'Email', cell: ({ row }) => <Link className="underline" href={`/users/${row.original.id}`}>{row.original.email}</Link> },
@@ -4857,7 +5177,7 @@ export function UsersTable() {
 
   const query = useQuery({
     queryKey: ['admin', 'users', { q, status, role, cursor }],
-    queryFn: () => adminApi.users.list({ q: q || undefined, status: status || undefined, role: role || undefined, cursor }),
+    queryFn: () => browserAdminApi.users.list({ q: q || undefined, status: status || undefined, role: role || undefined, cursor }),
   });
 
   const items = query.data?.items ?? [];
@@ -4914,7 +5234,7 @@ export default function UsersPage() {
 - [ ] **Step 3: Build**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 
 - [ ] **Step 4: Commit**
@@ -4939,7 +5259,7 @@ git commit -m "feat(admin): users list page with filters"
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ConfirmModal } from '@/components/confirm-modal';
@@ -4954,17 +5274,17 @@ export function UserActions({ userId, current }: Props) {
   const [confirm, setConfirm] = useState<null | 'revokeSessions' | 'impersonate' | 'savePatch'>(null);
 
   const patchMut = useMutation({
-    mutationFn: (body: object) => adminApi.users.patch(userId, body),
+    mutationFn: (body: object) => browserAdminApi.users.patch(userId, body),
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['admin', 'users'] }); },
     onError: toast.error,
   });
   const revokeMut = useMutation({
-    mutationFn: () => adminApi.users.revokeSessions(userId),
+    mutationFn: () => browserAdminApi.users.revokeSessions(userId),
     onSuccess: (d) => { toast.success(`Revoked ${d.revoked} sessions`); qc.invalidateQueries({ queryKey: ['admin', 'users', userId] }); },
     onError: toast.error,
   });
   const imperMut = useMutation({
-    mutationFn: () => adminApi.users.impersonate(userId),
+    mutationFn: () => browserAdminApi.users.impersonate(userId),
     onSuccess: (d) => {
       // Write to sessionStorage so a separate "open as user" link can pick it up. Simple v1.
       sessionStorage.setItem('impersonationToken', d.accessToken);
@@ -5032,7 +5352,7 @@ export function UserActions({ userId, current }: Props) {
 - [ ] **Step 2: Replace `apps/admin/src/app/(admin)/users/[id]/page.tsx`**
 
 ```tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { StatusBadge } from '@/components/status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserActions } from './_actions';
@@ -5041,7 +5361,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await adminApi.users.get(id);
+  const user = await serverAdminApi.users.get(id);
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -5092,7 +5412,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 - [ ] **Step 3: Build**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 
 - [ ] **Step 4: Commit**
@@ -5119,20 +5439,21 @@ import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
 import { useState } from 'react';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StatusBadge } from '@/components/status-badge';
 
-type Row = Awaited<ReturnType<typeof adminApi.products.list>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.products.list>>['items'][number];
 
 const columns: ColumnDef<Row>[] = [
   { accessorKey: 'name', header: 'Name', cell: ({ row }) => <Link className="underline" href={`/products/${row.original.id}`}>{row.original.name}</Link> },
   { accessorKey: 'brand', header: 'Brand' },
   { accessorKey: 'source', header: 'Source' },
   { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
-  { accessorKey: 'ratingAvg', header: 'Avg', cell: ({ row }) => row.original.ratingAvg?.toFixed(2) ?? '—' },
+  { id: 'buyAgainPct', header: '% Buy again', cell: ({ row }) => row.original.ratingCount > 0 ? `${Math.round((row.original.buyAgainCount / row.original.ratingCount) * 100)}%` : '—' },
+  { accessorKey: 'ratingCount', header: 'Ratings', cell: ({ row }) => row.original.ratingCount },
   { accessorKey: 'reviewCount', header: 'Reviews' },
 ];
 
@@ -5143,7 +5464,7 @@ export function ProductsTable() {
   const [cursor, setCursor] = useState<string | undefined>();
   const query = useQuery({
     queryKey: ['admin', 'products', { q, status, source, cursor }],
-    queryFn: () => adminApi.products.list({ q: q || undefined, status: status || undefined, source: source || undefined, cursor }),
+    queryFn: () => browserAdminApi.products.list({ q: q || undefined, status: status || undefined, source: source || undefined, cursor }),
   });
   return (
     <div className="space-y-3">
@@ -5204,7 +5525,7 @@ export default function ProductsPage() {
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/products
 git commit -m "feat(admin): products list page"
 ```
@@ -5224,7 +5545,7 @@ git commit -m "feat(admin): products list page"
 'use client';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
@@ -5240,7 +5561,7 @@ export function EditForm({ init }: { init: Init }) {
     imageUrl: init.imageUrl ?? '',
   });
   const mut = useMutation({
-    mutationFn: () => adminApi.products.patch(init.id, {
+    mutationFn: () => browserAdminApi.products.patch(init.id, {
       name: form.name,
       brand: form.brand || null,
       category: form.category || null,
@@ -5264,7 +5585,7 @@ export function EditForm({ init }: { init: Init }) {
 - [ ] **Step 2: Replace `apps/admin/src/app/(admin)/products/[id]/page.tsx`**
 
 ```tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
@@ -5274,10 +5595,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // Use list endpoint with id filter as a stand-in for a per-product GET (no spec'd endpoint).
-  const list = await adminApi.products.list({ q: id });
-  const p = list.items.find((it) => it.id === id);
-  if (!p) return <p className="text-sm">Product not found.</p>;
+  // Fetch the product by id (Task C3a). The list endpoint's `q` matches
+  // name/brand/barcode, never the id, so it cannot be used to load a detail page.
+  let p;
+  try {
+    p = await serverAdminApi.products.get(id);
+  } catch {
+    return <p className="text-sm">Product not found.</p>;
+  }
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between">
@@ -5308,7 +5633,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/products/\[id\]/page.tsx apps/admin/src/app/\(admin\)/products/\[id\]/_edit-form.tsx
 git commit -m "feat(admin): product detail + edit form"
 ```
@@ -5328,18 +5653,18 @@ git commit -m "feat(admin): product detail + edit form"
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
 
-type Row = Awaited<ReturnType<typeof adminApi.products.pending>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.products.pending>>['items'][number];
 
 export function PendingTable() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['admin', 'products', 'pending'], queryFn: () => adminApi.products.pending() });
+  const query = useQuery({ queryKey: ['admin', 'products', 'pending'], queryFn: () => browserAdminApi.products.pending() });
   const resolve = useMutation({
-    mutationFn: ({ id, decision }: { id: string; decision: 'approve' | 'reject' }) => adminApi.products.resolveEdit(id, decision),
+    mutationFn: ({ id, decision }: { id: string; decision: 'approve' | 'reject' }) => browserAdminApi.products.resolveEdit(id, decision),
     onSuccess: () => { toast.success('Resolved'); qc.invalidateQueries({ queryKey: ['admin', 'products', 'pending'] }); },
     onError: toast.error,
   });
@@ -5383,7 +5708,7 @@ export default function PendingPage() {
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/products/pending
 git commit -m "feat(admin): pending product edits queue"
 ```
@@ -5404,7 +5729,7 @@ git commit -m "feat(admin): pending product edits queue"
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/confirm-modal';
@@ -5418,12 +5743,12 @@ export function MergeTool({ winnerId }: { winnerId: string }) {
 
   const candidates = useQuery({
     queryKey: ['admin', 'products', 'merge-candidates', q],
-    queryFn: () => adminApi.products.list({ q: q || undefined }),
+    queryFn: () => browserAdminApi.products.list({ q: q || undefined }),
     enabled: q.length > 1,
   });
 
   const merge = useMutation({
-    mutationFn: () => adminApi.products.merge(winnerId, selected),
+    mutationFn: () => browserAdminApi.products.merge(winnerId, selected),
     onSuccess: (res) => { toast.success(`Merged ${res.movedRecords} records, ${res.movedReviews} reviews`); router.push(`/products/${winnerId}`); },
     onError: toast.error,
   });
@@ -5482,7 +5807,7 @@ export default async function MergePage({ params }: { params: Promise<{ id: stri
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/products/\[id\]/merge
 git commit -m "feat(admin): product merge tool"
 ```
@@ -5506,7 +5831,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 import Link from 'next/link';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -5514,7 +5839,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/lib/toast';
 
-type Row = Awaited<ReturnType<typeof adminApi.reviews.list>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.reviews.list>>['items'][number];
 
 export function ReviewsTable() {
   const qc = useQueryClient();
@@ -5524,18 +5849,28 @@ export function ReviewsTable() {
   const [cursor, setCursor] = useState<string | undefined>();
   const query = useQuery({
     queryKey: ['admin', 'reviews', { status, rating, productId, cursor }],
-    queryFn: () => adminApi.reviews.list({ status: status || undefined, rating: rating || undefined, product_id: productId || undefined, cursor }),
+    queryFn: () =>
+      browserAdminApi.reviews.list({
+        status: status || undefined,
+        rating: rating || undefined,
+        productId: productId || undefined,
+        cursor,
+      }),
   });
   const setStatusMut = useMutation({
-    mutationFn: ({ id, s }: { id: string; s: 'visible' | 'hidden' | 'deleted' }) => adminApi.reviews.setStatus(id, s),
+    mutationFn: ({ id, s }: { id: string; s: 'visible' | 'hidden' | 'deleted' }) => browserAdminApi.reviews.setStatus(id, s),
     onSuccess: () => { toast.success('Updated'); qc.invalidateQueries({ queryKey: ['admin', 'reviews'] }); },
     onError: toast.error,
   });
 
+  const RATING_LABEL: Record<string, string> = {
+    buy_again: 'Buy again', buy_again_on_sale: 'On sale only', wont_buy: "Won't buy",
+  };
   const columns: ColumnDef<Row>[] = [
     { accessorKey: 'id', header: 'ID', cell: ({ row }) => <Link className="underline" href={`/reviews/${row.original.id}`}>{row.original.id.slice(0, 8)}</Link> },
-    { accessorKey: 'rating', header: 'Rating' },
-    { accessorKey: 'body', header: 'Body', cell: ({ row }) => <span className="line-clamp-1 max-w-md">{row.original.body ?? '—'}</span> },
+    { accessorKey: 'rating', header: 'Rating', cell: ({ row }) => RATING_LABEL[row.original.rating] ?? row.original.rating },
+    { id: 'helpful', header: 'Helpful', cell: ({ row }) => `${row.original.helpfulCount} / ${row.original.notHelpfulCount}` },
+    { accessorKey: 'comment', header: 'Comment', cell: ({ row }) => <span className="line-clamp-1 max-w-md">{row.original.comment ?? '—'}</span> },
     { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
     {
       id: 'actions', header: 'Actions', cell: ({ row }) => (
@@ -5559,7 +5894,13 @@ export function ReviewsTable() {
             {['visible', 'hidden', 'deleted'].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input className="w-24" placeholder="Rating" value={rating} onChange={(e) => { setCursor(undefined); setRating(e.target.value); }} />
+        <Select value={rating} onValueChange={(v) => { setCursor(undefined); setRating(v === 'all' ? '' : v); }}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="Rating" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All ratings</SelectItem>
+            {['buy_again', 'buy_again_on_sale', 'wont_buy'].map((s) => <SelectItem key={s} value={s}>{RATING_LABEL[s]}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Input className="max-w-xs" placeholder="Product ID" value={productId} onChange={(e) => { setCursor(undefined); setProductId(e.target.value); }} />
       </div>
       <DataTable
@@ -5594,7 +5935,7 @@ export default function ReviewsPage() {
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/reviews
 git commit -m "feat(admin): reviews list with inline status change"
 ```
@@ -5610,7 +5951,7 @@ git commit -m "feat(admin): reviews list with inline status change"
 
 ```tsx
 // apps/admin/src/app/(admin)/reviews/[id]/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { ChartBar } from '@/components/chart-bar';
 import { StatusBadge } from '@/components/status-badge';
 
@@ -5618,19 +5959,24 @@ export const dynamic = 'force-dynamic';
 
 export default async function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // No per-review GET in spec; fetch via list filter.
-  const list = await adminApi.reviews.list({ /* server side */ });
-  const r = list.items.find((x) => x.id === id);
-  if (!r) return <p>Review not found.</p>;
-  const chartData = [{ kind: 'up', value: r.upvoteCount }, { kind: 'down', value: r.downvoteCount }];
+  // Fetch the review by id (Task D2a). Reading the first page of the list and
+  // searching it client-side made any review past page 1 unreachable.
+  let r;
+  try {
+    r = await serverAdminApi.reviews.get(id);
+  } catch {
+    return <p>Review not found.</p>;
+  }
+  const chartData = [{ kind: 'helpful', value: r.helpfulCount }, { kind: 'notHelpful', value: r.notHelpfulCount }];
+  const RATING_LABEL: Record<string, string> = { buy_again: 'Will buy again', buy_again_on_sale: 'On sale only', wont_buy: "Won't buy" };
   return (
     <div className="space-y-6">
       <header className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold">Review {r.id.slice(0, 8)}</h1>
         <StatusBadge status={r.status} />
       </header>
-      <p className="text-sm">Rating: {r.rating}/5</p>
-      <blockquote className="border-l-4 pl-4 italic">{r.body ?? <em>No body.</em>}</blockquote>
+      <p className="text-sm">Rating: {RATING_LABEL[r.rating] ?? r.rating}</p>
+      <blockquote className="border-l-4 pl-4 italic">{r.comment ?? <em>No comment.</em>}</blockquote>
       <section>
         <h2 className="font-medium mb-2">Votes</h2>
         <ChartBar data={chartData} x="kind" y="value" height={200} />
@@ -5643,7 +5989,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
 - [ ] **Step 2: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/reviews/\[id\]/page.tsx
 git commit -m "feat(admin): review detail page with vote chart"
 ```
@@ -5665,7 +6011,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 import Link from 'next/link';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { useBulkSelection } from '@/lib/use-bulk-selection';
 import { Button } from '@/components/ui/button';
@@ -5673,13 +6019,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ConfirmModal } from '@/components/confirm-modal';
 import { toast } from '@/lib/toast';
 
-type Row = Awaited<ReturnType<typeof adminApi.reports.list>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.reports.list>>['items'][number];
 
 export function ReportsTable() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: ['admin', 'reports', 'open'],
-    queryFn: () => adminApi.reports.list({ status: 'open' }),
+    queryFn: () => browserAdminApi.reports.list({ status: 'open' }),
     refetchInterval: 10_000,
   });
   const items = query.data?.items ?? [];
@@ -5688,7 +6034,7 @@ export function ReportsTable() {
 
   const resolveMut = useMutation({
     mutationFn: async (action: 'hide' | 'delete' | 'dismiss' | 'ban') => {
-      for (const id of sel.selectedIds) await adminApi.reports.resolve(id, action);
+      for (const id of sel.selectedIds) await browserAdminApi.reports.resolve(id, action);
       return sel.selectedIds.length;
     },
     onSuccess: (n, action) => { toast.success(`Resolved ${n} (${action})`); sel.clear(); qc.invalidateQueries({ queryKey: ['admin', 'reports'] }); },
@@ -5754,7 +6100,7 @@ export default function ReportsPage() {
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/reports
 git commit -m "feat(admin): reports queue with polling + bulk actions"
 ```
@@ -5775,7 +6121,7 @@ git commit -m "feat(admin): reports queue with polling + bulk actions"
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { toast } from '@/lib/toast';
@@ -5785,7 +6131,7 @@ export function ReportActions({ reportId }: { reportId: string }) {
   const router = useRouter();
   const [pending, setPending] = useState<null | 'hide' | 'delete' | 'dismiss' | 'ban'>(null);
   const mut = useMutation({
-    mutationFn: (a: 'hide' | 'delete' | 'dismiss' | 'ban') => adminApi.reports.resolve(reportId, a),
+    mutationFn: (a: 'hide' | 'delete' | 'dismiss' | 'ban') => browserAdminApi.reports.resolve(reportId, a),
     onSuccess: () => { toast.success('Resolved'); qc.invalidateQueries({ queryKey: ['admin', 'reports'] }); router.push('/reports'); },
     onError: toast.error,
   });
@@ -5810,14 +6156,14 @@ export function ReportActions({ reportId }: { reportId: string }) {
 
 ```tsx
 // apps/admin/src/app/(admin)/reports/[id]/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { ReportActions } from './_actions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const list = await adminApi.reports.list({ status: 'open' });
+  const list = await serverAdminApi.reports.list({ status: 'open' });
   const r = list.items.find((x) => x.id === id);
   if (!r) return <p>Report not found or already resolved.</p>;
   return (
@@ -5839,7 +6185,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
 - [ ] **Step 3: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/reports/\[id\]
 git commit -m "feat(admin): report detail page with one-click actions"
 ```
@@ -5858,13 +6204,13 @@ git commit -m "feat(admin): report detail page with one-click actions"
 
 ```tsx
 // apps/admin/src/app/(admin)/analytics/overview/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsOverviewPage() {
-  const o = await adminApi.analytics.overview();
+  const o = await serverAdminApi.analytics.overview();
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Analytics — Overview</h1>
@@ -5885,14 +6231,14 @@ export default async function AnalyticsOverviewPage() {
 
 ```tsx
 // apps/admin/src/app/(admin)/analytics/scans/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { ChartLine } from '@/components/chart-line';
 import { ChartBar } from '@/components/chart-bar';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ScansPage() {
-  const s = await adminApi.analytics.scans('30d');
+  const s = await serverAdminApi.analytics.scans('30d');
   const bySource = Object.entries(s.bySource).map(([source, count]) => ({ source, count }));
   return (
     <div className="space-y-6">
@@ -5908,18 +6254,23 @@ export default async function ScansPage() {
 
 ```tsx
 // apps/admin/src/app/(admin)/analytics/reviews/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { ChartLine } from '@/components/chart-line';
 import { KpiCard } from '@/components/kpi-card';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ReviewsAnalyticsPage() {
-  const r = await adminApi.analytics.reviews('30d');
+  const r = await serverAdminApi.analytics.reviews('30d');
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Reviews (30d)</h1>
-      <KpiCard label="Auto-flagged rate" value={`${(r.autoFlaggedRate * 100).toFixed(1)}%`} />
+      <div className="grid grid-cols-4 gap-4">
+        <KpiCard label="Auto-flagged rate" value={`${(r.autoFlaggedRate * 100).toFixed(1)}%`} />
+        <KpiCard label="Buy again" value={`${r.buyAgainPct}%`} />
+        <KpiCard label="On sale only" value={`${r.buyAgainOnSalePct}%`} />
+        <KpiCard label="Won't buy" value={`${r.wontBuyPct}%`} />
+      </div>
       <ChartLine data={r.daily} x="date" y="count" />
     </div>
   );
@@ -5930,13 +6281,13 @@ export default async function ReviewsAnalyticsPage() {
 
 ```tsx
 // apps/admin/src/app/(admin)/analytics/geography/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { ChartBar } from '@/components/chart-bar';
 
 export const dynamic = 'force-dynamic';
 
 export default async function GeographyPage() {
-  const g = await adminApi.analytics.geography();
+  const g = await serverAdminApi.analytics.geography();
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Geography</h1>
@@ -5949,7 +6300,7 @@ export default async function GeographyPage() {
 - [ ] **Step 5: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/analytics
 git commit -m "feat(admin): analytics pages (overview, scans, reviews, geography)"
 ```
@@ -5968,13 +6319,13 @@ git commit -m "feat(admin): analytics pages (overview, scans, reviews, geography
 
 ```tsx
 // apps/admin/src/app/(admin)/system/queue/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QueuePage() {
-  const h = await adminApi.system.queueHealth();
+  const h = await serverAdminApi.system.queueHealth();
   // API base URL is exposed by M0d as NEXT_PUBLIC_API_BASE_URL.
   const api = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
   return (
@@ -6001,12 +6352,12 @@ export default async function QueuePage() {
 import { useQuery } from '@tanstack/react-query';
 import { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { DataTable } from '@/components/data-table';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/status-badge';
 
-type Row = Awaited<ReturnType<typeof adminApi.system.pushLogs>>['items'][number];
+type Row = Awaited<ReturnType<typeof browserAdminApi.system.pushLogs>>['items'][number];
 
 const columns: ColumnDef<Row>[] = [
   { accessorKey: 'createdAt', header: 'When', cell: ({ row }) => new Date(row.original.createdAt).toLocaleString() },
@@ -6022,7 +6373,7 @@ export default function PushPage() {
   const [cursor, setCursor] = useState<string | undefined>();
   const query = useQuery({
     queryKey: ['admin', 'push-logs', { userId, status, cursor }],
-    queryFn: () => adminApi.system.pushLogs({ user_id: userId || undefined, status: status || undefined, cursor }),
+    queryFn: () => browserAdminApi.system.pushLogs({ user_id: userId || undefined, status: status || undefined, cursor }),
   });
   return (
     <div className="space-y-4">
@@ -6046,12 +6397,12 @@ export default function PushPage() {
 
 ```tsx
 // apps/admin/src/app/(admin)/system/api-errors/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ApiErrorsPage() {
-  const e = await adminApi.system.apiErrors('24h');
+  const e = await serverAdminApi.system.apiErrors('24h');
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">API errors (24h)</h1>
@@ -6073,14 +6424,14 @@ export default async function ApiErrorsPage() {
 
 ```tsx
 // apps/admin/src/app/(admin)/system/external-apis/page.tsx
-import { adminApi } from '@/lib/admin-api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ExternalApisPage() {
-  const e = await adminApi.system.externalApis();
+  const e = await serverAdminApi.system.externalApis();
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">External APIs</h1>
@@ -6101,7 +6452,7 @@ export default async function ExternalApisPage() {
 - [ ] **Step 5: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/system
 git commit -m "feat(admin): system pages (queue, push, api-errors, external-apis)"
 ```
@@ -6123,7 +6474,7 @@ git commit -m "feat(admin): system pages (queue, push, api-errors, external-apis
 // apps/admin/src/app/(admin)/settings/feature-flags/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/lib/toast';
@@ -6131,11 +6482,11 @@ import { useState, useEffect } from 'react';
 
 export default function FeatureFlagsPage() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['admin', 'settings', 'feature-flags'], queryFn: adminApi.settings.featureFlags.get });
+  const query = useQuery({ queryKey: ['admin', 'settings', 'feature-flags'], queryFn: browserAdminApi.settings.featureFlags.get });
   const [form, setForm] = useState({ reviewsEnabled: true, passkeysEnabled: true, ocrEnabled: true });
   useEffect(() => { if (query.data) setForm(query.data); }, [query.data]);
   const mut = useMutation({
-    mutationFn: () => adminApi.settings.featureFlags.put(form),
+    mutationFn: () => browserAdminApi.settings.featureFlags.put(form),
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['admin', 'settings', 'feature-flags'] }); },
     onError: toast.error,
   });
@@ -6160,7 +6511,7 @@ export default function FeatureFlagsPage() {
 // apps/admin/src/app/(admin)/settings/moderation/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -6169,11 +6520,11 @@ import { toast } from '@/lib/toast';
 
 export default function ModerationPage() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['admin', 'settings', 'moderation'], queryFn: adminApi.settings.moderation.get });
+  const query = useQuery({ queryKey: ['admin', 'settings', 'moderation'], queryFn: browserAdminApi.settings.moderation.get });
   const [form, setForm] = useState({ autoHideReportThreshold: 3, profanitySensitivity: 'medium' as 'low' | 'medium' | 'high' });
   useEffect(() => { if (query.data) setForm(query.data); }, [query.data]);
   const mut = useMutation({
-    mutationFn: () => adminApi.settings.moderation.put(form),
+    mutationFn: () => browserAdminApi.settings.moderation.put(form),
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['admin', 'settings', 'moderation'] }); },
     onError: toast.error,
   });
@@ -6203,7 +6554,7 @@ export default function ModerationPage() {
 // apps/admin/src/app/(admin)/settings/notification-templates/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -6213,10 +6564,10 @@ import { useState } from 'react';
 
 export default function NotificationTemplatesPage() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['admin', 'settings', 'notification-templates'], queryFn: adminApi.settings.notificationTemplates.list });
+  const query = useQuery({ queryKey: ['admin', 'settings', 'notification-templates'], queryFn: browserAdminApi.settings.notificationTemplates.list });
   const [edits, setEdits] = useState<Record<string, { title?: string; body?: string; enabled?: boolean }>>({});
   const mut = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: object }) => adminApi.settings.notificationTemplates.patch(id, body),
+    mutationFn: ({ id, body }: { id: string; body: object }) => browserAdminApi.settings.notificationTemplates.patch(id, body),
     onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['admin', 'settings', 'notification-templates'] }); },
     onError: toast.error,
   });
@@ -6252,7 +6603,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { toast } from '@/lib/toast';
 
 export function InviteModal() {
@@ -6260,7 +6611,7 @@ export function InviteModal() {
   const [form, setForm] = useState({ email: '', firstName: '', lastName: '' });
   const qc = useQueryClient();
   const mut = useMutation({
-    mutationFn: () => adminApi.settings.admins.invite(form),
+    mutationFn: () => browserAdminApi.settings.admins.invite(form),
     onSuccess: () => { toast.success('Invite sent'); setOpen(false); qc.invalidateQueries({ queryKey: ['admin', 'settings', 'admins'] }); },
     onError: toast.error,
   });
@@ -6288,7 +6639,7 @@ export function InviteModal() {
 // apps/admin/src/app/(admin)/settings/admins/page.tsx
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/admin-api';
+import { browserAdminApi } from '@/lib/admin-api';
 import { Button } from '@/components/ui/button';
 import { ConfirmModal } from '@/components/confirm-modal';
 import { useState } from 'react';
@@ -6297,10 +6648,10 @@ import { InviteModal } from './_invite-modal';
 
 export default function AdminsPage() {
   const qc = useQueryClient();
-  const query = useQuery({ queryKey: ['admin', 'settings', 'admins'], queryFn: adminApi.settings.admins.list });
+  const query = useQuery({ queryKey: ['admin', 'settings', 'admins'], queryFn: browserAdminApi.settings.admins.list });
   const [revoking, setRevoking] = useState<string | null>(null);
   const revokeMut = useMutation({
-    mutationFn: (id: string) => adminApi.settings.admins.revoke(id),
+    mutationFn: (id: string) => browserAdminApi.settings.admins.revoke(id),
     onSuccess: () => { toast.success('Revoked'); qc.invalidateQueries({ queryKey: ['admin', 'settings', 'admins'] }); },
     onError: toast.error,
   });
@@ -6338,7 +6689,7 @@ export default function AdminsPage() {
 - [ ] **Step 5: Build + commit**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 git add apps/admin/src/app/\(admin\)/settings
 git commit -m "feat(admin): settings pages (flags, moderation, templates, admins)"
 ```
@@ -6394,7 +6745,7 @@ export async function seedOpenReport(request: APIRequestContext): Promise<string
 - [ ] **Step 3: Run**
 
 ```bash
-pnpm --filter @pantry/admin exec playwright test moderate-report.spec.ts
+pnpm --filter @expyrico/admin exec playwright test moderate-report.spec.ts
 ```
 Expected: pass.
 
@@ -6442,7 +6793,7 @@ test('admin merges two duplicate products', async ({ page, request }) => {
 - [ ] **Step 2: Run + commit**
 
 ```bash
-pnpm --filter @pantry/admin exec playwright test merge-product.spec.ts
+pnpm --filter @expyrico/admin exec playwright test merge-product.spec.ts
 git add apps/admin/e2e/merge-product.spec.ts
 git commit -m "test(admin): e2e merge-product flow"
 ```
@@ -6486,7 +6837,7 @@ test('admin suspends a user, who can no longer sign in', async ({ page, request 
 - [ ] **Step 2: Run + commit**
 
 ```bash
-pnpm --filter @pantry/admin exec playwright test suspend-user.spec.ts
+pnpm --filter @expyrico/admin exec playwright test suspend-user.spec.ts
 git add apps/admin/e2e/suspend-user.spec.ts
 git commit -m "test(admin): e2e suspend-user flow"
 ```
@@ -6500,13 +6851,13 @@ git commit -m "test(admin): e2e suspend-user flow"
 - [ ] **Step 1: Generate Prisma client**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 
 - [ ] **Step 2: Run all tests**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: every file under `api/tests/integration/admin/` passes plus all M0a/M0b/M1/M2 tests still green.
 
@@ -6520,14 +6871,14 @@ Expected: exit 0 across all workspace packages.
 - [ ] **Step 4: Build the admin app**
 
 ```bash
-pnpm --filter @pantry/admin build
+pnpm --filter @expyrico/admin build
 ```
 Expected: exit 0.
 
 - [ ] **Step 5: Run Playwright suite**
 
 ```bash
-pnpm --filter @pantry/admin exec playwright test
+pnpm --filter @expyrico/admin exec playwright test
 ```
 Expected: all 3 specs from Phase K pass.
 
@@ -6549,13 +6900,15 @@ git tag m3-complete
 ## Self-review checklist (run before declaring M3 done)
 
 - [ ] Every endpoint in spec §6.7 has a route file + integration test.
-- [ ] Every page listed in spec §8.3 has a server or client component that calls `adminApi`.
-- [ ] Every mutation route calls `req.auditLog(...)` and the corresponding test asserts a row in `admin_audit_log` with correct `action`, `targetType`, `targetId`, and `diff`.
+- [ ] Every page listed in spec §8.3 has a server or client component that calls the admin API client (`serverAdminApi` in Server Components, `browserAdminApi` in `'use client'` islands). No page imports a non-existent `adminApi`.
+- [ ] Detail pages fetch by id: `/products/[id]` calls `serverAdminApi.products.get(id)` and `/reviews/[id]` calls `serverAdminApi.reviews.get(id)` — neither relies on searching the list.
+- [ ] Every mutation route calls `req.auditLog(...)` and the corresponding test asserts a row in `admin_audit_log` with correct `action`, `targetType`, `targetId`, and `diff`. (The two by-id GET routes, C3a and D2a, are reads and are intentionally not audit-logged.)
 - [ ] No route ever bypasses the `admin-only` plugin.
-- [ ] Every admin-side fetch goes through `adminApi`, which always parses with a Zod schema from `@pantry/shared`.
+- [ ] Every admin-side fetch goes through `serverAdminApi` / `browserAdminApi`, which always parse with a Zod schema from `@expyrico/shared`.
 - [ ] No `console.log` in `api/src/**` or `apps/admin/src/**`.
 - [ ] Cursor pagination behaves correctly: `nextCursor === null` only when no more rows.
 - [ ] The merge tool preserves vote counts on moved reviews (Task C4 test).
+- [ ] Three-option ratings are consistent: admin review schemas/routes/pages expose `rating` (`buy_again`/`buy_again_on_sale`/`wont_buy`) + `comment` + `helpfulCount`/`notHelpfulCount` (no taste/value, no up/down votes); product schemas/routes/pages expose the tallies `buyAgainCount`/`buyAgainOnSaleCount`/`wontBuyCount`/`ratingCount` + `reviewCount` + `isCommunityEligible`; the merge recalc writes those tallies; analytics reviews returns `buyAgainPct`/`buyAgainOnSalePct`/`wontBuyPct`/`ratingCount`. All review fixtures in admin tests set `rating`.
 - [ ] The reports queue auto-refreshes every 10s (Task J3 — `refetchInterval: 10_000`).
 - [ ] bull-board is reachable at `/v1/admin/bullboard` only with admin auth (Task F7 smoke = 401 unauth).
 
@@ -6571,10 +6924,12 @@ git tag m3-complete
 | §6.7 `POST /admin/users/:id/sessions/revoke-all` | B5 |
 | §6.7 `POST /admin/users/:id/impersonate` | B6 |
 | §6.7 `GET /admin/products` | C2 |
+| `GET /admin/products/:id` (by-id detail fetch) | C3a |
 | §6.7 `PATCH /admin/products/:id` | C3 |
 | §6.7 `POST /admin/products/:id/merge` | C4 |
 | §6.7 pending edits | C5 |
-| §6.7 `GET /admin/reviews` | D2 |
+| §6.7 `GET /admin/reviews` (filter by `rating`) | D2 |
+| `GET /admin/reviews/:id` (by-id detail fetch, rating + comment + helpful counts) | D2a |
 | §6.7 `PATCH /admin/reviews/:id/status` | D3 |
 | §6.7 `GET /admin/reports?status=open` | D4 |
 | §6.7 `PATCH /admin/reports/:id/resolve` | D5 |

@@ -43,20 +43,25 @@ export async function processProductRatingRecalc(
 ): Promise<void> {
   const { productId } = job.data;
   const prisma = getPrisma();
-  const agg = await prisma.review.aggregate({
+  // Recompute three-option tallies from visible reviews.
+  const byRating = await prisma.review.groupBy({
+    by: ['rating'],
     where: { productId, status: 'visible' },
-    _avg: { tasteRating: true, valueRating: true },
     _count: { _all: true },
   });
-  const reviewCount = agg._count._all;
-  // numeric(3,2) in products.taste_avg / value_avg — keep two decimals.
-  const tasteAvg = reviewCount > 0 ? Number(agg._avg.tasteRating ?? 0) : 0;
-  const valueAvg = reviewCount > 0 ? Number(agg._avg.valueRating ?? 0) : 0;
+  const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
+  for (const row of byRating) tally[row.rating] = row._count._all;
+  const ratingCount = tally.buy_again + tally.buy_again_on_sale + tally.wont_buy;
+  const reviewCount = await prisma.review.count({
+    where: { productId, status: 'visible', body: { not: null } },
+  });
   await prisma.product.update({
     where: { id: productId },
     data: {
-      tasteAvg,
-      valueAvg,
+      buyAgainCount: tally.buy_again,
+      buyAgainOnSaleCount: tally.buy_again_on_sale,
+      wontBuyCount: tally.wont_buy,
+      ratingCount,
       reviewCount,
     },
   });

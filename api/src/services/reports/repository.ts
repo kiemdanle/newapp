@@ -55,5 +55,17 @@ export async function maybeAutoHide(
     await prisma.product.update({ where: { id: targetId }, data: { status: 'pending' } });
     return { hidden: true };
   }
+  if (targetType === 'deal') {
+    const d = await prisma.deal.findUnique({ where: { id: targetId } });
+    if (!d || d.status === 'hidden' || d.status === 'deleted') return { hidden: false };
+    await prisma.deal.update({ where: { id: targetId }, data: { status: 'hidden' } });
+    return { hidden: true };
+  }
+  if (targetType === 'giveaway') {
+    const g = await prisma.giveaway.findUnique({ where: { id: targetId } });
+    if (!g || g.status === 'cancelled') return { hidden: false };
+    await prisma.giveaway.update({ where: { id: targetId }, data: { status: 'cancelled' } });
+    return { hidden: true };
+  }
   return { hidden: false };
 }

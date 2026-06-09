@@ -8,13 +8,13 @@
 
 **Tech Stack:** Fastify 4, Prisma 5, Postgres 16 (with `pg_trgm`), Redis 7, Zod 3, BullMQ 5, `opossum` 8, `undici` 6, `expo-server-sdk`, Vitest + Supertest, Expo SDK (latest stable), Expo Router, Zustand, TanStack Query, NativeWind, WatermelonDB, `expo-camera` (built-in `CameraView` barcode scanning), `@react-native-ml-kit/text-recognition`, `expo-notifications`, `@react-native-community/netinfo`, React Native Testing Library, Maestro.
 
-**Spec reference:** `docs/superpowers/specs/2026-05-23-pantry-app-design.md` sections 2.2–2.5, 2.11, 4.3, 5, 6.2, 6.3, 6.6, 7.
+**Spec reference:** `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` sections 2.2–2.5, 2.11, 4.3, 5, 6.2, 6.3, 6.6, 7.
 
 **Prerequisites:** Per the backend-first execution order, prereqs split by track. Track A (backend phases A–I) does NOT depend on M0c — backend phases touch only `api/`, `packages/shared`, and Postgres. M0c is required only when Track B (mobile phases J–Q) begins.
 
 **Track A (backend, build now) prerequisites:** M0a + M0b complete. Specifically:
 
-- `@pantry/shared` (Zod schemas)
+- `@expyrico/shared` (Zod schemas)
 - `api/src/server.ts`, `api/src/config.ts`, `api/src/db.ts`, `api/src/redis.ts`, `api/src/errors.ts`
 - `api/src/plugins/auth.ts` (`req.user`, `app.requireAuth`)
 - `api/src/services/users/repository.ts`
@@ -32,7 +32,22 @@
 
 **Architecture decision: product edits.** The spec is ambiguous on whether user-suggested product edits live on the main `products` row (`status='pending'`) or in a side table. This plan picks a side table `product_edits` with a JSON `proposed` payload and `status enum(pending, approved, rejected)`. Reasons: (1) the live product row stays `active` and visible during review, (2) multiple competing edits can stack without overwriting, (3) the M3 admin queue maps cleanly to a list of `product_edits` rows. M3 will add the admin endpoints that resolve them (writing `resolvedBy`/`resolvedAt`/`notes`).
 
-**Architecture decision: notification preferences.** Spec §2.5 mentions per-user override of the default reminder schedule. This plan adds `users.notificationPreferences Json?` with shape `{ "offsetsDays": number[] }`. Default (when null) is `[3, 1, 0]` (3 days before, 1 day before, on the expiry day). Per-record overrides are stored inside the existing `records.notify_at jsonb` (already in the spec) — that field holds the *resolved* absolute timestamps, not the offsets.
+**Architecture decision: notification preferences.** Spec §2.5 mentions per-user override of the default reminder schedule. This plan adds `users.notificationPreferences Json?` with shape `{ "offsetsDays": number[] }`. Default (when null) is `[7, 3, 1, 0]` (7 days before, 3 days before, 1 day before, on the expiry day). Per-record overrides are stored inside the existing `records.notify_at jsonb` (already in the spec) — that field holds the *resolved* absolute timestamps, not the offsets.
+
+---
+
+## Requirement revision — 2026-06-08 (Expyrico)
+
+Canonical contract: `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` (2026-06-08 revision). These supersede the 2026-05-26 blocks below where they conflict:
+
+1. **Brand → Expyrico.** Monorepo root `expyrico/`, packages `@expyrico/*`, deep-link `expyrico://record/:id`. (Generic noun "pantry" = the personal-items feature, unchanged.)
+2. **Reminder default → `[7, 3, 1, 0]`** (7/3/1/0 days). Supersedes feature-addition 1 and validation item 6's `[7,3,1,0]` fallback. Per-user `notificationPreferences.offsetsDays` and per-request `notificationOffsetsDays` still take precedence. Tapping a push deep-links to the record (`expyrico://record/:id`).
+3. **Record fields.** `records` gains `category` (text, drives dashboard filter), `price` (numeric, accordion), `store` (text, accordion). All optional except `name`/`custom_name` and `expiry_date`. `AddRecordForm` surfaces price+store in a collapsed accordion. Manual-entry name field auto-suggests from OFF (`GET /v1/products/search`).
+4. **Community-rating eligibility flag.** `products.is_community_eligible` (boolean) — true when barcode-sourced. Replaces feature-addition 3's taste/value columns with the three-option tallies (`buy_again_count`, `buy_again_on_sale_count`, `wont_buy_count`, `rating_count`, `review_count`), all default 0; M2 fills them. M1 only defines columns/field names.
+5. **Dashboard.** `expiryStatus` → green/amber/red where **amber = within the user's `expiring_soon_threshold_days` (default 7)**, red = expired/today, green = beyond threshold. Home shows a summary count header (Good/Expiring-soon/Expired) and a category filter. Supersedes feature-addition 2's hardcoded 1–3 day amber band.
+6. **Duplicate action.** `POST /v1/records/:id/duplicate` copies all fields except `expiry_date`. Mobile record-detail gains a "Duplicate" action.
+7. **Item limit.** 50 active-record cap. `POST /v1/records` returns `409 item_limit_reached` at the cap; `GET /v1/me/usage` returns `{ itemCount, itemLimit: 50, readOnly }`. Mobile enters read-only add mode at the cap (reminders still fire) with an upgrade-prompt CTA.
+8. **Referral activation hook.** When a record create pushes a user's lifetime item count to 5, enqueue/trigger the M7 `referral-activation` check (passive; no rewards in v1.x).
 
 ---
 
@@ -45,7 +60,7 @@ The following corrections were applied after a validation pass. They define cont
 3. **`templateKey` is threaded through the notification job chain.** `push_logs.templateKey` is `NOT NULL`, so `NotificationSendJob` now carries `templateKey`; the `notification-schedule` worker sets a default (`'expiry_reminder'`) per enqueued send job; the `notification-send` worker reads it and writes it to `push_logs`.
 4. **The `/v1/me` mount is a single `meScope` sub-app** registered under `prefix: '/v1/me'`; `pushTokenRoutes` and `countrySuggestionRoute` register inside it (no path prefixes on the child routes).
 5. **The `product-lookup` backfill job is actually enqueued.** On a local cache miss in `POST /v1/products/lookup`, the route enqueues a background `product-lookup` job (spec §4.3) for slow backfill.
-6. **`users.notificationPreferences.offsetsDays` is wired in.** When computing `notify_at` on record create/patch and during sync, the default offsets are read from the user's `notificationPreferences.offsetsDays`, falling back to `[3, 1, 0]` when null. A per-request `notificationOffsetsDays` still takes precedence when supplied.
+6. **`users.notificationPreferences.offsetsDays` is wired in.** When computing `notify_at` on record create/patch and during sync, the default offsets are read from the user's `notificationPreferences.offsetsDays`, falling back to **`[7, 3, 1, 0]`** when null (⚠️ updated by 2026-06-08 revision item 2 — was `[7, 3, 1, 0]`). A per-request `notificationOffsetsDays` still takes precedence when supplied.
 7. **Scanning uses `expo-camera`'s built-in `CameraView` barcode scanning** (handles UPC-A/EAN-13/QR in one flow). The removed `expo-barcode-scanner` + `onBarCodeScanned` API is no longer used.
 
 ---
@@ -54,11 +69,11 @@ The following corrections were applied after a validation pass. They define cont
 
 Three product requirements landed after the validation pass. They are reflected throughout the tasks below.
 
-1. **Expiry reminders now default to 3 days / 1 day / day-of (`[3, 1, 0]`).** Previously the default was 7d/1d/0d. Only the *default* changed — a per-user `notificationPreferences.offsetsDays` override and a per-request `notificationOffsetsDays` still take precedence. This affects the notify-at helper, the create/patch/sync defaulting, and the related tests.
+1. **Expiry reminders now default to 3 days / 1 day / day-of (`[3, 1, 0]`).** ⚠️ **SUPERSEDED by 2026-06-08 revision item 2 → `[7, 3, 1, 0]`.** A per-user `notificationPreferences.offsetsDays` override and a per-request `notificationOffsetsDays` still take precedence. This affects the notify-at helper, the create/patch/sync defaulting, and the related tests (use `[7,3,1,0]`).
 
-2. **Home screen shows a green / amber / red expiry indicator.** A small pure helper `expiryStatus(expiryDate, now)` classifies each record: **red** when it has expired or expires today, **amber** when it expires in the next 1–3 days (matching the soonest reminder offset), and **green** when more than 3 days out. The indicator renders as a colored dot on each record card and on the record detail screen, using the existing `success` / `warning` / `danger` theme tokens.
+2. **Home screen shows a green / amber / red expiry indicator.** A small pure helper `expiryStatus(expiryDate, now, thresholdDays)` classifies each record: **red** when it has expired or expires today, **amber** when it expires within the user's `expiring_soon_threshold_days` (default 7 — ⚠️ updated by 2026-06-08 item 5; was a fixed 1–3 day band), and **green** beyond the threshold. The indicator renders as a colored bar/dot on each record card and detail screen, using the `success` / `warning` / `danger` theme tokens (Sage `#4BAE8A` / Honey `#F5A623` / Red `#E0442A`).
 
-3. **Products carry two-criteria rating columns (taste + value).** Because M2 reviews will rate both *taste* and *value* instead of a single score, the `products` table created here now has `taste_avg`, `value_avg`, and `review_count` (replacing the old `rating_avg` / `rating_count`). The product API exposes these as `tasteAvg`, `valueAvg`, `reviewCount`. M1 only defines the columns and field names (all default `0`); M2's recalc worker fills them in.
+3. **Products carry rating columns.** ⚠️ **SUPERSEDED by 2026-06-08 item 4.** The old taste+value columns are replaced by three-option tallies: `buy_again_count`, `buy_again_on_sale_count`, `wont_buy_count`, `rating_count`, `review_count` (all default 0), plus `is_community_eligible` (boolean). The product API exposes these as camelCase. M1 only defines the columns/field names; M2's recalc worker fills them.
 
 ---
 
@@ -100,7 +115,7 @@ This milestone is split across two tracks per the project's backend-first sequen
 ## File map
 
 ```
-pantry/
+expyrico/
 ├── packages/shared/
 │   └── src/schemas/
 │       ├── product.ts                                    ← NEW
@@ -236,11 +251,11 @@ pantry/
 
 - **TDD where logic exists.** Failing test → run → fail → implement → run → pass → commit.
 - **Conventional commits.** Scopes: `api` (backend), `mobile` (mobile), `shared` (Zod schemas).
-- **Every route imports its Zod schema from `@pantry/shared`** and validates input + output.
+- **Every route imports its Zod schema from `@expyrico/shared`** and validates input + output.
 - **Idempotency-Key required** on `POST /v1/records` (client sends `client_id` UUID).
 - **RFC 7807** errors via existing `AppError` from M0a.
 - **No `console.log`.** Use `req.log` on the API and the existing mobile logger.
-- **Test DB:** real Postgres `pantry_test`, truncated before each test by the M0a harness.
+- **Test DB:** real Postgres `expyrico_test`, truncated before each test by the M0a harness.
 
 ---
 
@@ -282,8 +297,11 @@ export const productSchema = z.object({
   defaultShelfLifeDays: z.number().int().positive().nullable(),
   source: productSourceSchema,
   sourceId: z.string().nullable(),
-  tasteAvg: z.number().min(0).max(5),
-  valueAvg: z.number().min(0).max(5),
+  isCommunityEligible: z.boolean(),
+  buyAgainCount: z.number().int().min(0),
+  buyAgainOnSaleCount: z.number().int().min(0),
+  wontBuyCount: z.number().int().min(0),
+  ratingCount: z.number().int().min(0),
   reviewCount: z.number().int().min(0),
   status: productStatusSchema,
   createdAt: z.string().datetime(),
@@ -347,7 +365,7 @@ export * from './schemas/product.js';
 - [x] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: exit 0.
 
@@ -384,10 +402,13 @@ export const recordSchema = z.object({
   userId: z.string().uuid(),
   productId: z.string().uuid().nullable(),
   customName: z.string().nullable(),
+  category: z.string().nullable(),
   expiryDate: isoDate,
   purchaseDate: isoDate.nullable(),
   quantity: z.number().nonnegative(),
   unit: z.string().max(16),
+  price: z.number().nonnegative().nullable(),
+  store: z.string().nullable(),
   notes: z.string().nullable(),
   photoUrl: z.string().url().nullable(),
   status: recordStatusSchema,
@@ -403,10 +424,13 @@ export const recordCreateSchema = z
     clientId: z.string().uuid(),
     productId: z.string().uuid().nullable().optional(),
     customName: z.string().trim().min(1).max(200).nullable().optional(),
+    category: z.string().trim().max(100).nullable().optional(),
     expiryDate: isoDate,
     purchaseDate: isoDate.nullable().optional(),
     quantity: z.number().nonnegative().max(100_000).default(1),
     unit: z.string().trim().max(16).default('pcs'),
+    price: z.number().nonnegative().max(1_000_000).nullable().optional(),
+    store: z.string().trim().max(200).nullable().optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
     photoUrl: z.string().url().nullable().optional(),
     notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
@@ -418,10 +442,13 @@ export type RecordCreate = z.infer<typeof recordCreateSchema>;
 
 export const recordPatchSchema = z.object({
   customName: z.string().trim().min(1).max(200).nullable().optional(),
+  category: z.string().trim().max(100).nullable().optional(),
   expiryDate: isoDate.optional(),
   purchaseDate: isoDate.nullable().optional(),
   quantity: z.number().nonnegative().max(100_000).optional(),
   unit: z.string().trim().max(16).optional(),
+  price: z.number().nonnegative().max(1_000_000).nullable().optional(),
+  store: z.string().trim().max(200).nullable().optional(),
   notes: z.string().trim().max(2000).nullable().optional(),
   photoUrl: z.string().url().nullable().optional(),
   status: recordStatusSchema.optional(),
@@ -486,7 +513,7 @@ export * from './schemas/record.js';
 - [x] **Step 3: Typecheck**
 
 ```bash
-pnpm --filter @pantry/shared typecheck
+pnpm --filter @expyrico/shared typecheck
 ```
 Expected: exit 0.
 
@@ -583,8 +610,11 @@ model Product {
   defaultShelfLifeDays  Int?          @map("default_shelf_life_days")
   source                ProductSource
   sourceId              String?       @map("source_id")
-  tasteAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("taste_avg")
-  valueAvg              Decimal       @default(0) @db.Decimal(3, 2) @map("value_avg")
+  isCommunityEligible   Boolean       @default(false) @map("is_community_eligible")
+  buyAgainCount         Int           @default(0) @map("buy_again_count")
+  buyAgainOnSaleCount   Int           @default(0) @map("buy_again_on_sale_count")
+  wontBuyCount          Int           @default(0) @map("wont_buy_count")
+  ratingCount           Int           @default(0) @map("rating_count")
   reviewCount           Int           @default(0) @map("review_count")
   createdByUserId       String?       @db.Uuid @map("created_by_user_id")
   status                ProductStatus @default(active)
@@ -627,10 +657,13 @@ model Record {
   userId        String       @db.Uuid @map("user_id")
   productId     String?      @db.Uuid @map("product_id")
   customName    String?      @map("custom_name")
+  category      String?      @map("category")
   expiryDate    DateTime     @db.Date @map("expiry_date")
   purchaseDate  DateTime?    @db.Date @map("purchase_date")
   quantity      Decimal      @db.Decimal(12, 3) @default(1)
   unit          String       @default("pcs")
+  price         Decimal?     @db.Decimal(10, 2) @map("price")
+  store         String?      @map("store")
   notes         String?
   photoUrl      String?      @map("photo_url")
   status        RecordStatus @default(active)
@@ -700,7 +733,7 @@ ALTER TABLE push_tokens
 - [x] **Step 5: Generate Prisma client**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 Expected: `Generated Prisma Client` output.
 
@@ -716,14 +749,14 @@ git commit -m "feat(api): add products, product_edits, records, push_logs to Pri
 ### Task B2: Create migration with trigram index
 
 **Files:**
-- Create: `api/prisma/migrations/<timestamp>_m1_pantry/migration.sql`
+- Create: `api/prisma/migrations/<timestamp>_m1_expyrico/migration.sql`
 
 - [x] **Step 1: Create the migration files via Prisma**
 
 ```bash
-pnpm --filter @pantry/api exec prisma migrate dev --name m1_pantry --create-only
+pnpm --filter @expyrico/api exec prisma migrate dev --name m1_pantry --create-only
 ```
-Expected: a new directory under `api/prisma/migrations/` ending in `_m1_pantry/`.
+Expected: a new directory under `api/prisma/migrations/` ending in `_m1_expyrico/`.
 
 - [x] **Step 2: Append the `pg_trgm` extension + index + `PushPlatform` cast to the generated `migration.sql`**
 
@@ -751,7 +784,7 @@ ALTER TABLE push_tokens
 - [x] **Step 3: Apply the migration**
 
 ```bash
-pnpm --filter @pantry/api exec prisma migrate dev
+pnpm --filter @expyrico/api exec prisma migrate dev
 ```
 Expected: `Database is now in sync with your schema.`
 
@@ -793,7 +826,7 @@ const tables = [
 - [x] **Step 7: Run the existing test suite to confirm nothing broke**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected: all M0a/M0b tests still pass.
 
@@ -976,7 +1009,7 @@ describe('makeBreaker', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/breaker.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/breaker.test.ts
 ```
 Expected: FAIL — module not found.
 
@@ -1015,7 +1048,7 @@ export function makeBreaker<TArgs extends unknown[], TResult>(
 - [x] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/breaker.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/breaker.test.ts
 ```
 Expected: 2 passed.
 
@@ -1075,7 +1108,7 @@ describe('breakers registry', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/breakers-registry.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/services/external/breakers.ts`**
@@ -1105,7 +1138,7 @@ export function getAllBreakers(): { name: string; breaker: CircuitBreaker }[] {
 - [x] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/breakers-registry.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/breakers-registry.test.ts
 ```
 Expected: 3 passed.
 
@@ -1204,7 +1237,7 @@ describe('product mappers', () => {
 - [x] **Step 4: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/product-mappers.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/product-mappers.test.ts
 ```
 
 - [x] **Step 5: Write `api/src/services/products/mappers.ts`**
@@ -1279,7 +1312,7 @@ export function mapUpcitemdbProduct(barcode: string, raw: unknown): ExternalProd
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/product-mappers.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/product-mappers.test.ts
 ```
 Expected: 4 passed.
 
@@ -1473,6 +1506,7 @@ async function persistExternal(data: ExternalProductData): Promise<Product> {
       imageUrl: data.imageUrl,
       source: data.source,
       sourceId: data.sourceId,
+      isCommunityEligible: true, // barcode-sourced (OFF/UPCitemdb) → eligible for community ratings
     },
     update: {
       // Only refresh fields if the existing row is also from an external source
@@ -1508,7 +1542,7 @@ All routes mount under `/v1/products`. Every handler requires auth via `app.requ
 
 ```ts
 import type { Product } from '@prisma/client';
-import type { Product as ApiProduct } from '@pantry/shared';
+import type { Product as ApiProduct } from '@expyrico/shared';
 
 export function toApiProduct(p: Product): ApiProduct {
   return {
@@ -1522,8 +1556,11 @@ export function toApiProduct(p: Product): ApiProduct {
     defaultShelfLifeDays: p.defaultShelfLifeDays,
     source: p.source,
     sourceId: p.sourceId,
-    tasteAvg: Number(p.tasteAvg),
-    valueAvg: Number(p.valueAvg),
+    isCommunityEligible: p.isCommunityEligible,
+    buyAgainCount: p.buyAgainCount,
+    buyAgainOnSaleCount: p.buyAgainOnSaleCount,
+    wontBuyCount: p.wontBuyCount,
+    ratingCount: p.ratingCount,
     reviewCount: p.reviewCount,
     status: p.status,
     createdAt: p.createdAt.toISOString(),
@@ -1625,7 +1662,7 @@ describe('POST /v1/products/lookup', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-lookup.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-lookup.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/products/lookup.ts`**
@@ -1636,7 +1673,7 @@ import {
   productLookupRequestSchema,
   productLookupResponseSchema,
   ERROR_CODES,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { lookupProduct } from '../../services/products/lookup.js';
 import { toApiProduct } from '../../services/products/serializer.js';
@@ -1698,7 +1735,7 @@ await app.register(productRoutes, { prefix: '/v1/products' });
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-lookup.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-lookup.test.ts
 ```
 Expected: 4 passed.
 
@@ -1772,7 +1809,7 @@ describe('GET /v1/products/search', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-search.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-search.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/services/products/search.ts`**
@@ -1801,7 +1838,7 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { productSearchResultSchema } from '@pantry/shared';
+import { productSearchResultSchema } from '@expyrico/shared';
 import { searchProducts } from '../../services/products/search.js';
 import { toApiProduct } from '../../services/products/serializer.js';
 
@@ -1837,7 +1874,7 @@ export async function productRoutes(app: FastifyInstance) {
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-search.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-search.test.ts
 ```
 Expected: 3 passed.
 
@@ -1901,7 +1938,7 @@ describe('GET /v1/products/:id', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-get.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-get.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/products/get.ts`**
@@ -1909,7 +1946,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/products-get.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { productWithReviewsSchema, ERROR_CODES } from '@pantry/shared';
+import { productWithReviewsSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiProduct } from '../../services/products/serializer.js';
@@ -1954,7 +1991,7 @@ export async function productRoutes(app: FastifyInstance) {
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-get.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-get.test.ts
 ```
 
 - [x] **Step 6: Commit**
@@ -2036,7 +2073,7 @@ describe('POST /v1/products', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-create.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/products/create.ts`**
@@ -2044,7 +2081,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/products-create.test
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { productCreateRequestSchema, ERROR_CODES } from '@pantry/shared';
+import { productCreateRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiProduct } from '../../services/products/serializer.js';
@@ -2064,6 +2101,10 @@ export async function createProductRoute(app: FastifyInstance) {
           defaultShelfLifeDays: input.defaultShelfLifeDays ?? null,
           source: 'user',
           sourceId: null,
+          // Community ratings are barcode-only (spec §2.3/§2.6): a user-created
+          // product is eligible only if it carries a scanned barcode/QR. Purely
+          // manual entries (loose produce, wet-market items) stay personal-notes-only.
+          isCommunityEligible: Boolean(input.barcode ?? input.qrPayload),
           createdByUserId: req.user!.id,
         },
       });
@@ -2093,7 +2134,7 @@ import { createProductRoute } from './create.js';
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-create.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-create.test.ts
 ```
 
 - [x] **Step 6: Commit**
@@ -2179,7 +2220,7 @@ describe('PATCH /v1/products/:id', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-patch.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/products/patch.ts`**
@@ -2187,7 +2228,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/products-patch.test.
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { productPatchRequestSchema, ERROR_CODES } from '@pantry/shared';
+import { productPatchRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 
@@ -2236,7 +2277,7 @@ import { patchProductRoute } from './patch.js';
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/products-patch.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/products-patch.test.ts
 ```
 
 - [x] **Step 6: Commit**
@@ -2320,7 +2361,7 @@ describe('idempotency plugin', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/idempotency.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/plugins/idempotency.ts`**
@@ -2330,7 +2371,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { getRedis } from '../redis.js';
 import { AppError } from '../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 
 declare module 'fastify' {
   interface FastifyContextConfig {
@@ -2408,7 +2449,7 @@ await app.register(idempotencyPlugin);
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/idempotency.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/idempotency.test.ts
 ```
 Expected: 4 passed.
 
@@ -2573,7 +2614,7 @@ describe('queue registry', () => {
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/queue-registry.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/queue-registry.test.ts
 ```
 Expected: 2 passed.
 
@@ -2600,11 +2641,11 @@ import { computeNotifyAt, DEFAULT_OFFSETS_DAYS, resolveOffsetsForUser } from '..
 
 describe('resolveOffsetsForUser', () => {
   it('returns the default offsets when prefs is null', () => {
-    expect(resolveOffsetsForUser(null)).toEqual([3, 1, 0]);
+    expect(resolveOffsetsForUser(null)).toEqual([7, 3, 1, 0]);
   });
   it('returns the default offsets when offsetsDays is missing/malformed', () => {
-    expect(resolveOffsetsForUser({})).toEqual([3, 1, 0]);
-    expect(resolveOffsetsForUser({ offsetsDays: 'nope' })).toEqual([3, 1, 0]);
+    expect(resolveOffsetsForUser({})).toEqual([7, 3, 1, 0]);
+    expect(resolveOffsetsForUser({ offsetsDays: 'nope' })).toEqual([7, 3, 1, 0]);
   });
   it('returns the stored offsetsDays when valid', () => {
     expect(resolveOffsetsForUser({ offsetsDays: [14, 3] })).toEqual([14, 3]);
@@ -2645,8 +2686,8 @@ describe('computeNotifyAt', () => {
     ]);
   });
 
-  it('exports DEFAULT_OFFSETS_DAYS = [3,1,0]', () => {
-    expect(DEFAULT_OFFSETS_DAYS).toEqual([3, 1, 0]);
+  it('exports DEFAULT_OFFSETS_DAYS = [7,3,1,0]', () => {
+    expect(DEFAULT_OFFSETS_DAYS).toEqual([7, 3, 1, 0]);
   });
 });
 ```
@@ -2654,13 +2695,13 @@ describe('computeNotifyAt', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/notify-at.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/notify-at.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/services/records/notify-at.ts`**
 
 ```ts
-export const DEFAULT_OFFSETS_DAYS = [3, 1, 0];
+export const DEFAULT_OFFSETS_DAYS = [7, 3, 1, 0];
 
 /**
  * Given a UTC expiry date (date-only) and a list of offsets in days,
@@ -2687,7 +2728,7 @@ export function computeNotifyAt(
 /**
  * Resolve the offsets to use for a user when the request did not specify any.
  * Reads `users.notificationPreferences.offsetsDays`, falling back to the
- * default [3,1,0] when the column is null or malformed. An explicit
+ * default [7,3,1,0] when the column is null or malformed. An explicit
  * per-request `notificationOffsetsDays` (passed by the caller) takes
  * precedence over this and should be applied before calling here.
  */
@@ -2707,7 +2748,7 @@ export function resolveOffsetsForUser(
 - [x] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/notify-at.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/notify-at.test.ts
 ```
 Expected: 8 passed (5 `computeNotifyAt` + 3 `resolveOffsetsForUser`).
 
@@ -2731,7 +2772,7 @@ git commit -m "feat(api): notify-at computation with offsets"
 
 ```ts
 import type { Record as PrismaRecord } from '@prisma/client';
-import type { Record as ApiRecord } from '@pantry/shared';
+import type { Record as ApiRecord } from '@expyrico/shared';
 
 export function toApiRecord(r: PrismaRecord): ApiRecord {
   return {
@@ -2740,10 +2781,13 @@ export function toApiRecord(r: PrismaRecord): ApiRecord {
     userId: r.userId,
     productId: r.productId,
     customName: r.customName,
+    category: r.category,
     expiryDate: r.expiryDate.toISOString().slice(0, 10),
     purchaseDate: r.purchaseDate ? r.purchaseDate.toISOString().slice(0, 10) : null,
     quantity: Number(r.quantity),
     unit: r.unit,
+    price: r.price !== null ? Number(r.price) : null,
+    store: r.store,
     notes: r.notes,
     photoUrl: r.photoUrl,
     status: r.status,
@@ -2872,7 +2916,7 @@ describe('POST /v1/records', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/records/create.ts`**
@@ -2880,12 +2924,13 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { recordCreateSchema, ERROR_CODES } from '@pantry/shared';
+import { recordCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
+import { maybeActivateReferral } from '../../services/referral/activation.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
   app.post('/', {
@@ -2895,7 +2940,7 @@ export async function createRecordRoute(app: FastifyInstance) {
     const input = recordCreateSchema.parse(req.body);
     const userId = req.user!.id;
     // Explicit per-request offsets win; otherwise fall back to the user's
-    // notificationPreferences.offsetsDays (default [3,1,0] when null).
+    // notificationPreferences.offsetsDays (default [7,3,1,0] when null).
     const user = await getPrisma().user.findUnique({
       where: { id: userId },
       select: { notificationPreferences: true },
@@ -2904,6 +2949,21 @@ export async function createRecordRoute(app: FastifyInstance) {
       input.notificationOffsetsDays ?? resolveOffsetsForUser(user?.notificationPreferences);
     const notifyAt = computeNotifyAt(new Date(input.expiryDate), offsets);
 
+    // Item limit (spec §2.17): free accounts cap at 50 ACTIVE records. At the
+    // cap the add flow is read-only; existing records still editable + reminders
+    // still fire. Counting active records keeps used/discarded items from blocking.
+    const ITEM_LIMIT = 50;
+    const activeCount = await getPrisma().record.count({
+      where: { userId, status: 'active' },
+    });
+    if (activeCount >= ITEM_LIMIT) {
+      throw new AppError({
+        status: 409,
+        code: ERROR_CODES.ITEM_LIMIT_REACHED,
+        title: `Item limit of ${ITEM_LIMIT} reached`,
+      });
+    }
+
     try {
       const row = await getPrisma().record.create({
         data: {
@@ -2911,10 +2971,13 @@ export async function createRecordRoute(app: FastifyInstance) {
           clientId: input.clientId,
           productId: input.productId ?? null,
           customName: input.customName ?? null,
+          category: input.category ?? null,
           expiryDate: new Date(input.expiryDate),
           purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null,
           quantity: input.quantity,
           unit: input.unit,
+          price: input.price ?? null,
+          store: input.store ?? null,
           notes: input.notes ?? null,
           photoUrl: input.photoUrl ?? null,
           notifyAt,
@@ -2925,6 +2988,9 @@ export async function createRecordRoute(app: FastifyInstance) {
         removeOnComplete: true,
         removeOnFail: 100,
       });
+      // Passive referral activation (spec §2.14, M7): when this user's lifetime
+      // record count reaches 5, mark their referral activated. No rewards in v1.x.
+      await maybeActivateReferral(userId);
       return reply.status(201).send(toApiRecord(row));
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -2969,7 +3035,7 @@ await app.register(recordRoutes, { prefix: '/v1/records' });
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts
 ```
 
 - [x] **Step 7: Commit**
@@ -3074,7 +3140,7 @@ describe('GET /v1/records', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "GET /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "GET /v1/records"
 ```
 
 - [x] **Step 3: Write `api/src/routes/records/list.ts`**
@@ -3082,7 +3148,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { recordListResponseSchema, recordStatusSchema } from '@pantry/shared';
+import { recordListResponseSchema, recordStatusSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiRecord } from '../../services/records/repository.js';
 
@@ -3173,7 +3239,7 @@ export async function recordRoutes(app: FastifyInstance) {
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "GET /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "GET /v1/records"
 ```
 
 - [x] **Step 6: Commit**
@@ -3258,7 +3324,7 @@ describe('PATCH /v1/records/:id', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "PATCH /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "PATCH /v1/records"
 ```
 
 - [x] **Step 3: Write `api/src/routes/records/patch.ts`**
@@ -3266,7 +3332,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { recordPatchSchema, ERROR_CODES } from '@pantry/shared';
+import { recordPatchSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
@@ -3297,7 +3363,7 @@ export async function patchRecordRoute(app: FastifyInstance) {
     let nextNotifyAt: string[];
     if (reschedule) {
       // Explicit per-request offsets win; otherwise fall back to the user's
-      // notificationPreferences.offsetsDays (default [3,1,0] when null).
+      // notificationPreferences.offsetsDays (default [7,3,1,0] when null).
       let offsets = input.notificationOffsetsDays;
       if (offsets === undefined) {
         const user = await prisma.user.findUnique({
@@ -3353,7 +3419,7 @@ import { patchRecordRoute } from './patch.js';
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "PATCH /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "PATCH /v1/records"
 ```
 
 - [x] **Step 6: Commit**
@@ -3416,7 +3482,7 @@ describe('DELETE /v1/records/:id', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "DELETE /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "DELETE /v1/records"
 ```
 
 - [x] **Step 3: Write `api/src/routes/records/delete.ts`**
@@ -3424,7 +3490,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { notificationSendQueue, notificationScheduleQueue } from '../../queues/index.js';
@@ -3469,7 +3535,7 @@ import { deleteRecordRoute } from './delete.js';
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-crud.test.ts -t "DELETE /v1/records"
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-crud.test.ts -t "DELETE /v1/records"
 ```
 
 - [x] **Step 6: Commit**
@@ -3625,7 +3691,7 @@ describe('POST /v1/records/sync', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-sync.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-sync.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/services/records/sync.ts`**
@@ -3634,7 +3700,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/records-sync.test.ts
 
 ```ts
 import type { Record as PrismaRecord } from '@prisma/client';
-import type { RecordSyncBatch } from '@pantry/shared';
+import type { RecordSyncBatch } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 
@@ -3725,7 +3791,7 @@ export async function syncRecords(userId: string, batch: RecordSyncBatch): Promi
 
 ```ts
 import type { FastifyInstance } from 'fastify';
-import { recordSyncBatchSchema, recordSyncResponseSchema } from '@pantry/shared';
+import { recordSyncBatchSchema, recordSyncResponseSchema } from '@expyrico/shared';
 import { syncRecords } from '../../services/records/sync.js';
 import { toApiRecord } from '../../services/records/repository.js';
 
@@ -3755,7 +3821,7 @@ import { syncRecordsRoute } from './sync.js';
 - [x] **Step 6: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/records-sync.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/records-sync.test.ts
 ```
 
 - [x] **Step 7: Commit**
@@ -3910,7 +3976,7 @@ describe('push token routes', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/push-token.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/push-token.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/routes/me/push-token.ts`**
@@ -3918,7 +3984,7 @@ pnpm --filter @pantry/api exec vitest run tests/integration/push-token.test.ts
 ```ts
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { pushTokenRegisterSchema, pushTokenSchema, ERROR_CODES } from '@pantry/shared';
+import { pushTokenRegisterSchema, pushTokenSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { upsertPushToken, revokePushToken } from '../../services/push/repository.js';
 
@@ -3976,7 +4042,7 @@ await app.register(
 - [x] **Step 5: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/integration/push-token.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/integration/push-token.test.ts
 ```
 
 - [x] **Step 6: Commit**
@@ -3996,7 +4062,7 @@ git commit -m "feat(api): push token register + revoke routes"
 - Create: `api/tests/integration/country-suggestion.test.ts`
 - Modify: `packages/shared/src/schemas/user.ts` (add `countrySuggestionSchema`)
 
-- [ ] **Step 1: Add Zod schema in `@pantry/shared`**
+- [ ] **Step 1: Add Zod schema in `@expyrico/shared`**
 
 ```ts
 // packages/shared/src/schemas/user.ts (append)
@@ -4044,14 +4110,14 @@ describe('GET /v1/me/country-suggestion', () => {
 });
 ```
 
-- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @pantry/api test country-suggestion`
+- [ ] **Step 3: Run, verify FAIL** — `pnpm --filter @expyrico/api test country-suggestion`
 
 - [ ] **Step 4: Implement the route**
 
 ```ts
 // api/src/routes/me/country-suggestion.ts
 import type { FastifyInstance } from 'fastify';
-import { countrySuggestionSchema } from '@pantry/shared';
+import { countrySuggestionSchema } from '@expyrico/shared';
 import { detectCountryFromIp } from '../../services/users/country-detect.js';
 
 export async function countrySuggestionRoute(app: FastifyInstance) {
@@ -4081,7 +4147,7 @@ await app.register(
 );
 ```
 
-- [ ] **Step 6: Re-run, verify PASS** — `pnpm --filter @pantry/api test country-suggestion`
+- [ ] **Step 6: Re-run, verify PASS** — `pnpm --filter @expyrico/api test country-suggestion`
 
 - [ ] **Step 7: Commit**
 
@@ -4104,7 +4170,7 @@ git commit -m "feat(api): GET /v1/me/country-suggestion (D28)"
 // apps/mobile/src/api/me.ts (append)
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './client';
-import type { CountrySuggestion } from '@pantry/shared';
+import type { CountrySuggestion } from '@expyrico/shared';
 
 export function useCountrySuggestion(enabled: boolean) {
   return useQuery({
@@ -4131,6 +4197,43 @@ git commit -m "feat(mobile): show country suggestion on profile when missing (D2
 
 ---
 
+## Phase H2 — Item limit, duplicate, usage (2026-06-08 revision)
+
+Backend support for the 50-item cap (§2.17), the duplicate action (§2.2), and the usage endpoint that drives the mobile read-only/CTA state. The create-route cap check is already wired in Task G2.
+
+### Task H2.1: Add `ITEM_LIMIT_REACHED` error code to shared
+
+**Files:**
+- Modify: `packages/shared/src/errors.ts` (the `ERROR_CODES` map)
+
+- [ ] Add `ITEM_LIMIT_REACHED: 'item_limit_reached'` to `ERROR_CODES`. (Stable snake_case identifier, per spec §6.8.) Export `ITEM_LIMIT = 50` as a shared constant so mobile + api agree.
+- [ ] `pnpm --filter @expyrico/shared typecheck` → exit 0. Commit.
+
+### Task H2.2: `GET /v1/me/usage`
+
+**Files:**
+- Create: `api/src/routes/me/usage.ts` (registered inside the `meScope` sub-app)
+- Create: `api/tests/integration/me-usage.test.ts`
+
+- [ ] **Test first:** a user with N active records gets `{ itemCount: N, itemLimit: 50, readOnly: N >= 50 }`. Seed 50 active records → `readOnly: true`. Consumed/discarded records do not count toward `itemCount`.
+- [ ] **Implement:** count `record` where `{ userId, status: 'active' }`; return the shape above. Add `meUsageResponseSchema` to `packages/shared` (`{ itemCount, itemLimit, readOnly }`, all camelCase).
+- [ ] Run, verify pass. Commit.
+
+### Task H2.3: `POST /v1/records/:id/duplicate`
+
+**Files:**
+- Create: `api/src/routes/records/duplicate.ts`
+- Create: `api/tests/integration/records-duplicate.test.ts`
+- Modify: `api/src/routes/records/index.ts`
+
+- [ ] **Test first:** duplicating a record copies `productId`, `customName`, `category`, `quantity`, `unit`, `price`, `store`, `notes`, `photoUrl` but **omits `expiryDate`** — the response requires the client to supply a new expiry (return `422 expiry_required` if the body has no `expiryDate`, or accept `{ expiryDate }` in the body and use it). One-per-user ownership enforced (404 on another user's record). Duplicate also counts against the 50-item cap (409 at the limit).
+- [ ] **Implement:** load the source record (scoped to `req.user.id`), build a create payload from it minus `expiryDate`, require `expiryDate` from the request body, generate a fresh `clientId`, run the same cap check + `computeNotifyAt` + schedule enqueue as Task G2. Return `201` with `toApiRecord`.
+- [ ] Mount in `records/index.ts`. Run, verify pass. Commit.
+
+> **Note — `maybeActivateReferral`:** Task G2 imports `maybeActivateReferral` from `api/src/services/referral/activation.js`. That module is **owned by M7** (referral milestone). Until M7 lands, ship a no-op stub at that path (`export async function maybeActivateReferral(_userId: string): Promise<void> {}`) so M1 compiles; M7 replaces the body with the real passive-activation logic (mark `referrals.activated_at` when the referee's lifetime item count reaches 5).
+
+---
+
 ## Phase I — Workers (BullMQ)
 
 ### Task I1: Add `expo-server-sdk` dep + Expo Push wrapper
@@ -4142,7 +4245,7 @@ git commit -m "feat(mobile): show country suggestion on profile when missing (D2
 - [x] **Step 1: Install dependency**
 
 ```bash
-pnpm --filter @pantry/api add expo-server-sdk
+pnpm --filter @expyrico/api add expo-server-sdk
 ```
 Expected: `expo-server-sdk` appears in `api/package.json`.
 
@@ -4259,7 +4362,7 @@ describe('notification-schedule worker', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-schedule.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/worker-notification-schedule.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/workers/notification-schedule.ts`**
@@ -4337,7 +4440,7 @@ export function startScheduleWorker(): Worker<NotificationScheduleJob> {
 - [x] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-schedule.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/worker-notification-schedule.test.ts
 ```
 
 - [x] **Step 5: Commit**
@@ -4429,7 +4532,7 @@ describe('notification-send worker', () => {
 - [x] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-send.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/worker-notification-send.test.ts
 ```
 
 - [x] **Step 3: Write `api/src/workers/notification-send.ts`**
@@ -4469,7 +4572,7 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
   const messages: ExpoPushMessage[] = tokens.map((t) => ({
     to: t.expoPushToken,
     sound: 'default',
-    title: 'Pantry',
+    title: 'Expyrico',
     body: bodyFor(data.offsetDays, name),
     data: { recordId: record.id, type: 'expiry' },
   }));
@@ -4524,7 +4627,7 @@ export function startSendWorker(): Worker<NotificationSendJob> {
 - [x] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/api exec vitest run tests/unit/worker-notification-send.test.ts
+pnpm --filter @expyrico/api exec vitest run tests/unit/worker-notification-send.test.ts
 ```
 
 - [x] **Step 5: Commit**
@@ -4633,7 +4736,7 @@ app.addHook('onClose', async () => { await stopWorkers(); });
 - [x] **Step 3: Verify the API still boots**
 
 ```bash
-pnpm --filter @pantry/api typecheck
+pnpm --filter @expyrico/api typecheck
 ```
 
 - [x] **Step 4: Commit**
@@ -4657,7 +4760,7 @@ git commit -m "feat(api): wire BullMQ workers into server boot"
 - [ ] **Step 1: Install at the mobile workspace**
 
 ```bash
-pnpm --filter @pantry/mobile add \
+pnpm --filter @expyrico/mobile add \
   @nozbe/watermelondb \
   @nozbe/with-observables \
   expo-camera \
@@ -4667,7 +4770,7 @@ pnpm --filter @pantry/mobile add \
   @react-native-ml-kit/text-recognition \
   @react-native-community/netinfo \
   uuid
-pnpm --filter @pantry/mobile add -D @types/uuid
+pnpm --filter @expyrico/mobile add -D @types/uuid
 ```
 Expected: all packages installed; no peer-dep errors. WatermelonDB requires a Babel plugin step.
 
@@ -4689,13 +4792,13 @@ module.exports = function (api) {
 
 Install the plugin:
 ```bash
-pnpm --filter @pantry/mobile add -D @babel/plugin-proposal-decorators
+pnpm --filter @expyrico/mobile add -D @babel/plugin-proposal-decorators
 ```
 
 - [ ] **Step 3: Verify mobile typecheck still passes**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 4: Commit**
@@ -4731,10 +4834,13 @@ export const mySchema = appSchema({
         { name: 'client_id', type: 'string', isIndexed: true },
         { name: 'product_id', type: 'string', isOptional: true, isIndexed: true },
         { name: 'custom_name', type: 'string', isOptional: true },
+        { name: 'category', type: 'string', isOptional: true },
         { name: 'expiry_date', type: 'string' },          // ISO yyyy-mm-dd
         { name: 'purchase_date', type: 'string', isOptional: true },
         { name: 'quantity', type: 'number' },
         { name: 'unit', type: 'string' },
+        { name: 'price', type: 'number', isOptional: true },
+        { name: 'store', type: 'string', isOptional: true },
         { name: 'notes', type: 'string', isOptional: true },
         { name: 'photo_url', type: 'string', isOptional: true },
         { name: 'status', type: 'string' },
@@ -4785,10 +4891,13 @@ export class RecordModel extends Model {
   @field('client_id') clientId!: string;
   @field('product_id') productId!: string | null;
   @field('custom_name') customName!: string | null;
+  @field('category') category!: string | null;
   @field('expiry_date') expiryDate!: string;
   @field('purchase_date') purchaseDate!: string | null;
   @field('quantity') quantity!: number;
   @field('unit') unit!: string;
+  @field('price') price!: number | null;
+  @field('store') store!: string | null;
   @field('notes') notes!: string | null;
   @field('photo_url') photoUrl!: string | null;
   @field('status') status!: string;
@@ -4852,7 +4961,7 @@ export { RecordModel, ProductCacheModel };
 - [ ] **Step 6: Typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 7: Commit**
@@ -4878,7 +4987,7 @@ import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from './index.js';
 import { apiClient } from '../api/client.js';
-import type { RecordSyncResponse, RecordSyncBatch } from '@pantry/shared';
+import type { RecordSyncResponse, RecordSyncBatch } from '@expyrico/shared';
 
 const LAST_SYNC_KEY = 'pantry.lastSyncAt';
 
@@ -5118,7 +5227,7 @@ import type {
   ProductLookupResponse,
   ProductSearchResult,
   ProductWithReviews,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { apiClient } from './client.js';
 
 export function useProductLookup() {
@@ -5386,7 +5495,7 @@ describe('groupRecords', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/groupRecords.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/groupRecords.test.ts
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/records/groupRecords.ts`**
@@ -5432,7 +5541,7 @@ export function groupRecords(rows: LocalRecord[], now: Date = new Date()): Group
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/groupRecords.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/groupRecords.test.ts
 ```
 
 - [ ] **Step 5: Commit**
@@ -5450,11 +5559,11 @@ git commit -m "feat(mobile): groupRecords (expired / today / week / later)"
 - Create: `apps/mobile/src/features/records/expiryStatus.ts`
 - Create: `apps/mobile/src/tests/expiryStatus.test.ts`
 
-A small pure helper that maps a record's expiry date to a traffic-light status, consumed by `RecordCard` and the record detail screen. Thresholds (canonical):
+A small pure helper that maps a record's expiry date to a traffic-light status, consumed by `RecordCard`, the dashboard summary header, and the record detail screen. The amber band is the user's configurable "expiring soon" threshold (`expiring_soon_threshold_days`, default 7 — spec §2.16). Thresholds (canonical):
 
 - **red** — expired or expires today (`expiryDate <= today`)
-- **amber** — expires within the next 3 days (1–3 days out; aligns with the soonest default reminder offset)
-- **green** — more than 3 days out
+- **amber** — expires within the threshold (1…thresholdDays days out; default 7)
+- **green** — beyond the threshold
 
 - [ ] **Step 1: Write the failing test `apps/mobile/src/tests/expiryStatus.test.ts`**
 
@@ -5464,7 +5573,7 @@ import { expiryStatus } from '../features/records/expiryStatus.js';
 
 const now = new Date('2026-05-24T12:00:00Z');
 
-describe('expiryStatus', () => {
+describe('expiryStatus (default threshold 7)', () => {
   it('red when already expired', () => {
     expect(expiryStatus('2026-05-20', now)).toBe('red');
   });
@@ -5474,14 +5583,15 @@ describe('expiryStatus', () => {
   it('amber when 1 day out', () => {
     expect(expiryStatus('2026-05-25', now)).toBe('amber');
   });
-  it('amber when exactly 3 days out', () => {
-    expect(expiryStatus('2026-05-27', now)).toBe('amber');
+  it('amber when exactly 7 days out', () => {
+    expect(expiryStatus('2026-05-31', now)).toBe('amber');
   });
-  it('green when 4 days out', () => {
-    expect(expiryStatus('2026-05-28', now)).toBe('green');
+  it('green when 8 days out', () => {
+    expect(expiryStatus('2026-06-01', now)).toBe('green');
   });
-  it('green when far in the future', () => {
-    expect(expiryStatus('2026-12-31', now)).toBe('green');
+  it('honors a custom threshold of 3', () => {
+    expect(expiryStatus('2026-05-27', now, 3)).toBe('amber');
+    expect(expiryStatus('2026-05-28', now, 3)).toBe('green');
   });
 });
 ```
@@ -5489,13 +5599,15 @@ describe('expiryStatus', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/expiryStatus.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/expiryStatus.test.ts
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/records/expiryStatus.ts`**
 
 ```ts
 export type ExpiryStatus = 'green' | 'amber' | 'red';
+
+export const DEFAULT_EXPIRING_SOON_THRESHOLD_DAYS = 7;
 
 function startOfDayUtc(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
@@ -5504,15 +5616,20 @@ function startOfDayUtc(d: Date): Date {
 /**
  * Map an ISO date-only expiry (YYYY-MM-DD) to a traffic-light status.
  * - red:   expired or expires today (expiry <= today)
- * - amber: expires within the next 3 days (1–3 days out)
- * - green: more than 3 days out
+ * - amber: expires within the "expiring soon" threshold (1…thresholdDays out)
+ * - green: beyond the threshold
+ * thresholdDays comes from the user's expiring_soon_threshold_days (default 7).
  */
-export function expiryStatus(expiryDate: string, now: Date = new Date()): ExpiryStatus {
+export function expiryStatus(
+  expiryDate: string,
+  now: Date = new Date(),
+  thresholdDays: number = DEFAULT_EXPIRING_SOON_THRESHOLD_DAYS,
+): ExpiryStatus {
   const today = startOfDayUtc(now);
   const exp = startOfDayUtc(new Date(`${expiryDate}T00:00:00Z`));
   const days = Math.round((exp.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
   if (days <= 0) return 'red';
-  if (days <= 3) return 'amber';
+  if (days <= thresholdDays) return 'amber';
   return 'green';
 }
 
@@ -5527,7 +5644,7 @@ export const EXPIRY_STATUS_TOKEN: Record<ExpiryStatus, 'success' | 'warning' | '
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/expiryStatus.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/expiryStatus.test.ts
 ```
 Expected: 6 passed.
 
@@ -5592,7 +5709,7 @@ describe('parseExpiryString', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/parseExpiryString.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/parseExpiryString.test.ts
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/expiry/parseExpiryString.ts`**
@@ -5691,7 +5808,7 @@ export function parseExpiryString(input: string): string | null {
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/parseExpiryString.test.ts
+pnpm --filter @expyrico/mobile exec vitest run src/tests/parseExpiryString.test.ts
 ```
 Expected: all 19 tests pass (16 format cases + 3 negatives).
 
@@ -5761,7 +5878,7 @@ export function PrePromptModal({ visible, onAllow, onCancel }: Props) {
             Camera access
           </Text>
           <Text style={{ color: theme.colors.textMuted, marginBottom: theme.spacing.lg }}>
-            Pantry needs your camera to scan barcodes and QR codes on your items. We don't store images.
+            Expyrico needs your camera to scan barcodes and QR codes on your items. We don't store images.
           </Text>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.md }}>
             <Pressable onPress={onCancel} testID="pre-prompt-cancel">
@@ -5836,7 +5953,7 @@ describe('ScanCamera', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/ScanCamera.test.tsx
+pnpm --filter @expyrico/mobile exec vitest run src/tests/ScanCamera.test.tsx
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/scan/ScanCamera.tsx`**
@@ -5880,7 +5997,7 @@ export function ScanCamera({ onScan }: Props) {
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/ScanCamera.test.tsx
+pnpm --filter @expyrico/mobile exec vitest run src/tests/ScanCamera.test.tsx
 ```
 
 - [ ] **Step 5: Commit**
@@ -6028,7 +6145,7 @@ describe('AddRecordForm', () => {
 - [ ] **Step 2: Run, verify FAIL**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/AddRecordForm.test.tsx
+pnpm --filter @expyrico/mobile exec vitest run src/tests/AddRecordForm.test.tsx
 ```
 
 - [ ] **Step 3: Write `apps/mobile/src/features/records/AddRecordForm.tsx`**
@@ -6052,9 +6169,13 @@ const isoRe = /^\d{4}-\d{2}-\d{2}$/;
 export function AddRecordForm({ productId, productName, customName, onSaved, onOpenOcr }: Props) {
   const theme = useTheme();
   const [expiry, setExpiry] = useState('');
+  const [category, setCategory] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
+  const [price, setPrice] = useState('');
+  const [store, setStore] = useState('');
+  const [showMore, setShowMore] = useState(false); // price/store accordion (spec §2.2)
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -6074,9 +6195,12 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
       const localId = await createLocalRecord({
         productId: productId ?? null,
         customName: productId ? null : (customName ?? productName ?? 'Item'),
+        category: category || null,
         expiryDate: expiry,
         quantity: qty,
         unit,
+        price: price ? Number(price) : null,
+        store: store || null,
         notes: notes || null,
       });
       onSaved(localId);
@@ -6141,6 +6265,16 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         onChangeText={setUnit}
       />
 
+      <Text style={{ color: theme.colors.textMuted }}>Category (optional)</Text>
+      <TextInput
+        testID="add-record-category"
+        style={input}
+        value={category}
+        onChangeText={setCategory}
+        placeholder="e.g. Dairy"
+        placeholderTextColor={theme.colors.textMuted}
+      />
+
       <Text style={{ color: theme.colors.textMuted }}>Notes (optional)</Text>
       <TextInput
         testID="add-record-notes"
@@ -6149,6 +6283,32 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         onChangeText={setNotes}
         multiline
       />
+
+      {/* Accordion: price + store are hidden by default (spec §2.2) */}
+      <Pressable testID="add-record-more-toggle" onPress={() => setShowMore((v) => !v)}>
+        <Text style={{ color: theme.colors.primary }}>
+          {showMore ? '− Less details' : '+ More details (price, store)'}
+        </Text>
+      </Pressable>
+      {showMore ? (
+        <View style={{ gap: theme.spacing.md }}>
+          <Text style={{ color: theme.colors.textMuted }}>Price (optional)</Text>
+          <TextInput
+            testID="add-record-price"
+            style={input}
+            value={price}
+            keyboardType="numeric"
+            onChangeText={setPrice}
+          />
+          <Text style={{ color: theme.colors.textMuted }}>Store (optional)</Text>
+          <TextInput
+            testID="add-record-store"
+            style={input}
+            value={store}
+            onChangeText={setStore}
+          />
+        </View>
+      ) : null}
 
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 
@@ -6170,7 +6330,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
 - [ ] **Step 4: Run, verify pass**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run src/tests/AddRecordForm.test.tsx
+pnpm --filter @expyrico/mobile exec vitest run src/tests/AddRecordForm.test.tsx
 ```
 
 - [ ] **Step 5: Commit**
@@ -6733,7 +6893,7 @@ git commit -m "feat(mobile): manual product create screen for scan-miss flow"
 
 ```ts
 import { apiClient } from './client.js';
-import type { PushToken, PushTokenRegister } from '@pantry/shared';
+import type { PushToken, PushTokenRegister } from '@expyrico/shared';
 
 export async function registerPushTokenApi(input: PushTokenRegister): Promise<PushToken> {
   return await apiClient.post<PushToken>('/me/push-token', input);
@@ -6794,7 +6954,7 @@ git commit -m "feat(mobile): register Expo push token after first record save"
 ```yaml
 # apps/mobile/src/tests/e2e/scan-and-save.yaml
 # Prereq: a signed-in user from a previous auth flow.
-appId: com.pantry.app
+appId: com.expyrico.app
 ---
 - launchApp
 - assertVisible: "Home"
@@ -6804,7 +6964,7 @@ appId: com.pantry.app
 - tapOn:
     id: "pre-prompt-allow"
 # Maestro injects a fake barcode via deep link when running on CI emulators.
-- openLink: "pantry://test/mock-scan?barcode=5449000000996"
+- openLink: "expyrico://test/mock-scan?barcode=5449000000996"
 - assertVisible: "Coca-Cola"
 - inputText: "2099-12-31"
     selector:
@@ -6830,20 +6990,20 @@ git commit -m "test(mobile): Maestro e2e for scan-and-save"
 - [ ] **Step 1: Generate Prisma client**
 
 ```bash
-pnpm --filter @pantry/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma generate
 ```
 
 - [ ] **Step 2: Apply migrations against the test DB**
 
 ```bash
 DATABASE_URL="$(grep DATABASE_URL api/.env.test | cut -d= -f2-)" \
-  pnpm --filter @pantry/api exec prisma migrate deploy
+  pnpm --filter @expyrico/api exec prisma migrate deploy
 ```
 
 - [ ] **Step 3: Run all API tests**
 
 ```bash
-pnpm --filter @pantry/api test
+pnpm --filter @expyrico/api test
 ```
 Expected (M1 additions on top of M0a/M0b):
 
@@ -6874,14 +7034,14 @@ Expected: every workspace exits 0.
 - [ ] **Step 1: Vitest mobile suite**
 
 ```bash
-pnpm --filter @pantry/mobile exec vitest run
+pnpm --filter @expyrico/mobile exec vitest run
 ```
 Expected: passes for `parseExpiryString.test.ts` (19), `groupRecords.test.ts` (2), `expiryStatus.test.ts` (6), `AddRecordForm.test.tsx` (2), `ScanCamera.test.tsx` (3).
 
 - [ ] **Step 2: Mobile typecheck**
 
 ```bash
-pnpm --filter @pantry/mobile typecheck
+pnpm --filter @expyrico/mobile typecheck
 ```
 
 - [ ] **Step 3: Prettier**
@@ -6915,7 +7075,7 @@ Run this against the spec before declaring M1 done.
 - [ ] **Spec §2.2 (records)** — `records` table created; required fields (expiry + name/product) enforced via Zod `.refine` on `recordCreateSchema`; status lifecycle covered by `recordStatusSchema` + PATCH route.
 - [ ] **Spec §2.3 (scanning)** — One scan flow in `ScanCamera` uses `expo-camera`'s `CameraView` built-in scanner (`onBarcodeScanned`) accepting both `qr` and EAN/UPC barcode types; `POST /products/lookup` walks cache → OFF → UPCitemdb → null (Task C6) and enqueues a `product-lookup` backfill job on miss; manual-create fallback wired in Scan screen routing.
 - [ ] **Spec §2.4 (expiry capture)** — Manual date input in `AddRecordForm`; OCR via `@react-native-ml-kit/text-recognition` in `OcrCamera`; `parseExpiryString` covers 15+ formats.
-- [ ] **Spec §2.5 (notifications)** — Default offsets `[3, 1, 0]` (3d / 1d / day-of) in `notify-at.ts`; per-user override via `users.notificationPreferences.offsetsDays` resolved by `resolveOffsetsForUser` in record create/patch + sync; per-record `notify_at` jsonb; BullMQ schedule + send workers thread `templateKey` (NOT NULL on `push_logs`) end-to-end; Expo Push via `expo-server-sdk` with breaker.
+- [ ] **Spec §2.5 (notifications)** — Default offsets `[7, 3, 1, 0]` (7d / 3d / 1d / day-of) in `notify-at.ts`; per-user override via `users.notificationPreferences.offsetsDays` resolved by `resolveOffsetsForUser` in record create/patch + sync; per-record `notify_at` jsonb; BullMQ schedule + send workers thread `templateKey` (NOT NULL on `push_logs`) end-to-end; Expo Push via `expo-server-sdk` with breaker.
 - [ ] **Spec §2.11 (offline-first)** — All reads via WatermelonDB (`useActiveRecords`, `useRecord`); writes go to WatermelonDB then sync via `Idempotency-Key`; LWW on user data in `syncRecords`; triggers cover foreground, network reconnect, post-write, 5min interval.
 - [ ] **Spec §4.3 (background jobs)** — `product-lookup`, `notification-schedule`, `notification-send` queues + workers all present, registered in `api/src/workers/runner.ts`; `product-lookup` actually enqueued on lookup miss; `getQueueConnection()` returns raw `ConnectionOptions` wrapped as `{ connection: getQueueConnection() }` at every construction site; `opossum` circuit breaker on OFF / UPCitemdb / Expo Push.
 - [ ] **Spec §5 (data model)** — `products`, `product_edits`, `records`, `push_tokens`, `push_logs`, `notificationPreferences` on `User` all in Prisma; pg_trgm GIN index on `(name, brand)`.
@@ -6947,8 +7107,8 @@ Run this against the spec before declaring M1 done.
 M2 will:
 
 1. Add `reviews` and `review_votes` tables (already specced).
-2. Replace the `topReviews: []` stub in `GET /v1/products/:id` with a real top-N reviews list ordered by Wilson score.
-3. Populate `products.taste_avg`, `value_avg`, `review_count` denormalized columns (two-criteria reviews: taste + value) via the `product-rating-recalc` BullMQ worker.
+2. Replace the `topReviews: []` stub in `GET /v1/products/:id` with a real top-N reviews list ordered by Wilson helpfulness score.
+3. Populate `products.buy_again_count`, `buy_again_on_sale_count`, `wont_buy_count`, `rating_count`, `review_count` denormalized columns (three-option ratings) via the `rating-recalc` BullMQ worker, plus the per-country rollup (spec §5).
 4. Add the Browse tab search results screen and the product detail reviews list on mobile.
 5. Add `POST /reports` and the profanity-filter `moderation-flag` worker.
 
@@ -6957,9 +7117,23 @@ All M1 surfaces — records CRUD, scan flow, OCR, notifications, sync engine —
 **Canonical contracts M2 inherits from M1** (see "Validation amendments — 2026-05-26"):
 
 - **`getQueueConnection()` returns a raw `ConnectionOptions`** (NOT `{ connection: ... }`). M2 queues/workers construct as `new Queue(name, { connection: getQueueConnection() })` / `new Worker(name, processor, { connection: getQueueConnection() })` — matching the existing M1 sites, no double-wrap.
-- **Worker registry is `api/src/workers/runner.ts`** (`startWorkers()` / `stopWorkers()`). M2's `product-rating-recalc` and `moderation-flag` workers go under `api/src/workers/` and register in `runner.ts`. There is no `api/src/queues/workers.ts`.
+- **Worker registry is `api/src/workers/runner.ts`** (`startWorkers()` / `stopWorkers()`). M2's `rating-recalc` and `moderation-flag` workers go under `api/src/workers/` and register in `runner.ts`. There is no `api/src/queues/workers.ts`.
 - **`NotificationSendJob.templateKey`** is required and persisted to `push_logs.templateKey`; the schedule worker sets `'expiry_reminder'` by default. M2 may add new template keys but must always set one.
 - **`/v1/me` is a single `meScope` sub-app**; M2 registers any new profile routes inside it rather than adding another `/v1/me` registration.
-- **Notification offsets** resolve through `resolveOffsetsForUser(user.notificationPreferences)`; reuse it wherever M2 recomputes `notify_at`. The default reminder schedule is `[3, 1, 0]` (3 days before, 1 day before, on the expiry day).
-- **Two-criteria product ratings.** The `products` table exposes denormalized columns `products.taste_avg numeric(3,2)`, `products.value_avg numeric(3,2)`, and `products.review_count int`; the API serializes them as `tasteAvg`, `valueAvg`, `reviewCount`. M1 only ships the columns + field names (all default `0`); M2's `product-rating-recalc` worker writes them from the two-criteria (taste + value) reviews. There is no `rating_avg` / `rating_count`.
-- **Expiry-status helper.** `apps/mobile/src/features/records/expiryStatus.ts` exports `expiryStatus(expiryDate, now): 'green' | 'amber' | 'red'` (red = expired or today, amber = 1–3 days out, green = >3 days) plus `EXPIRY_STATUS_TOKEN` mapping to theme tokens; reuse it for any M2 surface that shows expiry urgency.
+- **Notification offsets** resolve through `resolveOffsetsForUser(user.notificationPreferences)`; reuse it wherever M2 recomputes `notify_at`. The default reminder schedule is `[7, 3, 1, 0]` (7 days before, 3 days before, 1 day before, on the expiry day).
+- **Three-option product ratings.** The `products` table exposes denormalized columns `buy_again_count`, `buy_again_on_sale_count`, `wont_buy_count`, `rating_count`, `review_count` (all `int`), plus `is_community_eligible boolean`; the API serializes them in camelCase. M1 only ships the columns + field names (all default `0` / `false`); M2's `rating-recalc` worker writes them from the three-option ratings. There is no `rating_avg` / `rating_count`-as-avg, and no taste/value columns.
+- **Expiry-status helper.** `apps/mobile/src/features/records/expiryStatus.ts` exports `expiryStatus(expiryDate, now, thresholdDays): 'green' | 'amber' | 'red'` (red = expired or today, amber = within the user's expiring-soon threshold (default 7), green = beyond) plus `EXPIRY_STATUS_TOKEN` mapping to theme tokens; reuse it for any M2 surface that shows expiry urgency.
+
+---
+
+## Mobile UI additions — 2026-06-08 revision (Track B)
+
+The schema/API/helper contracts above are fully specced; these Track-B screen behaviors follow `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` (§2.16–§2.18) and the mockup (`2026-05-24-expyrico-mockup-design.md`, screens 7/15/16/26). Build them when the Mobile track resumes:
+
+1. **Home dashboard header (§2.16).** Above the grouped list, render a summary count header: total + Good/Expiring-soon/Expired chips computed via `expiryStatus(record.expiryDate, now, user.expiringSoonThresholdDays)`. Add an "X of 50" item-count pill (from `GET /v1/me/usage`).
+2. **Category filter (§2.16).** A chip row / filter control that narrows the list by `record.category`; passes `?category=` to `GET /v1/records`.
+3. **RecordCard / detail status bar.** Left-edge accent bar colored by `EXPIRY_STATUS_TOKEN` (Sage/Honey/Red theme tokens).
+4. **Record detail actions (§2.2).** Buttons: "Mark used" (`status: consumed`), "Mark thrown away" (`status: discarded`), "Duplicate" (calls `POST /v1/records/:id/duplicate`, then routes to the expiry picker for the new date), "Delete".
+5. **Manual-entry auto-suggest (§2.2).** The name field on `AddRecordForm`/manual-create queries `GET /v1/products/search` (debounced) and shows OFF suggestions; selecting one links the record to that product (community-eligible), otherwise it stays a personal-notes-only manual record.
+6. **Read-only / item-limit mode (§2.17).** When `GET /v1/me/usage` returns `readOnly: true`, disable the add flow (FAB shows a lock badge) and surface an upgrade-prompt CTA; existing records remain editable and reminders keep firing. A `POST /v1/records` `409 item_limit_reached` also triggers the CTA.
+7. **Settings additions (§2.18).** Expiring-soon threshold control (writes `expiringSoonThresholdDays` via `PATCH /v1/me`), notification interval prefs, and a "Contact us" entry (`POST /feedback` or mailto). (Referral screen + share live in M7.)

@@ -6,8 +6,7 @@ import { getPrisma } from '../../db.js';
  * threshold > 0.3, ordered by similarity desc, then review_count desc.
  *
  * Columns are aliased to the Prisma camelCase shape so callers can pass rows
- * straight into `toApiProduct(...)` (Prisma's $queryRaw does NOT auto-convert
- * @map'd snake_case columns back to model fields).
+ * straight into `toApiProduct(...)`.
  */
 export async function searchProducts(q: string, limit: number): Promise<Product[]> {
   const prisma = getPrisma();
@@ -23,8 +22,11 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
       default_shelf_life_days AS "defaultShelfLifeDays",
       source,
       source_id               AS "sourceId",
-      taste_avg               AS "tasteAvg",
-      value_avg               AS "valueAvg",
+      is_community_eligible   AS "isCommunityEligible",
+      buy_again_count         AS "buyAgainCount",
+      buy_again_on_sale_count AS "buyAgainOnSaleCount",
+      wont_buy_count          AS "wontBuyCount",
+      rating_count            AS "ratingCount",
       review_count            AS "reviewCount",
       created_by_user_id      AS "createdByUserId",
       status,

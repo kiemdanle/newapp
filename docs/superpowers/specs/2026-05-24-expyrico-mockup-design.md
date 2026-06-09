@@ -1,18 +1,20 @@
-# Pantry App — Mobile Mockup Prototype Design
+# Expyrico — Mobile Mockup Prototype Design
 
 **Date:** 2026-05-24
 **Status:** Approved (pending user review of this document)
-**Topic:** Static, clickable HTML prototype of the Pantry App mobile UI, covering every screen and flow described in the implementation plans (M0c–M4)
+**Topic:** Static, clickable HTML prototype of the Expyrico mobile UI, covering every screen and flow described in the implementation plans (M0c–M4)
+
+> **2026-06-08 revision:** App renamed to **Expyrico**; default theme recolored to the Expyrico brand palette (§4); rating model is three-option (no stars); reminder default `[7,3,1,0]`; new Dashboard/item-limit/referral/contact screens. The word "pantry" below is the generic feature noun.
 
 ---
 
 ## 1. Overview
 
-A static, browser-viewable prototype of the entire Pantry App mobile experience. Every screen is a self-contained HTML page rendered inside a fixed iPhone 15 Pro device frame. The user opens a single URL, lands on a navigation hub, and clicks through to any screen.
+A static, browser-viewable prototype of the entire Expyrico mobile experience. Every screen is a self-contained HTML page rendered inside a fixed iPhone 15 Pro device frame. The user opens a single URL, lands on a navigation hub, and clicks through to any screen.
 
 The prototype is **non-functional** — no real backend, no real auth, no real scanning. It exists so design decisions can be reviewed, screens can be compared at full fidelity, and downstream implementation work has a concrete visual reference.
 
-**Source of truth:** all visual decisions trace back to `docs/superpowers/specs/2026-05-23-pantry-app-design.md` and the implementation plans in `docs/superpowers/plans/` (M0c mobile shell, M1 personal pantry, M2 reviews + voting, M4 polish + launch).
+**Source of truth:** all visual decisions trace back to `docs/superpowers/specs/2026-05-23-expyrico-app-design.md` and the implementation plans in `docs/superpowers/plans/` (M0c mobile shell, M1 personal pantry, M2 reviews + ratings, M4 polish + launch).
 
 ---
 
@@ -20,9 +22,9 @@ The prototype is **non-functional** — no real backend, no real auth, no real s
 
 ### In scope
 
-- Hi-fi mockups of all 25 screens listed in section 6
-- Aurora Glass theme styling on every screen (light variant — not dark mode)
-- A working Theme Picker that renders all four shipped themes (Aurora Glass, Bento Grid, Soft Clay, Material You) as live preview cards on the *home screen miniature*. Other screens render only in Aurora.
+- Hi-fi mockups of all 28 screens listed in section 6
+- Expyrico-theme styling on every screen (light variant — not dark mode)
+- A working Theme Picker that renders all four shipped themes (Expyrico, Bento Grid, Soft Clay, Material You) as live preview cards on the *home screen miniature*. Other screens render only in the Expyrico theme.
 - A nav hub that lists all screens with thumbnails and routes to each
 - A push-notification lock-screen preview as a distinct mockup screen
 - Real-looking content: realistic product names, brands, dates, avatars, ratings
@@ -50,7 +52,7 @@ The prototype is built as plain HTML/CSS/JS files served by the visual companion
 ### File naming
 
 - `00-nav-hub.html` — entry point with thumbnails of every screen
-- `01-welcome.html`, `02-sign-up.html`, ... `25-push-preview.html` — one file per screen, numbered for stable ordering
+- `01-welcome.html`, `02-sign-up.html`, ... `28-contact.html` — one file per screen, numbered for stable ordering
 - `_shared.css` — design tokens (color, type, spacing, radii, shadows) for all four themes
 - `_frame.css` — iPhone 15 Pro device frame, status bar, home indicator
 - `_components.css` — buttons, cards, inputs, FAB, tab bar, list rows
@@ -58,27 +60,27 @@ The prototype is built as plain HTML/CSS/JS files served by the visual companion
 
 ---
 
-## 4. Visual language — Aurora Glass (light)
+## 4. Visual language — Expyrico (light)
 
-The default and dominant theme.
+The default and dominant theme, built on the Expyrico brand palette.
 
-- **Background:** light multi-stop radial gradient mesh (pale lavender `#E0E7FF` → soft peach `#FED7AA` → mint `#D1FAE5`), subtle grain overlay
-- **Cards:** `backdrop-filter: blur(20px)`, white at 60% opacity fill, 1px white/40% inner border, soft outer shadow (`0 8px 32px rgba(80, 70, 200, 0.10)`)
-- **Primary accent:** electric cyan `#06B6D4` (buttons, selected state, ring on focus)
-- **Destructive accent:** hot pink `#EC4899`
-- **Success accent:** soft lime `#10B981`
-- **Text:** `#1A1A2E` at 90% / 60% / 40% opacity for primary / secondary / tertiary hierarchy
+- **Background:** Warm White `#FAFAF8` main surface; Stone `#F0F0ED` for section backgrounds and dividers; optional very-soft Mint Mist `#D6F0E6` wash on hero panels
+- **Cards:** Warm White `#FAFAF8` fill, 1px Stone `#F0F0ED` border, soft outer shadow (`0 8px 24px rgba(44, 44, 40, 0.06)`)
+- **Primary:** Fresh Sage `#4BAE8A` (logo, headers, active states, primary buttons); **Primary Dark** Deep Sage `#3A8F6F` (pressed states, text on light bg); **Primary Light** Mint Mist `#D6F0E6` (soft panels, success highlights)
+- **Accent / CTA:** Honey `#F5A623` (CTAs, badges, highlights); **Accent Light** Soft Butter `#FEEFC3` (expiring-soon status background)
+- **Destructive / Expired:** Alert Red `#E0442A` (status + destructive only, never branding)
+- **Text:** Almost Black `#2C2C28` (primary); Pebble `#8C8C85` (secondary text + icons)
 - **Type:** Inter for body, Space Grotesk for display headings; system-ui fallback
-- **Radii:** 24px on cards, 16px on pills, 999px on FAB and avatars
-- **Shadows:** soft, lavender-tinted to match the gradient palette
+- **Radii:** 20px on cards, 14px on pills, 999px on FAB and avatars
+- **Shadows:** soft, neutral-tinted (`rgba(44,44,40,…)`) to match the warm-white palette
 
-### Pantry urgency colors (used on item cards)
+### Dashboard status colors (used on item cards)
 
-- **Fresh** (>7 days): green ring `#10B981`
-- **Soon** (≤7 days): amber ring `#F59E0B`
-- **Urgent** (≤1 day or expired): red ring `#EF4444`
+- **Good** (> threshold): Fresh Sage `#4BAE8A`
+- **Expiring soon** (≤ threshold, default 7 days): Honey `#F5A623`, with a Soft Butter `#FEEFC3` tile background
+- **Expired** (past expiry): Alert Red `#E0442A`
 
-These render as a left-edge accent bar on each item card (4px wide, full card height) so the urgency signal survives even though items are grouped by category, not urgency.
+These render as a left-edge accent bar on each item card (4px wide, full card height) so the status signal survives even though items are grouped by category, not status.
 
 ---
 
@@ -90,7 +92,7 @@ Every screen is centered inside a fixed iPhone 15 Pro frame on a neutral off-whi
 - **Bezel:** 12px black bezel, 55px corner radius, subtle 1px highlight on the inner edge
 - **Drop shadow:** soft outer shadow under the device for visual lift
 - **Dynamic Island:** rendered at the top (a 125 × 35 px black pill, centered, ~12px from the top); content respects the safe area below it
-- **Status bar:** 9:41, full signal, 100% battery — all in dark text on light Aurora background
+- **Status bar:** 9:41, full signal, 100% battery — all in dark text on the light Expyrico background
 - **Home indicator:** 134px horizontal pill at the bottom, dark on light
 
 Each screen file embeds the frame using shared CSS classes (`.device`, `.screen`, `.status-bar`, `.home-indicator`).
@@ -102,7 +104,7 @@ Each screen file embeds the frame using shared CSS classes (`.device`, `.screen`
 
 ---
 
-## 6. Screen inventory (25 screens)
+## 6. Screen inventory (28 screens)
 
 Numbered for file order; grouped for the nav hub.
 
@@ -115,33 +117,36 @@ Numbered for file order; grouped for the nav hub.
 6. **Reset-password** — new password + confirm password fields (only reachable from the email deep link), success state with "Sign in" button
 
 ### Main app (4 tabs)
-7. **Home** — bottom tab "Home" active. Pantry list grouped by category (Dairy, Produce, Pantry, Beverages, Frozen, Other, Uncategorized). Within each category, items sort by soonest expiry. Each item card: product image thumbnail, name + brand, expiry date with urgency color (left-edge bar). FAB centered above the tab bar. Header: "Your pantry" + filter icon
-8. **Browse** — bottom tab "Browse" active. Search field at top. Below: horizontally-scrolling category chips. Below chips: "Top-rated" section (3-4 product cards) and "Recently added" section. Tapping a product → product detail
-9. **Reviews** — bottom tab "Reviews" active. List of "my reviews" cards: product thumbnail + name, user's star rating, body excerpt (2 lines clamped), upvote/downvote totals, overflow menu (Edit / Delete)
-10. **Profile** — bottom tab "Profile" active. Top: avatar, display name, country flag + name. Stats row of three cards: "X items in pantry," "Y reviews," "Z helpful votes received." Below: list of links (Settings, Notifications, Theme, Account, About, Sign out)
+7. **Home (Dashboard)** — bottom tab "Home" active. **Summary count header**: total items + breakdown chips (Good / Expiring soon / Expired). Pantry list grouped by category. Within each category, items sort by soonest expiry. Each item card: product image thumbnail, name + brand, expiry date with status color (left-edge bar: Sage/Honey/Red). FAB centered above the tab bar. Header: "Your pantry" + **category filter** icon. An "X of 50" item-count pill sits in the header.
+8. **Browse** — bottom tab "Browse" active. Search field at top. Below: horizontally-scrolling category chips. Below chips: "Top-rated" section (3-4 product cards, each showing the 3-option aggregate) and "Recently added" section. Tapping a product → product detail
+9. **Reviews** — bottom tab "Reviews" active. List of "my ratings" cards: product thumbnail + name, the user's three-option rating shown as a colored pill (Will buy again / On sale only / Won't buy), comment excerpt (2 lines clamped) when present, helpful/not-helpful totals (only if the rating has a comment), overflow menu (Edit / Delete)
+10. **Profile** — bottom tab "Profile" active. Top: avatar, display name, country flag + name. Stats row of three cards: "X of 50 items," "Y ratings," "Z helpful votes received." Below: list of links (Settings, Notifications, Theme, Referral, Account, About, Sign out)
 
 ### Pantry flow (6)
 11. **FAB action sheet** — sheet from bottom with two large options: "Scan barcode or QR" (camera icon) and "Add manually" (pencil icon). Cancel at the bottom. Layered over Home
 12. **Scan** — full-screen camera viewfinder mockup. Center: rounded rectangle reticle. Top: "Point at a barcode or QR code" + close button. Bottom: torch toggle. (Static rendering — no live camera)
-13. **Scan result — found** — product image, name, brand, category, average rating. CTAs: "Add to pantry" (primary), "Wrong product?" (text link)
-14. **Expiry capture** — two top tabs: "Pick a date" (default, shows wheel-style date picker with quick chips: Today, +3d, +1wk, +1mo, "Use shelf-life hint" if present) and "Scan the date" (shows a banner "Detected 2026-08-14 — confirm or adjust" over the same picker). Optional fields (quantity, unit, purchase date, notes, photo) collapsed below the picker
-15. **Manual entry** — fields: name (required), brand, category, expiry (required), quantity, unit, notes, photo. "Save" button. Used both for "Add manually" and "Scan returned nothing"
-16. **Record detail** — full screen. Product image, name, brand, category. Expiry date with urgency color, "Edit" button. Quantity, purchase date, notes. Three action buttons: "Mark consumed," "Mark discarded," "Delete"
+13. **Scan result — found** — product image, name, brand, category, the three-option community aggregate (e.g. "65% / 20% / 15%"). CTAs: "Add to pantry" (primary), "Wrong product?" (text link)
+14. **Expiry capture** — two top tabs: "Pick a date" (default, shows wheel-style date picker with quick chips: Today, +3d, +1wk, +1mo, "Use shelf-life hint" if present) and "Scan the date" (shows a banner "Detected 2026-08-14 — confirm or adjust" over the same picker). Optional fields collapsed below the picker
+15. **Manual entry** — fields: name (required, **auto-suggest from Open Food Facts**), category, expiry (required), quantity, notes. **Accordion "More details"** reveals price + store. "Save" button. Used both for "Add manually" and "Scan returned nothing." Manual items are personal-notes-only (no community rating)
+16. **Record detail** — full screen. Product image, name, brand, category. Expiry date with status color, "Edit" button. Quantity, notes, and (if set) price + store. Four action buttons: "Mark used," "Mark thrown away," "Duplicate," "Delete"
 
 ### Product & reviews (3)
-17. **Product detail** — hero with product image, name, brand, category chip, large average star rating + review count. "Write a review" primary button. Reviews section header with sort tabs ("Most helpful" default, "Newest," "Highest rating"). List of `ReviewCard`s: author avatar + name + country flag, star rating, body, timestamp, upvote/downvote counts, overflow menu ("Report")
-18. **Write a review (modal)** — bottom sheet (~85% height). 1–5 star input at top. Multi-line body field. "Cancel" + "Submit" buttons. Edit mode shows a "Delete" button at the bottom
+17. **Product detail** — hero with product image, name, brand, category chip. **Three-option aggregate** bar: "65% will buy again / 20% on sale only / 15% won't (43 ratings)", country-scoped. "Rate this product" primary button. Reviews section header with sort tabs ("Most helpful" default, "Newest"). List of `ReviewCard`s: author avatar + name + country flag, the rater's three-option pill, comment, timestamp, Helpful/Not-helpful counts (**only on cards that have a comment**), overflow menu ("Report")
+18. **Rate a product (modal)** — bottom sheet (~85% height). **Three large radio options** at top: "Will buy again" / "Will buy again on sale" / "Will not buy again". Optional multi-line comment field below. "Cancel" + "Submit" buttons. Edit mode shows a "Delete" button at the bottom
 19. **Report (modal)** — bottom sheet (~55% height). "Report this review" title. Radio list: Spam / Abuse / Incorrect info / Other. If "Other" selected: free-text body field appears. "Cancel" + "Submit" buttons
 
 ### Settings (4)
-20. **Settings index** — list grouped into Preferences (Theme, Notifications, Language [disabled]), Account (Email, Password, Linked accounts, Country), Data (Export my data [placeholder], Delete account), About (Version, Terms, Privacy, OSS licenses). Footer: "Sign out" red text full-width
-21. **Theme picker** — four large vertically-stacked preview cards. Each card renders a miniature home screen in that theme (real Aurora frosted glass, real Bento tiles, real Clay 3D depth, real MD3 chips). Selected card has a cyan ring. Tapping a card cross-fades the *page chrome and the settings screen behind* over 200ms. "Save" button at the bottom. **This is the centerpiece of the prototype.**
-22. **Notifications settings** — master "Push notifications" toggle. Default reminder schedule: three checkboxes (7 days before, 1 day before, on expiry day). Quiet hours start/end pickers. "Test notification" button at the bottom
+20. **Settings index** — list grouped into Preferences (Theme, Notifications, Expiring-soon threshold, Language [disabled]), Account (Email, Password, Linked accounts, Country, **Item count "X of 50"**), Referral (View/share my code), Data (Export my data [placeholder], Delete account), Support (**Contact us**), About (Version, Terms, Privacy, OSS licenses). Footer: "Sign out" red text full-width
+21. **Theme picker** — four large vertically-stacked preview cards. Each card renders a miniature home screen in that theme (Expyrico Sage/Warm-White, Bento tiles, Clay 3D depth, MD3 chips). Selected card has a Fresh Sage ring. Tapping a card cross-fades the *page chrome and the settings screen behind* over 200ms. "Save" button at the bottom. **This is the centerpiece of the prototype.**
+22. **Notifications settings** — master "Push notifications" toggle. Default reminder schedule: **four checkboxes (7 days before, 3 days before, 1 day before, on expiry day)**. Quiet hours start/end pickers. "Test notification" button at the bottom
 23. **Account** — same content as Account section of Settings index, promoted to its own screen for the deep-link case. Linked-accounts toggles are **visual only** with note: "At least one credential must remain linked"
 
-### Special (2)
+### Special (5)
 24. **Empty home + first-scan tutorial** — Home screen with zero records. Centered illustration, "Your pantry is empty," "Tap + to scan your first item." Tutorial overlay layered on top: dimmed backdrop with a hole cut out around the FAB and a pointer + tooltip
-25. **Push notification preview** — iPhone lock screen mockup. Wallpaper, time + date, two stacked notifications: "Pantry — Milk expires tomorrow" and "Pantry — 3 items expire today: yogurt, bread, hummus." Shows what the actual push copy and grouping look like
+25. **Push notification preview** — iPhone lock screen mockup. Wallpaper, time + date, two stacked notifications: "Expyrico — Milk expires tomorrow" and "Expyrico — 3 items expire today: yogurt, bread, hummus." Tapping deep-links to the item detail. Shows what the actual push copy and grouping look like
+26. **Item-limit reached** — Home in read-only mode at the 50-item cap. A pinned banner "You've reached 50 items" with an **upgrade-prompt CTA** ("Upgrade for unlimited"). The FAB shows a lock badge; tapping it opens the upgrade prompt instead of the add sheet. Note: reminders still fire
+27. **Referral** — "Invite friends" screen. The user's unique referral code in a large copyable pill, a "Share" button (native share-sheet mockup), and a progress line "Friends activated: 2" (activation = friend adds 5 items). Copy notes rewards are coming in a future version
+28. **Contact us** — simple support screen: short intro line, a "Email us" button (mailto link) and a minimal feedback form (subject + message + Send) for bug reports and feedback
 
 ### Nav hub (the entry point — separate from the 25)
 - **Nav hub (`00-nav-hub.html`)** — page title, sub-line description, 4-column grid (3 on narrower viewports) of small phone-frame thumbnails grouped by section. Click → navigates to the screen file
@@ -156,15 +161,15 @@ The Theme Picker (screen 21) is the only screen where a click changes anything b
 - Tap a card → the page-level CSS variables update, triggering a 200ms cross-fade across:
   - The phone frame chrome (status bar, tab bar, home indicator color)
   - The Settings index visible behind the modal sheet
-- The currently-selected card gets a cyan ring (`#06B6D4`, 3px, offset 2px)
-- "Save" button at the bottom dismisses the sheet and persists nothing — on next page load, the prototype always boots in Aurora (this is intentional; the prototype is not stateful)
+- The currently-selected card gets a Fresh Sage ring (`#4BAE8A`, 3px, offset 2px)
+- "Save" button at the bottom dismisses the sheet and persists nothing — on next page load, the prototype always boots in the Expyrico theme (this is intentional; the prototype is not stateful)
 
 The four themes ship as four CSS variable bundles in `_shared.css`:
 
-- `[data-theme="aurora"]` — light gradient mesh, frosted glass cards, cyan accent
-- `[data-theme="bento"]` — light flat surface (white/off-white), modular asymmetric tiles, single accent (deep indigo)
-- `[data-theme="clay"]` — warm peach base (`#FFE5D9`), chunky 3D drop shadows, no glass, bigger radii (32px on cards)
-- `[data-theme="material"]` — Google MD3 dynamic purple seed (`#6750A4`), chips and pills, friendlier surfaces
+- `[data-theme="expyrico"]` — Warm White surfaces, Fresh Sage primary, Honey accent (default)
+- `[data-theme="bento"]` — light flat surface (Warm White / Stone), modular asymmetric tiles, single Honey accent
+- `[data-theme="clay"]` — warm Mint Mist / Soft Butter base, chunky 3D drop shadows, no glass, bigger radii (32px on cards)
+- `[data-theme="material"]` — Google MD3 dynamic theming seeded from Fresh Sage (`#4BAE8A`), chips and pills, friendlier surfaces
 
 ---
 
@@ -208,6 +213,9 @@ The prototype is small enough to live as flat files but is structured so each sc
 ├── 23-account.html
 ├── 24-empty-home.html
 ├── 25-push-preview.html
+├── 26-item-limit.html
+├── 27-referral.html
+├── 28-contact.html
 ├── _shared.css
 ├── _frame.css
 ├── _components.css
@@ -225,7 +233,7 @@ To make the prototype feel real, all mockups use realistic — but synthetic —
 - **Dates:** mixed urgencies — some expired, some today/tomorrow, some weeks/months out
 - **Avatars:** initials-on-color circles for users (no real photos, no AI-generated likenesses)
 - **Country flags:** emoji flags for review authors (🇺🇸 🇫🇷 🇯🇵 🇧🇷 🇰🇷)
-- **Ratings:** mixed 1-5 stars, mixed Wilson scores
+- **Ratings:** mixed three-option ratings (will buy again / on sale only / won't), mixed Wilson helpfulness scores on commented reviews
 - **Review bodies:** plausible 1-3 sentence reviews
 
 No real product UPCs, no real EANs, no real third-party brands.
@@ -248,11 +256,11 @@ No real product UPCs, no real EANs, no real third-party brands.
 
 The prototype is "done" when:
 
-1. All 25 screens render correctly in a Chromium-based browser at desktop viewport
+1. All 28 screens render correctly in a Chromium-based browser at desktop viewport
 2. The nav hub links to every screen, and every screen links back to the nav hub
 3. The Theme Picker (screen 21) successfully cross-fades the page chrome and the Settings screen behind the sheet to match the tapped preview card, across all four themes (per section 7)
 4. All visible content matches section 9 (no real third-party brands, no PII, no AI-generated likenesses)
-5. The Aurora theme on every screen visibly demonstrates: gradient mesh background, frosted glass cards, urgency colors on pantry items, consistent component vocabulary
+5. The Expyrico theme on every screen visibly demonstrates: Warm White surfaces, Fresh Sage primary + Honey accents, status colors (Sage/Honey/Red) on pantry items, consistent component vocabulary
 6. The push notification preview (screen 25) shows realistic copy that aligns with the spec's notification rules
 
 ---
