@@ -33,5 +33,19 @@ CREATE INDEX IF NOT EXISTS deals_status_score_idx ON deals(status, score DESC, c
 CREATE INDEX IF NOT EXISTS deals_country_status_score_idx ON deals(country, status, score DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS deals_product_id_idx ON deals(product_id);
 CREATE INDEX IF NOT EXISTS deal_votes_deal_id_idx ON deal_votes(deal_id);
-ALTER TABLE deals ADD CONSTRAINT IF NOT EXISTS deals_price_nonneg_check CHECK (price >= 0);
-ALTER TABLE deals ADD CONSTRAINT IF NOT EXISTS deals_store_name_len_check CHECK (char_length(store_name) BETWEEN 1 AND 120);
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'deals_price_nonneg_check' AND conrelid = 'deals'::regclass
+  ) THEN
+    ALTER TABLE deals ADD CONSTRAINT deals_price_nonneg_check CHECK (price >= 0);
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'deals_store_name_len_check' AND conrelid = 'deals'::regclass
+  ) THEN
+    ALTER TABLE deals ADD CONSTRAINT deals_store_name_len_check CHECK (char_length(store_name) BETWEEN 1 AND 120);
+  END IF;
+END $$;

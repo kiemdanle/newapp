@@ -490,9 +490,9 @@ model ApiError {
   status     Int
   code       String?
   message    String?
-  requestId  String?
-  userId     String?  @db.Uuid
-  createdAt  DateTime @default(now())
+  requestId  String?  @map("request_id")
+  userId     String?  @db.Uuid @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([route, status])
