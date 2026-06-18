@@ -1,0 +1,389 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`home in bento snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f4f4f5",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#f4f4f5",
+          "flex": 1,
+        }
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "padding": 16,
+          }
+        }
+      >
+        <View />
+      </RCTScrollView>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#0a0a0a",
+            "borderRadius": 999,
+            "bottom": 32,
+            "height": 56,
+            "justifyContent": "center",
+            "position": "absolute",
+            "right": 24,
+            "width": 56,
+          }
+        }
+        testID="home-fab-add"
+      >
+        <Text
+          style={
+            {
+              "color": "#ffffff",
+              "fontSize": 24,
+              "lineHeight": 32,
+            }
+          }
+        >
+          +
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`home in clay snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#fff7f0",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#fff7f0",
+          "flex": 1,
+        }
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "padding": 18,
+          }
+        }
+      >
+        <View />
+      </RCTScrollView>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#ea580c",
+            "borderRadius": 999,
+            "bottom": 32,
+            "height": 56,
+            "justifyContent": "center",
+            "position": "absolute",
+            "right": 24,
+            "width": 56,
+          }
+        }
+        testID="home-fab-add"
+      >
+        <Text
+          style={
+            {
+              "color": "#ffffff",
+              "fontSize": 26,
+              "lineHeight": 34,
+            }
+          }
+        >
+          +
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`home in expyrico snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#0b0a17",
+      "flex": 1,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#0b0a17",
+          "flex": 1,
+        }
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "padding": 18,
+          }
+        }
+      >
+        <View />
+      </RCTScrollView>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#a855f7",
+            "borderRadius": 999,
+            "bottom": 32,
+            "height": 56,
+            "justifyContent": "center",
+            "position": "absolute",
+            "right": 24,
+            "width": 56,
+          }
+        }
+        testID="home-fab-add"
+      >
+        <Text
+          style={
+            {
+              "color": "#ffffff",
+              "fontSize": 28,
+              "lineHeight": 36,
+            }
+          }
+        >
+          +
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`home in material snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f0e8ff",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "backgroundColor": "#f0e8ff",
+          "flex": 1,
+        }
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "padding": 16,
+          }
+        }
+      >
+        <View />
+      </RCTScrollView>
+      <View
+        accessibilityState={
+          {
+            "busy": undefined,
+            "checked": undefined,
+            "disabled": undefined,
+            "expanded": undefined,
+            "selected": undefined,
+          }
+        }
+        accessibilityValue={
+          {
+            "max": undefined,
+            "min": undefined,
+            "now": undefined,
+            "text": undefined,
+          }
+        }
+        accessible={true}
+        collapsable={false}
+        focusable={true}
+        onBlur={[Function]}
+        onClick={[Function]}
+        onFocus={[Function]}
+        onResponderGrant={[Function]}
+        onResponderMove={[Function]}
+        onResponderRelease={[Function]}
+        onResponderTerminate={[Function]}
+        onResponderTerminationRequest={[Function]}
+        onStartShouldSetResponder={[Function]}
+        style={
+          {
+            "alignItems": "center",
+            "backgroundColor": "#65558f",
+            "borderRadius": 999,
+            "bottom": 32,
+            "height": 56,
+            "justifyContent": "center",
+            "position": "absolute",
+            "right": 24,
+            "width": 56,
+          }
+        }
+        testID="home-fab-add"
+      >
+        <Text
+          style={
+            {
+              "color": "#ffffff",
+              "fontSize": 28,
+              "lineHeight": 36,
+            }
+          }
+        >
+          +
+        </Text>
+      </View>
+    </View>
+  </View>
+</View>
+`;

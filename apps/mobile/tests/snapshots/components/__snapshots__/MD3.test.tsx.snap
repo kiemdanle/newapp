@@ -152,7 +152,7 @@ exports[`MD3 primitives in bento MD3FAB 1`] = `
         style={
           {
             "color": "#fafafa",
-            "fontSize": 24,
+            "fontSize": 20,
           }
         }
       >
@@ -468,7 +468,7 @@ exports[`MD3 primitives in clay MD3FAB 1`] = `
         style={
           {
             "color": "#fff7f0",
-            "fontSize": 24,
+            "fontSize": 20,
           }
         }
       >
@@ -784,7 +784,7 @@ exports[`MD3 primitives in expyrico MD3FAB 1`] = `
         style={
           {
             "color": "#0b0a17",
-            "fontSize": 24,
+            "fontSize": 22,
           }
         }
       >
@@ -1100,7 +1100,7 @@ exports[`MD3 primitives in material MD3FAB 1`] = `
         style={
           {
             "color": "#ffffff",
-            "fontSize": 24,
+            "fontSize": 22,
           }
         }
       >

@@ -48,11 +48,26 @@ jest.mock('react-native-passkey', () => ({
 }));
 
 // WatermelonDB — native SQLite adapter, mock for Jest
-jest.mock('../src/db/index', () => ({
-  database: {},
-  RecordModel: class RecordModel {},
-  ProductCacheModel: class ProductCacheModel {},
-}));
+jest.mock('../src/db/index', () => {
+  const EMPTY_OBS = { subscribe: () => ({ unsubscribe: jest.fn() }) };
+  const EMPTY_QUERY = { observe: () => EMPTY_OBS, fetch: () => Promise.resolve([]) };
+  const recordsCol = {
+    query: () => EMPTY_QUERY,
+    find: () => Promise.reject(new Error('not found')),
+    findAndObserve: () => EMPTY_OBS,
+    create: () => Promise.resolve({ id: 'mock-record-id' }),
+  };
+  class RecordModel {}
+  class ProductCacheModel {}
+  return {
+    database: {
+      get: () => recordsCol,
+      write: (fn: () => Promise<void>) => fn(),
+    },
+    RecordModel,
+    ProductCacheModel,
+  };
+});
 jest.mock('../src/db/triggers', () => ({
   triggerSyncSoon: jest.fn(),
 }));
