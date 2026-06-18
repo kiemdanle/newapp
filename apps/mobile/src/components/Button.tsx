@@ -47,7 +47,7 @@ export function Button(props: ButtonProps) {
         {props.loading ? (
           <ActivityIndicator color={fg} />
         ) : (
-          <Text style={[styles.label, { color: fg }]}>{props.label}</Text>
+          <Text style={[styles.label, { color: fg, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }]}>{props.label}</Text>
         )}
       </View>
     </Pressable>
@@ -57,5 +57,5 @@ export function Button(props: ButtonProps) {
 const styles = StyleSheet.create({
   base: { paddingVertical: 14, paddingHorizontal: 18 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  label: { fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any },
+  label: {},
 });

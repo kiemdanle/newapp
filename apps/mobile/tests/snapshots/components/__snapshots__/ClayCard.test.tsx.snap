@@ -24,13 +24,13 @@ exports[`ClayCard renders in bento 1`] = `
           "backgroundColor": "#ffffff",
           "borderRadius": 14,
           "padding": 16,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.1)",
           "shadowOffset": {
-            "height": 8,
-            "width": 0,
+            "height": 0,
+            "width": NaN,
           },
-          "shadowOpacity": 0.12,
-          "shadowRadius": 16,
+          "shadowOpacity": 1,
+          "shadowRadius": 0,
         }
       }
     >
@@ -66,12 +66,12 @@ exports[`ClayCard renders in clay 1`] = `
           "backgroundColor": "#ffffff",
           "borderRadius": 16,
           "padding": 18,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(58,42,32,0.12)",
           "shadowOffset": {
             "height": 8,
             "width": 0,
           },
-          "shadowOpacity": 0.12,
+          "shadowOpacity": 1,
           "shadowRadius": 16,
         }
       }
@@ -108,13 +108,13 @@ exports[`ClayCard renders in expyrico 1`] = `
           "backgroundColor": "rgba(255,255,255,0.06)",
           "borderRadius": 14,
           "padding": 18,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.35)",
           "shadowOffset": {
             "height": 8,
             "width": 0,
           },
-          "shadowOpacity": 0.12,
-          "shadowRadius": 16,
+          "shadowOpacity": 1,
+          "shadowRadius": 24,
         }
       }
     >
@@ -150,13 +150,13 @@ exports[`ClayCard renders in material 1`] = `
           "backgroundColor": "#ffffff",
           "borderRadius": 16,
           "padding": 16,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.1)",
           "shadowOffset": {
-            "height": 8,
-            "width": 0,
+            "height": 0,
+            "width": NaN,
           },
-          "shadowOpacity": 0.12,
-          "shadowRadius": 16,
+          "shadowOpacity": 1,
+          "shadowRadius": 0,
         }
       }
     >

@@ -6,12 +6,12 @@ export function ErrorText({ children, testID }: { children: React.ReactNode; tes
   const theme = useTheme();
   if (!children) return null;
   return (
-    <Text testID={testID} style={[styles.t, { color: theme.colors.danger }]}>
+    <Text testID={testID} style={[styles.t, { color: theme.colors.danger, fontSize: theme.typeRamp.bodyMedium.fontSize, fontWeight: theme.typeRamp.bodyMedium.fontWeight as any }]}>
       {children}
     </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  t: { fontSize: theme.typeRamp.bodyMedium.fontSize, fontWeight: theme.typeRamp.bodyMedium.fontWeight as any },
+  t: {},
 });

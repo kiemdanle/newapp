@@ -12,8 +12,8 @@ export default function Welcome() {
   return (
     <Screen scroll={false}>
       <View style={styles.hero}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Expyrico</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        <Text style={{ fontSize: theme.typeRamp.displaySmall.fontSize, fontWeight: theme.typeRamp.displaySmall.fontWeight as any, letterSpacing: -1, color: theme.colors.text }}>Expyrico</Text>
+        <Text style={{ fontSize: theme.typeRamp.bodyLarge.fontSize, color: theme.colors.textMuted }}>
           Track what you have. Never waste again.
         </Text>
       </View>
@@ -36,6 +36,4 @@ export default function Welcome() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', gap: 6, marginTop: 32, marginBottom: 24 },
-  title: { fontSize: 40, fontWeight: '800', letterSpacing: -1 },
-  subtitle: { fontSize: 16 },
 });

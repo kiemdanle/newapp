@@ -11,7 +11,7 @@ export function TextField({ label, error, ...rest }: TextFieldProps) {
   const theme = useTheme();
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.label, { color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize, fontWeight: theme.typeRamp.labelMedium.fontWeight as any }]}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
         placeholderTextColor={theme.colors.textMuted}
@@ -22,18 +22,19 @@ export function TextField({ label, error, ...rest }: TextFieldProps) {
             borderColor: error ? theme.colors.danger : theme.colors.border,
             color: theme.colors.text,
             borderRadius: theme.radii.md,
+            fontSize: theme.typeRamp.bodyLarge.fontSize,
           },
         ]}
         {...rest}
       />
-      {error ? <Text style={[styles.error, { color: theme.colors.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: theme.colors.danger, fontSize: theme.typeRamp.labelMedium.fontSize }]}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
-  label: { fontSize: theme.typeRamp.labelMedium.fontSize, fontWeight: theme.typeRamp.labelMedium.fontWeight as any },
-  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: theme.typeRamp.bodyLarge.fontSize },
-  error: { fontSize: theme.typeRamp.labelMedium.fontSize },
+  label: {},
+  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  error: {},
 });

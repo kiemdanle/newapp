@@ -1,10 +1,12 @@
 import { Pressable, Text, Platform } from 'react-native';
 import { useTheme } from '../theme/useTheme';
+import { parseShadow } from '../theme/shadow';
 
 type Props = { icon: string; onPress: () => void; accessibilityLabel: string };
 
 export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
   const t = useTheme();
+  const shadow = parseShadow(t.elevation.md3.level3);
   return (
     <Pressable
       onPress={onPress}
@@ -16,8 +18,8 @@ export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
         backgroundColor: t.colors.accent,
         alignItems: 'center', justifyContent: 'center',
         ...(Platform.OS === 'ios'
-          ? { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.30, shadowRadius: 5 }
-          : { elevation: 6 }),
+          ? { shadowColor: shadow.shadowColor, shadowOffset: shadow.shadowOffset, shadowOpacity: shadow.shadowOpacity, shadowRadius: shadow.shadowRadius }
+          : { elevation: shadow.elevation }),
       }}
     >
       <Text style={{ color: t.colors.textInverse, fontSize: 24 }}>{icon === 'qrcode-scan' ? '⊟' : '+'}</Text>

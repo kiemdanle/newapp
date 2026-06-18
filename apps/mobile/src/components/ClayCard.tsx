@@ -1,11 +1,13 @@
 import { View, Platform } from 'react-native';
 import { useTheme } from '../theme/useTheme';
+import { parseShadow } from '../theme/shadow';
 
 type Props = { children: React.ReactNode; padded?: boolean };
 
 export function ClayCard({ children, padded = true }: Props) {
   const t = useTheme();
   const ios = Platform.OS === 'ios';
+  const shadow = parseShadow(t.elevation.clay.base);
   return (
     <View
       style={{
@@ -13,12 +15,12 @@ export function ClayCard({ children, padded = true }: Props) {
         borderRadius: t.radii.md,
         padding: padded ? t.spacing.lg : 0,
         ...(ios ? {
-          shadowColor: '#3A2A20',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.12,
-          shadowRadius: 16,
+          shadowColor: shadow.shadowColor,
+          shadowOffset: shadow.shadowOffset,
+          shadowOpacity: shadow.shadowOpacity,
+          shadowRadius: shadow.shadowRadius,
         } : {
-          elevation: 6,
+          elevation: shadow.elevation,
         }),
       }}
     >

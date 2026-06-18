@@ -1,4 +1,3 @@
-import { describe, it, expect } from '@jest/globals';
 import { parseShadow } from './shadow';
 
 describe('parseShadow', () => {

@@ -59,13 +59,13 @@ exports[`ClayButton renders in bento 1`] = `
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.1)",
           "shadowOffset": {
-            "height": 6,
-            "width": 0,
+            "height": 0,
+            "width": NaN,
           },
-          "shadowOpacity": 0.14,
-          "shadowRadius": 12,
+          "shadowOpacity": 1,
+          "shadowRadius": 0,
           "transform": [
             {
               "translateY": 0,
@@ -149,13 +149,13 @@ exports[`ClayButton renders in clay 1`] = `
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(58,42,32,0.12)",
           "shadowOffset": {
-            "height": 6,
+            "height": 8,
             "width": 0,
           },
-          "shadowOpacity": 0.14,
-          "shadowRadius": 12,
+          "shadowOpacity": 1,
+          "shadowRadius": 16,
           "transform": [
             {
               "translateY": 0,
@@ -239,13 +239,13 @@ exports[`ClayButton renders in expyrico 1`] = `
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.35)",
           "shadowOffset": {
-            "height": 6,
+            "height": 8,
             "width": 0,
           },
-          "shadowOpacity": 0.14,
-          "shadowRadius": 12,
+          "shadowOpacity": 1,
+          "shadowRadius": 24,
           "transform": [
             {
               "translateY": 0,
@@ -329,13 +329,13 @@ exports[`ClayButton renders in material 1`] = `
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "#3A2A20",
+          "shadowColor": "rgba(0,0,0,0.1)",
           "shadowOffset": {
-            "height": 6,
-            "width": 0,
+            "height": 0,
+            "width": NaN,
           },
-          "shadowOpacity": 0.14,
-          "shadowRadius": 12,
+          "shadowOpacity": 1,
+          "shadowRadius": 0,
           "transform": [
             {
               "translateY": 0,
