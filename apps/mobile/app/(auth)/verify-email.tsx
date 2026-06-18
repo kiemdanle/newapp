@@ -38,7 +38,7 @@ export default function VerifyEmail() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>
+      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
         Verify your email
       </Text>
       <Text style={{ color: theme.colors.textMuted, lineHeight: 22 }}>

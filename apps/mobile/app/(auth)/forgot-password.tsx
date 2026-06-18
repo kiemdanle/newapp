@@ -39,7 +39,7 @@ export default function ForgotPassword() {
   if (done) {
     return (
       <Screen>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>
+        <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
           Check your inbox
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>
@@ -52,7 +52,7 @@ export default function ForgotPassword() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>
+      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
         Forgot password?
       </Text>
       <Text style={{ color: theme.colors.textMuted }}>

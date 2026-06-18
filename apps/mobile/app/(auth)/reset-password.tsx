@@ -41,7 +41,7 @@ export default function ResetPassword() {
   if (done) {
     return (
       <Screen>
-        <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>
+        <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
           Password reset
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>Sign in with your new password.</Text>
@@ -52,7 +52,7 @@ export default function ResetPassword() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>
+      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
         Choose a new password
       </Text>
       {!params.token ? (
