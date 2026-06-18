@@ -330,6 +330,7 @@ exports[`home in material snapshot 1`] = `
         <View />
       </RCTScrollView>
       <View
+        accessibilityLabel="Scan"
         accessibilityRole="button"
         accessibilityState={
           {
@@ -363,24 +364,27 @@ exports[`home in material snapshot 1`] = `
         style={
           {
             "alignItems": "center",
-            "backgroundColor": "#65558f",
-            "borderRadius": 999,
-            "bottom": 32,
+            "backgroundColor": "#7c4dff",
+            "borderRadius": 24,
             "height": 56,
             "justifyContent": "center",
-            "position": "absolute",
-            "right": 24,
+            "minHeight": 56,
+            "shadowColor": "rgba(0,0,0,0.30),",
+            "shadowOffset": {
+              "height": 1,
+              "width": 0,
+            },
+            "shadowOpacity": 0,
+            "shadowRadius": 3,
             "width": 56,
           }
         }
-        testID="home-fab-add"
       >
         <Text
           style={
             {
               "color": "#ffffff",
-              "fontSize": 28,
-              "lineHeight": 36,
+              "fontSize": 22,
             }
           }
         >

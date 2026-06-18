@@ -15,6 +15,13 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     resizeMode: 'contain',
     backgroundColor: '#0b0a17',
   },
+  runtimeVersion: { policy: 'appVersion' },
+  updates: {
+    url: 'https://u.expo.dev/REPLACE_WITH_PROJECT_ID',
+    enabled: true,
+    checkAutomatically: 'ON_LOAD',
+    fallbackToCacheTimeout: 0,
+  },
   ios: {
     bundleIdentifier: 'com.expyrico.app',
     supportsTablet: false,

@@ -1,6 +1,15 @@
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text, TextInput } from 'react-native';
+
+// Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
+// layout shatter at extreme accessibility text sizes while allowing the
+// full dynamic-type range up to 200%. Only badge / tight-overlay components
+// may opt out with an explicit allowFontScaling={false}.
+(Text as any).defaultProps = (Text as any).defaultProps || {};
+(Text as any).defaultProps.maxFontSizeMultiplier = 1.5;
+(TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
+(TextInput as any).defaultProps.maxFontSizeMultiplier = 1.5;
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider } from '@tanstack/react-query';

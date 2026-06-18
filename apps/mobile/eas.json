@@ -1,12 +1,44 @@
 {
-  "cli": { "version": ">= 7.0.0" },
+  "cli": {
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "ios": { "simulator": true }
+      "channel": "development",
+      "ios": { "simulator": true },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.expyrico.example"
+      }
     },
-    "preview": { "distribution": "internal" },
-    "production": {}
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": { "simulator": false },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.expyrico.example"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.expyrico.example"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "release@expyrico.example",
+        "ascAppId": "REPLACE_WITH_APPLE_APP_ID",
+        "appleTeamId": "REPLACE_WITH_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./secrets/play-service-account.json",
+        "track": "internal"
+      }
+    }
   }
 }

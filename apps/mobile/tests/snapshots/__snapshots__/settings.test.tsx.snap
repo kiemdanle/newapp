@@ -1157,7 +1157,7 @@ exports[`settings in material snapshot 1`] = `
             }
           >
             <View
-              accessibilityLabel="Theme"
+              accessibilityLabel="Theme. Pick one of four looks"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1189,46 +1189,48 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 24,
-                    "opacity": 1,
-                  },
-                ]
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#ffffff",
+                  "flexDirection": "row",
+                  "minHeight": 56,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                }
               }
-              testID="settings-row-theme"
             >
-              <Text
+              <View
                 style={
                   {
-                    "color": "#1d1b20",
-                    "fontSize": 16,
-                    "fontWeight": "500",
+                    "flex": 1,
                   }
                 }
               >
-                Theme
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#65558f",
-                    "fontSize": 12,
+                <Text
+                  style={
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 16,
+                      "lineHeight": 24,
+                    }
                   }
-                }
-              >
-                Pick one of four looks
-              </Text>
+                >
+                  Theme
+                </Text>
+                <Text
+                  style={
+                    {
+                      "color": "#65558f",
+                      "fontSize": 12,
+                    }
+                  }
+                >
+                  Pick one of four looks
+                </Text>
+              </View>
             </View>
             <View
-              accessibilityLabel="Notifications"
+              accessibilityLabel="Notifications. Expiry reminders and alerts"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1260,46 +1262,48 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 24,
-                    "opacity": 1,
-                  },
-                ]
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#ffffff",
+                  "flexDirection": "row",
+                  "minHeight": 56,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                }
               }
-              testID="settings-row-notifications"
             >
-              <Text
+              <View
                 style={
                   {
-                    "color": "#1d1b20",
-                    "fontSize": 16,
-                    "fontWeight": "500",
+                    "flex": 1,
                   }
                 }
               >
-                Notifications
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#65558f",
-                    "fontSize": 12,
+                <Text
+                  style={
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 16,
+                      "lineHeight": 24,
+                    }
                   }
-                }
-              >
-                Expiry reminders and alerts
-              </Text>
+                >
+                  Notifications
+                </Text>
+                <Text
+                  style={
+                    {
+                      "color": "#65558f",
+                      "fontSize": 12,
+                    }
+                  }
+                >
+                  Expiry reminders and alerts
+                </Text>
+              </View>
             </View>
             <View
-              accessibilityLabel="Account"
+              accessibilityLabel="Account. Email, password, and passkeys"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1331,46 +1335,48 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 24,
-                    "opacity": 1,
-                  },
-                ]
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#ffffff",
+                  "flexDirection": "row",
+                  "minHeight": 56,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                }
               }
-              testID="settings-row-account"
             >
-              <Text
+              <View
                 style={
                   {
-                    "color": "#1d1b20",
-                    "fontSize": 16,
-                    "fontWeight": "500",
+                    "flex": 1,
                   }
                 }
               >
-                Account
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#65558f",
-                    "fontSize": 12,
+                <Text
+                  style={
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 16,
+                      "lineHeight": 24,
+                    }
                   }
-                }
-              >
-                Email, password, and passkeys
-              </Text>
+                >
+                  Account
+                </Text>
+                <Text
+                  style={
+                    {
+                      "color": "#65558f",
+                      "fontSize": 12,
+                    }
+                  }
+                >
+                  Email, password, and passkeys
+                </Text>
+              </View>
             </View>
             <View
-              accessibilityLabel="Add a passkey"
+              accessibilityLabel="Add a passkey. Sign in with Face ID / Touch ID"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1402,43 +1408,45 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 24,
-                    "opacity": 1,
-                  },
-                ]
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "#ffffff",
+                  "flexDirection": "row",
+                  "minHeight": 56,
+                  "paddingHorizontal": 16,
+                  "paddingVertical": 8,
+                }
               }
-              testID="settings-row-add-passkey"
             >
-              <Text
+              <View
                 style={
                   {
-                    "color": "#1d1b20",
-                    "fontSize": 16,
-                    "fontWeight": "500",
+                    "flex": 1,
                   }
                 }
               >
-                Add a passkey
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#65558f",
-                    "fontSize": 12,
+                <Text
+                  style={
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 16,
+                      "lineHeight": 24,
+                    }
                   }
-                }
-              >
-                Sign in with Face ID / Touch ID
-              </Text>
+                >
+                  Add a passkey
+                </Text>
+                <Text
+                  style={
+                    {
+                      "color": "#65558f",
+                      "fontSize": 12,
+                    }
+                  }
+                >
+                  Sign in with Face ID / Touch ID
+                </Text>
+              </View>
             </View>
           </View>
         </View>

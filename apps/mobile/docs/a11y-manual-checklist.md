@@ -76,6 +76,16 @@ If only one platform is available, document which was tested in the release PR a
 - [ ] Layouts scroll when content overflows
 - [ ] Touch targets remain separated
 
+## Known capped elements
+
+The app applies a global `maxFontSizeMultiplier = 1.5` (200% system text size) to all `<Text>` and `<TextInput>` components via `_layout.tsx` defaultProps. This prevents layout shatter while allowing the full dynamic-type range up to 200%.
+
+Components that may opt out with an explicit `allowFontScaling={false}` (documented below with rationale):
+
+| Component / screen | Cap | Reason |
+|---|---|---|
+| (none currently) | — | — |
+
 ## Sign-off
 
 - Tester: _______
