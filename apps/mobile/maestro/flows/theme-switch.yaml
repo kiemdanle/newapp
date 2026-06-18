@@ -1,0 +1,41 @@
+appId: com.expyrico.app
+---
+- launchApp:
+    clearState: true
+- tapOn: "Sign in"
+- inputText: "appreview@pantry.example"
+- tapOn: "Email"
+- inputText: "<demo-password>"
+- tapOn: "Sign in, button"
+- assertVisible: "Your pantry"
+
+# Switch to Bento mid-session
+- tapOn: "Profile, tab"
+- tapOn: "Settings"
+- tapOn: "Theme"
+- tapOn: "Use Bento Grid theme"
+- assertVisible: "Bento Grid"
+- pressKey: Back
+- pressKey: Back
+- tapOn: "Home, tab"
+- assertVisible: "Your pantry"
+
+# Switch to Clay
+- tapOn: "Profile, tab"
+- tapOn: "Settings"
+- tapOn: "Theme"
+- tapOn: "Use Soft Clay theme"
+- pressKey: Back
+- pressKey: Back
+- tapOn: "Home, tab"
+- assertVisible: "Your pantry"
+
+# Switch to Material You
+- tapOn: "Profile, tab"
+- tapOn: "Settings"
+- tapOn: "Theme"
+- tapOn: "Use Material You theme"
+- pressKey: Back
+- pressKey: Back
+- tapOn: "Home, tab"
+- assertVisible: "Your pantry"
