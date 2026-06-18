@@ -46,3 +46,13 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 jest.mock('react-native-passkey', () => ({
   Passkey: { get: jest.fn(), create: jest.fn() },
 }));
+
+// WatermelonDB — native SQLite adapter, mock for Jest
+jest.mock('../src/db/index', () => ({
+  database: {},
+  RecordModel: class RecordModel {},
+  ProductCacheModel: class ProductCacheModel {},
+}));
+jest.mock('../src/db/triggers', () => ({
+  triggerSyncSoon: jest.fn(),
+}));

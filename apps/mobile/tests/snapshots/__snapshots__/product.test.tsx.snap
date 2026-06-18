@@ -1,0 +1,169 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`product detail in bento snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f4f4f5",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#f4f4f5",
+          "flex": 1,
+          "justifyContent": "center",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#71717a",
+          }
+        }
+      >
+        Loading product…
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`product detail in clay snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#fff7f0",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#fff7f0",
+          "flex": 1,
+          "justifyContent": "center",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#a47148",
+          }
+        }
+      >
+        Loading product…
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`product detail in expyrico snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#0b0a17",
+      "flex": 1,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#0b0a17",
+          "flex": 1,
+          "justifyContent": "center",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "rgba(250,250,250,0.7)",
+          }
+        }
+      >
+        Loading product…
+      </Text>
+    </View>
+  </View>
+</View>
+`;
+
+exports[`product detail in material snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f0e8ff",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "#f0e8ff",
+          "flex": 1,
+          "justifyContent": "center",
+        }
+      }
+    >
+      <Text
+        style={
+          {
+            "color": "#65558f",
+          }
+        }
+      >
+        Loading product…
+      </Text>
+    </View>
+  </View>
+</View>
+`;

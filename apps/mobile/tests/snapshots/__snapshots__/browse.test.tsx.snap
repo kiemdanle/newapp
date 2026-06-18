@@ -1,0 +1,317 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`browse in bento snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f4f4f5",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#f4f4f5",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#0a0a0a",
+                "fontSize": 24,
+                "fontWeight": "600",
+              }
+            }
+          >
+            Browse
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#71717a",
+              }
+            }
+          >
+            M1 will fill this in with the product catalog.
+          </Text>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`browse in clay snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#fff7f0",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#fff7f0",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#5b3a1f",
+                "fontSize": 26,
+                "fontWeight": "700",
+              }
+            }
+          >
+            Browse
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#a47148",
+              }
+            }
+          >
+            M1 will fill this in with the product catalog.
+          </Text>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`browse in expyrico snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#0b0a17",
+      "flex": 1,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#0b0a17",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#fafafa",
+                "fontSize": 28,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Browse
+          </Text>
+          <Text
+            style={
+              {
+                "color": "rgba(250,250,250,0.7)",
+              }
+            }
+          >
+            M1 will fill this in with the product catalog.
+          </Text>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`browse in material snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f0e8ff",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#f0e8ff",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#1d1b20",
+                "fontSize": 28,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Browse
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#65558f",
+              }
+            }
+          >
+            M1 will fill this in with the product catalog.
+          </Text>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
