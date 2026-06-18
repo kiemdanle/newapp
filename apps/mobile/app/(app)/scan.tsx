@@ -74,11 +74,11 @@ export default function ScanScreen() {
     );
   }
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <ScanCamera onScan={handleScan} />
       {lookup.isPending ? (
         <View style={{ position: 'absolute', top: 40, alignSelf: 'center' }}>
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color={theme.colors.text} />
         </View>
       ) : null}
     </View>

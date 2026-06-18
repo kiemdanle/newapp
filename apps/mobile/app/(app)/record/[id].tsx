@@ -46,14 +46,14 @@ export default function RecordDetail() {
         backgroundColor: theme.colors.bg,
       }}
     >
-      <Text style={{ color: theme.colors.text, fontSize: 22, fontWeight: '700' }}>
+      <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleLarge.fontSize, fontWeight: theme.typeRamp.titleLarge.fontWeight as any }}>
         {record.customName ?? 'Item'}
       </Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
         <View
           testID={`record-expiry-status-${status}`}
           accessibilityLabel={`expiry status ${status}`}
-          style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: statusColor }}
+          style={{ width: 10, height: 10, borderRadius: theme.radii.sm / 2, backgroundColor: statusColor }}
         />
         <Text style={{ color: statusColor }}>Expires {record.expiryDate}</Text>
       </View>
@@ -77,7 +77,7 @@ export default function RecordDetail() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: theme.colors.textInverse, fontWeight: '700' }}>
+          <Text style={{ color: theme.colors.textInverse, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>
             Mark as consumed
           </Text>
         </Pressable>
@@ -91,7 +91,7 @@ export default function RecordDetail() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: theme.colors.textInverse, fontWeight: '700' }}>Discard</Text>
+          <Text style={{ color: theme.colors.textInverse, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>Discard</Text>
         </Pressable>
         <Pressable
           testID="record-delete"
@@ -104,7 +104,7 @@ export default function RecordDetail() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>Delete</Text>
+          <Text style={{ color: theme.colors.danger, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>Delete</Text>
         </Pressable>
       </View>
     </ScrollView>
