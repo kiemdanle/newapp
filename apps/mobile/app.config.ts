@@ -1,6 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
-const config = {
+// newArchEnabled is a supported Expo field not yet reflected in the SDK 51 types.
+const config: ExpoConfig & { newArchEnabled?: boolean } = {
   name: 'Pantry',
   slug: 'pantry',
   scheme: 'pantry',
