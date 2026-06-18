@@ -67,7 +67,7 @@ export default function RecordDetail() {
       ) : null}
 
       <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-        <Pressable
+        <Pressable accessibilityRole="button"
           testID="record-mark-consumed"
           onPress={() => mark('consumed')}
           style={{
@@ -81,7 +81,7 @@ export default function RecordDetail() {
             Mark as consumed
           </Text>
         </Pressable>
-        <Pressable
+        <Pressable accessibilityRole="button"
           testID="record-mark-discarded"
           onPress={() => mark('discarded')}
           style={{
@@ -93,7 +93,7 @@ export default function RecordDetail() {
         >
           <Text style={{ color: theme.colors.textInverse, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>Discard</Text>
         </Pressable>
-        <Pressable
+        <Pressable accessibilityRole="button"
           testID="record-delete"
           onPress={remove}
           style={{

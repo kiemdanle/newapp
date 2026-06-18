@@ -55,7 +55,7 @@ export function Button(props: ButtonProps) {
 }
 
 const styles = StyleSheet.create({
-  base: { paddingVertical: 14, paddingHorizontal: 18 },
+  base: { paddingVertical: 14, paddingHorizontal: 18, minHeight: 48 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   label: {},
 });

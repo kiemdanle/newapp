@@ -13,7 +13,7 @@ export function RecordCard({ record, onPress }: Props) {
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   return (
-    <Pressable
+    <Pressable accessibilityRole="button"
       onPress={onPress}
       testID={`record-card-${record.id}`}
       style={{

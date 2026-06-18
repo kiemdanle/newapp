@@ -36,6 +36,7 @@ exports[`home in bento snapshot 1`] = `
         <View />
       </RCTScrollView>
       <View
+        accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,
@@ -133,6 +134,7 @@ exports[`home in clay snapshot 1`] = `
         <View />
       </RCTScrollView>
       <View
+        accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,
@@ -230,6 +232,7 @@ exports[`home in expyrico snapshot 1`] = `
         <View />
       </RCTScrollView>
       <View
+        accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,
@@ -327,6 +330,7 @@ exports[`home in material snapshot 1`] = `
         <View />
       </RCTScrollView>
       <View
+        accessibilityRole="button"
         accessibilityState={
           {
             "busy": undefined,

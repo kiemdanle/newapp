@@ -17,5 +17,5 @@
     "exactOptionalPropertyTypes": false,
     "experimentalDecorators": true
   },
-  "include": ["app/**/*", "src/**/*", "tests/**/*", "nativewind-env.d.ts"]
+  "include": ["app.config.ts", "app/**/*", "src/**/*", "tests/**/*", "nativewind-env.d.ts"]
 }

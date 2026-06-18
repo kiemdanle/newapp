@@ -178,6 +178,7 @@ exports[`welcome in bento snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -252,6 +253,7 @@ exports[`welcome in bento snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -477,6 +479,7 @@ exports[`welcome in clay snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -551,6 +554,7 @@ exports[`welcome in clay snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -776,6 +780,7 @@ exports[`welcome in expyrico snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -850,6 +855,7 @@ exports[`welcome in expyrico snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -1075,6 +1081,7 @@ exports[`welcome in material snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },
@@ -1149,6 +1156,7 @@ exports[`welcome in material snapshot 1`] = `
               style={
                 [
                   {
+                    "minHeight": 48,
                     "paddingHorizontal": 18,
                     "paddingVertical": 14,
                   },

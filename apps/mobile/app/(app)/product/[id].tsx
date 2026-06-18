@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable, Image, ScrollView } from 'react-native';
+import { View, Text, Image, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
@@ -45,7 +45,7 @@ export default function ProductDetail() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       {data.imageUrl ? (
-        <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 200 }} />
+        <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 200 }} accessibilityIgnoresInvertColors />
       ) : null}
       <View style={{ padding: theme.spacing.lg }}>
         <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleLarge.fontSize, fontWeight: theme.typeRamp.titleLarge.fontWeight as any }}>

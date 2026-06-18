@@ -1,7 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 
-const config: ExpoConfig = {
-  name: 'Expyrico',
+const config = {
+  name: 'Pantry',
   slug: 'pantry',
   scheme: 'pantry',
   version: '0.0.1',

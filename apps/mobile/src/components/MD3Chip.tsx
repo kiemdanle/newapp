@@ -12,7 +12,7 @@ export function MD3Chip({ label, selected, onPress }: Props) {
       accessibilityState={{ selected: !!selected }}
       accessibilityLabel={label}
       style={{
-        height: 32,
+        minHeight: 48,
         minWidth: 48,
         paddingHorizontal: t.spacing.md,
         borderRadius: t.radii.sm,

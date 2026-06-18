@@ -9,7 +9,7 @@ export default function HomeTab() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <RecordList />
-      <Pressable
+      <Pressable accessibilityRole="button"
         testID="home-fab-add"
         onPress={() => router.push('/scan')}
         style={{

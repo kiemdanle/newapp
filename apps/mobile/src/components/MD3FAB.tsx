@@ -13,7 +13,7 @@ export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       style={{
-        width: 56, height: 56,
+        width: 56, height: 56, minHeight: 56,
         borderRadius: t.radii.lg,
         backgroundColor: t.colors.accent,
         alignItems: 'center', justifyContent: 'center',
