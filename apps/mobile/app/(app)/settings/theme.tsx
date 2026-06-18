@@ -1,7 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { themeList, type Theme } from '@expyrico/theme';
-import { Screen } from '../../../src/components/Screen';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
 
@@ -10,9 +8,11 @@ export default function ThemeSettings() {
   const setTheme = useThemeStore((s) => s.setTheme);
 
   return (
-    <Screen>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: active.colors.text }}>Theme</Text>
-      <Text style={{ color: active.colors.textMuted, marginBottom: 8 }}>
+    <View style={styles.root}>
+      <Text style={{ fontSize: active.typeRamp.headlineMedium.fontSize, fontWeight: active.typeRamp.headlineMedium.fontWeight as any, color: active.colors.text }}>
+        Theme
+      </Text>
+      <Text style={{ color: active.colors.textMuted, marginBottom: active.spacing.md, fontSize: active.typeRamp.bodyMedium.fontSize }}>
         Tap a card to switch instantly.
       </Text>
       <View style={styles.grid}>
@@ -25,7 +25,7 @@ export default function ThemeSettings() {
           />
         ))}
       </View>
-    </Screen>
+    </View>
   );
 }
 
@@ -41,8 +41,9 @@ function ThemePreviewCard({
   return (
     <Pressable
       testID={`theme-card-${theme.id}`}
-      accessibilityRole="button"
-      accessibilityLabel={`Select ${theme.name} theme`}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`Use ${theme.name} theme`}
       onPress={onPress}
       style={[
         styles.card,
@@ -54,7 +55,7 @@ function ThemePreviewCard({
         },
       ]}
     >
-      <View style={[styles.swatchRow]}>
+      <View style={styles.swatchRow}>
         <View style={[styles.swatch, { backgroundColor: theme.colors.primary }]} />
         <View style={[styles.swatch, { backgroundColor: theme.colors.accent }]} />
         <View
@@ -68,8 +69,10 @@ function ThemePreviewCard({
           ]}
         />
       </View>
-      <Text style={{ color: theme.colors.text, fontWeight: '700' }}>{theme.name}</Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+      <Text style={{ color: theme.colors.text, fontWeight: theme.typeRamp.titleMedium.fontWeight as any, fontSize: theme.typeRamp.titleMedium.fontSize }}>
+        {theme.name}
+      </Text>
+      <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.bodySmall.fontSize }}>
         {theme.scheme === 'dark' ? 'Dark' : 'Light'}
       </Text>
     </Pressable>
@@ -77,6 +80,7 @@ function ThemePreviewCard({
 }
 
 const styles = StyleSheet.create({
+  root: { padding: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { width: '47%', padding: 14, gap: 8 },
   swatchRow: { flexDirection: 'row', gap: 6 },
