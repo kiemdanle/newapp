@@ -7,7 +7,7 @@ export default function Browse() {
   const theme = useTheme();
   return (
     <Screen>
-      <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Browse</Text>
+      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>Browse</Text>
       <Text style={{ color: theme.colors.textMuted }}>
         M1 will fill this in with the product catalog.
       </Text>

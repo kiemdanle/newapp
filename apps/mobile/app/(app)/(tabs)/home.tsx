@@ -24,7 +24,7 @@ export default function HomeTab() {
           justifyContent: 'center',
         }}
       >
-        <Text style={{ color: theme.colors.primaryFg, fontSize: 28, lineHeight: 28 }}>+</Text>
+        <Text style={{ color: theme.colors.primaryFg, fontSize: theme.typeRamp.headlineMedium.fontSize, lineHeight: theme.typeRamp.headlineMedium.lineHeight }}>+</Text>
       </Pressable>
     </View>
   );

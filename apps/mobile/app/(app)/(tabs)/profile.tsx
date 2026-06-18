@@ -25,9 +25,9 @@ export default function Profile() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Profile</Text>
+      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>Profile</Text>
       <Card>
-        <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
+        <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>
           {user?.firstName} {user?.lastName}
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
