@@ -3,6 +3,30 @@
  */
 export type ThemeId = 'expyrico' | 'bento' | 'clay' | 'material';
 
+export type ClayElevation = {
+  rim: string;      // CSS box-shadow string for inner rim light
+  base: string;     // primary drop shadow
+  ambient: string;  // soft ambient occlusion shadow
+};
+
+export type MD3Elevation = {
+  level0: string;
+  level1: string;
+  level2: string;
+  level3: string;
+  level4: string;
+  level5: string;
+};
+
+export type TypeRampEntry = { fontSize: number; lineHeight: number; fontWeight: string };
+export type TypeRamp = {
+  displayLarge: TypeRampEntry; displayMedium: TypeRampEntry; displaySmall: TypeRampEntry;
+  headlineLarge: TypeRampEntry; headlineMedium: TypeRampEntry; headlineSmall: TypeRampEntry;
+  titleLarge: TypeRampEntry; titleMedium: TypeRampEntry; titleSmall: TypeRampEntry;
+  bodyLarge: TypeRampEntry; bodyMedium: TypeRampEntry; bodySmall: TypeRampEntry;
+  labelLarge: TypeRampEntry; labelMedium: TypeRampEntry; labelSmall: TypeRampEntry;
+};
+
 export interface ColorTokens {
   bg: string;
   bgElevated: string;
@@ -71,7 +95,12 @@ export interface Theme {
   colors: ColorTokens;
   radii: RadiusTokens;
   shadows: ShadowTokens;
+  elevation: {
+    clay: ClayElevation;
+    md3: MD3Elevation;
+  };
   typography: TypographyTokens;
+  typeRamp: TypeRamp;
   spacing: SpacingTokens;
   animation: AnimationTokens;
 }
