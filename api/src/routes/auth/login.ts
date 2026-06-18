@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, loginSchema } from '@pantry/shared';
+import { ERROR_CODES, loginSchema } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { moderationSettingsSchema } from '@pantry/shared';
+import { moderationSettingsSchema } from '@expyrico/shared';
 import { getSetting, putSetting, SETTING_KEYS } from '../../../services/admin/settings.js';
 
 export async function adminSettingsModerationRoute(app: FastifyInstance) {

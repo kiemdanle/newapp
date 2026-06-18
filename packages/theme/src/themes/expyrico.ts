@@ -1,8 +1,8 @@
 import type { Theme } from '../tokens.js';
 
-export const aurora: Theme = {
-  id: 'aurora',
-  name: 'Aurora Glass',
+export const expyrico: Theme = {
+  id: 'expyrico',
+  name: 'Expyrico',
   scheme: 'dark',
   colors: {
     bg: '#0b0a17',

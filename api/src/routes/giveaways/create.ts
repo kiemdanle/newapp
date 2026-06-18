@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { giveawayCreateSchema, ERROR_CODES } from '@pantry/shared';
+import { giveawayCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiGiveaway } from '../../services/giveaways/repository.js';

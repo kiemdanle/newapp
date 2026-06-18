@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { recordListResponseSchema, recordStatusSchema } from '@pantry/shared';
+import { recordListResponseSchema, recordStatusSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiRecord } from '../../services/records/repository.js';
 

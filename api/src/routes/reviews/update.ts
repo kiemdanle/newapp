@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, reviewPatchSchema } from '@pantry/shared';
+import { ERROR_CODES, reviewPatchSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';

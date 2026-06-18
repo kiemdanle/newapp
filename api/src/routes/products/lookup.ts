@@ -3,7 +3,7 @@ import {
   productLookupRequestSchema,
   productLookupResponseSchema,
   ERROR_CODES,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { lookupProduct } from '../../services/products/lookup.js';
 import { toApiProduct } from '../../services/products/serializer.js';

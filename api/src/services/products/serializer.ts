@@ -1,5 +1,5 @@
 import type { Product } from '@prisma/client';
-import type { Product as ApiProduct } from '@pantry/shared';
+import type { Product as ApiProduct } from '@expyrico/shared';
 
 export function toApiProduct(p: Product): ApiProduct {
   return {

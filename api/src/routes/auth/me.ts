@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { findUserById, toApiUser } from '../../services/users/repository.js';
 

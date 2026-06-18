@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { adminReviewsQuerySchema, adminReviewsListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { adminReviewsQuerySchema, adminReviewsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminReviewsListRoute(app: FastifyInstance) {

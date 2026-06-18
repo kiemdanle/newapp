@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { countrySuggestionSchema } from '@pantry/shared';
+import { countrySuggestionSchema } from '@expyrico/shared';
 import { detectCountryFromIp } from '../../services/country/detect.js';
 
 export async function countrySuggestionRoute(app: FastifyInstance) {

@@ -5,7 +5,7 @@ import {
   reportSchema,
   reportStatusSchema,
   reportTargetTypeSchema,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 
 describe('reportTargetTypeSchema', () => {
   it('accepts review|user|product', () => {

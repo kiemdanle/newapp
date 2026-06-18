@@ -1,6 +1,6 @@
 // apps/admin/src/app/api/auth/totp/route.ts
 import { NextResponse } from 'next/server';
-import { adminTotpRequestSchema } from '@pantry/shared';
+import { adminTotpRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 import { finalizeSession } from '../login/route';
 

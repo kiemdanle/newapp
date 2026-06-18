@@ -1,5 +1,5 @@
 import { ZodError } from 'zod';
-import type { Problem, ErrorCode } from '@pantry/shared';
+import type { Problem, ErrorCode } from '@expyrico/shared';
 
 export class AppError extends Error {
   status: number;

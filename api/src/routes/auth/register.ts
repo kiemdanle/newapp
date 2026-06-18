@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { registerSchema, authResultSchema, ERROR_CODES } from '@pantry/shared';
+import { registerSchema, authResultSchema, ERROR_CODES } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';

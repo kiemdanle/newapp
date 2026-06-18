@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { getRedis } from '../redis.js';
 import { AppError } from '../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 
 declare module 'fastify' {
   interface FastifyContextConfig {

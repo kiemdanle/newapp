@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { referralSummarySchema } from '@pantry/shared';
+import { referralSummarySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { ensureReferralCode, shareUrlForCode } from '../../services/referrals/repository.js';
 

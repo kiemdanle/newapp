@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { pushTokenRegisterSchema, pushTokenSchema, ERROR_CODES } from '@pantry/shared';
+import { pushTokenRegisterSchema, pushTokenSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { upsertPushToken, revokePushToken } from '../../services/push/repository.js';
 

@@ -5,7 +5,7 @@ import {
   totpChallengeVerifySchema,
   totpRecoveryVerifySchema,
   ERROR_CODES,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';

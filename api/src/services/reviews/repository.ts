@@ -1,5 +1,5 @@
 import type { Review, User, Prisma, PrismaClient } from '@prisma/client';
-import type { Review as ApiReview } from '@pantry/shared';
+import type { Review as ApiReview } from '@expyrico/shared';
 import { wilsonLowerBound } from './wilson.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;

@@ -1,6 +1,6 @@
 // apps/admin/src/app/api/auth/totp/verify-enrollment/route.ts
 import { NextResponse } from 'next/server';
-import { adminTotpVerifyEnrollmentRequestSchema } from '@pantry/shared';
+import { adminTotpVerifyEnrollmentRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 
 export async function POST(req: Request) {

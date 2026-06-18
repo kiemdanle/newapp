@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { householdListResponseSchema } from '@pantry/shared';
+import { householdListResponseSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiHousehold } from '../../services/households/repository.js';
 

@@ -57,6 +57,19 @@ Field names used throughout: wire `tasteRating` / `valueRating`; product `tasteA
 
 ---
 
+## Completion status — 2026-06-14
+
+M3 is implemented and verified end-to-end. Verification gates: admin API integration tests 36/36 pass; system/analytics/settings 11/11; admin unit tests 17/17; `@expyrico/shared`, `@expyrico/api`, `@expyrico/admin` typecheck clean; Phase K Playwright suite 6/6 pass (3 login + moderate-report + merge-product + suspend-user).
+
+Two implementation decisions differ from the literal task text and were confirmed with the product owner:
+
+1. **Task I7 — dedicated merge page (built as specified).** `/products/[id]/merge` exists as a Server Component (`page.tsx`) plus a client island (`merge-tool.tsx`) with candidate search + checkbox selection. It is built in the codebase's standardized idiom — Server Components + server actions over `serverAdminApi` — not the original draft's `browserAdminApi`/TanStack Query client, which the project never adopted. The product detail page links to this tool (the earlier inline comma-separated-ids textarea was removed).
+2. **Phase K — hermetic mock harness (not a live API).** The three E2E specs (`moderate-report`, `merge-product`, `suspend-user`) run against the in-process mock API M0d shipped (`tests/e2e/mock-api.ts` + `mock-store.ts` + `mock-admin-handlers.ts`) on port 4099, reset per-spec via `POST /v1/dev/reset`, with a shared `loginAsAdmin`/`resetStore` helper (`admin-helpers.ts`). The plan's original draft assumed a live API on :4000 with `/v1/dev/seed-*` routes and a seeded Postgres; that harness was never built, so the specs were written for the mock instead. Specs live under `apps/admin/tests/e2e/` (not the draft's `apps/admin/e2e/`). Selectors match the real shipped DOM (native `window.confirm`, button labels "Hide content"/"Suspend", etc.).
+
+Note for CI: Playwright needs the Chromium system libraries (`libatk-1.0` et al.) installed in the runner image.
+
+---
+
 ## Validation amendments — 2026-05-26
 
 These corrections were applied after a validation pass. They are folded into the relevant tasks below; this list is a plain-language summary.

@@ -55,9 +55,9 @@ jobs:
       - name: Seed test env
         run: cp api/.env.test.example api/.env.test
       - name: Generate prisma client
-        run: pnpm --filter @pantry/api exec prisma generate
+        run: pnpm --filter @expyrico/api exec prisma generate
       - name: Apply migrations
-        run: pnpm --filter @pantry/api exec prisma migrate deploy
+        run: pnpm --filter @expyrico/api exec prisma migrate deploy
       - name: Typecheck
         run: pnpm -r typecheck
       - name: Unit + integration tests
@@ -81,7 +81,7 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
       - name: Generate prisma client
-        run: pnpm --filter @pantry/api exec prisma generate
+        run: pnpm --filter @expyrico/api exec prisma generate
       - name: Build
         run: pnpm -r build
       - name: Package release tarball

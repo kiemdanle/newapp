@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { adminUsersQuerySchema, adminUsersListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { adminUsersQuerySchema, adminUsersListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000001';

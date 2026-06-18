@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { meUsageResponseSchema, ITEM_LIMIT } from '@pantry/shared';
+import { meUsageResponseSchema, ITEM_LIMIT } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 export async function usageRoute(app: FastifyInstance) {

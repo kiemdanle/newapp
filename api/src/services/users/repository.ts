@@ -1,5 +1,5 @@
 import type { User } from '@prisma/client';
-import type { User as ApiUser } from '@pantry/shared';
+import type { User as ApiUser } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 export function toApiUser(u: User): ApiUser {

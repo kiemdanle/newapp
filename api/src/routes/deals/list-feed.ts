@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { dealListQuerySchema } from '@pantry/shared';
+import { dealListQuerySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiDeal } from '../../services/deals/repository.js';
 

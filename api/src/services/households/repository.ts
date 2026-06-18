@@ -1,5 +1,5 @@
 import type { Household, HouseholdMember, User } from '@prisma/client';
-import type { Household as ApiHousehold, HouseholdMember as ApiMember } from '@pantry/shared';
+import type { Household as ApiHousehold, HouseholdMember as ApiMember } from '@expyrico/shared';
 
 export function toApiHousehold(
   h: Household,

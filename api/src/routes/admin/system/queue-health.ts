@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { queueHealthSchema } from '@pantry/shared';
+import { queueHealthSchema } from '@expyrico/shared';
 import { getAllQueues } from '../../../queues/index.js';
 
 export async function adminSystemQueueHealthRoute(app: FastifyInstance) {

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { writeAuditLog } from '../services/audit/log.js';
-import type { AuditDiff } from '@pantry/shared';
+import type { AuditDiff } from '@expyrico/shared';
 
 export type AuditTarget = { type: string; id: string };
 

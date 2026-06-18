@@ -1,5 +1,5 @@
 import type { Record as PrismaRecord } from '@prisma/client';
-import type { RecordSyncBatch } from '@pantry/shared';
+import type { RecordSyncBatch } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 import { maybeActivateReferral } from '../referrals/referral-service.js';

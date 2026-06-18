@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminRowSchema, adminInviteSchema, ERROR_CODES } from '@pantry/shared';
+import { adminRowSchema, adminInviteSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
 import { hashPassword } from '../../../services/auth/passwords.js';

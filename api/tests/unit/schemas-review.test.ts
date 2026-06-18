@@ -6,7 +6,7 @@ import {
   reviewSchema,
   reviewSortSchema,
   reviewStatusSchema,
-} from '@pantry/shared';
+} from '@expyrico/shared';
 
 describe('reviewStatusSchema', () => {
   it('accepts the three valid statuses', () => {

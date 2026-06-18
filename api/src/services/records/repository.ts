@@ -1,5 +1,5 @@
 import type { Record as PrismaRecord } from '@prisma/client';
-import type { Record as ApiRecord } from '@pantry/shared';
+import type { Record as ApiRecord } from '@expyrico/shared';
 
 export function toApiRecord(r: PrismaRecord): ApiRecord {
   return {

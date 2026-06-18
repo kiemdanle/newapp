@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { apiErrorsQuerySchema, apiErrorsAggSchema } from '@pantry/shared';
+import { apiErrorsQuerySchema, apiErrorsAggSchema } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 function sinceFor(range: '24h' | '7d' | '30d'): Date {

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { updateProfileSchema } from '@pantry/shared';
+import { updateProfileSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiUser } from '../../services/users/repository.js';
 

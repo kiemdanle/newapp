@@ -1,7 +1,7 @@
-import type { HouseholdRole } from '@pantry/shared';
+import type { HouseholdRole } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 
 export function roleAllowsManage(role: HouseholdRole): boolean {
   return role === 'owner';

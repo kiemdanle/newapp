@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { hashToken } from '../../utils/random.js';

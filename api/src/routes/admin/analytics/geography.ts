@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { analyticsGeographySchema } from '@pantry/shared';
+import { analyticsGeographySchema } from '@expyrico/shared';
 import { geography } from '../../../services/admin/analytics.js';
 
 export async function adminAnalyticsGeographyRoute(app: FastifyInstance) {

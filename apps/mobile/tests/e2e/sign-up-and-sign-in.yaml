@@ -1,0 +1,42 @@
+# Maestro flow: sign up → land on verify-email → resend → return to sign in → sign in → land on home.
+# Requires the API to be running locally and the dev client to be installed.
+appId: com.expyrico.app
+---
+- launchApp
+- assertVisible: 'Expyrico'
+- tapOn:
+    id: 'welcome-sign-up'
+- assertVisible: 'Create your account'
+- tapOn:
+    text: 'Email'
+- inputText: 'maestro+${RANDOM}@expyrico.test'
+- tapOn:
+    text: 'Password'
+- inputText: 'correct-horse-battery-staple'
+- tapOn:
+    text: 'First name'
+- inputText: 'Maestro'
+- tapOn:
+    text: 'Last name'
+- inputText: 'Tester'
+- tapOn:
+    id: 'sign-up-submit'
+- assertVisible: 'Verify your email'
+- tapOn:
+    id: 'verify-resend'
+- assertVisible:
+    text: 'Verification email sent'
+- tapOn:
+    text: 'Back to sign in'
+- assertVisible: 'Welcome back'
+- tapOn:
+    text: 'Email'
+- inputText: '${OUTPUT.email}'
+- tapOn:
+    text: 'Password'
+- inputText: 'correct-horse-battery-staple'
+- tapOn:
+    id: 'sign-in-submit'
+# Happy path lands on Home (or Verify if API still requires verification — both are acceptable here).
+- assertVisible:
+    text: 'Hello'

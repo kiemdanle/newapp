@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, ITEM_LIMIT } from '@pantry/shared';
+import { ERROR_CODES, ITEM_LIMIT } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';

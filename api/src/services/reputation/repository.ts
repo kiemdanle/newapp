@@ -1,5 +1,5 @@
 import type { User } from '@prisma/client';
-import type { Reputation } from '@pantry/shared';
+import type { Reputation } from '@expyrico/shared';
 
 export function toApiReputation(user: User): Reputation {
   return {

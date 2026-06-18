@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { householdSchema, ERROR_CODES } from '@pantry/shared';
+import { householdSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { assertMember } from '../../services/households/permissions.js';

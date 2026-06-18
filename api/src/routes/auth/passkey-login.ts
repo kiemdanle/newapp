@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from '@pantry/shared';
+import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';

@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
-import { claimCreateSchema, ERROR_CODES } from '@pantry/shared';
+import { claimCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiClaim } from '../../services/giveaways/repository.js';

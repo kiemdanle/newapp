@@ -143,7 +143,7 @@ those are wired.
 `deploy-remote.sh` does, in order:
 
 1. `pnpm install --frozen-lockfile` (full deps — Prisma CLI is a devDependency)
-2. `pnpm --filter @pantry/api exec prisma migrate deploy`
+2. `pnpm --filter @expyrico/api exec prisma migrate deploy`
 3. `pnpm prune --prod` ← only AFTER migrate
 4. `ln -sfn /opt/pantry/releases/<sha> /opt/pantry/current` (atomic flip)
 5. `sudo systemctl restart pantry-api.service pantry-admin.service` (NOT

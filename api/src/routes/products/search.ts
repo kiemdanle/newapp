@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { productSearchResultSchema } from '@pantry/shared';
+import { productSearchResultSchema } from '@expyrico/shared';
 import { searchProducts } from '../../services/products/search.js';
 import { toApiProduct } from '../../services/products/serializer.js';
 

@@ -1,6 +1,6 @@
 // apps/admin/src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
-import { adminLoginRequestSchema } from '@pantry/shared';
+import { adminLoginRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
 import { generateCsrfToken } from '@/lib/csrf';

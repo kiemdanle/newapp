@@ -1,6 +1,6 @@
 // apps/admin/src/app/api/auth/totp/enroll/route.ts
 import { NextResponse } from 'next/server';
-import { adminTotpEnrollRequestSchema } from '@pantry/shared';
+import { adminTotpEnrollRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 
 export async function POST(req: Request) {

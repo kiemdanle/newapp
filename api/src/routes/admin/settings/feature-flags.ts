@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { featureFlagsSchema } from '@pantry/shared';
+import { featureFlagsSchema } from '@expyrico/shared';
 import { getSetting, putSetting, SETTING_KEYS } from '../../../services/admin/settings.js';
 
 export async function adminSettingsFeatureFlagsRoute(app: FastifyInstance) {

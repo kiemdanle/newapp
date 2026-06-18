@@ -1,5 +1,5 @@
 import type { Report } from '@prisma/client';
-import type { Report as ApiReport, ReportTargetType } from '@pantry/shared';
+import type { Report as ApiReport, ReportTargetType } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 /**

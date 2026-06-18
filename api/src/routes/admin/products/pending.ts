@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { cursorQuerySchema, adminProductEditsListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { cursorQuerySchema, adminProductEditsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminProductsPendingListRoute(app: FastifyInstance) {

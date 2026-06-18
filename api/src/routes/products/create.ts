@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
-import { productCreateRequestSchema, ERROR_CODES } from '@pantry/shared';
+import { productCreateRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiProduct } from '../../services/products/serializer.js';

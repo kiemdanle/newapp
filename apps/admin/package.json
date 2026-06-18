@@ -1,5 +1,5 @@
 {
-  "name": "@pantry/admin",
+  "name": "@expyrico/admin",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -13,7 +13,7 @@
     "clean": "rm -rf .next .turbo node_modules/.cache"
   },
   "dependencies": {
-    "@pantry/shared": "workspace:*",
+    "@expyrico/shared": "workspace:*",
     "@radix-ui/react-label": "^2.1.1",
     "@radix-ui/react-slot": "^1.1.1",
     "@tanstack/react-query": "^5.51.0",

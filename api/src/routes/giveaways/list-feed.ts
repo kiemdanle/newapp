@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { giveawayListQuerySchema } from '@pantry/shared';
+import { giveawayListQuerySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiGiveaway } from '../../services/giveaways/repository.js';
 

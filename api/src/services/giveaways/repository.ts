@@ -1,5 +1,5 @@
 import type { Giveaway, GiveawayClaim, Product, User, Prisma } from '@prisma/client';
-import type { Giveaway as ApiGiveaway, Claim as ApiClaim } from '@pantry/shared';
+import type { Giveaway as ApiGiveaway, Claim as ApiClaim } from '@expyrico/shared';
 
 type GiveawayWithRelations = Giveaway & {
   giver?: Pick<User, 'id' | 'firstName' | 'avatarUrl' | 'giverRatingAvg' | 'transactionCount'> | null;

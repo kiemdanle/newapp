@@ -2,11 +2,11 @@
  * Seed (or upsert) the first admin account.
  *
  * Usage:
- *   pnpm --filter @pantry/api seed:admin -- --email=you@example.com --password='Str0ng-pass!' [--first=Dan --last=Owner]
+ *   pnpm --filter @expyrico/api seed:admin -- --email=you@example.com --password='Str0ng-pass!' [--first=Dan --last=Owner]
  *
  * Env fallback (handy for one-shot ops without flags):
  *   ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='Str0ng-pass!' \
- *   pnpm --filter @pantry/api seed:admin
+ *   pnpm --filter @expyrico/api seed:admin
  *
  * Behavior:
  *  - Creates the user with role=admin, status=active, emailVerifiedAt=now (login

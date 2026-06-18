@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, refreshSchema } from '@pantry/shared';
+import { ERROR_CODES, refreshSchema } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { findActiveSessionByToken, rotateSession } from '../../services/auth/sessions.js';

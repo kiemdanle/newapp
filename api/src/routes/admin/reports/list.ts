@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { adminReportsQuerySchema, adminReportsListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { adminReportsQuerySchema, adminReportsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 async function buildPreview(targetType: string, targetId: string): Promise<Record<string, unknown> | null> {

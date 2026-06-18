@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { reviewVoteSchema, voteSchema } from '@pantry/shared';
+import { reviewVoteSchema, voteSchema } from '@expyrico/shared';
 
 describe('reviewVoteSchema (a.k.a. voteSchema)', () => {
   it('exports the same schema under both names', () => {

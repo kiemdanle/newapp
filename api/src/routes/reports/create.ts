@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { reportCreateSchema, ERROR_CODES } from '@pantry/shared';
+import { reportCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReport, maybeAutoHide } from '../../services/reports/repository.js';

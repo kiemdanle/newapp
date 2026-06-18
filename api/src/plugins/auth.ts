@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { AppError } from '../errors.js';
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { verifyAccessToken } from '../services/auth/tokens.js';
 import { findUserById } from '../services/users/repository.js';
 

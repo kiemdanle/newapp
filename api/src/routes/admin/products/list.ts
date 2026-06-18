@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { adminProductsQuerySchema, adminProductsListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { adminProductsQuerySchema, adminProductsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 function toRow(p: { id: string; barcode: string | null; qrPayload: string | null; name: string; brand: string | null; category: string | null; imageUrl: string | null; source: string; status: string; isCommunityEligible: boolean; buyAgainCount: number; buyAgainOnSaleCount: number; wontBuyCount: number; ratingCount: number; reviewCount: number; createdAt: Date; updatedAt: Date }) {

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { forgotPasswordSchema } from '@pantry/shared';
+import { forgotPasswordSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 import { sendPasswordResetEmail } from '../../services/auth/email.js';

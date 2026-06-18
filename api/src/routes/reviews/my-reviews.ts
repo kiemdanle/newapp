@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { reviewListQuerySchema } from '@pantry/shared';
+import { reviewListQuerySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiReview } from '../../services/reviews/repository.js';
 

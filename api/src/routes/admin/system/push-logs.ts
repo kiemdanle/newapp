@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { pushLogsQuerySchema, pushLogsListSchema, encodeCursor, decodeCursor } from '@pantry/shared';
+import { pushLogsQuerySchema, pushLogsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 
 export async function adminSystemPushLogsRoute(app: FastifyInstance) {

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { householdCreateSchema, householdSchema, ERROR_CODES } from '@pantry/shared';
+import { householdCreateSchema, householdSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiHousehold } from '../../services/households/repository.js';
 

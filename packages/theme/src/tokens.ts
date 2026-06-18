@@ -1,7 +1,7 @@
 /**
  * Theme token shape. Every theme must implement this exact contract.
  */
-export type ThemeId = 'aurora' | 'bento' | 'clay' | 'material';
+export type ThemeId = 'expyrico' | 'bento' | 'clay' | 'material';
 
 export interface ColorTokens {
   bg: string;

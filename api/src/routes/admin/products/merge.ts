@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { adminProductMergeSchema, adminProductMergeResponseSchema, ERROR_CODES } from '@pantry/shared';
+import { adminProductMergeSchema, adminProductMergeResponseSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../../errors.js';
 import { mergeProducts } from '../../../services/admin/merge.js';
 

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, dealVoteSchema } from '@pantry/shared';
+import { ERROR_CODES, dealVoteSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { recomputeDealScore } from '../../services/deals/repository.js';

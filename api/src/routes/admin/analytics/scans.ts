@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { analyticsRangeSchema, analyticsScansSchema } from '@pantry/shared';
+import { analyticsRangeSchema, analyticsScansSchema } from '@expyrico/shared';
 import { scansDaily } from '../../../services/admin/analytics.js';
 
 export async function adminAnalyticsScansRoute(app: FastifyInstance) {

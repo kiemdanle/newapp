@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *'  # 06:00 UTC nightly — used by Maestro job once enabled (M4)
+
+jobs:
+  mobile:
+    name: Mobile (typecheck + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck mobile
+        run: pnpm --filter @expyrico/mobile typecheck
+      - name: Run mobile tests
+        run: pnpm --filter @expyrico/mobile test
+
+  # TODO(M4): wire Maestro E2E on nightly schedule. EAS-managed Maestro setup
+  # (build dev client, install on emulator, run flow) is non-trivial. A minimal
+  # scripted invocation will live here once EAS credentials are provisioned.
+  # mobile-e2e:
+  #   name: Mobile E2E (Maestro)
+  #   if: github.event_name == 'schedule'
+  #   runs-on: macos-14
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: curl -Ls "https://get.maestro.mobile.dev" | bash
+  #     - run: maestro test apps/mobile/tests/e2e

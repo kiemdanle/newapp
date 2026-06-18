@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { adminReferralOverviewSchema } from '@pantry/shared';
+import { adminReferralOverviewSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 
 const ABUSE_MIN_SAME_IP = 3;

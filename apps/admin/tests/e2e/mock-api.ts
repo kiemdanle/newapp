@@ -3,12 +3,15 @@
 // to. Started by Playwright's webServer block on port 4099. Avoids requiring a
 // live API + Postgres + Redis for E2E.
 //
-// Implements only the endpoints exercised by login.spec.ts:
-//   POST /v1/auth/login                     → password+TOTP enrolled, fresh-admin, or wrong-password branch
+// Auth endpoints (login.spec.ts):
+//   POST /v1/auth/login                     → password+TOTP enrolled, fresh-admin, store-backed user, or wrong-password branch
 //   POST /v1/auth/totp/challenge-verify     → returns {user, tokens} on success
 //   POST /v1/auth/totp/enroll               → returns {secret, qrCodeDataUrl, recoveryCodes}
 //   POST /v1/auth/totp/verify-enrollment    → 204 on correct code
 //   GET  /v1/auth/me                        → returns admin user when bearer matches mock token
+//
+// Admin + dev endpoints (moderate-report / merge-product / suspend-user specs)
+// are handled in mock-admin-handlers.ts against the in-memory mock-store.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { authenticator } from 'otplib';
@@ -21,6 +24,8 @@ import {
   E2E_ADMIN_ENROLLED,
   E2E_ADMIN_FRESH,
 } from './mock-api-constants';
+import { store, VICTIM_PASSWORD } from './mock-store';
+import { handleAdmin } from './mock-admin-handlers';
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 4099);
 
@@ -66,6 +71,24 @@ const server = createServer(async (req, res) => {
     if (body.email === E2E_ADMIN_FRESH.email && body.password === E2E_ADMIN_FRESH.password) {
       return send(res, {
         body: { requiresTotpEnrollment: true, enrollmentChallenge: ENROLLMENT_CHALLENGE },
+      });
+    }
+    // Store-backed regular user (the K3 "victim"): a suspended account is
+    // rejected at login, which is exactly what the suspend-user spec asserts.
+    const victim = store.users.find((u) => u.email === body.email);
+    if (victim && body.password === VICTIM_PASSWORD) {
+      if (victim.status !== 'active') {
+        return send(res, {
+          status: 401,
+          body: { code: 'account_suspended', detail: 'Account is not active' },
+        });
+      }
+      return send(res, {
+        status: 200,
+        body: {
+          user: { id: victim.id, role: victim.role },
+          tokens: { accessToken: 'victim-access', refreshToken: 'victim-refresh', expiresIn: 900 },
+        },
       });
     }
     return send(res, {
@@ -142,6 +165,10 @@ const server = createServer(async (req, res) => {
     }
     return send(res, { status: 401, body: { code: 'unauthorized' } });
   }
+
+  // --- Admin surface (exercised by moderate-report / merge-product / suspend-user specs) ---
+  const adminResp = await handleAdmin(method, url, req);
+  if (adminResp) return send(res, adminResp);
 
   return send(res, { status: 404, body: { code: 'not_found', path: url } });
 });

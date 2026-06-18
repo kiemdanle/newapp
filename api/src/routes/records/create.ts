@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
-import { recordCreateSchema, ERROR_CODES, ITEM_LIMIT } from '@pantry/shared';
+import { recordCreateSchema, ERROR_CODES, ITEM_LIMIT } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';

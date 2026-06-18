@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { ERROR_CODES, dealCreateSchema, DEAL_PHOTO_CDN_HOST } from '@pantry/shared';
+import { ERROR_CODES, dealCreateSchema, DEAL_PHOTO_CDN_HOST } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiDeal } from '../../services/deals/repository.js';

@@ -1,5 +1,5 @@
 import type { Deal, Product, User, Prisma, PrismaClient } from '@prisma/client';
-import type { Deal as ApiDeal } from '@pantry/shared';
+import type { Deal as ApiDeal } from '@expyrico/shared';
 import { wilsonLowerBound } from '../reviews/wilson.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;

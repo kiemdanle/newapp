@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { externalApiStateSchema } from '@pantry/shared';
+import { externalApiStateSchema } from '@expyrico/shared';
 import { snapshotBreakers } from '../../../services/admin/breakers.js';
 
 export async function adminSystemExternalApisRoute(app: FastifyInstance) {

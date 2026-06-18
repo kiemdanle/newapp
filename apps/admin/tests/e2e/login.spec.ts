@@ -15,7 +15,7 @@ test('admin can sign in with password + TOTP and lands on /', async ({ page }) =
   await page.getByRole('button', { name: 'Verify' }).click();
 
   await page.waitForURL('http://localhost:4001/', { timeout: 10_000 });
-  await expect(page.getByText(/implemented in M3/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 });
 
 test('fresh admin without TOTP sees enrollment step with QR + recovery codes', async ({

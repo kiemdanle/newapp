@@ -1,5 +1,5 @@
 {
-  "name": "@pantry/api",
+  "name": "@expyrico/api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -29,7 +29,7 @@
     "@fastify/cors": "^9.0.0",
     "@fastify/helmet": "^11.1.0",
     "@fastify/rate-limit": "^9.1.0",
-    "@pantry/shared": "workspace:*",
+    "@expyrico/shared": "workspace:*",
     "@prisma/client": "^5.18.0",
     "@simplewebauthn/server": "^10.0.0",
     "argon2": "^0.40.0",

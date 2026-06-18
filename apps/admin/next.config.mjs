@@ -6,9 +6,9 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
-  transpilePackages: ['@pantry/shared'],
+  transpilePackages: ['@expyrico/shared'],
   webpack(config) {
-    // Allow Node ESM-style .js specifiers in TS sources of @pantry/shared
+    // Allow Node ESM-style .js specifiers in TS sources of @expyrico/shared
     // to resolve to .ts during webpack module resolution.
     config.resolve = config.resolve ?? {};
     config.resolve.extensionAlias = {

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { refreshSchema } from '@pantry/shared';
+import { refreshSchema } from '@expyrico/shared';
 import { findActiveSessionByToken, revokeSession } from '../../services/auth/sessions.js';
 
 export async function logoutRoute(app: FastifyInstance) {

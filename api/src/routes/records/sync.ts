@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { recordSyncBatchSchema, recordSyncResponseSchema } from '@pantry/shared';
+import { recordSyncBatchSchema, recordSyncResponseSchema } from '@expyrico/shared';
 import { syncRecords } from '../../services/records/sync.js';
 import { toApiRecord } from '../../services/records/repository.js';
 

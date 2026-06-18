@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { resendVerificationSchema } from '@pantry/shared';
+import { resendVerificationSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 import { sendVerificationEmail } from '../../services/auth/email.js';

@@ -1,4 +1,4 @@
-import { ERROR_CODES } from '@pantry/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 
 type Status = 'open' | 'claimed' | 'handed_off' | 'completed' | 'cancelled';
