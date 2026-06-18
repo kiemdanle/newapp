@@ -63,7 +63,7 @@ export default function NewProductScreen() {
         backgroundColor: theme.colors.bg,
       }}
     >
-      <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '700' }}>New product</Text>
+      <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>New product</Text>
       {params.barcode ? (
         <Text style={{ color: theme.colors.textMuted }}>Barcode: {params.barcode}</Text>
       ) : null}
@@ -84,7 +84,7 @@ export default function NewProductScreen() {
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: theme.colors.primaryFg, fontWeight: '700' }}>
+        <Text style={{ color: theme.colors.primaryFg, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>
           {createProduct.isPending ? 'Creating…' : 'Continue'}
         </Text>
       </Pressable>

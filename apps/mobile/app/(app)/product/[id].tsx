@@ -48,7 +48,7 @@ export default function ProductDetail() {
         <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 200 }} />
       ) : null}
       <View style={{ padding: theme.spacing.lg }}>
-        <Text style={{ color: theme.colors.text, fontSize: 22, fontWeight: '700' }}>
+        <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleLarge.fontSize, fontWeight: theme.typeRamp.titleLarge.fontWeight as any }}>
           {data.name}
         </Text>
         {data.brand ? <Text style={{ color: theme.colors.textMuted }}>{data.brand}</Text> : null}

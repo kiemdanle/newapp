@@ -28,7 +28,7 @@ export default function AddPasskey() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>
+      <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
         Add a passkey
       </Text>
       <Text style={{ color: theme.colors.textMuted, lineHeight: 22 }}>

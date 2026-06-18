@@ -43,7 +43,7 @@ export default function SettingsIndex() {
   const theme = useTheme();
   return (
     <Screen>
-      <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>Settings</Text>
+      <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>Settings</Text>
       <View style={{ gap: 10 }}>
         {ROWS.map((row) => (
           <Pressable
@@ -62,10 +62,10 @@ export default function SettingsIndex() {
               },
             ]}
           >
-            <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '600' }}>
+            <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>
               {row.label}
             </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{row.subtitle}</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize }}>{row.subtitle}</Text>
           </Pressable>
         ))}
       </View>
