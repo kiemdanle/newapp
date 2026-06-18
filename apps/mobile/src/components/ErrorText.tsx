@@ -13,5 +13,5 @@ export function ErrorText({ children, testID }: { children: React.ReactNode; tes
 }
 
 const styles = StyleSheet.create({
-  t: { fontSize: 14, fontWeight: '500' },
+  t: { fontSize: theme.typeRamp.bodyMedium.fontSize, fontWeight: theme.typeRamp.bodyMedium.fontWeight as any },
 });

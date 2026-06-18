@@ -33,7 +33,7 @@ export function TextField({ label, error, ...rest }: TextFieldProps) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 6 },
-  label: { fontSize: 13, fontWeight: '500' },
-  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  error: { fontSize: 13 },
+  label: { fontSize: theme.typeRamp.labelMedium.fontSize, fontWeight: theme.typeRamp.labelMedium.fontWeight as any },
+  input: { borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12, fontSize: theme.typeRamp.bodyLarge.fontSize },
+  error: { fontSize: theme.typeRamp.labelMedium.fontSize },
 });
