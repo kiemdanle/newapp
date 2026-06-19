@@ -39,6 +39,8 @@ export const recordCreateBaseSchema = z.object({
   notes: z.string().trim().max(2000).nullable().optional(),
   photoUrl: z.string().url().nullable().optional(),
   notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
+  /** Assign the record to a household the caller belongs to; absent/null = personal. */
+  householdId: z.string().uuid().nullable().optional(),
 });
 
 export const recordCreateSchema = recordCreateBaseSchema.refine(
@@ -57,6 +59,8 @@ export const recordPatchSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   status: recordStatusSchema.optional(),
   notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
+  /** Move a record between personal and a household; enforced server-side. */
+  householdId: z.string().uuid().nullable().optional(),
 });
 export type RecordPatch = z.infer<typeof recordPatchSchema>;
 
@@ -65,6 +69,24 @@ export const recordListResponseSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type RecordListResponse = z.infer<typeof recordListResponseSchema>;
+
+export const recordScopeSchema = z.enum(['personal', 'household', 'all']).default('all');
+export type RecordScope = z.infer<typeof recordScopeSchema>;
+
+export const recordListQuerySchema = z.object({
+  scope: recordScopeSchema,
+  /** Restrict to a single household (only meaningful with scope=household|all). */
+  householdId: z.string().uuid().optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
+
+export const recordSyncConflictSchema = z.object({
+  clientId: z.string().uuid(),
+  reason: z.enum(['scope_changed']),
+});
+export type RecordSyncConflict = z.infer<typeof recordSyncConflictSchema>;
 
 export const recordSyncBatchSchema = z.object({
   since: z.string().datetime().nullable().optional(),
@@ -85,6 +107,7 @@ export const recordSyncResponseSchema = z.object({
   serverTime: z.string().datetime(),
   changes: z.array(recordSchema),
   deletedIds: z.array(z.string().uuid()),
+  conflicts: z.array(recordSyncConflictSchema).default([]),
 });
 export type RecordSyncResponse = z.infer<typeof recordSyncResponseSchema>;
 
