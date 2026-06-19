@@ -62,6 +62,7 @@ export default async function ReportsPage({
             { value: 'review', label: 'Review' },
             { value: 'user', label: 'User' },
             { value: 'product', label: 'Product' },
+            { value: 'deal', label: 'Deal' },
           ]}
         />
       </FilterBar>

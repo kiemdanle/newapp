@@ -26,6 +26,7 @@ import { adminSystemPushLogsRoute } from './system/push-logs.js';
 import { adminSystemApiErrorsRoute } from './system/api-errors.js';
 import { adminSystemExternalApisRoute } from './system/external-apis.js';
 import { adminBullBoardRoute } from './system/bullboard.js';
+import { adminDealsListRoute, adminDealsStatusRoute } from './deals.js';
 import { adminReferralsOverviewRoute } from './referrals.js';
 import { adminSettingsFeatureFlagsRoute } from './settings/feature-flags.js';
 import { adminSettingsModerationRoute } from './settings/moderation.js';
@@ -73,5 +74,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminSettingsModerationRoute, { prefix: '/settings' });
   await app.register(adminSettingsNotificationTemplatesRoute, { prefix: '/settings' });
   await app.register(adminSettingsAdminsRoute, { prefix: '/settings' });
+  await app.register(adminDealsListRoute, { prefix: '/deals' });
+  await app.register(adminDealsStatusRoute, { prefix: '/deals' });
   await app.register(adminReferralsOverviewRoute);
 }

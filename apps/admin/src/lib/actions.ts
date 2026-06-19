@@ -60,6 +60,12 @@ export async function resolveReportAction(
   revalidatePath(`/reports/${id}`);
 }
 
+// --- Deals ---
+export async function setDealStatusAction(id: string, status: 'visible' | 'hidden' | 'deleted') {
+  await serverAdminApi.deals.setStatus(id, status);
+  revalidatePath('/deals');
+}
+
 // --- Settings ---
 export async function saveFeatureFlagsAction(body: {
   reviewsEnabled: boolean;

@@ -31,6 +31,8 @@ import {
   moderationSettingsSchema,
   notificationTemplateSchema,
   adminRowSchema,
+  adminDealsListSchema,
+  adminDealRowSchema,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -175,5 +177,11 @@ export const serverAdminApi = {
       revoke: (id: string) =>
         apiServerFetch(`/v1/admin/settings/admins/${id}`, { method: 'DELETE' }),
     },
+  },
+  deals: {
+    list: (q: Q = {}) =>
+      apiServerFetch(`/v1/admin/deals${qs(q)}`).then((r) => adminDealsListSchema.parse(r)),
+    setStatus: (id: string, status: 'visible' | 'hidden' | 'deleted') =>
+      apiServerFetch(`/v1/admin/deals/${id}/status`, { method: 'PATCH', body: { status } }),
   },
 };
