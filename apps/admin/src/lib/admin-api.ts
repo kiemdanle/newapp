@@ -33,6 +33,7 @@ import {
   adminRowSchema,
   adminDealsListSchema,
   adminDealRowSchema,
+  adminReferralOverviewSchema,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -189,5 +190,33 @@ export const serverAdminApi = {
       apiServerFetch(`/v1/admin/giveaways${qs(q)}`),
     cancel: (id: string) =>
       apiServerFetch(`/v1/admin/giveaways/${id}/cancel`, { method: 'PATCH' }),
+  },
+  referrals: {
+    overview: () =>
+      apiServerFetch('/v1/admin/referrals/overview').then((r) =>
+        adminReferralOverviewSchema.parse(r),
+      ),
+  },
+  households: {
+    list: (q: Q = {}) =>
+      apiServerFetch(`/v1/admin/households${qs(q)}`).then((r) =>
+        z.object({
+          items: z.array(
+            z.object({
+              id: z.string().uuid(),
+              name: z.string(),
+              ownerUserId: z.string().uuid(),
+              memberCount: z.number(),
+              ownerFirstName: z.string(),
+              ownerEmail: z.string().email(),
+              createdAt: z.string(),
+              updatedAt: z.string(),
+            }),
+          ),
+          nextCursor: z.string().nullable(),
+        }).parse(r),
+      ),
+    dissolve: (id: string) =>
+      apiServerFetch(`/v1/admin/households/${id}`, { method: 'DELETE' }),
   },
 };

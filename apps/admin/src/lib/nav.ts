@@ -31,7 +31,10 @@ export const NAV: NavSection[] = [
   },
   {
     title: 'People',
-    items: [{ label: 'Users', href: '/users' }],
+    items: [
+      { label: 'Users', href: '/users' },
+      { label: 'Referrals', href: '/referrals' },
+    ],
   },
   {
     title: 'Analytics',
@@ -41,6 +44,10 @@ export const NAV: NavSection[] = [
       { label: 'Reviews', href: '/analytics/reviews' },
       { label: 'Geography', href: '/analytics/geography' },
     ],
+  },
+  {
+    title: 'Households',
+    items: [{ label: 'Households', href: '/households' }],
   },
   {
     title: 'System',
