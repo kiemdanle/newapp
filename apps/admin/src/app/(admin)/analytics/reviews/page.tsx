@@ -20,7 +20,7 @@ export default async function AnalyticsReviewsPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Reviews analytics</h1>
+        <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Reviews analytics</h1>
         <RangeTabs basePath="/analytics/reviews" active={range} />
       </div>
 

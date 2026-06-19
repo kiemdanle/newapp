@@ -27,7 +27,7 @@ export default async function SystemPushPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Push logs</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Push logs</h1>
       <FilterBar action="/system/push">
         <TextFilter name="userId" label="User ID" value={sp.userId} placeholder="uuid" />
         <SelectFilter

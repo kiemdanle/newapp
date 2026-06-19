@@ -19,8 +19,8 @@ export default async function SystemQueuePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Queue health</h1>
-      <p className="text-sm text-muted-foreground">
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Queue health</h1>
+      <p className="text-sm text-neutral-mid">
         BullMQ job counts across all registered queues.
       </p>
       <DataTable data={queues} columns={columns} empty="No queues registered." />

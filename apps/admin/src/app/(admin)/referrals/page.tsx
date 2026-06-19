@@ -10,7 +10,7 @@ type Row = Awaited<
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border p-4">
-      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="text-neutral-mid text-xs">{label}</div>
       <div className="text-2xl font-semibold">{value}</div>
     </div>
   );
@@ -25,7 +25,7 @@ export default async function ReferralsPage() {
       cell: (r) => (
         <span>
           {r.firstName}{' '}
-          <span className="text-muted-foreground">{r.email}</span>
+          <span className="text-neutral-mid">{r.email}</span>
         </span>
       ),
     },
@@ -50,7 +50,7 @@ export default async function ReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Referrals</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Referrals</h1>
 
       <div className="flex gap-6">
         <Stat label="Total referrals" value={overview.totalReferrals} />

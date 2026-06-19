@@ -30,7 +30,7 @@ export default async function HouseholdsPage({
       cell: (r) => (
         <span>
           {r.ownerFirstName}{' '}
-          <span className="text-muted-foreground">{r.ownerEmail}</span>
+          <span className="text-neutral-mid">{r.ownerEmail}</span>
         </span>
       ),
     },
@@ -43,7 +43,7 @@ export default async function HouseholdsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Households</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Households</h1>
 
       <DataTable data={items} columns={columns} empty="No households yet." />
 

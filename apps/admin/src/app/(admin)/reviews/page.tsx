@@ -41,7 +41,7 @@ export default async function ReviewsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Reviews</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Reviews</h1>
       <FilterBar action="/reviews">
         <SelectFilter
           name="status"

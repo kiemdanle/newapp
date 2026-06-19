@@ -36,21 +36,21 @@ export default async function UserDetailPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/users" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/users" className="text-sm text-neutral-mid hover:underline">
           ← Users
         </Link>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">
+          <h1 className="text-[28px] font-semibold text-neutral-dark font-display">
             {`${u.firstName} ${u.lastName}`.trim() || u.email}
           </h1>
-          <p className="text-sm text-muted-foreground">{u.email}</p>
+          <p className="text-sm text-neutral-mid">{u.email}</p>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={u.status} />
-            <span className="text-xs text-muted-foreground">{u.role}</span>
-            {u.country && <span className="text-xs text-muted-foreground">{u.country}</span>}
+            <span className="text-xs text-neutral-mid">{u.role}</span>
+            {u.country && <span className="text-xs text-neutral-mid">{u.country}</span>}
           </div>
         </div>
         <UserActions id={u.id} status={u.status} role={u.role} />

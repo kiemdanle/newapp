@@ -25,7 +25,7 @@ export default async function DealsPage({
       cell: (r) => (
         <span className="font-medium">
           {r.productName}
-          {r.productBrand ? <span className="text-muted-foreground"> · {r.productBrand}</span> : null}
+          {r.productBrand ? <span className="text-neutral-mid"> · {r.productBrand}</span> : null}
         </span>
       ),
     },
@@ -39,7 +39,7 @@ export default async function DealsPage({
       header: 'Votes',
       cell: (r) => (
         <span>
-          ▲{r.upvoteCount} ▼{r.downvoteCount} <span className="text-muted-foreground">({r.score.toFixed(4)})</span>
+          ▲{r.upvoteCount} ▼{r.downvoteCount} <span className="text-neutral-mid">({r.score.toFixed(4)})</span>
         </span>
       ),
     },
@@ -56,7 +56,7 @@ export default async function DealsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Deals</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Deals</h1>
       <FilterBar action="/deals">
         <SelectFilter
           name="status"

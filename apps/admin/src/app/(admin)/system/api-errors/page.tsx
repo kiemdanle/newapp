@@ -27,7 +27,7 @@ export default async function SystemApiErrorsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">API errors</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">API errors</h1>
       <RangeTabs basePath="/system/api-errors" active={range} ranges={[...RANGES]} />
       <DataTable data={rows} columns={columns} empty="No errors recorded in this range." />
     </div>

@@ -43,7 +43,7 @@ export default async function GiveawaysPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Giveaways</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Giveaways</h1>
       <FilterBar action="/giveaways">
         <SelectFilter
           name="status"

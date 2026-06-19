@@ -8,8 +8,8 @@ export default async function SettingsModerationPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Moderation settings</h1>
-      <p className="text-sm text-muted-foreground">
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Moderation settings</h1>
+      <p className="text-sm text-neutral-mid">
         Configure auto-hide thresholds and profanity-filter sensitivity.
       </p>
       <ModerationForm initial={moderation} />

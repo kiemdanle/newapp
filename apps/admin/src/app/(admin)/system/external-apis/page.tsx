@@ -23,8 +23,8 @@ export default async function SystemExternalApisPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">External APIs</h1>
-      <p className="text-sm text-muted-foreground">
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">External APIs</h1>
+      <p className="text-sm text-neutral-mid">
         Circuit-breaker state for outbound integrations (OpenFoodFacts, UPCitemdb, Expo Push).
       </p>
       <DataTable data={breakers} columns={columns} empty="No breakers registered." />

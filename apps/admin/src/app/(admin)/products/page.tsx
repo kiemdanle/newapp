@@ -36,7 +36,7 @@ export default async function ProductsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Products</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Products</h1>
       <FilterBar action="/products">
         <TextFilter name="q" label="Search" value={sp.q} placeholder="name, brand, barcode" />
         <SelectFilter

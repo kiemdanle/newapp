@@ -7,7 +7,7 @@ export default async function AnalyticsOverviewPage() {
   const o = await serverAdminApi.analytics.overview();
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Analytics overview</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Analytics overview</h1>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <KpiCard label="Total users" value={o.totalUsers.toLocaleString()} />
         <KpiCard label="Active (7d)" value={o.activeUsers7d.toLocaleString()} />

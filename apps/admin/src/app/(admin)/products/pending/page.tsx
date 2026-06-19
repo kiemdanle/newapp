@@ -32,7 +32,7 @@ export default async function ProductsPendingPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Pending product edits</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Pending product edits</h1>
       <DataTable data={items} columns={columns} empty="No pending edits." />
       <LoadMore basePath="/products/pending" params={query} nextCursor={nextCursor} />
     </div>

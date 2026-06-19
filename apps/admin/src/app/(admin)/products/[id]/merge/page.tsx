@@ -22,10 +22,10 @@ export default async function MergePage({
 
   return (
     <div className="space-y-4">
-      <Link href={`/products/${id}`} className="text-sm text-muted-foreground hover:underline">
+      <Link href={`/products/${id}`} className="text-sm text-neutral-mid hover:underline">
         ← {winner.name}
       </Link>
-      <h1 className="text-xl font-semibold">Merge into {winner.name}</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Merge into {winner.name}</h1>
       <MergeTool winnerId={id} candidates={candidates} query={q ?? ''} />
     </div>
   );

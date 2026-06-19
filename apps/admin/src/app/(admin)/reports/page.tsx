@@ -34,7 +34,7 @@ export default async function ReportsPage({
     { header: 'Reason', cell: (r) => r.reason },
     {
       header: 'Detail',
-      cell: (r) => <span className="text-muted-foreground">{r.body ?? '—'}</span>,
+      cell: (r) => <span className="text-neutral-mid">{r.body ?? '—'}</span>,
     },
     { header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
     { header: 'Reported', cell: (r) => new Date(r.createdAt).toLocaleDateString() },
@@ -42,7 +42,7 @@ export default async function ReportsPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Reports</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Reports</h1>
       <FilterBar action="/reports">
         <SelectFilter
           name="status"

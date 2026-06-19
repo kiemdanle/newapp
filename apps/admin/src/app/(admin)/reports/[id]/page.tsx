@@ -20,10 +20,10 @@ export default async function ReportDetailPage({
   if (!report) {
     return (
       <div className="space-y-4">
-        <Link href="/reports" className="text-sm text-muted-foreground hover:underline">
+        <Link href="/reports" className="text-sm text-neutral-mid hover:underline">
           ← Reports
         </Link>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-neutral-mid">
           Report not found in the current queue (it may be older than the loaded window).
         </p>
       </div>
@@ -34,18 +34,18 @@ export default async function ReportDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/reports" className="text-sm text-muted-foreground hover:underline">
+      <Link href="/reports" className="text-sm text-neutral-mid hover:underline">
         ← Reports
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold capitalize">
+          <h1 className="text-[28px] font-semibold text-neutral-dark font-display capitalize">
             {report.targetType} report — {report.reason}
           </h1>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={report.status} />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-neutral-mid">
               {new Date(report.createdAt).toLocaleString()}
             </span>
           </div>
@@ -58,7 +58,7 @@ export default async function ReportDetailPage({
       {report.body && (
         <div className="space-y-1">
           <h2 className="text-sm font-semibold">Reporter note</h2>
-          <p className="text-sm text-muted-foreground">{report.body}</p>
+          <p className="text-sm text-neutral-mid">{report.body}</p>
         </div>
       )}
 
@@ -68,15 +68,15 @@ export default async function ReportDetailPage({
           <dl className="rounded-lg border p-4 text-sm">
             {Object.entries(preview).map(([k, v]) => (
               <div key={k} className="flex gap-2 py-0.5">
-                <dt className="w-28 shrink-0 text-muted-foreground">{k}</dt>
+                <dt className="w-28 shrink-0 text-neutral-mid">{k}</dt>
                 <dd className="break-all">{String(v ?? '—')}</dd>
               </div>
             ))}
           </dl>
         ) : (
-          <p className="text-sm text-muted-foreground">Target no longer exists.</p>
+          <p className="text-sm text-neutral-mid">Target no longer exists.</p>
         )}
-        <p className="text-xs text-muted-foreground">Target id: {report.targetId}</p>
+        <p className="text-xs text-neutral-mid">Target id: {report.targetId}</p>
       </div>
     </div>
   );

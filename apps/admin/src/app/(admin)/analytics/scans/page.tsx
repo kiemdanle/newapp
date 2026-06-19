@@ -20,7 +20,7 @@ export default async function AnalyticsScansPage({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Scans</h1>
+        <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Scans</h1>
         <RangeTabs basePath="/analytics/scans" active={range} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

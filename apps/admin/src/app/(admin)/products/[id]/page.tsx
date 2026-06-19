@@ -16,7 +16,7 @@ export default async function ProductDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/products" className="text-sm text-muted-foreground hover:underline">
+      <Link href="/products" className="text-sm text-neutral-mid hover:underline">
         ← Products
       </Link>
 
@@ -27,9 +27,9 @@ export default async function ProductDetailPage({
             <img src={p.imageUrl} alt={p.name} className="h-16 w-16 rounded-md border object-cover" />
           )}
           <div>
-            <h1 className="text-xl font-semibold">{p.name}</h1>
-            <p className="text-sm text-muted-foreground">{p.brand ?? '—'}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <h1 className="text-[28px] font-semibold text-neutral-dark font-display">{p.name}</h1>
+            <p className="text-sm text-neutral-mid">{p.brand ?? '—'}</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-mid">
               <StatusBadge status={p.status} />
               <span>source: {p.source}</span>
               {p.barcode && <span>barcode: {p.barcode}</span>}
