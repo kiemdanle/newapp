@@ -184,4 +184,10 @@ export const serverAdminApi = {
     setStatus: (id: string, status: 'visible' | 'hidden' | 'deleted') =>
       apiServerFetch(`/v1/admin/deals/${id}/status`, { method: 'PATCH', body: { status } }),
   },
+  giveaways: {
+    list: (q: Q = {}) =>
+      apiServerFetch(`/v1/admin/giveaways${qs(q)}`),
+    cancel: (id: string) =>
+      apiServerFetch(`/v1/admin/giveaways/${id}/cancel`, { method: 'PATCH' }),
+  },
 };
