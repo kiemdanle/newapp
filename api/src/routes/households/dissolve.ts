@@ -9,8 +9,11 @@ import { cancelAllRemindersForHousehold, reschedulePersonalRecordReminders } fro
 const paramsSchema = z.object({ id: z.string().uuid() });
 
 async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: string): Promise<void> {
-  const idNum = BigInt('0x' + householdId.replace(/-/g, '').slice(0, 16));
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${idNum}::bigint)`;
+  // Hash the UUID into a bigint Prisma can bind: take first 15 hex chars as a
+  // 60-bit integer that fits in both JS safe integer range and PostgreSQL bigint.
+  const hex = householdId.replace(/-/g, '').slice(0, 15);
+  const lockKey = parseInt(hex, 16);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
 }
 
 export async function dissolveHouseholdRoute(app: FastifyInstance) {

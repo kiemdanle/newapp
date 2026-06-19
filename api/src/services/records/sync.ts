@@ -18,8 +18,9 @@ export interface SyncOutcome {
  * transaction end (pg_advisory_xact_lock).
  */
 async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: string): Promise<void> {
-  const idNum = BigInt('0x' + householdId.replace(/-/g, '').slice(0, 16));
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${idNum}::bigint)`;
+  const hex = householdId.replace(/-/g, '').slice(0, 15);
+  const lockKey = parseInt(hex, 16);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
 }
 
 export async function syncRecords(

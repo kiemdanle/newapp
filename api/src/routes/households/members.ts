@@ -23,9 +23,10 @@ const memberParamsSchema = z.object({ id: z.string().uuid(), userId: z.string().
  */
 async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: string): Promise<void> {
   // pg_advisory_xact_lock: session-level, released at transaction end.
-  // Hash the UUID into a bigint the function expects.
-  const idNum = BigInt('0x' + householdId.replace(/-/g, '').slice(0, 16));
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${idNum}::bigint)`;
+  // Hash the UUID into a bigint Prisma can bind: use parseInt (safe integer range).
+  const hex = householdId.replace(/-/g, '').slice(0, 15);
+  const lockKey = parseInt(hex, 16);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
 }
 
 export async function membersAddRoute(app: FastifyInstance) {

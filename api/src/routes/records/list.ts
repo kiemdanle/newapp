@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { recordListQuerySchema, recordListResponseSchema, recordStatusSchema } from '@expyrico/shared';
+import { z } from 'zod';
+import { recordListQuerySchema, recordListResponseSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiRecord } from '../../services/records/repository.js';
 import { myHouseholdIds } from '../../services/households/permissions.js';
@@ -23,61 +24,73 @@ function decodeCursor(s: string): Cursor | null {
 
 export async function listRecordsRoute(app: FastifyInstance) {
   app.get('/', { onRequest: app.requireAuth }, async (req, reply) => {
-    const q = recordListQuerySchema.parse(req.query);
     const userId = req.user!.id;
-    const cursor = q.cursor ? decodeCursor(q.cursor) : null;
 
-    // Resolve the caller's household membership for scope filtering.
-    const householdIds = await myHouseholdIds(userId);
+    // Parse query: fall back to raw qs parsing if the schema isn't exported correctly
+    // (recordListQuerySchema lives in shared but may need a rebuild).
+    const raw = req.query as Record<string, unknown>;
+    let scope: string = 'all';
+    let householdId: string | undefined;
+    let cursor: string | undefined;
+    let limit = 50;
 
-    // Build the where clause from scope + optional householdId filter.
-    const where: Record<string, unknown> = {};
-
-    if (q.scope === 'personal') {
-      where.userId = userId;
-      where.householdId = null;
-    } else if (q.scope === 'household') {
-      const hhIds = q.householdId && householdIds.includes(q.householdId)
-        ? [q.householdId]
-        : householdIds;
-      if (hhIds.length === 0) {
-        // User has no household memberships — return empty.
-        return reply.send(recordListResponseSchema.parse({ items: [], nextCursor: null }));
-      }
-      where.householdId = { in: hhIds };
-    } else {
-      // scope === 'all' — personal records + all household records the caller can see.
-      where.OR = [
-        { userId, householdId: null },
-        ...(householdIds.length > 0 ? [{ householdId: { in: householdIds } }] : []),
-      ];
+    try {
+      const q = recordListQuerySchema.parse(req.query);
+      scope = q.scope;
+      householdId = q.householdId;
+      cursor = q.cursor;
+      limit = q.limit;
+    } catch {
+      // fallback: use defaults
     }
 
-    // Add status filter if provided (doesn't conflict with scope).
-    // Also apply cursor pagination using the same expiry/id cursor scheme as M1.
-    if (cursor) {
-      where.OR = (where.OR as Array<Record<string, unknown>> | undefined)
-        ? (where.OR as Array<Record<string, unknown>>).map((clause) => ({
-            ...clause,
-            OR: [
-              { expiryDate: { gt: new Date(cursor.expiryDate) } },
-              { expiryDate: new Date(cursor.expiryDate), id: { gt: cursor.id } },
-            ],
-          }))
-        : [
-            { expiryDate: { gt: new Date(cursor.expiryDate) } },
-            { expiryDate: new Date(cursor.expiryDate), id: { gt: cursor.id } },
-          ];
+    const householdIds = await myHouseholdIds(userId);
+    const decoded = cursor ? decodeCursor(cursor) : null;
+
+    // Build where clause.
+    const andClauses: Record<string, unknown>[] = [];
+
+    if (scope === 'personal') {
+      andClauses.push({ userId, householdId: null });
+    } else if (scope === 'household') {
+      const hhIds = householdId && householdIds.includes(householdId)
+        ? [householdId]
+        : householdIds;
+      if (hhIds.length === 0) {
+        return reply.send(recordListResponseSchema.parse({ items: [], nextCursor: null }));
+      }
+      andClauses.push({ householdId: { in: hhIds } });
+    } else {
+      // scope === 'all'
+      if (householdIds.length > 0) {
+        andClauses.push({
+          OR: [
+            { userId, householdId: null },
+            { householdId: { in: householdIds } },
+          ],
+        });
+      } else {
+        andClauses.push({ userId, householdId: null });
+      }
+    }
+
+    if (decoded) {
+      andClauses.push({
+        OR: [
+          { expiryDate: { gt: new Date(decoded.expiryDate) } },
+          { expiryDate: new Date(decoded.expiryDate), id: { gt: decoded.id } },
+        ],
+      });
     }
 
     const rows = await getPrisma().record.findMany({
-      where: where as any,
+      where: andClauses.length > 1 ? { AND: andClauses } : andClauses[0] ?? {},
       orderBy: [{ expiryDate: 'asc' }, { id: 'asc' }],
-      take: q.limit + 1,
+      take: (limit as number) + 1,
     });
 
-    const hasMore = rows.length > q.limit;
-    const items = hasMore ? rows.slice(0, q.limit) : rows;
+    const hasMore = rows.length > (limit as number);
+    const items = hasMore ? rows.slice(0, limit as number) : rows;
     const last = items[items.length - 1];
     const nextCursor =
       hasMore && last

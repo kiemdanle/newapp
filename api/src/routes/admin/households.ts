@@ -9,8 +9,9 @@ import { cancelAllRemindersForHousehold, reschedulePersonalRecordReminders } fro
 const paramsSchema = z.object({ id: z.string().uuid() });
 
 async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: string): Promise<void> {
-  const idNum = BigInt('0x' + householdId.replace(/-/g, '').slice(0, 16));
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${idNum}::bigint)`;
+  const hex = householdId.replace(/-/g, '').slice(0, 15);
+  const lockKey = parseInt(hex, 16);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
 }
 
 const adminHouseholdsQuerySchema = z.object({
@@ -19,7 +20,7 @@ const adminHouseholdsQuerySchema = z.object({
 });
 
 export async function adminHouseholdsListRoute(app: FastifyInstance) {
-  app.get('/households', async (req) => {
+  app.get('/', async (req) => {
     const q = adminHouseholdsQuerySchema.parse(req.query);
     const cur = decodeCursor(q.cursor);
     const prisma = getPrisma();
@@ -57,7 +58,7 @@ export async function adminHouseholdsListRoute(app: FastifyInstance) {
 }
 
 export async function adminHouseholdsDissolveRoute(app: FastifyInstance) {
-  app.delete('/households/:id', async (req, reply) => {
+  app.delete('/:id', async (req, reply) => {
     const { id } = paramsSchema.parse(req.params);
     const prisma = getPrisma();
 
