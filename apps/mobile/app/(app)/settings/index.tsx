@@ -14,6 +14,12 @@ interface Row {
 
 const ROWS: Row[] = [
   {
+    key: 'invite',
+    label: 'Invite friends',
+    subtitle: 'Share your invite code',
+    href: '/(app)/invite',
+  },
+  {
     key: 'theme',
     label: 'Theme',
     subtitle: 'Pick one of four looks',

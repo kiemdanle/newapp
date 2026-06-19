@@ -27,7 +27,7 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
-    subject: 'Verify your Pantry email',
+    subject: 'Verify your Expyrico email',
     text: `Verify your email by opening this link: ${link}\n\nOr in the app: ${fallbackDeepLink}`,
     html: `<p>Verify your email by clicking <a href="${link}">this link</a>.</p><p>Or open in the app: <a href="${fallbackDeepLink}">${fallbackDeepLink}</a></p>`,
   });
@@ -43,7 +43,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
-    subject: 'Reset your Pantry password',
+    subject: 'Reset your Expyrico password',
     text: `Reset your password: ${link}\n\nIf you didn't request this, ignore this email.`,
     html: `<p>Reset your password: <a href="${link}">${link}</a></p>`,
   });

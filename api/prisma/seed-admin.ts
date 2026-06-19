@@ -46,6 +46,53 @@ function parseArgs(argv: string[]): Args {
   return { email, password, first, last };
 }
 
+async function seedSettings(adminId?: string) {
+  await prisma.setting.upsert({
+    where: { key: 'feature_flags' },
+    update: {},
+    create: {
+      key: 'feature_flags',
+      value: {
+        reviewsEnabled: true,
+        passkeysEnabled: true,
+        ocrEnabled: true,
+        maintenanceBanner: null,
+      },
+    },
+  });
+  await prisma.setting.upsert({
+    where: { key: 'moderation' },
+    update: {},
+    create: {
+      key: 'moderation',
+      value: {
+        autoHideReportThreshold: 3,
+        profanitySensitivity: 'medium',
+      },
+    },
+  });
+
+  const templates = [
+    { key: 'expiry_7d', title: 'Expires in 7 days', body: '{name} expires on {date}.' },
+    { key: 'expiry_1d', title: 'Expires tomorrow', body: '{name} expires tomorrow.' },
+    { key: 'expiry_today', title: 'Expires today', body: '{name} expires today.' },
+  ];
+  for (const t of templates) {
+    await prisma.notificationTemplate.upsert({
+      where: { key: t.key },
+      update: {},
+      create: t,
+    });
+  }
+
+  if (adminId) {
+    await prisma.setting.updateMany({
+      where: { key: { in: ['feature_flags', 'moderation'] } },
+      data: { updatedBy: adminId },
+    });
+  }
+}
+
 async function main() {
   const { email, password, first, last } = parseArgs(process.argv);
   const passwordHash = await hashPassword(password);
@@ -78,6 +125,8 @@ async function main() {
     }
     return u;
   });
+
+  await seedSettings(user.id);
 
   // eslint-disable-next-line no-console
   console.log(

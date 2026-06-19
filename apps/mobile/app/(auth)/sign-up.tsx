@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Text } from 'react-native';
 import { registerSchema } from '@expyrico/shared';
@@ -11,6 +11,10 @@ import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { isApiError } from '../../src/api/errors';
 import { useTheme } from '../../src/theme/useTheme';
+import {
+  readPendingReferralCode,
+  clearPendingReferralCode,
+} from '../../src/referral/pendingReferralStore';
 
 export default function SignUp() {
   const router = useRouter();
@@ -20,19 +24,35 @@ export default function SignUp() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [referralCode, setReferralCode] = useState<string | undefined>(undefined);
+  const [codeManuallySet, setCodeManuallySet] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Pre-fill a referral code captured from a deep link before sign-up.
+  useEffect(() => {
+    void readPendingReferralCode().then((c) => {
+      if (c) setReferralCode(c);
+    });
+  }, []);
+
   async function onSubmit() {
     setFormError(null);
-    const input = { email, password, firstName, lastName };
+    const input = {
+      email,
+      password,
+      firstName,
+      lastName,
+      ...(referralCode ? { referralCode } : {}),
+    };
     const errs = fieldErrors(registerSchema, input);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
     try {
       const result = await authEndpoints.register(input);
+      await clearPendingReferralCode();
       await signIn(result);
       router.replace('/(auth)/verify-email');
     } catch (e) {
@@ -74,6 +94,24 @@ export default function SignUp() {
         onChangeText={setLastName}
         error={errors.lastName}
       />
+
+      {/* Referral code — pre-filled from deep link or manual entry */}
+      <TextField
+        label="Invite code (optional)"
+        autoCapitalize="characters"
+        value={referralCode ?? ''}
+        onChangeText={(t) => {
+          setCodeManuallySet(true);
+          setReferralCode(t.trim().toUpperCase() || undefined);
+        }}
+        error={errors.referralCode}
+      />
+      {referralCode && !codeManuallySet ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelSmall.fontSize }}>
+          Code applied from your invite link
+        </Text>
+      ) : null}
+
       {formError ? <ErrorText>{formError}</ErrorText> : null}
       <Button testID="sign-up-submit" label="Create account" onPress={onSubmit} loading={loading} />
     </Screen>

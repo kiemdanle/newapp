@@ -1,0 +1,12 @@
+appId: com.expyrico.app
+name: Invite flow — open invite, view code, share
+tags:
+  - referral
+---
+- launchApp:
+    clearState: true
+- tapOn: "Settings"
+- tapOn: "Invite friends"
+- assertVisible: "Your invite code"
+- assertVisible: "Share invite"
+- tapOn: "Share invite"

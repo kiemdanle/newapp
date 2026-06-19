@@ -16,7 +16,7 @@ export interface TotpEnrollment {
 export async function buildEnrollment(email: string): Promise<TotpEnrollment> {
   const cfg = getConfig();
   const rawSecret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(email, 'Pantry Admin', rawSecret);
+  const otpauth = authenticator.keyuri(email, 'Expyrico Admin', rawSecret);
   const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
   const encryptedSecret = encrypt(rawSecret, cfg.totp.encryptionKey);
   const recoveryCodes = Array.from({ length: 10 }, () => randomToken(8).slice(0, 10));

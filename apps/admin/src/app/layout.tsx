@@ -3,8 +3,8 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Pantry Admin',
-  description: 'Pantry administration dashboard',
+  title: 'Expyrico Admin',
+  description: 'Expyrico administration dashboard',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

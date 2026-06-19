@@ -22,6 +22,7 @@ import { initThemeStore, useThemeStore } from '../src/theme/store';
 import { hydrateSession, useSessionStore } from '../src/auth/session-store';
 import { wireApiClient } from '../src/auth/wire-client';
 import { parseAuthDeepLink } from '../src/lib/linking';
+import { capturePendingReferralCode } from '../src/referral/pendingReferralStore';
 import { startSyncTriggers, stopSyncTriggers } from '../src/db/triggers';
 
 const queryClient = createQueryClient();
@@ -100,12 +101,26 @@ function DeepLinkHandler() {
   const router = useRouter();
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
+      // Auth deep links (password reset, email verification)
       const link = parseAuthDeepLink(url);
-      if (!link) return;
-      if (link.kind === 'reset-password')
-        router.push({ pathname: '/(auth)/reset-password', params: { token: link.token } });
-      if (link.kind === 'verify-email')
-        router.push({ pathname: '/(auth)/verify-email', params: { token: link.token } });
+      if (link) {
+        if (link.kind === 'reset-password')
+          router.push({ pathname: '/(auth)/reset-password', params: { token: link.token } });
+        if (link.kind === 'verify-email')
+          router.push({ pathname: '/(auth)/verify-email', params: { token: link.token } });
+        return;
+      }
+      // Referral code capture — best-effort, post-install only.
+      // v1.x provisions no universal/app-link infra, so this fires only when
+      // the app is already installed and the link opens through it.
+      try {
+        const parsed = Linking.parse(url);
+        if (parsed.path === 'invite' && typeof parsed.queryParams?.code === 'string') {
+          void capturePendingReferralCode(parsed.queryParams.code);
+        }
+      } catch {
+        // ignore parse failures on non-referral URLs
+      }
     });
     return () => sub.remove();
   }, [router]);
