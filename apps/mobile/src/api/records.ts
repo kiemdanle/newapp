@@ -3,6 +3,7 @@ import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from '../db/index';
 import { triggerSyncSoon } from '../db/triggers';
+import { usePantryScope } from '../store/pantryScope';
 
 export interface LocalRecord {
   id: string; // watermelon id
@@ -20,6 +21,7 @@ export interface LocalRecord {
   photoUrl: string | null;
   status: string;
   notifyAt: string[];
+  householdId: string | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -45,19 +47,32 @@ function toLocal(r: RecordModel): LocalRecord {
     photoUrl: r.photoUrl,
     status: r.status,
     notifyAt,
+    householdId: r.householdId ?? null,
   };
 }
 
 export function useActiveRecords(): LocalRecord[] {
   const [rows, setRows] = useState<LocalRecord[]>([]);
+  const { scope, householdId } = usePantryScope();
+
   useEffect(() => {
     const col = database.get<RecordModel>('records');
+    const conditions = [
+      Q.where('status', 'active'),
+      Q.where('pending_delete', false),
+    ];
+    // Scope filter: personal vs household
+    if (scope === 'personal') {
+      conditions.push(Q.where('household_id', null));
+    } else if (scope === 'household' && householdId) {
+      conditions.push(Q.where('household_id', householdId));
+    }
     const sub = col
-      .query(Q.where('status', 'active'), Q.where('pending_delete', false))
+      .query(...conditions)
       .observe()
       .subscribe((res) => setRows(res.map(toLocal)));
     return () => sub.unsubscribe();
-  }, []);
+  }, [scope, householdId]);
   return rows;
 }
 
@@ -89,6 +104,7 @@ export async function createLocalRecord(input: {
   store?: string | null;
   notes?: string | null;
   photoUrl?: string | null;
+  householdId?: string | null;
 }): Promise<string> {
   const clientId = uuidv4();
   const col = database.get<RecordModel>('records');
@@ -113,6 +129,7 @@ export async function createLocalRecord(input: {
       r.consumedAt = null;
       r.pendingSync = true;
       r.pendingDelete = false;
+      r.householdId = input.householdId ?? null;
     });
     newId = created.id;
   });

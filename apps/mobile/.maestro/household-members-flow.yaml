@@ -1,0 +1,57 @@
+# apps/mobile/.maestro/household-members-flow.yaml
+# M8 household sharing — basic happy-path E2E through the mobile app.
+#
+# Prerequisites: a seeded user already signed in; the app is on the home screen.
+appId: com.pantry.app
+
+---
+# ── Launch ──
+- launchApp:
+    clearState: false
+
+# ── Navigate to Household settings ──
+- tapOn:
+    id: tab-settings
+- tapOn: "Household"
+
+# ── Create a household ──
+- inputText:
+    id: household-create-name
+    text: "Flat 3B"
+- tapOn:
+    id: household-create-submit
+
+# ── Assert household name appears ──
+- assertVisible: "Flat 3B"
+
+# ── Add a member (owner-only) ──
+- tapOn:
+    id: household-add-member
+- inputText:
+    id: add-member-user-id
+    text: "<REPLACE_WITH_REAL_USER_ID>"
+- tapOn:
+    id: add-member-submit
+
+# ── Verify the member row appears ──
+# - assertVisible: "<member name>"
+
+# ── Back to home, toggle scope to Household ──
+- tapOn:
+    id: tab-home
+- tapOn:
+    id: scope-toggle-Flat 3B
+
+# ── Add a shared record ──
+- tapOn:
+    id: home-fab-add
+- tapOn:
+    id: add-record-pantry-Flat 3B
+- inputText:
+    id: add-record-expiry-input
+    text: "2099-12-31"
+- tapOn:
+    id: add-record-save
+
+# ── Verify the record appears ──
+# - assertVisible: resource-id that contains record-card

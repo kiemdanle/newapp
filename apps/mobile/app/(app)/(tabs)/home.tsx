@@ -1,6 +1,7 @@
 import { View, Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { RecordList } from '../../../src/features/records/RecordList';
+import { ScopeToggle } from '../../../src/features/households/ScopeToggle';
 import { useTheme } from '../../../src/theme/useTheme';
 import { MD3FAB } from '../../../src/components/MD3FAB';
 
@@ -48,6 +49,7 @@ export default function HomeTab() {
   const router = useRouter();
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <ScopeToggle />
       <RecordList />
       <HomeFAB onPress={() => router.push('/scan')} />
     </View>

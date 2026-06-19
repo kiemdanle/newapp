@@ -6,9 +6,11 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
+  /** When the record is in a household and was added by someone else, show attribution. */
+  addedByName?: string | null;
 }
 
-export function RecordCard({ record, onPress }: Props) {
+export function RecordCard({ record, onPress, addedByName }: Props) {
   const theme = useTheme();
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
@@ -41,6 +43,11 @@ export function RecordCard({ record, onPress }: Props) {
       <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing.xs }}>
         Expires {record.expiryDate}
       </Text>
+      {addedByName ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 2 }}>
+          added by {addedByName}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }

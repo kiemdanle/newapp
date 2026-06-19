@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable } from 'react-native';
 import { createLocalRecord } from '../../api/records';
+import { useMyHouseholds } from '../../api/households';
+import { usePantryScope } from '../../store/pantryScope';
 import { useTheme } from '../../theme/useTheme';
 
 interface Props {
@@ -22,9 +24,19 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [notes, setNotes] = useState('');
   const [price, setPrice] = useState('');
   const [store, setStore] = useState('');
-  const [showMore, setShowMore] = useState(false); // price/store accordion (spec §2.2)
+  const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
+
+  // Read the active scope so we pre-select the right household.
+  const { scope: activeScope, householdId: scopeHhId } = usePantryScope();
+  const { data: myHh } = useMyHouseholds();
+  const households = myHh?.items ?? [];
+
+  // If the active scope is a household, pre-select it.
+  const effectiveHouseholdId =
+    selectedHouseholdId ?? (activeScope === 'household' ? scopeHhId : null);
 
   const save = async () => {
     if (!isoRe.test(expiry)) {
@@ -49,6 +61,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
+        householdId: effectiveHouseholdId,
       });
       onSaved(localId);
     } catch (e) {
@@ -158,6 +171,52 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
       ) : null}
 
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+
+      {/* Household picker — only shown when user has households */}
+      {households.length > 0 ? (
+        <View style={{ gap: theme.spacing.xs }}>
+          <Text style={{ color: theme.colors.textMuted }}>Pantry</Text>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
+            <Pressable
+              testID="add-record-pantry-personal"
+              accessibilityRole="button"
+              onPress={() => setSelectedHouseholdId(null)}
+              style={{
+                paddingHorizontal: theme.spacing.md,
+                paddingVertical: theme.spacing.xs,
+                borderRadius: theme.radii.sm,
+                borderWidth: 1,
+                borderColor: !effectiveHouseholdId ? theme.colors.primary : theme.colors.border,
+                backgroundColor: !effectiveHouseholdId ? theme.colors.primary + '20' : 'transparent',
+              }}
+            >
+              <Text style={{ color: !effectiveHouseholdId ? theme.colors.primary : theme.colors.textMuted, fontSize: 12 }}>
+                Personal
+              </Text>
+            </Pressable>
+            {households.map((h) => (
+              <Pressable
+                key={h.id}
+                testID={`add-record-pantry-${h.id}`}
+                accessibilityRole="button"
+                onPress={() => setSelectedHouseholdId(h.id)}
+                style={{
+                  paddingHorizontal: theme.spacing.md,
+                  paddingVertical: theme.spacing.xs,
+                  borderRadius: theme.radii.sm,
+                  borderWidth: 1,
+                  borderColor: effectiveHouseholdId === h.id ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: effectiveHouseholdId === h.id ? theme.colors.primary + '20' : 'transparent',
+                }}
+              >
+                <Text style={{ color: effectiveHouseholdId === h.id ? theme.colors.primary : theme.colors.textMuted, fontSize: 12 }}>
+                  {h.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       <Pressable accessibilityRole="button"
         testID="add-record-save"
