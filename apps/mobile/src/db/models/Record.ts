@@ -24,4 +24,5 @@ export class RecordModel extends Model {
   @date('consumed_at') consumedAt!: Date | null;
   @field('pending_sync') pendingSync!: boolean;
   @field('pending_delete') pendingDelete!: boolean;
+  @field('household_id') householdId!: string | null;
 }
