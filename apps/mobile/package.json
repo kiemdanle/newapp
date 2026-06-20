@@ -21,6 +21,7 @@
     "@expyrico/theme": "file:./local-packages/@expyrico/theme",
     "@nozbe/watermelondb": "^0.28.0",
     "@nozbe/with-observables": "^1.6.0",
+    "@react-native-community/cli-platform-android": "13.6.9",
     "@react-native-community/netinfo": "11.3.1",
     "@react-native-google-signin/google-signin": "^13.1.0",
     "@react-native-ml-kit/text-recognition": "^2.0.0",
