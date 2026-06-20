@@ -1,8 +1,5 @@
 {
-  "cli": {
-    "version": ">= 7.0.0",
-    "appVersionSource": "remote"
-  },
+  "cli": { "version": ">= 7.0.0", "appVersionSource": "remote" },
   "build": {
     "development": {
       "developmentClient": true,
@@ -10,6 +7,7 @@
       "channel": "development",
       "ios": { "simulator": true },
       "node": "20.20.2",
+      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:4000",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
@@ -22,6 +20,7 @@
       "channel": "preview",
       "ios": { "simulator": false },
       "node": "20.20.2",
+      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.example.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
@@ -32,6 +31,7 @@
     "production": {
       "channel": "production",
       "node": "20.20.2",
+      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.example.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
@@ -42,15 +42,8 @@
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "FILL_ME_APPLE_ID_EMAIL",
-        "ascAppId": "FILL_ME_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "FILL_ME_APPLE_TEAM_ID"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./secrets/play-service-account.json",
-        "track": "internal"
-      }
+      "ios": { "appleId": "FILL_ME_APPLE_ID_EMAIL", "ascAppId": "FILL_ME_APP_STORE_CONNECT_APP_ID", "appleTeamId": "FILL_ME_APPLE_TEAM_ID" },
+      "android": { "serviceAccountKeyPath": "./secrets/play-service-account.json", "track": "internal" }
     }
   }
 }
