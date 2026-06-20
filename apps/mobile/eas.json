@@ -36,11 +36,5 @@
         "EXPO_PUBLIC_PASSKEY_RP_ID": "FILL_ME_PASSKEY_RP_DOMAIN"
       }
     }
-  },
-  "submit": {
-    "production": {
-      "ios": { "appleId": "FILL_ME_APPLE_ID_EMAIL", "ascAppId": "FILL_ME_APP_STORE_CONNECT_APP_ID", "appleTeamId": "FILL_ME_APPLE_TEAM_ID" },
-      "android": { "serviceAccountKeyPath": "./secrets/play-service-account.json", "track": "internal" }
-    }
   }
 }
