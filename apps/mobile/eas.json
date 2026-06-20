@@ -7,7 +7,7 @@
       "channel": "development",
       "ios": { "simulator": true },
       "node": "20.20.2",
-      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
+      "prebuildCommand": "npx expo prebuild --no-install --platform android && node scripts/fix-settings-gradle.cjs",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:4000",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
@@ -20,7 +20,7 @@
       "channel": "preview",
       "ios": { "simulator": false },
       "node": "20.20.2",
-      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
+      "prebuildCommand": "npx expo prebuild --no-install --platform android && node scripts/fix-settings-gradle.cjs",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api-staging.example.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
@@ -31,7 +31,7 @@
     "production": {
       "channel": "production",
       "node": "20.20.2",
-      "prebuildCommand": "echo 'Using committed android/ with hardcoded paths'",
+      "prebuildCommand": "npx expo prebuild --no-install --platform android && node scripts/fix-settings-gradle.cjs",
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://api.example.com",
         "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "FILL_ME_GOOGLE_WEB_CLIENT_ID",
