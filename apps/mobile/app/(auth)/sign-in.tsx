@@ -160,9 +160,9 @@ export default function SignIn() {
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
       </View>
 
-      <Button testID="sign-in-google" label="Continue with Google" variant="secondary" onPress={onGoogle} />
+      <Button testID="sign-in-google" label="Continue with Google" variant="outline" onPress={onGoogle} />
       {appleAvailable && Platform.OS === 'ios' ? (
-        <Button testID="sign-in-apple" label="Continue with Apple" variant="secondary" onPress={onApple} />
+        <Button testID="sign-in-apple" label="Continue with Apple" variant="outline" onPress={onApple} />
       ) : null}
       <Button testID="sign-in-passkey" label="Use a passkey" variant="ghost" onPress={onPasskey} />
     </Screen>

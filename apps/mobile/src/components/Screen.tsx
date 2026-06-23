@@ -31,5 +31,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
   body: { flexGrow: 1 },
-  padded: { padding: 24, gap: 16 },
+  padded: { padding: 24, gap: 16, paddingBottom: 110 },
 });

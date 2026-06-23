@@ -57,7 +57,7 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   scroll: {
     padding: 20,
-    paddingBottom: 100,
+    paddingBottom: 110,
     gap: 14,
   },
   header: {

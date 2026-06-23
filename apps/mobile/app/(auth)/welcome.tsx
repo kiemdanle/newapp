@@ -45,7 +45,7 @@ export default function Welcome() {
         <Button
           testID="welcome-sign-up"
           label="Create account"
-          variant="secondary"
+          variant="outline"
           onPress={() => router.push('/(auth)/sign-up')}
         />
       </View>

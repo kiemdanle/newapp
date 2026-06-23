@@ -5,7 +5,7 @@ import { useTheme } from '../theme/useTheme';
 export interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -16,21 +16,22 @@ export function Button(props: ButtonProps) {
   const theme = useTheme();
   const variant = props.variant ?? 'primary';
 
+  // Filled Honey — primary CTA
+  // Filled Sage — secondary action
+  // Outlined Sage border + transparent — tertiary, visible but not loud
+  // Ghost — text only, minimal
+  // Danger — filled Alert Red
+  const isFilled = variant === 'primary' || variant === 'secondary' || variant === 'danger';
   const bg =
     variant === 'primary'
-      ? theme.colors.accent          // Honey — CTAs per spec
+      ? theme.colors.accent
       : variant === 'danger'
         ? theme.colors.danger
         : variant === 'secondary'
-          ? theme.colors.primary     // Fresh Sage — secondary actions
+          ? theme.colors.primary
           : 'transparent';
 
-  const fg =
-    variant === 'primary' || variant === 'danger'
-      ? '#FFFFFF'
-      : variant === 'secondary'
-        ? theme.colors.primaryFg
-        : theme.colors.text;
+  const fg = isFilled ? '#FFFFFF' : theme.colors.text;
 
   return (
     <Pressable
@@ -44,15 +45,26 @@ export function Button(props: ButtonProps) {
         {
           backgroundColor: bg,
           borderRadius: theme.radii.pill,
-          opacity: pressed ? 0.82 : 1,
+          opacity: (pressed || props.disabled) && isFilled ? 0.82 : 1,
         },
-        variant === 'ghost' && {
+        // Outlined: sage border + sage text, fills on press
+        variant === 'outline' && {
           borderWidth: 1.5,
-          borderColor: theme.colors.border,
-          backgroundColor: 'transparent',
+          borderColor: theme.colors.primary,
+          backgroundColor: pressed ? theme.colors.bgGlass : 'transparent',
+          opacity: pressed ? 0.85 : 1,
         },
-        (pressed && variant === 'primary') && { backgroundColor: '#D8901A' },
-        (pressed && variant === 'secondary') && { backgroundColor: theme.colors.hero },
+        // Ghost: subtle border so it's visible but not loud
+        variant === 'ghost' && {
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: pressed ? theme.colors.border : 'transparent',
+          opacity: pressed ? 0.7 : 1,
+        },
+        // Filled press: darken
+        pressed && variant === 'primary' && { backgroundColor: '#D8901A' },
+        pressed && variant === 'secondary' && { backgroundColor: theme.colors.hero },
+        pressed && variant === 'danger' && { backgroundColor: '#C33820' },
       ]}
     >
       <View style={styles.row}>
@@ -63,7 +75,7 @@ export function Button(props: ButtonProps) {
             style={[
               styles.label,
               {
-                color: fg,
+                color: variant === 'outline' ? theme.colors.primary : fg,
                 fontSize: theme.typeRamp.labelLarge.fontSize,
                 fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
               },

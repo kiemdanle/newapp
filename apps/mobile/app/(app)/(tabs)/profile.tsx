@@ -82,8 +82,10 @@ export default function Profile() {
           style={({ pressed }) => [
             styles.row,
             {
-              backgroundColor: theme.colors.bgElevated,
+              backgroundColor: pressed ? 'rgba(224,68,42,0.08)' : theme.colors.bgElevated,
               borderRadius: theme.radii.md,
+              borderColor: 'rgba(224,68,42,0.25)',
+              borderWidth: 1,
               opacity: pressed ? 0.85 : 1,
             },
           ]}
