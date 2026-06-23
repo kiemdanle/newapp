@@ -1,10 +1,10 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import SettingsIndex from './index';
-import { ThemeProvider } from '../../../src/theme/ThemeProvider';
-import { initThemeStore, useThemeStore } from '../../../src/theme/store';
-import { router } from '../../../tests/mocks/expo-router';
-import { __reset } from '../../../tests/mocks/expo-secure-store';
+import SettingsIndex from '../../app/(app)/settings/index';
+import { ThemeProvider } from '../../src/theme/ThemeProvider';
+import { initThemeStore, useThemeStore } from '../../src/theme/store';
+import { router } from '../../tests/mocks/expo-router';
+import { __reset } from '../../tests/mocks/expo-secure-store';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;

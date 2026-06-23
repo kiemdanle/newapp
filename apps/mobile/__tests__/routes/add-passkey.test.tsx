@@ -1,13 +1,13 @@
 import React from 'react';
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
-import AddPasskey from './add-passkey';
-import { ThemeProvider } from '../../../src/theme/ThemeProvider';
-import { initThemeStore, useThemeStore } from '../../../src/theme/store';
-import { useSessionStore } from '../../../src/auth/session-store';
-import { jsonResponse, problemResponse, queueFetch } from '../../../tests/mocks/fetch';
-import { __reset } from '../../../tests/mocks/expo-secure-store';
+import AddPasskey from '../../app/(app)/settings/add-passkey';
+import { ThemeProvider } from '../../src/theme/ThemeProvider';
+import { initThemeStore, useThemeStore } from '../../src/theme/store';
+import { useSessionStore } from '../../src/auth/session-store';
+import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
+import { __reset } from '../../tests/mocks/expo-secure-store';
 import { Passkey } from 'react-native-passkey';
-import { secureStore } from '../../../src/auth/secure-store';
+import { secureStore } from '../../src/auth/secure-store';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;

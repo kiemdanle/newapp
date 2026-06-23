@@ -1,6 +1,6 @@
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Text, TextInput } from 'react-native';
+import { ActivityIndicator, View, Text, TextInput, StyleSheet } from 'react-native';
 
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
 // layout shatter at extreme accessibility text sizes while allowing the
@@ -47,20 +47,13 @@ export default function RootLayout() {
     return () => stopSyncTriggers();
   }, [accessToken]);
 
-  if (bootError) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-  if (!themeHydrated || !sessionHydrated) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  // expo-router requires <Slot /> (or another navigator) to be present on
+  // the FIRST render so the navigation container mounts. The previous early
+  // returns rendered only <ActivityIndicator /> before hydration, so the
+  // container never mounted and AuthGate's router.replace failed with
+  // "Attempted to navigate before mounting the Root Layout component". Render
+  // Slot always and overlay a loading indicator until hydration completes.
+  const booting = bootError || !themeHydrated || !sessionHydrated;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -71,6 +64,16 @@ export default function RootLayout() {
             <AuthGate />
             <DeepLinkHandler />
             <Slot />
+            {booting ? (
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' },
+                ]}
+              >
+                <ActivityIndicator />
+              </View>
+            ) : null}
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

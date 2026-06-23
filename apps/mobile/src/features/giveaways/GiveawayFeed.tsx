@@ -1,8 +1,8 @@
-// apps/mobile/app/(app)/(tabs)/giveaway-feed.tsx
+// apps/mobile/src/features/giveaways/GiveawayFeed.tsx
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { useGiveawayFeed } from '@/api/giveaways';
 import type { Giveaway } from '@expyrico/shared';
-import { GiveawayCard } from '@/features/giveaways/GiveawayCard';
+import { GiveawayCard } from './GiveawayCard';
 
 interface Props {
   onOpen: (id: string) => void;

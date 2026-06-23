@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
-import SignIn from './sign-in';
+import SignIn from '../../app/(auth)/sign-in';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';

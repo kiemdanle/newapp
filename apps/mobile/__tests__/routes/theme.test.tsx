@@ -1,10 +1,10 @@
-// apps/mobile/app/(app)/settings/theme.test.tsx
+// apps/mobile/__tests__/routes/theme.test.tsx
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import ThemeSettings from './theme';
-import { ThemeProvider } from '../../../src/theme/ThemeProvider';
-import { initThemeStore, useThemeStore } from '../../../src/theme/store';
-import { __reset } from '../../../tests/mocks/expo-secure-store';
+import ThemeSettings from '../../app/(app)/settings/theme';
+import { ThemeProvider } from '../../src/theme/ThemeProvider';
+import { initThemeStore, useThemeStore } from '../../src/theme/store';
+import { __reset } from '../../tests/mocks/expo-secure-store';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;

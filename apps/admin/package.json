@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 4001",
+    "dev": "next dev -H 127.0.0.1 -p 4001",
     "build": "next build",
     "start": "node .next/standalone/apps/admin/server.js",
     "lint": "next lint --dir src --max-warnings 0",

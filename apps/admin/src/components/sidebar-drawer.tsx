@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
+import { Logo } from '@/components/logo';
 
 export function SidebarDrawer() {
   const [open, setOpen] = useState(false);
@@ -34,9 +35,7 @@ export function SidebarDrawer() {
         }`}
       >
         <div className="flex items-center justify-between h-14 px-4 border-b">
-          <span className="text-sm font-semibold text-neutral-dark font-display">
-            Expyrico Admin
-          </span>
+          <Logo size={28} withWordmark suffix="Admin" />
           <button
             onClick={() => setOpen(false)}
             className="flex items-center justify-center h-8 w-8 rounded-md hover:bg-neutral-light"

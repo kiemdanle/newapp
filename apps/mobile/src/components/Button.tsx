@@ -15,16 +15,22 @@ export interface ButtonProps {
 export function Button(props: ButtonProps) {
   const theme = useTheme();
   const variant = props.variant ?? 'primary';
+
   const bg =
     variant === 'primary'
-      ? theme.colors.primary
+      ? theme.colors.accent          // Honey — CTAs per spec
       : variant === 'danger'
         ? theme.colors.danger
         : variant === 'secondary'
-          ? theme.colors.bgElevated
+          ? theme.colors.primary     // Fresh Sage — secondary actions
           : 'transparent';
+
   const fg =
-    variant === 'primary' || variant === 'danger' ? theme.colors.primaryFg : theme.colors.text;
+    variant === 'primary' || variant === 'danger'
+      ? '#FFFFFF'
+      : variant === 'secondary'
+        ? theme.colors.primaryFg
+        : theme.colors.text;
 
   return (
     <Pressable
@@ -37,17 +43,34 @@ export function Button(props: ButtonProps) {
         styles.base,
         {
           backgroundColor: bg,
-          borderRadius: theme.radii.md,
-          opacity: pressed || props.disabled ? 0.7 : 1,
+          borderRadius: theme.radii.pill,
+          opacity: pressed ? 0.82 : 1,
         },
-        variant === 'ghost' && { borderWidth: 1, borderColor: theme.colors.border },
+        variant === 'ghost' && {
+          borderWidth: 1.5,
+          borderColor: theme.colors.border,
+          backgroundColor: 'transparent',
+        },
+        (pressed && variant === 'primary') && { backgroundColor: '#D8901A' },
+        (pressed && variant === 'secondary') && { backgroundColor: theme.colors.hero },
       ]}
     >
       <View style={styles.row}>
         {props.loading ? (
           <ActivityIndicator color={fg} />
         ) : (
-          <Text style={[styles.label, { color: fg, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }]}>{props.label}</Text>
+          <Text
+            style={[
+              styles.label,
+              {
+                color: fg,
+                fontSize: theme.typeRamp.labelLarge.fontSize,
+                fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
+              },
+            ]}
+          >
+            {props.label}
+          </Text>
         )}
       </View>
     </Pressable>
@@ -55,7 +78,18 @@ export function Button(props: ButtonProps) {
 }
 
 const styles = StyleSheet.create({
-  base: { paddingVertical: 14, paddingHorizontal: 18, minHeight: 48 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  label: {},
+  base: {
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    minHeight: 50,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  label: {
+    textAlign: 'center',
+  },
 });

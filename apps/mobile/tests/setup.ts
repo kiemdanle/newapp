@@ -47,6 +47,15 @@ jest.mock('react-native-passkey', () => ({
   Passkey: { get: jest.fn(), create: jest.fn() },
 }));
 
+// expo-notifications pulls in expo -> expo-asset, whose PlatformUtils reads
+// NativeModules.Expo at import time. Mock the public surface so the native
+// chain never evaluates under jest.
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'mock-token' })),
+}));
+
 // WatermelonDB — native SQLite adapter, mock for Jest
 jest.mock('../src/db/index', () => {
   const EMPTY_OBS = { subscribe: () => ({ unsubscribe: jest.fn() }) };

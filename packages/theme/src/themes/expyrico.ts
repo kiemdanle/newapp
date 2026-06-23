@@ -1,72 +1,75 @@
 import type { Theme } from '../tokens.js';
 
+// Expyrico brand theme — the default. Built on the §2.10 design-system
+// palette: Fresh Sage + Honey on Warm White. A light, warm, pantry-shelf
+// aesthetic. Sage = freshness, Honey = the "use soon" urgency signal.
 export const expyrico: Theme = {
   id: 'expyrico',
   name: 'Expyrico',
-  scheme: 'dark',
+  scheme: 'light',
   colors: {
-    bg: '#0b0a17',
-    bgElevated: 'rgba(255,255,255,0.06)',
-    bgGlass: 'rgba(255,255,255,0.08)',
-    border: 'rgba(255,255,255,0.12)',
-    text: '#fafafa',
-    textMuted: 'rgba(250,250,250,0.7)',
-    textInverse: '#0b0a17',
-    primary: '#a855f7',
-    primaryFg: '#ffffff',
-    accent: '#a5f3fc',
-    success: '#86efac',
-    warning: '#fbbf24',
-    danger: '#fb7185',
-    hero: 'rgba(255,255,255,0.08)',
-    heroFg: '#ffffff',
+    bg: '#FAFAF8',            // Warm White — main background
+    bgElevated: '#FFFFFF',    // pure white cards on warm white for crisp lift
+    bgGlass: '#D6F0E6',       // Mint Mist — soft panels, success highlights
+    border: '#F0F0ED',        // Stone — dividers, section backgrounds
+    text: '#2C2C28',          // Almost Black — primary text
+    textMuted: '#8C8C85',     // Pebble — secondary text, icons
+    textInverse: '#FAFAF8',   // Warm White on sage/honey
+    primary: '#4BAE8A',       // Fresh Sage — logo, headers, active states
+    primaryFg: '#FFFFFF',     // white text on sage
+    accent: '#F5A623',        // Honey — CTAs, badges, expiring-soon
+    success: '#4BAE8A',       // Good = reuses primary
+    warning: '#F5A623',       // Expiring soon = reuses accent
+    danger: '#E0442A',        // Alert Red — expired status only, never branding
+    hero: '#3A8F6F',          // Deep Sage — hero card background
+    heroFg: '#FFFFFF',        // white text on deep sage
   },
-  radii: { none: 0, sm: 8, md: 14, lg: 20, xl: 28, pill: 999 },
+  radii: { none: 0, sm: 10, md: 16, lg: 22, xl: 30, pill: 999 },
   shadows: {
     none: 'none',
-    sm: '0 2px 8px rgba(0,0,0,0.25)',
-    md: '0 8px 24px -8px rgba(124,58,237,0.45)',
-    lg: '0 24px 56px -20px rgba(124,58,237,0.6)',
-    glow: '0 0 32px rgba(168,85,247,0.45)',
+    sm: '0 1px 3px rgba(44,44,40,0.06), 0 1px 2px rgba(44,44,40,0.04)',
+    md: '0 4px 12px -2px rgba(44,44,40,0.08), 0 2px 6px -2px rgba(44,44,40,0.05)',
+    lg: '0 12px 32px -8px rgba(44,44,40,0.12), 0 4px 12px -4px rgba(44,44,40,0.06)',
+    glow: '0 0 24px rgba(245,166,35,0.30)',  // Honey glow for urgency hero
   },
   typography: {
     fontFamily: 'System',
     fontFamilyDisplay: 'System',
     weightRegular: 400,
     weightMedium: 500,
-    weightBold: 700,
-    letterSpacingTight: -0.5,
+    weightBold: 600,
+    letterSpacingTight: -0.8,
   },
   spacing: { xs: 4, sm: 8, md: 12, lg: 18, xl: 24, xxl: 32 },
   elevation: {
     clay: {
-      rim: 'inset 0 1px 0 rgba(255,255,255,0.08)',
-      base: '0 8px 24px rgba(0,0,0,0.35)',
-      ambient: '0 2px 8px rgba(0,0,0,0.20)',
+      rim: 'inset 0 1px 0 rgba(255,255,255,0.8)',
+      base: '0 6px 16px rgba(44,44,40,0.10)',
+      ambient: '0 2px 6px rgba(44,44,40,0.06)',
     },
     md3: {
       level0: 'none',
-      level1: '0 1px 2px rgba(0,0,0,0.25)',
-      level2: '0 2px 4px rgba(0,0,0,0.30)',
-      level3: '0 4px 8px rgba(0,0,0,0.35)',
-      level4: '0 6px 12px rgba(0,0,0,0.40)',
-      level5: '0 8px 16px rgba(0,0,0,0.45)',
+      level1: '0 1px 2px rgba(44,44,40,0.06)',
+      level2: '0 2px 4px rgba(44,44,40,0.08)',
+      level3: '0 4px 8px rgba(44,44,40,0.10)',
+      level4: '0 6px 12px rgba(44,44,40,0.12)',
+      level5: '0 8px 16px rgba(44,44,40,0.14)',
     },
   },
   typeRamp: {
-    displayLarge:   { fontSize: 57, lineHeight: 64, fontWeight: '400' },
-    displayMedium:  { fontSize: 45, lineHeight: 52, fontWeight: '400' },
-    displaySmall:   { fontSize: 36, lineHeight: 44, fontWeight: '400' },
-    headlineLarge:  { fontSize: 32, lineHeight: 40, fontWeight: '400' },
-    headlineMedium: { fontSize: 28, lineHeight: 36, fontWeight: '400' },
-    headlineSmall:  { fontSize: 24, lineHeight: 32, fontWeight: '400' },
-    titleLarge:     { fontSize: 22, lineHeight: 28, fontWeight: '500' },
-    titleMedium:    { fontSize: 16, lineHeight: 24, fontWeight: '500' },
+    displayLarge:   { fontSize: 48, lineHeight: 56, fontWeight: '600' },
+    displayMedium:  { fontSize: 38, lineHeight: 46, fontWeight: '600' },
+    displaySmall:   { fontSize: 30, lineHeight: 38, fontWeight: '600' },
+    headlineLarge:  { fontSize: 28, lineHeight: 36, fontWeight: '600' },
+    headlineMedium: { fontSize: 24, lineHeight: 32, fontWeight: '500' },
+    headlineSmall:  { fontSize: 20, lineHeight: 28, fontWeight: '500' },
+    titleLarge:     { fontSize: 18, lineHeight: 24, fontWeight: '600' },
+    titleMedium:    { fontSize: 16, lineHeight: 22, fontWeight: '500' },
     titleSmall:     { fontSize: 14, lineHeight: 20, fontWeight: '500' },
     bodyLarge:      { fontSize: 16, lineHeight: 24, fontWeight: '400' },
     bodyMedium:     { fontSize: 14, lineHeight: 20, fontWeight: '400' },
-    bodySmall:      { fontSize: 12, lineHeight: 16, fontWeight: '400' },
-    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '500' },
+    bodySmall:      { fontSize: 12, lineHeight: 18, fontWeight: '400' },
+    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '600' },
     labelMedium:    { fontSize: 12, lineHeight: 16, fontWeight: '500' },
     labelSmall:     { fontSize: 11, lineHeight: 16, fontWeight: '500' },
   },

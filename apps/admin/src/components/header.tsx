@@ -1,5 +1,6 @@
 // apps/admin/src/components/header.tsx
 import type { ReactNode } from 'react';
+import { Logo } from '@/components/logo';
 
 export function Header({
   email,
@@ -21,15 +22,8 @@ export function Header({
         {/* Hamburger — visible only on mobile (<lg) */}
         <div className="lg:hidden">{menuTrigger}</div>
 
-        {/* Logo mark — 32px Sage square */}
-        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground font-display">
-          E
-        </div>
-
-        {/* Branding */}
-        <span className="text-base font-semibold text-neutral-dark font-display">
-          Expyrico Admin
-        </span>
+        {/* Brand logo + wordmark */}
+        <Logo size={32} withWordmark suffix="Admin" />
       </div>
 
       {/* User */}

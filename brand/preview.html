@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Expyrico — Logo Preview</title>
+<style>
+  :root{
+    --sage:#4BAE8A; --sage-dark:#3A8F6F; --mint:#D6F0E6; --honey:#F5A623;
+    --butter:#FEEFC3; --stone:#F0F0ED; --pebble:#8C8C85; --ink:#2C2C28;
+    --bg:#FAFAF8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:64px 48px 24px;max-width:1080px;margin:0 auto}
+  header h1{font-size:30px;font-weight:700;letter-spacing:-.5px;margin:0 0 6px}
+  header p{margin:0;color:var(--pebble);font-size:15px;line-height:1.6;max-width:680px}
+  .grid{max-width:1080px;margin:0 auto;padding:24px 48px 96px;display:grid;gap:24px}
+  .card{background:#fff;border:1px solid var(--stone);border-radius:20px;padding:28px;
+    display:flex;flex-direction:column;gap:16px}
+  .card h2{font-size:13px;font-weight:600;margin:0;letter-spacing:.08em;text-transform:uppercase;color:var(--pebble)}
+  .stage{display:flex;align-items:center;justify-content:center;border-radius:14px;overflow:hidden}
+  .stage.light{background:var(--bg)}
+  .stage.dark{background:var(--ink)}
+  .stage.mint{background:var(--mint)}
+  .stage img{display:block;width:100%;height:auto}
+  .mark-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .swatches{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px}
+  .sw{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--pebble)}
+  .sw i{width:22px;height:22px;border-radius:6px;display:block;border:1px solid rgba(0,0,0,.06)}
+  .meta{font-size:12px;color:var(--pebble);line-height:1.6}
+  code{background:var(--stone);padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body>
+
+<header>
+  <h1>Expyrico — Logo</h1>
+  <p>The lowercase <strong>e</strong> ring in Fresh Sage opens on the right, where its crossbar grows
+  into a Honey leaf sprout — sage for freshness, honey for the “expiring soon” signal the app tracks.
+  Built directly from the Expyrico design spec (§2.10 palette).</p>
+  <div class="swatches">
+    <span class="sw"><i style="background:#4BAE8A"></i>Fresh Sage #4BAE8A</span>
+    <span class="sw"><i style="background:#3A8F6F"></i>Deep Sage #3A8F6F</span>
+    <span class="sw"><i style="background:#F5A623"></i>Honey #F5A623</span>
+    <span class="sw"><i style="background:#FAFAF8"></i>Warm White #FAFAF8</span>
+  </div>
+</header>
+
+<div class="grid">
+
+  <div class="card">
+    <h2>Primary lockup — mark + wordmark</h2>
+    <div class="stage light"><img src="exports/logo-2880.png" alt="Expyrico primary logo"></div>
+  </div>
+
+  <div class="card">
+    <h2>App icon — 1024 (iOS) · on Warm White</h2>
+    <div class="stage light" style="aspect-ratio:1/1;max-width:320px;margin:0 auto">
+      <img src="exports/icon-whitebg.png" alt="Expyrico app icon on white"></div>
+  </div>
+
+  <div class="card">
+    <h2>App icon on dark · on Mint Mist</h2>
+    <div class="stage mint" style="aspect-ratio:1/1;max-width:320px;margin:0 auto">
+      <img src="exports/icon.png" alt="Expyrico app icon"></div>
+  </div>
+
+  <div class="card">
+    <h2>Adaptive icon foreground (Android safe zone)</h2>
+    <div class="stage light" style="aspect-ratio:1/1;max-width:320px;margin:0 auto">
+      <img src="exports/adaptive-icon.png" alt="Expyrico adaptive icon foreground"></div>
+    <p class="meta">Foreground only; Android supplies the dynamic background.</p>
+  </div>
+
+  <div class="card">
+    <h2>Splash screen — 1284 × 2778</h2>
+    <div class="stage light" style="max-height:560px">
+      <img src="exports/splash.png" alt="Expyrico splash screen" style="max-height:560px;width:auto"></div>
+  </div>
+
+  <div class="card">
+    <h2>Mark — size ramp</h2>
+    <div class="mark-row">
+      <div class="stage light"><img src="exports/mark-512.png"></div>
+      <div class="stage light"><img src="exports/mark-256.png"></div>
+      <div class="stage light"><img src="exports/mark-180.png"></div>
+      <div class="stage light" style="font-size:11px;color:var(--pebble)">512 · 256 · 180</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Files</h2>
+    <pre class="meta">brand/
+  mark-expyrico.svg          app-icon mark (vector source)
+  adaptive-icon-expyrico.svg Android adaptive foreground (vector)
+  splash-expyrico.svg        splash lockup (vector)
+  logo-expyrico.svg          mark + wordmark lockup (vector)
+  exports/
+    icon.png              1024×1024  → apps/mobile/assets/icon.png
+    adaptive-icon.png     1024×1024  → apps/mobile/assets/adaptive-icon.png
+    splash.png            1284×2778  → apps/mobile/assets/splash.png
+    icon-whitebg.png      1024×1024  (white-bg variant)
+    mark-512/256/180.png             favicon / sharing thumbnails
+    logo-2880/1440.png               horizontal lockup, white bg</pre>
+  </div>
+
+</div>
+</body></html>

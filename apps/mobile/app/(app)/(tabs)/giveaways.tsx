@@ -1,6 +1,6 @@
 // apps/mobile/app/(app)/(tabs)/giveaways.tsx
 import { router } from 'expo-router';
-import { GiveawayFeed } from './giveaway-feed';
+import { GiveawayFeed } from '@/features/giveaways/GiveawayFeed';
 
 export default function GiveawaysTabScreen() {
   return (

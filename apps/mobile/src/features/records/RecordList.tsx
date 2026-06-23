@@ -1,4 +1,4 @@
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useActiveRecords } from '../../api/records';
 import { groupRecords } from './groupRecords';
@@ -15,13 +15,6 @@ const SECTION_TITLES: Record<keyof ReturnType<typeof groupRecords>, string> = {
   later: 'Later',
 };
 
-/**
- * Map each record to a theme-appropriate component.
- * - bento: 2-col BentoTile grid
- * - clay: ClayCard wrap around RecordCard
- * - material: MD3ListRow
- * - expyrico (default): existing RecordCard
- */
 function ThemeRecordItem({
   record,
   onPress,
@@ -66,24 +59,40 @@ export function RecordList() {
   const theme = useTheme();
   const groups = groupRecords(records);
   const sections: Array<keyof typeof SECTION_TITLES> = ['expired', 'today', 'thisWeek', 'later'];
+  const hasAny = sections.some((k) => groups[k].length > 0);
+
+  if (!hasAny) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 48, gap: 8 }}>
+        <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>
+          Your pantry is empty
+        </Text>
+        <Text style={{ fontSize: 14, color: theme.colors.textMuted, textAlign: 'center' }}>
+          Tap the + button to scan your first item
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+    <View style={{ gap: 18 }}>
       {sections.map((key) => {
         const items = groups[key];
         if (items.length === 0) return null;
         return (
-          <View key={key} style={{ marginBottom: theme.spacing.lg }}>
+          <View key={key}>
             <Text
               testID={`record-section-${key}`}
               style={{
                 color: theme.colors.textMuted,
                 textTransform: 'uppercase',
-                fontSize: 12,
-                marginBottom: theme.spacing.sm,
+                fontSize: 11,
+                fontWeight: '600',
+                letterSpacing: 0.8,
+                marginBottom: 10,
               }}
             >
-              {SECTION_TITLES[key]}
+              {SECTION_TITLES[key]} · {items.length}
             </Text>
             {theme.id === 'bento' ? (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
@@ -107,6 +116,6 @@ export function RecordList() {
           </View>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }

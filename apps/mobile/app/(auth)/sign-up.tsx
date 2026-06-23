@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Text } from 'react-native';
 import { registerSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
 import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
+import { Logo } from '../../src/components/Logo';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
@@ -30,7 +31,6 @@ export default function SignUp() {
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Pre-fill a referral code captured from a deep link before sign-up.
   useEffect(() => {
     void readPendingReferralCode().then((c) => {
       if (c) setReferralCode(c);
@@ -64,9 +64,11 @@ export default function SignUp() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
-        Create your account
-      </Text>
+      <View style={styles.header}>
+        <Logo size={48} />
+        <Text style={[styles.title, { color: theme.colors.text }]}>Create your account</Text>
+      </View>
+
       <TextField
         label="Email"
         autoCapitalize="none"
@@ -82,20 +84,25 @@ export default function SignUp() {
         onChangeText={setPassword}
         error={errors.password}
       />
-      <TextField
-        label="First name"
-        value={firstName}
-        onChangeText={setFirstName}
-        error={errors.firstName}
-      />
-      <TextField
-        label="Last name"
-        value={lastName}
-        onChangeText={setLastName}
-        error={errors.lastName}
-      />
+      <View style={styles.row}>
+        <View style={styles.half}>
+          <TextField
+            label="First name"
+            value={firstName}
+            onChangeText={setFirstName}
+            error={errors.firstName}
+          />
+        </View>
+        <View style={styles.half}>
+          <TextField
+            label="Last name"
+            value={lastName}
+            onChangeText={setLastName}
+            error={errors.lastName}
+          />
+        </View>
+      </View>
 
-      {/* Referral code — pre-filled from deep link or manual entry */}
       <TextField
         label="Invite code (optional)"
         autoCapitalize="characters"
@@ -117,3 +124,10 @@ export default function SignUp() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: { alignItems: 'center', gap: 16, marginBottom: 12, marginTop: 20 },
+  title: { fontSize: 26, fontWeight: '600', letterSpacing: -0.6 },
+  row: { flexDirection: 'row', gap: 12 },
+  half: { flex: 1 },
+});
