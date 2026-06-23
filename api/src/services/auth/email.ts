@@ -18,8 +18,8 @@ function getTransport(): Transporter {
 
 export async function sendVerificationEmail(to: string, token: string): Promise<void> {
   const cfg = getConfig();
-  const link = `${cfg.frontend.adminUrl.replace('admin.', 'app.')}/verify-email?token=${encodeURIComponent(token)}`;
-  const fallbackDeepLink = `${cfg.frontend.appDeepLink}verify-email?token=${encodeURIComponent(token)}`;
+  // Primary link: app deep link — opens the Expyrico mobile app directly.
+  const link = `${cfg.frontend.appDeepLink}verify-email?token=${encodeURIComponent(token)}`;
   if (cfg.env === 'test') {
     logger.info({ to, link }, 'TEST: would send verification email');
     return;
@@ -28,8 +28,8 @@ export async function sendVerificationEmail(to: string, token: string): Promise<
     from: cfg.smtp.from,
     to,
     subject: 'Verify your Expyrico email',
-    text: `Verify your email by opening this link: ${link}\n\nOr in the app: ${fallbackDeepLink}`,
-    html: `<p>Verify your email by clicking <a href="${link}">this link</a>.</p><p>Or open in the app: <a href="${fallbackDeepLink}">${fallbackDeepLink}</a></p>`,
+    text: `Verify your email by opening this link in the Expyrico app: ${link}\n\nIf you didn't create an account, ignore this email.`,
+    html: `<p>Verify your email by opening <a href="${link}">this link</a> in the Expyrico app.</p><p style="color:#8C8C85;font-size:13px;margin-top:16px">If you didn't create an account, you can safely ignore this email.</p>`,
   });
 }
 
