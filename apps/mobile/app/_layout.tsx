@@ -1,6 +1,16 @@
+import 'react-native-get-random-values';
 import '../global.css';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text, TextInput, StyleSheet } from 'react-native';
+
+// Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
+// layout shatter at extreme accessibility text sizes while allowing the
+// full dynamic-type range up to 200%. Only badge / tight-overlay components
+// may opt out with an explicit allowFontScaling={false}.
+(Text as any).defaultProps = (Text as any).defaultProps || {};
+(Text as any).defaultProps.maxFontSizeMultiplier = 1.5;
+(TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
+(TextInput as any).defaultProps.maxFontSizeMultiplier = 1.5;
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -13,6 +23,7 @@ import { initThemeStore, useThemeStore } from '../src/theme/store';
 import { hydrateSession, useSessionStore } from '../src/auth/session-store';
 import { wireApiClient } from '../src/auth/wire-client';
 import { parseAuthDeepLink } from '../src/lib/linking';
+import { capturePendingReferralCode } from '../src/referral/pendingReferralStore';
 import { startSyncTriggers, stopSyncTriggers } from '../src/db/triggers';
 
 const queryClient = createQueryClient();
@@ -37,20 +48,13 @@ export default function RootLayout() {
     return () => stopSyncTriggers();
   }, [accessToken]);
 
-  if (bootError) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-  if (!themeHydrated || !sessionHydrated) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
+  // expo-router requires <Slot /> (or another navigator) to be present on
+  // the FIRST render so the navigation container mounts. The previous early
+  // returns rendered only <ActivityIndicator /> before hydration, so the
+  // container never mounted and AuthGate's router.replace failed with
+  // "Attempted to navigate before mounting the Root Layout component". Render
+  // Slot always and overlay a loading indicator until hydration completes.
+  const booting = bootError || !themeHydrated || !sessionHydrated;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -61,6 +65,16 @@ export default function RootLayout() {
             <AuthGate />
             <DeepLinkHandler />
             <Slot />
+            {booting ? (
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' },
+                ]}
+              >
+                <ActivityIndicator />
+              </View>
+            ) : null}
           </ThemeProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
@@ -91,12 +105,26 @@ function DeepLinkHandler() {
   const router = useRouter();
   useEffect(() => {
     const sub = Linking.addEventListener('url', ({ url }) => {
+      // Auth deep links (password reset, email verification)
       const link = parseAuthDeepLink(url);
-      if (!link) return;
-      if (link.kind === 'reset-password')
-        router.push({ pathname: '/(auth)/reset-password', params: { token: link.token } });
-      if (link.kind === 'verify-email')
-        router.push({ pathname: '/(auth)/verify-email', params: { token: link.token } });
+      if (link) {
+        if (link.kind === 'reset-password')
+          router.push({ pathname: '/(auth)/reset-password', params: { token: link.token } });
+        if (link.kind === 'verify-email')
+          router.push({ pathname: '/(auth)/verify-email', params: { token: link.token } });
+        return;
+      }
+      // Referral code capture — best-effort, post-install only.
+      // v1.x provisions no universal/app-link infra, so this fires only when
+      // the app is already installed and the link opens through it.
+      try {
+        const parsed = Linking.parse(url);
+        if (parsed.path === 'invite' && typeof parsed.queryParams?.code === 'string') {
+          void capturePendingReferralCode(parsed.queryParams.code);
+        }
+      } catch {
+        // ignore parse failures on non-referral URLs
+      }
     });
     return () => sub.remove();
   }, [router]);

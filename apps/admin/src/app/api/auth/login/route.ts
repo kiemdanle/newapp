@@ -1,5 +1,6 @@
 // apps/admin/src/app/api/auth/login/route.ts
 import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 import { adminLoginRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
 import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
@@ -23,8 +24,11 @@ export async function POST(req: Request) {
   try {
     parsed = adminLoginRequestSchema.parse(await req.json());
   } catch (err) {
+    const detail = err instanceof ZodError
+      ? err.issues.map((i) => i.message).join('; ')
+      : (err as Error).message;
     return NextResponse.json(
-      { code: 'validation_error', detail: (err as Error).message },
+      { code: 'validation_error', detail },
       { status: 400 },
     );
   }

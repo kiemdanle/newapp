@@ -1,12 +1,12 @@
 import { z } from 'zod';
 import { userSchema } from './user.js';
 
-const emailField = z.string().trim().toLowerCase().email().max(254);
-const passwordField = z
+export const emailField = z.string().trim().toLowerCase().email().max(254);
+export const passwordField = z
   .string()
   .min(10, 'Password must be at least 10 characters')
   .max(128, 'Password must be at most 128 characters');
-const nameField = z.string().trim().min(1).max(80);
+export const nameField = z.string().trim().min(1).max(80);
 
 export const tokensSchema = z.object({
   accessToken: z.string(),

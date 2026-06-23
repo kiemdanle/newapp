@@ -8,6 +8,8 @@ import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
 import { maybeActivateReferral } from '../../services/referrals/referral-service.js';
+import { assertMember } from '../../services/households/permissions.js';
+import { fanOutHouseholdRecordReminders } from '../../services/households/household-reminders.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
   app.post(
@@ -16,9 +18,14 @@ export async function createRecordRoute(app: FastifyInstance) {
     async (req, reply) => {
       const input = recordCreateSchema.parse(req.body);
       const userId = req.user!.id;
-      // Explicit per-request offsets win; otherwise fall back to the user's
-      // notificationPreferences.offsetsDays (default [3,1,0] when null).
-      const user = await getPrisma().user.findUnique({
+      const prisma = getPrisma();
+
+      // If householdId is set, verify membership BEFORE inserting.
+      if (input.householdId) {
+        await assertMember(input.householdId, userId);
+      }
+
+      const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { notificationPreferences: true },
       });
@@ -27,8 +34,7 @@ export async function createRecordRoute(app: FastifyInstance) {
       const notifyAt = computeNotifyAt(new Date(input.expiryDate), offsets);
 
       // Active-record cap: free accounts are limited to ITEM_LIMIT active items.
-      // Consumed/discarded records do not count — only items the user still tracks.
-      const activeCount = await getPrisma().record.count({
+      const activeCount = await prisma.record.count({
         where: { userId, status: 'active' },
       });
       if (activeCount >= ITEM_LIMIT) {
@@ -40,7 +46,7 @@ export async function createRecordRoute(app: FastifyInstance) {
       }
 
       try {
-        const row = await getPrisma().record.create({
+        const row = await prisma.record.create({
           data: {
             userId,
             clientId: input.clientId,
@@ -53,21 +59,25 @@ export async function createRecordRoute(app: FastifyInstance) {
             notes: input.notes ?? null,
             photoUrl: input.photoUrl ?? null,
             notifyAt,
+            householdId: input.householdId ?? null,
           },
         });
+
+        // For household records, the notification-schedule worker will fan out to
+        // all members via the new per-member fan-out path. Queue the schedule job
+        // so it runs the same path. For personal records, the worker handles the
+        // single-owner schedule.
         await notificationScheduleQueue().add(
           'schedule',
           { recordId: row.id },
           { jobId: `schedule__${row.id}`, removeOnComplete: true, removeOnFail: 100 },
         );
-        // Passive referral activation: when the referred user reaches 5 lifetime
-        // records, mark their pending referral as activated (no rewards in v1.x).
+
         await maybeActivateReferral(userId).catch(() => {});
         return reply.status(201).send(toApiRecord(row));
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-          // client_id collision – fetch and return existing
-          const existing = await getPrisma().record.findUnique({
+          const existing = await prisma.record.findUnique({
             where: { clientId: input.clientId },
           });
           if (existing && existing.userId === userId) {

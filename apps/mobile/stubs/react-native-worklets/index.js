@@ -1,8 +1,9 @@
 // No-op stub for react-native-worklets.
 //
-// The real react-native-worklets requires RN 0.83+, but this app is pinned to RN
-// 0.74.5 (Expo SDK 51). babel-preset-expo / the RN babel preset unconditionally
-// resolve `react-native-worklets/plugin` while transforming react-native's own
-// files under jest. Reanimated is fully mocked in tests (tests/setup.ts), so the
-// worklets runtime is never exercised — the module only needs to resolve.
+// The real react-native-worklets requires RN 0.83+, but this app is pinned to
+// RN 0.76 (Expo SDK 52). nativewind -> react-native-css-interop/babel.js
+// unconditionally lists "react-native-worklets/plugin" as a babel plugin, so
+// the module only needs to resolve to a valid babel plugin — it never runs at
+// runtime (reanimated/worklets are mocked in tests, and the production build
+// does not exercise the worklets runtime path either).
 module.exports = {};

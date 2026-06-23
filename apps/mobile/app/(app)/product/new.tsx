@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
+import { Text, TextInput, Pressable, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCreateProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
@@ -69,11 +69,11 @@ export default function NewProductScreen() {
       ) : null}
       {params.qr ? <Text style={{ color: theme.colors.textMuted }}>QR: {params.qr}</Text> : null}
       <Text style={{ color: theme.colors.textMuted }}>Name</Text>
-      <TextInput testID="new-product-name" style={input} value={name} onChangeText={setName} />
+      <TextInput accessibilityLabel="Text input field" testID="new-product-name" style={input} value={name} onChangeText={setName} />
       <Text style={{ color: theme.colors.textMuted }}>Brand (optional)</Text>
-      <TextInput testID="new-product-brand" style={input} value={brand} onChangeText={setBrand} />
+      <TextInput accessibilityLabel="Text input field" testID="new-product-brand" style={input} value={brand} onChangeText={setBrand} />
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
-      <Pressable
+      <Pressable accessibilityRole="button"
         testID="new-product-create"
         onPress={submit}
         disabled={createProduct.isPending}

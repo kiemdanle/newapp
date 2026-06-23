@@ -60,6 +60,18 @@ export async function resolveReportAction(
   revalidatePath(`/reports/${id}`);
 }
 
+// --- Deals ---
+export async function setDealStatusAction(id: string, status: 'visible' | 'hidden' | 'deleted') {
+  await serverAdminApi.deals.setStatus(id, status);
+  revalidatePath('/deals');
+}
+
+// --- Giveaways ---
+export async function cancelGiveawayAction(id: string) {
+  await serverAdminApi.giveaways.cancel(id);
+  revalidatePath('/giveaways');
+}
+
 // --- Settings ---
 export async function saveFeatureFlagsAction(body: {
   reviewsEnabled: boolean;

@@ -44,7 +44,7 @@ export default async function UsersPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Users</h1>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Users</h1>
       <FilterBar action="/users">
         <TextFilter name="q" label="Search" value={sp.q} placeholder="email or name" />
         <SelectFilter

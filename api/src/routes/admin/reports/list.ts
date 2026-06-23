@@ -17,6 +17,13 @@ async function buildPreview(targetType: string, targetId: string): Promise<Recor
     const p = await prisma.product.findUnique({ where: { id: targetId }, select: { name: true, brand: true, status: true } });
     return p ? { kind: 'product', name: p.name, brand: p.brand, status: p.status } : null;
   }
+  if (targetType === 'deal') {
+    const d = await prisma.deal.findUnique({
+      where: { id: targetId },
+      select: { price: true, currency: true, storeName: true, note: true, status: true, product: { select: { name: true } }, user: { select: { firstName: true } } },
+    });
+    return d ? { kind: 'deal', productName: d.product.name, price: `${d.currency} ${Number(d.price).toFixed(2)}`, storeName: d.storeName, note: d.note, author: d.user.firstName, status: d.status } : null;
+  }
   return null;
 }
 

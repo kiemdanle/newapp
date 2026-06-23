@@ -16,6 +16,7 @@ const r = (id: string, expiryDate: string) => ({
   photoUrl: null,
   status: 'active',
   notifyAt: [],
+  householdId: null as string | null,
 });
 
 describe('groupRecords', () => {

@@ -29,8 +29,8 @@ export default async function AnalyticsGeographyPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Geography</h1>
-      <p className="text-sm text-muted-foreground">Top countries by user count.</p>
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Geography</h1>
+      <p className="text-sm text-neutral-mid">Top countries by user count.</p>
       <DataTable data={geo.top} columns={columns} empty="No geographic data yet." />
     </div>
   );

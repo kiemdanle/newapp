@@ -1,0 +1,28 @@
+appId: com.expyrico.app
+name: Deals flow — post, vote, report
+tags:
+  - deals
+---
+- launchApp:
+    clearState: true
+- runFlow: ./sign-in.yaml
+- tapOn: "Deals"
+- tapOn: "Post a deal"
+- inputText: "Oat"
+- tapOn:
+    text: "Oat Milk"
+    index: 0
+- tapOn:
+    id: "price"
+- inputText: "3.49"
+- tapOn:
+    id: "store"
+- inputText: "Aldi"
+- tapOn: "Post deal"
+- assertVisible: "Aldi"
+- longPressOn:
+    id: "deal-d-1"
+- assertVisible: "Report"
+- tapOn: "Spam"
+- tapOn: "Submit"
+- assertNotVisible: "Submit"

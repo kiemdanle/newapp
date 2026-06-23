@@ -5,7 +5,7 @@ import { useTheme } from '../theme/useTheme';
 export interface ButtonProps {
   label: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -15,16 +15,23 @@ export interface ButtonProps {
 export function Button(props: ButtonProps) {
   const theme = useTheme();
   const variant = props.variant ?? 'primary';
+
+  // Filled Honey — primary CTA
+  // Filled Sage — secondary action
+  // Outlined Sage border + transparent — tertiary, visible but not loud
+  // Ghost — text only, minimal
+  // Danger — filled Alert Red
+  const isFilled = variant === 'primary' || variant === 'secondary' || variant === 'danger';
   const bg =
     variant === 'primary'
-      ? theme.colors.primary
+      ? theme.colors.accent
       : variant === 'danger'
         ? theme.colors.danger
         : variant === 'secondary'
-          ? theme.colors.bgElevated
+          ? theme.colors.primary
           : 'transparent';
-  const fg =
-    variant === 'primary' || variant === 'danger' ? theme.colors.primaryFg : theme.colors.text;
+
+  const fg = isFilled ? '#FFFFFF' : theme.colors.text;
 
   return (
     <Pressable
@@ -37,17 +44,45 @@ export function Button(props: ButtonProps) {
         styles.base,
         {
           backgroundColor: bg,
-          borderRadius: theme.radii.md,
-          opacity: pressed || props.disabled ? 0.7 : 1,
+          borderRadius: theme.radii.pill,
+          opacity: (pressed || props.disabled) && isFilled ? 0.82 : 1,
         },
-        variant === 'ghost' && { borderWidth: 1, borderColor: theme.colors.border },
+        // Outlined: sage border + sage text, fills on press
+        variant === 'outline' && {
+          borderWidth: 1.5,
+          borderColor: theme.colors.primary,
+          backgroundColor: pressed ? theme.colors.bgGlass : 'transparent',
+          opacity: pressed ? 0.85 : 1,
+        },
+        // Ghost: subtle border so it's visible but not loud
+        variant === 'ghost' && {
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          backgroundColor: pressed ? theme.colors.border : 'transparent',
+          opacity: pressed ? 0.7 : 1,
+        },
+        // Filled press: darken
+        pressed && variant === 'primary' && { backgroundColor: '#D8901A' },
+        pressed && variant === 'secondary' && { backgroundColor: theme.colors.hero },
+        pressed && variant === 'danger' && { backgroundColor: '#C33820' },
       ]}
     >
       <View style={styles.row}>
         {props.loading ? (
           <ActivityIndicator color={fg} />
         ) : (
-          <Text style={[styles.label, { color: fg, fontSize: theme.typeRamp.labelLarge.fontSize, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }]}>{props.label}</Text>
+          <Text
+            style={[
+              styles.label,
+              {
+                color: variant === 'outline' ? theme.colors.primary : fg,
+                fontSize: theme.typeRamp.labelLarge.fontSize,
+                fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
+              },
+            ]}
+          >
+            {props.label}
+          </Text>
         )}
       </View>
     </Pressable>
@@ -55,7 +90,18 @@ export function Button(props: ButtonProps) {
 }
 
 const styles = StyleSheet.create({
-  base: { paddingVertical: 14, paddingHorizontal: 18 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  label: {},
+  base: {
+    paddingVertical: 15,
+    paddingHorizontal: 24,
+    minHeight: 50,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  label: {
+    textAlign: 'center',
+  },
 });

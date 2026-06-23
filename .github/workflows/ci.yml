@@ -25,8 +25,33 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck mobile
         run: pnpm --filter @expyrico/mobile typecheck
+      - name: Lint mobile (a11y)
+        run: pnpm --filter @expyrico/mobile lint
       - name: Run mobile tests
         run: pnpm --filter @expyrico/mobile test
+
+  mobile-a11y-and-snapshots:
+    name: Mobile a11y + snapshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: a11y lint (react-native-a11y)
+        run: pnpm --filter @expyrico/mobile lint
+      - name: WCAG contrast tests
+        run: pnpm --filter @expyrico/mobile test -- contrast
+      - name: Per-theme snapshot tests
+        run: pnpm --filter @expyrico/mobile test -- snapshots
+      - name: Touch-target audit
+        run: pnpm --filter @expyrico/mobile test -- touch-target
 
   # TODO(M4): wire Maestro E2E on nightly schedule. EAS-managed Maestro setup
   # (build dev client, install on emulator, run flow) is non-trivial. A minimal

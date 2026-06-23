@@ -46,3 +46,37 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 jest.mock('react-native-passkey', () => ({
   Passkey: { get: jest.fn(), create: jest.fn() },
 }));
+
+// expo-notifications pulls in expo -> expo-asset, whose PlatformUtils reads
+// NativeModules.Expo at import time. Mock the public surface so the native
+// chain never evaluates under jest.
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({ status: 'undetermined' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'granted' })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'mock-token' })),
+}));
+
+// WatermelonDB — native SQLite adapter, mock for Jest
+jest.mock('../src/db/index', () => {
+  const EMPTY_OBS = { subscribe: () => ({ unsubscribe: jest.fn() }) };
+  const EMPTY_QUERY = { observe: () => EMPTY_OBS, fetch: () => Promise.resolve([]) };
+  const recordsCol = {
+    query: () => EMPTY_QUERY,
+    find: () => Promise.reject(new Error('not found')),
+    findAndObserve: () => EMPTY_OBS,
+    create: () => Promise.resolve({ id: 'mock-record-id' }),
+  };
+  class RecordModel {}
+  class ProductCacheModel {}
+  return {
+    database: {
+      get: () => recordsCol,
+      write: (fn: () => Promise<void>) => fn(),
+    },
+    RecordModel,
+    ProductCacheModel,
+  };
+});
+jest.mock('../src/db/triggers', () => ({
+  triggerSyncSoon: jest.fn(),
+}));

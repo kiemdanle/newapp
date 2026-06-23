@@ -22,7 +22,7 @@ export function LoadMore({
   sp.set('cursor', nextCursor);
   return (
     <div className="flex justify-center pt-4">
-      <Button asChild variant="outline">
+      <Button asChild variant="ghost" className="text-neutral-mid hover:text-primary">
         <Link href={`${basePath}?${sp.toString()}`}>Load more</Link>
       </Button>
     </div>

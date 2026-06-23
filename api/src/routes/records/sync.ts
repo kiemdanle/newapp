@@ -12,6 +12,7 @@ export async function syncRecordsRoute(app: FastifyInstance) {
         serverTime: result.serverTime.toISOString(),
         changes: result.changes.map(toApiRecord),
         deletedIds: result.deletedIds,
+        conflicts: result.conflicts,
       }),
     );
   });

@@ -38,9 +38,10 @@ export function LoginForm() {
         requiresTotpEnrollment?: boolean;
         enrollmentChallenge?: string;
         code?: string;
+        detail?: string;
       };
       if (!res.ok) {
-        throw new Error(body.code ?? 'login_failed');
+        throw new Error(body.detail ?? body.code ?? 'login_failed');
       }
       // Fresh admin without TOTP yet: enroll first, no session granted.
       if (body.requiresTotpEnrollment && body.enrollmentChallenge) {

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import { useTheme } from '../theme/useTheme';
 
 type Size = 'sm' | 'md' | 'lg' | 'wide';

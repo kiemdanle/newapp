@@ -56,8 +56,8 @@ function ThemePreviewCard({
       ]}
     >
       <View style={styles.swatchRow}>
-        <View style={[styles.swatch, { backgroundColor: theme.colors.primary }]} />
-        <View style={[styles.swatch, { backgroundColor: theme.colors.accent }]} />
+        <View style={[styles.swatch, { backgroundColor: theme.colors.primary, borderRadius: theme.radii.sm }]} />
+        <View style={[styles.swatch, { backgroundColor: theme.colors.accent, borderRadius: theme.radii.sm }]} />
         <View
           style={[
             styles.swatch,
@@ -65,6 +65,7 @@ function ThemePreviewCard({
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
               borderWidth: 1,
+              borderRadius: theme.radii.sm,
             },
           ]}
         />
@@ -84,5 +85,5 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { width: '47%', padding: 14, gap: 8 },
   swatchRow: { flexDirection: 'row', gap: 6 },
-  swatch: { width: 22, height: 22, borderRadius: 6 },
+  swatch: { width: 22, height: 22 },
 });

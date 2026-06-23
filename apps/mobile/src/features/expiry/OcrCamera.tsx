@@ -42,7 +42,7 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
       <CameraView ref={cameraRef} facing="back" style={{ flex: 1 }} />
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
-        <Pressable
+        <Pressable accessibilityRole="button"
           onPress={capture}
           testID="ocr-capture"
           style={{
@@ -58,7 +58,7 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
             <Text style={{ color: theme.colors.primaryFg, fontWeight: '700' }}>Scan date</Text>
           )}
         </Pressable>
-        <Pressable onPress={onCancel} testID="ocr-cancel">
+        <Pressable accessibilityRole="button" onPress={onCancel} testID="ocr-cancel">
           <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Cancel</Text>
         </Pressable>
       </View>

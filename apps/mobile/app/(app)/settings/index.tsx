@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import { Screen } from '../../../src/components/Screen';
 import { useTheme } from '../../../src/theme/useTheme';
+import { MD3ListRow } from '../../../src/components/MD3ListRow';
 
 interface Row {
   key: string;
@@ -12,6 +13,12 @@ interface Row {
 }
 
 const ROWS: Row[] = [
+  {
+    key: 'invite',
+    label: 'Invite friends',
+    subtitle: 'Share your invite code',
+    href: '/(app)/invite',
+  },
   {
     key: 'theme',
     label: 'Theme',
@@ -38,35 +45,67 @@ const ROWS: Row[] = [
   },
 ];
 
+/**
+ * Theme-adaptive settings row. When the active theme is material, renders
+ * `<MD3ListRow>`. All other themes keep the existing Pressable card.
+ */
+function SettingsRow({ row, onPress }: { row: Row; onPress: () => void }) {
+  const theme = useTheme();
+
+  if (theme.id === 'material') {
+    return <MD3ListRow title={row.label} subtitle={row.subtitle} onPress={onPress} />;
+  }
+
+  return (
+    <Pressable
+      key={row.key}
+      testID={`settings-row-${row.key}`}
+      accessibilityRole="button"
+      accessibilityLabel={row.label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          backgroundColor: theme.colors.bgElevated,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <Text
+        style={{
+          color: theme.colors.text,
+          fontSize: theme.typeRamp.titleMedium.fontSize,
+          fontWeight: theme.typeRamp.titleMedium.fontWeight as any,
+        }}
+      >
+        {row.label}
+      </Text>
+      <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize }}>
+        {row.subtitle}
+      </Text>
+    </Pressable>
+  );
+}
+
 export default function SettingsIndex() {
   const router = useRouter();
   const theme = useTheme();
   return (
     <Screen>
-      <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>Settings</Text>
+      <Text
+        style={{
+          fontSize: theme.typeRamp.headlineSmall.fontSize,
+          fontWeight: theme.typeRamp.headlineSmall.fontWeight as any,
+          color: theme.colors.text,
+        }}
+      >
+        Settings
+      </Text>
       <View style={{ gap: 10 }}>
         {ROWS.map((row) => (
-          <Pressable
-            key={row.key}
-            testID={`settings-row-${row.key}`}
-            accessibilityRole="button"
-            accessibilityLabel={row.label}
-            onPress={() => router.push(row.href)}
-            style={({ pressed }) => [
-              styles.row,
-              {
-                backgroundColor: theme.colors.bgElevated,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radii.lg,
-                opacity: pressed ? 0.7 : 1,
-              },
-            ]}
-          >
-            <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>
-              {row.label}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize }}>{row.subtitle}</Text>
-          </Pressable>
+          <SettingsRow key={row.key} row={row} onPress={() => router.push(row.href)} />
         ))}
       </View>
     </Screen>

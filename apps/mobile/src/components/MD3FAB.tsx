@@ -13,7 +13,7 @@ export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       style={{
-        width: 56, height: 56,
+        width: 56, height: 56, minHeight: 56,
         borderRadius: t.radii.lg,
         backgroundColor: t.colors.accent,
         alignItems: 'center', justifyContent: 'center',
@@ -22,7 +22,7 @@ export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
           : { elevation: shadow.elevation }),
       }}
     >
-      <Text style={{ color: t.colors.textInverse, fontSize: 24 }}>{icon === 'qrcode-scan' ? '⊟' : '+'}</Text>
+      <Text style={{ color: t.colors.textInverse, fontSize: t.typeRamp.titleLarge.fontSize }}>{icon === 'qrcode-scan' ? '⊟' : '+'}</Text>
     </Pressable>
   );
 }

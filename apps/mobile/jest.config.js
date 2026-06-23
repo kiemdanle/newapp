@@ -28,6 +28,6 @@ module.exports = {
   // so the RN/Expo ecosystem source (Flow-typed) slips past the default ignore and
   // reaches the runtime untransformed. Re-allow those packages under .pnpm too.
   transformIgnorePatterns: [
-    'node_modules/.pnpm/(?!(.*?(react-native|@react-native|@react-native-community|expo|@expo|expo-.*|@expo/.*|react-navigation|@react-navigation|nativewind|react-native-.*|@tanstack|zustand)))',
+    'node_modules/.pnpm/(?!(.*?(react-native|@react-native|@react-native-community|expo|@expo|expo-.*|@expo/.*|react-navigation|@react-navigation|nativewind|react-native-.*|@tanstack|zustand|uuid|@expyrico)))',
   ],
 };

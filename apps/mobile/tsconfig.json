@@ -4,12 +4,25 @@
     "jsx": "react-native",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2022", "DOM"],
-    "types": ["react-native", "jest", "node"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "react-native",
+      "jest",
+      "node"
+    ],
     "paths": {
-      "@/*": ["./src/*"],
-      "react": ["./node_modules/@types/react"],
-      "react/*": ["./node_modules/@types/react/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ],
+      "react/*": [
+        "./node_modules/@types/react/*"
+      ]
     },
     "allowJs": true,
     "noEmit": true,
@@ -17,5 +30,13 @@
     "exactOptionalPropertyTypes": false,
     "experimentalDecorators": true
   },
-  "include": ["app/**/*", "src/**/*", "tests/**/*", "nativewind-env.d.ts"]
+  "include": [
+    "app.config.ts",
+    "app/**/*",
+    "src/**/*",
+    "tests/**/*",
+    "nativewind-env.d.ts",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }

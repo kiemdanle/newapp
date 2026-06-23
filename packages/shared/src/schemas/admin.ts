@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { passwordField } from './auth.js';
 
 export const adminLoginRequestSchema = z.object({
   email: z.string().trim().toLowerCase().email().max(254),
-  password: z.string().min(1).max(128),
+  password: passwordField,
 });
 export type AdminLoginRequest = z.infer<typeof adminLoginRequestSchema>;
 

@@ -1,0 +1,1909 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`sign-in in bento snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f4f4f5",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#f4f4f5",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#0a0a0a",
+                "fontSize": 24,
+                "fontWeight": "600",
+              }
+            }
+          >
+            Welcome back
+          </Text>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#71717a",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Email
+            </Text>
+            <TextInput
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={[Function]}
+              placeholderTextColor="#71717a"
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e4e4e7",
+                    "borderRadius": 14,
+                    "color": "#0a0a0a",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#71717a",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Password
+            </Text>
+            <TextInput
+              accessibilityLabel="Password"
+              onChangeText={[Function]}
+              placeholderTextColor="#71717a"
+              secureTextEntry={true}
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e4e4e7",
+                    "borderRadius": 14,
+                    "color": "#0a0a0a",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#0a0a0a",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-submit"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#ffffff",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Sign in
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Forgot password?"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#e4e4e7",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#0a0a0a",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Forgot password?
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#71717a",
+                "marginTop": 8,
+                "textAlign": "center",
+              }
+            }
+          >
+            or continue with
+          </Text>
+          <View
+            accessibilityLabel="Continue with Google"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-google"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#0a0a0a",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Continue with Google
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Use a passkey"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#e4e4e7",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+            testID="sign-in-passkey"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#0a0a0a",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Use a passkey
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`sign-in in clay snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#fff7f0",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#fff7f0",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#5b3a1f",
+                "fontSize": 26,
+                "fontWeight": "700",
+              }
+            }
+          >
+            Welcome back
+          </Text>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#a47148",
+                    "fontSize": 13,
+                    "fontWeight": "700",
+                  },
+                ]
+              }
+            >
+              Email
+            </Text>
+            <TextInput
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={[Function]}
+              placeholderTextColor="#a47148"
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#fde0c2",
+                    "borderRadius": 16,
+                    "color": "#5b3a1f",
+                    "fontSize": 17,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#a47148",
+                    "fontSize": 13,
+                    "fontWeight": "700",
+                  },
+                ]
+              }
+            >
+              Password
+            </Text>
+            <TextInput
+              accessibilityLabel="Password"
+              onChangeText={[Function]}
+              placeholderTextColor="#a47148"
+              secureTextEntry={true}
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#fde0c2",
+                    "borderRadius": 16,
+                    "color": "#5b3a1f",
+                    "fontSize": 17,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#ea580c",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-submit"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#ffffff",
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                    },
+                  ]
+                }
+              >
+                Sign in
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Forgot password?"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#fde0c2",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#5b3a1f",
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                    },
+                  ]
+                }
+              >
+                Forgot password?
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#a47148",
+                "marginTop": 8,
+                "textAlign": "center",
+              }
+            }
+          >
+            or continue with
+          </Text>
+          <View
+            accessibilityLabel="Continue with Google"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-google"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#5b3a1f",
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                    },
+                  ]
+                }
+              >
+                Continue with Google
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Use a passkey"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#fde0c2",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+            testID="sign-in-passkey"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#5b3a1f",
+                      "fontSize": 15,
+                      "fontWeight": "700",
+                    },
+                  ]
+                }
+              >
+                Use a passkey
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`sign-in in expyrico snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#0b0a17",
+      "flex": 1,
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#0b0a17",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#fafafa",
+                "fontSize": 28,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Welcome back
+          </Text>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "rgba(250,250,250,0.7)",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Email
+            </Text>
+            <TextInput
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={[Function]}
+              placeholderTextColor="rgba(250,250,250,0.7)"
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "borderColor": "rgba(255,255,255,0.12)",
+                    "borderRadius": 14,
+                    "color": "#fafafa",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "rgba(250,250,250,0.7)",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Password
+            </Text>
+            <TextInput
+              accessibilityLabel="Password"
+              onChangeText={[Function]}
+              placeholderTextColor="rgba(250,250,250,0.7)"
+              secureTextEntry={true}
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "borderColor": "rgba(255,255,255,0.12)",
+                    "borderRadius": 14,
+                    "color": "#fafafa",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#a855f7",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-submit"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#ffffff",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Sign in
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Forgot password?"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "rgba(255,255,255,0.12)",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#fafafa",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Forgot password?
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={
+              {
+                "color": "rgba(250,250,250,0.7)",
+                "marginTop": 8,
+                "textAlign": "center",
+              }
+            }
+          >
+            or continue with
+          </Text>
+          <View
+            accessibilityLabel="Continue with Google"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "rgba(255,255,255,0.06)",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-google"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#fafafa",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Continue with Google
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Use a passkey"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 14,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "rgba(255,255,255,0.12)",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+            testID="sign-in-passkey"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#fafafa",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Use a passkey
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;
+
+exports[`sign-in in material snapshot 1`] = `
+<View
+  collapsable={false}
+  style={
+    {
+      "backgroundColor": "#f0e8ff",
+      "flex": 1,
+      "opacity": 0,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "flex": 1,
+      }
+    }
+  >
+    <RNCSafeAreaView
+      edges={
+        {
+          "bottom": "additive",
+          "left": "additive",
+          "right": "additive",
+          "top": "additive",
+        }
+      }
+      style={
+        [
+          {
+            "flex": 1,
+          },
+          {
+            "backgroundColor": "#f0e8ff",
+          },
+        ]
+      }
+    >
+      <RCTScrollView
+        contentContainerStyle={
+          {
+            "gap": 16,
+            "padding": 24,
+          }
+        }
+        style={
+          {
+            "flex": 1,
+          }
+        }
+      >
+        <View>
+          <Text
+            style={
+              {
+                "color": "#1d1b20",
+                "fontSize": 28,
+                "fontWeight": "400",
+              }
+            }
+          >
+            Welcome back
+          </Text>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#65558f",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Email
+            </Text>
+            <TextInput
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={[Function]}
+              placeholderTextColor="#65558f"
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e0e0e0",
+                    "borderRadius": 16,
+                    "color": "#1d1b20",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            style={
+              {
+                "gap": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {},
+                  {
+                    "color": "#65558f",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  },
+                ]
+              }
+            >
+              Password
+            </Text>
+            <TextInput
+              accessibilityLabel="Password"
+              onChangeText={[Function]}
+              placeholderTextColor="#65558f"
+              secureTextEntry={true}
+              style={
+                [
+                  {
+                    "borderWidth": 1,
+                    "paddingHorizontal": 14,
+                    "paddingVertical": 12,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e0e0e0",
+                    "borderRadius": 16,
+                    "color": "#1d1b20",
+                    "fontSize": 16,
+                  },
+                ]
+              }
+              value=""
+            />
+          </View>
+          <View
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": false,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#65558f",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-submit"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#ffffff",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Sign in
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Forgot password?"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#e0e0e0",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Forgot password?
+              </Text>
+            </View>
+          </View>
+          <Text
+            style={
+              {
+                "color": "#65558f",
+                "marginTop": 8,
+                "textAlign": "center",
+              }
+            }
+          >
+            or continue with
+          </Text>
+          <View
+            accessibilityLabel="Continue with Google"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                false,
+              ]
+            }
+            testID="sign-in-google"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Continue with Google
+              </Text>
+            </View>
+          </View>
+          <View
+            accessibilityLabel="Use a passkey"
+            accessibilityRole="button"
+            accessibilityState={
+              {
+                "busy": undefined,
+                "checked": undefined,
+                "disabled": undefined,
+                "expanded": undefined,
+                "selected": undefined,
+              }
+            }
+            accessibilityValue={
+              {
+                "max": undefined,
+                "min": undefined,
+                "now": undefined,
+                "text": undefined,
+              }
+            }
+            accessible={true}
+            collapsable={false}
+            focusable={true}
+            onBlur={[Function]}
+            onClick={[Function]}
+            onFocus={[Function]}
+            onResponderGrant={[Function]}
+            onResponderMove={[Function]}
+            onResponderRelease={[Function]}
+            onResponderTerminate={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              [
+                {
+                  "minHeight": 48,
+                  "paddingHorizontal": 18,
+                  "paddingVertical": 14,
+                },
+                {
+                  "backgroundColor": "transparent",
+                  "borderRadius": 16,
+                  "opacity": 1,
+                },
+                {
+                  "borderColor": "#e0e0e0",
+                  "borderWidth": 1,
+                },
+              ]
+            }
+            testID="sign-in-passkey"
+          >
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "gap": 8,
+                  "justifyContent": "center",
+                }
+              }
+            >
+              <Text
+                style={
+                  [
+                    {},
+                    {
+                      "color": "#1d1b20",
+                      "fontSize": 14,
+                      "fontWeight": "500",
+                    },
+                  ]
+                }
+              >
+                Use a passkey
+              </Text>
+            </View>
+          </View>
+        </View>
+      </RCTScrollView>
+    </RNCSafeAreaView>
+  </View>
+</View>
+`;

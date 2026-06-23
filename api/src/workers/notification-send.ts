@@ -32,7 +32,7 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
   const messages: ExpoPushMessage[] = tokens.map((t) => ({
     to: t.expoPushToken,
     sound: 'default',
-    title: 'Pantry',
+    title: 'Expyrico',
     body: bodyFor(data.offsetDays, name),
     data: { recordId: record.id, type: 'expiry' },
   }));

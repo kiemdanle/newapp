@@ -4,6 +4,15 @@ import { createLocalRecord } from '../api/records';
 
 jest.mock('../api/records', () => ({
   createLocalRecord: jest.fn().mockResolvedValue('local-id-1'),
+  useActiveRecords: () => [],
+}));
+
+jest.mock('../api/households', () => ({
+  useMyHouseholds: () => ({ data: { items: [] } }),
+}));
+
+jest.mock('../store/pantryScope', () => ({
+  usePantryScope: () => ({ scope: 'personal', householdId: null, setScope: jest.fn() }),
 }));
 
 jest.mock('../theme/useTheme', () => ({
@@ -18,7 +27,7 @@ jest.mock('../theme/useTheme', () => ({
       border: '#333',
     },
     spacing: { xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 24 },
-    radii: { md: 8, lg: 12 },
+    radii: { md: 8, lg: 12, sm: 4 },
   }),
 }));
 

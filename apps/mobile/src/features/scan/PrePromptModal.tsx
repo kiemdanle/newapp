@@ -43,10 +43,10 @@ export function PrePromptModal({ visible, onAllow, onCancel }: Props) {
           <View
             style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.md }}
           >
-            <Pressable onPress={onCancel} testID="pre-prompt-cancel">
+            <Pressable accessibilityRole="button" onPress={onCancel} testID="pre-prompt-cancel">
               <Text style={{ color: theme.colors.textMuted }}>Not now</Text>
             </Pressable>
-            <Pressable onPress={onAllow} testID="pre-prompt-allow">
+            <Pressable accessibilityRole="button" onPress={onAllow} testID="pre-prompt-allow">
               <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Continue</Text>
             </Pressable>
           </View>

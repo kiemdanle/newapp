@@ -62,6 +62,7 @@ export async function makeRecord(
     status: 'active' | 'consumed' | 'discarded' | 'expired';
     clientId: string;
     notifyAt: string[];
+    householdId: string | null;
   }> = {},
 ) {
   const prisma = getPrisma();
@@ -76,6 +77,7 @@ export async function makeRecord(
       status: overrides.status ?? 'active',
       clientId: overrides.clientId ?? randomUUID(),
       notifyAt: overrides.notifyAt ?? [],
+      householdId: overrides.householdId !== undefined ? overrides.householdId : null,
     },
   });
 }

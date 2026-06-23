@@ -21,16 +21,16 @@ export default async function ReviewDetailPage({
 
   return (
     <div className="space-y-6">
-      <Link href="/reviews" className="text-sm text-muted-foreground hover:underline">
+      <Link href="/reviews" className="text-sm text-neutral-mid hover:underline">
         ← Reviews
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">{RATING_LABEL[r.rating] ?? r.rating}</h1>
+          <h1 className="text-[28px] font-semibold text-neutral-dark font-display">{RATING_LABEL[r.rating] ?? r.rating}</h1>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={r.status} />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-neutral-mid">
               {new Date(r.createdAt).toLocaleString()}
             </span>
           </div>
@@ -44,15 +44,15 @@ export default async function ReviewDetailPage({
 
       <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-xs text-muted-foreground">Helpful</dt>
+          <dt className="text-xs text-neutral-mid">Helpful</dt>
           <dd>{r.helpfulCount}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Not helpful</dt>
+          <dt className="text-xs text-neutral-mid">Not helpful</dt>
           <dd>{r.notHelpfulCount}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Product</dt>
+          <dt className="text-xs text-neutral-mid">Product</dt>
           <dd>
             <Link href={`/products/${r.productId}`} className="hover:underline">
               {r.productId.slice(0, 8)}…
@@ -60,7 +60,7 @@ export default async function ReviewDetailPage({
           </dd>
         </div>
         <div>
-          <dt className="text-xs text-muted-foreground">Author</dt>
+          <dt className="text-xs text-neutral-mid">Author</dt>
           <dd>
             <Link href={`/users/${r.userId}`} className="hover:underline">
               {r.userId.slice(0, 8)}…

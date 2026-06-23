@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, Text } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { loginSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
 import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
+import { Logo } from '../../src/components/Logo';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
@@ -54,8 +55,6 @@ export default function SignIn() {
     try {
       const result = await authEndpoints.login(input);
       if ('requiresTotp' in result) {
-        // Mobile users hitting this means they have an admin account —
-        // route them to the admin web app for the TOTP step.
         setFormError('This account requires admin TOTP; please sign in via the admin web.');
         return;
       }
@@ -119,9 +118,11 @@ export default function SignIn() {
 
   return (
     <Screen>
-      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
-        Welcome back
-      </Text>
+      <View style={styles.header}>
+        <Logo size={48} />
+        <Text style={[styles.title, { color: theme.colors.text }]}>Welcome back</Text>
+      </View>
+
       <TextField
         label="Email"
         autoCapitalize="none"
@@ -137,31 +138,41 @@ export default function SignIn() {
         onChangeText={setPassword}
         error={errors.password}
       />
-      {formError ? <ErrorText>{formError}</ErrorText> : null}
-      <Button testID="sign-in-submit" label="Sign in" onPress={onSubmit} loading={loading} />
+
+      <Button
+        testID="sign-in-submit"
+        label="Sign in"
+        onPress={onSubmit}
+        loading={loading}
+      />
+
       <Button
         label="Forgot password?"
         variant="ghost"
         onPress={() => router.push('/(auth)/forgot-password')}
       />
-      <Text style={{ color: theme.colors.textMuted, textAlign: 'center', marginTop: 8 }}>
-        or continue with
-      </Text>
-      <Button
-        testID="sign-in-google"
-        label="Continue with Google"
-        variant="secondary"
-        onPress={onGoogle}
-      />
+
+      {formError ? <ErrorText>{formError}</ErrorText> : null}
+
+      <View style={styles.divider}>
+        <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
+        <Text style={[styles.dividerText, { color: theme.colors.textMuted }]}>or continue with</Text>
+        <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
+      </View>
+
+      <Button testID="sign-in-google" label="Continue with Google" variant="outline" onPress={onGoogle} />
       {appleAvailable && Platform.OS === 'ios' ? (
-        <Button
-          testID="sign-in-apple"
-          label="Continue with Apple"
-          variant="secondary"
-          onPress={onApple}
-        />
+        <Button testID="sign-in-apple" label="Continue with Apple" variant="outline" onPress={onApple} />
       ) : null}
       <Button testID="sign-in-passkey" label="Use a passkey" variant="ghost" onPress={onPasskey} />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: { alignItems: 'center', gap: 16, marginBottom: 12, marginTop: 20 },
+  title: { fontSize: 26, fontWeight: '600', letterSpacing: -0.6 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
+  dividerLine: { flex: 1, height: 1 },
+  dividerText: { fontSize: 12, fontWeight: '500' },
+});
