@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useRateTransaction } from '../../api/giveaways';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
   giveawayId: string;
@@ -11,6 +12,7 @@ interface Props {
 const STARS = [1, 2, 3, 4, 5];
 
 export function TransactionRatingForm({ giveawayId, onDone }: Props) {
+  const theme = useTheme();
   const [stars, setStars] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const rate = useRateTransaction();
@@ -28,8 +30,8 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
 
   return (
     <View style={{ gap: 16, padding: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>Rate this transaction</Text>
-      <Text style={{ color: '#6b7280', fontSize: 13 }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.text }}>Rate this transaction</Text>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
         Your rating will be hidden from the other party until they also submit theirs.
       </Text>
 
@@ -42,10 +44,12 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
             onPress={() => setStars(s)}
             style={{
               padding: 12,
-              borderRadius: 8,
+              borderRadius: theme.radii.md,
               borderWidth: 2,
-              borderColor: stars && s <= stars ? '#d97706' : '#d1d5db',
-              backgroundColor: stars && s <= stars ? '#fef3c7' : '#fff',
+              borderColor: stars && s <= stars ? theme.colors.accent : theme.colors.border,
+              backgroundColor: stars && s <= stars ? theme.colors.warning + '24' : theme.colors.bgElevated,
+              minHeight: 44,
+              minWidth: 44,
             }}
           >
             <Text style={{ fontSize: 20 }}>★</Text>
@@ -55,23 +59,24 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
 
       <TextInput
         placeholder="Comment (optional)"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.textMuted}
         value={comment}
         onChangeText={setComment}
         multiline
         style={{
           borderWidth: 1,
-          borderColor: '#d1d5db',
-          borderRadius: 8,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.md,
           padding: 12,
-          color: '#111827',
+          color: theme.colors.text,
+          backgroundColor: theme.colors.bgElevated,
           minHeight: 60,
           textAlignVertical: 'top',
         }}
       />
 
       {rate.isError && (
-        <Text style={{ color: '#dc2626' }}>
+        <Text style={{ color: theme.colors.danger }}>
           {rate.error instanceof Error ? rate.error.message : 'Rating failed'}
         </Text>
       )}
@@ -82,12 +87,14 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
         onPress={submit}
         style={{
           padding: 14,
-          borderRadius: 8,
-          backgroundColor: stars && !pending ? '#2563eb' : '#9ca3af',
+          borderRadius: theme.radii.pill,
+          backgroundColor: stars && !pending ? theme.colors.accent : theme.colors.border,
           alignItems: 'center',
+          minHeight: 48,
+          justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#fff', fontWeight: '600' }}>
+        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
           {pending ? 'Submitting…' : 'Submit rating'}
         </Text>
       </Pressable>

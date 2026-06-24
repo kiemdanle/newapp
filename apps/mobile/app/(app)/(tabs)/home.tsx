@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { RecordList } from '../../../src/features/records/RecordList';
 import { UseNextHero } from '../../../src/features/records/UseNextHero';
@@ -19,7 +20,12 @@ export default function HomeTab() {
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
-          <Logo size={32} withWordmark />
+          <View>
+            <Logo size={34} withWordmark />
+            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>
+              Use the oldest item first.
+            </Text>
+          </View>
           {totalUrgent > 0 ? (
             <View style={[styles.countPill, { backgroundColor: theme.colors.accent + '20' }]}>
               <Text style={[styles.countText, { color: theme.colors.accent }]}>
@@ -43,12 +49,13 @@ export default function HomeTab() {
         style={({ pressed }) => [
           styles.fab,
           {
-            backgroundColor: pressed ? '#D8901A' : theme.colors.accent,
+            backgroundColor: theme.colors.accent,
             opacity: pressed ? 0.9 : 1,
           },
         ]}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Ionicons name="scan" size={24} color={theme.colors.text} />
+        <Text style={[styles.fabLabel, { color: theme.colors.text }]}>Scan</Text>
       </Pressable>
     </View>
   );
@@ -75,11 +82,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  headerSubcopy: {
+    fontSize: 13,
+    marginTop: 4,
+  },
   fab: {
     position: 'absolute',
     right: 24,
-    bottom: 28,
-    width: 56,
+    bottom: 104,
+    flexDirection: 'row',
+    gap: 7,
+    minWidth: 98,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
@@ -90,10 +103,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '400',
-    marginTop: -2,
+  fabLabel: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

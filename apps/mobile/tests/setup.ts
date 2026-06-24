@@ -56,6 +56,12 @@ jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: jest.fn(async () => ({ data: 'mock-token' })),
 }));
 
+jest.mock('@expo/vector-icons', () => {
+  return {
+    Ionicons: () => null,
+  };
+});
+
 // WatermelonDB — native SQLite adapter, mock for Jest
 jest.mock('../src/db/index', () => {
   const EMPTY_OBS = { subscribe: () => ({ unsubscribe: jest.fn() }) };

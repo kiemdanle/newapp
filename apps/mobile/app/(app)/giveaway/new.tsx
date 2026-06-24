@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useCreateGiveaway } from '@/api/giveaways';
+import { useTheme } from '@/theme/useTheme';
 
 export default function NewGiveawayScreen() {
+  const theme = useTheme();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [locationText, setLocation] = useState('');
@@ -32,20 +34,21 @@ export default function NewGiveawayScreen() {
 
   const field = {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.md,
     padding: 12,
-    color: '#111827',
+    color: theme.colors.text,
+    backgroundColor: theme.colors.bgElevated,
   } as const;
 
   return (
     <>
       <Stack.Screen options={{ title: 'New giveaway' }} />
-      <ScrollView style={{ flex: 1, padding: 16 }} contentContainerStyle={{ gap: 12 }}>
-        <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>List a free item</Text>
+      <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }} contentContainerStyle={{ gap: 12 }}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.text }}>List a free item</Text>
         <TextInput
           placeholder="Title *"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.colors.textMuted}
           value={title}
           onChangeText={setTitle}
           maxLength={120}
@@ -54,7 +57,7 @@ export default function NewGiveawayScreen() {
         />
         <TextInput
           placeholder="Description (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.colors.textMuted}
           value={description}
           onChangeText={setDescription}
           multiline
@@ -64,26 +67,28 @@ export default function NewGiveawayScreen() {
         />
         <TextInput
           placeholder="Pickup location *"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor={theme.colors.textMuted}
           value={locationText}
           onChangeText={setLocation}
           maxLength={160}
           editable={!pending}
           style={field}
         />
-        {error ? <Text style={{ color: '#dc2626' }}>{error}</Text> : null}
+        {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"
           disabled={pending}
           onPress={submit}
           style={{
             padding: 14,
-            borderRadius: 8,
-            backgroundColor: pending ? '#9ca3af' : '#2563eb',
+            borderRadius: theme.radii.pill,
+            backgroundColor: pending ? theme.colors.border : theme.colors.accent,
             alignItems: 'center',
+            minHeight: 48,
+            justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>
+          <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
             {pending ? 'Creating…' : 'List giveaway'}
           </Text>
         </Pressable>

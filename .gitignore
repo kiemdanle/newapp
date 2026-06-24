@@ -41,7 +41,10 @@ api/prisma/migrations/dev/
 
 # Mobile
 apps/mobile/ios/
-apps/mobile/android/
+apps/mobile/android/.gradle/
+apps/mobile/android/.kotlin/
+apps/mobile/android/local.properties
+apps/mobile/android/app/.cxx/
 
 # Misc
 *.pem

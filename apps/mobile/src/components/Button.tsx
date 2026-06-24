@@ -1,11 +1,13 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../theme/useTheme';
 
 export interface ButtonProps {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  icon?: keyof typeof Ionicons.glyphMap;
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -31,7 +33,12 @@ export function Button(props: ButtonProps) {
           ? theme.colors.primary
           : 'transparent';
 
-  const fg = isFilled ? '#FFFFFF' : theme.colors.text;
+  const fg =
+    variant === 'primary'
+      ? theme.colors.text
+      : isFilled
+        ? theme.colors.textInverse
+        : theme.colors.text;
 
   return (
     <Pressable
@@ -61,28 +68,37 @@ export function Button(props: ButtonProps) {
           backgroundColor: pressed ? theme.colors.border : 'transparent',
           opacity: pressed ? 0.7 : 1,
         },
-        // Filled press: darken
-        pressed && variant === 'primary' && { backgroundColor: '#D8901A' },
+        // Filled press: add tactile feedback without introducing another brand color.
+        pressed && variant === 'primary' && { opacity: 0.82 },
         pressed && variant === 'secondary' && { backgroundColor: theme.colors.hero },
-        pressed && variant === 'danger' && { backgroundColor: '#C33820' },
+        pressed && variant === 'danger' && { opacity: 0.82 },
       ]}
     >
       <View style={styles.row}>
         {props.loading ? (
           <ActivityIndicator color={fg} />
         ) : (
-          <Text
-            style={[
-              styles.label,
-              {
-                color: variant === 'outline' ? theme.colors.primary : fg,
-                fontSize: theme.typeRamp.labelLarge.fontSize,
-                fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
-              },
-            ]}
-          >
-            {props.label}
-          </Text>
+          <>
+            {props.icon ? (
+              <Ionicons
+                name={props.icon}
+                size={18}
+                color={variant === 'outline' ? theme.colors.primary : fg}
+              />
+            ) : null}
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: variant === 'outline' ? theme.colors.primary : fg,
+                  fontSize: theme.typeRamp.labelLarge.fontSize,
+                  fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
+                },
+              ]}
+            >
+              {props.label}
+            </Text>
+          </>
         )}
       </View>
     </Pressable>
@@ -94,6 +110,8 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 24,
     minHeight: 50,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   row: {
     flexDirection: 'row',

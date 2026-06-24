@@ -3,9 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   transpilePackages: ['@expyrico/shared'],
   webpack(config) {
     // Allow Node ESM-style .js specifiers in TS sources of @expyrico/shared

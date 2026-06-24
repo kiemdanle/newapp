@@ -6,8 +6,10 @@ import { useReputation } from '@/api/reputation';
 import { GiveawayStatusBadge } from '@/features/giveaways/GiveawayStatusBadge';
 import { ClaimButton } from '@/features/giveaways/ClaimButton';
 import { useSessionStore } from '@/auth/session-store';
+import { useTheme } from '@/theme/useTheme';
 
 export default function GiveawayDetailScreen() {
+  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: giveaway, isLoading } = useGiveaway(id ?? '');
   const userId = useSessionStore((s) => s.user?.id ?? null);
@@ -17,8 +19,8 @@ export default function GiveawayDetailScreen() {
 
   if (isLoading || !giveaway) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ color: '#6b7280' }}>Loading…</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bg }}>
+        <Text style={{ color: theme.colors.textMuted }}>Loading…</Text>
       </View>
     );
   }
@@ -29,35 +31,35 @@ export default function GiveawayDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: giveaway.title }} />
-      <ScrollView style={{ flex: 1, padding: 16 }}>
+      <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#111827', flex: 1 }}>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text, flex: 1 }}>
             {giveaway.title}
           </Text>
           <GiveawayStatusBadge status={giveaway.status} />
         </View>
 
         {giveaway.description ? (
-          <Text style={{ color: '#374151', marginTop: 8 }}>{giveaway.description}</Text>
+          <Text style={{ color: theme.colors.text, marginTop: 8 }}>{giveaway.description}</Text>
         ) : null}
 
-        <Text style={{ color: '#6b7280', marginTop: 8 }}>📍 {giveaway.locationText}</Text>
-        {giveaway.country && <Text style={{ color: '#6b7280' }}>🇺🇳 {giveaway.country}</Text>}
+        <Text style={{ color: theme.colors.textMuted, marginTop: 8 }}>📍 {giveaway.locationText}</Text>
+        {giveaway.country && <Text style={{ color: theme.colors.textMuted }}>🇺🇳 {giveaway.country}</Text>}
 
         {giveaway.giver && (
-          <View style={{ marginTop: 12, padding: 12, backgroundColor: '#f9fafb', borderRadius: 8 }}>
-            <Text style={{ fontWeight: '600', color: '#111827' }}>
+          <View style={{ marginTop: 12, padding: 12, backgroundColor: theme.colors.bgElevated, borderRadius: theme.radii.md }}>
+            <Text style={{ fontWeight: '600', color: theme.colors.text }}>
               Given by {giveaway.giver.firstName}
             </Text>
             <GiverReputation userId={giveaway.giver.id} />
           </View>
         )}
 
-        <Text style={{ color: '#6b7280', marginTop: 12 }}>
+        <Text style={{ color: theme.colors.textMuted, marginTop: 12 }}>
           Claims: {giveaway.claimCount ?? 0}
         </Text>
         {giveaway.claimExpiresAt && (
-          <Text style={{ color: '#6b7280', fontSize: 12 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Claim expires: {new Date(giveaway.claimExpiresAt).toLocaleString()}
           </Text>
         )}
@@ -75,9 +77,9 @@ export default function GiveawayDetailScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push(`/giveaway/${giveaway.id}/manage`)}
-              style={{ padding: 12, borderRadius: 8, backgroundColor: '#2563eb', alignItems: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Manage claims</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Manage claims</Text>
             </Pressable>
           )}
 
@@ -86,9 +88,9 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={handOff.isPending}
               onPress={() => handOff.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: 8, backgroundColor: '#d97706', alignItems: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>
+              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {handOff.isPending ? 'Marking…' : 'Mark as handed off'}
               </Text>
             </Pressable>
@@ -99,9 +101,9 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={confirm.isPending}
               onPress={() => confirm.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: 8, backgroundColor: '#16a34a', alignItems: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.success, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>
+              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {confirm.isPending ? 'Confirming…' : 'Confirm received'}
               </Text>
             </Pressable>
@@ -111,9 +113,9 @@ export default function GiveawayDetailScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push(`/giveaway/${giveaway.id}/rate`)}
-              style={{ padding: 12, borderRadius: 8, backgroundColor: '#d97706', alignItems: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Rate this transaction</Text>
+              <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Rate this transaction</Text>
             </Pressable>
           )}
 
@@ -122,9 +124,9 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={cancel.isPending}
               onPress={() => cancel.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: 8, backgroundColor: '#fecaca', alignItems: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.danger + '18', alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
             >
-              <Text style={{ color: '#dc2626', fontWeight: '600' }}>
+              <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>
                 {cancel.isPending ? 'Cancelling…' : 'Cancel giveaway'}
               </Text>
             </Pressable>
@@ -136,14 +138,15 @@ export default function GiveawayDetailScreen() {
 }
 
 function GiverReputation({ userId }: { userId: string }) {
+  const theme = useTheme();
   const { data: rep } = useReputation(userId);
   if (!rep) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
       {rep.giverRatingAvg != null && (
-        <Text style={{ color: '#d97706', fontSize: 12 }}>★ {rep.giverRatingAvg.toFixed(1)}</Text>
+        <Text style={{ color: theme.colors.accent, fontSize: 12 }}>★ {rep.giverRatingAvg.toFixed(1)}</Text>
       )}
-      <Text style={{ color: '#6b7280', fontSize: 12 }}>{rep.transactionCount} tx</Text>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{rep.transactionCount} tx</Text>
     </View>
   );
 }

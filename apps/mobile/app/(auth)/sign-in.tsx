@@ -118,30 +118,45 @@ export default function SignIn() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Logo size={48} />
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.colors.bgGlass,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radii.xl,
+          },
+        ]}
+      >
+        <Logo size={54} />
         <Text style={[styles.title, { color: theme.colors.text }]}>Welcome back</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Sign in to scan items, track expiry dates, and keep your pantry current.
+        </Text>
       </View>
 
-      <TextField
-        label="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        error={errors.email}
-      />
-      <TextField
-        label="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        error={errors.password}
-      />
+      <View style={styles.form}>
+        <TextField
+          label="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          error={errors.email}
+        />
+        <TextField
+          label="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+          error={errors.password}
+        />
+      </View>
 
       <Button
         testID="sign-in-submit"
         label="Sign in"
+        icon="log-in"
         onPress={onSubmit}
         loading={loading}
       />
@@ -160,18 +175,27 @@ export default function SignIn() {
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
       </View>
 
-      <Button testID="sign-in-google" label="Continue with Google" variant="outline" onPress={onGoogle} />
+      <Button testID="sign-in-google" label="Continue with Google" icon="logo-google" variant="outline" onPress={onGoogle} />
       {appleAvailable && Platform.OS === 'ios' ? (
-        <Button testID="sign-in-apple" label="Continue with Apple" variant="outline" onPress={onApple} />
+        <Button testID="sign-in-apple" label="Continue with Apple" icon="logo-apple" variant="outline" onPress={onApple} />
       ) : null}
-      <Button testID="sign-in-passkey" label="Use a passkey" variant="ghost" onPress={onPasskey} />
+      <Button testID="sign-in-passkey" label="Use a passkey" icon="key" variant="ghost" onPress={onPasskey} />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', gap: 16, marginBottom: 12, marginTop: 20 },
-  title: { fontSize: 26, fontWeight: '600', letterSpacing: -0.6 },
+  header: {
+    alignItems: 'center',
+    borderWidth: 1,
+    gap: 12,
+    marginBottom: 8,
+    marginTop: 8,
+    padding: 22,
+  },
+  title: { fontSize: 28, fontWeight: '700' },
+  subtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  form: { gap: 14 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { fontSize: 12, fontWeight: '500' },

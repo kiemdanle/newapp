@@ -25,6 +25,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
   const status = expiryStatus(item.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   const isUrgent = status === 'red' || status === 'amber';
+  const urgentBg = status === 'red' ? theme.colors.danger + '14' : theme.colors.warning + '24';
 
   return (
     <Pressable
@@ -35,8 +36,10 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
       style={({ pressed }) => [
         styles.card,
         {
-          backgroundColor: isUrgent ? theme.colors.hero : theme.colors.bgGlass,
+          backgroundColor: isUrgent ? urgentBg : theme.colors.bgGlass,
+          borderColor: isUrgent ? statusColor : theme.colors.border,
           borderRadius: theme.radii.lg,
+          borderWidth: 1,
           opacity: pressed ? 0.92 : 1,
         },
         isUrgent && {
@@ -53,7 +56,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
         <Text
           style={[
             styles.eyebrow,
-            { color: isUrgent ? 'rgba(255,255,255,0.8)' : theme.colors.textMuted },
+            { color: isUrgent ? statusColor : theme.colors.textMuted },
           ]}
         >
           USE NEXT
@@ -63,7 +66,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
       <Text
         style={[
           styles.itemName,
-          { color: isUrgent ? '#FFFFFF' : theme.colors.text },
+          { color: theme.colors.text },
         ]}
         numberOfLines={2}
       >
@@ -74,7 +77,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
         <Text
           style={[
             styles.expiry,
-            { color: isUrgent ? '#FFFFFF' : theme.colors.text },
+            { color: theme.colors.text },
           ]}
         >
           Expires {item.expiryDate}
@@ -82,10 +85,10 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
         <View
           style={[
             styles.badge,
-            { backgroundColor: isUrgent ? 'rgba(255,255,255,0.18)' : statusColor + '20' },
+            { backgroundColor: theme.colors.bg },
           ]}
         >
-          <Text style={[styles.badgeText, { color: isUrgent ? '#FFFFFF' : statusColor }]}>
+          <Text style={[styles.badgeText, { color: statusColor }]}>
             {urgencyLabel(status, item.expiryDate)}
           </Text>
         </View>

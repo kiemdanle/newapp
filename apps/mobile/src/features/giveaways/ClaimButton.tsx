@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { useClaimGiveaway } from '../../api/giveaways';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
   giveawayId: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function ClaimButton({ giveawayId, disabled }: Props) {
+  const theme = useTheme();
   const [visible, setVisible] = useState(false);
   const [note, setNote] = useState('');
   const claim = useClaimGiveaway();
@@ -33,38 +35,40 @@ export function ClaimButton({ giveawayId, disabled }: Props) {
         onPress={() => setVisible(true)}
         style={{
           padding: 12,
-          borderRadius: 8,
-          backgroundColor: disabled ? '#d1d5db' : '#2563eb',
+          borderRadius: theme.radii.pill,
+          backgroundColor: disabled ? theme.colors.border : theme.colors.accent,
           alignItems: 'center',
+          minHeight: 44,
+          justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#fff', fontWeight: '600' }}>
+        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
           {pending ? 'Claiming…' : 'Claim'}
         </Text>
       </Pressable>
 
       <Modal visible={visible} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <View style={{ backgroundColor: '#fff', padding: 24, borderTopLeftRadius: 16, borderTopRightRadius: 16, gap: 16 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Pickup note</Text>
+          <View style={{ backgroundColor: theme.colors.bgElevated, padding: 24, borderTopLeftRadius: 16, borderTopRightRadius: 16, gap: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>Pickup note</Text>
             <TextInput
               placeholder="When can you pick up? (optional)"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={theme.colors.textMuted}
               value={note}
               onChangeText={setNote}
               multiline
               style={{
                 borderWidth: 1,
-                borderColor: '#d1d5db',
-                borderRadius: 8,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.md,
                 padding: 12,
-                color: '#111827',
+                color: theme.colors.text,
                 minHeight: 80,
                 textAlignVertical: 'top',
               }}
             />
             {claim.isError && (
-              <Text style={{ color: '#dc2626' }}>
+              <Text style={{ color: theme.colors.danger }}>
                 {claim.error instanceof Error ? claim.error.message : 'Claim failed'}
               </Text>
             )}
@@ -72,16 +76,16 @@ export function ClaimButton({ giveawayId, disabled }: Props) {
               <Pressable
                 onPress={() => setVisible(false)}
                 disabled={pending}
-                style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#e5e7eb', alignItems: 'center' }}
+                style={{ flex: 1, padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.border, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
               >
-                <Text style={{ color: '#374151', fontWeight: '500' }}>Cancel</Text>
+                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
               </Pressable>
               <Pressable
                 onPress={submit}
                 disabled={pending}
-                style={{ flex: 1, padding: 12, borderRadius: 8, backgroundColor: '#2563eb', alignItems: 'center' }}
+                style={{ flex: 1, padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.accent, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Confirm</Text>
+                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Confirm</Text>
               </Pressable>
             </View>
           </View>

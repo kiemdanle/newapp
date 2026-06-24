@@ -2,6 +2,7 @@
 import { Pressable, Text, View } from 'react-native';
 import type { Giveaway } from '@expyrico/shared';
 import { GiveawayStatusBadge } from './GiveawayStatusBadge';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
   giveaway: Giveaway;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function GiveawayCard({ giveaway, onPress }: Props) {
+  const theme = useTheme();
   const loc = giveaway.locationText ?? '';
 
   return (
@@ -16,36 +18,41 @@ export function GiveawayCard({ giveaway, onPress }: Props) {
       accessibilityLabel={`giveaway-${giveaway.id}`}
       onPress={() => onPress?.(giveaway)}
       style={{
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
+        backgroundColor: theme.colors.bgElevated,
+        borderRadius: theme.radii.lg,
         padding: 16,
         marginVertical: 6,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: theme.colors.border,
+        shadowColor: '#2C2C28',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 3 },
+        elevation: 2,
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Text style={{ fontWeight: '700', fontSize: 16, color: '#111827', flex: 1 }}>
+        <Text style={{ fontWeight: '700', fontSize: 16, color: theme.colors.text, flex: 1 }}>
           {giveaway.title}
         </Text>
         <GiveawayStatusBadge status={giveaway.status} />
       </View>
       {giveaway.description ? (
-        <Text style={{ color: '#374151', marginTop: 4 }} numberOfLines={2}>
+        <Text style={{ color: theme.colors.text, marginTop: 4 }} numberOfLines={2}>
           {giveaway.description}
         </Text>
       ) : null}
-      <Text style={{ color: '#6b7280', marginTop: 4 }}>
+      <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>
         📍 {loc}
         {giveaway.claimCount ? ` · ${giveaway.claimCount} claims` : ''}
       </Text>
       {giveaway.giver && (
         <View style={{ flexDirection: 'row', marginTop: 8, gap: 8, alignItems: 'center' }}>
-          <Text style={{ color: '#6b7280', fontSize: 12 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             {giveaway.giver.firstName}
           </Text>
           {giveaway.giver.giverRatingAvg != null && (
-            <Text style={{ color: '#d97706', fontSize: 12 }}>
+            <Text style={{ color: theme.colors.accent, fontSize: 12 }}>
               ★ {giveaway.giver.giverRatingAvg.toFixed(1)}
             </Text>
           )}

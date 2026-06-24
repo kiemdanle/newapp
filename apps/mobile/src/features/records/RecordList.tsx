@@ -7,6 +7,7 @@ import { useTheme } from '../../theme/useTheme';
 import { BentoTile } from '../../components/BentoTile';
 import { ClayCard } from '../../components/ClayCard';
 import { MD3ListRow } from '../../components/MD3ListRow';
+import { EmptyState } from '../../components/EmptyState';
 
 const SECTION_TITLES: Record<keyof ReturnType<typeof groupRecords>, string> = {
   expired: 'Expired',
@@ -63,14 +64,11 @@ export function RecordList() {
 
   if (!hasAny) {
     return (
-      <View style={{ alignItems: 'center', paddingVertical: 48, gap: 8 }}>
-        <Text style={{ fontSize: 16, fontWeight: '500', color: theme.colors.text }}>
-          Your pantry is empty
-        </Text>
-        <Text style={{ fontSize: 14, color: theme.colors.textMuted, textAlign: 'center' }}>
-          Tap the + button to scan your first item
-        </Text>
-      </View>
+      <EmptyState
+        icon="basket"
+        title="Your pantry is empty"
+        body="Scan a receipt, barcode, or label to build your first expiry list."
+      />
     );
   }
 

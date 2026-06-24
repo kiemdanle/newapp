@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import type { Deal } from '@expyrico/shared';
 import { useCreateDeal, useUpdateDeal } from '../../api/deals';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
   product: { id: string; name: string };
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function DealForm({ product, existing, onDone }: Props) {
+  const theme = useTheme();
   const [price, setPrice] = useState(existing ? String(existing.price) : '');
   const [storeName, setStoreName] = useState(existing?.storeName ?? '');
   const [expiryDate, setExpiryDate] = useState(existing?.expiryDate ?? '');
@@ -56,21 +58,22 @@ export function DealForm({ product, existing, onDone }: Props) {
 
   const field = {
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radii.md,
     padding: 12,
-    color: '#111827',
+    color: theme.colors.text,
+    backgroundColor: theme.colors.bgElevated,
   } as const;
 
   return (
-    <View style={{ gap: 12, padding: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>
+    <View style={{ gap: 12, padding: 16, backgroundColor: theme.colors.bg }}>
+      <Text style={{ fontSize: 20, fontWeight: '700', color: theme.colors.text }}>
         {existing ? 'Edit deal' : `Deal for ${product.name}`}
       </Text>
       <TextInput
         accessibilityLabel="price"
         placeholder="Price"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.textMuted}
         keyboardType="decimal-pad"
         value={price}
         onChangeText={setPrice}
@@ -80,7 +83,7 @@ export function DealForm({ product, existing, onDone }: Props) {
       <TextInput
         accessibilityLabel="store"
         placeholder="Store name"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.textMuted}
         value={storeName}
         onChangeText={setStoreName}
         editable={!pending}
@@ -89,7 +92,7 @@ export function DealForm({ product, existing, onDone }: Props) {
       <TextInput
         accessibilityLabel="expiry"
         placeholder="Expiry (yyyy-mm-dd, optional)"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.textMuted}
         value={expiryDate}
         onChangeText={setExpiryDate}
         editable={!pending}
@@ -98,26 +101,28 @@ export function DealForm({ product, existing, onDone }: Props) {
       <TextInput
         accessibilityLabel="note"
         placeholder="Note (optional)"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={theme.colors.textMuted}
         value={note}
         onChangeText={setNote}
         multiline
         editable={!pending}
         style={[field, { minHeight: 80, textAlignVertical: 'top' }]}
       />
-      {error ? <Text style={{ color: '#dc2626' }}>{error}</Text> : null}
+      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
       <Pressable
         accessibilityRole="button"
         disabled={pending}
         onPress={submit}
         style={{
           padding: 14,
-          borderRadius: 8,
-          backgroundColor: '#2563eb',
+          borderRadius: theme.radii.pill,
+          backgroundColor: theme.colors.accent,
           alignItems: 'center',
+          minHeight: 48,
+          justifyContent: 'center',
         }}
       >
-        <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
           {pending ? 'Saving…' : existing ? 'Save changes' : 'Post deal'}
         </Text>
       </Pressable>

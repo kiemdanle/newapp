@@ -3,6 +3,8 @@ import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native
 import { useGiveawayFeed } from '@/api/giveaways';
 import type { Giveaway } from '@expyrico/shared';
 import { GiveawayCard } from './GiveawayCard';
+import { EmptyState } from '@/components/EmptyState';
+import { useTheme } from '@/theme/useTheme';
 
 interface Props {
   onOpen: (id: string) => void;
@@ -10,29 +12,38 @@ interface Props {
 }
 
 export function GiveawayFeed({ onOpen, onNew }: Props) {
+  const theme = useTheme();
   const q = useGiveawayFeed('open');
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ padding: 12, flexDirection: 'row', justifyContent: 'flex-end' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 10 }}>
+        <Text style={{ color: theme.colors.text, fontSize: 28, fontWeight: '700' }}>Giveaways</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14, marginTop: 4 }}>
+          Offer items you cannot use in time, or claim food nearby.
+        </Text>
+      </View>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 10, flexDirection: 'row', justifyContent: 'flex-end' }}>
         <Pressable
           accessibilityRole="button"
           onPress={onNew}
           style={{
+            minHeight: 44,
+            justifyContent: 'center',
             paddingVertical: 8,
             paddingHorizontal: 16,
-            borderRadius: 8,
-            backgroundColor: '#2563eb',
+            borderRadius: 999,
+            backgroundColor: theme.colors.accent,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>+ New</Text>
+          <Text style={{ color: theme.colors.text, fontWeight: '700' }}>+ Share item</Text>
         </Pressable>
       </View>
       <FlatList
         data={items}
         keyExtractor={(d: Giveaway) => d.id}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 48 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 124 }}
         renderItem={({ item }) => (
           <GiveawayCard giveaway={item} onPress={() => onOpen(item.id)} />
         )}
@@ -40,14 +51,19 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
           q.isLoading ? (
-            <ActivityIndicator />
+            <ActivityIndicator color={theme.colors.primary} />
           ) : (
-            <Text style={{ color: '#6b7280', textAlign: 'center', marginTop: 24 }}>
-              No giveaways yet. Share one!
-            </Text>
+            <EmptyState
+              icon="gift"
+              title="No giveaways yet"
+              body="Share a sealed item before it expires, or check again for nearby offers."
+              actionLabel="Share item"
+              actionIcon="add"
+              onAction={onNew}
+            />
           )
         }
-        ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator /> : null}
+        ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={theme.colors.primary} /> : null}
       />
     </View>
   );

@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { useTheme } from '@/theme/useTheme';
 
 const REASONS: string[] = ['spam', 'inappropriate', 'misleading', 'other'];
 
 /** Lightweight report screen — reused by reviews (M2), products (M2), and deals (M5). */
 export default function ReportScreen() {
+  const theme = useTheme();
   const { targetType, targetId } = useLocalSearchParams<{ targetType: string; targetId: string }>();
   const [reason, setReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,13 +35,13 @@ export default function ReportScreen() {
     return (
       <>
         <Stack.Screen options={{ title: 'Reported' }} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#111827' }}>Thanks for reporting.</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: theme.colors.bg }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: theme.colors.text }}>Thanks for reporting.</Text>
           <Pressable
             onPress={() => router.back()}
-            style={{ marginTop: 24, padding: 12, borderRadius: 8, backgroundColor: '#2563eb' }}
+            style={{ marginTop: 24, padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent, minHeight: 44, justifyContent: 'center' }}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Back</Text>
+            <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Back</Text>
           </Pressable>
         </View>
       </>
@@ -49,8 +51,8 @@ export default function ReportScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Report' }} />
-      <View style={{ flex: 1, padding: 16, gap: 16 }}>
-        <Text style={{ fontSize: 16, color: '#374151' }}>
+      <View style={{ flex: 1, padding: 16, gap: 16, backgroundColor: theme.colors.bg }}>
+        <Text style={{ fontSize: 16, color: theme.colors.text }}>
           Report this {targetType}:
         </Text>
         {REASONS.map((r) => (
@@ -60,30 +62,33 @@ export default function ReportScreen() {
             onPress={() => setReason(r)}
             style={{
               padding: 12,
-              borderRadius: 8,
+              borderRadius: theme.radii.md,
               borderWidth: 1,
-              borderColor: reason === r ? '#2563eb' : '#d1d5db',
-              backgroundColor: reason === r ? '#eff6ff' : '#fff',
+              borderColor: reason === r ? theme.colors.primary : theme.colors.border,
+              backgroundColor: reason === r ? theme.colors.bgGlass : theme.colors.bgElevated,
+              minHeight: 44,
             }}
           >
-            <Text style={{ color: reason === r ? '#2563eb' : '#374151', fontWeight: '500', textTransform: 'capitalize' }}>
+            <Text style={{ color: reason === r ? theme.colors.primary : theme.colors.text, fontWeight: '600', textTransform: 'capitalize' }}>
               {r}
             </Text>
           </Pressable>
         ))}
-        {error && <Text style={{ color: '#dc2626' }}>{error}</Text>}
+        {error && <Text style={{ color: theme.colors.danger }}>{error}</Text>}
         <Pressable
           accessibilityRole="button"
           disabled={!reason || submitting}
           onPress={submit}
           style={{
             padding: 14,
-            borderRadius: 8,
-            backgroundColor: reason && !submitting ? '#2563eb' : '#9ca3af',
+            borderRadius: theme.radii.pill,
+            backgroundColor: reason && !submitting ? theme.colors.accent : theme.colors.border,
             alignItems: 'center',
+            minHeight: 48,
+            justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '600' }}>
+          <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
             {submitting ? 'Submitting…' : 'Submit'}
           </Text>
         </Pressable>

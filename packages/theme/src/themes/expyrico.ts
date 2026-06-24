@@ -14,15 +14,15 @@ export const expyrico: Theme = {
     border: '#F0F0ED',        // Stone — dividers, section backgrounds
     text: '#2C2C28',          // Almost Black — primary text
     textMuted: '#8C8C85',     // Pebble — secondary text, icons
-    textInverse: '#FAFAF8',   // Warm White on sage/honey
+    textInverse: '#2C2C28',   // Almost Black on sage/honey for AA contrast
     primary: '#4BAE8A',       // Fresh Sage — logo, headers, active states
-    primaryFg: '#FFFFFF',     // white text on sage
+    primaryFg: '#2C2C28',     // Almost Black on sage for AA contrast
     accent: '#F5A623',        // Honey — CTAs, badges, expiring-soon
     success: '#4BAE8A',       // Good = reuses primary
     warning: '#F5A623',       // Expiring soon = reuses accent
     danger: '#E0442A',        // Alert Red — expired status only, never branding
     hero: '#3A8F6F',          // Deep Sage — hero card background
-    heroFg: '#FFFFFF',        // white text on deep sage
+    heroFg: '#2C2C28',        // Almost Black on deep sage for legibility
   },
   radii: { none: 0, sm: 10, md: 16, lg: 22, xl: 30, pill: 999 },
   shadows: {

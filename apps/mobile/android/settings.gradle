@@ -1,0 +1,38 @@
+pluginManagement {
+    includeBuild("../../../node_modules/@react-native/gradle-plugin")
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+includeBuild("../../../node_modules/@react-native/gradle-plugin")
+
+apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
+useExpoModules()
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { extension ->
+    extension.autolinkLibrariesFromCommand(
+        ["node", new File(rootDir, "../../../node_modules/react-native/cli.js").absolutePath, "config"],
+        file(".."),
+        files("../package.json", "../react-native.config.js", "../../../pnpm-lock.yaml")
+    )
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url("$rootDir/../../../node_modules/react-native/android") }
+        maven { url("$rootDir/../../../node_modules/jsc-android/dist") }
+    }
+}
+
+rootProject.name = "Expyrico"
+include(":app")

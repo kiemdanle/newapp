@@ -32,6 +32,9 @@ config.resolver.nodeModulesPaths = [
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   const reactPkg = path.resolve(workspaceRoot, 'node_modules/react');
   const rnPkg = path.resolve(workspaceRoot, 'node_modules/react-native');
+  if (moduleName.startsWith('@/')) {
+    return context.resolveRequest(context, path.join(projectRoot, 'src', moduleName.slice(2)), platform);
+  }
   if (moduleName === 'react') {
     return { type: 'sourceFile', filePath: path.join(reactPkg, 'index.js') };
   }

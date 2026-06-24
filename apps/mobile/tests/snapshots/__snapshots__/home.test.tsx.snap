@@ -29,11 +29,158 @@ exports[`home in bento snapshot 1`] = `
       <RCTScrollView
         contentContainerStyle={
           {
-            "padding": 16,
+            "gap": 14,
+            "padding": 20,
+            "paddingBottom": 110,
           }
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View />
+        <View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "justifyContent": "space-between",
+                "marginBottom": 4,
+              }
+            }
+          >
+            <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
+                <Image
+                  accessibilityLabel="Expyrico"
+                  resizeMode="contain"
+                  source={
+                    {
+                      "testUri": "../../../apps/mobile/assets/logo-mark.png",
+                    }
+                  }
+                  style={
+                    {
+                      "borderRadius": 7.48,
+                      "height": 34,
+                      "width": 34,
+                    }
+                  }
+                />
+                <View
+                  style={
+                    {
+                      "alignItems": "baseline",
+                      "flexDirection": "row",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      {
+                        "color": "#0a0a0a",
+                        "fontSize": 19.040000000000003,
+                        "fontWeight": "600",
+                        "letterSpacing": -0.8,
+                      }
+                    }
+                  >
+                    expyrico
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 4,
+                    },
+                    {
+                      "color": "#71717a",
+                    },
+                  ]
+                }
+              >
+                Use the oldest item first.
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderWidth": 1,
+                  "gap": 12,
+                  "minHeight": 44,
+                  "padding": 24,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderColor": "#e4e4e7",
+                  "borderRadius": 22,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "height": 60,
+                    "justifyContent": "center",
+                    "width": 60,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderRadius": 18,
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 20,
+                    "fontWeight": "700",
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#0a0a0a",
+                  },
+                ]
+              }
+            >
+              Your pantry is empty
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 20,
+                    "maxWidth": 270,
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#71717a",
+                  },
+                ]
+              }
+            >
+              Scan a receipt, barcode, or label to build your first expiry list.
+            </Text>
+          </View>
+        </View>
       </RCTScrollView>
       <View
         accessibilityRole="button"
@@ -67,30 +214,49 @@ exports[`home in bento snapshot 1`] = `
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "backgroundColor": "#0a0a0a",
-            "borderRadius": 999,
-            "bottom": 32,
-            "height": 56,
-            "justifyContent": "center",
-            "position": "absolute",
-            "right": 24,
-            "width": 56,
-          }
+          [
+            {
+              "alignItems": "center",
+              "borderRadius": 28,
+              "bottom": 104,
+              "elevation": 5,
+              "flexDirection": "row",
+              "gap": 7,
+              "height": 56,
+              "justifyContent": "center",
+              "minWidth": 98,
+              "position": "absolute",
+              "right": 24,
+              "shadowColor": "#F5A623",
+              "shadowOffset": {
+                "height": 4,
+                "width": 0,
+              },
+              "shadowOpacity": 0.35,
+              "shadowRadius": 12,
+            },
+            {
+              "backgroundColor": "#fbbf24",
+              "opacity": 1,
+            },
+          ]
         }
         testID="home-fab-add"
       >
         <Text
           style={
-            {
-              "color": "#ffffff",
-              "fontSize": 24,
-              "lineHeight": 32,
-            }
+            [
+              {
+                "fontSize": 15,
+                "fontWeight": "700",
+              },
+              {
+                "color": "#0a0a0a",
+              },
+            ]
           }
         >
-          +
+          Scan
         </Text>
       </View>
     </View>
@@ -127,11 +293,158 @@ exports[`home in clay snapshot 1`] = `
       <RCTScrollView
         contentContainerStyle={
           {
-            "padding": 18,
+            "gap": 14,
+            "padding": 20,
+            "paddingBottom": 110,
           }
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View />
+        <View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "justifyContent": "space-between",
+                "marginBottom": 4,
+              }
+            }
+          >
+            <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
+                <Image
+                  accessibilityLabel="Expyrico"
+                  resizeMode="contain"
+                  source={
+                    {
+                      "testUri": "../../../apps/mobile/assets/logo-mark.png",
+                    }
+                  }
+                  style={
+                    {
+                      "borderRadius": 7.48,
+                      "height": 34,
+                      "width": 34,
+                    }
+                  }
+                />
+                <View
+                  style={
+                    {
+                      "alignItems": "baseline",
+                      "flexDirection": "row",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      {
+                        "color": "#5b3a1f",
+                        "fontSize": 19.040000000000003,
+                        "fontWeight": "600",
+                        "letterSpacing": -0.8,
+                      }
+                    }
+                  >
+                    expyrico
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 4,
+                    },
+                    {
+                      "color": "#a47148",
+                    },
+                  ]
+                }
+              >
+                Use the oldest item first.
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderWidth": 1,
+                  "gap": 12,
+                  "minHeight": 44,
+                  "padding": 24,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderColor": "#fde0c2",
+                  "borderRadius": 28,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "height": 60,
+                    "justifyContent": "center",
+                    "width": 60,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderRadius": 22,
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 20,
+                    "fontWeight": "700",
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#5b3a1f",
+                  },
+                ]
+              }
+            >
+              Your pantry is empty
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 20,
+                    "maxWidth": 270,
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#a47148",
+                  },
+                ]
+              }
+            >
+              Scan a receipt, barcode, or label to build your first expiry list.
+            </Text>
+          </View>
+        </View>
       </RCTScrollView>
       <View
         accessibilityRole="button"
@@ -165,30 +478,49 @@ exports[`home in clay snapshot 1`] = `
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "backgroundColor": "#ea580c",
-            "borderRadius": 999,
-            "bottom": 32,
-            "height": 56,
-            "justifyContent": "center",
-            "position": "absolute",
-            "right": 24,
-            "width": 56,
-          }
+          [
+            {
+              "alignItems": "center",
+              "borderRadius": 28,
+              "bottom": 104,
+              "elevation": 5,
+              "flexDirection": "row",
+              "gap": 7,
+              "height": 56,
+              "justifyContent": "center",
+              "minWidth": 98,
+              "position": "absolute",
+              "right": 24,
+              "shadowColor": "#F5A623",
+              "shadowOffset": {
+                "height": 4,
+                "width": 0,
+              },
+              "shadowOpacity": 0.35,
+              "shadowRadius": 12,
+            },
+            {
+              "backgroundColor": "#fbbf24",
+              "opacity": 1,
+            },
+          ]
         }
         testID="home-fab-add"
       >
         <Text
           style={
-            {
-              "color": "#ffffff",
-              "fontSize": 26,
-              "lineHeight": 34,
-            }
+            [
+              {
+                "fontSize": 15,
+                "fontWeight": "700",
+              },
+              {
+                "color": "#5b3a1f",
+              },
+            ]
           }
         >
-          +
+          Scan
         </Text>
       </View>
     </View>
@@ -225,11 +557,158 @@ exports[`home in expyrico snapshot 1`] = `
       <RCTScrollView
         contentContainerStyle={
           {
-            "padding": 18,
+            "gap": 14,
+            "padding": 20,
+            "paddingBottom": 110,
           }
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View />
+        <View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "justifyContent": "space-between",
+                "marginBottom": 4,
+              }
+            }
+          >
+            <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
+                <Image
+                  accessibilityLabel="Expyrico"
+                  resizeMode="contain"
+                  source={
+                    {
+                      "testUri": "../../../apps/mobile/assets/logo-mark.png",
+                    }
+                  }
+                  style={
+                    {
+                      "borderRadius": 7.48,
+                      "height": 34,
+                      "width": 34,
+                    }
+                  }
+                />
+                <View
+                  style={
+                    {
+                      "alignItems": "baseline",
+                      "flexDirection": "row",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      {
+                        "color": "#fafafa",
+                        "fontSize": 19.040000000000003,
+                        "fontWeight": "600",
+                        "letterSpacing": -0.8,
+                      }
+                    }
+                  >
+                    expyrico
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 4,
+                    },
+                    {
+                      "color": "rgba(250,250,250,0.7)",
+                    },
+                  ]
+                }
+              >
+                Use the oldest item first.
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderWidth": 1,
+                  "gap": 12,
+                  "minHeight": 44,
+                  "padding": 24,
+                },
+                {
+                  "backgroundColor": "rgba(255,255,255,0.08)",
+                  "borderColor": "rgba(255,255,255,0.12)",
+                  "borderRadius": 28,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "height": 60,
+                    "justifyContent": "center",
+                    "width": 60,
+                  },
+                  {
+                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "borderRadius": 20,
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 20,
+                    "fontWeight": "700",
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#fafafa",
+                  },
+                ]
+              }
+            >
+              Your pantry is empty
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 20,
+                    "maxWidth": 270,
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "rgba(250,250,250,0.7)",
+                  },
+                ]
+              }
+            >
+              Scan a receipt, barcode, or label to build your first expiry list.
+            </Text>
+          </View>
+        </View>
       </RCTScrollView>
       <View
         accessibilityRole="button"
@@ -263,30 +742,49 @@ exports[`home in expyrico snapshot 1`] = `
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "backgroundColor": "#a855f7",
-            "borderRadius": 999,
-            "bottom": 32,
-            "height": 56,
-            "justifyContent": "center",
-            "position": "absolute",
-            "right": 24,
-            "width": 56,
-          }
+          [
+            {
+              "alignItems": "center",
+              "borderRadius": 28,
+              "bottom": 104,
+              "elevation": 5,
+              "flexDirection": "row",
+              "gap": 7,
+              "height": 56,
+              "justifyContent": "center",
+              "minWidth": 98,
+              "position": "absolute",
+              "right": 24,
+              "shadowColor": "#F5A623",
+              "shadowOffset": {
+                "height": 4,
+                "width": 0,
+              },
+              "shadowOpacity": 0.35,
+              "shadowRadius": 12,
+            },
+            {
+              "backgroundColor": "#a5f3fc",
+              "opacity": 1,
+            },
+          ]
         }
         testID="home-fab-add"
       >
         <Text
           style={
-            {
-              "color": "#ffffff",
-              "fontSize": 28,
-              "lineHeight": 36,
-            }
+            [
+              {
+                "fontSize": 15,
+                "fontWeight": "700",
+              },
+              {
+                "color": "#fafafa",
+              },
+            ]
           }
         >
-          +
+          Scan
         </Text>
       </View>
     </View>
@@ -323,14 +821,160 @@ exports[`home in material snapshot 1`] = `
       <RCTScrollView
         contentContainerStyle={
           {
-            "padding": 16,
+            "gap": 14,
+            "padding": 20,
+            "paddingBottom": 110,
           }
         }
+        showsVerticalScrollIndicator={false}
       >
-        <View />
+        <View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "justifyContent": "space-between",
+                "marginBottom": 4,
+              }
+            }
+          >
+            <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
+                <Image
+                  accessibilityLabel="Expyrico"
+                  resizeMode="contain"
+                  source={
+                    {
+                      "testUri": "../../../apps/mobile/assets/logo-mark.png",
+                    }
+                  }
+                  style={
+                    {
+                      "borderRadius": 7.48,
+                      "height": 34,
+                      "width": 34,
+                    }
+                  }
+                />
+                <View
+                  style={
+                    {
+                      "alignItems": "baseline",
+                      "flexDirection": "row",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      {
+                        "color": "#1d1b20",
+                        "fontSize": 19.040000000000003,
+                        "fontWeight": "600",
+                        "letterSpacing": -0.8,
+                      }
+                    }
+                  >
+                    expyrico
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 13,
+                      "marginTop": 4,
+                    },
+                    {
+                      "color": "#65558f",
+                    },
+                  ]
+                }
+              >
+                Use the oldest item first.
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              [
+                {
+                  "alignItems": "center",
+                  "borderWidth": 1,
+                  "gap": 12,
+                  "minHeight": 44,
+                  "padding": 24,
+                },
+                {
+                  "backgroundColor": "#ffffff",
+                  "borderColor": "#e0e0e0",
+                  "borderRadius": 28,
+                },
+              ]
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "height": 60,
+                    "justifyContent": "center",
+                    "width": 60,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderRadius": 24,
+                  },
+                ]
+              }
+            />
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 20,
+                    "fontWeight": "700",
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#1d1b20",
+                  },
+                ]
+              }
+            >
+              Your pantry is empty
+            </Text>
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                    "lineHeight": 20,
+                    "maxWidth": 270,
+                    "textAlign": "center",
+                  },
+                  {
+                    "color": "#65558f",
+                  },
+                ]
+              }
+            >
+              Scan a receipt, barcode, or label to build your first expiry list.
+            </Text>
+          </View>
+        </View>
       </RCTScrollView>
       <View
-        accessibilityLabel="Scan"
         accessibilityRole="button"
         accessibilityState={
           {
@@ -362,33 +1006,49 @@ exports[`home in material snapshot 1`] = `
         onResponderTerminationRequest={[Function]}
         onStartShouldSetResponder={[Function]}
         style={
-          {
-            "alignItems": "center",
-            "backgroundColor": "#7c4dff",
-            "borderRadius": 24,
-            "height": 56,
-            "justifyContent": "center",
-            "minHeight": 56,
-            "shadowColor": "rgba(0,0,0,0.30),",
-            "shadowOffset": {
-              "height": 1,
-              "width": 0,
+          [
+            {
+              "alignItems": "center",
+              "borderRadius": 28,
+              "bottom": 104,
+              "elevation": 5,
+              "flexDirection": "row",
+              "gap": 7,
+              "height": 56,
+              "justifyContent": "center",
+              "minWidth": 98,
+              "position": "absolute",
+              "right": 24,
+              "shadowColor": "#F5A623",
+              "shadowOffset": {
+                "height": 4,
+                "width": 0,
+              },
+              "shadowOpacity": 0.35,
+              "shadowRadius": 12,
             },
-            "shadowOpacity": 0,
-            "shadowRadius": 3,
-            "width": 56,
-          }
+            {
+              "backgroundColor": "#7c4dff",
+              "opacity": 1,
+            },
+          ]
         }
+        testID="home-fab-add"
       >
         <Text
           style={
-            {
-              "color": "#ffffff",
-              "fontSize": 22,
-            }
+            [
+              {
+                "fontSize": 15,
+                "fontWeight": "700",
+              },
+              {
+                "color": "#1d1b20",
+              },
+            ]
           }
         >
-          +
+          Scan
         </Text>
       </View>
     </View>

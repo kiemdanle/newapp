@@ -2,6 +2,7 @@
 import { FlatList, Pressable, Text, View } from 'react-native';
 import type { Claim } from '@expyrico/shared';
 import { useReputation } from '../../api/reputation';
+import { useTheme } from '../../theme/useTheme';
 
 interface Props {
   claims: Claim[];
@@ -12,9 +13,10 @@ interface Props {
 }
 
 export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, selecting }: Props) {
+  const theme = useTheme();
   if (claims.length === 0) {
     return (
-      <Text style={{ color: '#6b7280', textAlign: 'center', marginTop: 24 }}>
+      <Text style={{ color: theme.colors.textMuted, textAlign: 'center', marginTop: 24 }}>
         No claims yet.
       </Text>
     );
@@ -31,23 +33,23 @@ export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, sele
             style={{
               padding: 12,
               marginVertical: 4,
-              borderRadius: 8,
+              borderRadius: theme.radii.md,
               borderWidth: 1,
-              borderColor: isSelected ? '#2563eb' : '#d1d5db',
-              backgroundColor: isSelected ? '#eff6ff' : '#fff',
+              borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+              backgroundColor: isSelected ? theme.colors.bgGlass : theme.colors.bgElevated,
             }}
           >
-            <Text style={{ fontWeight: '600', color: '#111827' }}>
+            <Text style={{ fontWeight: '600', color: theme.colors.text }}>
               {item.claimer?.firstName ?? 'User'}
             </Text>
             {item.claimer && <ClaimerReputation userId={item.claimer.id} />}
             {/* pickupNote: only visible for selected claims or own claim (API enforces privacy) */}
             {isSelected && item.pickupNote && (
-              <Text style={{ color: '#374151', marginTop: 4, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.text, marginTop: 4, fontSize: 13 }}>
                 Note: {item.pickupNote}
               </Text>
             )}
-            <Text style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 4 }}>
               {new Date(item.createdAt).toLocaleDateString()}
             </Text>
             {isGiver && !selectedRecipientId && item.status === 'requested' && onSelect && (
@@ -59,12 +61,14 @@ export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, sele
                 style={{
                   marginTop: 8,
                   padding: 8,
-                  borderRadius: 6,
-                  backgroundColor: selecting ? '#9ca3af' : '#2563eb',
+                  borderRadius: theme.radii.md,
+                  backgroundColor: selecting ? theme.colors.border : theme.colors.accent,
                   alignItems: 'center',
+                  minHeight: 44,
+                  justifyContent: 'center',
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>
+                <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 13 }}>
                   {selecting ? 'Selecting…' : 'Select as recipient'}
                 </Text>
               </Pressable>
@@ -77,16 +81,17 @@ export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, sele
 }
 
 function ClaimerReputation({ userId }: { userId: string }) {
+  const theme = useTheme();
   const { data: rep } = useReputation(userId);
   if (!rep) return null;
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
       {rep.recipientRatingAvg != null && (
-        <Text style={{ color: '#d97706', fontSize: 12 }}>
+        <Text style={{ color: theme.colors.accent, fontSize: 12 }}>
           ★ {rep.recipientRatingAvg.toFixed(1)}
         </Text>
       )}
-      <Text style={{ color: '#6b7280', fontSize: 12 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
         {rep.transactionCount} tx
       </Text>
     </View>

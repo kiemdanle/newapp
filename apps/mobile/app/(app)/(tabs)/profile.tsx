@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../../src/components/Screen';
 import { Logo } from '../../../src/components/Logo';
@@ -27,7 +28,12 @@ export default function Profile() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Logo size={32} withWordmark />
+        <View>
+          <Logo size={34} withWordmark />
+          <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>
+            Account, security, and app preferences.
+          </Text>
+        </View>
       </View>
 
       <View
@@ -44,8 +50,11 @@ export default function Profile() {
           },
         ]}
       >
-        <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
-          <Text style={styles.avatarText}>{initials.toUpperCase() || '?'}</Text>
+        <View style={[styles.avatar, { backgroundColor: theme.colors.bgGlass }]}>
+          <Ionicons name="person" size={18} color={theme.colors.primary} style={styles.avatarIcon} />
+          <Text style={[styles.avatarText, { color: theme.colors.hero }]}>
+            {initials.toUpperCase() || '?'}
+          </Text>
         </View>
         <View style={styles.userMeta}>
           <Text style={[styles.userName, { color: theme.colors.text }]}>
@@ -71,8 +80,11 @@ export default function Profile() {
             },
           ]}
         >
-          <Text style={[styles.rowLabel, { color: theme.colors.text }]}>Settings</Text>
-          <Text style={[styles.rowChevron, { color: theme.colors.textMuted }]}>›</Text>
+          <View style={styles.rowMain}>
+            <Ionicons name="settings-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.rowLabel, { color: theme.colors.text }]}>Settings</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
         </Pressable>
 
         <Pressable
@@ -90,7 +102,10 @@ export default function Profile() {
             },
           ]}
         >
-          <Text style={[styles.rowLabel, { color: theme.colors.danger }]}>Sign out</Text>
+          <View style={styles.rowMain}>
+            <Ionicons name="log-out-outline" size={20} color={theme.colors.danger} />
+            <Text style={[styles.rowLabel, { color: theme.colors.danger }]}>Sign out</Text>
+          </View>
         </Pressable>
       </View>
     </Screen>
@@ -103,6 +118,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
     marginTop: 8,
+  },
+  headerSubcopy: {
+    fontSize: 13,
+    marginTop: 4,
   },
   userCard: {
     flexDirection: 'row',
@@ -118,10 +137,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarIcon: {
+    position: 'absolute',
+    opacity: 0.24,
+  },
   avatarText: {
-    color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   userMeta: {
     flex: 1,
@@ -144,10 +166,11 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  rowChevron: {
-    fontSize: 20,
-    fontWeight: '400',
+  rowMain: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
   },
 });

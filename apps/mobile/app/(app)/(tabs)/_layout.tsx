@@ -28,9 +28,10 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
           styles.bar,
           {
             backgroundColor: theme.colors.bgElevated,
+            borderColor: theme.colors.border,
             borderRadius: theme.radii.pill,
             shadowColor: '#2C2C28',
-            shadowOpacity: 0.12,
+            shadowOpacity: 0.10,
             shadowRadius: 16,
             shadowOffset: { width: 0, height: 4 },
             elevation: 6,
@@ -63,7 +64,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               style={({ pressed }) => [
                 styles.tab,
                 {
-                  backgroundColor: isFocused ? theme.colors.primary : 'transparent',
+                  backgroundColor: isFocused ? theme.colors.primary : theme.colors.bgElevated,
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -71,11 +72,11 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               <Ionicons
                 name={meta.icon}
                 size={20}
-                color={isFocused ? '#FFFFFF' : theme.colors.textMuted}
+                color={isFocused ? theme.colors.primaryFg : theme.colors.textMuted}
                 style={{ marginBottom: 1 }}
               />
               {isFocused && (
-                <Text style={styles.label} numberOfLines={1}>
+                <Text style={[styles.label, { color: theme.colors.primaryFg }]} numberOfLines={1}>
                   {meta.label}
                 </Text>
               )}
@@ -95,6 +96,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bar: {
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
@@ -112,10 +114,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   label: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    letterSpacing: 0.2,
   },
 });
 
