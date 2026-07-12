@@ -7,9 +7,14 @@ interface SessionState {
   accessToken: string | null;
   refreshToken: string | null;
   hydrated: boolean;
+  // Session returned by register, held (not persisted) until the user completes
+  // the email OTP step. Keeping it out of accessToken means AuthGate doesn't
+  // treat a registered-but-unverified user as signed in and bounce them to home.
+  pendingAuth: AuthResult | null;
   signIn: (result: AuthResult) => Promise<void>;
   signOut: () => Promise<void>;
   setUser: (user: User) => void;
+  setPendingAuth: (result: AuthResult | null) => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -17,16 +22,18 @@ export const useSessionStore = create<SessionState>((set) => ({
   accessToken: null,
   refreshToken: null,
   hydrated: false,
+  pendingAuth: null,
   signIn: async ({ user, tokens }) => {
     await secureStore.setAccessToken(tokens.accessToken);
     await secureStore.setRefreshToken(tokens.refreshToken);
-    set({ user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+    set({ user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, pendingAuth: null });
   },
   signOut: async () => {
     await secureStore.clearAll();
-    set({ user: null, accessToken: null, refreshToken: null });
+    set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
   },
   setUser: (user) => set({ user }),
+  setPendingAuth: (pendingAuth) => set({ pendingAuth }),
 }));
 
 export async function hydrateSession(): Promise<void> {

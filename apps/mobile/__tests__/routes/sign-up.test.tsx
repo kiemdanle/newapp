@@ -28,7 +28,7 @@ describe('<SignUp />', () => {
     expect((await findAllByText(/required|invalid|at least/i)).length).toBeGreaterThan(0);
   });
 
-  it('on success: stores tokens and routes to OTP email verification', async () => {
+  it('on success: holds the session as pending (NOT signed in) and routes to OTP email verification', async () => {
     queueFetch(
       jsonResponse(
         {
@@ -59,7 +59,10 @@ describe('<SignUp />', () => {
     await act(async () => {
       fireEvent.press(getByTestId('sign-up-submit'));
     });
-    await waitFor(() => expect(useSessionStore.getState().accessToken).toBe('a'));
+    // The session is held pending until OTP — accessToken must stay null so
+    // AuthGate does not bounce the unverified user to home (the reported bug).
+    await waitFor(() => expect(useSessionStore.getState().pendingAuth?.tokens.accessToken).toBe('a'));
+    expect(useSessionStore.getState().accessToken).toBeNull();
     expect(router.replace).toHaveBeenCalledWith({
       pathname: '/(auth)/verify-email',
       params: { email: 'a@b.co' },

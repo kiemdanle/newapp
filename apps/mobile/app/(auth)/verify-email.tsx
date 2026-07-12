@@ -15,8 +15,11 @@ export default function VerifyEmail() {
   const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const setUser = useSessionStore((s) => s.setUser);
+  const signIn = useSessionStore((s) => s.signIn);
+  const accessToken = useSessionStore((s) => s.accessToken);
+  const pendingAuth = useSessionStore((s) => s.pendingAuth);
   const params = useLocalSearchParams<{ email?: string }>();
-  const email = params.email ?? user?.email ?? '';
+  const email = params.email ?? pendingAuth?.user.email ?? user?.email ?? '';
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,8 +59,20 @@ export default function VerifyEmail() {
     setLoading(true);
     try {
       await authEndpoints.verifyEmail({ email, code: verificationCode });
-      if (user) setUser({ ...user, emailVerified: true });
-      router.replace('/(app)/(tabs)/home');
+      if (pendingAuth) {
+        // Registration flow: the session was held until now. Commit it (with the
+        // now-verified flag) so the user lands authenticated on home.
+        await signIn({ ...pendingAuth, user: { ...pendingAuth.user, emailVerified: true } });
+        router.replace('/(app)/(tabs)/home');
+      } else if (accessToken) {
+        // Already authenticated and just needed to verify — mark verified.
+        if (user) setUser({ ...user, emailVerified: true });
+        router.replace('/(app)/(tabs)/home');
+      } else {
+        // Reached here from the sign-in "email not verified" path with no session
+        // — send the user back to sign in now that the email is confirmed.
+        router.replace('/(auth)/sign-in');
+      }
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
     } finally {

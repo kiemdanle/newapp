@@ -21,7 +21,7 @@ import {
 export default function SignUp() {
   const router = useRouter();
   const theme = useTheme();
-  const signIn = useSessionStore((s) => s.signIn);
+  const setPendingAuth = useSessionStore((s) => s.setPendingAuth);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -54,7 +54,11 @@ export default function SignUp() {
     try {
       const result = await authEndpoints.register(input);
       await clearPendingReferralCode();
-      await signIn(result);
+      // Hold the session as pending (do NOT sign in yet). Signing in would set
+      // accessToken, and AuthGate bounces any token-holder in the (auth) group
+      // straight to home — skipping the OTP step. verify-email commits the
+      // session once the email is confirmed.
+      setPendingAuth(result);
       router.replace({ pathname: '/(auth)/verify-email', params: { email: result.user.email } });
     } catch (e) {
       if (isApiError(e)) {
