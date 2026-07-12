@@ -41,7 +41,8 @@ export const refreshSchema = z.object({
     refreshToken: z.string().min(1),
 });
 export const verifyEmailSchema = z.object({
-    token: z.string().min(1),
+    email: emailField,
+    code: z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits'),
 });
 export const resendVerificationSchema = z.object({
     email: emailField,
@@ -49,8 +50,15 @@ export const resendVerificationSchema = z.object({
 export const forgotPasswordSchema = z.object({
     email: emailField,
 });
+export const verifyResetCodeSchema = z.object({
+    email: emailField,
+    code: z.string().regex(/^\d{6}$/, 'Reset code must be 6 digits'),
+});
+export const verifyResetCodeResponseSchema = z.object({
+    resetTicket: z.string(),
+});
 export const resetPasswordSchema = z.object({
-    token: z.string().min(1),
+    resetTicket: z.string().min(1),
     password: passwordField,
 });
 // --- OAuth ---

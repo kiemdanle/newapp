@@ -10,6 +10,7 @@ import { meRoute } from './me.js';
 import { verifyEmailRoute } from './verify-email.js';
 import { resendVerificationRoute } from './resend-verification.js';
 import { forgotPasswordRoute } from './forgot-password.js';
+import { verifyResetCodeRoute } from './verify-reset-code.js';
 import { resetPasswordRoute } from './reset-password.js';
 import { oauthGoogleRoute } from './oauth-google.js';
 import { oauthAppleRoute } from './oauth-apple.js';
@@ -37,6 +38,7 @@ export async function authRoutes(app: FastifyInstance) {
   await app.register(verifyEmailRoute);
   await app.register(resendVerificationRoute);
   await app.register(forgotPasswordRoute);
+  await app.register(verifyResetCodeRoute);
   await app.register(resetPasswordRoute);
   await app.register(oauthGoogleRoute);
   await app.register(oauthAppleRoute);

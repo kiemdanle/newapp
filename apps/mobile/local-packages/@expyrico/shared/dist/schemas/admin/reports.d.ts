@@ -16,21 +16,21 @@ export declare const adminReportRowSchema: z.ZodObject<{
     id: string;
     status: "open" | "resolved" | "dismissed";
     createdAt: string;
+    reason: "spam" | "abuse" | "incorrect" | "other";
     body: string | null;
     reporterId: string;
     targetType: "user" | "product" | "review";
     targetId: string;
-    reason: "spam" | "abuse" | "incorrect" | "other";
     targetPreview: Record<string, unknown> | null;
 }, {
     id: string;
     status: "open" | "resolved" | "dismissed";
     createdAt: string;
+    reason: "spam" | "abuse" | "incorrect" | "other";
     body: string | null;
     reporterId: string;
     targetType: "user" | "product" | "review";
     targetId: string;
-    reason: "spam" | "abuse" | "incorrect" | "other";
     targetPreview: Record<string, unknown> | null;
 }>;
 export declare const adminReportsQuerySchema: z.ZodObject<{
@@ -65,21 +65,21 @@ export declare const adminReportsListSchema: z.ZodObject<{
         id: string;
         status: "open" | "resolved" | "dismissed";
         createdAt: string;
+        reason: "spam" | "abuse" | "incorrect" | "other";
         body: string | null;
         reporterId: string;
         targetType: "user" | "product" | "review";
         targetId: string;
-        reason: "spam" | "abuse" | "incorrect" | "other";
         targetPreview: Record<string, unknown> | null;
     }, {
         id: string;
         status: "open" | "resolved" | "dismissed";
         createdAt: string;
+        reason: "spam" | "abuse" | "incorrect" | "other";
         body: string | null;
         reporterId: string;
         targetType: "user" | "product" | "review";
         targetId: string;
-        reason: "spam" | "abuse" | "incorrect" | "other";
         targetPreview: Record<string, unknown> | null;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
@@ -88,11 +88,11 @@ export declare const adminReportsListSchema: z.ZodObject<{
         id: string;
         status: "open" | "resolved" | "dismissed";
         createdAt: string;
+        reason: "spam" | "abuse" | "incorrect" | "other";
         body: string | null;
         reporterId: string;
         targetType: "user" | "product" | "review";
         targetId: string;
-        reason: "spam" | "abuse" | "incorrect" | "other";
         targetPreview: Record<string, unknown> | null;
     }[];
     nextCursor: string | null;
@@ -101,11 +101,11 @@ export declare const adminReportsListSchema: z.ZodObject<{
         id: string;
         status: "open" | "resolved" | "dismissed";
         createdAt: string;
+        reason: "spam" | "abuse" | "incorrect" | "other";
         body: string | null;
         reporterId: string;
         targetType: "user" | "product" | "review";
         targetId: string;
-        reason: "spam" | "abuse" | "incorrect" | "other";
         targetPreview: Record<string, unknown> | null;
     }[];
     nextCursor: string | null;

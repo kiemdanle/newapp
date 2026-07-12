@@ -6,7 +6,7 @@ import { getPrisma } from '../../src/db.js';
 
 async function authedUser() {
   const u = await makeUser({ emailVerified: true });
-  const token = await issueAccessToken({ sub: u.id, role: u.role });
+  const token = await issueAccessToken({ sub: u.id, role: u.role, tokenVersion: 0 });
   return { user: u, headers: { authorization: `Bearer ${token}` } };
 }
 

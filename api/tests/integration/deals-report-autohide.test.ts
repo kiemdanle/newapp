@@ -5,7 +5,7 @@ import { makeDeal, makeProduct, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 async function h(uid: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}` };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}` };
 }
 
 describe('reporting a deal', () => {

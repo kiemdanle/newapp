@@ -14,7 +14,7 @@ export async function makeAdmin(overrides: Partial<{ email: string; firstName: s
       emailVerifiedAt: new Date(),
     },
   });
-  const token = await issueAccessToken({ sub: admin.id, role: 'admin' });
+  const token = await issueAccessToken({ sub: admin.id, role: 'admin', tokenVersion: admin.tokenVersion });
   return { admin, headers: { authorization: `Bearer ${token}` } };
 }
 

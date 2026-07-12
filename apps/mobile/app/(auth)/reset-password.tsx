@@ -14,7 +14,7 @@ import { useTheme } from '../../src/theme/useTheme';
 export default function ResetPassword() {
   const router = useRouter();
   const theme = useTheme();
-  const params = useLocalSearchParams<{ token?: string }>();
+  const params = useLocalSearchParams<{ ticket?: string }>();
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
@@ -23,13 +23,13 @@ export default function ResetPassword() {
 
   async function onSubmit() {
     setError(null);
-    const token = params.token ?? '';
-    const errs = fieldErrors(resetPasswordSchema, { token, password });
+    const resetTicket = params.ticket ?? '';
+    const errs = fieldErrors(resetPasswordSchema, { resetTicket, password });
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
     setLoading(true);
     try {
-      await authEndpoints.resetPassword(token, password);
+      await authEndpoints.resetPassword(resetTicket, password);
       setDone(true);
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
@@ -40,7 +40,7 @@ export default function ResetPassword() {
 
   if (done) {
     return (
-      <Screen>
+      <Screen backFallback="/(auth)/sign-in">
         <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
           Password reset
         </Text>
@@ -51,28 +51,37 @@ export default function ResetPassword() {
   }
 
   return (
-    <Screen>
+    <Screen backFallback="/(auth)/sign-in">
       <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
         Choose a new password
       </Text>
-      {!params.token ? (
-        <ErrorText>This link is missing its token. Request a new one.</ErrorText>
-      ) : null}
-      <TextField
-        label="New password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        error={errors.password}
-      />
-      {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button
-        testID="reset-submit"
-        label="Save password"
-        onPress={onSubmit}
-        loading={loading}
-        disabled={!params.token}
-      />
+      {!params.ticket ? (
+        <>
+          <ErrorText>Your reset session expired. Start over to get a new code.</ErrorText>
+          <Button
+            testID="reset-start-over"
+            label="Start over"
+            onPress={() => router.replace('/(auth)/forgot-password')}
+          />
+        </>
+      ) : (
+        <>
+          <TextField
+            label="New password"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+            error={errors.password}
+          />
+          {error ? <ErrorText>{error}</ErrorText> : null}
+          <Button
+            testID="reset-submit"
+            label="Save password"
+            onPress={onSubmit}
+            loading={loading}
+          />
+        </>
+      )}
     </Screen>
   );
 }

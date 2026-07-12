@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { getPrisma } from '../../src/db.js';
 
+vi.mock('../../src/services/auth/email.js', () => ({
+  sendVerificationEmail: vi.fn(async () => undefined),
+  sendPasswordResetCodeEmail: vi.fn(async () => undefined),
+}));
+
 describe('POST /v1/auth/register', () => {
-  it('creates a user, returns auth result, sends verification email', async () => {
+  it('creates a user, returns auth result, sends a 6-digit verification code', async () => {
+    const { sendVerificationEmail } = await import('../../src/services/auth/email.js');
     const app = await buildServer();
     const res = await app.inject({
       method: 'POST',
@@ -29,6 +35,7 @@ describe('POST /v1/auth/register', () => {
     expect(stored?.passwordHash).toMatch(/^\$argon2id/);
     const tokens = await getPrisma().emailToken.findMany({ where: { userId: stored!.id } });
     expect(tokens).toHaveLength(1);
+    expect(sendVerificationEmail).toHaveBeenCalledWith('newuser@example.com', expect.stringMatching(/^\d{6}$/));
     await app.close();
   });
 

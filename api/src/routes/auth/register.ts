@@ -9,7 +9,7 @@ import { createSession } from '../../services/auth/sessions.js';
 import { sendVerificationEmail } from '../../services/auth/email.js';
 import { detectCountryFromIp } from '../../services/country/detect.js';
 import { toApiUser } from '../../services/users/repository.js';
-import { hashToken, randomToken } from '../../utils/random.js';
+import { hashToken, randomSixDigitCode } from '../../utils/random.js';
 import { generateUniqueReferralCode } from '../../services/referrals/referral-code.js';
 
 export async function registerRoute(app: FastifyInstance) {
@@ -74,18 +74,18 @@ export async function registerRoute(app: FastifyInstance) {
       return u;
     });
 
-    const verifyToken = randomToken(32);
+    const verificationCode = randomSixDigitCode();
     await prisma.emailToken.create({
       data: {
         userId: user.id,
-        tokenHash: hashToken(verifyToken),
+        tokenHash: hashToken(`${user.id}:${verificationCode}`),
         purpose: 'verify_email',
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-    await sendVerificationEmail(user.email, verifyToken);
+    await sendVerificationEmail(user.email, verificationCode);
 
-    const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
+    const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
 
     return reply.status(201).send(

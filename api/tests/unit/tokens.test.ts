@@ -11,7 +11,7 @@ beforeAll(() => resetConfigForTests());
 
 describe('tokens', () => {
   it('issues a JWT string and verifies it', async () => {
-    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user', tokenVersion: 0 });
     expect(typeof token).toBe('string');
     const claims = await verifyAccessToken(token);
     expect(claims.sub).toBe('user-1');
@@ -19,13 +19,13 @@ describe('tokens', () => {
   });
 
   it('rejects a tampered access token', async () => {
-    const token = await issueAccessToken({ sub: 'user-1', role: 'user' });
+    const token = await issueAccessToken({ sub: 'user-1', role: 'user', tokenVersion: 0 });
     const tampered = token.slice(0, -2) + 'XX';
     await expect(verifyAccessToken(tampered)).rejects.toThrow();
   });
 
   it('signs the token with the configured access TTL', async () => {
-    const token = await issueAccessToken({ sub: 'user-1', role: 'admin' });
+    const token = await issueAccessToken({ sub: 'user-1', role: 'admin', tokenVersion: 0 });
     const decoded = decodeJwt(token);
     expect(decoded.exp).toBeDefined();
     expect(decoded.iat).toBeDefined();

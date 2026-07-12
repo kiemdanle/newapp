@@ -15,7 +15,7 @@ describe('admin-only plugin', () => {
     const app = await buildServer();
     const u = await makeUserForAdmin();
     const { issueAccessToken } = await import('../../../src/services/auth/tokens.js');
-    const token = await issueAccessToken({ sub: u.id, role: u.role as 'user' });
+    const token = await issueAccessToken({ sub: u.id, role: u.role as 'user', tokenVersion: 0 });
     const res = await app.inject({ method: 'GET', url: '/v1/admin/_ping', headers: { authorization: `Bearer ${token}` } });
     expect(res.statusCode).toBe(403);
     await app.close();

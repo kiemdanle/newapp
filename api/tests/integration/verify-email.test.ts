@@ -1,9 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { getPrisma } from '../../src/db.js';
 
+vi.mock('../../src/services/auth/email.js', () => ({
+  sendVerificationEmail: vi.fn(async () => undefined),
+  sendPasswordResetCodeEmail: vi.fn(async () => undefined),
+}));
+
 describe('email verification', () => {
-  it('verifies an email with a valid token', async () => {
+  it('verifies an email with a valid 6-digit code', async () => {
+    const { sendVerificationEmail } = await import('../../src/services/auth/email.js');
     const app = await buildServer();
     await app.inject({
       method: 'POST',
@@ -15,21 +21,12 @@ describe('email verification', () => {
         lastName: 'E',
       },
     });
-    const user = await getPrisma().user.findUnique({ where: { email: 've@example.com' } });
-    const { hashToken, randomToken } = await import('../../src/utils/random.js');
-    const plain = randomToken(16);
-    await getPrisma().emailToken.create({
-      data: {
-        userId: user!.id,
-        tokenHash: hashToken(plain),
-        purpose: 'verify_email',
-        expiresAt: new Date(Date.now() + 60_000),
-      },
-    });
+    const code = vi.mocked(sendVerificationEmail).mock.calls.at(-1)?.[1];
 
     const res = await app.inject({
-      method: 'GET',
-      url: `/v1/auth/verify-email?token=${plain}`,
+      method: 'POST',
+      url: '/v1/auth/verify-email',
+      payload: { email: 've@example.com', code },
     });
     expect(res.statusCode).toBe(200);
     const after = await getPrisma().user.findUnique({ where: { email: 've@example.com' } });
@@ -37,18 +34,20 @@ describe('email verification', () => {
     await app.close();
   });
 
-  it('rejects an unknown token', async () => {
+  it('rejects an unknown code', async () => {
     const app = await buildServer();
     const res = await app.inject({
-      method: 'GET',
-      url: '/v1/auth/verify-email?token=nope',
+      method: 'POST',
+      url: '/v1/auth/verify-email',
+      payload: { email: 'missing@example.com', code: '123456' },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().code).toBe('invalid_token');
     await app.close();
   });
 
-  it('rejects a re-used token', async () => {
+  it('rejects a re-used code', async () => {
+    const { sendVerificationEmail } = await import('../../src/services/auth/email.js');
     const app = await buildServer();
     await app.inject({
       method: 'POST',
@@ -60,27 +59,23 @@ describe('email verification', () => {
         lastName: 'B',
       },
     });
-    const user = await getPrisma().user.findUnique({ where: { email: 'r@example.com' } });
-    const { hashToken, randomToken } = await import('../../src/utils/random.js');
-    const plain = randomToken(16);
-    await getPrisma().emailToken.create({
-      data: {
-        userId: user!.id,
-        tokenHash: hashToken(plain),
-        purpose: 'verify_email',
-        expiresAt: new Date(Date.now() + 60_000),
-      },
+    const code = vi.mocked(sendVerificationEmail).mock.calls.at(-1)?.[1];
+    await app.inject({
+      method: 'POST',
+      url: '/v1/auth/verify-email',
+      payload: { email: 'r@example.com', code },
     });
-    await app.inject({ method: 'GET', url: `/v1/auth/verify-email?token=${plain}` });
     const res = await app.inject({
-      method: 'GET',
-      url: `/v1/auth/verify-email?token=${plain}`,
+      method: 'POST',
+      url: '/v1/auth/verify-email',
+      payload: { email: 'r@example.com', code },
     });
     expect(res.statusCode).toBe(400);
     await app.close();
   });
 
-  it('resend creates a fresh token for an unverified user', async () => {
+  it('resend creates and sends a fresh 6-digit code for an unverified user', async () => {
+    const { sendVerificationEmail } = await import('../../src/services/auth/email.js');
     const app = await buildServer();
     await app.inject({
       method: 'POST',
@@ -101,6 +96,7 @@ describe('email verification', () => {
     expect(res.statusCode).toBe(204);
     const after = await getPrisma().emailToken.count();
     expect(after).toBe(before + 1);
+    expect(sendVerificationEmail).toHaveBeenLastCalledWith('s@example.com', expect.stringMatching(/^\d{6}$/));
     await app.close();
   });
 });

@@ -45,15 +45,15 @@ export declare const adminReviewsQuerySchema: z.ZodObject<{
     status?: "deleted" | "visible" | "hidden" | undefined;
     userId?: string | undefined;
     productId?: string | undefined;
-    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     cursor?: string | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
 }, {
     status?: "deleted" | "visible" | "hidden" | undefined;
     userId?: string | undefined;
     productId?: string | undefined;
-    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
 }>;
 export declare const adminReviewsListSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{

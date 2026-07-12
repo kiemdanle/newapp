@@ -5,6 +5,8 @@ import { hashToken, randomToken } from '../../utils/random.js';
 export interface AccessTokenPayload {
   sub: string;
   role: 'user' | 'admin';
+  /** User's current token version; a stale value is rejected at requireAuth. */
+  tokenVersion: number;
 }
 
 /** Backward-compatible alias retained for any callers that still import AccessClaims. */
@@ -24,7 +26,7 @@ function secretKey(): Uint8Array {
  */
 export async function issueAccessToken(payload: AccessTokenPayload): Promise<string> {
   const cfg = getConfig();
-  return new SignJWT({ role: payload.role })
+  return new SignJWT({ role: payload.role, tv: payload.tokenVersion })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(payload.sub)
     .setIssuer(cfg.jwt.issuer)
@@ -43,7 +45,12 @@ export async function verifyAccessToken(token: string): Promise<AccessTokenPaylo
   if (typeof payload.sub !== 'string') throw new Error('missing sub');
   const role = payload.role;
   if (role !== 'user' && role !== 'admin') throw new Error('invalid role');
-  return { sub: payload.sub, role };
+  // Tolerate a missing `tv` claim (tokens issued before this feature shipped):
+  // treat it as version 0, the default every user starts at. The real staleness
+  // check is the `tv === user.tokenVersion` comparison in requireAuth (RT-11);
+  // the decode path stays cheap and non-rejecting per the plan.
+  const tv = typeof payload.tv === 'number' ? payload.tv : 0;
+  return { sub: payload.sub, role, tokenVersion: tv };
 }
 
 export interface RefreshTokenIssue {

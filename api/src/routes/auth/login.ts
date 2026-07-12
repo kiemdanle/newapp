@@ -63,7 +63,7 @@ export async function loginRoute(app: FastifyInstance) {
       return reply.send({ requiresTotpEnrollment: true, enrollmentChallenge });
     }
 
-    const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
+    const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
     return reply.send({
       user: toApiUser(user),

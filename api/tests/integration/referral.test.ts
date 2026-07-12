@@ -7,7 +7,7 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { maybeActivateReferral } from '../../src/services/referrals/referral-service.js';
 
 async function auth(uid: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}` };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}` };
 }
 
 describe('POST /v1/auth/register with referralCode', () => {

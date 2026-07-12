@@ -80,7 +80,7 @@ export async function oauthGoogleRoute(app: FastifyInstance) {
       data: { lastUsedAt: new Date() },
     });
 
-    const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
+    const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
 
     return reply.send({

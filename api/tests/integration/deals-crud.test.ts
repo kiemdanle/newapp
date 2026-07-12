@@ -7,7 +7,7 @@ import { getPrisma } from '../../src/db.js';
 
 async function authHeaders(uid: string, idemKey?: string) {
   const h: Record<string, string> = {
-    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}`,
+    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}`,
   };
   if (idemKey) h['idempotency-key'] = idemKey;
   return h;

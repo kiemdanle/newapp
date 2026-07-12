@@ -16,7 +16,6 @@ export default function ForgotPassword() {
   const theme = useTheme();
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +27,9 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       await authEndpoints.forgotPassword(email);
-      setDone(true);
+      // Always advance to the code screen — the server returns 204 whether or not
+      // the account exists, so the screen must not reveal existence either.
+      router.push({ pathname: '/(auth)/verify-reset-code', params: { email } });
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
     } finally {
@@ -36,27 +37,13 @@ export default function ForgotPassword() {
     }
   }
 
-  if (done) {
-    return (
-      <Screen>
-        <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
-          Check your inbox
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
-          If an account exists for {email}, we sent a reset link.
-        </Text>
-        <Button label="Back to sign in" onPress={() => router.replace('/(auth)/sign-in')} />
-      </Screen>
-    );
-  }
-
   return (
-    <Screen>
+    <Screen backFallback="/(auth)/sign-in">
       <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
         Forgot password?
       </Text>
       <Text style={{ color: theme.colors.textMuted }}>
-        Enter your email and we'll send a reset link.
+        Enter your email and we'll send a 6-digit reset code.
       </Text>
       <TextField
         label="Email"
@@ -67,7 +54,7 @@ export default function ForgotPassword() {
         error={errors.email}
       />
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Button testID="forgot-submit" label="Send reset link" onPress={onSubmit} loading={loading} />
+      <Button testID="forgot-submit" label="Send reset code" onPress={onSubmit} loading={loading} />
       <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
     </Screen>
   );

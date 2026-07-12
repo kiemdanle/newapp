@@ -6,10 +6,10 @@ import { makeGiveaway, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 async function auth(uid: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}` };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}` };
 }
 async function authIdem(uid: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}`, 'idempotency-key': randomUUID() };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}`, 'idempotency-key': randomUUID() };
 }
 
 describe('GET /v1/giveaways', () => {

@@ -44,7 +44,6 @@ const envSchema = z.object({
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().min(1),
 
-  APP_DEEP_LINK: z.string().min(1),
   ADMIN_URL: z.string().url(),
 
   COUNTRY_DETECT_PRIMARY: z.string().url(),
@@ -82,7 +81,7 @@ export interface Config {
   };
   webauthn: { rpId: string; rpName: string; origin: string };
   smtp: { host: string; port: number; user?: string; pass?: string; from: string };
-  frontend: { appDeepLink: string; adminUrl: string };
+  frontend: { adminUrl: string };
   countryDetect: { primary: string; fallback: string };
 }
 
@@ -124,7 +123,7 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
     },
     webauthn: { rpId: e.WEBAUTHN_RP_ID, rpName: e.WEBAUTHN_RP_NAME, origin: e.WEBAUTHN_ORIGIN },
     smtp,
-    frontend: { appDeepLink: e.APP_DEEP_LINK, adminUrl: e.ADMIN_URL },
+    frontend: { adminUrl: e.ADMIN_URL },
     countryDetect: { primary: e.COUNTRY_DETECT_PRIMARY, fallback: e.COUNTRY_DETECT_FALLBACK },
   };
 }

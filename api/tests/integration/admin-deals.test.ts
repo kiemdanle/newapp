@@ -5,11 +5,11 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { makeDeal, makeProduct, makeUser } from '../helpers/factories.js';
 
 async function adminHeaders(adminId: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: adminId, role: 'admin' })}` };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: adminId, role: 'admin', tokenVersion: 0 })}` };
 }
 
 async function userHeaders(userId: string) {
-  return { authorization: `Bearer ${await issueAccessToken({ sub: userId, role: 'user' })}` };
+  return { authorization: `Bearer ${await issueAccessToken({ sub: userId, role: 'user', tokenVersion: 0 })}` };
 }
 
 describe('GET /v1/admin/deals', () => {

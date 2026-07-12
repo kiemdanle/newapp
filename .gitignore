@@ -9,6 +9,10 @@ build/
 .expo/
 .turbo/
 *.tsbuildinfo
+!apps/mobile/local-packages/@expyrico/theme/dist/
+!apps/mobile/local-packages/@expyrico/theme/dist/palette.*
+!apps/mobile/local-packages/@expyrico/shared/dist/
+!apps/mobile/local-packages/@expyrico/shared/dist/**
 
 # Env
 .env

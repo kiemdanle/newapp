@@ -5,7 +5,7 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 
 async function authHeaders(role: 'user' | 'admin' = 'user') {
   const u = await makeUser({ role, emailVerified: true });
-  const token = await issueAccessToken({ sub: u.id, role: u.role });
+  const token = await issueAccessToken({ sub: u.id, role: u.role, tokenVersion: 0 });
   return { authorization: `Bearer ${token}` };
 }
 

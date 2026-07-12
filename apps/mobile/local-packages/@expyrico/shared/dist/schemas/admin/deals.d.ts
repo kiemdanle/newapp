@@ -23,42 +23,42 @@ export declare const adminDealRowSchema: z.ZodObject<{
     authorEmail: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
+    country: string | null;
+    status: "deleted" | "visible" | "hidden";
+    createdAt: string;
+    updatedAt: string;
     userId: string;
     productId: string;
+    expiryDate: string | null;
+    photoUrl: string | null;
+    score: number;
     price: number;
     currency: string;
     storeName: string;
-    photoUrl: string | null;
-    expiryDate: string | null;
     note: string | null;
-    country: string | null;
     upvoteCount: number;
     downvoteCount: number;
-    score: number;
-    status: "visible" | "hidden" | "deleted";
-    createdAt: string;
-    updatedAt: string;
     productName: string;
     productBrand: string | null;
     authorFirstName: string;
     authorEmail: string;
 }, {
     id: string;
+    country: string | null;
+    status: "deleted" | "visible" | "hidden";
+    createdAt: string;
+    updatedAt: string;
     userId: string;
     productId: string;
+    expiryDate: string | null;
+    photoUrl: string | null;
+    score: number;
     price: number;
     currency: string;
     storeName: string;
-    photoUrl: string | null;
-    expiryDate: string | null;
     note: string | null;
-    country: string | null;
     upvoteCount: number;
     downvoteCount: number;
-    score: number;
-    status: "visible" | "hidden" | "deleted";
-    createdAt: string;
-    updatedAt: string;
     productName: string;
     productBrand: string | null;
     authorFirstName: string;
@@ -71,10 +71,10 @@ export declare const adminDealsQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<["visible", "hidden", "deleted"]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "visible" | "hidden" | "deleted" | undefined;
+    status?: "deleted" | "visible" | "hidden" | undefined;
     cursor?: string | undefined;
 }, {
-    status?: "visible" | "hidden" | "deleted" | undefined;
+    status?: "deleted" | "visible" | "hidden" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
 }>;
@@ -102,42 +102,42 @@ export declare const adminDealsListSchema: z.ZodObject<{
         authorEmail: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
+        country: string | null;
+        status: "deleted" | "visible" | "hidden";
+        createdAt: string;
+        updatedAt: string;
         userId: string;
         productId: string;
+        expiryDate: string | null;
+        photoUrl: string | null;
+        score: number;
         price: number;
         currency: string;
         storeName: string;
-        photoUrl: string | null;
-        expiryDate: string | null;
         note: string | null;
-        country: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        score: number;
-        status: "visible" | "hidden" | "deleted";
-        createdAt: string;
-        updatedAt: string;
         productName: string;
         productBrand: string | null;
         authorFirstName: string;
         authorEmail: string;
     }, {
         id: string;
+        country: string | null;
+        status: "deleted" | "visible" | "hidden";
+        createdAt: string;
+        updatedAt: string;
         userId: string;
         productId: string;
+        expiryDate: string | null;
+        photoUrl: string | null;
+        score: number;
         price: number;
         currency: string;
         storeName: string;
-        photoUrl: string | null;
-        expiryDate: string | null;
         note: string | null;
-        country: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        score: number;
-        status: "visible" | "hidden" | "deleted";
-        createdAt: string;
-        updatedAt: string;
         productName: string;
         productBrand: string | null;
         authorFirstName: string;
@@ -147,21 +147,21 @@ export declare const adminDealsListSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
+        country: string | null;
+        status: "deleted" | "visible" | "hidden";
+        createdAt: string;
+        updatedAt: string;
         userId: string;
         productId: string;
+        expiryDate: string | null;
+        photoUrl: string | null;
+        score: number;
         price: number;
         currency: string;
         storeName: string;
-        photoUrl: string | null;
-        expiryDate: string | null;
         note: string | null;
-        country: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        score: number;
-        status: "visible" | "hidden" | "deleted";
-        createdAt: string;
-        updatedAt: string;
         productName: string;
         productBrand: string | null;
         authorFirstName: string;
@@ -171,21 +171,21 @@ export declare const adminDealsListSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
+        country: string | null;
+        status: "deleted" | "visible" | "hidden";
+        createdAt: string;
+        updatedAt: string;
         userId: string;
         productId: string;
+        expiryDate: string | null;
+        photoUrl: string | null;
+        score: number;
         price: number;
         currency: string;
         storeName: string;
-        photoUrl: string | null;
-        expiryDate: string | null;
         note: string | null;
-        country: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        score: number;
-        status: "visible" | "hidden" | "deleted";
-        createdAt: string;
-        updatedAt: string;
         productName: string;
         productBrand: string | null;
         authorFirstName: string;
@@ -196,8 +196,8 @@ export declare const adminDealsListSchema: z.ZodObject<{
 export declare const adminDealStatusPatchSchema: z.ZodObject<{
     status: z.ZodEnum<["visible", "hidden", "deleted"]>;
 }, "strip", z.ZodTypeAny, {
-    status: "visible" | "hidden" | "deleted";
+    status: "deleted" | "visible" | "hidden";
 }, {
-    status: "visible" | "hidden" | "deleted";
+    status: "deleted" | "visible" | "hidden";
 }>;
 //# sourceMappingURL=deals.d.ts.map

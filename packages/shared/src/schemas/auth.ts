@@ -58,7 +58,8 @@ export const refreshSchema = z.object({
 export type RefreshInput = z.infer<typeof refreshSchema>;
 
 export const verifyEmailSchema = z.object({
-  token: z.string().min(1),
+  email: emailField,
+  code: z.string().regex(/^\d{6}$/, 'Verification code must be 6 digits'),
 });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 
@@ -71,8 +72,19 @@ export const forgotPasswordSchema = z.object({
 });
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 
+export const verifyResetCodeSchema = z.object({
+  email: emailField,
+  code: z.string().regex(/^\d{6}$/, 'Reset code must be 6 digits'),
+});
+export type VerifyResetCodeInput = z.infer<typeof verifyResetCodeSchema>;
+
+export const verifyResetCodeResponseSchema = z.object({
+  resetTicket: z.string(),
+});
+export type VerifyResetCodeResponse = z.infer<typeof verifyResetCodeResponseSchema>;
+
 export const resetPasswordSchema = z.object({
-  token: z.string().min(1),
+  resetTicket: z.string().min(1),
   password: passwordField,
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

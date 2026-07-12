@@ -7,7 +7,7 @@ import { findUserById } from '../services/users/repository.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
-    user?: { id: string; role: 'user' | 'admin' };
+    user?: { id: string; role: 'user' | 'admin'; tokenVersion: number };
   }
   interface FastifyInstance {
     requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -21,7 +21,7 @@ async function attachUser(req: FastifyRequest): Promise<void> {
   const token = auth.slice('Bearer '.length);
   try {
     const claims = await verifyAccessToken(token);
-    req.user = { id: claims.sub, role: claims.role };
+    req.user = { id: claims.sub, role: claims.role, tokenVersion: claims.tokenVersion };
   } catch {
     // ignore — handler decides whether auth was required
   }
@@ -36,6 +36,11 @@ const authPluginImpl: FastifyPluginAsync = async (app: FastifyInstance) => {
     }
     const user = await findUserById(req.user.id);
     if (!user || user.status !== 'active') {
+      throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+    }
+    // Reject access tokens issued before the user's token version was bumped
+    // (e.g. password reset), so a stolen token can't outlive the reset.
+    if (req.user.tokenVersion !== user.tokenVersion) {
       throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
     }
   });

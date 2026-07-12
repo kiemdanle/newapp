@@ -7,7 +7,7 @@ import { getPrisma } from '../../src/db.js';
 
 async function h(uid: string) {
   return {
-    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}`,
+    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}`,
     'idempotency-key': `vote-${uid}-${randomUUID()}`,
   };
 }
@@ -75,7 +75,7 @@ describe('POST /v1/deals/:id/vote', () => {
     const deal = await makeDeal({ userId: author.id, productId: product.id });
     const res = await app.inject({
       method: 'POST', url: `/v1/deals/${deal.id}/vote`,
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: voter.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: voter.id, role: 'user', tokenVersion: 0 })}` },
       payload: { value: 1 },
     });
     expect(res.statusCode).toBe(400);
@@ -93,7 +93,7 @@ describe('DELETE /v1/deals/:id/vote', () => {
     await app.inject({ method: 'POST', url: `/v1/deals/${deal.id}/vote`, headers: await h(voter.id), payload: { value: 1 } });
     const del = await app.inject({
       method: 'DELETE', url: `/v1/deals/${deal.id}/vote`,
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: voter.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: voter.id, role: 'user', tokenVersion: 0 })}` },
     });
     expect(del.statusCode).toBe(204);
     expect(await getPrisma().dealVote.count({ where: { dealId: deal.id } })).toBe(0);

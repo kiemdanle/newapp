@@ -7,13 +7,13 @@ import { getPrisma } from '../../src/db.js';
 
 async function userHeaders(userId: string) {
   return {
-    authorization: `Bearer ${await issueAccessToken({ sub: userId, role: 'user' })}`,
+    authorization: `Bearer ${await issueAccessToken({ sub: userId, role: 'user', tokenVersion: 0 })}`,
   };
 }
 
 async function adminHeaders(adminId: string) {
   return {
-    authorization: `Bearer ${await issueAccessToken({ sub: adminId, role: 'admin' })}`,
+    authorization: `Bearer ${await issueAccessToken({ sub: adminId, role: 'admin', tokenVersion: 0 })}`,
   };
 }
 

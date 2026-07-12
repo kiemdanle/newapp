@@ -26,7 +26,7 @@ export async function refreshRoute(app: FastifyInstance) {
       });
     }
     const next = await rotateSession(input.refreshToken);
-    const accessToken = await issueAccessToken({ sub: user.id, role: user.role });
+    const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     return reply.send({
       user: toApiUser(user),
       tokens: {

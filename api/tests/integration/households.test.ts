@@ -7,7 +7,7 @@ import { getPrisma } from '../../src/db.js';
 
 async function auth(uid: string) {
   return {
-    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user' })}`,
+    authorization: `Bearer ${await issueAccessToken({ sub: uid, role: 'user', tokenVersion: 0 })}`,
     'idempotency-key': randomUUID(),
   };
 }

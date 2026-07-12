@@ -5,7 +5,7 @@ import { makeProduct, makeReview, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 async function h(userId: string) {
-  const token = await issueAccessToken({ sub: userId, role: 'user' });
+  const token = await issueAccessToken({ sub: userId, role: 'user', tokenVersion: 0 });
   return { authorization: `Bearer ${token}` };
 }
 

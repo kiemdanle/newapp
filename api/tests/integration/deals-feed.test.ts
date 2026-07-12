@@ -64,13 +64,13 @@ describe('GET /v1/deals', () => {
     const dealUs = await makeDeal({ userId: poster.id, productId: p.id, country: 'US' });
     const res = await app.inject({
       method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerB.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerB.id, role: 'user', tokenVersion: 0 })}` },
     });
     expect(res.json().items.map((x: { id: string }) => x.id)).not.toContain(dealUs.id);
     const viewerA = await makeUser({ email: `ca-${Date.now()}@t.l`, country: 'US' });
     const resA = await app.inject({
       method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerA.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerA.id, role: 'user', tokenVersion: 0 })}` },
     });
     expect(resA.json().items.map((x: { id: string }) => x.id)).toContain(dealUs.id);
     await app.close();
@@ -84,7 +84,7 @@ describe('GET /v1/deals', () => {
     const dealUs = await makeDeal({ userId: poster.id, productId: p.id, country: 'US' });
     const res = await app.inject({
       method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerNoCountry.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerNoCountry.id, role: 'user', tokenVersion: 0 })}` },
     });
     expect(res.json().items.map((x: { id: string }) => x.id)).toContain(dealUs.id);
     await app.close();
@@ -98,7 +98,7 @@ describe('GET /v1/deals', () => {
     const dealNull = await makeDeal({ userId: posterNoCountry.id, productId: p.id, country: null });
     const res = await app.inject({
       method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerUs.id, role: 'user' })}` },
+      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerUs.id, role: 'user', tokenVersion: 0 })}` },
     });
     expect(res.json().items.map((x: { id: string }) => x.id)).toContain(dealNull.id);
     await app.close();

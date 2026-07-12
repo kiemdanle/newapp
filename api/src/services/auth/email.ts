@@ -16,35 +16,33 @@ function getTransport(): Transporter {
   return _transport;
 }
 
-export async function sendVerificationEmail(to: string, token: string): Promise<void> {
+export async function sendVerificationEmail(to: string, code: string): Promise<void> {
   const cfg = getConfig();
-  // Primary link: app deep link — opens the Expyrico mobile app directly.
-  const link = `${cfg.frontend.appDeepLink}verify-email?token=${encodeURIComponent(token)}`;
   if (cfg.env === 'test') {
-    logger.info({ to, link }, 'TEST: would send verification email');
+    logger.info({ to, code }, 'TEST: would send verification email');
     return;
   }
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
     subject: 'Verify your Expyrico email',
-    text: `Verify your email by opening this link in the Expyrico app: ${link}\n\nIf you didn't create an account, ignore this email.`,
-    html: `<p>Verify your email by opening <a href="${link}">this link</a> in the Expyrico app.</p><p style="color:#8C8C85;font-size:13px;margin-top:16px">If you didn't create an account, you can safely ignore this email.</p>`,
+    text: `Your Expyrico verification code is ${code}. It expires in 10 minutes.\n\nIf you didn't create an account, ignore this email.`,
+    html: `<p>Your Expyrico verification code is <strong style="font-size:24px;letter-spacing:4px">${code}</strong>.</p><p>It expires in 10 minutes.</p><p style="color:#8C8C85;font-size:13px;margin-top:16px">If you didn't create an account, you can safely ignore this email.</p>`,
   });
 }
 
-export async function sendPasswordResetEmail(to: string, token: string): Promise<void> {
+export async function sendPasswordResetCodeEmail(to: string, code: string): Promise<void> {
   const cfg = getConfig();
-  const link = `${cfg.frontend.appDeepLink}reset-password?token=${encodeURIComponent(token)}`;
   if (cfg.env === 'test') {
-    logger.info({ to, link }, 'TEST: would send password reset email');
+    // Never log the raw code — tests read it from the mocked module, not logs.
+    logger.info({ to }, 'TEST: would send password reset code email');
     return;
   }
   await getTransport().sendMail({
     from: cfg.smtp.from,
     to,
     subject: 'Reset your Expyrico password',
-    text: `Reset your password: ${link}\n\nIf you didn't request this, ignore this email.`,
-    html: `<p>Reset your password: <a href="${link}">${link}</a></p>`,
+    text: `Your Expyrico password reset code is ${code}. It expires in 10 minutes.\n\nIf you didn't request this, ignore this email.`,
+    html: `<p>Your Expyrico password reset code is <strong style="font-size:24px;letter-spacing:4px">${code}</strong>.</p><p>It expires in 10 minutes.</p><p style="color:#8C8C85;font-size:13px;margin-top:16px">If you didn't request this, you can safely ignore this email.</p>`,
   });
 }

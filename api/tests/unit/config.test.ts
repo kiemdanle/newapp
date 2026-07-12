@@ -29,7 +29,6 @@ describe('config', () => {
     SMTP_HOST: 'localhost',
     SMTP_PORT: '1025',
     SMTP_FROM: 't@e.x',
-    APP_DEEP_LINK: 'pantry://',
     ADMIN_URL: 'http://localhost:3000',
     COUNTRY_DETECT_PRIMARY: 'https://ipapi.co',
     COUNTRY_DETECT_FALLBACK: 'http://ip-api.com',

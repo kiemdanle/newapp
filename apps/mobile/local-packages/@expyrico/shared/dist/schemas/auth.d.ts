@@ -175,11 +175,14 @@ export declare const refreshSchema: z.ZodObject<{
 }>;
 export type RefreshInput = z.infer<typeof refreshSchema>;
 export declare const verifyEmailSchema: z.ZodObject<{
-    token: z.ZodString;
+    email: z.ZodString;
+    code: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    token: string;
+    code: string;
+    email: string;
 }, {
-    token: string;
+    code: string;
+    email: string;
 }>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export declare const resendVerificationSchema: z.ZodObject<{
@@ -197,15 +200,34 @@ export declare const forgotPasswordSchema: z.ZodObject<{
     email: string;
 }>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export declare const verifyResetCodeSchema: z.ZodObject<{
+    email: z.ZodString;
+    code: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    code: string;
+    email: string;
+}, {
+    code: string;
+    email: string;
+}>;
+export type VerifyResetCodeInput = z.infer<typeof verifyResetCodeSchema>;
+export declare const verifyResetCodeResponseSchema: z.ZodObject<{
+    resetTicket: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    resetTicket: string;
+}, {
+    resetTicket: string;
+}>;
+export type VerifyResetCodeResponse = z.infer<typeof verifyResetCodeResponseSchema>;
 export declare const resetPasswordSchema: z.ZodObject<{
-    token: z.ZodString;
+    resetTicket: z.ZodString;
     password: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     password: string;
-    token: string;
+    resetTicket: string;
 }, {
     password: string;
-    token: string;
+    resetTicket: string;
 }>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export declare const oauthGoogleSchema: z.ZodObject<{

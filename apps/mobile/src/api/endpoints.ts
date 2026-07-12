@@ -2,6 +2,7 @@ import type {
   AuthResult,
   LoginInput,
   RegisterInput,
+  VerifyEmailInput,
   Tokens,
   User,
   UpdateProfile,
@@ -41,6 +42,13 @@ export const authEndpoints = {
     }),
   logout: () => apiClient.request<void>({ method: 'POST', path: '/auth/logout' }),
   me: () => apiClient.request<User>({ method: 'GET', path: '/auth/me' }),
+  verifyEmail: (input: VerifyEmailInput) =>
+    apiClient.request<{ verified: true }>({
+      method: 'POST',
+      path: '/auth/verify-email',
+      body: input,
+      skipAuth: true,
+    }),
   resendVerification: (email: string) =>
     apiClient.request<{ ok: true }>({
       method: 'POST',
@@ -55,11 +63,18 @@ export const authEndpoints = {
       body: { email },
       skipAuth: true,
     }),
-  resetPassword: (token: string, password: string) =>
+  verifyResetCode: (email: string, code: string) =>
+    apiClient.request<{ resetTicket: string }>({
+      method: 'POST',
+      path: '/auth/verify-reset-code',
+      body: { email, code },
+      skipAuth: true,
+    }),
+  resetPassword: (resetTicket: string, password: string) =>
     apiClient.request<{ ok: true }>({
       method: 'POST',
       path: '/auth/reset-password',
-      body: { token, password },
+      body: { resetTicket, password },
       skipAuth: true,
     }),
   oauthGoogle: (idToken: string) =>
