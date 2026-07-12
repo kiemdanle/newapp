@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { Platform, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
-import { TextField } from '../../src/components/TextField';
+import { OtpInput } from '../../src/components/OtpInput';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { isApiError } from '../../src/api/errors';
 import { useTheme } from '../../src/theme/useTheme';
+
+const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmail() {
   const router = useRouter();
@@ -25,6 +28,14 @@ export default function VerifyEmail() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  // Tick the resend cooldown down once a second while it's active.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
   async function onResend() {
     setMessage(null);
@@ -37,6 +48,8 @@ export default function VerifyEmail() {
     try {
       await authEndpoints.resendVerification(email);
       setMessage('Verification code sent. Check your inbox.');
+      setCode('');
+      setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
     } finally {
@@ -80,43 +93,70 @@ export default function VerifyEmail() {
     }
   }
 
-  function onCodeChange(value: string) {
-    const next = value.replace(/\D/g, '').slice(0, 6);
+  function onCodeChange(next: string) {
     setCode(next);
+    if (error) setError(null);
     if (next.length === 6 && !loading) void onSubmit(next);
   }
 
+  const resendDisabled = resending || cooldown > 0;
+
   return (
     <Screen backFallback="/(auth)/sign-in">
-      <Text
-        style={{
-          fontSize: theme.typeRamp.headlineMedium.fontSize,
-          fontWeight: theme.typeRamp.headlineMedium.fontWeight as any,
-          color: theme.colors.text,
-        }}
-      >
-        Verify your email
-      </Text>
-      <Text style={{ color: theme.colors.textMuted, lineHeight: 22 }}>
-        {`Enter the 6-digit code sent to ${email || 'your inbox'}. Your keyboard may offer it as a quick-fill suggestion.`}
-      </Text>
-      <TextField
+      <View style={styles.header}>
+        <View style={[styles.badge, { backgroundColor: theme.colors.primaryLight }]}>
+          <Ionicons name="mail-open-outline" size={34} color={theme.colors.primary} />
+          <View
+            style={[
+              styles.badgeDot,
+              { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
+            ]}
+          />
+        </View>
+        <Text
+          style={[
+            styles.title,
+            {
+              color: theme.colors.text,
+              fontSize: theme.typeRamp.headlineLarge.fontSize,
+              lineHeight: theme.typeRamp.headlineLarge.lineHeight,
+              fontWeight: theme.typeRamp.headlineLarge.fontWeight as any,
+            },
+          ]}
+        >
+          Check your inbox
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted, lineHeight: 22 }]}>
+          Enter the 6-digit code we sent to
+        </Text>
+        {email ? (
+          <Text style={[styles.email, { color: theme.colors.primary }]}>{email}</Text>
+        ) : null}
+      </View>
+
+      <OtpInput
         label="Verification code"
         value={code}
         onChangeText={onCodeChange}
-        keyboardType="number-pad"
-        textContentType="oneTimeCode"
-        autoComplete={Platform.select({
-          ios: 'one-time-code',
-          android: 'sms-otp',
-          default: 'one-time-code',
-        })}
-        maxLength={6}
         autoFocus
-        placeholder="123456"
+        editable={!loading}
+        error={!!error}
       />
-      {message ? <Text style={{ color: theme.colors.success }}>{message}</Text> : null}
+
+      <View style={styles.pillRow}>
+        <View style={[styles.pill, { backgroundColor: theme.colors.accentLight }]}>
+          <Ionicons name="time-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.pillText, { color: theme.colors.text }]}>
+            Code expires in 10 minutes
+          </Text>
+        </View>
+      </View>
+
+      {message ? (
+        <Text style={[styles.status, { color: theme.colors.success }]}>{message}</Text>
+      ) : null}
       {error ? <ErrorText>{error}</ErrorText> : null}
+
       <Button
         testID="verify-submit"
         label="Verify email"
@@ -124,18 +164,81 @@ export default function VerifyEmail() {
         loading={loading}
         disabled={code.length !== 6}
       />
-      <Button
+
+      <Pressable
         testID="verify-resend"
-        label="Resend code"
-        variant="outline"
+        accessibilityRole="button"
+        accessibilityLabel="Resend code"
         onPress={onResend}
-        loading={resending}
-      />
-      <Button
-        label="Back to sign in"
-        variant="ghost"
+        disabled={resendDisabled}
+        style={styles.resend}
+      >
+        <Text style={[styles.resendMuted, { color: theme.colors.textMuted }]}>
+          Didn't get it?{' '}
+        </Text>
+        <Text
+          style={[
+            styles.resendAction,
+            { color: resendDisabled ? theme.colors.textMuted : theme.colors.primary },
+          ]}
+        >
+          {cooldown > 0 ? `Resend in ${cooldown}s` : resending ? 'Sending…' : 'Resend code'}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Back to sign in"
         onPress={() => router.replace('/(auth)/sign-in')}
-      />
+        style={styles.backLink}
+      >
+        <Text style={[styles.backText, { color: theme.colors.textMuted }]}>Back to sign in</Text>
+      </Pressable>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  header: { alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 4 },
+  badge: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  badgeDot: {
+    position: 'absolute',
+    top: 12,
+    right: 14,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+  },
+  title: { textAlign: 'center' },
+  subtitle: { fontSize: 14, textAlign: 'center' },
+  email: { fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  pillRow: { alignItems: 'center' },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+  },
+  pillText: { fontSize: 13, fontWeight: '600', includeFontPadding: false },
+  status: { textAlign: 'center', fontSize: 14, fontWeight: '500' },
+  resend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  resendMuted: { fontSize: 14 },
+  resendAction: { fontSize: 14, fontWeight: '700' },
+  backLink: { alignItems: 'center', paddingVertical: 6 },
+  backText: { fontSize: 14, fontWeight: '600' },
+});
