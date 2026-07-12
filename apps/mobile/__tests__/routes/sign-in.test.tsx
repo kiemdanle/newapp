@@ -69,7 +69,12 @@ describe('<SignIn />', () => {
     await act(async () => {
       fireEvent.press(getByTestId('sign-in-submit'));
     });
-    await waitFor(() => expect(router.push).toHaveBeenCalledWith('/(auth)/verify-email'));
+    await waitFor(() =>
+      expect(router.push).toHaveBeenCalledWith({
+        pathname: '/(auth)/verify-email',
+        params: { email: 'a@b.co' },
+      }),
+    );
   });
 
   it('on TOTP challenge: surfaces the admin-web hint and does not sign in', async () => {

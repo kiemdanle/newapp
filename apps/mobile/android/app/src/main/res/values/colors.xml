@@ -1,5 +1,12 @@
 <resources>
     <color name="fresh_sage">#4BAE8A</color>
+    <color name="deep_sage">#3A8F6F</color>
+    <color name="mint_mist">#D6F0E6</color>
     <color name="warm_white">#FAFAF8</color>
+    <color name="honey">#F5A623</color>
+    <color name="soft_butter">#FEEFC3</color>
+    <color name="stone">#F0F0ED</color>
+    <color name="pebble">#8C8C85</color>
     <color name="almost_black">#2C2C28</color>
+    <color name="alert_red">#E0442A</color>
 </resources>

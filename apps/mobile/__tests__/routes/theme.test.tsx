@@ -13,13 +13,15 @@ function wrap(node: React.ReactNode) {
 describe('<ThemeSettings />', () => {
   beforeEach(async () => {
     __reset();
-    useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
+    useThemeStore.setState({ themeId: 'system', hydrated: false });
     await initThemeStore();
   });
 
-  it('renders a card for each of the four themes', () => {
+  it('renders system plus each theme card', () => {
     const { getByTestId } = render(wrap(<ThemeSettings />));
+    expect(getByTestId('theme-card-system')).toBeTruthy();
     expect(getByTestId('theme-card-expyrico')).toBeTruthy();
+    expect(getByTestId('theme-card-expyricoDark')).toBeTruthy();
     expect(getByTestId('theme-card-bento')).toBeTruthy();
     expect(getByTestId('theme-card-clay')).toBeTruthy();
     expect(getByTestId('theme-card-material')).toBeTruthy();

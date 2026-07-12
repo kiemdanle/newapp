@@ -13,12 +13,22 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
+    "mobile:apk": "pnpm --filter @expyrico/mobile android:release",
+    "mobile:apk:debug": "pnpm --filter @expyrico/mobile android:build",
+    "mobile:apk:release": "pnpm --filter @expyrico/mobile android:release",
+    "mobile:android": "pnpm --filter @expyrico/mobile android",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.4.0",
+    "@babel/plugin-transform-react-jsx": "^7.29.7",
+    "@react-native-community/cli": "13.6.9",
+    "@react-native-community/cli-platform-android": "13.6.9",
+    "@react-native/codegen": "0.76.9",
+    "@react-native/gradle-plugin": "0.76.9",
     "@types/node": "^20.0.0",
-    "prettier": "^3.2.0"
+    "prettier": "^3.2.0",
+    "react-native": "0.76.9",
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0"
   }
 }

@@ -9,7 +9,7 @@ react {
     reactNativeDir = file("../../../../node_modules/react-native")
     codegenDir = file("../../../../node_modules/@react-native/codegen")
     cliFile = file("../../../../node_modules/react-native/cli.js")
-    entryFile = file("../../../../node_modules/expo-router/entry.js")
+    entryFile = file("../../node_modules/expo-router/entry.js")
     hermesCommand = file("../../../../node_modules/react-native/sdks/hermesc/osx-bin/hermesc").absolutePath
 
     autolinkLibrariesWithApp()

@@ -22,7 +22,7 @@ function SwitcherProbe() {
 describe('ThemeProvider', () => {
   beforeEach(async () => {
     __reset();
-    useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
+    useThemeStore.setState({ themeId: 'system', hydrated: false });
     await initThemeStore();
   });
 
@@ -50,7 +50,7 @@ describe('ThemeProvider', () => {
   });
 
   it('honours the `initial` prop on first mount', async () => {
-    useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
+    useThemeStore.setState({ themeId: 'system', hydrated: false });
     const { getByTestId } = render(
       <ThemeProvider initial="bento">
         <Probe />

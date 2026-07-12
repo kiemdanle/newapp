@@ -1,26 +1,11 @@
 import type { Theme } from '../tokens.js';
+import { expyricoColors } from '../palette.js';
 
 export const material: Theme = {
   id: 'material',
   name: 'Material You',
   scheme: 'light',
-  colors: {
-    bg: '#f0e8ff',
-    bgElevated: '#ffffff',
-    bgGlass: '#ffffff',
-    border: '#e0e0e0',
-    text: '#1d1b20',
-    textMuted: '#65558f',
-    textInverse: '#ffffff',
-    primary: '#65558f',
-    primaryFg: '#ffffff',
-    accent: '#7c4dff',
-    success: '#1f5b1f',
-    warning: '#7a5b00',
-    danger: '#8b1538',
-    hero: '#65558f',
-    heroFg: '#ffffff',
-  },
+  colors: expyricoColors,
   radii: { none: 0, sm: 8, md: 16, lg: 24, xl: 28, pill: 999 },
   shadows: {
     none: 'none',
@@ -62,7 +47,7 @@ export const material: Theme = {
     bodyLarge:      { fontSize: 16, lineHeight: 24, fontWeight: '400' },
     bodyMedium:     { fontSize: 14, lineHeight: 20, fontWeight: '400' },
     bodySmall:      { fontSize: 12, lineHeight: 16, fontWeight: '400' },
-    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '500' },
+    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '700' },
     labelMedium:    { fontSize: 12, lineHeight: 16, fontWeight: '500' },
     labelSmall:     { fontSize: 11, lineHeight: 16, fontWeight: '500' },
   },

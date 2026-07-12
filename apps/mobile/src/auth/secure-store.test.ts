@@ -23,7 +23,7 @@ describe('secureStore', () => {
     expect(await secureStore.getThemePreference()).toBeNull();
   });
 
-  it('only stores valid theme ids', async () => {
+  it('only stores valid theme preferences', async () => {
     // @ts-expect-error — runtime check
     await expect(secureStore.setThemePreference('neon')).rejects.toThrow();
   });

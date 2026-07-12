@@ -30,7 +30,7 @@ config.resolver.nodeModulesPaths = [
 // the workspace root. Explicitly resolve react/react-native subpaths to the
 // hoisted copies so Metro never falls through to the @types package.
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  const reactPkg = path.resolve(workspaceRoot, 'node_modules/react');
+  const reactPkg = path.resolve(projectRoot, 'node_modules/react');
   const rnPkg = path.resolve(workspaceRoot, 'node_modules/react-native');
   if (moduleName.startsWith('@/')) {
     return context.resolveRequest(context, path.join(projectRoot, 'src', moduleName.slice(2)), platform);

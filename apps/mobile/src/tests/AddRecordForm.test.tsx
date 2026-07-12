@@ -18,13 +18,13 @@ jest.mock('../store/pantryScope', () => ({
 jest.mock('../theme/useTheme', () => ({
   useTheme: () => ({
     colors: {
-      bg: '#000',
-      text: '#fff',
-      textMuted: '#999',
-      primary: '#a855f7',
-      primaryFg: '#fff',
-      danger: '#f00',
-      border: '#333',
+      bg: '#FAFAF8',
+      text: '#2C2C28',
+      textMuted: '#8C8C85',
+      primary: '#4BAE8A',
+      primaryFg: '#FAFAF8',
+      danger: '#E0442A',
+      border: '#F0F0ED',
     },
     spacing: { xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 24 },
     radii: { md: 8, lg: 12, sm: 4 },

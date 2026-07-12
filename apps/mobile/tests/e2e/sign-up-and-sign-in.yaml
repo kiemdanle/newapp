@@ -25,7 +25,7 @@ appId: com.expyrico.app
 - tapOn:
     id: 'verify-resend'
 - assertVisible:
-    text: 'Verification email sent'
+    text: 'Verification code sent'
 - tapOn:
     text: 'Back to sign in'
 - assertVisible: 'Welcome back'

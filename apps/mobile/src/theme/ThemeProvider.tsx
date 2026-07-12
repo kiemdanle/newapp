@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, useColorScheme, View } from 'react-native';
 import { themes, type Theme, type ThemeId } from '@expyrico/theme';
 import { useThemeStore } from './store';
+import type { ThemePreference } from '../auth/secure-store';
 
 export const ThemeContext = createContext<Theme | null>(null);
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
   /** Optional initial theme id — applied to the store on first mount. */
-  initial?: ThemeId;
+  initial?: ThemePreference;
 }
 
 export function ThemeProvider({ children, initial }: ThemeProviderProps) {
@@ -20,20 +21,23 @@ export function ThemeProvider({ children, initial }: ThemeProviderProps) {
   }, []);
 
   const themeId = useThemeStore((s) => s.themeId);
-  const theme = themes[themeId];
+  const colorScheme = useColorScheme();
+  const resolvedThemeId: ThemeId =
+    themeId === 'system' ? (colorScheme === 'dark' ? 'expyricoDark' : 'expyrico') : themeId;
+  const theme = themes[resolvedThemeId];
   const fade = useRef(new Animated.Value(1)).current;
-  const prevId = useRef(themeId);
+  const prevId = useRef(resolvedThemeId);
 
   useEffect(() => {
-    if (prevId.current === themeId) return;
-    prevId.current = themeId;
+    if (prevId.current === resolvedThemeId) return;
+    prevId.current = resolvedThemeId;
     fade.setValue(0);
     Animated.timing(fade, {
       toValue: 1,
       duration: theme.animation.themeSwitch, // 200ms per spec §2.10
       useNativeDriver: true,
     }).start();
-  }, [themeId, fade, theme.animation.themeSwitch]);
+  }, [resolvedThemeId, fade, theme.animation.themeSwitch]);
 
   const value = useMemo(() => theme, [theme]);
 

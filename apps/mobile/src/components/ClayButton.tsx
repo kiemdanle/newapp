@@ -38,7 +38,11 @@ export function ClayButton({ title, onPress, disabled }: Props) {
       <Text style={{
         color: t.colors.textInverse,
         fontSize: t.typeRamp.labelLarge.fontSize,
+        lineHeight: t.typeRamp.labelLarge.lineHeight,
         fontWeight: t.typeRamp.labelLarge.fontWeight as any,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        includeFontPadding: false,
       }}>{title}</Text>
     </Pressable>
   );

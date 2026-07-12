@@ -2,15 +2,18 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
+import { AuthBackButton } from './AuthBackButton';
 
 export function Screen({
   children,
   scroll = true,
   padded = true,
+  backFallback,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  backFallback?: string;
 }) {
   const theme = useTheme();
   const Body = scroll ? ScrollView : View;
@@ -21,6 +24,7 @@ export function Screen({
         style={styles.flex}
         showsVerticalScrollIndicator={false}
       >
+        {backFallback ? <AuthBackButton fallback={backFallback} /> : null}
         {children}
       </Body>
     </SafeAreaView>

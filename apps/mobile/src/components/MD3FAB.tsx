@@ -22,7 +22,18 @@ export function MD3FAB({ icon, onPress, accessibilityLabel }: Props) {
           : { elevation: shadow.elevation }),
       }}
     >
-      <Text style={{ color: t.colors.textInverse, fontSize: t.typeRamp.titleLarge.fontSize }}>{icon === 'qrcode-scan' ? '⊟' : '+'}</Text>
+      <Text
+        style={{
+          color: t.colors.textInverse,
+          fontSize: t.typeRamp.titleLarge.fontSize,
+          lineHeight: t.typeRamp.titleLarge.lineHeight,
+          textAlign: 'center',
+          textAlignVertical: 'center',
+          includeFontPadding: false,
+        }}
+      >
+        {icon === 'qrcode-scan' ? '⊟' : '+'}
+      </Text>
     </Pressable>
   );
 }

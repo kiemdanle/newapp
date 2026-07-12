@@ -9,6 +9,12 @@
 // `import expo.core.ExpoModulesPackage;` (from the gradle namespace), which
 // doesn't resolve. Pin the correct path here so the build is deterministic.
 module.exports = {
+  project: {
+    android: {
+      packageName: 'com.expyrico.app',
+      sourceDir: './android',
+    },
+  },
   dependencies: {
     expo: {
       platforms: {

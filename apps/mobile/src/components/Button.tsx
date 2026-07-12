@@ -33,12 +33,7 @@ export function Button(props: ButtonProps) {
           ? theme.colors.primary
           : 'transparent';
 
-  const fg =
-    variant === 'primary'
-      ? theme.colors.text
-      : isFilled
-        ? theme.colors.textInverse
-        : theme.colors.text;
+  const fg = isFilled ? theme.colors.textInverse : theme.colors.text;
 
   return (
     <Pressable
@@ -92,7 +87,8 @@ export function Button(props: ButtonProps) {
                 {
                   color: variant === 'outline' ? theme.colors.primary : fg,
                   fontSize: theme.typeRamp.labelLarge.fontSize,
-                  fontWeight: theme.typeRamp.labelLarge.fontWeight as any,
+                  lineHeight: theme.typeRamp.labelLarge.lineHeight,
+                  fontWeight: '700',
                 },
               ]}
             >
@@ -107,13 +103,16 @@ export function Button(props: ButtonProps) {
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: 15,
+    height: 52,
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingVertical: 0,
     paddingHorizontal: 24,
-    minHeight: 50,
     borderWidth: 1,
     borderColor: 'transparent',
   },
   row: {
+    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -121,5 +120,6 @@ const styles = StyleSheet.create({
   },
   label: {
     textAlign: 'center',
+    includeFontPadding: false,
   },
 });

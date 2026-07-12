@@ -28,7 +28,7 @@ describe('<SignUp />', () => {
     expect((await findAllByText(/required|invalid|at least/i)).length).toBeGreaterThan(0);
   });
 
-  it('on success: stores tokens and routes to verify-email', async () => {
+  it('on success: stores tokens and routes to OTP email verification', async () => {
     queueFetch(
       jsonResponse(
         {
@@ -60,7 +60,10 @@ describe('<SignUp />', () => {
       fireEvent.press(getByTestId('sign-up-submit'));
     });
     await waitFor(() => expect(useSessionStore.getState().accessToken).toBe('a'));
-    expect(router.replace).toHaveBeenCalledWith('/(auth)/verify-email');
+    expect(router.replace).toHaveBeenCalledWith({
+      pathname: '/(auth)/verify-email',
+      params: { email: 'a@b.co' },
+    });
   });
 
   it('on duplicate email: surfaces the error message', async () => {

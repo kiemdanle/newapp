@@ -1,24 +1,9 @@
+import { expyricoColors } from '../palette.js';
 export const clay = {
     id: 'clay',
     name: 'Soft Clay',
     scheme: 'light',
-    colors: {
-        bg: '#fff7f0',
-        bgElevated: '#ffffff',
-        bgGlass: '#ffffff',
-        border: '#fde0c2',
-        text: '#5b3a1f',
-        textMuted: '#a47148',
-        textInverse: '#fff7f0',
-        primary: '#ea580c',
-        primaryFg: '#ffffff',
-        accent: '#fbbf24',
-        success: '#10b981',
-        warning: '#f59e0b',
-        danger: '#dc2626',
-        hero: 'linear-gradient(145deg,#fed7aa,#fdba74)',
-        heroFg: '#5b3a1f',
-    },
+    colors: expyricoColors,
     radii: { none: 0, sm: 10, md: 16, lg: 22, xl: 28, pill: 999 },
     shadows: {
         none: 'none',

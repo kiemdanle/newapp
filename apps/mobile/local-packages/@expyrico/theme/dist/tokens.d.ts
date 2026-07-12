@@ -1,7 +1,7 @@
 /**
  * Theme token shape. Every theme must implement this exact contract.
  */
-export type ThemeId = 'expyrico' | 'bento' | 'clay' | 'material';
+export type ThemeId = 'expyrico' | 'expyricoDark' | 'bento' | 'clay' | 'material';
 export type ClayElevation = {
     rim: string;
     base: string;
@@ -46,11 +46,20 @@ export interface ColorTokens {
     textMuted: string;
     textInverse: string;
     primary: string;
+    primaryDark: string;
+    primaryLight: string;
     primaryFg: string;
     accent: string;
+    accentLight: string;
+    neutralLight: string;
+    neutralMid: string;
+    neutralDark: string;
     success: string;
     warning: string;
     danger: string;
+    good: string;
+    expiringSoon: string;
+    expired: string;
     /** Used by the home expiry hero card */
     hero: string;
     heroFg: string;

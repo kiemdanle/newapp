@@ -1,4 +1,5 @@
 import type { Theme } from '../tokens.js';
+import { expyricoColors, expyricoDarkColors } from '../palette.js';
 
 // Expyrico brand theme — the default. Built on the §2.10 design-system
 // palette: Fresh Sage + Honey on Warm White. A light, warm, pantry-shelf
@@ -7,23 +8,7 @@ export const expyrico: Theme = {
   id: 'expyrico',
   name: 'Expyrico',
   scheme: 'light',
-  colors: {
-    bg: '#FAFAF8',            // Warm White — main background
-    bgElevated: '#FFFFFF',    // pure white cards on warm white for crisp lift
-    bgGlass: '#D6F0E6',       // Mint Mist — soft panels, success highlights
-    border: '#F0F0ED',        // Stone — dividers, section backgrounds
-    text: '#2C2C28',          // Almost Black — primary text
-    textMuted: '#8C8C85',     // Pebble — secondary text, icons
-    textInverse: '#2C2C28',   // Almost Black on sage/honey for AA contrast
-    primary: '#4BAE8A',       // Fresh Sage — logo, headers, active states
-    primaryFg: '#2C2C28',     // Almost Black on sage for AA contrast
-    accent: '#F5A623',        // Honey — CTAs, badges, expiring-soon
-    success: '#4BAE8A',       // Good = reuses primary
-    warning: '#F5A623',       // Expiring soon = reuses accent
-    danger: '#E0442A',        // Alert Red — expired status only, never branding
-    hero: '#3A8F6F',          // Deep Sage — hero card background
-    heroFg: '#2C2C28',        // Almost Black on deep sage for legibility
-  },
+  colors: expyricoColors,
   radii: { none: 0, sm: 10, md: 16, lg: 22, xl: 30, pill: 999 },
   shadows: {
     none: 'none',
@@ -69,9 +54,39 @@ export const expyrico: Theme = {
     bodyLarge:      { fontSize: 16, lineHeight: 24, fontWeight: '400' },
     bodyMedium:     { fontSize: 14, lineHeight: 20, fontWeight: '400' },
     bodySmall:      { fontSize: 12, lineHeight: 18, fontWeight: '400' },
-    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '600' },
+    labelLarge:     { fontSize: 14, lineHeight: 20, fontWeight: '700' },
     labelMedium:    { fontSize: 12, lineHeight: 16, fontWeight: '500' },
     labelSmall:     { fontSize: 11, lineHeight: 16, fontWeight: '500' },
   },
   animation: { fast: 120, base: 220, slow: 320, themeSwitch: 200 },
+};
+
+export const expyricoDark: Theme = {
+  ...expyrico,
+  id: 'expyricoDark',
+  name: 'Expyrico Dark',
+  scheme: 'dark',
+  colors: expyricoDarkColors,
+  shadows: {
+    none: 'none',
+    sm: '0 1px 3px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.18)',
+    md: '0 4px 14px -2px rgba(0,0,0,0.32), 0 2px 8px -2px rgba(0,0,0,0.22)',
+    lg: '0 14px 34px -10px rgba(0,0,0,0.44), 0 4px 14px -4px rgba(0,0,0,0.28)',
+    glow: '0 0 24px rgba(245,166,35,0.22)',
+  },
+  elevation: {
+    clay: {
+      rim: 'inset 0 1px 0 rgba(255,255,255,0.08)',
+      base: '0 8px 20px rgba(0,0,0,0.34)',
+      ambient: '0 2px 8px rgba(0,0,0,0.24)',
+    },
+    md3: {
+      level0: 'none',
+      level1: '0 1px 2px rgba(0,0,0,0.28)',
+      level2: '0 2px 5px rgba(0,0,0,0.30)',
+      level3: '0 4px 10px rgba(0,0,0,0.34)',
+      level4: '0 6px 14px rgba(0,0,0,0.38)',
+      level5: '0 8px 18px rgba(0,0,0,0.42)',
+    },
+  },
 };

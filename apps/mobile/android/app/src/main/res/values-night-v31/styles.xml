@@ -1,0 +1,13 @@
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowBackground">@drawable/splash_screen</item>
+        <item name="android:windowSplashScreenBackground">@color/warm_white</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_logo</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/warm_white</item>
+        <item name="android:navigationBarColor">@color/warm_white</item>
+        <item name="android:statusBarColor">@color/warm_white</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

@@ -1,30 +1,30 @@
 import { create } from 'zustand';
 import type { ThemeId } from '@expyrico/theme';
-import { secureStore } from '../auth/secure-store';
+import { secureStore, type ThemePreference } from '../auth/secure-store';
 import { syncThemeToServer } from './sync';
 
 interface ThemeState {
-  themeId: ThemeId;
+  themeId: ThemePreference;
   hydrated: boolean;
-  setTheme: (id: ThemeId) => Promise<void>;
+  setTheme: (id: ThemePreference) => Promise<void>;
 }
 
-const VALID_IDS: readonly ThemeId[] = ['expyrico', 'bento', 'clay', 'material'];
+const VALID_IDS: readonly ThemePreference[] = ['system', 'expyrico', 'expyricoDark', 'bento', 'clay', 'material'];
 
 export const useThemeStore = create<ThemeState>((set) => ({
-  themeId: 'expyrico',
+  themeId: 'system',
   hydrated: false,
   setTheme: async (id) => {
     if (!(VALID_IDS as readonly string[]).includes(id)) {
-      throw new Error(`invalid theme id: ${id}`);
+      throw new Error(`invalid theme preference: ${id}`);
     }
     await secureStore.setThemePreference(id);
     set({ themeId: id });
-    void syncThemeToServer(id);
+    if (id !== 'system') void syncThemeToServer(id);
   },
 }));
 
 export async function initThemeStore(): Promise<void> {
   const stored = await secureStore.getThemePreference();
-  useThemeStore.setState({ themeId: stored ?? 'expyrico', hydrated: true });
+  useThemeStore.setState({ themeId: stored ?? 'system', hydrated: true });
 }

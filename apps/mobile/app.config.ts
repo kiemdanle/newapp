@@ -61,7 +61,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   owner: 'lekiemdan',
   extra: {
     eas: { projectId: 'd49cae3d-5945-4f7e-a425-59b791fb54b1' },
-    apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:4000',
+    apiBaseUrl: 'https://api.linhkienkts.com',
     googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
     googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
     passkeyRpId: process.env.EXPO_PUBLIC_PASSKEY_RP_ID ?? 'localhost',

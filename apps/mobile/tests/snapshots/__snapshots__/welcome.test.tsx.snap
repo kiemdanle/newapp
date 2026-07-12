@@ -44,11 +44,7 @@ exports[`welcome in bento snapshot 1`] = `
             {
               "flexGrow": 1,
             },
-            {
-              "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
-            },
+            false,
           ]
         }
         showsVerticalScrollIndicator={false}
@@ -60,22 +56,12 @@ exports[`welcome in bento snapshot 1`] = `
       >
         <View
           style={
-            [
-              {
-                "alignItems": "center",
-                "borderWidth": 1,
-                "flex": 1,
-                "gap": 0,
-                "justifyContent": "center",
-                "marginTop": 12,
-                "padding": 26,
-              },
-              {
-                "backgroundColor": "#ffffff",
-                "borderColor": "#e4e4e7",
-                "borderRadius": 22,
-              },
-            ]
+            {
+              "flex": 1,
+              "paddingBottom": 26,
+              "paddingHorizontal": 24,
+              "paddingTop": 18,
+            }
           }
         >
           <View
@@ -83,59 +69,8 @@ exports[`welcome in bento snapshot 1`] = `
               {
                 "alignItems": "center",
                 "flexDirection": "row",
-                "gap": 10,
-              }
-            }
-          >
-            <Image
-              accessibilityLabel="Expyrico"
-              resizeMode="contain"
-              source={
-                {
-                  "testUri": "../../../apps/mobile/assets/logo-mark.png",
-                }
-              }
-              style={
-                {
-                  "borderRadius": 18.92,
-                  "height": 86,
-                  "width": 86,
-                }
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#0a0a0a",
-                "fontSize": 40,
-                "fontWeight": "700",
-                "marginTop": 20,
-              }
-            }
-          >
-            expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#71717a",
-                "fontSize": 16,
-                "lineHeight": 24,
-                "marginTop": 8,
-                "textAlign": "center",
-              }
-            }
-          >
-            Track what you have, spot what expires next, and waste less food.
-          </Text>
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 10,
-                "marginTop": 24,
-                "width": "100%",
+                "justifyContent": "space-between",
+                "minHeight": 48,
               }
             }
           >
@@ -143,271 +78,547 @@ exports[`welcome in bento snapshot 1`] = `
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  },
+                  {
+                    "minHeight": 36,
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                accessibilityLabel="Expyrico"
+                align="xMidYMid"
+                bbHeight={36}
+                bbWidth={36}
+                focusable={false}
+                height={36}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 36,
+                      "width": 36,
+                    },
+                  ]
+                }
+                vbHeight={865}
+                vbWidth={865}
+                width={36}
+              >
+                <RNSVGGroup
+                  fill={
+                    {
+                      "payload": 4278190080,
+                      "type": 0,
+                    }
+                  }
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    matrix={
+                      [
+                        1,
+                        0,
+                        0,
+                        1,
+                        0,
+                        190,
+                      ]
+                    }
+                  >
+                    <RNSVGPath
+                      d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      fill={
+                        {
+                          "payload": 4283671941,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                      fill={
+                        {
+                          "payload": 4294090009,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                      fill={
+                        {
+                          "payload": 4291968547,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                      fill={
+                        {
+                          "payload": 4281019943,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                  </RNSVGGroup>
+                </RNSVGGroup>
+              </RNSVGSvgView>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#0a0a0a",
+                  "fontSize": 20,
+                  "fontWeight": "600",
+                  "lineHeight": 28,
+                }
+              }
+            >
+              expyrico
+            </Text>
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 999,
+                    "borderWidth": 1,
+                    "justifyContent": "center",
+                    "minHeight": 34,
+                    "paddingHorizontal": 14,
                   },
                   {
                     "backgroundColor": "#ffffff",
+                    "borderColor": "#e4e4e7",
                   },
                 ]
               }
             >
               <Text
                 style={
-                  [
-                    {
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                    {
-                      "color": "#0a0a0a",
-                    },
-                  ]
+                  {
+                    "color": "#0a0a0a",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  }
                 }
               >
                 Fresh
               </Text>
-              <Text
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "paddingTop": 46,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderWidth": 1,
+                    "elevation": 8,
+                    "justifyContent": "center",
+                    "shadowColor": "#000000",
+                    "shadowOffset": {
+                      "height": 12,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.12,
+                    "shadowRadius": 24,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e4e4e7",
+                    "borderRadius": 22,
+                    "height": 128,
+                    "width": 128,
+                  },
+                ]
+              }
+            >
+              <View
                 style={
                   [
                     {
-                      "fontSize": 12,
-                      "marginTop": 2,
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 10,
                     },
                     {
-                      "color": "#71717a",
+                      "minHeight": 94,
                     },
                   ]
                 }
               >
-                pantry view
-              </Text>
+                <RNSVGSvgView
+                  accessibilityLabel="Expyrico"
+                  align="xMidYMid"
+                  bbHeight={94}
+                  bbWidth={94}
+                  focusable={false}
+                  height={94}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 94,
+                        "width": 94,
+                      },
+                    ]
+                  }
+                  vbHeight={865}
+                  vbWidth={865}
+                  width={94}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGGroup
+                      fill={
+                        {
+                          "payload": 4278190080,
+                          "type": 0,
+                        }
+                      }
+                      matrix={
+                        [
+                          1,
+                          0,
+                          0,
+                          1,
+                          0,
+                          190,
+                        ]
+                      }
+                    >
+                      <RNSVGPath
+                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                        fill={
+                          {
+                            "payload": 4283671941,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                        fill={
+                          {
+                            "payload": 4294090009,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                        fill={
+                          {
+                            "payload": 4291968547,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                        fill={
+                          {
+                            "payload": 4281019943,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                    </RNSVGGroup>
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#0a0a0a",
+                  "fontSize": 40,
+                  "fontWeight": "700",
+                  "lineHeight": 48,
+                  "marginTop": 26,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Eat fresh, waste less.
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#71717a",
+                  "fontSize": 16,
+                  "lineHeight": 24,
+                  "marginTop": 10,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Keep your pantry visible, catch expiry dates early, and choose what to use next.
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "gap": 12,
+                "marginTop": 36,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderColor": "#F5A623",
+                    "elevation": 6,
+                    "shadowColor": "#F5A623",
+                    "shadowOffset": {
+                      "height": 8,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.28,
+                    "shadowRadius": 18,
+                  },
+                ]
+              }
+            >
+              <View
+                accessibilityLabel="Create account"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
+                    },
+                    false,
+                  ]
+                }
+                testID="welcome-sign-up"
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#2C2C28",
+                      },
+                    ]
+                  }
+                >
+                  Create account
+                </Text>
+              </View>
             </View>
             <View
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
                   },
                   {
-                    "backgroundColor": "#ffffff",
+                    "backgroundColor": "rgba(75,174,138,0.12)",
+                    "borderColor": "#4BAE8A",
                   },
                 ]
               }
             >
-              <Text
+              <View
+                accessibilityLabel="Sign in"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
                 style={
                   [
                     {
-                      "fontSize": 15,
-                      "fontWeight": "700",
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
                     },
-                    {
-                      "color": "#fbbf24",
-                    },
+                    false,
                   ]
                 }
+                testID="welcome-sign-in"
               >
-                Soon
-              </Text>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 12,
-                      "marginTop": 2,
-                    },
-                    {
-                      "color": "#71717a",
-                    },
-                  ]
-                }
-              >
-                expiry alerts
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View
-          style={
-            {
-              "gap": 12,
-              "paddingBottom": 12,
-            }
-          }
-        >
-          <View
-            accessibilityLabel="Sign in"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "#fbbf24",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-in"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#0a0a0a",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Sign in
-              </Text>
-            </View>
-          </View>
-          <View
-            accessibilityLabel="Create account"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#0a0a0a",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-up"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#0a0a0a",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Create account
-              </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#4BAE8A",
+                      },
+                    ]
+                  }
+                >
+                  Sign in
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -461,11 +672,7 @@ exports[`welcome in clay snapshot 1`] = `
             {
               "flexGrow": 1,
             },
-            {
-              "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
-            },
+            false,
           ]
         }
         showsVerticalScrollIndicator={false}
@@ -477,22 +684,12 @@ exports[`welcome in clay snapshot 1`] = `
       >
         <View
           style={
-            [
-              {
-                "alignItems": "center",
-                "borderWidth": 1,
-                "flex": 1,
-                "gap": 0,
-                "justifyContent": "center",
-                "marginTop": 12,
-                "padding": 26,
-              },
-              {
-                "backgroundColor": "#ffffff",
-                "borderColor": "#fde0c2",
-                "borderRadius": 28,
-              },
-            ]
+            {
+              "flex": 1,
+              "paddingBottom": 26,
+              "paddingHorizontal": 24,
+              "paddingTop": 18,
+            }
           }
         >
           <View
@@ -500,59 +697,8 @@ exports[`welcome in clay snapshot 1`] = `
               {
                 "alignItems": "center",
                 "flexDirection": "row",
-                "gap": 10,
-              }
-            }
-          >
-            <Image
-              accessibilityLabel="Expyrico"
-              resizeMode="contain"
-              source={
-                {
-                  "testUri": "../../../apps/mobile/assets/logo-mark.png",
-                }
-              }
-              style={
-                {
-                  "borderRadius": 18.92,
-                  "height": 86,
-                  "width": 86,
-                }
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 40,
-                "fontWeight": "700",
-                "marginTop": 20,
-              }
-            }
-          >
-            expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#a47148",
-                "fontSize": 17,
-                "lineHeight": 24,
-                "marginTop": 8,
-                "textAlign": "center",
-              }
-            }
-          >
-            Track what you have, spot what expires next, and waste less food.
-          </Text>
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 10,
-                "marginTop": 24,
-                "width": "100%",
+                "justifyContent": "space-between",
+                "minHeight": 48,
               }
             }
           >
@@ -560,271 +706,547 @@ exports[`welcome in clay snapshot 1`] = `
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  },
+                  {
+                    "minHeight": 36,
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                accessibilityLabel="Expyrico"
+                align="xMidYMid"
+                bbHeight={36}
+                bbWidth={36}
+                focusable={false}
+                height={36}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 36,
+                      "width": 36,
+                    },
+                  ]
+                }
+                vbHeight={865}
+                vbWidth={865}
+                width={36}
+              >
+                <RNSVGGroup
+                  fill={
+                    {
+                      "payload": 4278190080,
+                      "type": 0,
+                    }
+                  }
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    matrix={
+                      [
+                        1,
+                        0,
+                        0,
+                        1,
+                        0,
+                        190,
+                      ]
+                    }
+                  >
+                    <RNSVGPath
+                      d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      fill={
+                        {
+                          "payload": 4283671941,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                      fill={
+                        {
+                          "payload": 4294090009,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                      fill={
+                        {
+                          "payload": 4291968547,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                      fill={
+                        {
+                          "payload": 4281019943,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                  </RNSVGGroup>
+                </RNSVGGroup>
+              </RNSVGSvgView>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#5b3a1f",
+                  "fontSize": 20,
+                  "fontWeight": "700",
+                  "lineHeight": 28,
+                }
+              }
+            >
+              expyrico
+            </Text>
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 999,
+                    "borderWidth": 1,
+                    "justifyContent": "center",
+                    "minHeight": 34,
+                    "paddingHorizontal": 14,
                   },
                   {
                     "backgroundColor": "#ffffff",
+                    "borderColor": "#fde0c2",
                   },
                 ]
               }
             >
               <Text
                 style={
-                  [
-                    {
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                    {
-                      "color": "#ea580c",
-                    },
-                  ]
+                  {
+                    "color": "#ea580c",
+                    "fontSize": 13,
+                    "fontWeight": "700",
+                  }
                 }
               >
                 Fresh
               </Text>
-              <Text
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "paddingTop": 46,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderWidth": 1,
+                    "elevation": 8,
+                    "justifyContent": "center",
+                    "shadowColor": "#000000",
+                    "shadowOffset": {
+                      "height": 12,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.12,
+                    "shadowRadius": 24,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#fde0c2",
+                    "borderRadius": 28,
+                    "height": 128,
+                    "width": 128,
+                  },
+                ]
+              }
+            >
+              <View
                 style={
                   [
                     {
-                      "fontSize": 12,
-                      "marginTop": 2,
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 10,
                     },
                     {
-                      "color": "#a47148",
+                      "minHeight": 94,
                     },
                   ]
                 }
               >
-                pantry view
-              </Text>
+                <RNSVGSvgView
+                  accessibilityLabel="Expyrico"
+                  align="xMidYMid"
+                  bbHeight={94}
+                  bbWidth={94}
+                  focusable={false}
+                  height={94}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 94,
+                        "width": 94,
+                      },
+                    ]
+                  }
+                  vbHeight={865}
+                  vbWidth={865}
+                  width={94}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGGroup
+                      fill={
+                        {
+                          "payload": 4278190080,
+                          "type": 0,
+                        }
+                      }
+                      matrix={
+                        [
+                          1,
+                          0,
+                          0,
+                          1,
+                          0,
+                          190,
+                        ]
+                      }
+                    >
+                      <RNSVGPath
+                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                        fill={
+                          {
+                            "payload": 4283671941,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                        fill={
+                          {
+                            "payload": 4294090009,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                        fill={
+                          {
+                            "payload": 4291968547,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                        fill={
+                          {
+                            "payload": 4281019943,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                    </RNSVGGroup>
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#5b3a1f",
+                  "fontSize": 44,
+                  "fontWeight": "800",
+                  "lineHeight": 52,
+                  "marginTop": 26,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Eat fresh, waste less.
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#a47148",
+                  "fontSize": 17,
+                  "lineHeight": 26,
+                  "marginTop": 10,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Keep your pantry visible, catch expiry dates early, and choose what to use next.
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "gap": 12,
+                "marginTop": 36,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderColor": "#F5A623",
+                    "elevation": 6,
+                    "shadowColor": "#F5A623",
+                    "shadowOffset": {
+                      "height": 8,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.28,
+                    "shadowRadius": 18,
+                  },
+                ]
+              }
+            >
+              <View
+                accessibilityLabel="Create account"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
+                    },
+                    false,
+                  ]
+                }
+                testID="welcome-sign-up"
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#2C2C28",
+                      },
+                    ]
+                  }
+                >
+                  Create account
+                </Text>
+              </View>
             </View>
             <View
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
                   },
                   {
-                    "backgroundColor": "#ffffff",
+                    "backgroundColor": "rgba(75,174,138,0.12)",
+                    "borderColor": "#4BAE8A",
                   },
                 ]
               }
             >
-              <Text
+              <View
+                accessibilityLabel="Sign in"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
                 style={
                   [
                     {
-                      "fontSize": 15,
-                      "fontWeight": "700",
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
                     },
-                    {
-                      "color": "#fbbf24",
-                    },
+                    false,
                   ]
                 }
+                testID="welcome-sign-in"
               >
-                Soon
-              </Text>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 12,
-                      "marginTop": 2,
-                    },
-                    {
-                      "color": "#a47148",
-                    },
-                  ]
-                }
-              >
-                expiry alerts
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View
-          style={
-            {
-              "gap": 12,
-              "paddingBottom": 12,
-            }
-          }
-        >
-          <View
-            accessibilityLabel="Sign in"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "#fbbf24",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-in"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#5b3a1f",
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                  ]
-                }
-              >
-                Sign in
-              </Text>
-            </View>
-          </View>
-          <View
-            accessibilityLabel="Create account"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#ea580c",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-up"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#ea580c",
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                  ]
-                }
-              >
-                Create account
-              </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#4BAE8A",
+                      },
+                    ]
+                  }
+                >
+                  Sign in
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -878,11 +1300,7 @@ exports[`welcome in expyrico snapshot 1`] = `
             {
               "flexGrow": 1,
             },
-            {
-              "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
-            },
+            false,
           ]
         }
         showsVerticalScrollIndicator={false}
@@ -894,22 +1312,12 @@ exports[`welcome in expyrico snapshot 1`] = `
       >
         <View
           style={
-            [
-              {
-                "alignItems": "center",
-                "borderWidth": 1,
-                "flex": 1,
-                "gap": 0,
-                "justifyContent": "center",
-                "marginTop": 12,
-                "padding": 26,
-              },
-              {
-                "backgroundColor": "rgba(255,255,255,0.08)",
-                "borderColor": "rgba(255,255,255,0.12)",
-                "borderRadius": 28,
-              },
-            ]
+            {
+              "flex": 1,
+              "paddingBottom": 26,
+              "paddingHorizontal": 24,
+              "paddingTop": 18,
+            }
           }
         >
           <View
@@ -917,59 +1325,8 @@ exports[`welcome in expyrico snapshot 1`] = `
               {
                 "alignItems": "center",
                 "flexDirection": "row",
-                "gap": 10,
-              }
-            }
-          >
-            <Image
-              accessibilityLabel="Expyrico"
-              resizeMode="contain"
-              source={
-                {
-                  "testUri": "../../../apps/mobile/assets/logo-mark.png",
-                }
-              }
-              style={
-                {
-                  "borderRadius": 18.92,
-                  "height": 86,
-                  "width": 86,
-                }
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#fafafa",
-                "fontSize": 40,
-                "fontWeight": "700",
-                "marginTop": 20,
-              }
-            }
-          >
-            expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "rgba(250,250,250,0.7)",
-                "fontSize": 16,
-                "lineHeight": 24,
-                "marginTop": 8,
-                "textAlign": "center",
-              }
-            }
-          >
-            Track what you have, spot what expires next, and waste less food.
-          </Text>
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 10,
-                "marginTop": 24,
-                "width": "100%",
+                "justifyContent": "space-between",
+                "minHeight": 48,
               }
             }
           >
@@ -977,271 +1334,547 @@ exports[`welcome in expyrico snapshot 1`] = `
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "minHeight": 36,
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                accessibilityLabel="Expyrico"
+                align="xMidYMid"
+                bbHeight={36}
+                bbWidth={36}
+                focusable={false}
+                height={36}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 36,
+                      "width": 36,
+                    },
+                  ]
+                }
+                vbHeight={865}
+                vbWidth={865}
+                width={36}
+              >
+                <RNSVGGroup
+                  fill={
+                    {
+                      "payload": 4278190080,
+                      "type": 0,
+                    }
+                  }
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    matrix={
+                      [
+                        1,
+                        0,
+                        0,
+                        1,
+                        0,
+                        190,
+                      ]
+                    }
+                  >
+                    <RNSVGPath
+                      d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      fill={
+                        {
+                          "payload": 4283671941,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                      fill={
+                        {
+                          "payload": 4294090009,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                      fill={
+                        {
+                          "payload": 4291968547,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                      fill={
+                        {
+                          "payload": 4294638330,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                  </RNSVGGroup>
+                </RNSVGGroup>
+              </RNSVGSvgView>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#fafafa",
+                  "fontSize": 22,
+                  "fontWeight": "500",
+                  "lineHeight": 28,
+                }
+              }
+            >
+              expyrico
+            </Text>
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 999,
+                    "borderWidth": 1,
+                    "justifyContent": "center",
+                    "minHeight": 34,
+                    "paddingHorizontal": 14,
+                  },
+                  {
+                    "backgroundColor": "rgba(255,255,255,0.08)",
+                    "borderColor": "rgba(255,255,255,0.12)",
                   },
                 ]
               }
             >
               <Text
                 style={
-                  [
-                    {
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                    {
-                      "color": "#a855f7",
-                    },
-                  ]
+                  {
+                    "color": "#a855f7",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  }
                 }
               >
                 Fresh
               </Text>
-              <Text
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "paddingTop": 46,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderWidth": 1,
+                    "elevation": 8,
+                    "justifyContent": "center",
+                    "shadowColor": "#000000",
+                    "shadowOffset": {
+                      "height": 12,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.12,
+                    "shadowRadius": 24,
+                  },
+                  {
+                    "backgroundColor": "rgba(255,255,255,0.08)",
+                    "borderColor": "rgba(255,255,255,0.12)",
+                    "borderRadius": 28,
+                    "height": 128,
+                    "width": 128,
+                  },
+                ]
+              }
+            >
+              <View
                 style={
                   [
                     {
-                      "fontSize": 12,
-                      "marginTop": 2,
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 10,
                     },
                     {
-                      "color": "rgba(250,250,250,0.7)",
+                      "minHeight": 94,
                     },
                   ]
                 }
               >
-                pantry view
-              </Text>
+                <RNSVGSvgView
+                  accessibilityLabel="Expyrico"
+                  align="xMidYMid"
+                  bbHeight={94}
+                  bbWidth={94}
+                  focusable={false}
+                  height={94}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 94,
+                        "width": 94,
+                      },
+                    ]
+                  }
+                  vbHeight={865}
+                  vbWidth={865}
+                  width={94}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGGroup
+                      fill={
+                        {
+                          "payload": 4278190080,
+                          "type": 0,
+                        }
+                      }
+                      matrix={
+                        [
+                          1,
+                          0,
+                          0,
+                          1,
+                          0,
+                          190,
+                        ]
+                      }
+                    >
+                      <RNSVGPath
+                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                        fill={
+                          {
+                            "payload": 4283671941,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                        fill={
+                          {
+                            "payload": 4294090009,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                        fill={
+                          {
+                            "payload": 4291968547,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                        fill={
+                          {
+                            "payload": 4294638330,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                    </RNSVGGroup>
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#fafafa",
+                  "fontSize": 45,
+                  "fontWeight": "400",
+                  "lineHeight": 52,
+                  "marginTop": 26,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Eat fresh, waste less.
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "rgba(250,250,250,0.7)",
+                  "fontSize": 16,
+                  "lineHeight": 24,
+                  "marginTop": 10,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Keep your pantry visible, catch expiry dates early, and choose what to use next.
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "gap": 12,
+                "marginTop": 36,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderColor": "#F5A623",
+                    "elevation": 6,
+                    "shadowColor": "#F5A623",
+                    "shadowOffset": {
+                      "height": 8,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.28,
+                    "shadowRadius": 18,
+                  },
+                ]
+              }
+            >
+              <View
+                accessibilityLabel="Create account"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
+                    },
+                    false,
+                  ]
+                }
+                testID="welcome-sign-up"
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#2C2C28",
+                      },
+                    ]
+                  }
+                >
+                  Create account
+                </Text>
+              </View>
             </View>
             <View
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
+                    "backgroundColor": "rgba(75,174,138,0.12)",
+                    "borderColor": "#4BAE8A",
                   },
                 ]
               }
             >
-              <Text
+              <View
+                accessibilityLabel="Sign in"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
                 style={
                   [
                     {
-                      "fontSize": 15,
-                      "fontWeight": "700",
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
                     },
-                    {
-                      "color": "#a5f3fc",
-                    },
+                    false,
                   ]
                 }
+                testID="welcome-sign-in"
               >
-                Soon
-              </Text>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 12,
-                      "marginTop": 2,
-                    },
-                    {
-                      "color": "rgba(250,250,250,0.7)",
-                    },
-                  ]
-                }
-              >
-                expiry alerts
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View
-          style={
-            {
-              "gap": 12,
-              "paddingBottom": 12,
-            }
-          }
-        >
-          <View
-            accessibilityLabel="Sign in"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "#a5f3fc",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-in"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#fafafa",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Sign in
-              </Text>
-            </View>
-          </View>
-          <View
-            accessibilityLabel="Create account"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#a855f7",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-up"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#a855f7",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Create account
-              </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#4BAE8A",
+                      },
+                    ]
+                  }
+                >
+                  Sign in
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -1295,11 +1928,7 @@ exports[`welcome in material snapshot 1`] = `
             {
               "flexGrow": 1,
             },
-            {
-              "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
-            },
+            false,
           ]
         }
         showsVerticalScrollIndicator={false}
@@ -1311,22 +1940,12 @@ exports[`welcome in material snapshot 1`] = `
       >
         <View
           style={
-            [
-              {
-                "alignItems": "center",
-                "borderWidth": 1,
-                "flex": 1,
-                "gap": 0,
-                "justifyContent": "center",
-                "marginTop": 12,
-                "padding": 26,
-              },
-              {
-                "backgroundColor": "#ffffff",
-                "borderColor": "#e0e0e0",
-                "borderRadius": 28,
-              },
-            ]
+            {
+              "flex": 1,
+              "paddingBottom": 26,
+              "paddingHorizontal": 24,
+              "paddingTop": 18,
+            }
           }
         >
           <View
@@ -1334,59 +1953,8 @@ exports[`welcome in material snapshot 1`] = `
               {
                 "alignItems": "center",
                 "flexDirection": "row",
-                "gap": 10,
-              }
-            }
-          >
-            <Image
-              accessibilityLabel="Expyrico"
-              resizeMode="contain"
-              source={
-                {
-                  "testUri": "../../../apps/mobile/assets/logo-mark.png",
-                }
-              }
-              style={
-                {
-                  "borderRadius": 18.92,
-                  "height": 86,
-                  "width": 86,
-                }
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#1d1b20",
-                "fontSize": 40,
-                "fontWeight": "700",
-                "marginTop": 20,
-              }
-            }
-          >
-            expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#65558f",
-                "fontSize": 16,
-                "lineHeight": 24,
-                "marginTop": 8,
-                "textAlign": "center",
-              }
-            }
-          >
-            Track what you have, spot what expires next, and waste less food.
-          </Text>
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 10,
-                "marginTop": 24,
-                "width": "100%",
+                "justifyContent": "space-between",
+                "minHeight": 48,
               }
             }
           >
@@ -1394,271 +1962,547 @@ exports[`welcome in material snapshot 1`] = `
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  },
+                  {
+                    "minHeight": 36,
+                  },
+                ]
+              }
+            >
+              <RNSVGSvgView
+                accessibilityLabel="Expyrico"
+                align="xMidYMid"
+                bbHeight={36}
+                bbWidth={36}
+                focusable={false}
+                height={36}
+                meetOrSlice={0}
+                minX={0}
+                minY={0}
+                style={
+                  [
+                    {
+                      "backgroundColor": "transparent",
+                      "borderWidth": 0,
+                    },
+                    {
+                      "flex": 0,
+                      "height": 36,
+                      "width": 36,
+                    },
+                  ]
+                }
+                vbHeight={865}
+                vbWidth={865}
+                width={36}
+              >
+                <RNSVGGroup
+                  fill={
+                    {
+                      "payload": 4278190080,
+                      "type": 0,
+                    }
+                  }
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                    matrix={
+                      [
+                        1,
+                        0,
+                        0,
+                        1,
+                        0,
+                        190,
+                      ]
+                    }
+                  >
+                    <RNSVGPath
+                      d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      fill={
+                        {
+                          "payload": 4283671941,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                      fill={
+                        {
+                          "payload": 4294090009,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                      fill={
+                        {
+                          "payload": 4291968547,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                    <RNSVGPath
+                      d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                      fill={
+                        {
+                          "payload": 4281019943,
+                          "type": 0,
+                        }
+                      }
+                      propList={
+                        [
+                          "fill",
+                        ]
+                      }
+                    />
+                  </RNSVGGroup>
+                </RNSVGGroup>
+              </RNSVGSvgView>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#1d1b20",
+                  "fontSize": 22,
+                  "fontWeight": "500",
+                  "lineHeight": 28,
+                }
+              }
+            >
+              expyrico
+            </Text>
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 999,
+                    "borderWidth": 1,
+                    "justifyContent": "center",
+                    "minHeight": 34,
+                    "paddingHorizontal": 14,
                   },
                   {
                     "backgroundColor": "#ffffff",
+                    "borderColor": "#e0e0e0",
                   },
                 ]
               }
             >
               <Text
                 style={
-                  [
-                    {
-                      "fontSize": 15,
-                      "fontWeight": "700",
-                    },
-                    {
-                      "color": "#65558f",
-                    },
-                  ]
+                  {
+                    "color": "#65558f",
+                    "fontSize": 12,
+                    "fontWeight": "500",
+                  }
                 }
               >
                 Fresh
               </Text>
-              <Text
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "paddingTop": 46,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderWidth": 1,
+                    "elevation": 8,
+                    "justifyContent": "center",
+                    "shadowColor": "#000000",
+                    "shadowOffset": {
+                      "height": 12,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.12,
+                    "shadowRadius": 24,
+                  },
+                  {
+                    "backgroundColor": "#ffffff",
+                    "borderColor": "#e0e0e0",
+                    "borderRadius": 28,
+                    "height": 128,
+                    "width": 128,
+                  },
+                ]
+              }
+            >
+              <View
                 style={
                   [
                     {
-                      "fontSize": 12,
-                      "marginTop": 2,
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 10,
                     },
                     {
-                      "color": "#65558f",
+                      "minHeight": 94,
                     },
                   ]
                 }
               >
-                pantry view
-              </Text>
+                <RNSVGSvgView
+                  accessibilityLabel="Expyrico"
+                  align="xMidYMid"
+                  bbHeight={94}
+                  bbWidth={94}
+                  focusable={false}
+                  height={94}
+                  meetOrSlice={0}
+                  minX={0}
+                  minY={0}
+                  style={
+                    [
+                      {
+                        "backgroundColor": "transparent",
+                        "borderWidth": 0,
+                      },
+                      {
+                        "flex": 0,
+                        "height": 94,
+                        "width": 94,
+                      },
+                    ]
+                  }
+                  vbHeight={865}
+                  vbWidth={865}
+                  width={94}
+                >
+                  <RNSVGGroup
+                    fill={
+                      {
+                        "payload": 4278190080,
+                        "type": 0,
+                      }
+                    }
+                  >
+                    <RNSVGGroup
+                      fill={
+                        {
+                          "payload": 4278190080,
+                          "type": 0,
+                        }
+                      }
+                      matrix={
+                        [
+                          1,
+                          0,
+                          0,
+                          1,
+                          0,
+                          190,
+                        ]
+                      }
+                    >
+                      <RNSVGPath
+                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                        fill={
+                          {
+                            "payload": 4283671941,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                        fill={
+                          {
+                            "payload": 4294090009,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                        fill={
+                          {
+                            "payload": 4291968547,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                      <RNSVGPath
+                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                        fill={
+                          {
+                            "payload": 4281019943,
+                            "type": 0,
+                          }
+                        }
+                        propList={
+                          [
+                            "fill",
+                          ]
+                        }
+                      />
+                    </RNSVGGroup>
+                  </RNSVGGroup>
+                </RNSVGSvgView>
+              </View>
+            </View>
+            <Text
+              style={
+                {
+                  "color": "#1d1b20",
+                  "fontSize": 45,
+                  "fontWeight": "400",
+                  "lineHeight": 52,
+                  "marginTop": 26,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Eat fresh, waste less.
+            </Text>
+            <Text
+              style={
+                {
+                  "color": "#65558f",
+                  "fontSize": 16,
+                  "lineHeight": 24,
+                  "marginTop": 10,
+                  "textAlign": "center",
+                }
+              }
+            >
+              Keep your pantry visible, catch expiry dates early, and choose what to use next.
+            </Text>
+          </View>
+          <View
+            style={
+              {
+                "gap": 12,
+                "marginTop": 36,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderColor": "#F5A623",
+                    "elevation": 6,
+                    "shadowColor": "#F5A623",
+                    "shadowOffset": {
+                      "height": 8,
+                      "width": 0,
+                    },
+                    "shadowOpacity": 0.28,
+                    "shadowRadius": 18,
+                  },
+                ]
+              }
+            >
+              <View
+                accessibilityLabel="Create account"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
+                    },
+                    false,
+                  ]
+                }
+                testID="welcome-sign-up"
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#2C2C28",
+                      },
+                    ]
+                  }
+                >
+                  Create account
+                </Text>
+              </View>
             </View>
             <View
               style={
                 [
                   {
-                    "borderRadius": 18,
-                    "flex": 1,
-                    "padding": 12,
+                    "borderRadius": 999,
+                    "borderWidth": 1.5,
+                    "height": 58,
+                    "overflow": "hidden",
+                    "width": "100%",
                   },
                   {
-                    "backgroundColor": "#ffffff",
+                    "backgroundColor": "rgba(75,174,138,0.12)",
+                    "borderColor": "#4BAE8A",
                   },
                 ]
               }
             >
-              <Text
+              <View
+                accessibilityLabel="Sign in"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
                 style={
                   [
                     {
-                      "fontSize": 15,
-                      "fontWeight": "700",
+                      "alignItems": "center",
+                      "height": 58,
+                      "justifyContent": "center",
+                      "paddingHorizontal": 24,
+                      "width": "100%",
                     },
-                    {
-                      "color": "#7c4dff",
-                    },
+                    false,
                   ]
                 }
+                testID="welcome-sign-in"
               >
-                Soon
-              </Text>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 12,
-                      "marginTop": 2,
-                    },
-                    {
-                      "color": "#65558f",
-                    },
-                  ]
-                }
-              >
-                expiry alerts
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View
-          style={
-            {
-              "gap": 12,
-              "paddingBottom": 12,
-            }
-          }
-        >
-          <View
-            accessibilityLabel="Sign in"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "#7c4dff",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-in"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Sign in
-              </Text>
-            </View>
-          </View>
-          <View
-            accessibilityLabel="Create account"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "minHeight": 50,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 15,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#65558f",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="welcome-sign-up"
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#65558f",
-                      "fontSize": 14,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Create account
-              </Text>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 16,
+                        "fontWeight": "700",
+                        "height": 58,
+                        "includeFontPadding": false,
+                        "lineHeight": 58,
+                        "textAlign": "center",
+                        "textAlignVertical": "center",
+                      },
+                      {
+                        "color": "#4BAE8A",
+                      },
+                    ]
+                  }
+                >
+                  Sign in
+                </Text>
+              </View>
             </View>
           </View>
         </View>

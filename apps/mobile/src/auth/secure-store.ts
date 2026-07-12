@@ -5,10 +5,13 @@ const KEY_ACCESS = 'pantry.access_token';
 const KEY_REFRESH = 'pantry.refresh_token';
 const KEY_THEME = 'pantry.theme_preference';
 
-const THEME_IDS: readonly ThemeId[] = ['expyrico', 'bento', 'clay', 'material'];
+export type ThemePreference = ThemeId | 'system';
 
-function isThemeId(v: string): v is ThemeId {
-  return (THEME_IDS as readonly string[]).includes(v);
+const THEME_IDS: readonly ThemeId[] = ['expyrico', 'expyricoDark', 'bento', 'clay', 'material'];
+const THEME_PREFERENCES: readonly ThemePreference[] = ['system', ...THEME_IDS];
+
+function isThemePreference(v: string): v is ThemePreference {
+  return (THEME_PREFERENCES as readonly string[]).includes(v);
 }
 
 export const secureStore = {
@@ -26,13 +29,13 @@ export const secureStore = {
     await SecureStore.setItemAsync(KEY_REFRESH, token);
   },
 
-  async getThemePreference(): Promise<ThemeId | null> {
+  async getThemePreference(): Promise<ThemePreference | null> {
     const v = await SecureStore.getItemAsync(KEY_THEME);
-    if (v && isThemeId(v)) return v;
+    if (v && isThemePreference(v)) return v;
     return null;
   },
-  async setThemePreference(v: ThemeId): Promise<void> {
-    if (!isThemeId(v)) throw new Error(`invalid theme id: ${v}`);
+  async setThemePreference(v: ThemePreference): Promise<void> {
+    if (!isThemePreference(v)) throw new Error(`invalid theme preference: ${v}`);
     await SecureStore.setItemAsync(KEY_THEME, v);
   },
 

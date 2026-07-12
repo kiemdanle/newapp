@@ -119,8 +119,34 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 Always use context7 when I need code generation, setup or configuration steps, or library/API documentation. This means you should automatically use the Context7 MCP tools to resolve library id and get library docs without me having to explicitly ask.
 
+## Android Build And Install Policy
+
+- Do not use Expo CLI, EAS, Expo Go, or Expo dev workflows to build or install the mobile app.
+- Build Android APKs directly on this computer with the local Gradle/Android toolchain.
+- Install and communicate with the phone via `adb`.
+- Preferred debug build command:
+  `cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug`
+- Preferred install command:
+  `adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`
+
 ---
 ---
+
+## Expyrico Colour Requirements
+
+The required app and website palette is documented in `docs/design/expyrico-colour-palette.md`.
+
+- Use Fresh Sage `#4BAE8A` for logo, headers, active states, and Good status.
+- Use Deep Sage `#3A8F6F` for pressed states and text on light backgrounds.
+- Use Mint Mist `#D6F0E6` for soft panels and success highlights.
+- Use Warm White `#FAFAF8` for main backgrounds and cards.
+- Use Honey `#F5A623` for CTAs, badges, highlights, and Expiring soon status.
+- Use Soft Butter `#FEEFC3` for expiring-soon status backgrounds.
+- Use Stone `#F0F0ED` for section backgrounds and dividers.
+- Use Pebble `#8C8C85` for secondary text and icons.
+- Use Almost Black `#2C2C28` for primary text.
+- Use Alert Red `#E0442A` only for Expired/destructive status. Never use it for branding.
+- Do not introduce alternate brand palettes for app themes. Theme/style variants may alter shape, elevation, spacing, or typography, but colors must resolve to the Expyrico palette.
 
 ## Security Mandates
 

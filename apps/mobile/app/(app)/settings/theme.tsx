@@ -2,9 +2,11 @@ import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { themeList, type Theme } from '@expyrico/theme';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
+import type { ThemePreference } from '../../../src/auth/secure-store';
 
 export default function ThemeSettings() {
   const active = useTheme();
+  const themeId = useThemeStore((s) => s.themeId);
   const setTheme = useThemeStore((s) => s.setTheme);
 
   return (
@@ -13,14 +15,25 @@ export default function ThemeSettings() {
         Theme
       </Text>
       <Text style={{ color: active.colors.textMuted, marginBottom: active.spacing.md, fontSize: active.typeRamp.bodyMedium.fontSize }}>
-        Tap a card to switch instantly.
+        Use system to follow your device dark or light setting.
       </Text>
       <View style={styles.grid}>
+        <ThemePreviewCard
+          label="System"
+          description={`Device ${active.scheme === 'dark' ? 'dark' : 'light'}`}
+          theme={active}
+          selected={themeId === 'system'}
+          preference="system"
+          onPress={() => setTheme('system')}
+        />
         {themeList.map((t) => (
           <ThemePreviewCard
             key={t.id}
+            label={t.name}
+            description={t.scheme === 'dark' ? 'Dark' : 'Light'}
             theme={t}
-            selected={t.id === active.id}
+            selected={themeId === t.id}
+            preference={t.id}
             onPress={() => setTheme(t.id)}
           />
         ))}
@@ -30,20 +43,26 @@ export default function ThemeSettings() {
 }
 
 function ThemePreviewCard({
+  label,
+  description,
   theme,
   selected,
+  preference,
   onPress,
 }: {
+  label: string;
+  description: string;
   theme: Theme;
   selected: boolean;
+  preference: ThemePreference;
   onPress: () => void;
 }) {
   return (
     <Pressable
-      testID={`theme-card-${theme.id}`}
+      testID={`theme-card-${preference}`}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`Use ${theme.name} theme`}
+      accessibilityLabel={`Use ${label} theme`}
       onPress={onPress}
       style={[
         styles.card,
@@ -71,10 +90,10 @@ function ThemePreviewCard({
         />
       </View>
       <Text style={{ color: theme.colors.text, fontWeight: theme.typeRamp.titleMedium.fontWeight as any, fontSize: theme.typeRamp.titleMedium.fontSize }}>
-        {theme.name}
+        {label}
       </Text>
       <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.bodySmall.fontSize }}>
-        {theme.scheme === 'dark' ? 'Dark' : 'Light'}
+        {description}
       </Text>
     </Pressable>
   );

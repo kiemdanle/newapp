@@ -1127,21 +1127,21 @@ export const material: Theme = {
   name: 'Material You',
   scheme: 'light',
   colors: {
-    bg: '#f0e8ff',
-    bgElevated: '#ffffff',
-    bgGlass: '#ffffff',
-    border: '#e0e0e0',
-    text: '#1d1b20',
-    textMuted: '#65558f',
-    textInverse: '#ffffff',
-    primary: '#65558f',
-    primaryFg: '#ffffff',
-    accent: '#7c4dff',
+    bg: '#FAFAF8',
+    bgElevated: '#FAFAF8',
+    bgGlass: '#D6F0E6',
+    border: '#F0F0ED',
+    text: '#2C2C28',
+    textMuted: '#8C8C85',
+    textInverse: '#2C2C28',
+    primary: '#4BAE8A',
+    primaryFg: '#FAFAF8',
+    accent: '#F5A623',
     success: '#4BAE8A',                   // reserved: Good
     warning: '#F5A623',                   // reserved: Expiring soon
     danger: '#E0442A',                    // reserved: Expired
-    hero: '#65558f',
-    heroFg: '#ffffff',
+    hero: '#3A8F6F',
+    heroFg: '#FAFAF8',
   },
   radii: { none: 0, sm: 8, md: 16, lg: 24, xl: 28, pill: 999 },
   shadows: {
@@ -3446,4 +3446,3 @@ M0b will:
 4. Add Phase I: TOTP enrollment, challenge-verify, and recovery-code redemption routes (admin-only) using `otplib` and the AES-GCM utility from this plan. Recovery codes are persisted (hashed) in the `totp_recovery_codes` table built here and redeemed one-time.
 
 Every M0b route gets a Vitest integration test using the harness built in M0a (Task D7). Each route that returns tokens builds `tokens = { accessToken: issueAccessToken({...}), refreshToken, expiresIn: cfg.jwt.accessTtlSeconds }` — `issueAccessToken` returns a string, so the access token is never unwrapped from an object. When M0b is complete, the API exposes the full auth surface from spec sections 2.1, 6.1, and 6.8 (rate limits), with admin accounts always protected by TOTP per 8.2.
-

@@ -3,8 +3,12 @@ export const router = {
   replace: jest.fn(),
   back: jest.fn(),
 };
+let searchParams: Record<string, string | undefined> = {};
 export const useRouter = () => router;
-export const useLocalSearchParams = () => ({});
+export const useLocalSearchParams = () => searchParams;
+export const __setSearchParams = (params: Record<string, string | undefined>) => {
+  searchParams = params;
+};
 export const Link = ({ children }: { children: unknown }) => children as never;
 export const Redirect = ({ href }: { href: string }) => {
   router.replace(href);
