@@ -17,21 +17,21 @@ describe('<ThemeSettings />', () => {
     await initThemeStore();
   });
 
-  it('renders system plus each theme card', () => {
-    const { getByTestId } = render(wrap(<ThemeSettings />));
+  it('renders only System, Light, and Dark appearance cards', () => {
+    const { getByTestId, queryByTestId } = render(wrap(<ThemeSettings />));
     expect(getByTestId('theme-card-system')).toBeTruthy();
     expect(getByTestId('theme-card-expyrico')).toBeTruthy();
     expect(getByTestId('theme-card-expyricoDark')).toBeTruthy();
-    expect(getByTestId('theme-card-bento')).toBeTruthy();
-    expect(getByTestId('theme-card-clay')).toBeTruthy();
-    expect(getByTestId('theme-card-material')).toBeTruthy();
+    expect(queryByTestId('theme-card-bento')).toBeNull();
+    expect(queryByTestId('theme-card-clay')).toBeNull();
+    expect(queryByTestId('theme-card-material')).toBeNull();
   });
 
   it('tapping a card sets the active theme in the store', async () => {
     const { getByTestId } = render(wrap(<ThemeSettings />));
     await act(async () => {
-      fireEvent.press(getByTestId('theme-card-clay'));
+      fireEvent.press(getByTestId('theme-card-expyricoDark'));
     });
-    expect(useThemeStore.getState().themeId).toBe('clay');
+    expect(useThemeStore.getState().themeId).toBe('expyricoDark');
   });
 });

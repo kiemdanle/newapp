@@ -1,14 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
-import type { ThemeId } from '@expyrico/theme';
 
 const KEY_ACCESS = 'pantry.access_token';
 const KEY_REFRESH = 'pantry.refresh_token';
 const KEY_THEME = 'pantry.theme_preference';
 
-export type ThemePreference = ThemeId | 'system';
+export type ThemePreference = 'system' | 'expyrico' | 'expyricoDark';
 
-const THEME_IDS: readonly ThemeId[] = ['expyrico', 'expyricoDark', 'bento', 'clay', 'material'];
-const THEME_PREFERENCES: readonly ThemePreference[] = ['system', ...THEME_IDS];
+const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'expyrico', 'expyricoDark'];
 
 function isThemePreference(v: string): v is ThemePreference {
   return (THEME_PREFERENCES as readonly string[]).includes(v);

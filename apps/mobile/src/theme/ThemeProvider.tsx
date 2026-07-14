@@ -2,14 +2,13 @@ import React, { createContext, useContext, useEffect, useMemo, useRef } from 're
 import { Animated, StyleSheet, useColorScheme, View } from 'react-native';
 import { themes, type Theme, type ThemeId } from '@expyrico/theme';
 import { useThemeStore } from './store';
-import type { ThemePreference } from '../auth/secure-store';
 
 export const ThemeContext = createContext<Theme | null>(null);
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
   /** Optional initial theme id — applied to the store on first mount. */
-  initial?: ThemePreference;
+  initial?: ThemeId | 'system';
 }
 
 export function ThemeProvider({ children, initial }: ThemeProviderProps) {

@@ -1,8 +1,13 @@
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { themeList, type Theme } from '@expyrico/theme';
+import { themes, type Theme } from '@expyrico/theme';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
 import type { ThemePreference } from '../../../src/auth/secure-store';
+
+const appearanceOptions = [
+  { label: 'Light', theme: themes.expyrico, preference: 'expyrico' },
+  { label: 'Dark', theme: themes.expyricoDark, preference: 'expyricoDark' },
+] as const;
 
 export default function ThemeSettings() {
   const active = useTheme();
@@ -26,15 +31,15 @@ export default function ThemeSettings() {
           preference="system"
           onPress={() => setTheme('system')}
         />
-        {themeList.map((t) => (
+        {appearanceOptions.map(({ label, theme, preference }) => (
           <ThemePreviewCard
-            key={t.id}
-            label={t.name}
-            description={t.scheme === 'dark' ? 'Dark' : 'Light'}
-            theme={t}
-            selected={themeId === t.id}
-            preference={t.id}
-            onPress={() => setTheme(t.id)}
+            key={preference}
+            label={label}
+            description={`${label} appearance`}
+            theme={theme}
+            selected={themeId === preference}
+            preference={preference}
+            onPress={() => setTheme(preference)}
           />
         ))}
       </View>

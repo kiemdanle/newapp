@@ -15,16 +15,16 @@ describe('theme store', () => {
   });
 
   it('hydrates from secure store on init', async () => {
-    await secureStore.setThemePreference('clay');
+    await secureStore.setThemePreference('expyricoDark');
     await initThemeStore();
-    expect(useThemeStore.getState().themeId).toBe('clay');
+    expect(useThemeStore.getState().themeId).toBe('expyricoDark');
   });
 
-  it('setTheme updates state and persists to secure store', async () => {
+  it('setTheme persists the Expyrico light appearance', async () => {
     await initThemeStore();
-    await useThemeStore.getState().setTheme('material');
-    expect(useThemeStore.getState().themeId).toBe('material');
-    expect(await secureStore.getThemePreference()).toBe('material');
+    await useThemeStore.getState().setTheme('expyrico');
+    expect(useThemeStore.getState().themeId).toBe('expyrico');
+    expect(await secureStore.getThemePreference()).toBe('expyrico');
   });
 
   it('can persist system preference', async () => {
@@ -36,7 +36,10 @@ describe('theme store', () => {
 
   it('rejects an invalid theme id at runtime', async () => {
     await initThemeStore();
-    // @ts-expect-error — runtime check
-    await expect(useThemeStore.getState().setTheme('neon')).rejects.toThrow();
+    const unsupportedPreference = 'clay' as unknown as import('../auth/secure-store').ThemePreference;
+    await expect(useThemeStore.getState().setTheme(unsupportedPreference)).rejects.toThrow(
+      'invalid theme preference: clay',
+    );
+    expect(await secureStore.getThemePreference()).toBeNull();
   });
 });

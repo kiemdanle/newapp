@@ -4,12 +4,12 @@ import { secureStore, type ThemePreference } from '../auth/secure-store';
 import { syncThemeToServer } from './sync';
 
 interface ThemeState {
-  themeId: ThemePreference;
+  themeId: ThemeId | 'system';
   hydrated: boolean;
   setTheme: (id: ThemePreference) => Promise<void>;
 }
 
-const VALID_IDS: readonly ThemePreference[] = ['system', 'expyrico', 'expyricoDark', 'bento', 'clay', 'material'];
+const VALID_IDS: readonly ThemePreference[] = ['system', 'expyrico', 'expyricoDark'];
 
 export const useThemeStore = create<ThemeState>((set) => ({
   themeId: 'system',
