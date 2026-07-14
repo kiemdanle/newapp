@@ -2,6 +2,7 @@
 import { fireEvent, render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DealCard } from '../src/features/deals/DealCard';
+import { ThemeProvider } from '../src/theme/ThemeProvider';
 
 const deal = {
   id: 'd-1',
@@ -34,7 +35,7 @@ jest.mock('../src/api/deals', () => ({
 
 function wrap(node: React.ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={qc}>{node}</QueryClientProvider>;
+  return <ThemeProvider><QueryClientProvider client={qc}>{node}</QueryClientProvider></ThemeProvider>;
 }
 
 describe('DealCard', () => {

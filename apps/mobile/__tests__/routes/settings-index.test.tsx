@@ -18,11 +18,11 @@ describe('<SettingsIndex />', () => {
     await initThemeStore();
   });
 
-  it('renders a row for theme, notifications, and account', () => {
+  it('renders grouped rows for household, appearance, and passkeys', () => {
     const { getByTestId } = render(wrap(<SettingsIndex />));
     expect(getByTestId('settings-row-theme')).toBeTruthy();
-    expect(getByTestId('settings-row-notifications')).toBeTruthy();
-    expect(getByTestId('settings-row-account')).toBeTruthy();
+    expect(getByTestId('settings-row-household')).toBeTruthy();
+    expect(getByTestId('settings-row-add-passkey')).toBeTruthy();
   });
 
   it('tapping Theme routes to the theme screen', () => {

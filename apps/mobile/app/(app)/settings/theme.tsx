@@ -17,10 +17,10 @@ export default function ThemeSettings() {
   return (
     <View style={styles.root}>
       <Text style={{ fontSize: active.typeRamp.headlineMedium.fontSize, fontWeight: active.typeRamp.headlineMedium.fontWeight as any, color: active.colors.text }}>
-        Theme
+        Appearance
       </Text>
       <Text style={{ color: active.colors.textMuted, marginBottom: active.spacing.md, fontSize: active.typeRamp.bodyMedium.fontSize }}>
-        Use system to follow your device dark or light setting.
+        Choose a mode, or let Expyrico follow your device setting.
       </Text>
       <View style={styles.grid}>
         <ThemePreviewCard
@@ -111,7 +111,7 @@ function ThemePreviewCard({
 }
 
 const styles = StyleSheet.create({
-  root: { padding: 16 },
+  root: { flex: 1, padding: 24, gap: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { padding: 14, gap: 8 },
   swatchRow: { flexDirection: 'row', gap: 6 },

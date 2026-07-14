@@ -39,6 +39,7 @@ export default function NewGiveawayScreen() {
     padding: 12,
     color: theme.colors.text,
     backgroundColor: theme.colors.bgElevated,
+    minHeight: 52,
   } as const;
 
   return (
@@ -63,7 +64,7 @@ export default function NewGiveawayScreen() {
           multiline
           maxLength={2000}
           editable={!pending}
-          style={[field, { minHeight: 80, textAlignVertical: 'top' }]}
+          style={[field, { minHeight: 104, textAlignVertical: 'top' }]}
         />
         <TextInput
           placeholder="Pickup location *"
@@ -84,7 +85,7 @@ export default function NewGiveawayScreen() {
             borderRadius: theme.radii.pill,
             backgroundColor: pending ? theme.colors.border : theme.colors.accent,
             alignItems: 'center',
-            minHeight: 48,
+            minHeight: 52,
             justifyContent: 'center',
           }}
         >

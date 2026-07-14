@@ -77,7 +77,7 @@ export default function GiveawayDetailScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push(`/giveaway/${giveaway.id}/manage`)}
-              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.accent, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Manage claims</Text>
             </Pressable>
@@ -88,7 +88,7 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={handOff.isPending}
               onPress={() => handOff.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {handOff.isPending ? 'Marking…' : 'Mark as handed off'}
@@ -101,7 +101,7 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={confirm.isPending}
               onPress={() => confirm.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.success, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.success, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
                 {confirm.isPending ? 'Confirming…' : 'Confirm received'}
@@ -113,7 +113,7 @@ export default function GiveawayDetailScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push(`/giveaway/${giveaway.id}/rate`)}
-              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.warning, alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Rate this transaction</Text>
             </Pressable>
@@ -124,7 +124,7 @@ export default function GiveawayDetailScreen() {
               accessibilityRole="button"
               disabled={cancel.isPending}
               onPress={() => cancel.mutate(giveaway.id)}
-              style={{ padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.danger + '18', alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
+              style={{ padding: 12, borderRadius: theme.radii.pill, backgroundColor: theme.colors.danger + '18', alignItems: 'center', minHeight: 52, justifyContent: 'center' }}
             >
               <Text style={{ color: theme.colors.danger, fontWeight: '700' }}>
                 {cancel.isPending ? 'Cancelling…' : 'Cancel giveaway'}

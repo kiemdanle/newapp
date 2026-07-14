@@ -58,7 +58,9 @@ export function HouseholdSettings() {
     try {
       await renameHousehold.mutateAsync({ id: householdId, input: { name: renameText.trim() } });
       setRenameText('');
-    } catch (_) {}
+    } catch {
+      // The mutation exposes failure to the surrounding screen state.
+    }
   };
 
   const handleDissolve = () => {
@@ -96,6 +98,8 @@ export function HouseholdSettings() {
     borderWidth: 1,
     borderRadius: theme.radii.md,
     padding: theme.spacing.md,
+    minHeight: 52,
+    backgroundColor: theme.colors.bgElevated,
     flex: 1,
   };
 
@@ -106,13 +110,14 @@ export function HouseholdSettings() {
       {!activeHousehold ? (
         /* No household — show create form */
         <View>
-          <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '700', marginBottom: theme.spacing.md }}>
-            Create a household
+          <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700', marginBottom: theme.spacing.sm }}>
+            Share your pantry
           </Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginBottom: theme.spacing.sm }}>
-            A household lets you share a pantry with member profiles under your account.
+            Create a shared space for the people who cook and shop with you.
           </Text>
           <TextInput
+            accessibilityLabel="Household name"
             testID="household-create-name"
             style={inputStyle}
             value={newName}
@@ -129,9 +134,11 @@ export function HouseholdSettings() {
             style={{
               backgroundColor: theme.colors.primary,
               padding: theme.spacing.md,
-              borderRadius: theme.radii.md,
+              borderRadius: theme.radii.pill,
               alignItems: 'center',
               marginTop: theme.spacing.sm,
+              minHeight: 52,
+              justifyContent: 'center',
             }}
           >
             <Text style={{ color: theme.colors.primaryFg, fontWeight: '600' }}>
@@ -142,7 +149,7 @@ export function HouseholdSettings() {
       ) : (
         /* Existing household */
         <ScrollView style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '700' }}>
+          <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>
             {household?.name ?? activeHousehold?.name ?? 'Household'}
           </Text>
 
@@ -150,6 +157,7 @@ export function HouseholdSettings() {
             /* Owner: rename */
             <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
               <TextInput
+                accessibilityLabel="Rename household"
                 testID="household-rename-input"
                 style={inputStyle}
                 value={renameText}
@@ -165,8 +173,8 @@ export function HouseholdSettings() {
                 style={{
                   backgroundColor: theme.colors.primary,
                   paddingHorizontal: theme.spacing.lg,
-                  borderRadius: theme.radii.md,
-                  justifyContent: 'center',
+                  borderRadius: theme.radii.pill,
+                  justifyContent: 'center', minHeight: 52,
                 }}
               >
                 <Text style={{ color: theme.colors.primaryFg, fontWeight: '600' }}>Rename</Text>
@@ -201,10 +209,10 @@ export function HouseholdSettings() {
                   style={{
                     marginTop: theme.spacing.sm,
                     padding: theme.spacing.sm,
-                    borderRadius: theme.radii.sm,
+                    borderRadius: theme.radii.pill,
                     borderWidth: 1,
                     borderColor: theme.colors.border,
-                    alignItems: 'center',
+                    alignItems: 'center', minHeight: 52, justifyContent: 'center',
                   }}
                 >
                   <Text style={{ color: theme.colors.primary }}>+ Add member</Text>
@@ -220,9 +228,8 @@ export function HouseholdSettings() {
                 style={{
                   marginTop: theme.spacing.xl,
                   padding: theme.spacing.md,
-                  borderRadius: theme.radii.md,
                   backgroundColor: theme.colors.danger,
-                  alignItems: 'center',
+                  alignItems: 'center', minHeight: 52, justifyContent: 'center', borderRadius: theme.radii.pill,
                 }}
               >
                 <Text style={{ color: '#fff', fontWeight: '600' }}>
@@ -240,10 +247,9 @@ export function HouseholdSettings() {
               style={{
                 marginTop: theme.spacing.xl,
                 padding: theme.spacing.md,
-                borderRadius: theme.radii.md,
                 borderWidth: 1,
                 borderColor: theme.colors.danger,
-                alignItems: 'center',
+                alignItems: 'center', minHeight: 52, justifyContent: 'center', borderRadius: theme.radii.pill,
               }}
             >
               <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>

@@ -63,6 +63,7 @@ export function DealForm({ product, existing, onDone }: Props) {
     padding: 12,
     color: theme.colors.text,
     backgroundColor: theme.colors.bgElevated,
+    minHeight: 52,
   } as const;
 
   return (
@@ -106,7 +107,7 @@ export function DealForm({ product, existing, onDone }: Props) {
         onChangeText={setNote}
         multiline
         editable={!pending}
-        style={[field, { minHeight: 80, textAlignVertical: 'top' }]}
+        style={[field, { minHeight: 104, textAlignVertical: 'top' }]}
       />
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
       <Pressable
@@ -118,7 +119,7 @@ export function DealForm({ product, existing, onDone }: Props) {
           borderRadius: theme.radii.pill,
           backgroundColor: theme.colors.accent,
           alignItems: 'center',
-          minHeight: 48,
+          minHeight: 52,
           justifyContent: 'center',
         }}
       >

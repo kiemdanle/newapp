@@ -41,6 +41,8 @@ export function ScopeToggle() {
             style={{
               flex: 1,
               paddingVertical: theme.spacing.sm,
+              minHeight: 48,
+              justifyContent: 'center',
               alignItems: 'center',
               borderRadius: theme.radii.md - 2,
               backgroundColor: active ? theme.colors.primary : 'transparent',

@@ -64,7 +64,7 @@ export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, sele
                   borderRadius: theme.radii.md,
                   backgroundColor: selecting ? theme.colors.border : theme.colors.accent,
                   alignItems: 'center',
-                  minHeight: 44,
+                  minHeight: 52,
                   justifyContent: 'center',
                 }}
               >

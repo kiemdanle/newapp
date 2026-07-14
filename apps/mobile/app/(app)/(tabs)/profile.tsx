@@ -70,6 +70,7 @@ export default function Profile() {
         <Pressable
           testID="profile-settings"
           accessibilityRole="button"
+          accessibilityLabel="Open settings"
           onPress={() => router.push('/(app)/settings')}
           style={({ pressed }) => [
             styles.row,
@@ -90,6 +91,7 @@ export default function Profile() {
         <Pressable
           testID="profile-sign-out"
           accessibilityRole="button"
+          accessibilityLabel="Sign out of Expyrico"
           onPress={onSignOut}
           style={({ pressed }) => [
             styles.row,

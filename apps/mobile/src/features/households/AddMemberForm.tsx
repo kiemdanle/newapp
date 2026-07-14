@@ -35,6 +35,8 @@ export function AddMemberForm({ householdId, onAdded }: Props) {
     borderWidth: 1,
     borderRadius: theme.radii.md,
     padding: theme.spacing.md,
+    minHeight: 52,
+    backgroundColor: theme.colors.bgElevated,
     flex: 1,
   };
 
@@ -61,6 +63,7 @@ export function AddMemberForm({ householdId, onAdded }: Props) {
             borderRadius: theme.radii.md,
             backgroundColor: theme.colors.primary,
             justifyContent: 'center',
+            minHeight: 52,
           }}
         >
           <Text style={{ color: theme.colors.primaryFg, fontWeight: '600' }}>

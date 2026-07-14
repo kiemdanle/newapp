@@ -1,8 +1,9 @@
 // apps/mobile/src/features/giveaways/ClaimButton.tsx
 import { useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal, Text, TextInput, View } from 'react-native';
 import { useClaimGiveaway } from '../../api/giveaways';
 import { useTheme } from '../../theme/useTheme';
+import { Button } from '../../components/Button';
 
 interface Props {
   giveawayId: string;
@@ -28,30 +29,14 @@ export function ClaimButton({ giveawayId, disabled }: Props) {
 
   return (
     <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="claim-button"
-        disabled={disabled || pending}
-        onPress={() => setVisible(true)}
-        style={{
-          padding: 12,
-          borderRadius: theme.radii.pill,
-          backgroundColor: disabled ? theme.colors.border : theme.colors.accent,
-          alignItems: 'center',
-          minHeight: 44,
-          justifyContent: 'center',
-        }}
-      >
-        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-          {pending ? 'Claiming…' : 'Claim'}
-        </Text>
-      </Pressable>
+      <Button label={pending ? 'Claiming…' : 'Claim this item'} icon="hand-left-outline" accessibilityLabel="claim-button" disabled={disabled} loading={pending} onPress={() => setVisible(true)} />
 
       <Modal visible={visible} animationType="slide" transparent>
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <View style={{ backgroundColor: theme.colors.bgElevated, padding: 24, borderTopLeftRadius: 16, borderTopRightRadius: 16, gap: 16 }}>
             <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>Pickup note</Text>
             <TextInput
+              accessibilityLabel="Pickup note"
               placeholder="When can you pick up? (optional)"
               placeholderTextColor={theme.colors.textMuted}
               value={note}
@@ -72,21 +57,9 @@ export function ClaimButton({ giveawayId, disabled }: Props) {
                 {claim.error instanceof Error ? claim.error.message : 'Claim failed'}
               </Text>
             )}
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <Pressable
-                onPress={() => setVisible(false)}
-                disabled={pending}
-                style={{ flex: 1, padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.border, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
-              >
-                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={submit}
-                disabled={pending}
-                style={{ flex: 1, padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.accent, alignItems: 'center', minHeight: 44, justifyContent: 'center' }}
-              >
-                <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Confirm</Text>
-              </Pressable>
+            <View style={{ gap: 10 }}>
+              <Button label="Confirm claim" loading={pending} onPress={submit} />
+              <Button label="Cancel" variant="outline" disabled={pending} onPress={() => setVisible(false)} />
             </View>
           </View>
         </View>

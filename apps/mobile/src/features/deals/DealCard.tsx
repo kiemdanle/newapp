@@ -39,6 +39,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 3 },
         elevation: 2,
+        minHeight: 124,
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -63,7 +64,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
               accessibilityLabel="upvote"
               onPress={() => press(1)}
               hitSlop={8}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 52, paddingHorizontal: 4 }}
             >
               <Text style={{ color: deal.myVote === 1 ? theme.colors.success : theme.colors.textMuted }}>▲</Text>
               <Text style={{ color: theme.colors.text }}>{deal.upvoteCount}</Text>
@@ -73,7 +74,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
               accessibilityLabel="downvote"
               onPress={() => press(-1)}
               hitSlop={8}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 52, paddingHorizontal: 4 }}
             >
               <Text style={{ color: deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted }}>▼</Text>
               <Text style={{ color: theme.colors.text }}>{deal.downvoteCount}</Text>

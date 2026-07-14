@@ -29,6 +29,7 @@ export function GiveawayCard({ giveaway, onPress }: Props) {
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 3 },
         elevation: 2,
+        minHeight: 124,
       }}
     >
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>

@@ -41,6 +41,7 @@ export default function NewDealScreen() {
             padding: 12,
             color: theme.colors.text,
             backgroundColor: theme.colors.bgElevated,
+            minHeight: 52,
             marginBottom: 12,
           }}
         />
@@ -56,7 +57,7 @@ export default function NewDealScreen() {
                 padding: 12,
                 borderBottomWidth: 1,
                 borderBottomColor: theme.colors.border,
-                minHeight: 44,
+                minHeight: 52,
               }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '500' }}>{item.name}</Text>

@@ -42,7 +42,7 @@ export function DealFeed({ currentUserId, onOpen, onReport }: Props) {
               accessibilityState={{ selected }}
               onPress={() => setSort(s.id)}
               style={{
-                minHeight: 44,
+                minHeight: 52,
                 justifyContent: 'center',
                 paddingVertical: 8,
                 paddingHorizontal: 14,

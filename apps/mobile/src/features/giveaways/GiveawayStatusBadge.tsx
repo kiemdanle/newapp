@@ -1,5 +1,5 @@
 // apps/mobile/src/features/giveaways/GiveawayStatusBadge.tsx
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import type { GiveawayStatus } from '@expyrico/shared';
 import { useTheme } from '../../theme/useTheme';
 
@@ -21,16 +21,6 @@ export function GiveawayStatusBadge({ status }: { status: GiveawayStatus }) {
     cancelled: theme.colors.danger,
   };
 
-  return (
-    <Text
-      style={{
-        fontSize: 11,
-        fontWeight: '600',
-        color: colors[status],
-        textTransform: 'uppercase',
-      }}
-    >
-      {LABELS[status]}
-    </Text>
-  );
+  const color = colors[status];
+  return <View accessibilityLabel={`Giveaway status: ${LABELS[status]}`} style={{ paddingHorizontal: 9, minHeight: 26, justifyContent: 'center', borderRadius: theme.radii.pill, backgroundColor: `${color}1F` }}><Text style={{ fontSize: 11, fontWeight: '800', color, textTransform: 'uppercase', letterSpacing: 0.4 }}>{LABELS[status]}</Text></View>;
 }
