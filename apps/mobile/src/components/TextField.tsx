@@ -53,6 +53,6 @@ export function TextField({ label, error, ...rest }: TextFieldProps) {
 const styles = StyleSheet.create({
   wrap: { gap: 7 },
   label: { letterSpacing: 0.2 },
-  input: { borderWidth: 1.5, paddingHorizontal: 16, paddingVertical: 13 },
+  input: { borderWidth: 1.5, minHeight: 52, paddingHorizontal: 16, paddingVertical: 13 },
   error: { marginTop: 2 },
 });
