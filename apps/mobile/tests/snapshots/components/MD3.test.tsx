@@ -4,7 +4,7 @@ import { MD3ListRow } from '../../../src/components/MD3ListRow';
 import { MD3FAB } from '../../../src/components/MD3FAB';
 import { MD3TextField } from '../../../src/components/MD3TextField';
 
-describe.each(['expyrico', 'bento', 'clay', 'material'] as const)('MD3 primitives in %s', (theme) => {
+describe.each(['expyrico', 'expyricoDark'] as const)('MD3 primitives in %s', (theme) => {
   it('MD3Chip', () => {
     expect(renderWithTheme(<MD3Chip label="Dairy" selected />, theme).toJSON()).toMatchSnapshot();
   });

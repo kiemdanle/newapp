@@ -1,191 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ClayButton renders in bento 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#f4f4f5",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      accessibilityLabel="Save"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
-      style={
-        {
-          "alignItems": "center",
-          "backgroundColor": "#fbbf24",
-          "borderRadius": 18,
-          "justifyContent": "center",
-          "minHeight": 48,
-          "paddingHorizontal": 24,
-          "paddingVertical": 12,
-          "shadowColor": "rgba(0,0,0,0.1)",
-          "shadowOffset": {
-            "height": 0,
-            "width": NaN,
-          },
-          "shadowOpacity": 1,
-          "shadowRadius": 0,
-          "transform": [
-            {
-              "translateY": 0,
-            },
-          ],
-        }
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#fafafa",
-            "fontSize": 14,
-            "fontWeight": "500",
-          }
-        }
-      >
-        Save
-      </Text>
-    </View>
-  </View>
-</View>
-`;
-
-exports[`ClayButton renders in clay 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#fff7f0",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      accessibilityLabel="Save"
-      accessibilityRole="button"
-      accessibilityState={
-        {
-          "busy": undefined,
-          "checked": undefined,
-          "disabled": false,
-          "expanded": undefined,
-          "selected": undefined,
-        }
-      }
-      accessibilityValue={
-        {
-          "max": undefined,
-          "min": undefined,
-          "now": undefined,
-          "text": undefined,
-        }
-      }
-      accessible={true}
-      collapsable={false}
-      focusable={true}
-      onBlur={[Function]}
-      onClick={[Function]}
-      onFocus={[Function]}
-      onResponderGrant={[Function]}
-      onResponderMove={[Function]}
-      onResponderRelease={[Function]}
-      onResponderTerminate={[Function]}
-      onResponderTerminationRequest={[Function]}
-      onStartShouldSetResponder={[Function]}
-      style={
-        {
-          "alignItems": "center",
-          "backgroundColor": "#fbbf24",
-          "borderRadius": 22,
-          "justifyContent": "center",
-          "minHeight": 48,
-          "paddingHorizontal": 24,
-          "paddingVertical": 12,
-          "shadowColor": "rgba(58,42,32,0.12)",
-          "shadowOffset": {
-            "height": 8,
-            "width": 0,
-          },
-          "shadowOpacity": 1,
-          "shadowRadius": 16,
-          "transform": [
-            {
-              "translateY": 0,
-            },
-          ],
-        }
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#fff7f0",
-            "fontSize": 15,
-            "fontWeight": "700",
-          }
-        }
-      >
-        Save
-      </Text>
-    </View>
-  </View>
-</View>
-`;
-
 exports[`ClayButton renders in expyrico 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#0b0a17",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 1,
     }
@@ -233,19 +53,19 @@ exports[`ClayButton renders in expyrico 1`] = `
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#a5f3fc",
-          "borderRadius": 20,
+          "backgroundColor": "#F5A623",
+          "borderRadius": 22,
           "justifyContent": "center",
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "rgba(0,0,0,0.35)",
+          "shadowColor": "rgba(44,44,40,0.10)",
           "shadowOffset": {
-            "height": 8,
+            "height": 6,
             "width": 0,
           },
           "shadowOpacity": 1,
-          "shadowRadius": 24,
+          "shadowRadius": 16,
           "transform": [
             {
               "translateY": 0,
@@ -257,9 +77,13 @@ exports[`ClayButton renders in expyrico 1`] = `
       <Text
         style={
           {
-            "color": "#0b0a17",
+            "color": "#2C2C28",
             "fontSize": 14,
-            "fontWeight": "500",
+            "fontWeight": "700",
+            "includeFontPadding": false,
+            "lineHeight": 20,
+            "textAlign": "center",
+            "textAlignVertical": "center",
           }
         }
       >
@@ -270,12 +94,12 @@ exports[`ClayButton renders in expyrico 1`] = `
 </View>
 `;
 
-exports[`ClayButton renders in material 1`] = `
+exports[`ClayButton renders in expyricoDark 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f0e8ff",
+      "backgroundColor": "#111512",
       "flex": 1,
       "opacity": 0,
     }
@@ -323,19 +147,19 @@ exports[`ClayButton renders in material 1`] = `
       style={
         {
           "alignItems": "center",
-          "backgroundColor": "#7c4dff",
-          "borderRadius": 24,
+          "backgroundColor": "#F5A623",
+          "borderRadius": 22,
           "justifyContent": "center",
           "minHeight": 48,
           "paddingHorizontal": 24,
           "paddingVertical": 12,
-          "shadowColor": "rgba(0,0,0,0.1)",
+          "shadowColor": "rgba(0,0,0,0.34)",
           "shadowOffset": {
-            "height": 0,
-            "width": NaN,
+            "height": 8,
+            "width": 0,
           },
           "shadowOpacity": 1,
-          "shadowRadius": 0,
+          "shadowRadius": 20,
           "transform": [
             {
               "translateY": 0,
@@ -347,9 +171,13 @@ exports[`ClayButton renders in material 1`] = `
       <Text
         style={
           {
-            "color": "#ffffff",
+            "color": "#2C2C28",
             "fontSize": 14,
-            "fontWeight": "500",
+            "fontWeight": "700",
+            "includeFontPadding": false,
+            "lineHeight": 20,
+            "textAlign": "center",
+            "textAlignVertical": "center",
           }
         }
       >
