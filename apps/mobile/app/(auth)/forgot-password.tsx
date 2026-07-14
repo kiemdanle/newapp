@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { forgotPasswordSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
@@ -9,11 +8,10 @@ import { ErrorText } from '../../src/components/ErrorText';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/useTheme';
+import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function ForgotPassword() {
   const router = useRouter();
-  const theme = useTheme();
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -39,12 +37,7 @@ export default function ForgotPassword() {
 
   return (
     <Screen backFallback="/(auth)/sign-in">
-      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
-        Forgot password?
-      </Text>
-      <Text style={{ color: theme.colors.textMuted }}>
-        Enter your email and we'll send a 6-digit reset code.
-      </Text>
+      <AuthHeader icon="key-outline" title="Reset your password" description="Enter your email and we'll send a 6-digit reset code." />
       <TextField
         label="Email"
         autoCapitalize="none"

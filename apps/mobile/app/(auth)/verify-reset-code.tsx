@@ -8,6 +8,7 @@ import { TextField } from '../../src/components/TextField';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
 import { useTheme } from '../../src/theme/useTheme';
+import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function VerifyResetCode() {
   const router = useRouter();
@@ -78,18 +79,7 @@ export default function VerifyResetCode() {
 
   return (
     <Screen backFallback="/(auth)/forgot-password">
-      <Text
-        style={{
-          fontSize: theme.typeRamp.headlineMedium.fontSize,
-          fontWeight: theme.typeRamp.headlineMedium.fontWeight as any,
-          color: theme.colors.text,
-        }}
-      >
-        Enter your reset code
-      </Text>
-      <Text style={{ color: theme.colors.textMuted, lineHeight: 22 }}>
-        {`Enter the 6-digit code sent to ${email || 'your inbox'}. Your keyboard may offer it as a quick-fill suggestion.`}
-      </Text>
+      <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit reset code we sent you." email={email || undefined} />
       <TextField
         label="Reset code"
         value={code}
@@ -121,8 +111,8 @@ export default function VerifyResetCode() {
       />
       <Button
         testID="verify-reset-resend"
-        label="Request a new code"
-        variant={failed ? 'primary' : 'outline'}
+        label={resending ? 'Sending…' : 'Request a new code'}
+        variant="outline"
         onPress={onResend}
         loading={resending}
       />

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { resetPasswordSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
@@ -9,11 +8,10 @@ import { ErrorText } from '../../src/components/ErrorText';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
-import { useTheme } from '../../src/theme/useTheme';
+import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function ResetPassword() {
   const router = useRouter();
-  const theme = useTheme();
   const params = useLocalSearchParams<{ ticket?: string }>();
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -41,10 +39,7 @@ export default function ResetPassword() {
   if (done) {
     return (
       <Screen backFallback="/(auth)/sign-in">
-        <Text style={{ fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any, color: theme.colors.text }}>
-          Password reset
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>Sign in with your new password.</Text>
+        <AuthHeader icon="checkmark-circle-outline" title="Password reset" description="Sign in with your new password." />
         <Button label="Sign in" onPress={() => router.replace('/(auth)/sign-in')} />
       </Screen>
     );
@@ -52,9 +47,7 @@ export default function ResetPassword() {
 
   return (
     <Screen backFallback="/(auth)/sign-in">
-      <Text style={{ fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any, color: theme.colors.text }}>
-        Choose a new password
-      </Text>
+      <AuthHeader icon="lock-closed-outline" title="Choose a new password" description="Use a strong, memorable password to protect your pantry." />
       {!params.ticket ? (
         <>
           <ErrorText>Your reset session expired. Start over to get a new code.</ErrorText>
