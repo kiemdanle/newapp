@@ -29,6 +29,7 @@ export default function ThemeSettings() {
           theme={active}
           selected={themeId === 'system'}
           preference="system"
+          fullWidth
           onPress={() => setTheme('system')}
         />
         {appearanceOptions.map(({ label, theme, preference }) => (
@@ -39,6 +40,7 @@ export default function ThemeSettings() {
             theme={theme}
             selected={themeId === preference}
             preference={preference}
+            fullWidth={false}
             onPress={() => setTheme(preference)}
           />
         ))}
@@ -53,6 +55,7 @@ function ThemePreviewCard({
   theme,
   selected,
   preference,
+  fullWidth,
   onPress,
 }: {
   label: string;
@@ -60,6 +63,7 @@ function ThemePreviewCard({
   theme: Theme;
   selected: boolean;
   preference: ThemePreference;
+  fullWidth: boolean;
   onPress: () => void;
 }) {
   return (
@@ -72,6 +76,8 @@ function ThemePreviewCard({
       style={[
         styles.card,
         {
+          width: fullWidth ? '100%' : '48%',
+          minHeight: 48,
           backgroundColor: theme.colors.bg,
           borderColor: selected ? theme.colors.primary : theme.colors.border,
           borderRadius: theme.radii.lg,
@@ -107,7 +113,7 @@ function ThemePreviewCard({
 const styles = StyleSheet.create({
   root: { padding: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '47%', padding: 14, gap: 8 },
+  card: { padding: 14, gap: 8 },
   swatchRow: { flexDirection: 'row', gap: 6 },
   swatch: { width: 22, height: 22 },
 });

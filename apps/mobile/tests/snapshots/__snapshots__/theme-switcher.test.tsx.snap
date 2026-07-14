@@ -93,13 +93,14 @@ exports[`theme settings in expyrico snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#FAFAF8",
                 "borderColor": "#F0F0ED",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "minHeight": 48,
+                "width": "100%",
               },
             ]
           }
@@ -217,13 +218,14 @@ exports[`theme settings in expyrico snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#FAFAF8",
                 "borderColor": "#4BAE8A",
                 "borderRadius": 22,
                 "borderWidth": 2,
+                "minHeight": 48,
+                "width": "48%",
               },
             ]
           }
@@ -341,13 +343,14 @@ exports[`theme settings in expyrico snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#111512",
                 "borderColor": "#2D3A34",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "minHeight": 48,
+                "width": "48%",
               },
             ]
           }
@@ -527,13 +530,14 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#111512",
                 "borderColor": "#2D3A34",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "minHeight": 48,
+                "width": "100%",
               },
             ]
           }
@@ -651,13 +655,14 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#FAFAF8",
                 "borderColor": "#F0F0ED",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "minHeight": 48,
+                "width": "48%",
               },
             ]
           }
@@ -775,13 +780,14 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
                 "backgroundColor": "#111512",
                 "borderColor": "#4BAE8A",
                 "borderRadius": 22,
                 "borderWidth": 2,
+                "minHeight": 48,
+                "width": "48%",
               },
             ]
           }

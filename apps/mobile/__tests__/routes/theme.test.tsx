@@ -1,6 +1,7 @@
 // apps/mobile/__tests__/routes/theme.test.tsx
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import ThemeSettings from '../../app/(app)/settings/theme';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
@@ -25,6 +26,17 @@ describe('<ThemeSettings />', () => {
     expect(queryByTestId('theme-card-bento')).toBeNull();
     expect(queryByTestId('theme-card-clay')).toBeNull();
     expect(queryByTestId('theme-card-material')).toBeNull();
+  });
+
+  it('lays out System above balanced Light and Dark cards with accessible targets', () => {
+    const { getByTestId } = render(wrap(<ThemeSettings />));
+    const systemStyle = StyleSheet.flatten(getByTestId('theme-card-system').props.style);
+    const lightStyle = StyleSheet.flatten(getByTestId('theme-card-expyrico').props.style);
+    const darkStyle = StyleSheet.flatten(getByTestId('theme-card-expyricoDark').props.style);
+
+    expect(systemStyle).toMatchObject({ width: '100%', minHeight: 48 });
+    expect(lightStyle).toMatchObject({ width: '48%', minHeight: 48 });
+    expect(darkStyle).toMatchObject({ width: '48%', minHeight: 48 });
   });
 
   it('tapping a card sets the active theme in the store', async () => {
