@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
-import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
 import { OtpInput } from '../../src/components/OtpInput';
+import { Logo } from '../../src/components/Logo';
 import { authEndpoints } from '../../src/api/endpoints';
 import { useSessionStore } from '../../src/auth/session-store';
 import { isApiError } from '../../src/api/errors';
@@ -57,6 +57,11 @@ export default function VerifyEmail() {
     }
   }
 
+  // Wrong address? Go back to where the flow started so the user can re-enter it.
+  function onChangeEmail() {
+    router.replace(pendingAuth ? '/(auth)/sign-up' : '/(auth)/sign-in');
+  }
+
   async function onSubmit(value = code) {
     const verificationCode = value.replace(/\D/g, '');
     setMessage(null);
@@ -105,11 +110,11 @@ export default function VerifyEmail() {
     <Screen backFallback="/(auth)/sign-in">
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: theme.colors.primaryLight }]}>
-          <Ionicons name="mail-open-outline" size={34} color={theme.colors.primary} />
+          <Logo size={44} />
           <View
             style={[
               styles.badgeDot,
-              { backgroundColor: theme.colors.accent, borderColor: theme.colors.bg },
+              { backgroundColor: theme.colors.accent, borderColor: theme.colors.primaryLight },
             ]}
           />
         </View>
@@ -157,9 +162,10 @@ export default function VerifyEmail() {
       ) : null}
       {error ? <ErrorText>{error}</ErrorText> : null}
 
-      <Button
+      <AuthAction
         testID="verify-submit"
         label="Verify email"
+        icon="checkmark-circle"
         onPress={() => void onSubmit()}
         loading={loading}
         disabled={code.length !== 6}
@@ -171,14 +177,14 @@ export default function VerifyEmail() {
         accessibilityLabel="Resend code"
         onPress={onResend}
         disabled={resendDisabled}
-        style={styles.resend}
+        style={styles.link}
       >
-        <Text style={[styles.resendMuted, { color: theme.colors.textMuted }]}>
+        <Text style={[styles.linkMuted, { color: theme.colors.textMuted }]}>
           Didn't get it?{' '}
         </Text>
         <Text
           style={[
-            styles.resendAction,
+            styles.linkAction,
             { color: resendDisabled ? theme.colors.textMuted : theme.colors.primary },
           ]}
         >
@@ -187,35 +193,100 @@ export default function VerifyEmail() {
       </Pressable>
 
       <Pressable
+        testID="verify-change-email"
         accessibilityRole="button"
-        accessibilityLabel="Back to sign in"
-        onPress={() => router.replace('/(auth)/sign-in')}
-        style={styles.backLink}
+        accessibilityLabel="Change email address"
+        onPress={onChangeEmail}
+        style={styles.link}
       >
-        <Text style={[styles.backText, { color: theme.colors.textMuted }]}>Back to sign in</Text>
+        <Text style={[styles.linkMuted, { color: theme.colors.textMuted }]}>Wrong address?{' '}</Text>
+        <Text style={[styles.linkAction, { color: theme.colors.primary }]}>Change email</Text>
       </Pressable>
     </Screen>
+  );
+}
+
+// Filled Honey pill, matching the primary CTA on sign-in / sign-up so the auth
+// flow reads as one consistent surface.
+function AuthAction({
+  label,
+  onPress,
+  testID,
+  icon,
+  loading,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  testID?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const theme = useTheme();
+  const color = theme.colors.textInverse;
+  const inactive = loading || disabled;
+
+  return (
+    <View
+      style={[
+        styles.actionFrame,
+        {
+          backgroundColor: theme.colors.accent,
+          borderColor: theme.colors.accent,
+          borderRadius: theme.radii.pill,
+          shadowColor: theme.colors.accent,
+        },
+        disabled && styles.actionFrameDisabled,
+      ]}
+    >
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        disabled={inactive}
+        onPress={onPress}
+        style={({ pressed }) => [styles.actionPress, (pressed || loading) && styles.actionPressed]}
+      >
+        <View style={styles.actionRow}>
+          {icon && !loading ? <Ionicons name={icon} size={18} color={color} /> : null}
+          <Text
+            style={[
+              styles.actionLabel,
+              {
+                color,
+                fontSize: theme.typeRamp.labelLarge.fontSize,
+                lineHeight: theme.typeRamp.labelLarge.lineHeight,
+                fontWeight: '700',
+              },
+            ]}
+          >
+            {loading ? 'Verifying…' : label}
+          </Text>
+        </View>
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 4 },
   badge: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   badgeDot: {
     position: 'absolute',
-    top: 12,
-    right: 14,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
+    top: 10,
+    right: 12,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
   },
   title: { textAlign: 'center' },
   subtitle: { fontSize: 14, textAlign: 'center' },
@@ -231,14 +302,48 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 13, fontWeight: '600', includeFontPadding: false },
   status: { textAlign: 'center', fontSize: 14, fontWeight: '500' },
-  resend: {
+  link: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 4,
   },
-  resendMuted: { fontSize: 14 },
-  resendAction: { fontSize: 14, fontWeight: '700' },
-  backLink: { alignItems: 'center', paddingVertical: 6 },
-  backText: { fontSize: 14, fontWeight: '600' },
+  linkMuted: { fontSize: 14 },
+  linkAction: { fontSize: 14, fontWeight: '700' },
+  actionFrame: {
+    height: 52,
+    width: '100%',
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  actionFrameDisabled: {
+    opacity: 0.45,
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  actionPress: {
+    height: 52,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  actionPressed: {
+    opacity: 0.82,
+  },
+  actionRow: {
+    height: '100%',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  actionLabel: {
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
 });

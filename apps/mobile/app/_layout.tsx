@@ -90,9 +90,14 @@ function AuthGate() {
   useEffect(() => {
     if (!sessionHydrated) return;
     const inAuthGroup = segments[0] === '(auth)';
+    const inAppGroup = segments[0] === '(app)';
+    // Authenticated users belong in (app); redirect home whenever they land
+    // outside it. This includes a cold start at the root path "/" (segments
+    // empty), which matched neither branch before and fell through to the Expo
+    // Router "Unmatched Route" screen.
     if (!accessToken && !inAuthGroup) {
       router.replace('/(auth)/welcome');
-    } else if (accessToken && inAuthGroup) {
+    } else if (accessToken && !inAppGroup) {
       router.replace('/(app)/(tabs)/home');
     }
   }, [accessToken, sessionHydrated, segments, router]);

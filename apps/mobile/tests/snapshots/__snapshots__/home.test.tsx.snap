@@ -5,7 +5,7 @@ exports[`home in bento snapshot 1`] = `
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f4f4f5",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 0,
     }
@@ -21,81 +21,103 @@ exports[`home in bento snapshot 1`] = `
     <View
       style={
         {
-          "backgroundColor": "#f4f4f5",
+          "backgroundColor": "#FAFAF8",
           "flex": 1,
         }
       }
     >
-      <RCTScrollView
-        contentContainerStyle={
+      <RNCSafeAreaView
+        edges={
           {
-            "gap": 14,
-            "padding": 20,
-            "paddingBottom": 110,
+            "bottom": "additive",
+            "left": "additive",
+            "right": "additive",
+            "top": "additive",
           }
         }
-        showsVerticalScrollIndicator={false}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "backgroundColor": "#FAFAF8",
+            },
+          ]
+        }
       >
-        <View>
-          <View
-            style={
+        <RCTScrollView
+          contentContainerStyle={
+            [
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "justifyContent": "space-between",
-                "marginBottom": 4,
-              }
+                "flexGrow": 1,
+              },
+              {
+                "gap": 16,
+                "padding": 24,
+                "paddingBottom": 110,
+              },
+            ]
+          }
+          showsVerticalScrollIndicator={false}
+          style={
+            {
+              "flex": 1,
             }
-          >
-            <View>
-              <View
-                style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "flexDirection": "row",
-                      "gap": 10,
-                    },
-                    {
-                      "minHeight": 34,
-                    },
-                  ]
+          }
+        >
+          <View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "justifyContent": "space-between",
+                  "marginBottom": 4,
                 }
-              >
-                <RNSVGSvgView
-                  accessibilityLabel="Expyrico"
-                  align="xMidYMid"
-                  bbHeight={34}
-                  bbWidth={34}
-                  focusable={false}
-                  height={34}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
+              }
+            >
+              <View>
+                <View
                   style={
                     [
                       {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
+                        "alignItems": "center",
+                        "flexDirection": "row",
+                        "gap": 10,
                       },
                       {
-                        "flex": 0,
-                        "height": 34,
-                        "width": 34,
+                        "minHeight": 34,
                       },
                     ]
                   }
-                  vbHeight={865}
-                  vbWidth={865}
-                  width={34}
                 >
-                  <RNSVGGroup
-                    fill={
-                      {
-                        "payload": 4278190080,
-                        "type": 0,
-                      }
+                  <RNSVGSvgView
+                    accessibilityLabel="Expyrico"
+                    align="xMidYMid"
+                    bbHeight={34}
+                    bbWidth={34}
+                    focusable={false}
+                    height={34}
+                    meetOrSlice={0}
+                    minX={0}
+                    minY={0}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "transparent",
+                          "borderWidth": 0,
+                        },
+                        {
+                          "flex": 0,
+                          "height": 34,
+                          "width": 34,
+                        },
+                      ]
                     }
+                    vbHeight={865}
+                    vbWidth={865}
+                    width={34}
                   >
                     <RNSVGGroup
                       fill={
@@ -104,262 +126,281 @@ exports[`home in bento snapshot 1`] = `
                           "type": 0,
                         }
                       }
-                      matrix={
-                        [
-                          1,
-                          0,
-                          0,
-                          1,
-                          0,
-                          190,
-                        ]
-                      }
                     >
-                      <RNSVGPath
-                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      <RNSVGGroup
                         fill={
                           {
-                            "payload": 4283671941,
+                            "payload": 4278190080,
                             "type": 0,
                           }
                         }
-                        propList={
+                        matrix={
                           [
-                            "fill",
+                            1,
+                            0,
+                            0,
+                            1,
+                            0,
+                            190,
                           ]
                         }
-                      />
-                      <RNSVGPath
-                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                        fill={
-                          {
-                            "payload": 4294090009,
-                            "type": 0,
+                      >
+                        <RNSVGPath
+                          d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                          fill={
+                            {
+                              "payload": 4283671941,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                        fill={
-                          {
-                            "payload": 4291968547,
-                            "type": 0,
+                          propList={
+                            [
+                              "fill",
+                            ]
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                        fill={
-                          {
-                            "payload": 4281019943,
-                            "type": 0,
+                        />
+                        <RNSVGPath
+                          d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                          fill={
+                            {
+                              "payload": 4294090009,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                          fill={
+                            {
+                              "payload": 4291968547,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                          fill={
+                            {
+                              "payload": 4281019943,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                      </RNSVGGroup>
                     </RNSVGGroup>
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <View
-                  style={
-                    {
-                      "alignItems": "baseline",
-                      "flexDirection": "row",
-                    }
-                  }
-                >
-                  <Text
+                  </RNSVGSvgView>
+                  <View
                     style={
                       {
-                        "color": "#0a0a0a",
-                        "fontSize": 19.040000000000003,
-                        "fontWeight": "600",
-                        "lineHeight": 22.44,
+                        "alignItems": "baseline",
+                        "flexDirection": "row",
                       }
                     }
                   >
-                    expyrico
-                  </Text>
+                    <Text
+                      style={
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 19.040000000000003,
+                          "fontWeight": "600",
+                          "lineHeight": 22.44,
+                        }
+                      }
+                    >
+                      expyrico
+                    </Text>
+                  </View>
                 </View>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "marginTop": 4,
+                      },
+                      {
+                        "color": "#8C8C85",
+                      },
+                    ]
+                  }
+                >
+                  Use the oldest item first.
+                </Text>
               </View>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 13,
-                      "marginTop": 4,
-                    },
-                    {
-                      "color": "#71717a",
-                    },
-                  ]
-                }
-              >
-                Use the oldest item first.
-              </Text>
             </View>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "borderWidth": 1,
-                  "gap": 12,
-                  "minHeight": 44,
-                  "padding": 24,
-                },
-                {
-                  "backgroundColor": "#ffffff",
-                  "borderColor": "#e4e4e7",
-                  "borderRadius": 22,
-                },
-              ]
-            }
-          >
             <View
               style={
                 [
                   {
                     "alignItems": "center",
-                    "height": 60,
-                    "justifyContent": "center",
-                    "width": 60,
+                    "borderWidth": 1,
+                    "gap": 12,
+                    "minHeight": 44,
+                    "padding": 24,
                   },
                   {
-                    "backgroundColor": "#ffffff",
-                    "borderRadius": 18,
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 20,
-                    "fontWeight": "700",
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#0a0a0a",
+                    "backgroundColor": "#D6F0E6",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                   },
                 ]
               }
             >
-              Your pantry is empty
-            </Text>
-            <Text
-              style={
-                [
+              <View
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 60,
+                      "justifyContent": "center",
+                      "width": 60,
+                    },
+                    {
+                      "backgroundColor": "#FAFAF8",
+                      "borderRadius": 18,
+                    },
+                  ]
+                }
+              />
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 20,
+                      "fontWeight": "700",
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#2C2C28",
+                    },
+                  ]
+                }
+              >
+                Your pantry is empty
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "maxWidth": 270,
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#8C8C85",
+                    },
+                  ]
+                }
+              >
+                Scan a receipt, barcode, or label to build your first expiry list.
+              </Text>
+              <View
+                accessibilityLabel="Scan your first item"
+                accessibilityRole="button"
+                accessibilityState={
                   {
-                    "fontSize": 14,
-                    "lineHeight": 20,
-                    "maxWidth": 270,
-                    "textAlign": "center",
-                  },
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
                   {
-                    "color": "#71717a",
-                  },
-                ]
-              }
-            >
-              Scan a receipt, barcode, or label to build your first expiry list.
-            </Text>
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "borderColor": "transparent",
+                      "borderWidth": 1,
+                      "height": 52,
+                      "justifyContent": "center",
+                      "minHeight": 52,
+                      "paddingHorizontal": 24,
+                      "paddingVertical": 0,
+                    },
+                    {
+                      "backgroundColor": "#F5A623",
+                      "borderRadius": 999,
+                      "opacity": 1,
+                    },
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                  ]
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 8,
+                      "height": "100%",
+                      "justifyContent": "center",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "includeFontPadding": false,
+                          "textAlign": "center",
+                        },
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 14,
+                          "fontWeight": "700",
+                          "lineHeight": 20,
+                        },
+                      ]
+                    }
+                  >
+                    Scan your first item
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </RCTScrollView>
-      <View
-        accessibilityRole="button"
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
-        style={
-          [
-            {
-              "alignItems": "center",
-              "borderRadius": 28,
-              "bottom": 104,
-              "elevation": 5,
-              "flexDirection": "row",
-              "gap": 7,
-              "height": 56,
-              "justifyContent": "center",
-              "minWidth": 98,
-              "position": "absolute",
-              "right": 24,
-              "shadowColor": "#F5A623",
-              "shadowOffset": {
-                "height": 4,
-                "width": 0,
-              },
-              "shadowOpacity": 0.35,
-              "shadowRadius": 12,
-            },
-            {
-              "backgroundColor": "#fbbf24",
-              "opacity": 1,
-            },
-          ]
-        }
-        testID="home-fab-add"
-      >
-        <Text
-          style={
-            [
-              {
-                "fontSize": 15,
-                "fontWeight": "700",
-              },
-              {
-                "color": "#0a0a0a",
-              },
-            ]
-          }
-        >
-          Scan
-        </Text>
-      </View>
+        </RCTScrollView>
+      </RNCSafeAreaView>
     </View>
   </View>
 </View>
@@ -370,7 +411,7 @@ exports[`home in clay snapshot 1`] = `
   collapsable={false}
   style={
     {
-      "backgroundColor": "#fff7f0",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 0,
     }
@@ -386,81 +427,103 @@ exports[`home in clay snapshot 1`] = `
     <View
       style={
         {
-          "backgroundColor": "#fff7f0",
+          "backgroundColor": "#FAFAF8",
           "flex": 1,
         }
       }
     >
-      <RCTScrollView
-        contentContainerStyle={
+      <RNCSafeAreaView
+        edges={
           {
-            "gap": 14,
-            "padding": 20,
-            "paddingBottom": 110,
+            "bottom": "additive",
+            "left": "additive",
+            "right": "additive",
+            "top": "additive",
           }
         }
-        showsVerticalScrollIndicator={false}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "backgroundColor": "#FAFAF8",
+            },
+          ]
+        }
       >
-        <View>
-          <View
-            style={
+        <RCTScrollView
+          contentContainerStyle={
+            [
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "justifyContent": "space-between",
-                "marginBottom": 4,
-              }
+                "flexGrow": 1,
+              },
+              {
+                "gap": 16,
+                "padding": 24,
+                "paddingBottom": 110,
+              },
+            ]
+          }
+          showsVerticalScrollIndicator={false}
+          style={
+            {
+              "flex": 1,
             }
-          >
-            <View>
-              <View
-                style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "flexDirection": "row",
-                      "gap": 10,
-                    },
-                    {
-                      "minHeight": 34,
-                    },
-                  ]
+          }
+        >
+          <View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "justifyContent": "space-between",
+                  "marginBottom": 4,
                 }
-              >
-                <RNSVGSvgView
-                  accessibilityLabel="Expyrico"
-                  align="xMidYMid"
-                  bbHeight={34}
-                  bbWidth={34}
-                  focusable={false}
-                  height={34}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
+              }
+            >
+              <View>
+                <View
                   style={
                     [
                       {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
+                        "alignItems": "center",
+                        "flexDirection": "row",
+                        "gap": 10,
                       },
                       {
-                        "flex": 0,
-                        "height": 34,
-                        "width": 34,
+                        "minHeight": 34,
                       },
                     ]
                   }
-                  vbHeight={865}
-                  vbWidth={865}
-                  width={34}
                 >
-                  <RNSVGGroup
-                    fill={
-                      {
-                        "payload": 4278190080,
-                        "type": 0,
-                      }
+                  <RNSVGSvgView
+                    accessibilityLabel="Expyrico"
+                    align="xMidYMid"
+                    bbHeight={34}
+                    bbWidth={34}
+                    focusable={false}
+                    height={34}
+                    meetOrSlice={0}
+                    minX={0}
+                    minY={0}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "transparent",
+                          "borderWidth": 0,
+                        },
+                        {
+                          "flex": 0,
+                          "height": 34,
+                          "width": 34,
+                        },
+                      ]
                     }
+                    vbHeight={865}
+                    vbWidth={865}
+                    width={34}
                   >
                     <RNSVGGroup
                       fill={
@@ -469,262 +532,281 @@ exports[`home in clay snapshot 1`] = `
                           "type": 0,
                         }
                       }
-                      matrix={
-                        [
-                          1,
-                          0,
-                          0,
-                          1,
-                          0,
-                          190,
-                        ]
-                      }
                     >
-                      <RNSVGPath
-                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      <RNSVGGroup
                         fill={
                           {
-                            "payload": 4283671941,
+                            "payload": 4278190080,
                             "type": 0,
                           }
                         }
-                        propList={
+                        matrix={
                           [
-                            "fill",
+                            1,
+                            0,
+                            0,
+                            1,
+                            0,
+                            190,
                           ]
                         }
-                      />
-                      <RNSVGPath
-                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                        fill={
-                          {
-                            "payload": 4294090009,
-                            "type": 0,
+                      >
+                        <RNSVGPath
+                          d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                          fill={
+                            {
+                              "payload": 4283671941,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                        fill={
-                          {
-                            "payload": 4291968547,
-                            "type": 0,
+                          propList={
+                            [
+                              "fill",
+                            ]
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                        fill={
-                          {
-                            "payload": 4281019943,
-                            "type": 0,
+                        />
+                        <RNSVGPath
+                          d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                          fill={
+                            {
+                              "payload": 4294090009,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                          fill={
+                            {
+                              "payload": 4291968547,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                          fill={
+                            {
+                              "payload": 4281019943,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                      </RNSVGGroup>
                     </RNSVGGroup>
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <View
-                  style={
-                    {
-                      "alignItems": "baseline",
-                      "flexDirection": "row",
-                    }
-                  }
-                >
-                  <Text
+                  </RNSVGSvgView>
+                  <View
                     style={
                       {
-                        "color": "#5b3a1f",
-                        "fontSize": 19.040000000000003,
-                        "fontWeight": "600",
-                        "lineHeight": 22.44,
+                        "alignItems": "baseline",
+                        "flexDirection": "row",
                       }
                     }
                   >
-                    expyrico
-                  </Text>
+                    <Text
+                      style={
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 19.040000000000003,
+                          "fontWeight": "600",
+                          "lineHeight": 22.44,
+                        }
+                      }
+                    >
+                      expyrico
+                    </Text>
+                  </View>
                 </View>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "marginTop": 4,
+                      },
+                      {
+                        "color": "#8C8C85",
+                      },
+                    ]
+                  }
+                >
+                  Use the oldest item first.
+                </Text>
               </View>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 13,
-                      "marginTop": 4,
-                    },
-                    {
-                      "color": "#a47148",
-                    },
-                  ]
-                }
-              >
-                Use the oldest item first.
-              </Text>
             </View>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "borderWidth": 1,
-                  "gap": 12,
-                  "minHeight": 44,
-                  "padding": 24,
-                },
-                {
-                  "backgroundColor": "#ffffff",
-                  "borderColor": "#fde0c2",
-                  "borderRadius": 28,
-                },
-              ]
-            }
-          >
             <View
               style={
                 [
                   {
                     "alignItems": "center",
-                    "height": 60,
-                    "justifyContent": "center",
-                    "width": 60,
+                    "borderWidth": 1,
+                    "gap": 12,
+                    "minHeight": 44,
+                    "padding": 24,
                   },
                   {
-                    "backgroundColor": "#ffffff",
-                    "borderRadius": 22,
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 20,
-                    "fontWeight": "700",
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#5b3a1f",
+                    "backgroundColor": "#D6F0E6",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 28,
                   },
                 ]
               }
             >
-              Your pantry is empty
-            </Text>
-            <Text
-              style={
-                [
+              <View
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 60,
+                      "justifyContent": "center",
+                      "width": 60,
+                    },
+                    {
+                      "backgroundColor": "#FAFAF8",
+                      "borderRadius": 22,
+                    },
+                  ]
+                }
+              />
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 20,
+                      "fontWeight": "700",
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#2C2C28",
+                    },
+                  ]
+                }
+              >
+                Your pantry is empty
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "maxWidth": 270,
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#8C8C85",
+                    },
+                  ]
+                }
+              >
+                Scan a receipt, barcode, or label to build your first expiry list.
+              </Text>
+              <View
+                accessibilityLabel="Scan your first item"
+                accessibilityRole="button"
+                accessibilityState={
                   {
-                    "fontSize": 14,
-                    "lineHeight": 20,
-                    "maxWidth": 270,
-                    "textAlign": "center",
-                  },
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
                   {
-                    "color": "#a47148",
-                  },
-                ]
-              }
-            >
-              Scan a receipt, barcode, or label to build your first expiry list.
-            </Text>
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "borderColor": "transparent",
+                      "borderWidth": 1,
+                      "height": 52,
+                      "justifyContent": "center",
+                      "minHeight": 52,
+                      "paddingHorizontal": 24,
+                      "paddingVertical": 0,
+                    },
+                    {
+                      "backgroundColor": "#F5A623",
+                      "borderRadius": 999,
+                      "opacity": 1,
+                    },
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                  ]
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 8,
+                      "height": "100%",
+                      "justifyContent": "center",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "includeFontPadding": false,
+                          "textAlign": "center",
+                        },
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 15,
+                          "fontWeight": "700",
+                          "lineHeight": 22,
+                        },
+                      ]
+                    }
+                  >
+                    Scan your first item
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </RCTScrollView>
-      <View
-        accessibilityRole="button"
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
-        style={
-          [
-            {
-              "alignItems": "center",
-              "borderRadius": 28,
-              "bottom": 104,
-              "elevation": 5,
-              "flexDirection": "row",
-              "gap": 7,
-              "height": 56,
-              "justifyContent": "center",
-              "minWidth": 98,
-              "position": "absolute",
-              "right": 24,
-              "shadowColor": "#F5A623",
-              "shadowOffset": {
-                "height": 4,
-                "width": 0,
-              },
-              "shadowOpacity": 0.35,
-              "shadowRadius": 12,
-            },
-            {
-              "backgroundColor": "#fbbf24",
-              "opacity": 1,
-            },
-          ]
-        }
-        testID="home-fab-add"
-      >
-        <Text
-          style={
-            [
-              {
-                "fontSize": 15,
-                "fontWeight": "700",
-              },
-              {
-                "color": "#5b3a1f",
-              },
-            ]
-          }
-        >
-          Scan
-        </Text>
-      </View>
+        </RCTScrollView>
+      </RNCSafeAreaView>
     </View>
   </View>
 </View>
@@ -735,7 +817,7 @@ exports[`home in expyrico snapshot 1`] = `
   collapsable={false}
   style={
     {
-      "backgroundColor": "#0b0a17",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 1,
     }
@@ -751,81 +833,103 @@ exports[`home in expyrico snapshot 1`] = `
     <View
       style={
         {
-          "backgroundColor": "#0b0a17",
+          "backgroundColor": "#FAFAF8",
           "flex": 1,
         }
       }
     >
-      <RCTScrollView
-        contentContainerStyle={
+      <RNCSafeAreaView
+        edges={
           {
-            "gap": 14,
-            "padding": 20,
-            "paddingBottom": 110,
+            "bottom": "additive",
+            "left": "additive",
+            "right": "additive",
+            "top": "additive",
           }
         }
-        showsVerticalScrollIndicator={false}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "backgroundColor": "#FAFAF8",
+            },
+          ]
+        }
       >
-        <View>
-          <View
-            style={
+        <RCTScrollView
+          contentContainerStyle={
+            [
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "justifyContent": "space-between",
-                "marginBottom": 4,
-              }
+                "flexGrow": 1,
+              },
+              {
+                "gap": 16,
+                "padding": 24,
+                "paddingBottom": 110,
+              },
+            ]
+          }
+          showsVerticalScrollIndicator={false}
+          style={
+            {
+              "flex": 1,
             }
-          >
-            <View>
-              <View
-                style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "flexDirection": "row",
-                      "gap": 10,
-                    },
-                    {
-                      "minHeight": 34,
-                    },
-                  ]
+          }
+        >
+          <View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "justifyContent": "space-between",
+                  "marginBottom": 4,
                 }
-              >
-                <RNSVGSvgView
-                  accessibilityLabel="Expyrico"
-                  align="xMidYMid"
-                  bbHeight={34}
-                  bbWidth={34}
-                  focusable={false}
-                  height={34}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
+              }
+            >
+              <View>
+                <View
                   style={
                     [
                       {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
+                        "alignItems": "center",
+                        "flexDirection": "row",
+                        "gap": 10,
                       },
                       {
-                        "flex": 0,
-                        "height": 34,
-                        "width": 34,
+                        "minHeight": 34,
                       },
                     ]
                   }
-                  vbHeight={865}
-                  vbWidth={865}
-                  width={34}
                 >
-                  <RNSVGGroup
-                    fill={
-                      {
-                        "payload": 4278190080,
-                        "type": 0,
-                      }
+                  <RNSVGSvgView
+                    accessibilityLabel="Expyrico"
+                    align="xMidYMid"
+                    bbHeight={34}
+                    bbWidth={34}
+                    focusable={false}
+                    height={34}
+                    meetOrSlice={0}
+                    minX={0}
+                    minY={0}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "transparent",
+                          "borderWidth": 0,
+                        },
+                        {
+                          "flex": 0,
+                          "height": 34,
+                          "width": 34,
+                        },
+                      ]
                     }
+                    vbHeight={865}
+                    vbWidth={865}
+                    width={34}
                   >
                     <RNSVGGroup
                       fill={
@@ -834,262 +938,281 @@ exports[`home in expyrico snapshot 1`] = `
                           "type": 0,
                         }
                       }
-                      matrix={
-                        [
-                          1,
-                          0,
-                          0,
-                          1,
-                          0,
-                          190,
-                        ]
-                      }
                     >
-                      <RNSVGPath
-                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      <RNSVGGroup
                         fill={
                           {
-                            "payload": 4283671941,
+                            "payload": 4278190080,
                             "type": 0,
                           }
                         }
-                        propList={
+                        matrix={
                           [
-                            "fill",
+                            1,
+                            0,
+                            0,
+                            1,
+                            0,
+                            190,
                           ]
                         }
-                      />
-                      <RNSVGPath
-                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                        fill={
-                          {
-                            "payload": 4294090009,
-                            "type": 0,
+                      >
+                        <RNSVGPath
+                          d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                          fill={
+                            {
+                              "payload": 4283671941,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                        fill={
-                          {
-                            "payload": 4291968547,
-                            "type": 0,
+                          propList={
+                            [
+                              "fill",
+                            ]
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                        fill={
-                          {
-                            "payload": 4294638330,
-                            "type": 0,
+                        />
+                        <RNSVGPath
+                          d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                          fill={
+                            {
+                              "payload": 4294090009,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                          fill={
+                            {
+                              "payload": 4291968547,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                          fill={
+                            {
+                              "payload": 4281019943,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                      </RNSVGGroup>
                     </RNSVGGroup>
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <View
-                  style={
-                    {
-                      "alignItems": "baseline",
-                      "flexDirection": "row",
-                    }
-                  }
-                >
-                  <Text
+                  </RNSVGSvgView>
+                  <View
                     style={
                       {
-                        "color": "#fafafa",
-                        "fontSize": 19.040000000000003,
-                        "fontWeight": "600",
-                        "lineHeight": 22.44,
+                        "alignItems": "baseline",
+                        "flexDirection": "row",
                       }
                     }
                   >
-                    expyrico
-                  </Text>
+                    <Text
+                      style={
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 19.040000000000003,
+                          "fontWeight": "600",
+                          "lineHeight": 22.44,
+                        }
+                      }
+                    >
+                      expyrico
+                    </Text>
+                  </View>
                 </View>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "marginTop": 4,
+                      },
+                      {
+                        "color": "#8C8C85",
+                      },
+                    ]
+                  }
+                >
+                  Use the oldest item first.
+                </Text>
               </View>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 13,
-                      "marginTop": 4,
-                    },
-                    {
-                      "color": "rgba(250,250,250,0.7)",
-                    },
-                  ]
-                }
-              >
-                Use the oldest item first.
-              </Text>
             </View>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "borderWidth": 1,
-                  "gap": 12,
-                  "minHeight": 44,
-                  "padding": 24,
-                },
-                {
-                  "backgroundColor": "rgba(255,255,255,0.08)",
-                  "borderColor": "rgba(255,255,255,0.12)",
-                  "borderRadius": 28,
-                },
-              ]
-            }
-          >
             <View
               style={
                 [
                   {
                     "alignItems": "center",
-                    "height": 60,
-                    "justifyContent": "center",
-                    "width": 60,
+                    "borderWidth": 1,
+                    "gap": 12,
+                    "minHeight": 44,
+                    "padding": 24,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderRadius": 20,
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 20,
-                    "fontWeight": "700",
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#fafafa",
+                    "backgroundColor": "#D6F0E6",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 30,
                   },
                 ]
               }
             >
-              Your pantry is empty
-            </Text>
-            <Text
-              style={
-                [
+              <View
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 60,
+                      "justifyContent": "center",
+                      "width": 60,
+                    },
+                    {
+                      "backgroundColor": "#FAFAF8",
+                      "borderRadius": 22,
+                    },
+                  ]
+                }
+              />
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 20,
+                      "fontWeight": "700",
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#2C2C28",
+                    },
+                  ]
+                }
+              >
+                Your pantry is empty
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "maxWidth": 270,
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#8C8C85",
+                    },
+                  ]
+                }
+              >
+                Scan a receipt, barcode, or label to build your first expiry list.
+              </Text>
+              <View
+                accessibilityLabel="Scan your first item"
+                accessibilityRole="button"
+                accessibilityState={
                   {
-                    "fontSize": 14,
-                    "lineHeight": 20,
-                    "maxWidth": 270,
-                    "textAlign": "center",
-                  },
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
                   {
-                    "color": "rgba(250,250,250,0.7)",
-                  },
-                ]
-              }
-            >
-              Scan a receipt, barcode, or label to build your first expiry list.
-            </Text>
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "borderColor": "transparent",
+                      "borderWidth": 1,
+                      "height": 52,
+                      "justifyContent": "center",
+                      "minHeight": 52,
+                      "paddingHorizontal": 24,
+                      "paddingVertical": 0,
+                    },
+                    {
+                      "backgroundColor": "#F5A623",
+                      "borderRadius": 999,
+                      "opacity": 1,
+                    },
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                  ]
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 8,
+                      "height": "100%",
+                      "justifyContent": "center",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "includeFontPadding": false,
+                          "textAlign": "center",
+                        },
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 14,
+                          "fontWeight": "700",
+                          "lineHeight": 20,
+                        },
+                      ]
+                    }
+                  >
+                    Scan your first item
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </RCTScrollView>
-      <View
-        accessibilityRole="button"
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
-        style={
-          [
-            {
-              "alignItems": "center",
-              "borderRadius": 28,
-              "bottom": 104,
-              "elevation": 5,
-              "flexDirection": "row",
-              "gap": 7,
-              "height": 56,
-              "justifyContent": "center",
-              "minWidth": 98,
-              "position": "absolute",
-              "right": 24,
-              "shadowColor": "#F5A623",
-              "shadowOffset": {
-                "height": 4,
-                "width": 0,
-              },
-              "shadowOpacity": 0.35,
-              "shadowRadius": 12,
-            },
-            {
-              "backgroundColor": "#a5f3fc",
-              "opacity": 1,
-            },
-          ]
-        }
-        testID="home-fab-add"
-      >
-        <Text
-          style={
-            [
-              {
-                "fontSize": 15,
-                "fontWeight": "700",
-              },
-              {
-                "color": "#fafafa",
-              },
-            ]
-          }
-        >
-          Scan
-        </Text>
-      </View>
+        </RCTScrollView>
+      </RNCSafeAreaView>
     </View>
   </View>
 </View>
@@ -1100,7 +1223,7 @@ exports[`home in material snapshot 1`] = `
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f0e8ff",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 0,
     }
@@ -1116,81 +1239,103 @@ exports[`home in material snapshot 1`] = `
     <View
       style={
         {
-          "backgroundColor": "#f0e8ff",
+          "backgroundColor": "#FAFAF8",
           "flex": 1,
         }
       }
     >
-      <RCTScrollView
-        contentContainerStyle={
+      <RNCSafeAreaView
+        edges={
           {
-            "gap": 14,
-            "padding": 20,
-            "paddingBottom": 110,
+            "bottom": "additive",
+            "left": "additive",
+            "right": "additive",
+            "top": "additive",
           }
         }
-        showsVerticalScrollIndicator={false}
+        style={
+          [
+            {
+              "flex": 1,
+            },
+            {
+              "backgroundColor": "#FAFAF8",
+            },
+          ]
+        }
       >
-        <View>
-          <View
-            style={
+        <RCTScrollView
+          contentContainerStyle={
+            [
               {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "justifyContent": "space-between",
-                "marginBottom": 4,
-              }
+                "flexGrow": 1,
+              },
+              {
+                "gap": 16,
+                "padding": 24,
+                "paddingBottom": 110,
+              },
+            ]
+          }
+          showsVerticalScrollIndicator={false}
+          style={
+            {
+              "flex": 1,
             }
-          >
-            <View>
-              <View
-                style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "flexDirection": "row",
-                      "gap": 10,
-                    },
-                    {
-                      "minHeight": 34,
-                    },
-                  ]
+          }
+        >
+          <View>
+            <View
+              style={
+                {
+                  "alignItems": "center",
+                  "flexDirection": "row",
+                  "justifyContent": "space-between",
+                  "marginBottom": 4,
                 }
-              >
-                <RNSVGSvgView
-                  accessibilityLabel="Expyrico"
-                  align="xMidYMid"
-                  bbHeight={34}
-                  bbWidth={34}
-                  focusable={false}
-                  height={34}
-                  meetOrSlice={0}
-                  minX={0}
-                  minY={0}
+              }
+            >
+              <View>
+                <View
                   style={
                     [
                       {
-                        "backgroundColor": "transparent",
-                        "borderWidth": 0,
+                        "alignItems": "center",
+                        "flexDirection": "row",
+                        "gap": 10,
                       },
                       {
-                        "flex": 0,
-                        "height": 34,
-                        "width": 34,
+                        "minHeight": 34,
                       },
                     ]
                   }
-                  vbHeight={865}
-                  vbWidth={865}
-                  width={34}
                 >
-                  <RNSVGGroup
-                    fill={
-                      {
-                        "payload": 4278190080,
-                        "type": 0,
-                      }
+                  <RNSVGSvgView
+                    accessibilityLabel="Expyrico"
+                    align="xMidYMid"
+                    bbHeight={34}
+                    bbWidth={34}
+                    focusable={false}
+                    height={34}
+                    meetOrSlice={0}
+                    minX={0}
+                    minY={0}
+                    style={
+                      [
+                        {
+                          "backgroundColor": "transparent",
+                          "borderWidth": 0,
+                        },
+                        {
+                          "flex": 0,
+                          "height": 34,
+                          "width": 34,
+                        },
+                      ]
                     }
+                    vbHeight={865}
+                    vbWidth={865}
+                    width={34}
                   >
                     <RNSVGGroup
                       fill={
@@ -1199,262 +1344,281 @@ exports[`home in material snapshot 1`] = `
                           "type": 0,
                         }
                       }
-                      matrix={
-                        [
-                          1,
-                          0,
-                          0,
-                          1,
-                          0,
-                          190,
-                        ]
-                      }
                     >
-                      <RNSVGPath
-                        d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                      <RNSVGGroup
                         fill={
                           {
-                            "payload": 4283671941,
+                            "payload": 4278190080,
                             "type": 0,
                           }
                         }
-                        propList={
+                        matrix={
                           [
-                            "fill",
+                            1,
+                            0,
+                            0,
+                            1,
+                            0,
+                            190,
                           ]
                         }
-                      />
-                      <RNSVGPath
-                        d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                        fill={
-                          {
-                            "payload": 4294090009,
-                            "type": 0,
+                      >
+                        <RNSVGPath
+                          d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                          fill={
+                            {
+                              "payload": 4283671941,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                        fill={
-                          {
-                            "payload": 4291968547,
-                            "type": 0,
+                          propList={
+                            [
+                              "fill",
+                            ]
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
-                      <RNSVGPath
-                        d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                        fill={
-                          {
-                            "payload": 4281019943,
-                            "type": 0,
+                        />
+                        <RNSVGPath
+                          d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                          fill={
+                            {
+                              "payload": 4294090009,
+                              "type": 0,
+                            }
                           }
-                        }
-                        propList={
-                          [
-                            "fill",
-                          ]
-                        }
-                      />
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                          fill={
+                            {
+                              "payload": 4291968547,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                        <RNSVGPath
+                          d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                          fill={
+                            {
+                              "payload": 4281019943,
+                              "type": 0,
+                            }
+                          }
+                          propList={
+                            [
+                              "fill",
+                            ]
+                          }
+                        />
+                      </RNSVGGroup>
                     </RNSVGGroup>
-                  </RNSVGGroup>
-                </RNSVGSvgView>
-                <View
-                  style={
-                    {
-                      "alignItems": "baseline",
-                      "flexDirection": "row",
-                    }
-                  }
-                >
-                  <Text
+                  </RNSVGSvgView>
+                  <View
                     style={
                       {
-                        "color": "#1d1b20",
-                        "fontSize": 19.040000000000003,
-                        "fontWeight": "600",
-                        "lineHeight": 22.44,
+                        "alignItems": "baseline",
+                        "flexDirection": "row",
                       }
                     }
                   >
-                    expyrico
-                  </Text>
+                    <Text
+                      style={
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 19.040000000000003,
+                          "fontWeight": "600",
+                          "lineHeight": 22.44,
+                        }
+                      }
+                    >
+                      expyrico
+                    </Text>
+                  </View>
                 </View>
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "marginTop": 4,
+                      },
+                      {
+                        "color": "#8C8C85",
+                      },
+                    ]
+                  }
+                >
+                  Use the oldest item first.
+                </Text>
               </View>
-              <Text
-                style={
-                  [
-                    {
-                      "fontSize": 13,
-                      "marginTop": 4,
-                    },
-                    {
-                      "color": "#65558f",
-                    },
-                  ]
-                }
-              >
-                Use the oldest item first.
-              </Text>
             </View>
-          </View>
-          <View
-            style={
-              [
-                {
-                  "alignItems": "center",
-                  "borderWidth": 1,
-                  "gap": 12,
-                  "minHeight": 44,
-                  "padding": 24,
-                },
-                {
-                  "backgroundColor": "#ffffff",
-                  "borderColor": "#e0e0e0",
-                  "borderRadius": 28,
-                },
-              ]
-            }
-          >
             <View
               style={
                 [
                   {
                     "alignItems": "center",
-                    "height": 60,
-                    "justifyContent": "center",
-                    "width": 60,
+                    "borderWidth": 1,
+                    "gap": 12,
+                    "minHeight": 44,
+                    "padding": 24,
                   },
                   {
-                    "backgroundColor": "#ffffff",
-                    "borderRadius": 24,
-                  },
-                ]
-              }
-            />
-            <Text
-              style={
-                [
-                  {
-                    "fontSize": 20,
-                    "fontWeight": "700",
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#1d1b20",
+                    "backgroundColor": "#D6F0E6",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 28,
                   },
                 ]
               }
             >
-              Your pantry is empty
-            </Text>
-            <Text
-              style={
-                [
+              <View
+                style={
+                  [
+                    {
+                      "alignItems": "center",
+                      "height": 60,
+                      "justifyContent": "center",
+                      "width": 60,
+                    },
+                    {
+                      "backgroundColor": "#FAFAF8",
+                      "borderRadius": 24,
+                    },
+                  ]
+                }
+              />
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 20,
+                      "fontWeight": "700",
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#2C2C28",
+                    },
+                  ]
+                }
+              >
+                Your pantry is empty
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "lineHeight": 20,
+                      "maxWidth": 270,
+                      "textAlign": "center",
+                    },
+                    {
+                      "color": "#8C8C85",
+                    },
+                  ]
+                }
+              >
+                Scan a receipt, barcode, or label to build your first expiry list.
+              </Text>
+              <View
+                accessibilityLabel="Scan your first item"
+                accessibilityRole="button"
+                accessibilityState={
                   {
-                    "fontSize": 14,
-                    "lineHeight": 20,
-                    "maxWidth": 270,
-                    "textAlign": "center",
-                  },
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
                   {
-                    "color": "#65558f",
-                  },
-                ]
-              }
-            >
-              Scan a receipt, barcode, or label to build your first expiry list.
-            </Text>
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  [
+                    {
+                      "borderColor": "transparent",
+                      "borderWidth": 1,
+                      "height": 52,
+                      "justifyContent": "center",
+                      "minHeight": 52,
+                      "paddingHorizontal": 24,
+                      "paddingVertical": 0,
+                    },
+                    {
+                      "backgroundColor": "#F5A623",
+                      "borderRadius": 999,
+                      "opacity": 1,
+                    },
+                    false,
+                    false,
+                    false,
+                    false,
+                    false,
+                  ]
+                }
+              >
+                <View
+                  style={
+                    {
+                      "alignItems": "center",
+                      "flexDirection": "row",
+                      "gap": 8,
+                      "height": "100%",
+                      "justifyContent": "center",
+                    }
+                  }
+                >
+                  <Text
+                    style={
+                      [
+                        {
+                          "includeFontPadding": false,
+                          "textAlign": "center",
+                        },
+                        {
+                          "color": "#2C2C28",
+                          "fontSize": 14,
+                          "fontWeight": "700",
+                          "lineHeight": 20,
+                        },
+                      ]
+                    }
+                  >
+                    Scan your first item
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      </RCTScrollView>
-      <View
-        accessibilityRole="button"
-        accessibilityState={
-          {
-            "busy": undefined,
-            "checked": undefined,
-            "disabled": undefined,
-            "expanded": undefined,
-            "selected": undefined,
-          }
-        }
-        accessibilityValue={
-          {
-            "max": undefined,
-            "min": undefined,
-            "now": undefined,
-            "text": undefined,
-          }
-        }
-        accessible={true}
-        collapsable={false}
-        focusable={true}
-        onBlur={[Function]}
-        onClick={[Function]}
-        onFocus={[Function]}
-        onResponderGrant={[Function]}
-        onResponderMove={[Function]}
-        onResponderRelease={[Function]}
-        onResponderTerminate={[Function]}
-        onResponderTerminationRequest={[Function]}
-        onStartShouldSetResponder={[Function]}
-        style={
-          [
-            {
-              "alignItems": "center",
-              "borderRadius": 28,
-              "bottom": 104,
-              "elevation": 5,
-              "flexDirection": "row",
-              "gap": 7,
-              "height": 56,
-              "justifyContent": "center",
-              "minWidth": 98,
-              "position": "absolute",
-              "right": 24,
-              "shadowColor": "#F5A623",
-              "shadowOffset": {
-                "height": 4,
-                "width": 0,
-              },
-              "shadowOpacity": 0.35,
-              "shadowRadius": 12,
-            },
-            {
-              "backgroundColor": "#7c4dff",
-              "opacity": 1,
-            },
-          ]
-        }
-        testID="home-fab-add"
-      >
-        <Text
-          style={
-            [
-              {
-                "fontSize": 15,
-                "fontWeight": "700",
-              },
-              {
-                "color": "#1d1b20",
-              },
-            ]
-          }
-        >
-          Scan
-        </Text>
-      </View>
+        </RCTScrollView>
+      </RNCSafeAreaView>
     </View>
   </View>
 </View>

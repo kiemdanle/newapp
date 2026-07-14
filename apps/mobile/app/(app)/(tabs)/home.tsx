@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Screen } from '../../../src/components/Screen';
 import { RecordList } from '../../../src/features/records/RecordList';
 import { UseNextHero } from '../../../src/features/records/UseNextHero';
 import { ScopeToggle } from '../../../src/features/households/ScopeToggle';
@@ -18,7 +19,7 @@ export default function HomeTab() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <Screen>
         <View style={styles.header}>
           <View>
             <Logo size={34} withWordmark />
@@ -40,23 +41,25 @@ export default function HomeTab() {
         <UseNextHero groups={groups} />
 
         <RecordList />
-      </ScrollView>
+      </Screen>
 
-      <Pressable
-        accessibilityRole="button"
-        testID="home-fab-add"
-        onPress={() => router.push('/scan')}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            backgroundColor: theme.colors.accent,
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}
-      >
-        <Ionicons name="scan" size={24} color={theme.colors.text} />
-        <Text style={[styles.fabLabel, { color: theme.colors.text }]}>Scan</Text>
-      </Pressable>
+      {records.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          testID="home-fab-add"
+          onPress={() => router.push('/scan')}
+          style={({ pressed }) => [
+            styles.fab,
+            {
+              backgroundColor: theme.colors.accent,
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
+        >
+          <Ionicons name="scan" size={24} color={theme.colors.text} />
+          <Text style={[styles.fabLabel, { color: theme.colors.text }]}>Scan</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

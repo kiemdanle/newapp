@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
+import { Button } from '../../src/components/Button';
 import { Logo, LogoLockup } from '../../src/components/Logo';
 import { useTheme } from '../../src/theme/useTheme';
 
@@ -38,7 +39,7 @@ export default function Welcome() {
           </View>
         </View>
 
-        <View style={[styles.hero, { paddingTop: compact ? 42 : 96 }]}>
+        <View style={styles.hero}>
           <LogoLockup width={Math.max(168, logoSize * 1.95)} />
           <View style={styles.logoAccent}>
             <View style={[styles.logoAccentPrimary, { backgroundColor: theme.colors.primary }]} />
@@ -71,13 +72,13 @@ export default function Welcome() {
         </View>
 
         <View style={styles.actions}>
-          <WelcomeAction
+          <Button
             testID="welcome-sign-up"
             label="Create account"
             variant="primary"
             onPress={() => router.push('/(auth)/sign-up')}
           />
-          <WelcomeAction
+          <Button
             testID="welcome-sign-in"
             label="Sign in"
             variant="outline"
@@ -86,61 +87,6 @@ export default function Welcome() {
         </View>
       </View>
     </Screen>
-  );
-}
-
-function WelcomeAction({
-  label,
-  onPress,
-  testID,
-  variant,
-}: {
-  label: string;
-  onPress: () => void;
-  testID: string;
-  variant: 'primary' | 'outline';
-}) {
-  const theme = useTheme();
-  const filled = variant === 'primary';
-  return (
-    <View
-      style={[
-        styles.actionFrame,
-        filled
-          ? {
-              backgroundColor: theme.colors.accent,
-              borderColor: theme.colors.accent,
-              shadowColor: theme.colors.accent,
-            }
-          : {
-              backgroundColor: theme.colors.bgGlass,
-              borderColor: theme.colors.primary,
-            },
-      ]}
-    >
-      <Pressable
-        testID={testID}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        onPress={onPress}
-        style={({ pressed }) => [styles.actionPress, pressed && styles.actionPressed]}
-      >
-        <View style={styles.actionRow}>
-          <Text
-            style={[
-              styles.actionLabel,
-              {
-                color: filled ? theme.colors.textInverse : theme.colors.primary,
-                lineHeight: theme.typeRamp.labelLarge.lineHeight,
-                fontWeight: '700',
-              },
-            ]}
-          >
-            {label}
-          </Text>
-        </View>
-      </Pressable>
-    </View>
   );
 }
 
@@ -168,7 +114,7 @@ const styles = StyleSheet.create({
   hero: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingBottom: 28,
   },
   logoAccent: {
@@ -187,38 +133,5 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 12,
-  },
-  actionPress: {
-    height: 58,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  actionFrame: {
-    width: '100%',
-    height: 58,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  actionPressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.99 }],
-  },
-  actionRow: {
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-    includeFontPadding: false,
   },
 });

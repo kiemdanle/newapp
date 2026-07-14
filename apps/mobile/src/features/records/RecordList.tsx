@@ -68,6 +68,9 @@ export function RecordList() {
         icon="basket"
         title="Your pantry is empty"
         body="Scan a receipt, barcode, or label to build your first expiry list."
+        actionLabel="Scan your first item"
+        actionIcon="scan"
+        onAction={() => router.push('/scan')}
       />
     );
   }

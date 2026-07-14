@@ -119,6 +119,25 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 Always use context7 when I need code generation, setup or configuration steps, or library/API documentation. This means you should automatically use the Context7 MCP tools to resolve library id and get library docs without me having to explicitly ask.
 
+## Brand Color Palette (Expyrico)
+
+Site, app, and email must use this palette. Source of truth: `packages/theme/src/palette.ts`; full rules in `docs/design-guidelines.md`. Use theme tokens, not hard-coded hex, wherever a theme system exists.
+
+| Token | Name | Hex | Usage |
+| --- | --- | --- | --- |
+| Primary | Fresh Sage | `#4BAE8A` | Logo, headers, active states, "Good" status |
+| Primary Dark | Deep Sage | `#3A8F6F` | Pressed states, text on light bg |
+| Primary Light | Mint Mist | `#D6F0E6` | Soft panels, success highlights |
+| Secondary | Warm White | `#FAFAF8` | Main background, cards |
+| Accent | Honey | `#F5A623` | CTAs, badges, highlights, "Expiring soon" status |
+| Accent Light | Soft Butter | `#FEEFC3` | Expiring-soon status background |
+| Neutral Light | Stone | `#F0F0ED` | Section backgrounds, dividers |
+| Neutral Mid | Pebble | `#8C8C85` | Secondary text, icons |
+| Neutral Dark | Almost Black | `#2C2C28` | Primary text |
+| Status: Expired | Alert Red | `#E0442A` | Expired/destructive state ONLY — never branding |
+
+Status colors are semantic: Good = Fresh Sage, Expiring soon = Honey, Expired = Alert Red. Never use Alert Red for branding, emphasis, or decoration.
+
 ---
 ---
 
