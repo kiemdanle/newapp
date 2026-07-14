@@ -1,8 +1,13 @@
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { themeList, type Theme } from '@expyrico/theme';
+import { themes, type Theme } from '@expyrico/theme';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
 import type { ThemePreference } from '../../../src/auth/secure-store';
+
+const appearanceOptions = [
+  { label: 'Light', theme: themes.expyrico, preference: 'expyrico' },
+  { label: 'Dark', theme: themes.expyricoDark, preference: 'expyricoDark' },
+] as const;
 
 export default function ThemeSettings() {
   const active = useTheme();
@@ -24,17 +29,19 @@ export default function ThemeSettings() {
           theme={active}
           selected={themeId === 'system'}
           preference="system"
+          fullWidth
           onPress={() => setTheme('system')}
         />
-        {themeList.map((t) => (
+        {appearanceOptions.map(({ label, theme, preference }) => (
           <ThemePreviewCard
-            key={t.id}
-            label={t.name}
-            description={t.scheme === 'dark' ? 'Dark' : 'Light'}
-            theme={t}
-            selected={themeId === t.id}
-            preference={t.id}
-            onPress={() => setTheme(t.id)}
+            key={preference}
+            label={label}
+            description={`${label} appearance`}
+            theme={theme}
+            selected={themeId === preference}
+            preference={preference}
+            fullWidth={false}
+            onPress={() => setTheme(preference)}
           />
         ))}
       </View>
@@ -48,6 +55,7 @@ function ThemePreviewCard({
   theme,
   selected,
   preference,
+  fullWidth,
   onPress,
 }: {
   label: string;
@@ -55,6 +63,7 @@ function ThemePreviewCard({
   theme: Theme;
   selected: boolean;
   preference: ThemePreference;
+  fullWidth: boolean;
   onPress: () => void;
 }) {
   return (
@@ -67,6 +76,8 @@ function ThemePreviewCard({
       style={[
         styles.card,
         {
+          ...(fullWidth ? { width: '100%' } : { flexBasis: 0, flexGrow: 1 }),
+          minHeight: 48,
           backgroundColor: theme.colors.bg,
           borderColor: selected ? theme.colors.primary : theme.colors.border,
           borderRadius: theme.radii.lg,
@@ -102,7 +113,7 @@ function ThemePreviewCard({
 const styles = StyleSheet.create({
   root: { padding: 16 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  card: { width: '47%', padding: 14, gap: 8 },
+  card: { padding: 14, gap: 8 },
   swatchRow: { flexDirection: 'row', gap: 6 },
   swatch: { width: 22, height: 22 },
 });

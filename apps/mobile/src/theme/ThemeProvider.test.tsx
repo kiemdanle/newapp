@@ -42,23 +42,37 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
     await act(async () => {
-      await useThemeStore.getState().setTheme('clay');
+      await useThemeStore.getState().setTheme('expyricoDark');
     });
     await waitFor(() => {
-      expect(getByTestId('probe').props.children.join('')).toBe('clay:Soft Clay');
+      expect(getByTestId('probe').props.children.join('')).toContain('expyricoDark:');
     });
   });
 
   it('honours the `initial` prop on first mount', async () => {
     useThemeStore.setState({ themeId: 'system', hydrated: false });
     const { getByTestId } = render(
-      <ThemeProvider initial="bento">
+      <ThemeProvider initial="expyrico">
         <Probe />
       </ThemeProvider>,
     );
     await waitFor(() => {
-      expect(getByTestId('probe').props.children.join('')).toBe('bento:Bento Grid');
+      expect(getByTestId('probe').props.children.join('')).toBe('expyrico:Expyrico');
     });
+    expect(useThemeStore.getState().themeId).toBe('expyrico');
+  });
+
+  it('does not activate a legacy theme passed through the initial prop', async () => {
+    const legacyTheme = 'clay' as unknown as import('../auth/secure-store').ThemePreference;
+    const { getByTestId } = render(
+      <ThemeProvider initial={legacyTheme}>
+        <Probe />
+      </ThemeProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('probe').props.children.join('')).toBe('expyrico:Expyrico');
+    });
+    expect(useThemeStore.getState().themeId).toBe('system');
   });
 
   it('useThemeSwitcher.setTheme updates the store and themeId reflects the new id', async () => {
@@ -68,11 +82,11 @@ describe('ThemeProvider', () => {
       </ThemeProvider>,
     );
     await act(async () => {
-      await useThemeStore.getState().setTheme('bento');
+      await useThemeStore.getState().setTheme('expyricoDark');
     });
     await waitFor(() => {
-      expect(getByTestId('switcher-probe').props.children).toBe('bento');
+      expect(getByTestId('switcher-probe').props.children).toBe('expyricoDark');
     });
-    expect(useThemeStore.getState().themeId).toBe('bento');
+    expect(useThemeStore.getState().themeId).toBe('expyricoDark');
   });
 });

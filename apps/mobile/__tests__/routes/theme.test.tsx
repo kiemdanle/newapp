@@ -1,6 +1,7 @@
 // apps/mobile/__tests__/routes/theme.test.tsx
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import ThemeSettings from '../../app/(app)/settings/theme';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
@@ -17,21 +18,34 @@ describe('<ThemeSettings />', () => {
     await initThemeStore();
   });
 
-  it('renders system plus each theme card', () => {
-    const { getByTestId } = render(wrap(<ThemeSettings />));
+  it('renders only System, Light, and Dark appearance cards', () => {
+    const { getByTestId, queryByTestId } = render(wrap(<ThemeSettings />));
     expect(getByTestId('theme-card-system')).toBeTruthy();
     expect(getByTestId('theme-card-expyrico')).toBeTruthy();
     expect(getByTestId('theme-card-expyricoDark')).toBeTruthy();
-    expect(getByTestId('theme-card-bento')).toBeTruthy();
-    expect(getByTestId('theme-card-clay')).toBeTruthy();
-    expect(getByTestId('theme-card-material')).toBeTruthy();
+    expect(queryByTestId('theme-card-bento')).toBeNull();
+    expect(queryByTestId('theme-card-clay')).toBeNull();
+    expect(queryByTestId('theme-card-material')).toBeNull();
+  });
+
+  it('lays out System above a non-wrapping flexible Light and Dark pair', () => {
+    const { getByTestId } = render(wrap(<ThemeSettings />));
+    const systemStyle = StyleSheet.flatten(getByTestId('theme-card-system').props.style);
+    const lightStyle = StyleSheet.flatten(getByTestId('theme-card-expyrico').props.style);
+    const darkStyle = StyleSheet.flatten(getByTestId('theme-card-expyricoDark').props.style);
+
+    expect(systemStyle).toMatchObject({ width: '100%', minHeight: 48 });
+    expect(lightStyle).toMatchObject({ flexBasis: 0, flexGrow: 1, minHeight: 48 });
+    expect(darkStyle).toMatchObject({ flexBasis: 0, flexGrow: 1, minHeight: 48 });
+    expect(lightStyle.width).toBeUndefined();
+    expect(darkStyle.width).toBeUndefined();
   });
 
   it('tapping a card sets the active theme in the store', async () => {
     const { getByTestId } = render(wrap(<ThemeSettings />));
     await act(async () => {
-      fireEvent.press(getByTestId('theme-card-clay'));
+      fireEvent.press(getByTestId('theme-card-expyricoDark'));
     });
-    expect(useThemeStore.getState().themeId).toBe('clay');
+    expect(useThemeStore.getState().themeId).toBe('expyricoDark');
   });
 });

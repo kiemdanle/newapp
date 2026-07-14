@@ -33,7 +33,8 @@ export function Button(props: ButtonProps) {
           ? theme.colors.primary
           : 'transparent';
 
-  const fg = isFilled ? theme.colors.textInverse : theme.colors.text;
+  const isTertiary = variant === 'outline' || variant === 'ghost';
+  const fg = isFilled ? theme.colors.textInverse : isTertiary ? theme.colors.primary : theme.colors.text;
 
   return (
     <Pressable
@@ -56,11 +57,10 @@ export function Button(props: ButtonProps) {
           backgroundColor: pressed ? theme.colors.bgGlass : 'transparent',
           opacity: pressed ? 0.85 : 1,
         },
-        // Ghost: subtle border so it's visible but not loud
+        // Ghost: compact text/icon action without adding a competing container.
         variant === 'ghost' && {
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          backgroundColor: pressed ? theme.colors.border : 'transparent',
+          borderColor: 'transparent',
+          backgroundColor: pressed ? theme.colors.neutralLight : 'transparent',
           opacity: pressed ? 0.7 : 1,
         },
         // Filled press: add tactile feedback without introducing another brand color.
@@ -78,14 +78,14 @@ export function Button(props: ButtonProps) {
               <Ionicons
                 name={props.icon}
                 size={18}
-                color={variant === 'outline' ? theme.colors.primary : fg}
+                color={isTertiary ? theme.colors.primary : fg}
               />
             ) : null}
             <Text
               style={[
                 styles.label,
                 {
-                  color: variant === 'outline' ? theme.colors.primary : fg,
+                  color: fg,
                   fontSize: theme.typeRamp.labelLarge.fontSize,
                   lineHeight: theme.typeRamp.labelLarge.lineHeight,
                   fontWeight: '700',

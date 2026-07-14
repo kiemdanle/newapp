@@ -1,877 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`settings in bento snapshot 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#f4f4f5",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <RNCSafeAreaView
-      edges={
-        {
-          "bottom": "additive",
-          "left": "additive",
-          "right": "additive",
-          "top": "additive",
-        }
-      }
-      style={
-        [
-          {
-            "flex": 1,
-          },
-          {
-            "backgroundColor": "#f4f4f5",
-          },
-        ]
-      }
-    >
-      <RCTScrollView
-        contentContainerStyle={
-          {
-            "gap": 16,
-            "padding": 24,
-          }
-        }
-        style={
-          {
-            "flex": 1,
-          }
-        }
-      >
-        <View>
-          <Text
-            style={
-              {
-                "color": "#0a0a0a",
-                "fontSize": 20,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Settings
-          </Text>
-          <View
-            style={
-              {
-                "gap": 10,
-              }
-            }
-          >
-            <View
-              accessibilityLabel="Invite friends"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 18,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-invite"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#0a0a0a",
-                    "fontSize": 16,
-                    "fontWeight": "600",
-                  }
-                }
-              >
-                Invite friends
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#71717a",
-                    "fontSize": 12,
-                  }
-                }
-              >
-                Share your invite code
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Theme"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 18,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-theme"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#0a0a0a",
-                    "fontSize": 16,
-                    "fontWeight": "600",
-                  }
-                }
-              >
-                Theme
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#71717a",
-                    "fontSize": 12,
-                  }
-                }
-              >
-                Pick one of four looks
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Notifications"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 18,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-notifications"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#0a0a0a",
-                    "fontSize": 16,
-                    "fontWeight": "600",
-                  }
-                }
-              >
-                Notifications
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#71717a",
-                    "fontSize": 12,
-                  }
-                }
-              >
-                Expiry reminders and alerts
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Account"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 18,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-account"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#0a0a0a",
-                    "fontSize": 16,
-                    "fontWeight": "600",
-                  }
-                }
-              >
-                Account
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#71717a",
-                    "fontSize": 12,
-                  }
-                }
-              >
-                Email, password, and passkeys
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Add a passkey"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 18,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-add-passkey"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#0a0a0a",
-                    "fontSize": 16,
-                    "fontWeight": "600",
-                  }
-                }
-              >
-                Add a passkey
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#71717a",
-                    "fontSize": 12,
-                  }
-                }
-              >
-                Sign in with Face ID / Touch ID
-              </Text>
-            </View>
-          </View>
-        </View>
-      </RCTScrollView>
-    </RNCSafeAreaView>
-  </View>
-</View>
-`;
-
-exports[`settings in clay snapshot 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#fff7f0",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <RNCSafeAreaView
-      edges={
-        {
-          "bottom": "additive",
-          "left": "additive",
-          "right": "additive",
-          "top": "additive",
-        }
-      }
-      style={
-        [
-          {
-            "flex": 1,
-          },
-          {
-            "backgroundColor": "#fff7f0",
-          },
-        ]
-      }
-    >
-      <RCTScrollView
-        contentContainerStyle={
-          {
-            "gap": 16,
-            "padding": 24,
-          }
-        }
-        style={
-          {
-            "flex": 1,
-          }
-        }
-      >
-        <View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 22,
-                "fontWeight": "700",
-              }
-            }
-          >
-            Settings
-          </Text>
-          <View
-            style={
-              {
-                "gap": 10,
-              }
-            }
-          >
-            <View
-              accessibilityLabel="Invite friends"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 22,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-invite"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#5b3a1f",
-                    "fontSize": 16,
-                    "fontWeight": "700",
-                  }
-                }
-              >
-                Invite friends
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#a47148",
-                    "fontSize": 13,
-                  }
-                }
-              >
-                Share your invite code
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Theme"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 22,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-theme"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#5b3a1f",
-                    "fontSize": 16,
-                    "fontWeight": "700",
-                  }
-                }
-              >
-                Theme
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#a47148",
-                    "fontSize": 13,
-                  }
-                }
-              >
-                Pick one of four looks
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Notifications"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 22,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-notifications"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#5b3a1f",
-                    "fontSize": 16,
-                    "fontWeight": "700",
-                  }
-                }
-              >
-                Notifications
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#a47148",
-                    "fontSize": 13,
-                  }
-                }
-              >
-                Expiry reminders and alerts
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Account"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 22,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-account"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#5b3a1f",
-                    "fontSize": 16,
-                    "fontWeight": "700",
-                  }
-                }
-              >
-                Account
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#a47148",
-                    "fontSize": 13,
-                  }
-                }
-              >
-                Email, password, and passkeys
-              </Text>
-            </View>
-            <View
-              accessibilityLabel="Add a passkey"
-              accessibilityRole="button"
-              accessibilityState={
-                {
-                  "busy": undefined,
-                  "checked": undefined,
-                  "disabled": undefined,
-                  "expanded": undefined,
-                  "selected": undefined,
-                }
-              }
-              accessibilityValue={
-                {
-                  "max": undefined,
-                  "min": undefined,
-                  "now": undefined,
-                  "text": undefined,
-                }
-              }
-              accessible={true}
-              collapsable={false}
-              focusable={true}
-              onBlur={[Function]}
-              onClick={[Function]}
-              onFocus={[Function]}
-              onResponderGrant={[Function]}
-              onResponderMove={[Function]}
-              onResponderRelease={[Function]}
-              onResponderTerminate={[Function]}
-              onResponderTerminationRequest={[Function]}
-              onStartShouldSetResponder={[Function]}
-              style={
-                [
-                  {
-                    "borderWidth": 1,
-                    "gap": 4,
-                    "padding": 16,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 22,
-                    "opacity": 1,
-                  },
-                ]
-              }
-              testID="settings-row-add-passkey"
-            >
-              <Text
-                style={
-                  {
-                    "color": "#5b3a1f",
-                    "fontSize": 16,
-                    "fontWeight": "700",
-                  }
-                }
-              >
-                Add a passkey
-              </Text>
-              <Text
-                style={
-                  {
-                    "color": "#a47148",
-                    "fontSize": 13,
-                  }
-                }
-              >
-                Sign in with Face ID / Touch ID
-              </Text>
-            </View>
-          </View>
-        </View>
-      </RCTScrollView>
-    </RNCSafeAreaView>
-  </View>
-</View>
-`;
-
 exports[`settings in expyrico snapshot 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#0b0a17",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 1,
     }
@@ -899,18 +33,25 @@ exports[`settings in expyrico snapshot 1`] = `
             "flex": 1,
           },
           {
-            "backgroundColor": "#0b0a17",
+            "backgroundColor": "#FAFAF8",
           },
         ]
       }
     >
       <RCTScrollView
         contentContainerStyle={
-          {
-            "gap": 16,
-            "padding": 24,
-          }
+          [
+            {
+              "flexGrow": 1,
+            },
+            {
+              "gap": 16,
+              "padding": 24,
+              "paddingBottom": 110,
+            },
+          ]
         }
+        showsVerticalScrollIndicator={false}
         style={
           {
             "flex": 1,
@@ -921,9 +62,9 @@ exports[`settings in expyrico snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#fafafa",
-                "fontSize": 24,
-                "fontWeight": "400",
+                "color": "#2C2C28",
+                "fontSize": 20,
+                "fontWeight": "500",
               }
             }
           >
@@ -976,9 +117,9 @@ exports[`settings in expyrico snapshot 1`] = `
                     "padding": 16,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 20,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                     "opacity": 1,
                   },
                 ]
@@ -988,7 +129,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "#fafafa",
+                    "color": "#2C2C28",
                     "fontSize": 16,
                     "fontWeight": "500",
                   }
@@ -999,7 +140,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "rgba(250,250,250,0.7)",
+                    "color": "#8C8C85",
                     "fontSize": 12,
                   }
                 }
@@ -1047,9 +188,9 @@ exports[`settings in expyrico snapshot 1`] = `
                     "padding": 16,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 20,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                     "opacity": 1,
                   },
                 ]
@@ -1059,7 +200,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "#fafafa",
+                    "color": "#2C2C28",
                     "fontSize": 16,
                     "fontWeight": "500",
                   }
@@ -1070,7 +211,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "rgba(250,250,250,0.7)",
+                    "color": "#8C8C85",
                     "fontSize": 12,
                   }
                 }
@@ -1118,9 +259,9 @@ exports[`settings in expyrico snapshot 1`] = `
                     "padding": 16,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 20,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                     "opacity": 1,
                   },
                 ]
@@ -1130,7 +271,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "#fafafa",
+                    "color": "#2C2C28",
                     "fontSize": 16,
                     "fontWeight": "500",
                   }
@@ -1141,7 +282,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "rgba(250,250,250,0.7)",
+                    "color": "#8C8C85",
                     "fontSize": 12,
                   }
                 }
@@ -1189,9 +330,9 @@ exports[`settings in expyrico snapshot 1`] = `
                     "padding": 16,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 20,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                     "opacity": 1,
                   },
                 ]
@@ -1201,7 +342,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "#fafafa",
+                    "color": "#2C2C28",
                     "fontSize": 16,
                     "fontWeight": "500",
                   }
@@ -1212,7 +353,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "rgba(250,250,250,0.7)",
+                    "color": "#8C8C85",
                     "fontSize": 12,
                   }
                 }
@@ -1260,9 +401,9 @@ exports[`settings in expyrico snapshot 1`] = `
                     "padding": 16,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 20,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 22,
                     "opacity": 1,
                   },
                 ]
@@ -1272,7 +413,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "#fafafa",
+                    "color": "#2C2C28",
                     "fontSize": 16,
                     "fontWeight": "500",
                   }
@@ -1283,7 +424,7 @@ exports[`settings in expyrico snapshot 1`] = `
               <Text
                 style={
                   {
-                    "color": "rgba(250,250,250,0.7)",
+                    "color": "#8C8C85",
                     "fontSize": 12,
                   }
                 }
@@ -1299,12 +440,12 @@ exports[`settings in expyrico snapshot 1`] = `
 </View>
 `;
 
-exports[`settings in material snapshot 1`] = `
+exports[`settings in expyricoDark snapshot 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f0e8ff",
+      "backgroundColor": "#111512",
       "flex": 1,
       "opacity": 0,
     }
@@ -1332,18 +473,25 @@ exports[`settings in material snapshot 1`] = `
             "flex": 1,
           },
           {
-            "backgroundColor": "#f0e8ff",
+            "backgroundColor": "#111512",
           },
         ]
       }
     >
       <RCTScrollView
         contentContainerStyle={
-          {
-            "gap": 16,
-            "padding": 24,
-          }
+          [
+            {
+              "flexGrow": 1,
+            },
+            {
+              "gap": 16,
+              "padding": 24,
+              "paddingBottom": 110,
+            },
+          ]
         }
+        showsVerticalScrollIndicator={false}
         style={
           {
             "flex": 1,
@@ -1354,9 +502,9 @@ exports[`settings in material snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#1d1b20",
-                "fontSize": 24,
-                "fontWeight": "400",
+                "color": "#FAFAF8",
+                "fontSize": 20,
+                "fontWeight": "500",
               }
             }
           >
@@ -1370,7 +518,7 @@ exports[`settings in material snapshot 1`] = `
             }
           >
             <View
-              accessibilityLabel="Invite friends. Share your invite code"
+              accessibilityLabel="Invite friends"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1402,48 +550,46 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#ffffff",
-                  "flexDirection": "row",
-                  "minHeight": 56,
-                  "paddingHorizontal": 16,
-                  "paddingVertical": 8,
-                }
+                [
+                  {
+                    "borderWidth": 1,
+                    "gap": 4,
+                    "padding": 16,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 22,
+                    "opacity": 1,
+                  },
+                ]
               }
+              testID="settings-row-invite"
             >
-              <View
+              <Text
                 style={
                   {
-                    "flex": 1,
+                    "color": "#FAFAF8",
+                    "fontSize": 16,
+                    "fontWeight": "500",
                   }
                 }
               >
-                <Text
-                  style={
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 16,
-                      "lineHeight": 24,
-                    }
+                Invite friends
+              </Text>
+              <Text
+                style={
+                  {
+                    "color": "#B7BDB7",
+                    "fontSize": 12,
                   }
-                >
-                  Invite friends
-                </Text>
-                <Text
-                  style={
-                    {
-                      "color": "#65558f",
-                      "fontSize": 12,
-                    }
-                  }
-                >
-                  Share your invite code
-                </Text>
-              </View>
+                }
+              >
+                Share your invite code
+              </Text>
             </View>
             <View
-              accessibilityLabel="Theme. Pick one of four looks"
+              accessibilityLabel="Theme"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1475,48 +621,46 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#ffffff",
-                  "flexDirection": "row",
-                  "minHeight": 56,
-                  "paddingHorizontal": 16,
-                  "paddingVertical": 8,
-                }
+                [
+                  {
+                    "borderWidth": 1,
+                    "gap": 4,
+                    "padding": 16,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 22,
+                    "opacity": 1,
+                  },
+                ]
               }
+              testID="settings-row-theme"
             >
-              <View
+              <Text
                 style={
                   {
-                    "flex": 1,
+                    "color": "#FAFAF8",
+                    "fontSize": 16,
+                    "fontWeight": "500",
                   }
                 }
               >
-                <Text
-                  style={
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 16,
-                      "lineHeight": 24,
-                    }
+                Theme
+              </Text>
+              <Text
+                style={
+                  {
+                    "color": "#B7BDB7",
+                    "fontSize": 12,
                   }
-                >
-                  Theme
-                </Text>
-                <Text
-                  style={
-                    {
-                      "color": "#65558f",
-                      "fontSize": 12,
-                    }
-                  }
-                >
-                  Pick one of four looks
-                </Text>
-              </View>
+                }
+              >
+                Pick one of four looks
+              </Text>
             </View>
             <View
-              accessibilityLabel="Notifications. Expiry reminders and alerts"
+              accessibilityLabel="Notifications"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1548,48 +692,46 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#ffffff",
-                  "flexDirection": "row",
-                  "minHeight": 56,
-                  "paddingHorizontal": 16,
-                  "paddingVertical": 8,
-                }
+                [
+                  {
+                    "borderWidth": 1,
+                    "gap": 4,
+                    "padding": 16,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 22,
+                    "opacity": 1,
+                  },
+                ]
               }
+              testID="settings-row-notifications"
             >
-              <View
+              <Text
                 style={
                   {
-                    "flex": 1,
+                    "color": "#FAFAF8",
+                    "fontSize": 16,
+                    "fontWeight": "500",
                   }
                 }
               >
-                <Text
-                  style={
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 16,
-                      "lineHeight": 24,
-                    }
+                Notifications
+              </Text>
+              <Text
+                style={
+                  {
+                    "color": "#B7BDB7",
+                    "fontSize": 12,
                   }
-                >
-                  Notifications
-                </Text>
-                <Text
-                  style={
-                    {
-                      "color": "#65558f",
-                      "fontSize": 12,
-                    }
-                  }
-                >
-                  Expiry reminders and alerts
-                </Text>
-              </View>
+                }
+              >
+                Expiry reminders and alerts
+              </Text>
             </View>
             <View
-              accessibilityLabel="Account. Email, password, and passkeys"
+              accessibilityLabel="Account"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1621,48 +763,46 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#ffffff",
-                  "flexDirection": "row",
-                  "minHeight": 56,
-                  "paddingHorizontal": 16,
-                  "paddingVertical": 8,
-                }
+                [
+                  {
+                    "borderWidth": 1,
+                    "gap": 4,
+                    "padding": 16,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 22,
+                    "opacity": 1,
+                  },
+                ]
               }
+              testID="settings-row-account"
             >
-              <View
+              <Text
                 style={
                   {
-                    "flex": 1,
+                    "color": "#FAFAF8",
+                    "fontSize": 16,
+                    "fontWeight": "500",
                   }
                 }
               >
-                <Text
-                  style={
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 16,
-                      "lineHeight": 24,
-                    }
+                Account
+              </Text>
+              <Text
+                style={
+                  {
+                    "color": "#B7BDB7",
+                    "fontSize": 12,
                   }
-                >
-                  Account
-                </Text>
-                <Text
-                  style={
-                    {
-                      "color": "#65558f",
-                      "fontSize": 12,
-                    }
-                  }
-                >
-                  Email, password, and passkeys
-                </Text>
-              </View>
+                }
+              >
+                Email, password, and passkeys
+              </Text>
             </View>
             <View
-              accessibilityLabel="Add a passkey. Sign in with Face ID / Touch ID"
+              accessibilityLabel="Add a passkey"
               accessibilityRole="button"
               accessibilityState={
                 {
@@ -1694,45 +834,43 @@ exports[`settings in material snapshot 1`] = `
               onResponderTerminationRequest={[Function]}
               onStartShouldSetResponder={[Function]}
               style={
-                {
-                  "alignItems": "center",
-                  "backgroundColor": "#ffffff",
-                  "flexDirection": "row",
-                  "minHeight": 56,
-                  "paddingHorizontal": 16,
-                  "paddingVertical": 8,
-                }
+                [
+                  {
+                    "borderWidth": 1,
+                    "gap": 4,
+                    "padding": 16,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 22,
+                    "opacity": 1,
+                  },
+                ]
               }
+              testID="settings-row-add-passkey"
             >
-              <View
+              <Text
                 style={
                   {
-                    "flex": 1,
+                    "color": "#FAFAF8",
+                    "fontSize": 16,
+                    "fontWeight": "500",
                   }
                 }
               >
-                <Text
-                  style={
-                    {
-                      "color": "#1d1b20",
-                      "fontSize": 16,
-                      "lineHeight": 24,
-                    }
+                Add a passkey
+              </Text>
+              <Text
+                style={
+                  {
+                    "color": "#B7BDB7",
+                    "fontSize": 12,
                   }
-                >
-                  Add a passkey
-                </Text>
-                <Text
-                  style={
-                    {
-                      "color": "#65558f",
-                      "fontSize": 12,
-                    }
-                  }
-                >
-                  Sign in with Face ID / Touch ID
-                </Text>
-              </View>
+                }
+              >
+                Sign in with Face ID / Touch ID
+              </Text>
             </View>
           </View>
         </View>

@@ -1,1127 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`theme settings in bento snapshot 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#f4f4f5",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      style={
-        {
-          "padding": 16,
-        }
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#0a0a0a",
-            "fontSize": 24,
-            "fontWeight": "600",
-          }
-        }
-      >
-        Theme
-      </Text>
-      <Text
-        style={
-          {
-            "color": "#71717a",
-            "fontSize": 14,
-            "marginBottom": 12,
-          }
-        }
-      >
-        Tap a card to switch instantly.
-      </Text>
-      <View
-        style={
-          {
-            "flexDirection": "row",
-            "flexWrap": "wrap",
-            "gap": 12,
-          }
-        }
-      >
-        <View
-          accessibilityLabel="Use Expyrico theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#0b0a17",
-                "borderColor": "rgba(255,255,255,0.12)",
-                "borderRadius": 20,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-expyrico"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#a855f7",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#a5f3fc",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#fafafa",
-                "fontSize": 16,
-                "fontWeight": "500",
-              }
-            }
-          >
-            Expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "rgba(250,250,250,0.7)",
-                "fontSize": 12,
-              }
-            }
-          >
-            Dark
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Bento Grid theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": true,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f4f4f5",
-                "borderColor": "#0a0a0a",
-                "borderRadius": 18,
-                "borderWidth": 2,
-              },
-            ]
-          }
-          testID="theme-card-bento"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#0a0a0a",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#0a0a0a",
-                "fontSize": 16,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Bento Grid
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#71717a",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Soft Clay theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#fff7f0",
-                "borderColor": "#fde0c2",
-                "borderRadius": 22,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-clay"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ea580c",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 10,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 16,
-                "fontWeight": "700",
-              }
-            }
-          >
-            Soft Clay
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#a47148",
-                "fontSize": 13,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Material You theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f0e8ff",
-                "borderColor": "#e0e0e0",
-                "borderRadius": 24,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-material"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#65558f",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#7c4dff",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#1d1b20",
-                "fontSize": 16,
-                "fontWeight": "500",
-              }
-            }
-          >
-            Material You
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#65558f",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-      </View>
-    </View>
-  </View>
-</View>
-`;
-
-exports[`theme settings in clay snapshot 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#fff7f0",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      style={
-        {
-          "padding": 16,
-        }
-      }
-    >
-      <Text
-        style={
-          {
-            "color": "#5b3a1f",
-            "fontSize": 26,
-            "fontWeight": "700",
-          }
-        }
-      >
-        Theme
-      </Text>
-      <Text
-        style={
-          {
-            "color": "#a47148",
-            "fontSize": 15,
-            "marginBottom": 12,
-          }
-        }
-      >
-        Tap a card to switch instantly.
-      </Text>
-      <View
-        style={
-          {
-            "flexDirection": "row",
-            "flexWrap": "wrap",
-            "gap": 12,
-          }
-        }
-      >
-        <View
-          accessibilityLabel="Use Expyrico theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#0b0a17",
-                "borderColor": "rgba(255,255,255,0.12)",
-                "borderRadius": 20,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-expyrico"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#a855f7",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#a5f3fc",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#fafafa",
-                "fontSize": 16,
-                "fontWeight": "500",
-              }
-            }
-          >
-            Expyrico
-          </Text>
-          <Text
-            style={
-              {
-                "color": "rgba(250,250,250,0.7)",
-                "fontSize": 12,
-              }
-            }
-          >
-            Dark
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Bento Grid theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f4f4f5",
-                "borderColor": "#e4e4e7",
-                "borderRadius": 18,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-bento"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#0a0a0a",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#0a0a0a",
-                "fontSize": 16,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Bento Grid
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#71717a",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Soft Clay theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": true,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#fff7f0",
-                "borderColor": "#ea580c",
-                "borderRadius": 22,
-                "borderWidth": 2,
-              },
-            ]
-          }
-          testID="theme-card-clay"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ea580c",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 10,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 16,
-                "fontWeight": "700",
-              }
-            }
-          >
-            Soft Clay
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#a47148",
-                "fontSize": 13,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Material You theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f0e8ff",
-                "borderColor": "#e0e0e0",
-                "borderRadius": 24,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-material"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#65558f",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#7c4dff",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#1d1b20",
-                "fontSize": 16,
-                "fontWeight": "500",
-              }
-            }
-          >
-            Material You
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#65558f",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-      </View>
-    </View>
-  </View>
-</View>
-`;
-
 exports[`theme settings in expyrico snapshot 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#0b0a17",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 1,
     }
@@ -1144,9 +28,9 @@ exports[`theme settings in expyrico snapshot 1`] = `
       <Text
         style={
           {
-            "color": "#fafafa",
-            "fontSize": 28,
-            "fontWeight": "400",
+            "color": "#2C2C28",
+            "fontSize": 24,
+            "fontWeight": "500",
           }
         }
       >
@@ -1155,13 +39,13 @@ exports[`theme settings in expyrico snapshot 1`] = `
       <Text
         style={
           {
-            "color": "rgba(250,250,250,0.7)",
+            "color": "#8C8C85",
             "fontSize": 14,
             "marginBottom": 12,
           }
         }
       >
-        Tap a card to switch instantly.
+        Use system to follow your device dark or light setting.
       </Text>
       <View
         style={
@@ -1173,7 +57,132 @@ exports[`theme settings in expyrico snapshot 1`] = `
         }
       >
         <View
-          accessibilityLabel="Use Expyrico theme"
+          accessibilityLabel="Use System theme"
+          accessibilityRole="radio"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "gap": 8,
+                "padding": 14,
+              },
+              {
+                "backgroundColor": "#FAFAF8",
+                "borderColor": "#F0F0ED",
+                "borderRadius": 22,
+                "borderWidth": 1,
+                "minHeight": 48,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="theme-card-system"
+        >
+          <View
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 6,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 10,
+                    "borderWidth": 1,
+                  },
+                ]
+              }
+            />
+          </View>
+          <Text
+            style={
+              {
+                "color": "#2C2C28",
+                "fontSize": 16,
+                "fontWeight": "500",
+              }
+            }
+          >
+            System
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#8C8C85",
+                "fontSize": 12,
+              }
+            }
+          >
+            Device light
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Use Light theme"
           accessibilityRole="radio"
           accessibilityState={
             {
@@ -1209,13 +218,15 @@ exports[`theme settings in expyrico snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
-                "backgroundColor": "#0b0a17",
-                "borderColor": "#a855f7",
-                "borderRadius": 20,
+                "backgroundColor": "#FAFAF8",
+                "borderColor": "#4BAE8A",
+                "borderRadius": 22,
                 "borderWidth": 2,
+                "flexBasis": 0,
+                "flexGrow": 1,
+                "minHeight": 48,
               },
             ]
           }
@@ -1237,8 +248,8 @@ exports[`theme settings in expyrico snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#a855f7",
-                    "borderRadius": 8,
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -1251,8 +262,8 @@ exports[`theme settings in expyrico snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#a5f3fc",
-                    "borderRadius": 8,
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -1265,9 +276,9 @@ exports[`theme settings in expyrico snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 8,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 10,
                     "borderWidth": 1,
                   },
                 ]
@@ -1277,395 +288,149 @@ exports[`theme settings in expyrico snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#fafafa",
+                "color": "#2C2C28",
                 "fontSize": 16,
                 "fontWeight": "500",
               }
             }
           >
-            Expyrico
+            Light
           </Text>
           <Text
             style={
               {
-                "color": "rgba(250,250,250,0.7)",
+                "color": "#8C8C85",
                 "fontSize": 12,
+              }
+            }
+          >
+            Light appearance
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Use Dark theme"
+          accessibilityRole="radio"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "gap": 8,
+                "padding": 14,
+              },
+              {
+                "backgroundColor": "#111512",
+                "borderColor": "#2D3A34",
+                "borderRadius": 22,
+                "borderWidth": 1,
+                "flexBasis": 0,
+                "flexGrow": 1,
+                "minHeight": 48,
+              },
+            ]
+          }
+          testID="theme-card-expyricoDark"
+        >
+          <View
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 6,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 10,
+                    "borderWidth": 1,
+                  },
+                ]
+              }
+            />
+          </View>
+          <Text
+            style={
+              {
+                "color": "#FAFAF8",
+                "fontSize": 16,
+                "fontWeight": "500",
               }
             }
           >
             Dark
           </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Bento Grid theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f4f4f5",
-                "borderColor": "#e4e4e7",
-                "borderRadius": 18,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-bento"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#0a0a0a",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
           <Text
             style={
               {
-                "color": "#0a0a0a",
-                "fontSize": 16,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Bento Grid
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#71717a",
+                "color": "#B7BDB7",
                 "fontSize": 12,
               }
             }
           >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Soft Clay theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#fff7f0",
-                "borderColor": "#fde0c2",
-                "borderRadius": 22,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-clay"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ea580c",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 10,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 16,
-                "fontWeight": "700",
-              }
-            }
-          >
-            Soft Clay
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#a47148",
-                "fontSize": 13,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Material You theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f0e8ff",
-                "borderColor": "#e0e0e0",
-                "borderRadius": 24,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-material"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#65558f",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#7c4dff",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#1d1b20",
-                "fontSize": 16,
-                "fontWeight": "500",
-              }
-            }
-          >
-            Material You
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#65558f",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
+            Dark appearance
           </Text>
         </View>
       </View>
@@ -1674,12 +439,12 @@ exports[`theme settings in expyrico snapshot 1`] = `
 </View>
 `;
 
-exports[`theme settings in material snapshot 1`] = `
+exports[`theme settings in expyricoDark snapshot 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f0e8ff",
+      "backgroundColor": "#111512",
       "flex": 1,
       "opacity": 0,
     }
@@ -1702,9 +467,9 @@ exports[`theme settings in material snapshot 1`] = `
       <Text
         style={
           {
-            "color": "#1d1b20",
-            "fontSize": 28,
-            "fontWeight": "400",
+            "color": "#FAFAF8",
+            "fontSize": 24,
+            "fontWeight": "500",
           }
         }
       >
@@ -1713,13 +478,13 @@ exports[`theme settings in material snapshot 1`] = `
       <Text
         style={
           {
-            "color": "#65558f",
+            "color": "#B7BDB7",
             "fontSize": 14,
             "marginBottom": 12,
           }
         }
       >
-        Tap a card to switch instantly.
+        Use system to follow your device dark or light setting.
       </Text>
       <View
         style={
@@ -1731,7 +496,7 @@ exports[`theme settings in material snapshot 1`] = `
         }
       >
         <View
-          accessibilityLabel="Use Expyrico theme"
+          accessibilityLabel="Use System theme"
           accessibilityRole="radio"
           accessibilityState={
             {
@@ -1767,13 +532,140 @@ exports[`theme settings in material snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
-                "backgroundColor": "#0b0a17",
-                "borderColor": "rgba(255,255,255,0.12)",
-                "borderRadius": 20,
+                "backgroundColor": "#111512",
+                "borderColor": "#2D3A34",
+                "borderRadius": 22,
                 "borderWidth": 1,
+                "minHeight": 48,
+                "width": "100%",
+              },
+            ]
+          }
+          testID="theme-card-system"
+        >
+          <View
+            style={
+              {
+                "flexDirection": "row",
+                "gap": 6,
+              }
+            }
+          >
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
+                  },
+                ]
+              }
+            />
+            <View
+              style={
+                [
+                  {
+                    "height": 22,
+                    "width": 22,
+                  },
+                  {
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 10,
+                    "borderWidth": 1,
+                  },
+                ]
+              }
+            />
+          </View>
+          <Text
+            style={
+              {
+                "color": "#FAFAF8",
+                "fontSize": 16,
+                "fontWeight": "500",
+              }
+            }
+          >
+            System
+          </Text>
+          <Text
+            style={
+              {
+                "color": "#B7BDB7",
+                "fontSize": 12,
+              }
+            }
+          >
+            Device dark
+          </Text>
+        </View>
+        <View
+          accessibilityLabel="Use Light theme"
+          accessibilityRole="radio"
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": false,
+            }
+          }
+          accessibilityValue={
+            {
+              "max": undefined,
+              "min": undefined,
+              "now": undefined,
+              "text": undefined,
+            }
+          }
+          accessible={true}
+          collapsable={false}
+          focusable={true}
+          onBlur={[Function]}
+          onClick={[Function]}
+          onFocus={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            [
+              {
+                "gap": 8,
+                "padding": 14,
+              },
+              {
+                "backgroundColor": "#FAFAF8",
+                "borderColor": "#F0F0ED",
+                "borderRadius": 22,
+                "borderWidth": 1,
+                "flexBasis": 0,
+                "flexGrow": 1,
+                "minHeight": 48,
               },
             ]
           }
@@ -1795,8 +687,8 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#a855f7",
-                    "borderRadius": 8,
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -1809,8 +701,8 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#a5f3fc",
-                    "borderRadius": 8,
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -1823,9 +715,9 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "rgba(255,255,255,0.06)",
-                    "borderColor": "rgba(255,255,255,0.12)",
-                    "borderRadius": 8,
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
+                    "borderRadius": 10,
                     "borderWidth": 1,
                   },
                 ]
@@ -1835,275 +727,27 @@ exports[`theme settings in material snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#fafafa",
+                "color": "#2C2C28",
                 "fontSize": 16,
                 "fontWeight": "500",
               }
             }
           >
-            Expyrico
+            Light
           </Text>
           <Text
             style={
               {
-                "color": "rgba(250,250,250,0.7)",
+                "color": "#8C8C85",
                 "fontSize": 12,
               }
             }
           >
-            Dark
+            Light appearance
           </Text>
         </View>
         <View
-          accessibilityLabel="Use Bento Grid theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#f4f4f5",
-                "borderColor": "#e4e4e7",
-                "borderRadius": 18,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-bento"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#0a0a0a",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 8,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e4e4e7",
-                    "borderRadius": 8,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#0a0a0a",
-                "fontSize": 16,
-                "fontWeight": "600",
-              }
-            }
-          >
-            Bento Grid
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#71717a",
-                "fontSize": 12,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Soft Clay theme"
-          accessibilityRole="radio"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": false,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "gap": 8,
-                "padding": 14,
-                "width": "47%",
-              },
-              {
-                "backgroundColor": "#fff7f0",
-                "borderColor": "#fde0c2",
-                "borderRadius": 22,
-                "borderWidth": 1,
-              },
-            ]
-          }
-          testID="theme-card-clay"
-        >
-          <View
-            style={
-              {
-                "flexDirection": "row",
-                "gap": 6,
-              }
-            }
-          >
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ea580c",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#fbbf24",
-                    "borderRadius": 10,
-                  },
-                ]
-              }
-            />
-            <View
-              style={
-                [
-                  {
-                    "height": 22,
-                    "width": 22,
-                  },
-                  {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#fde0c2",
-                    "borderRadius": 10,
-                    "borderWidth": 1,
-                  },
-                ]
-              }
-            />
-          </View>
-          <Text
-            style={
-              {
-                "color": "#5b3a1f",
-                "fontSize": 16,
-                "fontWeight": "700",
-              }
-            }
-          >
-            Soft Clay
-          </Text>
-          <Text
-            style={
-              {
-                "color": "#a47148",
-                "fontSize": 13,
-              }
-            }
-          >
-            Light
-          </Text>
-        </View>
-        <View
-          accessibilityLabel="Use Material You theme"
+          accessibilityLabel="Use Dark theme"
           accessibilityRole="radio"
           accessibilityState={
             {
@@ -2139,17 +783,19 @@ exports[`theme settings in material snapshot 1`] = `
               {
                 "gap": 8,
                 "padding": 14,
-                "width": "47%",
               },
               {
-                "backgroundColor": "#f0e8ff",
-                "borderColor": "#65558f",
-                "borderRadius": 24,
+                "backgroundColor": "#111512",
+                "borderColor": "#4BAE8A",
+                "borderRadius": 22,
                 "borderWidth": 2,
+                "flexBasis": 0,
+                "flexGrow": 1,
+                "minHeight": 48,
               },
             ]
           }
-          testID="theme-card-material"
+          testID="theme-card-expyricoDark"
         >
           <View
             style={
@@ -2167,8 +813,8 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#65558f",
-                    "borderRadius": 8,
+                    "backgroundColor": "#4BAE8A",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -2181,8 +827,8 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#7c4dff",
-                    "borderRadius": 8,
+                    "backgroundColor": "#F5A623",
+                    "borderRadius": 10,
                   },
                 ]
               }
@@ -2195,9 +841,9 @@ exports[`theme settings in material snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#ffffff",
-                    "borderColor": "#e0e0e0",
-                    "borderRadius": 8,
+                    "backgroundColor": "#191F1B",
+                    "borderColor": "#2D3A34",
+                    "borderRadius": 10,
                     "borderWidth": 1,
                   },
                 ]
@@ -2207,23 +853,23 @@ exports[`theme settings in material snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#1d1b20",
+                "color": "#FAFAF8",
                 "fontSize": 16,
                 "fontWeight": "500",
               }
             }
           >
-            Material You
+            Dark
           </Text>
           <Text
             style={
               {
-                "color": "#65558f",
+                "color": "#B7BDB7",
                 "fontSize": 12,
               }
             }
           >
-            Light
+            Dark appearance
           </Text>
         </View>
       </View>

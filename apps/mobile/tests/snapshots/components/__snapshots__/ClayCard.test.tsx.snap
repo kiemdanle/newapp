@@ -1,95 +1,11 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ClayCard renders in bento 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#f4f4f5",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      style={
-        {
-          "backgroundColor": "#ffffff",
-          "borderRadius": 14,
-          "padding": 16,
-          "shadowColor": "rgba(0,0,0,0.1)",
-          "shadowOffset": {
-            "height": 0,
-            "width": NaN,
-          },
-          "shadowOpacity": 1,
-          "shadowRadius": 0,
-        }
-      }
-    >
-      <Text>
-        Hello
-      </Text>
-    </View>
-  </View>
-</View>
-`;
-
-exports[`ClayCard renders in clay 1`] = `
-<View
-  collapsable={false}
-  style={
-    {
-      "backgroundColor": "#fff7f0",
-      "flex": 1,
-      "opacity": 0,
-    }
-  }
->
-  <View
-    style={
-      {
-        "flex": 1,
-      }
-    }
-  >
-    <View
-      style={
-        {
-          "backgroundColor": "#ffffff",
-          "borderRadius": 16,
-          "padding": 18,
-          "shadowColor": "rgba(58,42,32,0.12)",
-          "shadowOffset": {
-            "height": 8,
-            "width": 0,
-          },
-          "shadowOpacity": 1,
-          "shadowRadius": 16,
-        }
-      }
-    >
-      <Text>
-        Hello
-      </Text>
-    </View>
-  </View>
-</View>
-`;
-
 exports[`ClayCard renders in expyrico 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#0b0a17",
+      "backgroundColor": "#FAFAF8",
       "flex": 1,
       "opacity": 1,
     }
@@ -105,16 +21,16 @@ exports[`ClayCard renders in expyrico 1`] = `
     <View
       style={
         {
-          "backgroundColor": "rgba(255,255,255,0.06)",
-          "borderRadius": 14,
+          "backgroundColor": "#FAFAF8",
+          "borderRadius": 16,
           "padding": 18,
-          "shadowColor": "rgba(0,0,0,0.35)",
+          "shadowColor": "rgba(44,44,40,0.10)",
           "shadowOffset": {
-            "height": 8,
+            "height": 6,
             "width": 0,
           },
           "shadowOpacity": 1,
-          "shadowRadius": 24,
+          "shadowRadius": 16,
         }
       }
     >
@@ -126,12 +42,12 @@ exports[`ClayCard renders in expyrico 1`] = `
 </View>
 `;
 
-exports[`ClayCard renders in material 1`] = `
+exports[`ClayCard renders in expyricoDark 1`] = `
 <View
   collapsable={false}
   style={
     {
-      "backgroundColor": "#f0e8ff",
+      "backgroundColor": "#111512",
       "flex": 1,
       "opacity": 0,
     }
@@ -147,16 +63,16 @@ exports[`ClayCard renders in material 1`] = `
     <View
       style={
         {
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#191F1B",
           "borderRadius": 16,
-          "padding": 16,
-          "shadowColor": "rgba(0,0,0,0.1)",
+          "padding": 18,
+          "shadowColor": "rgba(0,0,0,0.34)",
           "shadowOffset": {
-            "height": 0,
-            "width": NaN,
+            "height": 8,
+            "width": 0,
           },
           "shadowOpacity": 1,
-          "shadowRadius": 0,
+          "shadowRadius": 20,
         }
       }
     >

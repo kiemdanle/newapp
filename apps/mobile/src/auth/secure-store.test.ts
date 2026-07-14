@@ -16,7 +16,7 @@ describe('secureStore', () => {
   it('clearAll wipes every known key', async () => {
     await secureStore.setAccessToken('a');
     await secureStore.setRefreshToken('b');
-    await secureStore.setThemePreference('clay');
+    await secureStore.setThemePreference('expyrico');
     await secureStore.clearAll();
     expect(await secureStore.getAccessToken()).toBeNull();
     expect(await secureStore.getRefreshToken()).toBeNull();
