@@ -2,20 +2,23 @@ import React, { createContext, useContext, useEffect, useMemo, useRef } from 're
 import { Animated, StyleSheet, useColorScheme, View } from 'react-native';
 import { themes, type Theme, type ThemeId } from '@expyrico/theme';
 import { useThemeStore } from './store';
+import { isThemePreference, type ThemePreference } from '../auth/secure-store';
 
 export const ThemeContext = createContext<Theme | null>(null);
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
   /** Optional initial theme id — applied to the store on first mount. */
-  initial?: ThemeId | 'system';
+  initial?: ThemePreference;
 }
 
 export function ThemeProvider({ children, initial }: ThemeProviderProps) {
   // Apply the initial prop exactly once on mount (before paint via layout effect would be ideal,
   // but useEffect is fine here because the store starts in a hydrated=false state).
   useEffect(() => {
-    if (initial) useThemeStore.setState({ themeId: initial, hydrated: true });
+    if (initial && isThemePreference(initial)) {
+      useThemeStore.setState({ themeId: initial, hydrated: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -59,6 +59,20 @@ describe('ThemeProvider', () => {
     await waitFor(() => {
       expect(getByTestId('probe').props.children.join('')).toBe('expyrico:Expyrico');
     });
+    expect(useThemeStore.getState().themeId).toBe('expyrico');
+  });
+
+  it('does not activate a legacy theme passed through the initial prop', async () => {
+    const legacyTheme = 'clay' as unknown as import('../auth/secure-store').ThemePreference;
+    const { getByTestId } = render(
+      <ThemeProvider initial={legacyTheme}>
+        <Probe />
+      </ThemeProvider>,
+    );
+    await waitFor(() => {
+      expect(getByTestId('probe').props.children.join('')).toBe('expyrico:Expyrico');
+    });
+    expect(useThemeStore.getState().themeId).toBe('system');
   });
 
   it('useThemeSwitcher.setTheme updates the store and themeId reflects the new id', async () => {

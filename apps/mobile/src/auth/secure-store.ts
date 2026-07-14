@@ -8,7 +8,7 @@ export type ThemePreference = 'system' | 'expyrico' | 'expyricoDark';
 
 const THEME_PREFERENCES: readonly ThemePreference[] = ['system', 'expyrico', 'expyricoDark'];
 
-function isThemePreference(v: string): v is ThemePreference {
+export function isThemePreference(v: string): v is ThemePreference {
   return (THEME_PREFERENCES as readonly string[]).includes(v);
 }
 
