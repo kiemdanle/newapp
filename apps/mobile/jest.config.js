@@ -21,6 +21,7 @@ module.exports = {
     '^expo-secure-store$': '<rootDir>/tests/mocks/expo-secure-store.ts',
     '^expo-router$': '<rootDir>/tests/mocks/expo-router.ts',
     '^expo-constants$': '<rootDir>/tests/mocks/expo-constants.ts',
+    '^expo-splash-screen$': '<rootDir>/tests/mocks/expo-splash-screen.ts',
   },
   testMatch: ['**/*.test.ts', '**/*.test.tsx'],
   // jest-expo's default transformIgnorePatterns assumes a flat node_modules. pnpm

@@ -17,6 +17,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Linking from 'expo-linking';
+import * as SplashScreen from 'expo-splash-screen';
 import { createQueryClient } from '../src/api/query-client';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../src/theme/store';
@@ -26,6 +27,8 @@ import { capturePendingReferralCode } from '../src/referral/pendingReferralStore
 import { startSyncTriggers, stopSyncTriggers } from '../src/db/triggers';
 
 const queryClient = createQueryClient();
+
+void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [bootError, setBootError] = useState<string | null>(null);
@@ -38,6 +41,12 @@ export default function RootLayout() {
     wireApiClient();
     Promise.all([initThemeStore(), hydrateSession()]).catch((e) => setBootError(String(e)));
   }, []);
+
+  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
+
+  useEffect(() => {
+    if (splashReady) void SplashScreen.hideAsync();
+  }, [splashReady]);
 
   // Sync only runs while authenticated — starting it unauthenticated would fire
   // /records/sync with no token. Start on sign-in, stop on sign-out.
@@ -53,7 +62,7 @@ export default function RootLayout() {
   // container never mounted and AuthGate's router.replace failed with
   // "Attempted to navigate before mounting the Root Layout component". Render
   // Slot always and overlay a loading indicator until hydration completes.
-  const booting = bootError || !themeHydrated || !sessionHydrated;
+  const booting = !splashReady;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -72,6 +81,20 @@ export default function RootLayout() {
                 ]}
               >
                 <ActivityIndicator />
+              </View>
+            ) : bootError ? (
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8', padding: 24 },
+                ]}
+              >
+                <Text style={{ color: '#2C2C28', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
+                  Unable to start Expyrico
+                </Text>
+                <Text style={{ color: '#8C8C85', marginTop: 8, textAlign: 'center' }}>
+                  Please close and reopen the app.
+                </Text>
               </View>
             ) : null}
           </ThemeProvider>
