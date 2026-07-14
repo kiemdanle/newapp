@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../../../src/components/Screen';
 import { Button } from '../../../src/components/Button';
 import { RecordList } from '../../../src/features/records/RecordList';
@@ -14,6 +15,7 @@ import { Logo } from '../../../src/components/Logo';
 export default function HomeTab() {
   const theme = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const records = useActiveRecords();
   const groups = groupRecords(records);
   const totalUrgent = groups.expired.length + groups.today.length + groups.thisWeek.length;
@@ -50,7 +52,7 @@ export default function HomeTab() {
       <Screen scroll={false} padded={false}>
         <RecordList header={header} empty={empty} />
       </Screen>
-      <View testID="home-scan-action" style={styles.scanAction}>
+      <View testID="home-scan-action" style={[styles.scanAction, { bottom: insets.bottom + 88 }]}>
         <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => router.push('/scan')} />
       </View>
     </View>
@@ -70,5 +72,5 @@ const styles = StyleSheet.create({
   emptyEyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1.2, marginTop: 2 },
   emptyTitle: { fontSize: 24, fontWeight: '700' },
   emptyBody: { fontSize: 14, lineHeight: 20, maxWidth: 280, textAlign: 'center' },
-  scanAction: { position: 'absolute', bottom: 94, left: 24, right: 24 },
+  scanAction: { position: 'absolute', left: 24, right: 24 },
 });

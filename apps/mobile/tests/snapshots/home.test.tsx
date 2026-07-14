@@ -1,5 +1,13 @@
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import Home from '../../app/(app)/(tabs)/home';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+jest.mock('react-native-safe-area-context', () => ({
+  ...jest.requireActual('react-native-safe-area-context'),
+  useSafeAreaInsets: jest.fn(() => ({ top: 0, right: 0, bottom: 0, left: 0 })),
+}));
+
+const mockUseSafeAreaInsets = useSafeAreaInsets as jest.Mock;
 
 describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
   it('snapshot', () => {
@@ -19,5 +27,18 @@ describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
     const screen = renderWithTheme(<Home />, theme);
 
     expect(screen.getByTestId('pantry-record-list').props.scrollEnabled).toBe(true);
+  });
+
+  it('keeps the scan action above the tab bar at the default safe-area inset', () => {
+    const screen = renderWithTheme(<Home />, theme);
+
+    expect(screen.getByTestId('home-scan-action').props.style[1].bottom).toBe(88);
+  });
+
+  it('adds bottom safe-area clearance for gesture navigation', () => {
+    mockUseSafeAreaInsets.mockReturnValueOnce({ top: 0, right: 0, bottom: 34, left: 0 });
+    const screen = renderWithTheme(<Home />, theme);
+
+    expect(screen.getByTestId('home-scan-action').props.style[1].bottom).toBe(122);
   });
 });

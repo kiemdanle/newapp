@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../src/theme/useTheme';
@@ -15,9 +15,15 @@ const TAB_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: st
   profile: { icon: 'person', label: 'You' },
 };
 
+export function isCompactTabLayout(width: number) {
+  return width < 390;
+}
+
 function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const compact = isCompactTabLayout(width);
 
   return (
     <View style={[styles.wrapper, { bottom: 16 + Math.max(insets.bottom, 0) }]} pointerEvents="box-none">
@@ -61,6 +67,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               onPress={onPress}
               style={({ pressed }) => [
                 styles.tab,
+                compact && styles.tabCompact,
                 {
                   backgroundColor: isFocused ? theme.colors.primaryLight : 'transparent',
                   opacity: pressed ? 0.85 : 1,
@@ -73,7 +80,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                 color={isFocused ? theme.colors.primaryDark : theme.colors.textMuted}
                 style={{ marginBottom: 1 }}
               />
-              {isFocused && (
+              {isFocused && !compact && (
                 <Text style={[styles.label, { color: theme.colors.primaryDark }]} numberOfLines={1}>
                   {meta.label}
                 </Text>
@@ -111,6 +118,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 999,
     minHeight: 48,
+  },
+  tabCompact: {
+    gap: 0,
+    paddingHorizontal: 0,
   },
   label: {
     fontSize: 12,

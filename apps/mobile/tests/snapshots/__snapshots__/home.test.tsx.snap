@@ -530,12 +530,16 @@ exports[`home in expyrico snapshot 1`] = `
       </RNCSafeAreaView>
       <View
         style={
-          {
-            "bottom": 94,
-            "left": 24,
-            "position": "absolute",
-            "right": 24,
-          }
+          [
+            {
+              "left": 24,
+              "position": "absolute",
+              "right": 24,
+            },
+            {
+              "bottom": 88,
+            },
+          ]
         }
         testID="home-scan-action"
       >
@@ -1162,12 +1166,16 @@ exports[`home in expyricoDark snapshot 1`] = `
       </RNCSafeAreaView>
       <View
         style={
-          {
-            "bottom": 94,
-            "left": 24,
-            "position": "absolute",
-            "right": 24,
-          }
+          [
+            {
+              "left": 24,
+              "position": "absolute",
+              "right": 24,
+            },
+            {
+              "bottom": 88,
+            },
+          ]
         }
         testID="home-scan-action"
       >
