@@ -14,4 +14,10 @@ describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
     expect(screen.getByTestId('home-scan-action')).toBeTruthy();
     expect(screen.getAllByLabelText('Scan pantry items')).toHaveLength(1);
   });
+
+  it('keeps the pantry list scrollable', () => {
+    const screen = renderWithTheme(<Home />, theme);
+
+    expect(screen.getByTestId('pantry-record-list').props.scrollEnabled).toBe(true);
+  });
 });

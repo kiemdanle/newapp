@@ -34,10 +34,11 @@ export function RecordList({ header, empty }: { header?: React.ReactElement; emp
 
   return (
     <SectionList
+      testID="pantry-record-list"
       sections={sections}
+      scrollEnabled
       renderItem={renderItem}
       keyExtractor={keyExtractor}
-      scrollEnabled={false}
       stickySectionHeadersEnabled={false}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}

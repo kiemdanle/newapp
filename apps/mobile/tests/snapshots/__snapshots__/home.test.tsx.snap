@@ -241,9 +241,10 @@ exports[`home in expyrico snapshot 1`] = `
             onScrollBeginDrag={[Function]}
             onScrollEndDrag={[Function]}
             renderItem={[Function]}
-            scrollEnabled={false}
+            scrollEnabled={true}
             scrollEventThrottle={0.0001}
             stickyHeaderIndices={[]}
+            testID="pantry-record-list"
           >
             <View>
               <View
@@ -872,9 +873,10 @@ exports[`home in expyricoDark snapshot 1`] = `
             onScrollBeginDrag={[Function]}
             onScrollEndDrag={[Function]}
             renderItem={[Function]}
-            scrollEnabled={false}
+            scrollEnabled={true}
             scrollEventThrottle={0.0001}
             stickyHeaderIndices={[]}
+            testID="pantry-record-list"
           >
             <View>
               <View
