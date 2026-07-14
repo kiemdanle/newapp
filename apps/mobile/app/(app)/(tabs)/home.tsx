@@ -19,54 +19,46 @@ export default function HomeTab() {
   const totalUrgent = groups.expired.length + groups.today.length + groups.thisWeek.length;
   const isEmpty = records.length === 0;
 
+  const header = (
+    <View style={styles.headerContent}>
+      <View style={styles.header}>
+        <View style={styles.brandRow}>
+          <Logo size={28} />
+          <View>
+            <Text style={[styles.greeting, { color: theme.colors.text }]}>Your pantry</Text>
+            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what needs you first.</Text>
+          </View>
+        </View>
+        {totalUrgent > 0 ? <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}><Text style={[styles.countText, { color: theme.colors.primaryDark }]}>{totalUrgent} need attention</Text></View> : null}
+      </View>
+      <ScopeToggle />
+      {!isEmpty ? <UseNextHero groups={groups} /> : null}
+    </View>
+  );
+
+  const empty = (
+    <View style={[styles.emptyCard, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryLight, borderRadius: theme.radii.md }]}><Ionicons name="basket-outline" size={28} color={theme.colors.primaryDark} /></View>
+      <Text style={[styles.emptyEyebrow, { color: theme.colors.primaryDark }]}>START FRESH</Text>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Start your pantry</Text>
+      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Scan the first item on your shelf and we’ll help you use it on time.</Text>
+    </View>
+  );
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <Screen>
-        <View style={styles.header}>
-          <View style={styles.brandRow}>
-            <Logo size={28} />
-            <View>
-              <Text style={[styles.greeting, { color: theme.colors.text }]}>Your pantry</Text>
-              <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what needs you first.</Text>
-            </View>
-          </View>
-          {totalUrgent > 0 ? (
-            <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}>
-              <Text style={[styles.countText, { color: theme.colors.primaryDark }]}>{totalUrgent} need attention</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <ScopeToggle />
-
-        {isEmpty ? (
-          <View style={[styles.emptyCard, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
-            <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryLight, borderRadius: theme.radii.md }]}>
-              <Ionicons name="basket-outline" size={28} color={theme.colors.primaryDark} />
-            </View>
-            <Text style={[styles.emptyEyebrow, { color: theme.colors.primaryDark }]}>START FRESH</Text>
-            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Start your pantry</Text>
-            <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Scan the first item on your shelf and we’ll help you use it on time.</Text>
-            <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => router.push('/scan')} />
-          </View>
-        ) : (
-          <>
-            <UseNextHero groups={groups} />
-            <RecordList />
-          </>
-        )}
+      <Screen scroll={false} padded={false}>
+        <RecordList header={header} empty={empty} />
       </Screen>
-
-      {!isEmpty ? (
-        <View style={styles.scanAction}>
-          <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => router.push('/scan')} />
-        </View>
-      ) : null}
+      <View testID="home-scan-action" style={styles.scanAction}>
+        <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => router.push('/scan')} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  headerContent: { gap: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   brandRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   greeting: { fontSize: 20, fontWeight: '700' },

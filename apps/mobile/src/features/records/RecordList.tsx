@@ -17,7 +17,7 @@ const RecordRow = React.memo(function RecordRow({ record, onPress }: { record: L
   return <RecordCard record={record} onPress={() => onPress(record.id)} />;
 });
 
-export function RecordList() {
+export function RecordList({ header, empty }: { header?: React.ReactElement; empty?: React.ReactElement }) {
   const records = useActiveRecords();
   const router = useRouter();
   const theme = useTheme();
@@ -32,8 +32,6 @@ export function RecordList() {
   const renderItem = useCallback(({ item }: { item: LocalRecord }) => <RecordRow record={item} onPress={openRecord} />, [openRecord]);
   const keyExtractor = useCallback((item: LocalRecord) => item.id, []);
 
-  if (sections.length === 0) return null;
-
   return (
     <SectionList
       sections={sections}
@@ -41,7 +39,9 @@ export function RecordList() {
       keyExtractor={keyExtractor}
       scrollEnabled={false}
       stickySectionHeadersEnabled={false}
-      contentContainerStyle={{ gap: theme.spacing.md }}
+      ListHeaderComponent={header}
+      ListEmptyComponent={empty}
+      contentContainerStyle={{ gap: theme.spacing.md, padding: theme.spacing.xl, paddingBottom: 116, flexGrow: sections.length === 0 ? 1 : undefined }}
       renderSectionHeader={({ section }) => (
         <View style={{ marginTop: theme.spacing.sm }}>
           <Text testID={`record-section-${section.key}`} style={{ color: theme.colors.textMuted, textTransform: 'uppercase', fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: theme.spacing.sm }}>

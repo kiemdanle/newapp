@@ -11,5 +11,7 @@ describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
 
     expect(screen.getByLabelText('Scan pantry items')).toBeTruthy();
     expect(screen.getByText('Start your pantry')).toBeTruthy();
+    expect(screen.getByTestId('home-scan-action')).toBeTruthy();
+    expect(screen.getAllByLabelText('Scan pantry items')).toHaveLength(1);
   });
 });
