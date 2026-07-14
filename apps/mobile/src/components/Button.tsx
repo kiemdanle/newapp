@@ -114,7 +114,6 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   row: {
-    height: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
