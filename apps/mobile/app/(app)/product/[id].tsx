@@ -45,10 +45,11 @@ export default function ProductDetail() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       {data.imageUrl ? (
-        <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 200 }} accessibilityIgnoresInvertColors />
+        <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 220 }} accessibilityIgnoresInvertColors />
       ) : null}
-      <View style={{ padding: theme.spacing.lg }}>
-        <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleLarge.fontSize, fontWeight: theme.typeRamp.titleLarge.fontWeight as any }}>
+      <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
+        <Text style={{ color: theme.colors.primaryDark, fontSize: theme.typeRamp.labelMedium.fontSize, fontWeight: theme.typeRamp.labelMedium.fontWeight as any, letterSpacing: 1 }}>PRODUCT</Text>
+        <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any }}>
           {data.name}
         </Text>
         {data.brand ? <Text style={{ color: theme.colors.textMuted }}>{data.brand}</Text> : null}
@@ -62,10 +63,12 @@ export default function ProductDetail() {
             marginTop: theme.spacing.lg,
             padding: theme.spacing.md,
             borderRadius: theme.radii.md,
-            backgroundColor: theme.colors.bgElevated,
+            backgroundColor: theme.colors.bgGlass,
+            borderWidth: 1,
+            borderColor: theme.colors.border,
           }}
         >
-          <Text style={{ color: theme.colors.textMuted }}>Reviews available in M2</Text>
+          <Text style={{ color: theme.colors.textMuted }}>Save it now, then add an expiry date to keep it on your radar.</Text>
         </View>
       </View>
       <AddRecordForm

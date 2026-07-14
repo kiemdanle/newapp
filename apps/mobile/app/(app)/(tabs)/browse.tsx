@@ -9,15 +9,16 @@ export default function Browse() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Browse</Text>
+        <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: theme.colors.primaryDark }}>DISCOVER</Text>
+        <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Browse pantry ideas</Text>
         <Text style={{ color: theme.colors.textMuted, lineHeight: 20 }}>
-          Search product notes, expiry patterns, and pantry staples when catalog data is ready.
+          Product lookup and pantry inspiration will live here.
         </Text>
       </View>
       <EmptyState
         icon="search"
-        title="Catalog coming next"
-        body="For now, scan from Home to add items. Browse will become the product catalog and lookup hub."
+        title="Your shelf, made simpler"
+        body="Scan an item from Home to start building a product library you can trust."
       />
     </Screen>
   );

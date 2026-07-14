@@ -6,8 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../src/theme/useTheme';
 
-type TabKey = 'home' | 'giveaways' | 'deals' | 'browse' | 'reviews' | 'profile';
-
 const TAB_META: Record<string, { icon: keyof typeof Ionicons.glyphMap; label: string }> = {
   home: { icon: 'home', label: 'Home' },
   giveaways: { icon: 'gift', label: 'Give' },
@@ -30,7 +28,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
             backgroundColor: theme.colors.bgElevated,
             borderColor: theme.colors.border,
             borderRadius: theme.radii.pill,
-            shadowColor: '#2C2C28',
+            shadowColor: theme.colors.neutralDark,
             shadowOpacity: 0.10,
             shadowRadius: 16,
             shadowOffset: { width: 0, height: 4 },
@@ -64,7 +62,7 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               style={({ pressed }) => [
                 styles.tab,
                 {
-                  backgroundColor: isFocused ? theme.colors.primary : theme.colors.bgElevated,
+                  backgroundColor: isFocused ? theme.colors.primaryLight : 'transparent',
                   opacity: pressed ? 0.85 : 1,
                 },
               ]}
@@ -72,11 +70,11 @@ function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
               <Ionicons
                 name={meta.icon}
                 size={20}
-                color={isFocused ? theme.colors.primaryFg : theme.colors.textMuted}
+                color={isFocused ? theme.colors.primaryDark : theme.colors.textMuted}
                 style={{ marginBottom: 1 }}
               />
               {isFocused && (
-                <Text style={[styles.label, { color: theme.colors.primaryFg }]} numberOfLines={1}>
+                <Text style={[styles.label, { color: theme.colors.primaryDark }]} numberOfLines={1}>
                   {meta.label}
                 </Text>
               )}
@@ -108,10 +106,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingHorizontal: 12,
+    minWidth: 48,
+    paddingHorizontal: 8,
     paddingVertical: 10,
     borderRadius: 999,
-    minHeight: 44,
+    minHeight: 48,
   },
   label: {
     fontSize: 12,

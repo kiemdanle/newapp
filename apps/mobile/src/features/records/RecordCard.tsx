@@ -14,10 +14,10 @@ export function RecordCard({ record, onPress, addedByName }: Props) {
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   const statusBg = status === 'amber'
-    ? '#FEEFC3'
+    ? theme.colors.accentLight
     : status === 'red'
-      ? 'rgba(224,68,42,0.10)'
-      : 'rgba(75,174,138,0.12)';
+      ? theme.colors.bgGlass
+      : theme.colors.primaryLight;
 
   return (
     <Pressable
@@ -32,7 +32,7 @@ export function RecordCard({ record, onPress, addedByName }: Props) {
           backgroundColor: theme.colors.bgElevated,
           overflow: 'hidden',
           opacity: pressed ? 0.88 : 1,
-          shadowColor: '#2C2C28',
+          shadowColor: theme.colors.neutralDark,
           shadowOpacity: 0.05,
           shadowRadius: 8,
           shadowOffset: { width: 0, height: 2 },

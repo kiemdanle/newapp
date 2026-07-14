@@ -73,11 +73,19 @@ exports[`home in expyrico snapshot 1`] = `
                   "alignItems": "center",
                   "flexDirection": "row",
                   "justifyContent": "space-between",
-                  "marginBottom": 4,
+                  "marginBottom": 2,
                 }
               }
             >
-              <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
                 <View
                   style={
                     [
@@ -87,7 +95,7 @@ exports[`home in expyrico snapshot 1`] = `
                         "gap": 10,
                       },
                       {
-                        "minHeight": 34,
+                        "minHeight": 28,
                       },
                     ]
                   }
@@ -95,10 +103,10 @@ exports[`home in expyrico snapshot 1`] = `
                   <RNSVGSvgView
                     accessibilityLabel="Expyrico"
                     align="xMidYMid"
-                    bbHeight={34}
-                    bbWidth={34}
+                    bbHeight={28}
+                    bbWidth={28}
                     focusable={false}
-                    height={34}
+                    height={28}
                     meetOrSlice={0}
                     minX={0}
                     minY={0}
@@ -110,14 +118,14 @@ exports[`home in expyrico snapshot 1`] = `
                         },
                         {
                           "flex": 0,
-                          "height": 34,
-                          "width": 34,
+                          "height": 28,
+                          "width": 28,
                         },
                       ]
                     }
                     vbHeight={865}
                     vbWidth={865}
-                    width={34}
+                    width={28}
                   >
                     <RNSVGGroup
                       fill={
@@ -204,43 +212,39 @@ exports[`home in expyrico snapshot 1`] = `
                       </RNSVGGroup>
                     </RNSVGGroup>
                   </RNSVGSvgView>
-                  <View
+                </View>
+                <View>
+                  <Text
                     style={
-                      {
-                        "alignItems": "baseline",
-                        "flexDirection": "row",
-                      }
-                    }
-                  >
-                    <Text
-                      style={
+                      [
+                        {
+                          "fontSize": 20,
+                          "fontWeight": "700",
+                        },
                         {
                           "color": "#2C2C28",
-                          "fontSize": 19.040000000000003,
-                          "fontWeight": "600",
-                          "lineHeight": 22.44,
-                        }
-                      }
-                    >
-                      expyrico
-                    </Text>
-                  </View>
+                        },
+                      ]
+                    }
+                  >
+                    Your pantry
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "fontSize": 13,
+                          "marginTop": 2,
+                        },
+                        {
+                          "color": "#8C8C85",
+                        },
+                      ]
+                    }
+                  >
+                    Use what needs you first.
+                  </Text>
                 </View>
-                <Text
-                  style={
-                    [
-                      {
-                        "fontSize": 13,
-                        "marginTop": 4,
-                      },
-                      {
-                        "color": "#8C8C85",
-                      },
-                    ]
-                  }
-                >
-                  Use the oldest item first.
-                </Text>
               </View>
             </View>
             <View
@@ -249,14 +253,13 @@ exports[`home in expyrico snapshot 1`] = `
                   {
                     "alignItems": "center",
                     "borderWidth": 1,
-                    "gap": 12,
-                    "minHeight": 44,
+                    "gap": 10,
                     "padding": 24,
                   },
                   {
                     "backgroundColor": "#D6F0E6",
                     "borderColor": "#F0F0ED",
-                    "borderRadius": 30,
+                    "borderRadius": 22,
                   },
                 ]
               }
@@ -266,13 +269,13 @@ exports[`home in expyrico snapshot 1`] = `
                   [
                     {
                       "alignItems": "center",
-                      "height": 60,
+                      "height": 56,
                       "justifyContent": "center",
-                      "width": 60,
+                      "width": 56,
                     },
                     {
-                      "backgroundColor": "#FAFAF8",
-                      "borderRadius": 22,
+                      "backgroundColor": "#D6F0E6",
+                      "borderRadius": 16,
                     },
                   ]
                 }
@@ -281,9 +284,25 @@ exports[`home in expyrico snapshot 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 20,
+                      "fontSize": 11,
                       "fontWeight": "700",
-                      "textAlign": "center",
+                      "letterSpacing": 1.2,
+                      "marginTop": 2,
+                    },
+                    {
+                      "color": "#3A8F6F",
+                    },
+                  ]
+                }
+              >
+                START FRESH
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 24,
+                      "fontWeight": "700",
                     },
                     {
                       "color": "#2C2C28",
@@ -291,7 +310,7 @@ exports[`home in expyrico snapshot 1`] = `
                   ]
                 }
               >
-                Your pantry is empty
+                Start your pantry
               </Text>
               <Text
                 style={
@@ -299,7 +318,7 @@ exports[`home in expyrico snapshot 1`] = `
                     {
                       "fontSize": 14,
                       "lineHeight": 20,
-                      "maxWidth": 270,
+                      "maxWidth": 280,
                       "textAlign": "center",
                     },
                     {
@@ -308,10 +327,10 @@ exports[`home in expyrico snapshot 1`] = `
                   ]
                 }
               >
-                Scan a receipt, barcode, or label to build your first expiry list.
+                Scan the first item on your shelf and we’ll help you use it on time.
               </Text>
               <View
-                accessibilityLabel="Scan your first item"
+                accessibilityLabel="Scan pantry items"
                 accessibilityRole="button"
                 accessibilityState={
                   {
@@ -393,7 +412,7 @@ exports[`home in expyrico snapshot 1`] = `
                       ]
                     }
                   >
-                    Scan your first item
+                    Scan an item
                   </Text>
                 </View>
               </View>
@@ -479,11 +498,19 @@ exports[`home in expyricoDark snapshot 1`] = `
                   "alignItems": "center",
                   "flexDirection": "row",
                   "justifyContent": "space-between",
-                  "marginBottom": 4,
+                  "marginBottom": 2,
                 }
               }
             >
-              <View>
+              <View
+                style={
+                  {
+                    "alignItems": "center",
+                    "flexDirection": "row",
+                    "gap": 10,
+                  }
+                }
+              >
                 <View
                   style={
                     [
@@ -493,7 +520,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                         "gap": 10,
                       },
                       {
-                        "minHeight": 34,
+                        "minHeight": 28,
                       },
                     ]
                   }
@@ -501,10 +528,10 @@ exports[`home in expyricoDark snapshot 1`] = `
                   <RNSVGSvgView
                     accessibilityLabel="Expyrico"
                     align="xMidYMid"
-                    bbHeight={34}
-                    bbWidth={34}
+                    bbHeight={28}
+                    bbWidth={28}
                     focusable={false}
-                    height={34}
+                    height={28}
                     meetOrSlice={0}
                     minX={0}
                     minY={0}
@@ -516,14 +543,14 @@ exports[`home in expyricoDark snapshot 1`] = `
                         },
                         {
                           "flex": 0,
-                          "height": 34,
-                          "width": 34,
+                          "height": 28,
+                          "width": 28,
                         },
                       ]
                     }
                     vbHeight={865}
                     vbWidth={865}
-                    width={34}
+                    width={28}
                   >
                     <RNSVGGroup
                       fill={
@@ -610,43 +637,39 @@ exports[`home in expyricoDark snapshot 1`] = `
                       </RNSVGGroup>
                     </RNSVGGroup>
                   </RNSVGSvgView>
-                  <View
+                </View>
+                <View>
+                  <Text
                     style={
-                      {
-                        "alignItems": "baseline",
-                        "flexDirection": "row",
-                      }
-                    }
-                  >
-                    <Text
-                      style={
+                      [
+                        {
+                          "fontSize": 20,
+                          "fontWeight": "700",
+                        },
                         {
                           "color": "#FAFAF8",
-                          "fontSize": 19.040000000000003,
-                          "fontWeight": "600",
-                          "lineHeight": 22.44,
-                        }
-                      }
-                    >
-                      expyrico
-                    </Text>
-                  </View>
+                        },
+                      ]
+                    }
+                  >
+                    Your pantry
+                  </Text>
+                  <Text
+                    style={
+                      [
+                        {
+                          "fontSize": 13,
+                          "marginTop": 2,
+                        },
+                        {
+                          "color": "#B7BDB7",
+                        },
+                      ]
+                    }
+                  >
+                    Use what needs you first.
+                  </Text>
                 </View>
-                <Text
-                  style={
-                    [
-                      {
-                        "fontSize": 13,
-                        "marginTop": 4,
-                      },
-                      {
-                        "color": "#B7BDB7",
-                      },
-                    ]
-                  }
-                >
-                  Use the oldest item first.
-                </Text>
               </View>
             </View>
             <View
@@ -655,14 +678,13 @@ exports[`home in expyricoDark snapshot 1`] = `
                   {
                     "alignItems": "center",
                     "borderWidth": 1,
-                    "gap": 12,
-                    "minHeight": 44,
+                    "gap": 10,
                     "padding": 24,
                   },
                   {
                     "backgroundColor": "#1F342C",
                     "borderColor": "#2D3A34",
-                    "borderRadius": 30,
+                    "borderRadius": 22,
                   },
                 ]
               }
@@ -672,13 +694,13 @@ exports[`home in expyricoDark snapshot 1`] = `
                   [
                     {
                       "alignItems": "center",
-                      "height": 60,
+                      "height": 56,
                       "justifyContent": "center",
-                      "width": 60,
+                      "width": 56,
                     },
                     {
-                      "backgroundColor": "#191F1B",
-                      "borderRadius": 22,
+                      "backgroundColor": "#203B31",
+                      "borderRadius": 16,
                     },
                   ]
                 }
@@ -687,9 +709,25 @@ exports[`home in expyricoDark snapshot 1`] = `
                 style={
                   [
                     {
-                      "fontSize": 20,
+                      "fontSize": 11,
                       "fontWeight": "700",
-                      "textAlign": "center",
+                      "letterSpacing": 1.2,
+                      "marginTop": 2,
+                    },
+                    {
+                      "color": "#D6F0E6",
+                    },
+                  ]
+                }
+              >
+                START FRESH
+              </Text>
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 24,
+                      "fontWeight": "700",
                     },
                     {
                       "color": "#FAFAF8",
@@ -697,7 +735,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                   ]
                 }
               >
-                Your pantry is empty
+                Start your pantry
               </Text>
               <Text
                 style={
@@ -705,7 +743,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                     {
                       "fontSize": 14,
                       "lineHeight": 20,
-                      "maxWidth": 270,
+                      "maxWidth": 280,
                       "textAlign": "center",
                     },
                     {
@@ -714,10 +752,10 @@ exports[`home in expyricoDark snapshot 1`] = `
                   ]
                 }
               >
-                Scan a receipt, barcode, or label to build your first expiry list.
+                Scan the first item on your shelf and we’ll help you use it on time.
               </Text>
               <View
-                accessibilityLabel="Scan your first item"
+                accessibilityLabel="Scan pantry items"
                 accessibilityRole="button"
                 accessibilityState={
                   {
@@ -799,7 +837,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                       ]
                     }
                   >
-                    Scan your first item
+                    Scan an item
                   </Text>
                 </View>
               </View>

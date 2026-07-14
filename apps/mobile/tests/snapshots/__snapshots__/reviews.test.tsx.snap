@@ -70,13 +70,25 @@ exports[`reviews in expyrico snapshot 1`] = `
             <Text
               style={
                 {
+                  "color": "#3A8F6F",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2,
+                }
+              }
+            >
+              COMMUNITY
+            </Text>
+            <Text
+              style={
+                {
                   "color": "#2C2C28",
                   "fontSize": 28,
                   "fontWeight": "700",
                 }
               }
             >
-              Reviews
+              Helpful reviews
             </Text>
             <Text
               style={
@@ -86,7 +98,7 @@ exports[`reviews in expyrico snapshot 1`] = `
                 }
               }
             >
-              Product quality signals will live here once community reviews are enabled.
+              Keep the products you love close and share what is worth buying again.
             </Text>
           </View>
           <View
@@ -137,7 +149,7 @@ exports[`reviews in expyrico snapshot 1`] = `
                 ]
               }
             >
-              Reviews coming next
+              Your product notes will grow here
             </Text>
             <Text
               style={
@@ -154,7 +166,7 @@ exports[`reviews in expyrico snapshot 1`] = `
                 ]
               }
             >
-              After product pages launch, this tab will show helpful votes and trusted product notes.
+              When you review products, this is where your trusted picks and helpful community notes appear.
             </Text>
           </View>
         </View>
@@ -234,13 +246,25 @@ exports[`reviews in expyricoDark snapshot 1`] = `
             <Text
               style={
                 {
+                  "color": "#D6F0E6",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2,
+                }
+              }
+            >
+              COMMUNITY
+            </Text>
+            <Text
+              style={
+                {
                   "color": "#FAFAF8",
                   "fontSize": 28,
                   "fontWeight": "700",
                 }
               }
             >
-              Reviews
+              Helpful reviews
             </Text>
             <Text
               style={
@@ -250,7 +274,7 @@ exports[`reviews in expyricoDark snapshot 1`] = `
                 }
               }
             >
-              Product quality signals will live here once community reviews are enabled.
+              Keep the products you love close and share what is worth buying again.
             </Text>
           </View>
           <View
@@ -301,7 +325,7 @@ exports[`reviews in expyricoDark snapshot 1`] = `
                 ]
               }
             >
-              Reviews coming next
+              Your product notes will grow here
             </Text>
             <Text
               style={
@@ -318,7 +342,7 @@ exports[`reviews in expyricoDark snapshot 1`] = `
                 ]
               }
             >
-              After product pages launch, this tab will show helpful votes and trusted product notes.
+              When you review products, this is where your trusted picks and helpful community notes appear.
             </Text>
           </View>
         </View>

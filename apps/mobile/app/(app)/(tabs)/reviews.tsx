@@ -9,15 +9,16 @@ export default function Reviews() {
   return (
     <Screen>
       <View style={styles.header}>
-        <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Reviews</Text>
+        <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1.2, color: theme.colors.primaryDark }}>COMMUNITY</Text>
+        <Text style={{ fontSize: 28, fontWeight: '700', color: theme.colors.text }}>Helpful reviews</Text>
         <Text style={{ color: theme.colors.textMuted, lineHeight: 20 }}>
-          Product quality signals will live here once community reviews are enabled.
+          Keep the products you love close and share what is worth buying again.
         </Text>
       </View>
       <EmptyState
         icon="chatbubbles"
-        title="Reviews coming next"
-        body="After product pages launch, this tab will show helpful votes and trusted product notes."
+        title="Your product notes will grow here"
+        body="When you review products, this is where your trusted picks and helpful community notes appear."
       />
     </Screen>
   );

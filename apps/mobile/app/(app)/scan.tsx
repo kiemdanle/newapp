@@ -6,6 +6,8 @@ import { useCameraPermission } from '../../src/features/scan/usePermission';
 import { PrePromptModal } from '../../src/features/scan/PrePromptModal';
 import { useProductLookup } from '../../src/api/products';
 import { useTheme } from '../../src/theme/useTheme';
+import { Screen } from '../../src/components/Screen';
+import { Button } from '../../src/components/Button';
 
 export default function ScanScreen() {
   const theme = useTheme();
@@ -61,16 +63,13 @@ export default function ScanScreen() {
   }
   if (state === 'denied') {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: theme.colors.bg,
-        }}
-      >
-        <Text style={{ color: theme.colors.text }}>Camera permission denied.</Text>
-      </View>
+      <Screen>
+        <View style={{ alignItems: 'center', backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg, borderWidth: 1, gap: theme.spacing.md, marginTop: theme.spacing.xxl, padding: theme.spacing.xl }}>
+          <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as never }}>Camera access is off</Text>
+          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Allow camera access in your phone settings to scan a barcode or expiry label.</Text>
+          <Button label="Go back" variant="outline" icon="arrow-back" onPress={() => router.back()} />
+        </View>
+      </Screen>
     );
   }
   return (
@@ -78,7 +77,7 @@ export default function ScanScreen() {
       <ScanCamera onScan={handleScan} />
       {lookup.isPending ? (
         <View style={{ position: 'absolute', top: 40, alignSelf: 'center' }}>
-          <ActivityIndicator color={theme.colors.text} />
+          <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : null}
     </View>
