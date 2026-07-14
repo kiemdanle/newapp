@@ -695,7 +695,6 @@ exports[`welcome in expyrico snapshot 1`] = `
                     "alignItems": "center",
                     "flexDirection": "row",
                     "gap": 8,
-                    "height": "100%",
                     "justifyContent": "center",
                   }
                 }
@@ -788,7 +787,6 @@ exports[`welcome in expyrico snapshot 1`] = `
                     "alignItems": "center",
                     "flexDirection": "row",
                     "gap": 8,
-                    "height": "100%",
                     "justifyContent": "center",
                   }
                 }
@@ -1516,7 +1514,6 @@ exports[`welcome in expyricoDark snapshot 1`] = `
                     "alignItems": "center",
                     "flexDirection": "row",
                     "gap": 8,
-                    "height": "100%",
                     "justifyContent": "center",
                   }
                 }
@@ -1609,7 +1606,6 @@ exports[`welcome in expyricoDark snapshot 1`] = `
                     "alignItems": "center",
                     "flexDirection": "row",
                     "gap": 8,
-                    "height": "100%",
                     "justifyContent": "center",
                   }
                 }

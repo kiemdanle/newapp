@@ -23,3 +23,16 @@ it('keeps the welcome lockup within a narrow 320dp viewport', () => {
   expect(screen.getByTestId('welcome-sign-in')).toBeTruthy();
   jest.restoreAllMocks();
 });
+
+it('keeps both welcome actions as normal 52dp controls without a full-height child', () => {
+  const screen = renderWithTheme(<Welcome />, 'expyrico');
+
+  const signUp = screen.getByTestId('welcome-sign-up');
+  const signIn = screen.getByTestId('welcome-sign-in');
+
+  expect(signUp.props.style[0]).toEqual(expect.objectContaining({ height: 52, minHeight: 52 }));
+  expect(signIn.props.style[0]).toEqual(expect.objectContaining({ height: 52, minHeight: 52 }));
+  expect(signUp.children[0].props.style).not.toEqual(expect.objectContaining({ height: '100%' }));
+  expect(signIn.children[0].props.style).not.toEqual(expect.objectContaining({ height: '100%' }));
+  expect(signIn).toBeTruthy();
+});
