@@ -70,13 +70,25 @@ exports[`browse in expyrico snapshot 1`] = `
             <Text
               style={
                 {
+                  "color": "#3A8F6F",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2,
+                }
+              }
+            >
+              DISCOVER
+            </Text>
+            <Text
+              style={
+                {
                   "color": "#2C2C28",
                   "fontSize": 28,
                   "fontWeight": "700",
                 }
               }
             >
-              Browse
+              Browse pantry ideas
             </Text>
             <Text
               style={
@@ -86,7 +98,7 @@ exports[`browse in expyrico snapshot 1`] = `
                 }
               }
             >
-              Search product notes, expiry patterns, and pantry staples when catalog data is ready.
+              Product lookup and pantry inspiration will live here.
             </Text>
           </View>
           <View
@@ -137,7 +149,7 @@ exports[`browse in expyrico snapshot 1`] = `
                 ]
               }
             >
-              Catalog coming next
+              Your shelf, made simpler
             </Text>
             <Text
               style={
@@ -154,7 +166,7 @@ exports[`browse in expyrico snapshot 1`] = `
                 ]
               }
             >
-              For now, scan from Home to add items. Browse will become the product catalog and lookup hub.
+              Scan an item from Home to start building a product library you can trust.
             </Text>
           </View>
         </View>
@@ -234,13 +246,25 @@ exports[`browse in expyricoDark snapshot 1`] = `
             <Text
               style={
                 {
+                  "color": "#D6F0E6",
+                  "fontSize": 11,
+                  "fontWeight": "700",
+                  "letterSpacing": 1.2,
+                }
+              }
+            >
+              DISCOVER
+            </Text>
+            <Text
+              style={
+                {
                   "color": "#FAFAF8",
                   "fontSize": 28,
                   "fontWeight": "700",
                 }
               }
             >
-              Browse
+              Browse pantry ideas
             </Text>
             <Text
               style={
@@ -250,7 +274,7 @@ exports[`browse in expyricoDark snapshot 1`] = `
                 }
               }
             >
-              Search product notes, expiry patterns, and pantry staples when catalog data is ready.
+              Product lookup and pantry inspiration will live here.
             </Text>
           </View>
           <View
@@ -301,7 +325,7 @@ exports[`browse in expyricoDark snapshot 1`] = `
                 ]
               }
             >
-              Catalog coming next
+              Your shelf, made simpler
             </Text>
             <Text
               style={
@@ -318,7 +342,7 @@ exports[`browse in expyricoDark snapshot 1`] = `
                 ]
               }
             >
-              For now, scan from Home to add items. Browse will become the product catalog and lookup hub.
+              Scan an item from Home to start building a product library you can trust.
             </Text>
           </View>
         </View>

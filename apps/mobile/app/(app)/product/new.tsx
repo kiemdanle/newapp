@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Text, TextInput, Pressable, ScrollView } from 'react-native';
+import { Text, TextInput, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCreateProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
 import { ensurePushTokenRegistered } from '../../../src/features/push/registerPushToken';
 import { useTheme } from '../../../src/theme/useTheme';
+import { Button } from '../../../src/components/Button';
 
 export default function NewProductScreen() {
   const theme = useTheme();
@@ -63,7 +64,8 @@ export default function NewProductScreen() {
         backgroundColor: theme.colors.bg,
       }}
     >
-      <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>New product</Text>
+      <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any }}>Add a product</Text>
+      <Text style={{ color: theme.colors.textMuted }}>Give it a clear name so your pantry stays easy to scan.</Text>
       {params.barcode ? (
         <Text style={{ color: theme.colors.textMuted }}>Barcode: {params.barcode}</Text>
       ) : null}
@@ -73,21 +75,7 @@ export default function NewProductScreen() {
       <Text style={{ color: theme.colors.textMuted }}>Brand (optional)</Text>
       <TextInput accessibilityLabel="Text input field" testID="new-product-brand" style={input} value={brand} onChangeText={setBrand} />
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
-      <Pressable accessibilityRole="button"
-        testID="new-product-create"
-        onPress={submit}
-        disabled={createProduct.isPending}
-        style={{
-          backgroundColor: theme.colors.primary,
-          padding: theme.spacing.lg,
-          borderRadius: theme.radii.md,
-          alignItems: 'center',
-        }}
-      >
-        <Text style={{ color: theme.colors.primaryFg, fontWeight: theme.typeRamp.labelLarge.fontWeight as any }}>
-          {createProduct.isPending ? 'Creating…' : 'Continue'}
-        </Text>
-      </Pressable>
+      <Button testID="new-product-create" label="Continue" icon="arrow-forward" onPress={submit} loading={createProduct.isPending} />
     </ScrollView>
   );
 }

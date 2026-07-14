@@ -1,122 +1,55 @@
-import { Text, View } from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { SectionList, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useActiveRecords } from '../../api/records';
+import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { groupRecords } from './groupRecords';
 import { RecordCard } from './RecordCard';
 import { useTheme } from '../../theme/useTheme';
-import { BentoTile } from '../../components/BentoTile';
-import { ClayCard } from '../../components/ClayCard';
-import { MD3ListRow } from '../../components/MD3ListRow';
-import { EmptyState } from '../../components/EmptyState';
 
 const SECTION_TITLES: Record<keyof ReturnType<typeof groupRecords>, string> = {
   expired: 'Expired',
   today: 'Expires today',
-  thisWeek: 'Expires this week',
+  thisWeek: 'Use this week',
   later: 'Later',
 };
 
-function ThemeRecordItem({
-  record,
-  onPress,
-}: {
-  record: ReturnType<typeof useActiveRecords>[number];
-  onPress: () => void;
-}) {
-  const theme = useTheme();
+const RecordRow = React.memo(function RecordRow({ record, onPress }: { record: LocalRecord; onPress: (id: string) => void }) {
+  return <RecordCard record={record} onPress={() => onPress(record.id)} />;
+});
 
-  switch (theme.id) {
-    case 'bento':
-      return (
-        <BentoTile
-          size="md"
-          title={record.customName ?? 'Item'}
-          subtitle={`Expires ${record.expiryDate}`}
-          onPress={onPress}
-        />
-      );
-    case 'clay':
-      return (
-        <ClayCard>
-          <RecordCard record={record} onPress={onPress} />
-        </ClayCard>
-      );
-    case 'material':
-      return (
-        <MD3ListRow
-          title={record.customName ?? 'Item'}
-          subtitle={`Expires ${record.expiryDate} · ${record.quantity} ${record.unit}`}
-          onPress={onPress}
-        />
-      );
-    default:
-      return <RecordCard record={record} onPress={onPress} />;
-  }
-}
-
-export function RecordList() {
+export function RecordList({ header, empty }: { header?: React.ReactElement; empty?: React.ReactElement }) {
   const records = useActiveRecords();
   const router = useRouter();
   const theme = useTheme();
   const groups = groupRecords(records);
-  const sections: Array<keyof typeof SECTION_TITLES> = ['expired', 'today', 'thisWeek', 'later'];
-  const hasAny = sections.some((k) => groups[k].length > 0);
-
-  if (!hasAny) {
-    return (
-      <EmptyState
-        icon="basket"
-        title="Your pantry is empty"
-        body="Scan a receipt, barcode, or label to build your first expiry list."
-        actionLabel="Scan your first item"
-        actionIcon="scan"
-        onAction={() => router.push('/scan')}
-      />
-    );
-  }
+  const sections = useMemo(
+    () => (Object.keys(SECTION_TITLES) as Array<keyof typeof SECTION_TITLES>)
+      .filter((key) => groups[key].length > 0)
+      .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] })),
+    [groups],
+  );
+  const openRecord = useCallback((id: string) => router.push(`/record/${id}`), [router]);
+  const renderItem = useCallback(({ item }: { item: LocalRecord }) => <RecordRow record={item} onPress={openRecord} />, [openRecord]);
+  const keyExtractor = useCallback((item: LocalRecord) => item.id, []);
 
   return (
-    <View style={{ gap: 18 }}>
-      {sections.map((key) => {
-        const items = groups[key];
-        if (items.length === 0) return null;
-        return (
-          <View key={key}>
-            <Text
-              testID={`record-section-${key}`}
-              style={{
-                color: theme.colors.textMuted,
-                textTransform: 'uppercase',
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 0.8,
-                marginBottom: 10,
-              }}
-            >
-              {SECTION_TITLES[key]} · {items.length}
-            </Text>
-            {theme.id === 'bento' ? (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-                {items.map((r) => (
-                  <ThemeRecordItem
-                    key={r.id}
-                    record={r}
-                    onPress={() => router.push(`/record/${r.id}`)}
-                  />
-                ))}
-              </View>
-            ) : (
-              items.map((r) => (
-                <ThemeRecordItem
-                  key={r.id}
-                  record={r}
-                  onPress={() => router.push(`/record/${r.id}`)}
-                />
-              ))
-            )}
-          </View>
-        );
-      })}
-    </View>
+    <SectionList
+      testID="pantry-record-list"
+      sections={sections}
+      scrollEnabled
+      renderItem={renderItem}
+      keyExtractor={keyExtractor}
+      stickySectionHeadersEnabled={false}
+      ListHeaderComponent={header}
+      ListEmptyComponent={empty}
+      contentContainerStyle={{ gap: theme.spacing.md, padding: theme.spacing.xl, paddingBottom: 116, flexGrow: sections.length === 0 ? 1 : undefined }}
+      renderSectionHeader={({ section }) => (
+        <View style={{ marginTop: theme.spacing.sm }}>
+          <Text testID={`record-section-${section.key}`} style={{ color: theme.colors.textMuted, textTransform: 'uppercase', fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: theme.spacing.sm }}>
+            {section.title} · {section.data.length}
+          </Text>
+        </View>
+      )}
+    />
   );
 }

@@ -78,8 +78,8 @@ export default function ProductReview() {
             accessibilityState={{ selected: star <= rating }}
             onPress={() => setRating(star)}
             style={{
-              width: 44,
-              height: 44,
+              width: 48,
+              height: 48,
               borderRadius: theme.radii.sm,
               backgroundColor:
                 star <= rating ? theme.colors.accent : theme.colors.bgElevated,
