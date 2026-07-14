@@ -224,8 +224,9 @@ exports[`theme settings in expyrico snapshot 1`] = `
                 "borderColor": "#4BAE8A",
                 "borderRadius": 22,
                 "borderWidth": 2,
+                "flexBasis": 0,
+                "flexGrow": 1,
                 "minHeight": 48,
-                "width": "48%",
               },
             ]
           }
@@ -349,8 +350,9 @@ exports[`theme settings in expyrico snapshot 1`] = `
                 "borderColor": "#2D3A34",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "flexBasis": 0,
+                "flexGrow": 1,
                 "minHeight": 48,
-                "width": "48%",
               },
             ]
           }
@@ -661,8 +663,9 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
                 "borderColor": "#F0F0ED",
                 "borderRadius": 22,
                 "borderWidth": 1,
+                "flexBasis": 0,
+                "flexGrow": 1,
                 "minHeight": 48,
-                "width": "48%",
               },
             ]
           }
@@ -786,8 +789,9 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
                 "borderColor": "#4BAE8A",
                 "borderRadius": 22,
                 "borderWidth": 2,
+                "flexBasis": 0,
+                "flexGrow": 1,
                 "minHeight": 48,
-                "width": "48%",
               },
             ]
           }

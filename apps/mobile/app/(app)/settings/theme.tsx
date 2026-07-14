@@ -76,7 +76,7 @@ function ThemePreviewCard({
       style={[
         styles.card,
         {
-          width: fullWidth ? '100%' : '48%',
+          ...(fullWidth ? { width: '100%' } : { flexBasis: 0, flexGrow: 1 }),
           minHeight: 48,
           backgroundColor: theme.colors.bg,
           borderColor: selected ? theme.colors.primary : theme.colors.border,

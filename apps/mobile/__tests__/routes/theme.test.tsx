@@ -28,15 +28,17 @@ describe('<ThemeSettings />', () => {
     expect(queryByTestId('theme-card-material')).toBeNull();
   });
 
-  it('lays out System above balanced Light and Dark cards with accessible targets', () => {
+  it('lays out System above a non-wrapping flexible Light and Dark pair', () => {
     const { getByTestId } = render(wrap(<ThemeSettings />));
     const systemStyle = StyleSheet.flatten(getByTestId('theme-card-system').props.style);
     const lightStyle = StyleSheet.flatten(getByTestId('theme-card-expyrico').props.style);
     const darkStyle = StyleSheet.flatten(getByTestId('theme-card-expyricoDark').props.style);
 
     expect(systemStyle).toMatchObject({ width: '100%', minHeight: 48 });
-    expect(lightStyle).toMatchObject({ width: '48%', minHeight: 48 });
-    expect(darkStyle).toMatchObject({ width: '48%', minHeight: 48 });
+    expect(lightStyle).toMatchObject({ flexBasis: 0, flexGrow: 1, minHeight: 48 });
+    expect(darkStyle).toMatchObject({ flexBasis: 0, flexGrow: 1, minHeight: 48 });
+    expect(lightStyle.width).toBeUndefined();
+    expect(darkStyle.width).toBeUndefined();
   });
 
   it('tapping a card sets the active theme in the store', async () => {
