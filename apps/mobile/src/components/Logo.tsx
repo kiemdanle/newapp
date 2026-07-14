@@ -7,16 +7,15 @@ const GAUGE_GREEN =
   'M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z';
 const GAUGE_ORANGE =
   'M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z';
-const GAUGE_RED =
+const GAUGE_HONEY =
   'M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z';
 const GAUGE_NEEDLE =
   'M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z';
 
-const LOGO_COLORS = {
-  green: '#53A585',
-  orange: '#F29D19',
-  red: '#D23E23',
-  needle: '#2B2E27',
+export const LOGO_COLORS = {
+  sage: '#4BAE8A',
+  honey: '#F5A623',
+  needle: '#2C2C28',
 };
 
 type LogoProps = {
@@ -70,9 +69,9 @@ function LogoMark({ size, needleColor }: { size: number; needleColor: string }) 
   return (
     <Svg accessibilityLabel="Expyrico" width={size} height={size} viewBox="0 0 865 865">
       <G transform="translate(0 190)">
-        <Path d={GAUGE_GREEN} fill={LOGO_COLORS.green} />
-        <Path d={GAUGE_ORANGE} fill={LOGO_COLORS.orange} />
-        <Path d={GAUGE_RED} fill={LOGO_COLORS.red} />
+        <Path d={GAUGE_GREEN} fill={LOGO_COLORS.sage} />
+        <Path d={GAUGE_ORANGE} fill={LOGO_COLORS.honey} />
+        <Path d={GAUGE_HONEY} fill={LOGO_COLORS.honey} />
         <Path d={GAUGE_NEEDLE} fill={needleColor} />
       </G>
     </Svg>
@@ -86,9 +85,9 @@ export function LogoLockup({ width = 260 }: LogoLockupProps) {
 
   return (
     <Svg accessibilityLabel="Expyrico" width={width} height={height} viewBox="0 0 865 812">
-      <Path d={GAUGE_GREEN} fill={LOGO_COLORS.green} />
-      <Path d={GAUGE_ORANGE} fill={LOGO_COLORS.orange} />
-      <Path d={GAUGE_RED} fill={LOGO_COLORS.red} />
+      <Path d={GAUGE_GREEN} fill={LOGO_COLORS.sage} />
+      <Path d={GAUGE_ORANGE} fill={LOGO_COLORS.honey} />
+      <Path d={GAUGE_HONEY} fill={LOGO_COLORS.honey} />
       <Path d={GAUGE_NEEDLE} fill={wordmarkColor} />
       <G transform="matrix(2.040536,0,0,2.040536,-1266.402099,-2481.763232)">
         {WORDMARK_PATHS.map((path) => (
