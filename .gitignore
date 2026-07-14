@@ -42,6 +42,7 @@ api/prisma/migrations/dev/
 
 # Brainstorming artifacts
 .superpowers/
+.worktrees/
 
 # Mobile
 apps/mobile/ios/
