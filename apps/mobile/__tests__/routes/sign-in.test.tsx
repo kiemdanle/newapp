@@ -89,4 +89,10 @@ describe('<SignIn />', () => {
     expect(useSessionStore.getState().accessToken).toBeNull();
     expect(router.replace).not.toHaveBeenCalledWith('/(app)/(tabs)/home');
   });
+
+  it('keeps the Google-branded sign-in action', () => {
+    const { getByTestId, getByLabelText } = render(wrap(<SignIn />));
+    expect(getByTestId('sign-in-google')).toBeTruthy();
+    expect(getByLabelText('Google')).toBeTruthy();
+  });
 });

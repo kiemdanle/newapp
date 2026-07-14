@@ -8,6 +8,8 @@ export interface ButtonProps {
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   icon?: keyof typeof Ionicons.glyphMap;
+  /** Branded leading mark for providers such as Google. */
+  leading?: React.ReactNode;
   loading?: boolean;
   disabled?: boolean;
   testID?: string;
@@ -74,13 +76,13 @@ export function Button(props: ButtonProps) {
           <ActivityIndicator color={fg} />
         ) : (
           <>
-            {props.icon ? (
+            {props.leading ?? (props.icon ? (
               <Ionicons
                 name={props.icon}
                 size={18}
                 color={isTertiary ? theme.colors.primary : fg}
               />
-            ) : null}
+            ) : null)}
             <Text
               style={[
                 styles.label,

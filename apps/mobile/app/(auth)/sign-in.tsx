@@ -6,6 +6,7 @@ import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
 import { ErrorText } from '../../src/components/ErrorText';
 import { Button } from '../../src/components/Button';
+import { GoogleLogo } from '../../src/components/GoogleLogo';
 import { AuthHeader } from '../../src/components/AuthHeader';
 import { fieldErrors } from '../../src/lib/validate';
 import { authEndpoints } from '../../src/api/endpoints';
@@ -166,6 +167,7 @@ export default function SignIn() {
         testID="sign-in-google"
         label="Continue with Google"
         variant="outline"
+        leading={<GoogleLogo />}
         onPress={onGoogle}
       />
       {appleAvailable && Platform.OS === 'ios' ? (
@@ -187,63 +189,9 @@ export default function SignIn() {
     </Screen>
   );
 }
-
-
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-    marginTop: 0,
-  },
-  logoAccent: {
-    width: 58,
-    height: 4,
-    borderRadius: 999,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  logoAccentPrimary: {
-    flex: 2,
-  },
-  logoAccentSecondary: {
-    flex: 1,
-  },
-  title: { textAlign: 'center' },
-  subtitle: { fontSize: 14, lineHeight: 20, textAlign: 'center', paddingHorizontal: 12 },
   form: { gap: 14 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { fontSize: 12, fontWeight: '500' },
-  actionFrame: {
-    height: 52,
-    width: '100%',
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-  actionPress: {
-    height: 52,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 22,
-  },
-  actionPressed: {
-    opacity: 0.82,
-  },
-  actionRow: {
-    height: '100%',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  actionLabel: {
-    textAlign: 'center',
-    includeFontPadding: false,
-  },
 });
