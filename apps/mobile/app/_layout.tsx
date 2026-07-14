@@ -28,7 +28,9 @@ import { startSyncTriggers, stopSyncTriggers } from '../src/db/triggers';
 
 const queryClient = createQueryClient();
 
-void SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch((error) => {
+  console.warn('Failed to keep splash screen visible', error);
+});
 
 export default function RootLayout() {
   const [bootError, setBootError] = useState<string | null>(null);
@@ -45,7 +47,11 @@ export default function RootLayout() {
   const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
 
   useEffect(() => {
-    if (splashReady) void SplashScreen.hideAsync();
+    if (splashReady) {
+      void SplashScreen.hideAsync().catch((error) => {
+        console.warn('Failed to hide splash screen', error);
+      });
+    }
   }, [splashReady]);
 
   // Sync only runs while authenticated — starting it unauthenticated would fire
