@@ -65,4 +65,14 @@ describe('<VerifyResetCode />', () => {
     const request = JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string);
     expect(request).toEqual({ email: 'a@b.co' });
   });
+
+  it('uses the shared segmented OTP input with a visible expiry notice and icon-bearing recovery controls', () => {
+    __setSearchParams({ email: 'a@b.co' });
+    const { getByLabelText, getByText, getByTestId } = render(wrap(<VerifyResetCode />));
+
+    expect(getByLabelText('Reset code')).toBeTruthy();
+    expect(getByText('Code expires in 10 minutes')).toBeTruthy();
+    expect(getByTestId('verify-reset-resend').findByProps({ name: 'refresh-outline' })).toBeTruthy();
+    expect(getByTestId('verify-reset-start-over')).toBeTruthy();
+  });
 });

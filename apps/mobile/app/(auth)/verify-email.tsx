@@ -148,6 +148,7 @@ export default function VerifyEmail() {
         disabled={resendDisabled}
         loading={resending}
         variant="outline"
+        icon="refresh-outline"
         label={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'}
       />
 

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Platform, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
-import { TextField } from '../../src/components/TextField';
+import { OtpInput } from '../../src/components/OtpInput';
 import { authEndpoints } from '../../src/api/endpoints';
 import { isApiError } from '../../src/api/errors';
 import { useTheme } from '../../src/theme/useTheme';
@@ -80,21 +81,20 @@ export default function VerifyResetCode() {
   return (
     <Screen backFallback="/(auth)/forgot-password">
       <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit reset code we sent you." email={email || undefined} />
-      <TextField
+      <OtpInput
         label="Reset code"
         value={code}
         onChangeText={onCodeChange}
-        keyboardType="number-pad"
-        textContentType="oneTimeCode"
-        autoComplete={Platform.select({
-          ios: 'one-time-code',
-          android: 'sms-otp',
-          default: 'one-time-code',
-        })}
-        maxLength={6}
         autoFocus
-        placeholder="123456"
+        editable={!loading}
+        error={!!error}
       />
+      <View style={styles.pillRow}>
+        <View style={[styles.pill, { backgroundColor: theme.colors.accentLight }]}>
+          <Ionicons name="time-outline" size={15} color={theme.colors.accent} />
+          <Text style={[styles.pillText, { color: theme.colors.text }]}>Code expires in 10 minutes</Text>
+        </View>
+      </View>
       {message ? <Text style={{ color: theme.colors.success }}>{message}</Text> : null}
       {error ? <ErrorText>{error}</ErrorText> : null}
       {failed ? (
@@ -115,12 +115,20 @@ export default function VerifyResetCode() {
         variant="outline"
         onPress={onResend}
         loading={resending}
+        icon="refresh-outline"
       />
       <Button
-        label="Back to sign in"
+        testID="verify-reset-start-over"
+        label="Use a different email"
         variant="ghost"
-        onPress={() => router.replace('/(auth)/sign-in')}
+        onPress={() => router.replace('/(auth)/forgot-password')}
       />
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  pillRow: { alignItems: 'center' },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 999 },
+  pillText: { fontSize: 13, fontWeight: '600', includeFontPadding: false },
+});
