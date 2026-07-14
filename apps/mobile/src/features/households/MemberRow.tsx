@@ -24,6 +24,7 @@ export function MemberRow({ member, isCurrentUser, isOwner, canRemove, onRemove 
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: theme.spacing.sm,
+        minHeight: 60,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
       }}
@@ -44,6 +45,8 @@ export function MemberRow({ member, isCurrentUser, isOwner, canRemove, onRemove 
             paddingVertical: theme.spacing.xs,
             borderRadius: theme.radii.sm,
             backgroundColor: theme.colors.danger,
+            minHeight: 48,
+            justifyContent: 'center',
           }}
         >
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Remove</Text>

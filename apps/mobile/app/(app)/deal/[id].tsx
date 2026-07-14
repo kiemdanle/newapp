@@ -1,10 +1,13 @@
 // apps/mobile/app/(app)/deal/[id].tsx
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useDeal, useDeleteDeal } from '@/api/deals';
 import { useOptimisticDealVote } from '@/features/deals/useOptimisticDealVote';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
+import { Screen } from '@/components/Screen';
+import { Card } from '@/components/Card';
+import { Button } from '@/components/Button';
 
 export default function DealDetailScreen() {
   const theme = useTheme();
@@ -37,7 +40,7 @@ export default function DealDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: deal.product?.name ?? 'Deal' }} />
-      <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }}>
+      <Screen>
         <Text style={{ fontSize: 24, fontWeight: '700', color: theme.colors.text }}>
           {deal.product?.name ?? 'Product'}
         </Text>
@@ -53,17 +56,17 @@ export default function DealDetailScreen() {
           <Text style={{ color: theme.colors.text, marginTop: 12 }}>{deal.note}</Text>
         ) : null}
 
-        <View style={{ marginTop: 16, padding: 12, backgroundColor: theme.colors.bgElevated, borderRadius: theme.radii.md }}>
+        <Card style={{ marginTop: 4 }}>
           <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
             Posted by {deal.author?.firstName ?? 'User'}
           </Text>
           <Text style={{ color: theme.colors.textMuted, marginTop: 2 }}>
             ▲ {deal.upvoteCount} · ▼ {deal.downvoteCount}
           </Text>
-        </View>
+        </Card>
 
         {!isOwn && (
-          <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="upvote"
@@ -72,7 +75,8 @@ export default function DealDetailScreen() {
                 padding: 12,
                 borderRadius: theme.radii.md,
                 backgroundColor: deal.myVote === 1 ? theme.colors.success : theme.colors.bgElevated,
-                minHeight: 44,
+                minHeight: 52,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: theme.colors.text, fontWeight: '600' }}>
@@ -87,7 +91,8 @@ export default function DealDetailScreen() {
                 padding: 12,
                 borderRadius: theme.radii.md,
                 backgroundColor: deal.myVote === -1 ? theme.colors.danger + '18' : theme.colors.bgElevated,
-                minHeight: 44,
+                minHeight: 52,
+                justifyContent: 'center',
               }}
             >
               <Text style={{ color: deal.myVote === -1 ? theme.colors.danger : theme.colors.text, fontWeight: '600' }}>
@@ -98,24 +103,12 @@ export default function DealDetailScreen() {
         )}
 
         {isOwn && (
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push({ pathname: '/deal/new', params: { editId: deal.id } })}
-              style={{ padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.bgElevated, minHeight: 44 }}
-            >
-              <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Edit</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleDelete}
-              style={{ padding: 12, borderRadius: theme.radii.md, backgroundColor: theme.colors.danger + '18', minHeight: 44 }}
-            >
-              <Text style={{ color: theme.colors.danger, fontWeight: '600' }}>Delete</Text>
-            </Pressable>
+          <View style={{ gap: 10 }}>
+            <Button label="Edit deal" variant="outline" icon="create-outline" onPress={() => router.push({ pathname: '/deal/new', params: { editId: deal.id } })} />
+            <Button label="Delete deal" variant="danger" icon="trash-outline" onPress={handleDelete} />
           </View>
         )}
-      </ScrollView>
+      </Screen>
     </>
   );
 }

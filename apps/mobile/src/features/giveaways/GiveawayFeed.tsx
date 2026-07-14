@@ -29,7 +29,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
           accessibilityRole="button"
           onPress={onNew}
           style={{
-            minHeight: 44,
+            minHeight: 52,
             justifyContent: 'center',
             paddingVertical: 8,
             paddingHorizontal: 16,

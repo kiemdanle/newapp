@@ -42,7 +42,7 @@ export default function MyGiveawaysScreen() {
                 backgroundColor: tab === t ? theme.colors.primary : theme.colors.bgElevated,
                 borderColor: tab === t ? theme.colors.primary : theme.colors.border,
                 borderWidth: 1,
-                minHeight: 44,
+                minHeight: 52,
                 justifyContent: 'center',
               }}
             >

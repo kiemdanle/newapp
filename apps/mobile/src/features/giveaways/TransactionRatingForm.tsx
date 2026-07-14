@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useRateTransaction } from '../../api/giveaways';
 import { useTheme } from '../../theme/useTheme';
+import { Button } from '../../components/Button';
 
 interface Props {
   giveawayId: string;
@@ -48,8 +49,10 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
               borderWidth: 2,
               borderColor: stars && s <= stars ? theme.colors.accent : theme.colors.border,
               backgroundColor: stars && s <= stars ? theme.colors.warning + '24' : theme.colors.bgElevated,
-              minHeight: 44,
-              minWidth: 44,
+              minHeight: 52,
+              minWidth: 52,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <Text style={{ fontSize: 20 }}>★</Text>
@@ -81,23 +84,7 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
         </Text>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        disabled={!stars || pending}
-        onPress={submit}
-        style={{
-          padding: 14,
-          borderRadius: theme.radii.pill,
-          backgroundColor: stars && !pending ? theme.colors.accent : theme.colors.border,
-          alignItems: 'center',
-          minHeight: 48,
-          justifyContent: 'center',
-        }}
-      >
-        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-          {pending ? 'Submitting…' : 'Submit rating'}
-        </Text>
-      </Pressable>
+      <Button label={pending ? 'Submitting…' : 'Submit rating'} loading={pending} disabled={!stars} onPress={submit} />
     </View>
   );
 }

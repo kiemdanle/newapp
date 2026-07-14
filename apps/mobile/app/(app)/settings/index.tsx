@@ -1,60 +1,58 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Screen } from '../../../src/components/Screen';
 import { useTheme } from '../../../src/theme/useTheme';
-import { MD3ListRow } from '../../../src/components/MD3ListRow';
 
 interface Row {
   key: string;
   label: string;
   subtitle: string;
   href: Href;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
-const ROWS: Row[] = [
+const ACCOUNT_ROWS: Row[] = [
   {
     key: 'invite',
     label: 'Invite friends',
     subtitle: 'Share your invite code',
     href: '/(app)/invite',
+    icon: 'people-outline',
   },
+  {
+    key: 'household',
+    label: 'Household',
+    subtitle: 'Share a pantry with your people',
+    href: '/(app)/household',
+    icon: 'home-outline',
+  },
+];
+
+const PREFERENCE_ROWS: Row[] = [
   {
     key: 'theme',
-    label: 'Theme',
-    subtitle: 'Pick one of four looks',
+    label: 'Appearance',
+    subtitle: 'System, light, or dark',
     href: '/(app)/settings/theme',
-  },
-  {
-    key: 'notifications',
-    label: 'Notifications',
-    subtitle: 'Expiry reminders and alerts',
-    href: '/(app)/settings/notifications',
-  },
-  {
-    key: 'account',
-    label: 'Account',
-    subtitle: 'Email, password, and passkeys',
-    href: '/(app)/settings/account',
+    icon: 'color-palette-outline',
   },
   {
     key: 'add-passkey',
     label: 'Add a passkey',
     subtitle: 'Sign in with Face ID / Touch ID',
     href: '/(app)/settings/add-passkey',
+    icon: 'key-outline',
   },
 ];
 
 /**
- * Theme-adaptive settings row. When the active theme is material, renders
- * `<MD3ListRow>`. All other themes keep the existing Pressable card.
+ * Shared Expyrico settings row. Grouping gives account actions and app
+ * preferences a predictable hierarchy in either system appearance.
  */
 function SettingsRow({ row, onPress }: { row: Row; onPress: () => void }) {
   const theme = useTheme();
-
-  if (theme.id === 'material') {
-    return <MD3ListRow title={row.label} subtitle={row.subtitle} onPress={onPress} />;
-  }
 
   return (
     <Pressable
@@ -66,25 +64,20 @@ function SettingsRow({ row, onPress }: { row: Row; onPress: () => void }) {
       style={({ pressed }) => [
         styles.row,
         {
-          backgroundColor: theme.colors.bgElevated,
+          backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
           borderColor: theme.colors.border,
-          borderRadius: theme.radii.lg,
-          opacity: pressed ? 0.7 : 1,
+          opacity: pressed ? 0.84 : 1,
         },
       ]}
     >
-      <Text
-        style={{
-          color: theme.colors.text,
-          fontSize: theme.typeRamp.titleMedium.fontSize,
-          fontWeight: theme.typeRamp.titleMedium.fontWeight as any,
-        }}
-      >
-        {row.label}
-      </Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize }}>
-        {row.subtitle}
-      </Text>
+      <View style={[styles.icon, { backgroundColor: theme.colors.bgGlass }]}>
+        <Ionicons name={row.icon} size={20} color={theme.colors.primary} />
+      </View>
+      <View style={styles.rowCopy}>
+        <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.titleMedium.fontSize, fontWeight: theme.typeRamp.titleMedium.fontWeight as any }}>{row.label}</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: theme.typeRamp.labelMedium.fontSize }}>{row.subtitle}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
     </Pressable>
   );
 }
@@ -103,15 +96,37 @@ export default function SettingsIndex() {
       >
         Settings
       </Text>
-      <View style={{ gap: 10 }}>
-        {ROWS.map((row) => (
-          <SettingsRow key={row.key} row={row} onPress={() => router.push(row.href)} />
-        ))}
-      </View>
+      <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Make Expyrico fit the way you share and shop.</Text>
+      <SettingsGroup title="Your account" rows={ACCOUNT_ROWS} onPress={(href) => router.push(href)} />
+      <SettingsGroup title="App preferences" rows={PREFERENCE_ROWS} onPress={(href) => router.push(href)} />
     </Screen>
   );
 }
 
+function SettingsGroup({ title, rows, onPress }: { title: string; rows: Row[]; onPress: (href: Href) => void }) {
+  const theme = useTheme();
+  return (
+    <View style={styles.group}>
+      <Text style={[styles.groupTitle, { color: theme.colors.textMuted }]}>{title}</Text>
+      <View style={[styles.rows, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
+        {rows.map((row, index) => (
+          <React.Fragment key={row.key}>
+            {index > 0 ? <View style={[styles.divider, { backgroundColor: theme.colors.border }]} /> : null}
+            <SettingsRow row={row} onPress={() => onPress(row.href)} />
+          </React.Fragment>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  row: { borderWidth: 1, padding: 16, gap: 4 },
+  intro: { fontSize: 15, lineHeight: 22, marginTop: -6, marginBottom: 8 },
+  group: { gap: 8 },
+  groupTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginLeft: 4 },
+  rows: { borderWidth: 1, overflow: 'hidden' },
+  row: { minHeight: 72, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  icon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  rowCopy: { flex: 1, gap: 3 },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: 68 },
 });
