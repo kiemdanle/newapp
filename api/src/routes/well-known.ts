@@ -15,15 +15,21 @@ export async function wellKnownRoutes(app: FastifyInstance) {
         error: 'ANDROID_SHA256_CERT_FINGERPRINTS is not configured',
       });
     }
-    // Google fetchers only need public JSON. Strip CORP/COOP that helmet adds so
-    // association clients never treat this as a cross-origin block edge case.
+    // Google Password Manager validates RP ID via Digital Asset Links at create
+    // time. Passkey docs require BOTH relations (handle_all_urls + get_login_creds).
+    // Serve as plain public JSON with minimal headers so GMS fetchers don't reject.
     return reply
       .type('application/json')
-      .header('cache-control', 'public, max-age=300')
+      .header('cache-control', 'no-store')
       .header('cross-origin-resource-policy', 'cross-origin')
+      .header('cross-origin-opener-policy', 'unsafe-none')
+      .removeHeader('content-security-policy')
       .send([
         {
-          relation: ['delegate_permission/common.get_login_creds'],
+          relation: [
+            'delegate_permission/common.handle_all_urls',
+            'delegate_permission/common.get_login_creds',
+          ],
           target: {
             namespace: 'android_app',
             package_name: cfg.android.packageName,
