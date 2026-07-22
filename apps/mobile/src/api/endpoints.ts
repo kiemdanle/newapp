@@ -7,6 +7,7 @@ import type {
   User,
   UpdateProfile,
 } from '@expyrico/shared';
+import { secureStore } from '../auth/secure-store';
 import { apiClient } from './client';
 
 /**
@@ -43,7 +44,6 @@ export const authEndpoints = {
   logout: async () => {
     // API revokes the refresh session when provided; empty body is accepted as
     // best-effort local sign-out (see logout route).
-    const { secureStore } = await import('../auth/secure-store');
     const refreshToken = await secureStore.getRefreshToken();
     return apiClient.request<void>({
       method: 'POST',
