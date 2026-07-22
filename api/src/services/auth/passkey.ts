@@ -51,13 +51,31 @@ export async function buildRegistrationOptions(
     },
   };
   const options = await generateRegistrationOptions(opts);
+  // @simplewebauthn always injects extensions.credProps=true. Android 11
+  // Credential Manager / GMS on MIUI has been observed to reject create when
+  // unknown/optional extensions are present. Strip extensions entirely and
+  // drop empty excludeCredentials for the leanest create payload.
+  const { extensions: _extensions, ...rest } = options as typeof options & {
+    extensions?: unknown;
+  };
+  const cleaned = {
+    ...rest,
+    ...((Array.isArray(rest.excludeCredentials) && rest.excludeCredentials.length === 0)
+      ? { excludeCredentials: undefined }
+      : {}),
+  };
+  // Remove excludeCredentials key when empty (JSON omit).
+  if (Array.isArray(cleaned.excludeCredentials) && cleaned.excludeCredentials.length === 0) {
+    delete (cleaned as { excludeCredentials?: unknown }).excludeCredentials;
+  }
+
   await getRedis().set(
     challengeKey('register', userId),
-    options.challenge,
+    cleaned.challenge,
     'EX',
     CHALLENGE_TTL_SECONDS,
   );
-  return options;
+  return cleaned as typeof options;
 }
 
 export async function consumeRegistration(
