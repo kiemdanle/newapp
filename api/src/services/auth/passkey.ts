@@ -26,6 +26,9 @@ export async function buildRegistrationOptions(
   userDisplayName?: string,
 ): Promise<Awaited<ReturnType<typeof generateRegistrationOptions>>> {
   const cfg = getConfig();
+  const excludeIds = existingCredIds
+    .filter((id) => typeof id === 'string' && id.length > 0)
+    .map((id) => id.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''));
   const opts: GenerateRegistrationOptionsOpts = {
     rpName: cfg.webauthn.rpName,
     rpID: cfg.webauthn.rpId,
@@ -34,17 +37,21 @@ export async function buildRegistrationOptions(
     // Android Credential Manager rejects empty displayName on some API levels.
     userDisplayName: (userDisplayName?.trim() || userName).slice(0, 64),
     attestationType: 'none',
-    excludeCredentials: existingCredIds.map((id) => ({ id })),
+    // Give the user more time after screen-lock PIN (MIUI often burns 30–40s there).
+    timeout: 120_000,
+    // Exclude known credentials so GMS fails fast with "already exists" instead of
+    // hanging after PIN when a prior Expyrico passkey is already on-device.
+    ...(excludeIds.length > 0 ? { excludeCredentials: excludeIds.map((id) => ({ id })) } : {}),
     // Default simplewebauthn list includes Ed25519 (-8). Older Android / GMS
     // Password Manager stacks often reject the whole create request when -8 is
     // present. Stick to ES256 + RS256 which Android passkeys support.
     supportedAlgorithmIDs: [-7, -257],
     authenticatorSelection: {
-      // Prefer discoverable (resident) credentials so login works without an
-      // allowCredentials list. Non-discoverable keys force GMS to show
-      // "use a passkey from a different device" when email/allow list is missing.
-      // Leave authenticatorAttachment unset for broader GMS create success.
+      // Prefer on-device GPM; avoid hybrid "another device" create that spins
+      // after PIN and times out on MIUI.
+      authenticatorAttachment: 'platform',
       userVerification: 'preferred',
+      // Prefer discoverable keys so later login can find them locally.
       residentKey: 'preferred',
       requireResidentKey: false,
     },

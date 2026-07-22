@@ -61,13 +61,13 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
         case 'InvalidUserId':
           return 'The passkey user id from the server was invalid.';
         case 'CredentialAlreadyExists':
-          return 'A passkey for this account already exists on this device.';
+          return 'A passkey for this account already exists on this device. Remove the old Expyrico passkey in Google Password Manager, then try again — or sign in with Use a passkey.';
         case 'NoCredentials':
           return 'No passkey is available on this device.';
         case 'NoCreateOption':
           return 'No passkey provider is available. On Android, open Google Password Manager, make sure a Google account is signed in, screen lock is on, and try again. Emulators often need a Google account + Password Manager setup before passkeys work.';
         case 'TimedOut':
-          return 'The passkey request timed out.';
+          return 'Passkey timed out after PIN. If a passkey already exists, delete it in Google Password Manager first. Otherwise unlock quickly when prompted and try again.';
         case 'RequestFailed':
           // Prefer native detail when present (e.g. CreatePublicKeyCredentialDomException|dom=...).
           if (msg && msg !== code && msg !== 'The request failed. No Credentials were returned.') {
