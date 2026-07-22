@@ -21,7 +21,9 @@ exports[`theme settings in expyrico snapshot 1`] = `
     <View
       style={
         {
-          "padding": 16,
+          "flex": 1,
+          "gap": 8,
+          "padding": 24,
         }
       }
     >
@@ -34,7 +36,7 @@ exports[`theme settings in expyrico snapshot 1`] = `
           }
         }
       >
-        Theme
+        Appearance
       </Text>
       <Text
         style={
@@ -45,7 +47,7 @@ exports[`theme settings in expyrico snapshot 1`] = `
           }
         }
       >
-        Use system to follow your device dark or light setting.
+        Choose a mode, or let Expyrico follow your device setting.
       </Text>
       <View
         style={
@@ -460,7 +462,9 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
     <View
       style={
         {
-          "padding": 16,
+          "flex": 1,
+          "gap": 8,
+          "padding": 24,
         }
       }
     >
@@ -473,7 +477,7 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
           }
         }
       >
-        Theme
+        Appearance
       </Text>
       <Text
         style={
@@ -484,7 +488,7 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
           }
         }
       >
-        Use system to follow your device dark or light setting.
+        Choose a mode, or let Expyrico follow your device setting.
       </Text>
       <View
         style={

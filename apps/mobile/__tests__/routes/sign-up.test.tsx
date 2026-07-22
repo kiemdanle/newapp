@@ -4,9 +4,9 @@ import SignUp from '../../app/(auth)/sign-up';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { useThemeStore, initThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
-import { router } from '../../tests/mocks/expo-router';
+import { navigation } from '../../tests/mocks/react-navigation';
 import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;
@@ -63,10 +63,7 @@ describe('<SignUp />', () => {
     // AuthGate does not bounce the unverified user to home (the reported bug).
     await waitFor(() => expect(useSessionStore.getState().pendingAuth?.tokens.accessToken).toBe('a'));
     expect(useSessionStore.getState().accessToken).toBeNull();
-    expect(router.replace).toHaveBeenCalledWith({
-      pathname: '/(auth)/verify-email',
-      params: { email: 'a@b.co' },
-    });
+    expect(navigation.replace).toHaveBeenCalledWith('VerifyEmail', { email: 'a@b.co' });
   });
 
   it('on duplicate email: surfaces the error message', async () => {

@@ -1,4 +1,4 @@
-import { isCompactTabLayout } from '../../app/(app)/(tabs)/_layout';
+import { isCompactTabLayout } from '../../src/navigation/TabsNavigator';
 
 describe('isCompactTabLayout', () => {
   it('uses icon-only tabs at 320dp to keep all six actions reachable', () => {

@@ -9,11 +9,15 @@ react {
     reactNativeDir = file("../../../../node_modules/react-native")
     codegenDir = file("../../../../node_modules/@react-native/codegen")
     cliFile = file("../../../../node_modules/react-native/cli.js")
-    entryFile = file("../../node_modules/expo-router/entry.js")
     hermesCommand = file("../../../../node_modules/react-native/sdks/hermesc/osx-bin/hermesc").absolutePath
 
     autolinkLibrariesWithApp()
 }
+
+// Bake apps/mobile/.env into BuildConfig for react-native-config.
+// dotenv.gradle opens `$project.rootDir/../$envFile`. rootDir is
+// apps/mobile/android (settings.gradle), so default ".env" → apps/mobile/.env.
+apply from: "../../../../node_modules/react-native-config/android/dotenv.gradle"
 
 def enableProguardInReleaseBuilds = false
 def jscFlavor = "org.webkit:android-jsc:+"
@@ -22,12 +26,19 @@ android {
     namespace "com.expyrico.app"
     compileSdk rootProject.ext.compileSdkVersion
 
+    // AGP 8+ disables BuildConfig by default; react-native-config reads env
+    // fields from com.expyrico.app.BuildConfig via reflection.
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.expyrico.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "0.0.1"
+        manifestPlaceholders = [ENVFILE: project.findProperty('ENVFILE') ?: '.env']
     }
 
     buildTypes {

@@ -1,4 +1,4 @@
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 import { useThemeStore, initThemeStore } from './store';
 import { secureStore } from '../auth/secure-store';
 

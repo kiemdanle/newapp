@@ -4,7 +4,7 @@ import { meEndpoints } from '../api/endpoints';
 
 type ServerThemeId = Exclude<ThemeId, 'expyricoDark'>;
 
-const SERVER_THEME_IDS: readonly ServerThemeId[] = ['expyrico', 'bento', 'clay', 'material'];
+const SERVER_THEME_IDS: readonly ServerThemeId[] = ['expyrico'];
 
 function isServerThemeId(themeId: ThemeId): themeId is ServerThemeId {
   return (SERVER_THEME_IDS as readonly string[]).includes(themeId);

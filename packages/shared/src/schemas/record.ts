@@ -111,8 +111,15 @@ export const recordSyncResponseSchema = z.object({
 });
 export type RecordSyncResponse = z.infer<typeof recordSyncResponseSchema>;
 
+const deviceTokenSchema = z
+  .string()
+  .trim()
+  .min(20, 'invalid device token')
+  .max(4096, 'invalid device token')
+  .regex(/^\S+$/, 'invalid device token');
+
 export const pushTokenRegisterSchema = z.object({
-  expoPushToken: z.string().regex(/^Expo(nent)?PushToken\[.+\]$/, 'invalid Expo push token'),
+  deviceToken: deviceTokenSchema,
   platform: z.enum(['ios', 'android']),
   deviceInfo: z.record(z.unknown()).optional(),
 });
@@ -120,7 +127,7 @@ export type PushTokenRegister = z.infer<typeof pushTokenRegisterSchema>;
 
 export const pushTokenSchema = z.object({
   id: z.string().uuid(),
-  expoPushToken: z.string(),
+  deviceToken: z.string(),
   platform: z.enum(['ios', 'android']),
   createdAt: z.string().datetime(),
   lastUsedAt: z.string().datetime().nullable(),

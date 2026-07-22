@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Text, TextInput, ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useCreateProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
 import { ensurePushTokenRegistered } from '../../../src/features/push/registerPushToken';
 import { useTheme } from '../../../src/theme/useTheme';
 import { Button } from '../../../src/components/Button';
+import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 export default function NewProductScreen() {
   const theme = useTheme();
-  const router = useRouter();
-  const params = useLocalSearchParams<{ barcode?: string; qr?: string }>();
+  const navigation = useNavigation<AppNavigationProp>();
+  const route = useRoute();
+  const { barcode, qr } = route.params as { barcode?: string; qr?: string };
   const createProduct = useCreateProduct();
   const [name, setName] = useState('');
   const [brand, setBrand] = useState('');
@@ -24,8 +26,8 @@ export default function NewProductScreen() {
     }
     try {
       const product = await createProduct.mutateAsync({
-        barcode: params.barcode || null,
-        qrPayload: params.qr || null,
+        barcode: barcode || null,
+        qrPayload: qr || null,
         name: name.trim(),
         brand: brand.trim() || null,
       });
@@ -50,7 +52,7 @@ export default function NewProductScreen() {
         productName={name}
         onSaved={async () => {
           await ensurePushTokenRegistered();
-          router.replace('/home');
+          navigation.replace('Tabs');
         }}
       />
     );
@@ -66,10 +68,10 @@ export default function NewProductScreen() {
     >
       <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as any }}>Add a product</Text>
       <Text style={{ color: theme.colors.textMuted }}>Give it a clear name so your pantry stays easy to scan.</Text>
-      {params.barcode ? (
-        <Text style={{ color: theme.colors.textMuted }}>Barcode: {params.barcode}</Text>
+      {barcode ? (
+        <Text style={{ color: theme.colors.textMuted }}>Barcode: {barcode}</Text>
       ) : null}
-      {params.qr ? <Text style={{ color: theme.colors.textMuted }}>QR: {params.qr}</Text> : null}
+      {qr ? <Text style={{ color: theme.colors.textMuted }}>QR: {qr}</Text> : null}
       <Text style={{ color: theme.colors.textMuted }}>Name</Text>
       <TextInput accessibilityLabel="Text input field" testID="new-product-name" style={input} value={name} onChangeText={setName} />
       <Text style={{ color: theme.colors.textMuted }}>Brand (optional)</Text>

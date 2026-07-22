@@ -4,9 +4,9 @@ import SignIn from '../../app/(auth)/sign-in';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
-import { router } from '../../tests/mocks/expo-router';
+import { navigation } from '../../tests/mocks/react-navigation';
 import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 const USER = {
   id: 'u1',
@@ -47,7 +47,7 @@ describe('<SignIn />', () => {
       fireEvent.press(getByTestId('sign-in-submit'));
     });
     await waitFor(() => expect(useSessionStore.getState().accessToken).toBe('a'));
-    expect(router.replace).toHaveBeenCalledWith('/(app)/(tabs)/home');
+    expect(navigation.replace).not.toHaveBeenCalled();
   });
 
   it('on invalid credentials: surfaces an error', async () => {
@@ -70,10 +70,7 @@ describe('<SignIn />', () => {
       fireEvent.press(getByTestId('sign-in-submit'));
     });
     await waitFor(() =>
-      expect(router.push).toHaveBeenCalledWith({
-        pathname: '/(auth)/verify-email',
-        params: { email: 'a@b.co' },
-      }),
+      expect(navigation.navigate).toHaveBeenCalledWith('VerifyEmail', { email: 'a@b.co' }),
     );
   });
 
@@ -87,7 +84,7 @@ describe('<SignIn />', () => {
     });
     expect(await findByText(/admin TOTP/i)).toBeTruthy();
     expect(useSessionStore.getState().accessToken).toBeNull();
-    expect(router.replace).not.toHaveBeenCalledWith('/(app)/(tabs)/home');
+    expect(navigation.replace).not.toHaveBeenCalledWith('Home');
   });
 
   it('keeps the Google-branded sign-in action', () => {

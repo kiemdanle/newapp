@@ -232,7 +232,7 @@ export function HouseholdSettings() {
                   alignItems: 'center', minHeight: 52, justifyContent: 'center', borderRadius: theme.radii.pill,
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>
+                <Text style={{ color: theme.colors.textInverse, fontWeight: '600' }}>
                   {dissolveHousehold.isPending ? 'Dissolving…' : 'Dissolve Household'}
                 </Text>
               </Pressable>

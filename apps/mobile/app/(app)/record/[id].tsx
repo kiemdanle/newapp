@@ -1,14 +1,15 @@
 import { View, Text, ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { useRecord, patchLocalRecord, deleteLocalRecord } from '../../../src/api/records';
 import { useTheme } from '../../../src/theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records/expiryStatus';
 import { Button } from '../../../src/components/Button';
+import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 export default function RecordDetail() {
   const theme = useTheme();
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const navigation = useNavigation<AppNavigationProp>();
+  const { id } = useRoute().params as { id: string };
   const record = useRecord(id);
 
   if (!record) {
@@ -28,12 +29,12 @@ export default function RecordDetail() {
 
   const mark = async (status: 'consumed' | 'discarded') => {
     await patchLocalRecord(record.id, { status });
-    router.back();
+    navigation.goBack();
   };
 
   const remove = async () => {
     await deleteLocalRecord(record.id);
-    router.back();
+    navigation.goBack();
   };
 
   const status = expiryStatus(record.expiryDate);

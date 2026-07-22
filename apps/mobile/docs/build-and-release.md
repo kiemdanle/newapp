@@ -1,72 +1,124 @@
-# Build and release runbook
+# Build and release runbook (bare React Native)
 
-End-to-end build and release process for the Pantry mobile app using EAS.
+End-to-end local build and device install for the Expyrico mobile app after the Expo removal.
 
 ## Prerequisites
 
-- Expo account with access to the `pantry` project
-- `EXPO_ACCESS_TOKEN` set in CI and locally for non-interactive builds
-- EAS CLI installed: `pnpm add -g eas-cli`
-- Apple Developer account (for iOS)
-- Google Play Developer account (for Android)
+- Node 20+, pnpm 9+
+- Android Studio / local SDK (`ANDROID_HOME`) and JDK 17 (Android Studio JBR is fine)
+- Xcode + CocoaPods for iOS (`pod` via Homebrew Ruby or system Bundler)
+- Device/emulator access via `adb` (Android) or Simulator/Xcode (iOS)
 
-## Local setup
+## Install
+
+```bash
+# repo root
+pnpm install
+pnpm -F @expyrico/shared build
+pnpm -F @expyrico/theme build
+
+# refresh mobile vendored dist copies after shared/theme changes
+rm -rf apps/mobile/local-packages/@expyrico/shared/dist apps/mobile/local-packages/@expyrico/theme/dist
+cp -R packages/shared/dist apps/mobile/local-packages/@expyrico/shared/dist
+cp -R packages/theme/dist apps/mobile/local-packages/@expyrico/theme/dist
+```
+
+## Environment
 
 ```bash
 cd apps/mobile
-eas login
+cp .env.example .env
+# fill public build-time values only (API host, Google client IDs, passkey RP id)
+# never put secrets in .env — see docs/native-secrets.md
 ```
 
-## Build profiles
+Android Firebase: place real `google-services.json` at `android/app/google-services.json` (gitignored).  
+iOS Firebase: place real `GoogleService-Info.plist` under `ios/` (gitignored).
 
-Defined in `eas.json`:
-
-- `development` — development client, internal distribution, iOS simulator
-- `preview` — internal distribution for device testing
-- `production` — store-ready signed build
-
-## Build commands
+## Android
 
 ```bash
-# iOS
-eas build --profile preview --platform ios
-eas build --profile production --platform ios
+cd apps/mobile
 
-# Android
-eas build --profile preview --platform android
-eas build --profile production --platform android
+# Metro
+pnpm start
+
+# Debug APK / install
+pnpm android:build
+pnpm android:install
+
+# Release APK
+pnpm android:release
+# output: android/app/build/outputs/apk/release/app-release.apk
+adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 
-## EAS Update channels
-
-- `development` → maps to `development` build
-- `preview` → maps to `preview` build
-- `production` → maps to `production` build
-
-Publish an update:
+Dex sanity (no Expo runtime classes expected):
 
 ```bash
-eas update --channel preview --message "Fix theme switch animation"
+# requires Android build-tools on PATH
+APK=android/app/build/outputs/apk/release/app-release.apk
+unzip -p "$APK" classes.dex > /tmp/expyrico.dex
+dexdump /tmp/expyrico.dex | rg -i 'expo\.modules|devlauncher|expo\.updates' || echo 'no expo dex hits'
 ```
 
-Updates must match the runtime version of the target build. Native code changes require a new build.
+## iOS
 
-## Release flow
+```bash
+cd apps/mobile/ios
+export PATH="/opt/homebrew/opt/ruby/bin:$HOME/.gem/ruby/4.0.0/bin:$PATH"
+pod install
 
-1. Merge feature branch to `main`
-2. Verify CI green (`pnpm lint`, `pnpm test`, `pnpm test:snapshots`)
-3. Tag release: `git tag v1.0.0 && git push --tags`
-4. Build production iOS + Android: `eas build --profile production --platform all`
-5. Submit to stores: `eas submit --profile production --platform all`
-6. Monitor crash-free rate and review feedback for 48h
-7. Promote staged rollout to 100%
+# unsigned compile (CI / verification)
+xcodebuild \
+  -workspace Expyrico.xcworkspace \
+  -scheme Expyrico \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
 
-## Rollback
+# device / simulator run from app package
+cd ..
+pnpm ios
+```
 
-For critical issues, push a corrective EAS Update to the same channel. If the issue is in native code, build a new version and submit as a patch release. See `docs/runbooks/rollback.md` for server-side rollback.
+Notes:
 
-## Secrets
+- Deployment target is iOS 16.0.
+- `react-native-vector-icons` ships Ionicons via CocoaPods; `Info.plist` lists `UIAppFonts = Ionicons.ttf`.
+- Passkey Associated Domains live in `Expyrico/Expyrico.entitlements` (`webcredentials:<RP-domain>`). Replace the `.invalid` placeholder before production.
+- On Xcode 26.x + RN 0.76, `fmt` 11.0.2 may need the consteval disable patch applied by the Podfile post_install (see `ios/Podfile`). If `Pods/fmt/include/fmt/base.h` is recreated read-only, `chmod u+w` and re-run `pod install`.
 
-- `EXPO_ACCESS_TOKEN` — CI only, never commit
-- Apple App Store Connect API key — stored in 1Password, uploaded to EAS once
-- Google Play service account — `apps/mobile/secrets/play-service-account.json` (gitignored)
+## Metro / JS entry
+
+- Entry: `index.js` → registers component `Expyrico`
+- Start: `pnpm start` (`react-native start`)
+- No Expo CLI, no EAS, no OTA channel workflow
+
+## Tests
+
+```bash
+cd apps/mobile
+pnpm typecheck
+pnpm lint
+pnpm test
+```
+
+API push tests (disposable DB only):
+
+```bash
+cd api
+TEST_DATABASE_URL='postgresql://pantry:pantry@localhost:5432/pantry_test?schema=public' \
+  pnpm test
+```
+
+## Release checklist
+
+1. Shared + theme dist rebuilt and vendored into `apps/mobile/local-packages`
+2. `pnpm why expo -r` empty of runtime Expo packages
+3. Android release APK builds and installs via `adb`
+4. iOS host compiles unsigned
+5. Auth (Google + passkey) smoke-tested on both platforms when credentials are present
+6. FCM: permission, register, foreground/background, tap, invalid-token revoke, logout re-register

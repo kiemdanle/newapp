@@ -1,6 +1,13 @@
 import { useSessionStore, hydrateSession } from './session-store';
 import { secureStore } from './secure-store';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { authEndpoints } from '../api/endpoints';
+import { __reset } from '../../tests/mocks/react-native-keychain';
+
+jest.mock('../api/endpoints', () => ({
+  authEndpoints: {
+    me: jest.fn(),
+  },
+}));
 
 const USER = {
   id: 'u1',
@@ -17,9 +24,12 @@ const USER = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
+const meMock = authEndpoints.me as jest.MockedFunction<typeof authEndpoints.me>;
+
 describe('session store', () => {
   beforeEach(() => {
     __reset();
+    meMock.mockReset();
     useSessionStore.setState({
       user: null,
       accessToken: null,
@@ -53,15 +63,29 @@ describe('session store', () => {
   it('hydrateSession loads tokens from secure-store and marks hydrated=true', async () => {
     await secureStore.setAccessToken('a');
     await secureStore.setRefreshToken('r');
+    meMock.mockResolvedValue(USER);
     await hydrateSession();
     expect(useSessionStore.getState().accessToken).toBe('a');
     expect(useSessionStore.getState().refreshToken).toBe('r');
     expect(useSessionStore.getState().hydrated).toBe(true);
+    expect(useSessionStore.getState().user?.email).toBe('a@b.c');
+    expect(meMock).toHaveBeenCalledTimes(1);
   });
 
   it('hydrateSession marks hydrated=true even when no tokens exist', async () => {
     await hydrateSession();
     expect(useSessionStore.getState().hydrated).toBe(true);
     expect(useSessionStore.getState().accessToken).toBeNull();
+    expect(meMock).not.toHaveBeenCalled();
+  });
+
+  it('hydrateSession keeps tokens when /auth/me fails', async () => {
+    await secureStore.setAccessToken('a');
+    await secureStore.setRefreshToken('r');
+    meMock.mockRejectedValue(new Error('network'));
+    await hydrateSession();
+    expect(useSessionStore.getState().hydrated).toBe(true);
+    expect(useSessionStore.getState().accessToken).toBe('a');
+    expect(useSessionStore.getState().user).toBeNull();
   });
 });

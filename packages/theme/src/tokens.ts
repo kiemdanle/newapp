@@ -1,7 +1,7 @@
 /**
  * Theme token shape. Every theme must implement this exact contract.
  */
-export type ThemeId = 'expyrico' | 'expyricoDark' | 'bento' | 'clay' | 'material';
+export type ThemeId = 'expyrico' | 'expyricoDark';
 
 export type ClayElevation = {
   rim: string;      // CSS box-shadow string for inner rim light

@@ -1,17 +1,13 @@
-import Constants from 'expo-constants';
+import Config from 'react-native-config';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 let configured = false;
 
 function configure() {
   if (configured) return;
-  const extra = (Constants?.expoConfig?.extra ?? {}) as {
-    googleWebClientId?: string;
-    googleIosClientId?: string;
-  };
   GoogleSignin.configure({
-    webClientId: extra.googleWebClientId,
-    iosClientId: extra.googleIosClientId,
+    webClientId: Config.GOOGLE_WEB_CLIENT_ID,
+    iosClientId: Config.GOOGLE_IOS_CLIENT_ID,
     offlineAccess: false,
   });
   configured = true;

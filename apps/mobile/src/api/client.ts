@@ -1,4 +1,4 @@
-import Constants from 'expo-constants';
+import Config from 'react-native-config';
 import { secureStore } from '../auth/secure-store';
 import { ApiError } from './errors';
 
@@ -18,7 +18,7 @@ interface RefreshResponse {
 }
 
 function getBaseUrl(): string {
-  const url = (Constants?.expoConfig?.extra as { apiBaseUrl?: string } | undefined)?.apiBaseUrl;
+  const url = Config.API_BASE_URL;
   if (!url) throw new Error('apiBaseUrl not configured');
   return url.replace(/\/+$/, '');
 }
@@ -55,11 +55,6 @@ export function setOnSignOut(cb: () => void) {
 }
 
 async function refreshTokensOnce(): Promise<boolean> {
-  // Single-flight: every concurrent 401 awaits the SAME promise. Whoever arrives
-  // first creates it; everyone else gets the in-flight one. Because the promise
-  // is only cleared synchronously in the finally below (after the rotated tokens
-  // are already written to secure-store), there is no multi-tick window in which
-  // a late caller can miss the rotation and kick off a second refresh.
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     try {
@@ -84,10 +79,6 @@ async function refreshTokensOnce(): Promise<boolean> {
       onSignOut?.();
       return false;
     } finally {
-      // Clear synchronously: by the time this runs the rotated tokens are already
-      // persisted, so any request that awaited this promise replays against the
-      // new access token, and a request that arrives afterwards starts a fresh
-      // single-flight only if it genuinely 401s again.
       refreshInFlight = null;
     }
   })();
@@ -95,7 +86,6 @@ async function refreshTokensOnce(): Promise<boolean> {
 }
 
 async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
-  // path must NOT include /v1 prefix; client adds it
   const url = `${getBaseUrl()}/v1${req.path.startsWith('/') ? '' : '/'}${req.path}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',

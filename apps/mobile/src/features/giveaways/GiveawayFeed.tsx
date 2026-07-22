@@ -24,7 +24,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
           Offer items you cannot use in time, or claim food nearby.
         </Text>
       </View>
-      <View style={{ paddingHorizontal: 20, paddingBottom: 10, flexDirection: 'row', justifyContent: 'flex-end' }}>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 10, flexDirection: 'row', justifyContent: 'flex-start' }}>
         <Pressable
           accessibilityRole="button"
           onPress={onNew}
@@ -49,6 +49,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         )}
         onEndReached={() => { if (q.hasNextPage) q.fetchNextPage(); }}
         onEndReachedThreshold={0.4}
+        // Header already has "+ Share item"; empty state omits a second CTA.
         ListEmptyComponent={
           q.isLoading ? (
             <ActivityIndicator color={theme.colors.primary} />
@@ -57,9 +58,6 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
               icon="gift"
               title="No giveaways yet"
               body="Share a sealed item before it expires, or check again for nearby offers."
-              actionLabel="Share item"
-              actionIcon="add"
-              onAction={onNew}
             />
           )
         }

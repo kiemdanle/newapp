@@ -1,12 +1,14 @@
 import React from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import { AuthBrandBar, AuthHeader } from '../../src/components/AuthHeader';
 
 export default function Welcome() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const { height } = useWindowDimensions();
   const compact = height < 700;
 
@@ -21,8 +23,8 @@ export default function Welcome() {
           />
         </View>
         <View style={styles.actions}>
-          <Button testID="welcome-sign-up" label="Create account" onPress={() => router.push('/(auth)/sign-up')} />
-          <Button testID="welcome-sign-in" label="Sign in" variant="outline" onPress={() => router.push('/(auth)/sign-in')} />
+          <Button testID="welcome-sign-up" label="Create account" onPress={() => navigation.navigate('SignUp')} />
+          <Button testID="welcome-sign-in" label="Sign in" variant="outline" onPress={() => navigation.navigate('SignIn')} />
         </View>
       </View>
     </Screen>

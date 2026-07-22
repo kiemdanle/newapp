@@ -4,9 +4,9 @@ import VerifyEmail from '../../app/(auth)/verify-email';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
-import { router, __setSearchParams } from '../../tests/mocks/expo-router';
+import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
 import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;
@@ -16,7 +16,7 @@ describe('<VerifyEmail />', () => {
   beforeEach(async () => {
     __reset();
     jest.clearAllMocks();
-    __setSearchParams({});
+    __setRouteParams({});
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
     useSessionStore.setState({
@@ -42,7 +42,7 @@ describe('<VerifyEmail />', () => {
 
   it('submits the 6-digit code and routes to home', async () => {
     const fetchMock = queueFetch(jsonResponse({ verified: true }));
-    __setSearchParams({ email: 'a@b.co' });
+    __setRouteParams({ email: 'a@b.co' });
 
     const { getByLabelText } = render(wrap(<VerifyEmail />));
     await act(async () => {
@@ -52,12 +52,12 @@ describe('<VerifyEmail />', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const request = JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string);
     expect(request).toEqual({ email: 'a@b.co', code: '123456' });
-    expect(router.replace).toHaveBeenCalledWith('/(app)/(tabs)/home');
+    expect(navigation.replace).not.toHaveBeenCalled();
   });
 
   it('surfaces an invalid code error', async () => {
     queueFetch(problemResponse('invalid_token', 400, 'Invalid or expired code'));
-    __setSearchParams({ email: 'a@b.co' });
+    __setRouteParams({ email: 'a@b.co' });
 
     const { getByLabelText, findByText } = render(wrap(<VerifyEmail />));
     fireEvent.changeText(getByLabelText('Verification code'), '000000');
@@ -67,7 +67,7 @@ describe('<VerifyEmail />', () => {
 
   it('resends a verification code', async () => {
     const fetchMock = queueFetch(new Response(null, { status: 204 }));
-    __setSearchParams({ email: 'a@b.co' });
+    __setRouteParams({ email: 'a@b.co' });
 
     const { getByTestId, findByText } = render(wrap(<VerifyEmail />));
     await act(async () => {

@@ -3,9 +3,9 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import ResetPassword from '../../app/(auth)/reset-password';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
-import { router, __setSearchParams } from '../../tests/mocks/expo-router';
+import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
 import { queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;
@@ -15,14 +15,14 @@ describe('<ResetPassword />', () => {
   beforeEach(async () => {
     __reset();
     jest.clearAllMocks();
-    __setSearchParams({});
+    __setRouteParams({});
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
   });
 
   it('submits the ticket + new password and shows the done state', async () => {
     const fetchMock = queueFetch(new Response(null, { status: 204 }));
-    __setSearchParams({ ticket: 'tkt-123' });
+    __setRouteParams({ ticket: 'tkt-123' });
 
     const { getByLabelText, getByTestId, findByText } = render(wrap(<ResetPassword />));
     await act(async () => {
@@ -39,13 +39,13 @@ describe('<ResetPassword />', () => {
   });
 
   it('shows a start-over CTA when the ticket is missing', async () => {
-    __setSearchParams({});
+    __setRouteParams({});
 
     const { getByTestId, queryByLabelText } = render(wrap(<ResetPassword />));
     // No password field is offered without a ticket.
     expect(queryByLabelText('New password')).toBeNull();
 
     fireEvent.press(getByTestId('reset-start-over'));
-    expect(router.replace).toHaveBeenCalledWith('/(auth)/forgot-password');
+    expect(navigation.replace).toHaveBeenCalledWith('ForgotPassword');
   });
 });

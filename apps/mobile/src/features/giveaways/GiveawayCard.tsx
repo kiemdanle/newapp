@@ -24,7 +24,7 @@ export function GiveawayCard({ giveaway, onPress }: Props) {
         marginVertical: 6,
         borderWidth: 1,
         borderColor: theme.colors.border,
-        shadowColor: '#2C2C28',
+        shadowColor: theme.colors.neutralDark,
         shadowOpacity: 0.05,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 3 },

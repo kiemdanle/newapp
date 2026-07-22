@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { CameraView } from 'expo-camera';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import TextRecognition from '@react-native-ml-kit/text-recognition';
 import { parseExpiryString } from './parseExpiryString';
 import { useTheme } from '../../theme/useTheme';
@@ -11,7 +11,9 @@ interface Props {
 }
 
 export function OcrCamera({ onParsed, onCancel }: Props) {
-  const cameraRef = useRef<CameraView>(null);
+  const device = useCameraDevice('back');
+  const { hasPermission } = useCameraPermission();
+  const cameraRef = useRef<Camera>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
@@ -21,12 +23,12 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
     setError(null);
     setBusy(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.6, skipProcessing: true });
+      const photo = await cameraRef.current.takePhoto({ enableShutterSound: false });
       if (!photo) {
         setError('Could not capture a photo. Try again.');
         return;
       }
-      const ocr = await TextRecognition.recognize(photo.uri);
+      const ocr = await TextRecognition.recognize(photo.path);
       const iso = parseExpiryString(ocr.text);
       if (iso) onParsed(iso);
       else setError('Could not read a date. Try again or enter manually.');
@@ -37,12 +39,27 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
     }
   };
 
+  if (!device || !hasPermission) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.bg }}>
+        <Text style={{ color: theme.colors.textMuted }}>Camera not available</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <CameraView ref={cameraRef} facing="back" style={{ flex: 1 }} />
+      <Camera
+        ref={cameraRef}
+        device={device}
+        isActive
+        photo
+        style={{ flex: 1 }}
+      />
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
         {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
-        <Pressable accessibilityRole="button"
+        <Pressable
+          accessibilityRole="button"
           onPress={capture}
           testID="ocr-capture"
           style={{

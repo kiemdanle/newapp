@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { forgotPasswordSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
@@ -11,7 +13,7 @@ import { isApiError } from '../../src/api/errors';
 import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function ForgotPassword() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [email, setEmail] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function ForgotPassword() {
       await authEndpoints.forgotPassword(email);
       // Always advance to the code screen — the server returns 204 whether or not
       // the account exists, so the screen must not reveal existence either.
-      router.push({ pathname: '/(auth)/verify-reset-code', params: { email } });
+      navigation.navigate('VerifyResetCode', { email });
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
     } finally {
@@ -48,7 +50,7 @@ export default function ForgotPassword() {
       />
       {error ? <ErrorText>{error}</ErrorText> : null}
       <Button testID="forgot-submit" label="Send reset code" onPress={onSubmit} loading={loading} />
-      <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
+      <Button label="Cancel" variant="ghost" onPress={() => navigation.goBack()} />
     </Screen>
   );
 }

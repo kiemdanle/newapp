@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { resetPasswordSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
@@ -11,8 +13,9 @@ import { isApiError } from '../../src/api/errors';
 import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function ResetPassword() {
-  const router = useRouter();
-  const params = useLocalSearchParams<{ ticket?: string }>();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const route = useRoute();
+  const { ticket } = route.params as { ticket?: string };
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [done, setDone] = useState(false);
@@ -21,7 +24,7 @@ export default function ResetPassword() {
 
   async function onSubmit() {
     setError(null);
-    const resetTicket = params.ticket ?? '';
+    const resetTicket = ticket ?? '';
     const errs = fieldErrors(resetPasswordSchema, { resetTicket, password });
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
@@ -40,7 +43,7 @@ export default function ResetPassword() {
     return (
       <Screen backFallback="/(auth)/sign-in">
         <AuthHeader icon="checkmark-circle-outline" title="Password reset" description="Sign in with your new password." />
-        <Button label="Sign in" onPress={() => router.replace('/(auth)/sign-in')} />
+        <Button label="Sign in" onPress={() => navigation.replace('SignIn')} />
       </Screen>
     );
   }
@@ -48,13 +51,13 @@ export default function ResetPassword() {
   return (
     <Screen backFallback="/(auth)/sign-in">
       <AuthHeader icon="lock-closed-outline" title="Choose a new password" description="Use a strong, memorable password to protect your pantry." />
-      {!params.ticket ? (
+      {!ticket ? (
         <>
           <ErrorText>Your reset session expired. Start over to get a new code.</ErrorText>
           <Button
             testID="reset-start-over"
             label="Start over"
-            onPress={() => router.replace('/(auth)/forgot-password')}
+            onPress={() => navigation.replace('ForgotPassword')}
           />
         </>
       ) : (

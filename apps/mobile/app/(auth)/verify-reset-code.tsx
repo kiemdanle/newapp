@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import { ErrorText } from '../../src/components/ErrorText';
@@ -12,10 +14,11 @@ import { useTheme } from '../../src/theme/useTheme';
 import { AuthHeader } from '../../src/components/AuthHeader';
 
 export default function VerifyResetCode() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const theme = useTheme();
-  const params = useLocalSearchParams<{ email?: string }>();
-  const email = params.email ?? '';
+  const route = useRoute();
+  const { email } = route.params as { email?: string };
+  const emailAddress = email ?? '';
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,13 +32,13 @@ export default function VerifyResetCode() {
   async function onResend() {
     setMessage(null);
     setError(null);
-    if (!email) {
+    if (!emailAddress) {
       setError('No email on file. Start over from forgot password.');
       return;
     }
     setResending(true);
     try {
-      await authEndpoints.forgotPassword(email);
+      await authEndpoints.forgotPassword(emailAddress);
       // Resending replaces the previous code — be explicit so a user who typed
       // the old code understands why it stops working (RT-12 resend race).
       setMessage('New code sent. It replaces any earlier code.');
@@ -52,7 +55,7 @@ export default function VerifyResetCode() {
     const resetCode = value.replace(/\D/g, '');
     setMessage(null);
     setError(null);
-    if (!email) {
+    if (!emailAddress) {
       setError('No email on file. Start over from forgot password.');
       return;
     }
@@ -62,8 +65,8 @@ export default function VerifyResetCode() {
     }
     setLoading(true);
     try {
-      const { resetTicket } = await authEndpoints.verifyResetCode(email, resetCode);
-      router.push({ pathname: '/(auth)/reset-password', params: { ticket: resetTicket } });
+      const { resetTicket } = await authEndpoints.verifyResetCode(emailAddress, resetCode);
+      navigation.navigate('ResetPassword', { ticket: resetTicket });
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
       setFailed(true);
@@ -80,7 +83,7 @@ export default function VerifyResetCode() {
 
   return (
     <Screen backFallback="/(auth)/forgot-password">
-      <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit reset code we sent you." email={email || undefined} />
+      <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit reset code we sent you." email={emailAddress || undefined} />
       <OtpInput
         label="Reset code"
         value={code}
@@ -121,7 +124,7 @@ export default function VerifyResetCode() {
         testID="verify-reset-start-over"
         label="Use a different email"
         variant="ghost"
-        onPress={() => router.replace('/(auth)/forgot-password')}
+        onPress={() => navigation.replace('ForgotPassword')}
       />
     </Screen>
   );

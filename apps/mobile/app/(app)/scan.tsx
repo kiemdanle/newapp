@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { ScanCamera, type ScanResult } from '../../src/features/scan/ScanCamera';
 import { useCameraPermission } from '../../src/features/scan/usePermission';
 import { PrePromptModal } from '../../src/features/scan/PrePromptModal';
@@ -9,10 +9,11 @@ import { useProductLookup } from '../../src/api/products';
 import { useTheme } from '../../src/theme/useTheme';
 import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
+import type { AppNavigationProp } from '../../src/navigation/AppNavigator';
 
 export default function ScanScreen() {
   const theme = useTheme();
-  const router = useRouter();
+  const navigation = useNavigation<AppNavigationProp>();
   const { state, request, check } = useCameraPermission();
   const lookup = useProductLookup();
   const [prePrompt, setPrePrompt] = useState(true);
@@ -26,23 +27,17 @@ export default function ScanScreen() {
       const product = await lookup.mutateAsync(
         r.kind === 'barcode' ? { barcode: r.value } : { qr: r.value },
       );
-      if (product) router.replace(`/product/${product.id}`);
+      if (product) navigation.replace('Product', { id: product.id });
       else
-        router.replace({
-          pathname: '/product/new',
-          params: {
-            barcode: r.kind === 'barcode' ? r.value : '',
-            qr: r.kind === 'qr' ? r.value : '',
-          },
+        navigation.replace('ProductNew', {
+          barcode: r.kind === 'barcode' ? r.value : '',
+          qr: r.kind === 'qr' ? r.value : '',
         });
     } catch {
       // 404 = no product
-      router.replace({
-        pathname: '/product/new',
-        params: {
-          barcode: r.kind === 'barcode' ? r.value : '',
-          qr: r.kind === 'qr' ? r.value : '',
-        },
+      navigation.replace('ProductNew', {
+        barcode: r.kind === 'barcode' ? r.value : '',
+        qr: r.kind === 'qr' ? r.value : '',
       });
     }
   };
@@ -53,7 +48,7 @@ export default function ScanScreen() {
         visible={prePrompt}
         onCancel={() => {
           setPrePrompt(false);
-          router.back();
+          navigation.goBack();
         }}
         onAllow={async () => {
           setPrePrompt(false);
@@ -68,7 +63,7 @@ export default function ScanScreen() {
         <View style={{ alignItems: 'center', backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg, borderWidth: 1, gap: theme.spacing.md, marginTop: theme.spacing.xxl, padding: theme.spacing.xl }}>
           <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as never }}>Camera access is off</Text>
           <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Allow camera access in your phone settings to scan a barcode or expiry label.</Text>
-          <Button label="Go back" variant="outline" icon="arrow-back" onPress={() => router.back()} />
+          <Button label="Go back" variant="outline" icon="arrow-back" onPress={() => navigation.goBack()} />
         </View>
       </Screen>
     );
@@ -77,7 +72,7 @@ export default function ScanScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <ScanCamera onScan={handleScan} />
       <View style={[styles.topBar, { backgroundColor: theme.colors.bgElevated, borderBottomColor: theme.colors.border }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => router.back()} style={[styles.backButton, { backgroundColor: theme.colors.primaryLight }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.primaryLight }]}>
           <Ionicons name="arrow-back" size={20} color={theme.colors.primaryDark} />
         </Pressable>
         <View style={styles.heading}>

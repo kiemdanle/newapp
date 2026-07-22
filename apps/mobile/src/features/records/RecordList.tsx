@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { SectionList, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { groupRecords } from './groupRecords';
 import { RecordCard } from './RecordCard';
@@ -19,7 +20,7 @@ const RecordRow = React.memo(function RecordRow({ record, onPress }: { record: L
 
 export function RecordList({ header, empty }: { header?: React.ReactElement; empty?: React.ReactElement }) {
   const records = useActiveRecords();
-  const router = useRouter();
+  const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
   const groups = groupRecords(records);
   const sections = useMemo(
@@ -28,7 +29,7 @@ export function RecordList({ header, empty }: { header?: React.ReactElement; emp
       .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] })),
     [groups],
   );
-  const openRecord = useCallback((id: string) => router.push(`/record/${id}`), [router]);
+  const openRecord = useCallback((id: string) => navigation.navigate('Record', { id }), [navigation]);
   const renderItem = useCallback(({ item }: { item: LocalRecord }) => <RecordRow record={item} onPress={openRecord} />, [openRecord]);
   const keyExtractor = useCallback((item: LocalRecord) => item.id, []);
 

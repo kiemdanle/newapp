@@ -1,12 +1,12 @@
 // apps/mobile/app/(app)/giveaway/[id]/manage.tsx
 import { ActivityIndicator, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useRoute } from '@react-navigation/native';
 import { useGiveaway, useGiveawayClaims, useSelectClaim } from '@/api/giveaways';
 import type { Claim } from '@expyrico/shared';
 import { ClaimList } from '@/features/giveaways/ClaimList';
 
 export default function ManageGiveawayScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useRoute().params as { id: string };
   const { data: giveaway } = useGiveaway(id ?? '');
   const { data: claims, isLoading } = useGiveawayClaims(id ?? '');
   const select = useSelectClaim();
@@ -24,17 +24,14 @@ export default function ManageGiveawayScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Manage claims' }} />
-      <View style={{ flex: 1, padding: 16 }}>
-        <ClaimList
-          claims={claims ?? []}
-          isGiver
-          selectedRecipientId={giveaway.selectedRecipientId}
-          onSelect={handleSelect}
-          selecting={select.isPending}
-        />
-      </View>
-    </>
+    <View style={{ flex: 1, padding: 16 }}>
+      <ClaimList
+        claims={claims ?? []}
+        isGiver
+        selectedRecipientId={giveaway.selectedRecipientId}
+        onSelect={handleSelect}
+        selecting={select.isPending}
+      />
+    </View>
   );
 }

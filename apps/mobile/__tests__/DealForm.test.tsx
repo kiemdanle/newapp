@@ -1,7 +1,8 @@
-// apps/mobile/__tests__/DealForm.test.tsx
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DealForm } from '../src/features/deals/DealForm';
+import { ThemeProvider } from '../src/theme/ThemeProvider';
+import { NavigationContainer } from '@react-navigation/native';
 
 const mockCreateDeal = jest.fn().mockResolvedValue({ id: 'd-1' });
 
@@ -12,7 +13,13 @@ jest.mock('../src/api/deals', () => ({
 
 function wrap(node: React.ReactNode) {
   const qc = new QueryClient();
-  return <QueryClientProvider client={qc}>{node}</QueryClientProvider>;
+  return (
+    <NavigationContainer>
+      <QueryClientProvider client={qc}>
+        <ThemeProvider>{node}</ThemeProvider>
+      </QueryClientProvider>
+    </NavigationContainer>
+  );
 }
 
 describe('DealForm', () => {

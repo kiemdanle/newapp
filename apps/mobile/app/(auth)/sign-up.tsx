@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { registerSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
@@ -19,7 +21,7 @@ import {
 } from '../../src/referral/pendingReferralStore';
 
 export default function SignUp() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const theme = useTheme();
   const setPendingAuth = useSessionStore((s) => s.setPendingAuth);
   const [email, setEmail] = useState('');
@@ -59,7 +61,7 @@ export default function SignUp() {
       // straight to home — skipping the OTP step. verify-email commits the
       // session once the email is confirmed.
       setPendingAuth(result);
-      router.replace({ pathname: '/(auth)/verify-email', params: { email: result.user.email } });
+      navigation.replace('VerifyEmail', { email: result.user.email });
     } catch (e) {
       if (isApiError(e)) {
         setFormError(e.title);

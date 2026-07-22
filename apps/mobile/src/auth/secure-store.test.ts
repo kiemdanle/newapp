@@ -1,5 +1,5 @@
-import { __reset } from '../../tests/mocks/expo-secure-store';
-import { secureStore } from './secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
+import { getItem, secureStore, setItem } from './secure-store';
 
 describe('secureStore', () => {
   beforeEach(() => __reset());
@@ -21,6 +21,13 @@ describe('secureStore', () => {
     expect(await secureStore.getAccessToken()).toBeNull();
     expect(await secureStore.getRefreshToken()).toBeNull();
     expect(await secureStore.getThemePreference()).toBeNull();
+  });
+
+  it('clearAll resets the last registered FCM token for the next authenticated boot', async () => {
+    await secureStore.setAccessToken('a');
+    await setItem('pantry.pushRegisteredV1', 'fcm-token-previous');
+    await secureStore.clearAll();
+    expect(await getItem('pantry.pushRegisteredV1')).toBeNull();
   });
 
   it('only stores valid theme preferences', async () => {

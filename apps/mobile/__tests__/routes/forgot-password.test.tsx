@@ -3,9 +3,9 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import ForgotPassword from '../../app/(auth)/forgot-password';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
-import { router, __setSearchParams } from '../../tests/mocks/expo-router';
+import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
 import { queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;
@@ -15,7 +15,7 @@ describe('<ForgotPassword />', () => {
   beforeEach(async () => {
     __reset();
     jest.clearAllMocks();
-    __setSearchParams({});
+    __setRouteParams({});
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
   });
@@ -32,9 +32,6 @@ describe('<ForgotPassword />', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     const request = JSON.parse((fetchMock.mock.calls[0]?.[1] as RequestInit).body as string);
     expect(request).toEqual({ email: 'a@b.co' });
-    expect(router.push).toHaveBeenCalledWith({
-      pathname: '/(auth)/verify-reset-code',
-      params: { email: 'a@b.co' },
-    });
+    expect(navigation.navigate).toHaveBeenCalledWith('VerifyResetCode', { email: 'a@b.co' });
   });
 });

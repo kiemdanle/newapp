@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { View, Text, Image, ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
 import { OcrCamera } from '../../../src/features/expiry/OcrCamera';
 import { useTheme } from '../../../src/theme/useTheme';
 import { ensurePushTokenRegistered } from '../../../src/features/push/registerPushToken';
+import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 export default function ProductDetail() {
   const theme = useTheme();
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const navigation = useNavigation<AppNavigationProp>();
+  const route = useRoute();
+  const { id } = route.params as { id: string };
   const { data, isLoading } = useProduct(id);
   const [showOcr, setShowOcr] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export default function ProductDetail() {
         onOpenOcr={() => setShowOcr(true)}
         onSaved={async () => {
           await ensurePushTokenRegistered();
-          router.replace('/home');
+          navigation.replace('Tabs');
         }}
       />
       {prefillDate ? (

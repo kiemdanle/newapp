@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { globSync } from 'glob';
 
-const files = globSync('src/components/**/*.tsx', { cwd: process.cwd() });
+const files = globSync('src/components/**/*.tsx', { cwd: process.cwd() }).filter((f) => !f.endsWith('.test.tsx'));
 const INTERACTIVE = /<(Pressable|TouchableOpacity|TouchableHighlight|Button)\b/;
 const HAS_MIN = /minHeight:\s*([0-9]+)/g;
 

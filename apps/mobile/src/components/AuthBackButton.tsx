@@ -1,21 +1,41 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../navigation/AuthNavigator';
 import { useTheme } from '../theme/useTheme';
 
 export function AuthBackButton({
-  fallback = '/(auth)/welcome',
+  fallback,
 }: {
   fallback?: string;
 }) {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const theme = useTheme();
 
   function onPress() {
-    if (router.canGoBack()) {
-      router.back();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (fallback) {
+      switch (fallback) {
+        case '/(auth)/welcome':
+        case '/welcome':
+          navigation.replace('Welcome');
+          break;
+        case '/(auth)/sign-in':
+        case '/sign-in':
+          navigation.replace('SignIn');
+          break;
+        case '/(auth)/forgot-password':
+        case '/forgot-password':
+          navigation.replace('ForgotPassword');
+          break;
+        default:
+          navigation.replace('Welcome');
+          break;
+      }
     } else {
-      router.replace(fallback as any);
+      navigation.replace('Welcome');
     }
   }
 
@@ -54,6 +74,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minWidth: 88,
     height: 40,
+    minHeight: 44,
     borderRadius: 20,
     borderWidth: 1.5,
     alignItems: 'center',

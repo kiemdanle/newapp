@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { Screen } from '../../src/components/Screen';
 import { ErrorText } from '../../src/components/ErrorText';
 import { OtpInput } from '../../src/components/OtpInput';
@@ -15,15 +17,16 @@ import { useTheme } from '../../src/theme/useTheme';
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmail() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const setUser = useSessionStore((s) => s.setUser);
   const signIn = useSessionStore((s) => s.signIn);
   const accessToken = useSessionStore((s) => s.accessToken);
   const pendingAuth = useSessionStore((s) => s.pendingAuth);
-  const params = useLocalSearchParams<{ email?: string }>();
-  const email = params.email ?? pendingAuth?.user.email ?? user?.email ?? '';
+  const route = useRoute();
+  const { email } = route.params as { email?: string };
+  const emailAddress = email ?? pendingAuth?.user.email ?? user?.email ?? '';
   const [code, setCode] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,13 +44,13 @@ export default function VerifyEmail() {
   async function onResend() {
     setMessage(null);
     setError(null);
-    if (!email) {
+    if (!emailAddress) {
       setError('No email on file');
       return;
     }
     setResending(true);
     try {
-      await authEndpoints.resendVerification(email);
+      await authEndpoints.resendVerification(emailAddress);
       setMessage('Verification code sent. Check your inbox.');
       setCode('');
       setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -60,14 +63,14 @@ export default function VerifyEmail() {
 
   // Wrong address? Go back to where the flow started so the user can re-enter it.
   function onChangeEmail() {
-    router.replace(pendingAuth ? '/(auth)/sign-up' : '/(auth)/sign-in');
+    navigation.replace(pendingAuth ? 'SignUp' : 'SignIn');
   }
 
   async function onSubmit(value = code) {
     const verificationCode = value.replace(/\D/g, '');
     setMessage(null);
     setError(null);
-    if (!email) {
+    if (!emailAddress) {
       setError('No email on file');
       return;
     }
@@ -77,20 +80,20 @@ export default function VerifyEmail() {
     }
     setLoading(true);
     try {
-      await authEndpoints.verifyEmail({ email, code: verificationCode });
+      await authEndpoints.verifyEmail({ email: emailAddress, code: verificationCode });
       if (pendingAuth) {
         // Registration flow: the session was held until now. Commit it (with the
         // now-verified flag) so the user lands authenticated on home.
         await signIn({ ...pendingAuth, user: { ...pendingAuth.user, emailVerified: true } });
-        router.replace('/(app)/(tabs)/home');
+        // AuthGate will flip to App stack once accessToken is set.
       } else if (accessToken) {
         // Already authenticated and just needed to verify — mark verified.
         if (user) setUser({ ...user, emailVerified: true });
-        router.replace('/(app)/(tabs)/home');
+        // AuthGate will keep the user in the App stack.
       } else {
         // Reached here from the sign-in "email not verified" path with no session
         // — send the user back to sign in now that the email is confirmed.
-        router.replace('/(auth)/sign-in');
+        navigation.replace('SignIn');
       }
     } catch (e) {
       setError(isApiError(e) ? e.title : 'Something went wrong');
@@ -109,7 +112,7 @@ export default function VerifyEmail() {
 
   return (
     <Screen backFallback="/(auth)/sign-in">
-      <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit code we sent to" email={email || undefined} />
+      <AuthHeader icon="mail-outline" title="Check your inbox" description="Enter the 6-digit code we sent to" email={emailAddress || undefined} />
 
       <OtpInput
         label="Verification code"

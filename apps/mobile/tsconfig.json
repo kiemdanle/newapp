@@ -31,12 +31,9 @@
     "experimentalDecorators": true
   },
   "include": [
-    "app.config.ts",
     "app/**/*",
     "src/**/*",
     "tests/**/*",
-    "nativewind-env.d.ts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "index.js"
   ]
 }

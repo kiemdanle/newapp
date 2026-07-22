@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Text, View, Pressable } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useRoute } from '@react-navigation/native';
 import { Screen } from '../../../../src/components/Screen';
 import { Button } from '../../../../src/components/Button';
 import { TextField } from '../../../../src/components/TextField';
@@ -9,7 +9,8 @@ import { useTheme } from '../../../../src/theme/useTheme';
 
 export default function ProductReview() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const route = useRoute();
+  const { id } = route.params as { id: string };
   const [rating, setRating] = useState(0);
   const [body, setBody] = useState('');
   const [error, setError] = useState<string | null>(null);

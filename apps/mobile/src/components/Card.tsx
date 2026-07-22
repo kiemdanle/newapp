@@ -11,7 +11,7 @@ export function Card({ children, style }: { children: React.ReactNode; style?: a
         {
           backgroundColor: theme.colors.bgElevated,
           borderRadius: theme.radii.lg,
-          shadowColor: '#2C2C28',
+          shadowColor: theme.colors.neutralDark,
           shadowOpacity: 0.06,
           shadowRadius: 12,
           shadowOffset: { width: 0, height: 3 },

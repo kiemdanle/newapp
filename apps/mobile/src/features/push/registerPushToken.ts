@@ -1,28 +1,30 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
+import messaging from '@react-native-firebase/messaging';
 import { getItem, setItem } from '../../auth/secure-store';
 import { registerPushTokenApi } from '../../api/push';
 
-const FLAG_KEY = 'pantry.pushRegisteredV1';
+/** Stores the last successfully registered FCM token (not a boolean). */
+export const PUSH_REGISTERED_FLAG_KEY = 'pantry.pushRegisteredV1';
 
 export async function ensurePushTokenRegistered(): Promise<void> {
-  if (!Device.isDevice) return;
-  if (await getItem(FLAG_KEY)) return;
+  const authStatus = await messaging().requestPermission();
+  const enabled =
+    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+  if (!enabled) return;
 
-  const existing = await Notifications.getPermissionsAsync();
-  let status = existing.status;
-  if (status !== 'granted') {
-    const req = await Notifications.requestPermissionsAsync();
-    status = req.status;
-  }
-  if (status !== 'granted') return;
+  const fcmToken = await messaging().getToken();
+  if (!fcmToken) return;
 
-  const tokenData = await Notifications.getExpoPushTokenAsync();
+  // Compare against the last registered token so a hard-revoked server row is
+  // re-registered on the next authenticated boot without requiring sign-out.
+  const lastRegistered = await getItem(PUSH_REGISTERED_FLAG_KEY);
+  if (lastRegistered === fcmToken) return;
+
   await registerPushTokenApi({
-    expoPushToken: tokenData.data,
+    deviceToken: fcmToken,
     platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    deviceInfo: { model: Device.modelName ?? null, os: Platform.Version },
+    deviceInfo: { model: null, os: Platform.Version },
   });
-  await setItem(FLAG_KEY, '1');
+  await setItem(PUSH_REGISTERED_FLAG_KEY, fcmToken);
 }

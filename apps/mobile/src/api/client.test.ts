@@ -1,4 +1,4 @@
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
 import { apiClient } from './client';
 import { secureStore } from '../auth/secure-store';
@@ -7,7 +7,7 @@ import { ApiError } from './errors';
 describe('apiClient — happy path', () => {
   beforeEach(() => __reset());
 
-  it('builds URLs with the /v1 prefix from expo-constants', async () => {
+  it('builds URLs with the /v1 prefix from react-native-config', async () => {
     const f = queueFetch(jsonResponse({ status: 'ok' }));
     await apiClient.request({ method: 'GET', path: '/health' });
     expect(f).toHaveBeenCalledTimes(1);

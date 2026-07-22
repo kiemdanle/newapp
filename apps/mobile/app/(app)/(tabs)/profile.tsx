@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { Screen } from '../../../src/components/Screen';
 import { Logo } from '../../../src/components/Logo';
 import { useTheme } from '../../../src/theme/useTheme';
@@ -9,7 +10,7 @@ import { useSessionStore } from '../../../src/auth/session-store';
 import { authEndpoints } from '../../../src/api/endpoints';
 
 export default function Profile() {
-  const router = useRouter();
+  const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const signOut = useSessionStore((s) => s.signOut);
@@ -42,7 +43,7 @@ export default function Profile() {
           {
             backgroundColor: theme.colors.bgElevated,
             borderRadius: theme.radii.lg,
-            shadowColor: '#2C2C28',
+            shadowColor: theme.colors.neutralDark,
             shadowOpacity: 0.05,
             shadowRadius: 10,
             shadowOffset: { width: 0, height: 3 },
@@ -71,7 +72,7 @@ export default function Profile() {
           testID="profile-settings"
           accessibilityRole="button"
           accessibilityLabel="Open settings"
-          onPress={() => router.push('/(app)/settings')}
+          onPress={() => navigation.push('SettingsIndex')}
           style={({ pressed }) => [
             styles.row,
             {

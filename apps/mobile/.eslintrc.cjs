@@ -23,5 +23,5 @@ module.exports = {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'react-hooks/exhaustive-deps': 'warn',
   },
-  ignorePatterns: ['node_modules/', '.expo/', 'stubs/', '*.cjs', '*.js'],
+  ignorePatterns: ['node_modules/', '.expo/', 'stubs/', 'local-packages/', '__tests__/', '*.cjs', '*.js'],
 };

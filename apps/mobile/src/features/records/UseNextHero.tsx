@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import type { LocalRecord } from '../../api/records';
 import { useTheme } from '../../theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
@@ -17,7 +18,7 @@ function urgencyLabel(status: 'green' | 'amber' | 'red', daysLabel: string): str
 
 export function UseNextHero({ groups }: { groups: GroupedRecords }) {
   const theme = useTheme();
-  const router = useRouter();
+  const navigation = useNavigation<AppNavigationProp>();
   const item = pickMostUrgent(groups);
 
   if (!item) return null;
@@ -32,7 +33,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
       testID="use-next-hero"
       accessibilityRole="button"
       accessibilityLabel={`Use next: ${item.customName ?? 'item'}, expires ${item.expiryDate}`}
-      onPress={() => router.push(`/record/${item.id}`)}
+      onPress={() => navigation.navigate('Record', { id: item.id })}
       style={({ pressed }) => [
         styles.card,
         {

@@ -31,7 +31,6 @@ export declare const authResultSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -40,11 +39,11 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     }, {
-        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -53,6 +52,7 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -72,7 +72,6 @@ export declare const authResultSchema: z.ZodObject<{
     }>;
 }, "strip", z.ZodTypeAny, {
     user: {
-        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -81,6 +80,7 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -92,7 +92,6 @@ export declare const authResultSchema: z.ZodObject<{
     };
 }, {
     user: {
-        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -101,6 +100,7 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -178,11 +178,11 @@ export declare const verifyEmailSchema: z.ZodObject<{
     email: z.ZodString;
     code: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     email: string;
+    code: string;
 }, {
-    code: string;
     email: string;
+    code: string;
 }>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export declare const resendVerificationSchema: z.ZodObject<{
@@ -204,11 +204,11 @@ export declare const verifyResetCodeSchema: z.ZodObject<{
     email: z.ZodString;
     code: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     email: string;
+    code: string;
 }, {
-    code: string;
     email: string;
+    code: string;
 }>;
 export type VerifyResetCodeInput = z.infer<typeof verifyResetCodeSchema>;
 export declare const verifyResetCodeResponseSchema: z.ZodObject<{

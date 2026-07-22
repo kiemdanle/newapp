@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 import { render, waitFor, act } from '@testing-library/react-native';
 import { ThemeProvider, useTheme, useThemeSwitcher } from './ThemeProvider';
 import { useThemeStore, initThemeStore } from './store';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function Probe() {
   const theme = useTheme();

@@ -540,35 +540,35 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
 }>;
 export type RecordSyncResponse = z.infer<typeof recordSyncResponseSchema>;
 export declare const pushTokenRegisterSchema: z.ZodObject<{
-    expoPushToken: z.ZodString;
+    deviceToken: z.ZodString;
     platform: z.ZodEnum<["ios", "android"]>;
     deviceInfo: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
 }, "strip", z.ZodTypeAny, {
-    expoPushToken: string;
+    deviceToken: string;
     platform: "ios" | "android";
     deviceInfo?: globalThis.Record<string, unknown> | undefined;
 }, {
-    expoPushToken: string;
+    deviceToken: string;
     platform: "ios" | "android";
     deviceInfo?: globalThis.Record<string, unknown> | undefined;
 }>;
 export type PushTokenRegister = z.infer<typeof pushTokenRegisterSchema>;
 export declare const pushTokenSchema: z.ZodObject<{
     id: z.ZodString;
-    expoPushToken: z.ZodString;
+    deviceToken: z.ZodString;
     platform: z.ZodEnum<["ios", "android"]>;
     createdAt: z.ZodString;
     lastUsedAt: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id: string;
     createdAt: string;
-    expoPushToken: string;
+    deviceToken: string;
     platform: "ios" | "android";
     lastUsedAt: string | null;
 }, {
     id: string;
     createdAt: string;
-    expoPushToken: string;
+    deviceToken: string;
     platform: "ios" | "android";
     lastUsedAt: string | null;
 }>;

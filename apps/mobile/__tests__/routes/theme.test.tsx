@@ -5,7 +5,7 @@ import { StyleSheet } from 'react-native';
 import ThemeSettings from '../../app/(app)/settings/theme';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;

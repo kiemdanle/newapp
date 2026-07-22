@@ -49,7 +49,7 @@ export function MemberRow({ member, isCurrentUser, isOwner, canRemove, onRemove 
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Remove</Text>
+          <Text style={{ color: theme.colors.textInverse, fontSize: 12, fontWeight: '600' }}>Remove</Text>
         </Pressable>
       ) : null}
     </View>
