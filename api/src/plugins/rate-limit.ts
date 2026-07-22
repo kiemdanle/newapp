@@ -17,6 +17,9 @@ export async function registerRateLimit(app: FastifyInstance) {
       (req as WithUser).user?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin,
     timeWindow: '1 minute',
     redis: getRedis(),
+    // Digital Asset Links / AASA are polled by Google and must never 429.
+    allowList: (req) =>
+      typeof req.url === 'string' && req.url.startsWith('/.well-known/'),
     keyGenerator: (req) => {
       const u = (req as WithUser).user;
       return u?.id ? `user:rl:global:${u.id}` : `ip:rl:global:${req.ip}`;

@@ -43,9 +43,10 @@ export async function buildRegistrationOptions(
       // Do NOT force authenticatorAttachment:'platform'. On Android 11 / MIUI,
       // Credential Manager + Google Password Manager often fails create when
       // platform-only is required, while leaving attachment unset succeeds.
-      userVerification: 'preferred',
-      // Prefer discoverable credentials, but don't hard-require them.
-      residentKey: 'preferred',
+      // Keep UV/residentKey as discouraged for broadest Android 11 GMS create
+      // compatibility; discoverable credentials can be tightened later.
+      userVerification: 'discouraged',
+      residentKey: 'discouraged',
       requireResidentKey: false,
     },
   };

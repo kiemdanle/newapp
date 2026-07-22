@@ -5,12 +5,47 @@ import { isApiError } from '../api/errors';
 type PasskeyNativeError = {
   error?: string;
   message?: string;
+  code?: string;
 };
+
+/**
+ * Android Credential Manager is picky about create-option shape on API 30/MIUI.
+ * Strip fields that commonly cause NotAllowed/SecurityError even when the RP
+ * association is valid (credProps extension, empty excludeCredentials, etc.).
+ */
+function sanitizeCreateOptions(options: unknown): Record<string, unknown> {
+  const src = (options && typeof options === 'object' ? options : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...src };
+  delete out.extensions;
+
+  if (Array.isArray(out.excludeCredentials) && out.excludeCredentials.length === 0) {
+    delete out.excludeCredentials;
+  }
+
+  const selection = (out.authenticatorSelection && typeof out.authenticatorSelection === 'object'
+    ? { ...(out.authenticatorSelection as Record<string, unknown>) }
+    : {}) as Record<string, unknown>;
+  // Leave attachment unset; force non-required resident key.
+  delete selection.authenticatorAttachment;
+  if (selection.requireResidentKey === true) selection.requireResidentKey = false;
+  out.authenticatorSelection = selection;
+
+  // Ensure displayName is never empty if name is present.
+  if (out.user && typeof out.user === 'object') {
+    const user = { ...(out.user as Record<string, unknown>) };
+    if (!user.displayName || String(user.displayName).trim() === '') {
+      user.displayName = user.name ?? 'Expyrico user';
+    }
+    out.user = user;
+  }
+
+  return out;
+}
 
 function passkeyErrorMessage(e: unknown, fallback: string): string {
   if (e && typeof e === 'object') {
     const pe = e as PasskeyNativeError;
-    const code = typeof pe.error === 'string' ? pe.error.trim() : '';
+    const code = (typeof pe.error === 'string' ? pe.error : typeof pe.code === 'string' ? pe.code : '').trim();
     const msg = typeof pe.message === 'string' ? pe.message.trim() : '';
     if (code) {
       switch (code) {
@@ -47,13 +82,20 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
 
 function rethrowPasskeyError(e: unknown, fallback: string): never {
   if (isApiError(e)) throw e;
+  // Keep raw object in Metro/logcat for debugging native Credential Manager failures.
+  try {
+    // eslint-disable-next-line no-console
+    console.warn('[passkey] native error', JSON.stringify(e));
+  } catch {
+    // eslint-disable-next-line no-console
+    console.warn('[passkey] native error', e);
+  }
   throw new Error(passkeyErrorMessage(e, fallback));
 }
 
 export async function signInWithPasskey(email?: string) {
   try {
     const options = await authEndpoints.passkeyLoginOptions(email);
-    // react-native-passkey expects PublicKeyCredentialRequestOptionsJSON
     const assertion = await Passkey.get(options as never);
     return authEndpoints.passkeyLoginVerify(assertion);
   } catch (e) {
@@ -70,8 +112,20 @@ export async function signInWithPasskey(email?: string) {
 export async function registerPasskey(): Promise<void> {
   try {
     const options = await authEndpoints.passkeyRegisterOptions();
-    // react-native-passkey expects PublicKeyCredentialCreationOptionsJSON
-    const attestation = await Passkey.create(options as never);
+    const sanitized = sanitizeCreateOptions(options);
+    // eslint-disable-next-line no-console
+    console.log(
+      '[passkey] create options',
+      JSON.stringify({
+        rp: sanitized.rp,
+        user: sanitized.user,
+        pubKeyCredParams: sanitized.pubKeyCredParams,
+        authenticatorSelection: sanitized.authenticatorSelection,
+        attestation: sanitized.attestation,
+        hasExtensions: Boolean((options as { extensions?: unknown })?.extensions),
+      }),
+    );
+    const attestation = await Passkey.create(sanitized as never);
     await authEndpoints.passkeyRegisterVerify(attestation);
   } catch (e) {
     rethrowPasskeyError(e, 'Could not add a passkey');
