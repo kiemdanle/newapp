@@ -113,16 +113,17 @@ export default function SignIn() {
   async function onPasskey() {
     if (loading) return;
     setFormError(null);
-    // Prefer email when present so the server can send allowCredentials for
-    // non-discoverable device passkeys (avoids Android Credential Manager loops).
-    const trimmed = email.trim();
-    if (trimmed && !trimmed.includes('@')) {
-      setFormError('Enter a valid email before using a passkey, or leave email blank for a device passkey.');
+    // Email is required so the server can return allowCredentials for this
+    // account. Device-bound (non-discoverable) passkeys will otherwise make
+    // Google Password Manager offer only "use a passkey from a different device".
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes('@')) {
+      setFormError('Enter the email for this account, then tap Use a passkey.');
       return;
     }
     setLoading(true);
     try {
-      const result = await signInWithPasskey(trimmed || undefined);
+      const result = await signInWithPasskey(trimmed);
       await signIn(result);
       // AuthGate will flip to App stack once accessToken is set.
     } catch (e) {

@@ -4,6 +4,21 @@ import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
 import { buildRegistrationOptions, consumeRegistration } from '../../services/auth/passkey.js';
 
+/** Normalize WebAuthn credential id to base64url string for storage/lookup. */
+function normalizeCredentialId(id: unknown): string | null {
+  if (typeof id === 'string' && id.length > 0) {
+    // Already base64url (or base64) — normalize to url-safe without padding.
+    return id.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  if (id instanceof Uint8Array) {
+    return Buffer.from(id).toString('base64url');
+  }
+  if (Buffer.isBuffer(id)) {
+    return id.toString('base64url');
+  }
+  return null;
+}
+
 export async function passkeyRegisterRoute(app: FastifyInstance) {
   app.post('/passkey/register/options', { onRequest: [app.requireAuth] }, async (req) => {
     const userId = req.user!.id;
@@ -46,10 +61,16 @@ export async function passkeyRegisterRoute(app: FastifyInstance) {
         transports?: string[];
       };
     };
-    const credentialId = info.credential?.id ?? info.credentialID;
+    const rawId = info.credential?.id ?? info.credentialID;
     const publicKey = info.credential?.publicKey ?? info.credentialPublicKey;
     const counter = info.credential?.counter ?? info.counter ?? 0;
     const transports = info.credential?.transports ?? [];
+    // Also accept the client attestation's id (base64url) as source of truth.
+    const clientId =
+      typeof (input.attestationResponse as { id?: unknown })?.id === 'string'
+        ? (input.attestationResponse as { id: string }).id
+        : null;
+    const credentialId = normalizeCredentialId(clientId ?? rawId);
     if (!credentialId || !publicKey) {
       throw new AppError({
         status: 400,
@@ -61,6 +82,7 @@ export async function passkeyRegisterRoute(app: FastifyInstance) {
       data: {
         userId,
         type: 'passkey',
+        // Must be base64url string — used later as allowCredentials[].id on login.
         providerUserId: credentialId,
         publicKey: Buffer.from(publicKey),
         counter: BigInt(counter),

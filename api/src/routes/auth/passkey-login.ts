@@ -20,7 +20,12 @@ export async function passkeyLoginRoute(app: FastifyInstance) {
         const creds = await prisma.authCredential.findMany({
           where: { userId: user.id, type: 'passkey' },
         });
-        allowed = creds.map((c) => c.providerUserId).filter((v): v is string => !!v);
+        // Normalize stored ids to base64url so Android allowCredentials matches
+        // the device credential id format.
+        allowed = creds
+          .map((c) => c.providerUserId)
+          .filter((v): v is string => !!v)
+          .map((id) => id.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, ''));
         subject = `user:${user.id}`;
       }
     }

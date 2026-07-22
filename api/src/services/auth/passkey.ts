@@ -40,13 +40,12 @@ export async function buildRegistrationOptions(
     // present. Stick to ES256 + RS256 which Android passkeys support.
     supportedAlgorithmIDs: [-7, -257],
     authenticatorSelection: {
-      // Do NOT force authenticatorAttachment:'platform'. On Android 11 / MIUI,
-      // Credential Manager + Google Password Manager often fails create when
-      // platform-only is required, while leaving attachment unset succeeds.
-      // Keep UV/residentKey as discouraged for broadest Android 11 GMS create
-      // compatibility; discoverable credentials can be tightened later.
-      userVerification: 'discouraged',
-      residentKey: 'discouraged',
+      // Prefer discoverable (resident) credentials so login works without an
+      // allowCredentials list. Non-discoverable keys force GMS to show
+      // "use a passkey from a different device" when email/allow list is missing.
+      // Leave authenticatorAttachment unset for broader GMS create success.
+      userVerification: 'preferred',
+      residentKey: 'preferred',
       requireResidentKey: false,
     },
   };
