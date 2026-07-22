@@ -57,7 +57,7 @@ export async function consumeRegistration(
   const opts: VerifyRegistrationResponseOpts = {
     response: response as VerifyRegistrationResponseOpts['response'],
     expectedChallenge: expected,
-    expectedOrigin: cfg.webauthn.origin,
+    expectedOrigin: cfg.webauthn.origins,
     expectedRPID: cfg.webauthn.rpId,
     requireUserVerification: false,
   };
@@ -101,7 +101,7 @@ export async function consumeAuthentication(
   const opts: VerifyAuthenticationResponseOpts = {
     response: response as VerifyAuthenticationResponseOpts['response'],
     expectedChallenge: expected,
-    expectedOrigin: cfg.webauthn.origin,
+    expectedOrigin: cfg.webauthn.origins,
     expectedRPID: cfg.webauthn.rpId,
     authenticator: {
       credentialID: authenticator.credentialID,

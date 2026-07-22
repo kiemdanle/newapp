@@ -32,6 +32,8 @@ describe('config', () => {
     ADMIN_URL: 'http://localhost:3000',
     COUNTRY_DETECT_PRIMARY: 'https://ipapi.co',
     COUNTRY_DETECT_FALLBACK: 'http://ip-api.com',
+    FIREBASE_PROJECT_ID: 'expyrico-test',
+    FIREBASE_CREDENTIAL_MODE: 'workload_identity',
   };
 
   it('parses a valid env', () => {
@@ -54,5 +56,52 @@ describe('config', () => {
     expect(() =>
       parseConfig({ ...valid, TOTP_ENCRYPTION_KEY: Buffer.from('short').toString('base64') }),
     ).toThrow();
+  });
+
+  it('requires GOOGLE_APPLICATION_CREDENTIALS for service_account_file mode', () => {
+    expect(() =>
+      parseConfig({
+        ...valid,
+        FIREBASE_CREDENTIAL_MODE: 'service_account_file',
+      }),
+    ).toThrow(/GOOGLE_APPLICATION_CREDENTIALS is required/);
+  });
+
+  it('rejects a missing service account credentials path', () => {
+    expect(() =>
+      parseConfig({
+        ...valid,
+        FIREBASE_CREDENTIAL_MODE: 'service_account_file',
+        GOOGLE_APPLICATION_CREDENTIALS: '/tmp/does-not-exist-firebase.json',
+      }),
+    ).toThrow(/does not exist/);
+  });
+
+  it('parses additional WebAuthn origins and Android asset-link fingerprints', () => {
+    const cfg = parseConfig({
+      ...valid,
+      WEBAUTHN_ORIGIN: 'https://api.example.com',
+      WEBAUTHN_ADDITIONAL_ORIGINS:
+        'android:apk-key-hash:NLZkeczh53uWVb671-fChbNCjLYITNizt7hx13uuIco,https://api.example.com',
+      ANDROID_PACKAGE_NAME: 'com.expyrico.app',
+      ANDROID_SHA256_CERT_FINGERPRINTS:
+        '34:B6:64:79:CC:E1:E7:7B:96:55:BE:BB:D7:E7:C2:85:B3:42:8C:B6:08:4C:D8:B3:B7:B8:71:D7:7B:AE:21:CA',
+    });
+    expect(cfg.webauthn.origin).toBe('https://api.example.com');
+    expect(cfg.webauthn.origins).toEqual([
+      'https://api.example.com',
+      'android:apk-key-hash:NLZkeczh53uWVb671-fChbNCjLYITNizt7hx13uuIco',
+    ]);
+    expect(cfg.android.packageName).toBe('com.expyrico.app');
+    expect(cfg.android.sha256CertFingerprints).toHaveLength(1);
+  });
+
+  it('rejects invalid additional WebAuthn origins', () => {
+    expect(() =>
+      parseConfig({
+        ...valid,
+        WEBAUTHN_ADDITIONAL_ORIGINS: 'not-a-url',
+      }),
+    ).toThrow(/Invalid WEBAUTHN origin/);
   });
 });

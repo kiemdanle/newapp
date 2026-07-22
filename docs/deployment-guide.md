@@ -135,7 +135,9 @@ critical var is missing or malformed.
 | `TOTP_ENCRYPTION_KEY` | 32-byte base64 |
 | `GOOGLE_CLIENT_ID` | Google OAuth |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` | Apple OAuth |
-| `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `WEBAUTHN_ORIGIN` | passkeys |
+| `WEBAUTHN_RP_ID`, `WEBAUTHN_RP_NAME`, `WEBAUTHN_ORIGIN` | passkeys (RP ID must be a real domain that serves Digital Asset Links / AASA; `localhost` only works for browser WebAuthn) |
+| `WEBAUTHN_ADDITIONAL_ORIGINS` | optional comma-separated extra verify origins (Android uses `android:apk-key-hash:<base64url-sha256>`) |
+| `ANDROID_PACKAGE_NAME`, `ANDROID_SHA256_CERT_FINGERPRINTS` | optional; when set, API serves `/.well-known/assetlinks.json` for Android passkeys |
 | `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER?`, `SMTP_PASS?`, `SMTP_FROM` | email |
 | `APP_DEEP_LINK` | password-reset deep link base |
 | `ADMIN_URL` | CORS allowlist + links |

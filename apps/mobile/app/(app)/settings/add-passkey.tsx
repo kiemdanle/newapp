@@ -20,7 +20,13 @@ export default function AddPasskey() {
       await registerPasskey();
       setDone(true);
     } catch (e) {
-      setError(isApiError(e) ? e.title : 'Could not add a passkey');
+      setError(
+        isApiError(e)
+          ? e.title
+          : e instanceof Error && e.message
+            ? e.message
+            : 'Could not add a passkey',
+      );
     } finally {
       setLoading(false);
     }

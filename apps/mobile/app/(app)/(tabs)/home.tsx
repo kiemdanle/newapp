@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen } from '../../../src/components/Screen';
 import { Button } from '../../../src/components/Button';
@@ -11,10 +11,11 @@ import { useActiveRecords } from '../../../src/api/records';
 import { groupRecords } from '../../../src/features/records/groupRecords';
 import { useTheme } from '../../../src/theme/useTheme';
 import { Logo } from '../../../src/components/Logo';
+import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 export default function HomeTab() {
   const theme = useTheme();
-  const router = useRouter();
+  const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
   const records = useActiveRecords();
   const groups = groupRecords(records);
@@ -28,7 +29,7 @@ export default function HomeTab() {
           <Logo size={28} />
           <View>
             <Text style={[styles.greeting, { color: theme.colors.text }]}>Your pantry</Text>
-            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what needs you first.</Text>
+            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what you need first.</Text>
           </View>
         </View>
         {totalUrgent > 0 ? <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}><Text style={[styles.countText, { color: theme.colors.primaryDark }]}>{totalUrgent} need attention</Text></View> : null}
@@ -53,7 +54,7 @@ export default function HomeTab() {
         <RecordList header={header} empty={empty} />
       </Screen>
       <View testID="home-scan-action" style={[styles.scanAction, { bottom: insets.bottom + 88 }]}>
-        <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => router.push('/scan')} />
+        <Button label="Scan an item" icon="scan-outline" accessibilityLabel="Scan pantry items" onPress={() => navigation.navigate('Scan')} />
       </View>
     </View>
   );

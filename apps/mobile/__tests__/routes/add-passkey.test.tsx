@@ -5,7 +5,7 @@ import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { useSessionStore } from '../../src/auth/session-store';
 import { jsonResponse, problemResponse, queueFetch } from '../../tests/mocks/fetch';
-import { __reset } from '../../tests/mocks/expo-secure-store';
+import { __reset } from '../../tests/mocks/react-native-keychain';
 import { Passkey } from 'react-native-passkey';
 import { secureStore } from '../../src/auth/secure-store';
 
@@ -45,5 +45,20 @@ describe('<AddPasskey />', () => {
     });
     expect(await findByText('Passkeys are not allowed here')).toBeTruthy();
     expect(Passkey.create).not.toHaveBeenCalled();
+  });
+
+  it('on native Passkey.create failure: surfaces the native message', async () => {
+    (Passkey.create as unknown as jest.Mock).mockRejectedValueOnce({
+      error: 'RequestFailed',
+      message: 'The request failed. No Credentials were returned.',
+    });
+    queueFetch(jsonResponse({ challenge: 'abc', rp: { id: 'localhost' } }));
+    const { getByTestId, findByText } = render(wrap(<AddPasskey />));
+    await act(async () => {
+      fireEvent.press(getByTestId('add-passkey-submit'));
+    });
+    expect(
+      await findByText(/Passkey request failed|No Credentials were returned/i),
+    ).toBeTruthy();
   });
 });

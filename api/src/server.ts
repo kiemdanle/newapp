@@ -10,6 +10,7 @@ import { registerErrorHandler } from './plugins/error-handler.js';
 import { authPlugin } from './plugins/auth.js';
 import { idempotencyPlugin } from './plugins/idempotency.js';
 import { healthRoutes } from './routes/health.js';
+import { wellKnownRoutes } from './routes/well-known.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
 import { productRoutes } from './routes/products/index.js';
@@ -72,6 +73,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   await app.register(healthRoutes);
+  await app.register(wellKnownRoutes);
   await app.register(authRoutes, { prefix: '/v1/auth' });
   await app.register(meRoutes, { prefix: '/v1/me' });
   await app.register(productRoutes, { prefix: '/v1/products' });

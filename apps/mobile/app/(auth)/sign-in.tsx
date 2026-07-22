@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
 import { loginSchema } from '@expyrico/shared';
 import { Screen } from '../../src/components/Screen';
 import { TextField } from '../../src/components/TextField';
@@ -19,7 +21,7 @@ import { isAppleSignInAvailable, signInWithApple } from '../../src/auth/apple';
 import { signInWithPasskey } from '../../src/auth/passkey';
 
 export default function SignIn() {
-  const router = useRouter();
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const theme = useTheme();
   const signIn = useSessionStore((s) => s.signIn);
   const [email, setEmail] = useState('');
@@ -38,12 +40,14 @@ export default function SignIn() {
   function handleApiError(e: unknown) {
     if (isApiError(e)) {
       if (e.code === 'email_not_verified') {
-        router.push({ pathname: '/(auth)/verify-email', params: { email } });
+        navigation.navigate('VerifyEmail', { email });
         return;
       }
       setFormError(e.title);
     } else if (isNetworkError(e)) {
       setFormError(NETWORK_ERROR_MESSAGE);
+    } else if (e instanceof Error && e.message) {
+      setFormError(e.message);
     } else {
       setFormError('Something went wrong');
     }
@@ -63,7 +67,7 @@ export default function SignIn() {
         return;
       }
       await signIn(result);
-      router.replace('/(app)/(tabs)/home');
+      // Handled by AuthGate / RootNavigator; no explicit navigation needed.
     } catch (e) {
       handleApiError(e);
     } finally {
@@ -78,7 +82,7 @@ export default function SignIn() {
       const idToken = await signInWithGoogle();
       const result = await authEndpoints.oauthGoogle(idToken);
       await signIn(result);
-      router.replace('/(app)/(tabs)/home');
+      // AuthGate will flip to App stack once accessToken is set.
     } catch (e) {
       if (e instanceof GoogleSignInCancelled) return;
       handleApiError(e);
@@ -98,7 +102,7 @@ export default function SignIn() {
         cred.lastName,
       );
       await signIn(result);
-      router.replace('/(app)/(tabs)/home');
+      // AuthGate will flip to App stack once accessToken is set.
     } catch (e) {
       handleApiError(e);
     } finally {
@@ -112,7 +116,7 @@ export default function SignIn() {
     try {
       const result = await signInWithPasskey(email || undefined);
       await signIn(result);
-      router.replace('/(app)/(tabs)/home');
+      // AuthGate will flip to App stack once accessToken is set.
     } catch (e) {
       handleApiError(e);
     } finally {
@@ -152,7 +156,7 @@ export default function SignIn() {
       <Button
         label="Forgot password?"
         variant="ghost"
-        onPress={() => router.push('/(auth)/forgot-password')}
+        onPress={() => navigation.navigate('ForgotPassword')}
       />
 
       {formError ? <ErrorText>{formError}</ErrorText> : null}
