@@ -1,5 +1,7 @@
 # Expyrico mobile bare React Native migration design
 
+> **Superseded for execution (2026-07-21).** This design remains historical context only. The executable record is `plans/260714-0728-mobile-bare-rn-migration/` (collapsed direct cutover after Expo removal). Do not treat commands or sequencing in this file as current runbook.
+
 ## Goal
 
 Remove Expo completely from the Expyrico runtime. The app must remain a single React Native codebase for Android and iOS, build Android release APKs with the local Gradle toolchain, and install/test them through `adb`. The API push sender must also move off the Expo Push service so native device tokens remain deliverable. No Expo package, runtime wrapper, launcher, build command, active configuration, or current operational instruction may remain.

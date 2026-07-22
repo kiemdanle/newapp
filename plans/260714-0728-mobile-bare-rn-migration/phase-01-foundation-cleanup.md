@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Foundation cleanup: theme, dead variants, NativeWind decision"
-status: pending
+status: completed
 priority: P2
 dependencies: []
 ---

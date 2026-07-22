@@ -23,9 +23,9 @@ This plan unifies two design specs into one executable sequence because they edi
 
 Goal: remove Expo completely from the Expyrico runtime (`apps/mobile`) and from the API push path, keeping a single React Native 0.76.9 codebase that builds Android release APKs with local Gradle, installs/tests through `adb`, delivers push through Firebase Cloud Messaging, and presents one responsive Expyrico visual system (System/Light/Dark only). Every API contract is preserved except the push-token fields, which change for native FCM delivery.
 
-**Sequencing decision (user-approved): interleaved.** Cheap theme cleanup first, then migrate, then apply visuals once on the final React Navigation structure.
+**Sequencing decision (user-approved): direct cutover.** After Phase 2 began, the user confirmed they do not use Expo and directed a full Expo removal now. The remaining phases are collapsed into a single cutover: baseline deps + Android/iOS host de-Expo + Expo removal + React Navigation + capability swaps + visual system + verification.
 
-**This plan was restructured after a 4-reviewer red-team.** The original 8-phase draft was over-structured at the cheap end (theme cleanup gated everything) and dangerously under-decomposed at the expensive end (one 35-file atomic navigation commit, 8 capability swaps in one phase, 53 files restyled under one gate) — and it missed live build/native dependencies (NativeWind, WatermelonDB, ML Kit OCR), the deeper Android Gradle de-Expo, Android/iOS native auth wiring, and a runtime-atomicity fallacy in the push cutover. The 13-phase structure below is the corrected version. See `## Red Team Review`.
+**This plan was restructured after a 4-reviewer red-team.** The original 8-phase draft was over-structured at the cheap end (theme cleanup gated everything) and dangerously under-decomposed at the expensive end (one 35-file atomic navigation commit, 8 capability swaps in one phase, 53 files restyled under one gate) — and it missed live build/native dependencies (NativeWind, WatermelonDB, ML Kit OCR), the deeper Android Gradle de-Expo, Android/iOS native auth wiring, and a runtime-atomicity fallacy in the push cutover. The 13-phase structure below was the corrected version; after the Expo pivot, it is being executed as a collapsed sequence. See `## Red Team Review`.
 
 ### Validation findings (verified against the worktree)
 
@@ -59,19 +59,15 @@ Goal: remove Expo completely from the Expyrico runtime (`apps/mobile`) and from 
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Foundation cleanup: theme, dead variants, NativeWind decision](./phase-01-foundation-cleanup.md) | Pending |
-| 2 | [Baseline dependencies, native config, module inventory](./phase-02-baseline-deps-and-native-config.md) | Pending |
-| 3 | [Navigation scaffolding (additive)](./phase-03-navigation-scaffolding.md) | Pending |
-| 4 | [Navigation route ports (batched)](./phase-04-navigation-route-ports.md) | Pending |
-| 5 | [Navigation atomic flip and deep-link cutover](./phase-05-navigation-atomic-flip.md) | Pending |
-| 6 | [Storage, splash, status bar capabilities](./phase-06-storage-splash-statusbar.md) | Pending |
-| 7 | [Camera and OCR capabilities](./phase-07-camera-and-ocr.md) | Pending |
-| 8 | [Push contract to FCM (hard cutover)](./phase-08-push-fcm-cutover.md) | Pending |
-| 9 | [Android host, Gradle de-Expo, Android auth wiring](./phase-09-android-host-and-auth.md) | Pending |
-| 10 | [iOS host generation and iOS auth wiring](./phase-10-ios-host-and-auth.md) | Pending |
-| 11 | [Expo removal and Babel/Jest/Metro preset swap](./phase-11-expo-removal-and-presets.md) | Pending |
-| 12 | [Apply Expyrico visual system (batched)](./phase-12-apply-visual-system.md) | Pending |
-| 13 | [Docs cleanup and full verification](./phase-13-docs-and-verification.md) | Pending |
+| 1 | [Foundation cleanup: theme, dead variants, NativeWind decision](./phase-01-foundation-cleanup.md) | Completed |
+| 2 | [Bare baseline + Android host de-Expo + Expo removal (direct cutover)](./phase-02-baseline-deps-and-native-config.md) | Completed |
+| 3 | [iOS host generation and iOS auth wiring](./phase-10-ios-host-and-auth.md) | Blocked — Xcode 26.5 + RN 0.76 modulemap/Foundation compile |
+| 4 | [React Navigation scaffold and route ports](./phase-03-navigation-scaffolding.md) | Completed |
+| 5 | [Capability swaps: storage, splash, status bar, camera, OCR, push, auth, linking, icons](./phase-06-storage-splash-statusbar.md) | Completed — FCM hard cutover landed |
+| 6 | [Apply Expyrico visual system (batched)](./phase-12-apply-visual-system.md) | Completed |
+| 7 | [Docs cleanup and full verification](./phase-13-docs-and-verification.md) | Completed — adb device + iOS compile external |
+
+_Original phases 7–11 are folded into the collapsed sequence above after the Expo pivot._
 
 ## Phase dependency graph
 

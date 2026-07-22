@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Push contract to FCM (hard cutover, dev-device distribution)"
-status: pending
+status: completed
 priority: P1
 dependencies: [7]
 ---

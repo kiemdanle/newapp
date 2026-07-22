@@ -1,5 +1,7 @@
 # Expyrico mobile visual consistency design
 
+> **Superseded for execution (2026-07-21).** Palette/semantics here remain valid. Implementation batches and gates live in `plans/260714-0728-mobile-bare-rn-migration/phase-12-apply-visual-system.md` and the current `apps/mobile` screens/components.
+
 ## Goal
 
 Unify every mobile route under one responsive Expyrico visual system. The app must follow the device appearance when the user selects System default, while retaining explicit Light and Dark overrides. Existing product flows, navigation, API calls, and security behavior stay unchanged.

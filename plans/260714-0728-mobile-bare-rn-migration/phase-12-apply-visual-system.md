@@ -1,7 +1,7 @@
 ---
 phase: 12
 title: "Apply Expyrico visual system (batched)"
-status: pending
+status: completed
 priority: P2
 dependencies: [11]
 ---

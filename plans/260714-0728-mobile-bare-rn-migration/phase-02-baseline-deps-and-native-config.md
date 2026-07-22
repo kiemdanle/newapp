@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Baseline dependencies, native config, module inventory"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---

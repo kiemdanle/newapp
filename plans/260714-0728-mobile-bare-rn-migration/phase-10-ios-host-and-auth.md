@@ -1,7 +1,7 @@
 ---
 phase: 10
 title: "iOS host generation and iOS auth wiring"
-status: pending
+status: blocked
 priority: P1
 dependencies: [9]
 ---

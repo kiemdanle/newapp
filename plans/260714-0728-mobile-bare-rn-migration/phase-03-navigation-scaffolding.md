@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Navigation scaffolding (additive)"
-status: pending
+status: completed
 priority: P1
 dependencies: [2]
 ---

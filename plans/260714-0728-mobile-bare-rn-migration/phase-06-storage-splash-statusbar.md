@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Storage, splash, status bar capabilities"
-status: pending
+status: in_progress
 priority: P1
 dependencies: [5]
 ---
