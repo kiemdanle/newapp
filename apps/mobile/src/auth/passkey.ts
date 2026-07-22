@@ -10,14 +10,16 @@ type PasskeyNativeError = {
 function passkeyErrorMessage(e: unknown, fallback: string): string {
   if (e && typeof e === 'object') {
     const pe = e as PasskeyNativeError;
-    if (typeof pe.message === 'string' && pe.message.trim()) return pe.message;
-    if (typeof pe.error === 'string' && pe.error.trim()) {
-      switch (pe.error) {
+    const code = typeof pe.error === 'string' ? pe.error.trim() : '';
+    const msg = typeof pe.message === 'string' ? pe.message.trim() : '';
+    if (code) {
+      switch (code) {
         case 'NotSupported':
           return 'Passkeys are not supported on this device.';
         case 'UserCancelled':
           return 'Passkey request was cancelled.';
         case 'BadConfiguration':
+        case 'NotConfigured':
           return 'Passkeys are not configured for this app build. The relying-party domain must match and Digital Asset Links / Associated Domains must be published.';
         case 'InvalidChallenge':
           return 'The passkey challenge from the server was invalid.';
@@ -30,11 +32,14 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
         case 'TimedOut':
           return 'The passkey request timed out.';
         case 'RequestFailed':
-          return 'Passkey request failed. Check that the server RP ID matches a real domain associated with this app.';
+          return msg && msg !== code
+            ? `Passkey request failed: ${msg}`
+            : 'Passkey request failed. Ensure Google Password Manager is enabled, a screen lock is set, and the server RP ID is associated with this app.';
         default:
-          return pe.error;
+          return msg && msg !== code ? `${code}: ${msg}` : code;
       }
     }
+    if (msg) return msg;
   }
   if (e instanceof Error && e.message) return e.message;
   return fallback;

@@ -15,9 +15,12 @@ export async function wellKnownRoutes(app: FastifyInstance) {
         error: 'ANDROID_SHA256_CERT_FINGERPRINTS is not configured',
       });
     }
+    // Google fetchers only need public JSON. Strip CORP/COOP that helmet adds so
+    // association clients never treat this as a cross-origin block edge case.
     return reply
       .type('application/json')
       .header('cache-control', 'public, max-age=300')
+      .header('cross-origin-resource-policy', 'cross-origin')
       .send([
         {
           relation: ['delegate_permission/common.get_login_creds'],

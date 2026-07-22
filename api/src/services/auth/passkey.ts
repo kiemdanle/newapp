@@ -35,10 +35,16 @@ export async function buildRegistrationOptions(
     userDisplayName: (userDisplayName?.trim() || userName).slice(0, 64),
     attestationType: 'none',
     excludeCredentials: existingCredIds.map((id) => ({ id })),
+    // Default simplewebauthn list includes Ed25519 (-8). Older Android / GMS
+    // Password Manager stacks often reject the whole create request when -8 is
+    // present. Stick to ES256 + RS256 which Android passkeys support.
+    supportedAlgorithmIDs: [-7, -257],
     authenticatorSelection: {
+      // Prefer on-device / Google Password Manager authenticators.
+      authenticatorAttachment: 'platform',
       userVerification: 'preferred',
       // Prefer discoverable credentials, but don't hard-require them — some
-      // emulator/Google Password Manager paths fail with required residentKey.
+      // MIUI/GMS paths fail with required residentKey.
       residentKey: 'preferred',
       requireResidentKey: false,
     },
