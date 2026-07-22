@@ -76,7 +76,7 @@ describe('admin system', () => {
     const res = await app.inject({ method: 'GET', url: '/v1/admin/system/external-apis', headers });
     expect(res.statusCode).toBe(200);
     const names = res.json().breakers.map((b: { name: string }) => b.name);
-    expect(names).toEqual(expect.arrayContaining(['off', 'upcitemdb', 'expo-push']));
+    expect(names).toEqual(expect.arrayContaining(['off', 'upcitemdb', 'fcm-push']));
     await app.close();
   });
 

@@ -8,6 +8,7 @@ import { disconnectRedis, getRedis } from '../../src/redis.js';
 // Vitest runs from the api package root, so resolve relative to cwd.
 // We OVERRIDE any pre-existing values because the dev .env may already be loaded
 // in the parent shell or by tooling, and tests must use the .env.test values.
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 const envPath = existsSync(resolve('.env.test')) ? '.env.test' : '.env.test.example';
 for (const line of readFileSync(envPath, 'utf8').split('\n')) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -17,6 +18,12 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
     process.env[m[1]!] = val;
   }
 }
+
+// Keep checked-out local .env.test files compatible with config additions without
+// weakening production's fail-fast Firebase credential validation.
+if (testDatabaseUrl) process.env.DATABASE_URL = testDatabaseUrl;
+process.env.FIREBASE_PROJECT_ID ??= 'expyrico-test';
+process.env.FIREBASE_CREDENTIAL_MODE ??= 'workload_identity';
 
 // Truncate all tables in dependency order before each test
 const tables = [

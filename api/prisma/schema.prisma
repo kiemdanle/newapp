@@ -201,14 +201,14 @@ model Session {
 }
 
 model PushToken {
-  id            String       @id @default(uuid()) @db.Uuid
-  userId        String       @db.Uuid
-  expoPushToken String       @unique
-  platform      PushPlatform
-  deviceInfo    Json?
-  createdAt     DateTime     @default(now())
-  lastUsedAt    DateTime?
-  revokedAt     DateTime?
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  deviceToken String       @unique
+  platform    PushPlatform
+  deviceInfo  Json?
+  createdAt   DateTime     @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -393,14 +393,14 @@ model Record {
 }
 
 model PushLog {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @map("user_id") @db.Uuid
-  recordId     String?       @map("record_id") @db.Uuid
-  expoTicketId String?       @map("expo_ticket_id")
-  templateKey  String        @map("template_key")
-  status       PushLogStatus
-  errorMessage String?       @map("error_message")
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id                String        @id @default(uuid()) @db.Uuid
+  userId            String        @map("user_id") @db.Uuid
+  recordId          String?       @map("record_id") @db.Uuid
+  providerMessageId String?       @map("provider_message_id")
+  templateKey       String        @map("template_key")
+  status            PushLogStatus
+  errorMessage      String?       @map("error_message")
+  createdAt         DateTime      @default(now()) @map("created_at")
 
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   record Record? @relation(fields: [recordId], references: [id], onDelete: SetNull)

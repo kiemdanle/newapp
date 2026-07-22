@@ -1,13 +1,12 @@
 import { Worker } from 'bullmq';
-import type { ExpoPushMessage } from 'expo-server-sdk';
 import { getPrisma } from '../db.js';
 import {
   NOTIFICATION_SEND_QUEUE,
   getQueueConnection,
   type NotificationSendJob,
 } from '../queues/index.js';
-import { sendPush } from '../services/push/expo-push.js';
-import { activeTokensForUser } from '../services/push/repository.js';
+import { isInvalidFcmTokenError, sendFcmPush } from '../services/push/fcm-push.js';
+import { activeTokensForUser, revokePushTokenById } from '../services/push/repository.js';
 import { logger } from '../logger.js';
 
 function bodyFor(offsetDays: number, name: string): string {
@@ -29,20 +28,17 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
   const tokens = await activeTokensForUser(data.userId);
   if (tokens.length === 0) return;
 
-  const messages: ExpoPushMessage[] = tokens.map((t) => ({
-    to: t.expoPushToken,
-    sound: 'default',
-    title: 'Expyrico',
-    body: bodyFor(data.offsetDays, name),
-    data: { recordId: record.id, type: 'expiry' },
-  }));
-
-  let tickets: Array<{ status?: string; id?: string; message?: string }> = [];
+  let results: Awaited<ReturnType<typeof sendFcmPush>>;
   try {
-    tickets = (await sendPush(messages)) as typeof tickets;
+    results = await sendFcmPush({
+      tokens: tokens.map((token) => token.deviceToken),
+      title: 'Expyrico',
+      body: bodyFor(data.offsetDays, name),
+      data: { recordId: record.id, type: 'expiry' },
+    });
   } catch (err) {
-    logger.warn({ err, recordId: record.id }, 'expo push send failed (circuit?)');
-    for (const _t of tokens) {
+    logger.warn({ err, recordId: record.id }, 'FCM push send failed (circuit?)');
+    for (const _token of tokens) {
       await prisma.pushLog.create({
         data: {
           userId: data.userId,
@@ -53,19 +49,32 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
         },
       });
     }
-    throw err; // let BullMQ retry per attempts config
+    // Rethrow so BullMQ retries the job on provider/circuit outages.
+    throw err;
   }
 
-  for (let i = 0; i < tickets.length; i++) {
-    const ticket = tickets[i]!;
+  if (results.length !== tokens.length) {
+    throw new Error(
+      `FCM response count mismatch: expected ${tokens.length}, got ${results.length}`,
+    );
+  }
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    const result = results[index]!;
+
+    if (isInvalidFcmTokenError(result.errorCode)) {
+      await revokePushTokenById(token.id);
+    }
+
     await prisma.pushLog.create({
       data: {
         userId: data.userId,
         recordId: record.id,
-        expoTicketId: ticket.id ?? null,
+        providerMessageId: result.providerMessageId,
         templateKey: data.templateKey,
-        status: ticket.status === 'ok' ? 'sent' : 'failed',
-        errorMessage: ticket.status === 'ok' ? null : ticket.message ?? 'unknown',
+        status: result.errorCode === null ? 'sent' : 'failed',
+        errorMessage: result.errorMessage,
       },
     });
   }

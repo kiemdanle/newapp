@@ -1,6 +1,6 @@
 import { getBreaker } from '../../services/external/breakers.js';
 
-const NAMES = ['off', 'upcitemdb', 'expo-push'] as const;
+const NAMES = ['off', 'upcitemdb', 'fcm-push'] as const;
 
 export function snapshotBreakers() {
   return NAMES.map((name) => {
