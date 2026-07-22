@@ -3,7 +3,6 @@ import {
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
-  type AuthenticatorTransportFuture,
   type GenerateRegistrationOptionsOpts,
   type GenerateAuthenticationOptionsOpts,
   type VerifyRegistrationResponseOpts,
@@ -123,7 +122,7 @@ export async function buildAuthenticationOptions(
             id,
             // Hint platform authenticator so GMS prefers the on-device passkey
             // instead of only offering hybrid "another device".
-            transports: ['internal'] as AuthenticatorTransportFuture[],
+            transports: ['internal'] as ('internal' | 'hybrid' | 'usb' | 'nfc' | 'ble')[],
           })),
         }
       : {}),
