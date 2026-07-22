@@ -13,7 +13,8 @@ export async function passkeyRegisterRoute(app: FastifyInstance) {
       where: { userId, type: 'passkey' },
     });
     const ids = existing.map((c) => c.providerUserId).filter((v): v is string => !!v);
-    return buildRegistrationOptions(userId, user!.email, ids);
+    const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+    return buildRegistrationOptions(userId, user!.email, ids, displayName || user!.email);
   });
 
   app.post('/passkey/register/verify', { onRequest: [app.requireAuth] }, async (req, reply) => {

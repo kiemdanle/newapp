@@ -23,6 +23,7 @@ export async function buildRegistrationOptions(
   userId: string,
   userName: string,
   existingCredIds: string[],
+  userDisplayName?: string,
 ): Promise<Awaited<ReturnType<typeof generateRegistrationOptions>>> {
   const cfg = getConfig();
   const opts: GenerateRegistrationOptionsOpts = {
@@ -30,11 +31,16 @@ export async function buildRegistrationOptions(
     rpID: cfg.webauthn.rpId,
     userID: new TextEncoder().encode(userId),
     userName,
+    // Android Credential Manager rejects empty displayName on some API levels.
+    userDisplayName: (userDisplayName?.trim() || userName).slice(0, 64),
     attestationType: 'none',
     excludeCredentials: existingCredIds.map((id) => ({ id })),
     authenticatorSelection: {
       userVerification: 'preferred',
+      // Prefer discoverable credentials, but don't hard-require them — some
+      // emulator/Google Password Manager paths fail with required residentKey.
       residentKey: 'preferred',
+      requireResidentKey: false,
     },
   };
   const options = await generateRegistrationOptions(opts);
