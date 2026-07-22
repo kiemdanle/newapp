@@ -63,7 +63,7 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
         case 'CredentialAlreadyExists':
           return 'A passkey for this account already exists on this device. Remove the old Expyrico passkey in Google Password Manager, then try again — or sign in with Use a passkey.';
         case 'NoCredentials':
-          return 'No passkey is available on this device.';
+          return 'No matching passkey is available for login. Open Google Password Manager, delete any Expyrico / api.linhkienkts.com passkeys, then sign in with password and add a new passkey.';
         case 'NoCreateOption':
           return 'No passkey provider is available. On Android, open Google Password Manager, make sure a Google account is signed in, screen lock is on, and try again. Emulators often need a Google account + Password Manager setup before passkeys work.';
         case 'TimedOut':

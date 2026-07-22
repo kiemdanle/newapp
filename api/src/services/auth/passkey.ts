@@ -116,15 +116,11 @@ export async function buildAuthenticationOptions(
     // Empty allowCredentials means "any discoverable credential for this RP".
     // Omit the field entirely when empty — Android Credential Manager can loop
     // or fail when given an empty array.
+    // Do NOT set transports on allowCredentials. Keys saved to Google Password
+    // Manager are often not "internal"-only; filtering to internal makes GMS
+    // report NoCredentials while create still says the passkey already exists.
     ...(allowedCredIds.length > 0
-      ? {
-          allowCredentials: allowedCredIds.map((id) => ({
-            id,
-            // Hint platform authenticator so GMS prefers the on-device passkey
-            // instead of only offering hybrid "another device".
-            transports: ['internal'] as ('internal' | 'hybrid' | 'usb' | 'nfc' | 'ble')[],
-          })),
-        }
+      ? { allowCredentials: allowedCredIds.map((id) => ({ id })) }
       : {}),
     userVerification: 'preferred',
     timeout: 120_000,
