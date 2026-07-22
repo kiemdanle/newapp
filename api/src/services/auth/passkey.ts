@@ -3,6 +3,7 @@ import {
   verifyRegistrationResponse,
   generateAuthenticationOptions,
   verifyAuthenticationResponse,
+  type AuthenticatorTransportFuture,
   type GenerateRegistrationOptionsOpts,
   type GenerateAuthenticationOptionsOpts,
   type VerifyRegistrationResponseOpts,
@@ -117,10 +118,17 @@ export async function buildAuthenticationOptions(
     // Omit the field entirely when empty — Android Credential Manager can loop
     // or fail when given an empty array.
     ...(allowedCredIds.length > 0
-      ? { allowCredentials: allowedCredIds.map((id) => ({ id })) }
+      ? {
+          allowCredentials: allowedCredIds.map((id) => ({
+            id,
+            // Hint platform authenticator so GMS prefers the on-device passkey
+            // instead of only offering hybrid "another device".
+            transports: ['internal'] as AuthenticatorTransportFuture[],
+          })),
+        }
       : {}),
-    // Match registration UV policy so GMS doesn't reject assertion.
-    userVerification: 'discouraged',
+    userVerification: 'preferred',
+    timeout: 120_000,
   };
   const options = await generateAuthenticationOptions(opts);
   // Store challenge under the challenge string itself so verify can find it

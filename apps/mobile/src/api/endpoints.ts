@@ -40,7 +40,17 @@ export const authEndpoints = {
       body: { refreshToken },
       skipAuth: true,
     }),
-  logout: () => apiClient.request<void>({ method: 'POST', path: '/auth/logout' }),
+  logout: async () => {
+    // API revokes the refresh session when provided; empty body is accepted as
+    // best-effort local sign-out (see logout route).
+    const { secureStore } = await import('../auth/secure-store');
+    const refreshToken = await secureStore.getRefreshToken();
+    return apiClient.request<void>({
+      method: 'POST',
+      path: '/auth/logout',
+      body: refreshToken ? { refreshToken } : {},
+    });
+  },
   me: () => apiClient.request<User>({ method: 'GET', path: '/auth/me' }),
   verifyEmail: (input: VerifyEmailInput) =>
     apiClient.request<{ verified: true }>({
