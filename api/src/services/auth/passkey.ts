@@ -107,17 +107,41 @@ export async function buildAuthenticationOptions(
   const cfg = getConfig();
   const opts: GenerateAuthenticationOptionsOpts = {
     rpID: cfg.webauthn.rpId,
-    allowCredentials: allowedCredIds.map((id) => ({ id })),
-    userVerification: 'preferred',
+    // Empty allowCredentials means "any discoverable credential for this RP".
+    // Omit the field entirely when empty — Android Credential Manager can loop
+    // or fail when given an empty array.
+    ...(allowedCredIds.length > 0
+      ? { allowCredentials: allowedCredIds.map((id) => ({ id })) }
+      : {}),
+    // Match registration UV policy so GMS doesn't reject assertion.
+    userVerification: 'discouraged',
   };
   const options = await generateAuthenticationOptions(opts);
-  await getRedis().set(
-    challengeKey('login', subject),
+  // Store challenge under the challenge string itself so verify can find it
+  // whether options were requested with email (user:id) or without (anon:ip).
+  // Also keep the subject key for the email-bound path.
+  const redis = getRedis();
+  await redis.set(
+    challengeKey('login', `chal:${options.challenge}`),
     options.challenge,
     'EX',
     CHALLENGE_TTL_SECONDS,
   );
+  await redis.set(challengeKey('login', subject), options.challenge, 'EX', CHALLENGE_TTL_SECONDS);
   return options;
+}
+
+function challengeFromAssertionResponse(response: unknown): string | null {
+  try {
+    const r = response as { response?: { clientDataJSON?: string }; clientDataJSON?: string };
+    const b64 = r.response?.clientDataJSON ?? r.clientDataJSON;
+    if (!b64 || typeof b64 !== 'string') return null;
+    const json = Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const data = JSON.parse(json) as { challenge?: string };
+    return typeof data.challenge === 'string' ? data.challenge : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function consumeAuthentication(
@@ -126,7 +150,21 @@ export async function consumeAuthentication(
   authenticator: { credentialID: string; credentialPublicKey: Uint8Array; counter: number },
 ): Promise<VerifiedAuthenticationResponse['authenticationInfo']> {
   const cfg = getConfig();
-  const expected = await getRedis().get(challengeKey('login', subject));
+  const redis = getRedis();
+  // Prefer subject key (email-bound options). Fall back to challenge extracted
+  // from the assertion so usernameless (anon) options still verify.
+  let expected = await redis.get(challengeKey('login', subject));
+  let cleanupKeys = [challengeKey('login', subject)];
+  if (!expected) {
+    const chal = challengeFromAssertionResponse(response);
+    if (chal) {
+      expected = await redis.get(challengeKey('login', `chal:${chal}`));
+      cleanupKeys.push(challengeKey('login', `chal:${chal}`));
+    }
+  } else {
+    const chal = challengeFromAssertionResponse(response);
+    if (chal) cleanupKeys.push(challengeKey('login', `chal:${chal}`));
+  }
   if (!expected) throw new Error('challenge expired');
   // @simplewebauthn/server v10 uses `authenticator` (not v11's `credential`).
   const opts: VerifyAuthenticationResponseOpts = {
@@ -142,7 +180,7 @@ export async function consumeAuthentication(
     requireUserVerification: false,
   };
   const verification = await verifyAuthenticationResponse(opts);
-  await getRedis().del(challengeKey('login', subject));
+  await Promise.all(cleanupKeys.map((k) => redis.del(k)));
   if (!verification.verified) throw new Error('verification failed');
   return verification.authenticationInfo;
 }

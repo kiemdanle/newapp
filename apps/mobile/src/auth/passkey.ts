@@ -64,12 +64,19 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
           return 'A passkey for this account already exists on this device.';
         case 'NoCredentials':
           return 'No passkey is available on this device.';
+        case 'NoCreateOption':
+          return 'No passkey provider is available. On Android, open Google Password Manager, make sure a Google account is signed in, screen lock is on, and try again. Emulators often need a Google account + Password Manager setup before passkeys work.';
         case 'TimedOut':
           return 'The passkey request timed out.';
         case 'RequestFailed':
-          return msg && msg !== code
-            ? `Passkey request failed: ${msg}`
-            : 'Passkey request failed. Ensure Google Password Manager is enabled, a screen lock is set, and the server RP ID is associated with this app.';
+          // Prefer native detail when present (e.g. CreatePublicKeyCredentialDomException|dom=...).
+          if (msg && msg !== code && msg !== 'The request failed. No Credentials were returned.') {
+            if (msg.includes('NoCreateOption') || msg.includes('No create options')) {
+              return 'No passkey provider is available. Open Google Password Manager, confirm Google account + screen lock, then retry.';
+            }
+            return `Passkey request failed: ${msg}`;
+          }
+          return 'Passkey request failed. Ensure Google Password Manager is enabled, a screen lock is set, and the server RP ID is associated with this app.';
         default:
           return msg && msg !== code ? `${code}: ${msg}` : code;
       }
@@ -93,10 +100,35 @@ function rethrowPasskeyError(e: unknown, fallback: string): never {
   throw new Error(passkeyErrorMessage(e, fallback));
 }
 
+function sanitizeGetOptions(options: unknown): Record<string, unknown> {
+  const src = (options && typeof options === 'object' ? options : {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...src };
+  delete out.extensions;
+  // Android: empty allowCredentials array can cause Credential Manager to spin.
+  if (Array.isArray(out.allowCredentials) && out.allowCredentials.length === 0) {
+    delete out.allowCredentials;
+  }
+  return out;
+}
+
 export async function signInWithPasskey(email?: string) {
   try {
     const options = await authEndpoints.passkeyLoginOptions(email);
-    const assertion = await Passkey.get(options as never);
+    const sanitized = sanitizeGetOptions(options);
+    // eslint-disable-next-line no-console
+    console.log(
+      '[passkey] get options',
+      JSON.stringify({
+        rpId: sanitized.rpId,
+        allowCredentials: Array.isArray(sanitized.allowCredentials)
+          ? (sanitized.allowCredentials as unknown[]).length
+          : 0,
+        userVerification: sanitized.userVerification,
+      }),
+    );
+    const assertion = await Passkey.get(sanitized as never);
+    // eslint-disable-next-line no-console
+    console.log('[passkey] get assertion ok', JSON.stringify({ id: (assertion as { id?: string })?.id }));
     return authEndpoints.passkeyLoginVerify(assertion);
   } catch (e) {
     rethrowPasskeyError(e, 'Could not sign in with a passkey');
