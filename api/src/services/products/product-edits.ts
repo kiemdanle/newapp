@@ -506,7 +506,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       );
       if (intent) await completeMediaOperation(tx, intent.id, intent.leaseOwner);
 
-      return toApiProduct(await tx.product.findUniqueOrThrow({ where: { id: product.id }, include: { photos: { orderBy: { position: 'asc' } } } }));
+      return toApiProduct(await tx.product.findUniqueOrThrow({ where: { id: product.id }, include: { photos: { orderBy: { position: 'asc' } } } }), { kind: 'privileged' });
     });
   }
 

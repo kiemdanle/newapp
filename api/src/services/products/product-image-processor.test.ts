@@ -288,15 +288,21 @@ describe('processProductUpload — hostile input rejection', () => {
 
   it('aborts processing that exceeds the configured deadline, and actually stops libvips work rather than merely abandoning the JS promise (reviewer-p3 C1)', async () => {
     overrideMediaEnv({
-      MEDIA_PROCESSING_DEADLINE_MS: '1', // rounds up to sharp's 1-second minimum granularity
+      // An exact multiple of 1000ms so sharp's own rounded-up per-operation
+      // timeout (`Math.ceil(deadlineMs / 1000)` seconds) lands at the same
+      // wall-clock point as the outer whole-request deadline below — isolating
+      // this test to "does real cancellation happen at all" rather than also
+      // exercising the outer/inner rounding gap (covered by its own test).
+      MEDIA_PROCESSING_DEADLINE_MS: '1000',
       MEDIA_SHARP_CONCURRENCY: '1',
       MEDIA_MAX_DECODED_MEGAPIXELS: '100',
       MEDIA_MAX_DIMENSION_PX: '10000',
     });
     // Large enough that the real (no-blur) display-encode step alone takes more
-    // than the 1-second timeout, so a pass here can only mean sharp's own
-    // `.timeout()` genuinely aborted the work (see `slowToProcessNoisyPng`'s
-    // comment for why this has to be a PNG, not a JPEG).
+    // than the 1-second per-operation timeout, so a pass here can only mean
+    // sharp's own `.timeout()` genuinely aborted the work (see
+    // `slowToProcessNoisyPng`'s comment for why this has to be a PNG, not a
+    // JPEG).
     const heavy = await slowToProcessNoisyPng(6500);
     const path = await writeFixture('heavy.png', heavy);
 
@@ -312,6 +318,58 @@ describe('processProductUpload — hostile input rejection', () => {
     await sleep(300);
     expect(sharp.counters().process).toBe(0);
     expect(sharp.counters().queue).toBe(0);
+  }, 20_000);
+
+  it('the outer whole-request deadline rejects close to the configured value, not close to sharp\'s rounded-up per-operation seconds (reviewer-p3 R1)', async () => {
+    overrideMediaEnv({
+      // A deliberately sub-second value: sharp's own `.timeout()` only accepts
+      // whole seconds and rounds this up to 1 full second internally, but the
+      // *documented*, caller-visible bound must still be close to the exact
+      // configured 200ms, not silently inflated to ~1000ms.
+      MEDIA_PROCESSING_DEADLINE_MS: '200',
+      MEDIA_SHARP_CONCURRENCY: '1',
+      MEDIA_MAX_DECODED_MEGAPIXELS: '100',
+      MEDIA_MAX_DIMENSION_PX: '10000',
+    });
+    const heavy = await slowToProcessNoisyPng(6500);
+    const path = await writeFixture('heavy2.png', heavy);
+
+    const start = Date.now();
+    await expect(processProductUpload({ sourcePath: path })).rejects.toMatchObject({ status: 408 });
+    const elapsed = Date.now() - start;
+    // Generous upper bound (well under sharp's ~1000ms rounded-up per-op
+    // timeout) proves the caller-visible rejection tracks the configured
+    // value, not sharp's internal rounding.
+    expect(elapsed).toBeLessThan(700);
+  }, 20_000);
+
+  it('a pipeline whose individual operations each finish under sharp\'s per-op timeout, but whose combined wall time exceeds the configured deadline, is still bounded overall (reviewer-p3 R1)', async () => {
+    // Reproduces reviewer-p3's exact proof: sharp's per-operation `.timeout()`
+    // clock restarts for each of metadata/display-encode/thumb-encode, so a
+    // pipeline whose *individual* steps each stay just under that per-op
+    // window could previously run several multiples of the configured
+    // deadline in total before any single step's own clock ever fired. The
+    // outer whole-request race must catch that even when no single sharp
+    // operation ever times out on its own.
+    overrideMediaEnv({
+      MEDIA_PROCESSING_DEADLINE_MS: '900',
+      MEDIA_SHARP_CONCURRENCY: '1',
+      MEDIA_MAX_DECODED_MEGAPIXELS: '100',
+      MEDIA_MAX_DIMENSION_PX: '10000',
+    });
+    // Moderately heavy: each individual encode step should land comfortably
+    // under sharp's rounded-up 1-second per-op timeout, but two encode steps
+    // plus the metadata read together exceed the 900ms configured deadline.
+    const moderate = await slowToProcessNoisyPng(3600);
+    const path = await writeFixture('moderate.png', moderate);
+
+    const start = Date.now();
+    await expect(processProductUpload({ sourcePath: path })).rejects.toMatchObject({
+      status: 408,
+      code: 'processing_timeout',
+    });
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(1000); // caught well before sharp's own ~1000ms-per-op ceiling could
   }, 20_000);
 });
 

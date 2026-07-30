@@ -100,7 +100,7 @@ async function requestChanges(
     );
     return loadProductWithPhotos(tx, productId);
   });
-  return toApiProduct(updated);
+  return toApiProduct(updated, { kind: 'privileged' });
 }
 
 /**
@@ -145,7 +145,7 @@ async function approve(
         },
         tx,
       );
-      return toApiProduct(await loadProductWithPhotos(tx, product.id));
+      return toApiProduct(await loadProductWithPhotos(tx, product.id), { kind: 'privileged' });
     });
   }
 
@@ -211,7 +211,7 @@ async function approve(
             keys: pendingPhotos.map((p) => p.privateStorageKey!),
           });
 
-          return toApiProduct(await loadProductWithPhotos(tx, product.id));
+          return toApiProduct(await loadProductWithPhotos(tx, product.id), { kind: 'privileged' });
         });
       } catch (err) {
         // The reference transaction never committed: nothing refers to the freshly

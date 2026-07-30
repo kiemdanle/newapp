@@ -121,9 +121,19 @@ export async function assertMediaCapacityReservationLive(id: string, ttlSeconds 
 /** Updates a reservation's byte amount to the real measured size once known (e.g.
  * after encoding), preserving its current TTL. Reconciling down frees budget for
  * other concurrent operations immediately rather than holding the pessimistic
- * worst-case estimate for the reservation's full lifetime. */
-export async function reconcileMediaCapacityReservation(id: string, actualBytes: number): Promise<void> {
-  await getRedis().set(RES_PREFIX + id, actualBytes, 'KEEPTTL');
+ * worst-case estimate for the reservation's full lifetime.
+ *
+ * Uses `SET ... KEEPTTL XX` (not a plain `SET ... KEEPTTL`) — `XX` makes this a
+ * no-op when the key is already gone (expired or released) instead of
+ * resurrecting it with no TTL and no index entry: a plain `SET` on a missing
+ * key creates one, and `KEEPTTL` on a key that never had a TTL to begin with
+ * means that resurrected key lives forever, invisible to `currentReservedMediaBytes`
+ * (which only sums IDs still in the index) and never cleaned up — a permanent
+ * Redis leak on every crash between reserve and reconcile (reviewer-p3 R2).
+ * Returns whether the reservation was actually still live to reconcile. */
+export async function reconcileMediaCapacityReservation(id: string, actualBytes: number): Promise<boolean> {
+  const result = await getRedis().set(RES_PREFIX + id, actualBytes, 'KEEPTTL', 'XX');
+  return result === 'OK';
 }
 
 /** Releases a reservation. Idempotent — safe to call from a `finally` on every

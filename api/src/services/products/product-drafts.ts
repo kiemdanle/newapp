@@ -107,7 +107,7 @@ export async function createOrResumeDraft(
       },
       include: PRODUCT_INCLUDE,
     });
-    return { product: toApiProduct(created), resumed: false };
+    return { product: toApiProduct(created, { kind: 'privileged' }), resumed: false };
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       // Lost a create race for the same identifier — resolve through the same
@@ -184,7 +184,7 @@ export async function patchDraft(
   }
 
   const updated = await prisma.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
-  return toApiProduct(updated);
+  return toApiProduct(updated, { kind: 'privileged' });
 }
 
 /**

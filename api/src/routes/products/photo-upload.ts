@@ -14,6 +14,7 @@ import {
   writeQuarantineFile,
 } from '../../services/products/product-media-storage.js';
 import {
+  assertMediaCapacityReservationLive,
   reconcileMediaCapacityReservation,
   releaseMediaCapacityReservation,
   reserveMediaCapacity,
@@ -101,8 +102,25 @@ export async function photoUploadRoute(app: FastifyInstance) {
         validationError('Only one file and no additional fields are allowed');
       }
 
+      // Heartbeat right before the decode/encode step — the longest-running part
+      // of this window, and the one whose duration this route doesn't fully
+      // control (bounded by MEDIA_PROCESSING_DEADLINE_MS, which can itself run
+      // close to the reservation's default TTL under load). Without this, a
+      // slow-but-legitimate upload could have its reservation silently expire
+      // mid-decode (reviewer-p3 R2).
+      await assertMediaCapacityReservationLive(reservation.id);
       const processed = await processProductUpload({ sourcePath: written.path });
-      await reconcileMediaCapacityReservation(reservation.id, processed.display.bytes + processed.thumb.bytes);
+      const reconciled = await reconcileMediaCapacityReservation(reservation.id, processed.display.bytes + processed.thumb.bytes);
+      if (!reconciled) {
+        // The reservation expired between the heartbeat above and now — refuse
+        // rather than silently proceeding to write final bytes under a
+        // capacity guarantee that's no longer real.
+        throw new AppError({
+          status: 507,
+          code: 'capacity_exceeded',
+          title: 'Media capacity reservation expired before processing completed',
+        });
+      }
 
       const product = await addProductPhoto(actor, {
         productId,

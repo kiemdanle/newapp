@@ -10,7 +10,7 @@ import { makeUser } from '../helpers/factories.js';
 import type { ProcessedVariants } from '../../src/services/products/product-image-processor.js';
 import { processMediaOutboxOnce } from '../../src/services/products/product-media-outbox.js';
 import { mediaKeyToPath } from '../../src/services/products/product-media-storage.js';
-import { reserveMediaCapacity } from '../../src/services/products/product-media-capacity.js';
+import { releaseMediaCapacityReservation, reserveMediaCapacity } from '../../src/services/products/product-media-capacity.js';
 import { addProductPhoto, reorderProductPhotos, removeProductPhoto } from '../../src/services/products/product-photos.js';
 
 let root: string;
@@ -123,6 +123,26 @@ describe('addProductPhoto', () => {
 
     const photos = await getPrisma().productPhoto.findMany({ where: { productId: product.id } });
     expect(photos).toHaveLength(5);
+  });
+
+  it('refuses to promote bytes once the capacity reservation is no longer live, and writes no photo row (reviewer-p3 R2)', async () => {
+    const owner = await makeUser({ emailVerified: true });
+    const product = await makeProduct({ createdByUserId: owner.id });
+    const reservation = await reserveMediaCapacity({ bytes: 10_000 });
+    await releaseMediaCapacityReservation(reservation.id);
+    const processed = await fakeProcessedUpload();
+
+    await expect(
+      addProductPhoto({ id: owner.id, role: 'user' }, { productId: product.id, processed, capacityReservationId: reservation.id }),
+    ).rejects.toMatchObject({ status: 507, code: 'capacity_exceeded' });
+
+    const photos = await getPrisma().productPhoto.findMany({ where: { productId: product.id } });
+    expect(photos).toHaveLength(0);
+    // No private key promoted to the product's tree either.
+    const productDir = mediaKeyToPath(root, `private/products/${product.id}`);
+    const { readdir } = await import('node:fs/promises');
+    const photoDirs = await readdir(productDir).catch(() => []);
+    expect(photoDirs).toHaveLength(0);
   });
 });
 

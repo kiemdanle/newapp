@@ -64,21 +64,21 @@ function makePrismaPhoto(overrides: Partial<Record<string, unknown>> = {}) {
 describe('toApiProduct', () => {
   it('maps description and version', () => {
     const product = makePrismaProduct({ description: 'Tastes great', version: 3 });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.description).toBe('Tastes great');
     expect(api.version).toBe(3);
   });
 
   it('defaults description to null and version to 1 when absent', () => {
     const product = makePrismaProduct({ description: null, version: 1 });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.description).toBeNull();
     expect(api.version).toBe(1);
   });
 
   it('never exposes moderationNotes as moderationFeedback on the public DTO', () => {
     const product = makePrismaProduct({ moderationNotes: 'Blurry cover photo' });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api).not.toHaveProperty('moderationFeedback');
     expect(JSON.stringify(api)).not.toContain('Blurry cover photo');
   });
@@ -86,7 +86,7 @@ describe('toApiProduct', () => {
   it('maps ordered photos to the public shape only', () => {
     const photo = makePrismaPhoto({ position: 0 });
     const product = makePrismaProduct({ photos: [photo] });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.photos).toHaveLength(1);
     expect(api.photos[0]).toEqual({
       id: photo.id,
@@ -99,7 +99,7 @@ describe('toApiProduct', () => {
   it('redacts storage keys, uploader, and moderation internals from every photo', () => {
     const photo = makePrismaPhoto({ position: 1 });
     const product = makePrismaProduct({ photos: [photo] });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     const serialized = JSON.stringify(api.photos[0]);
     expect(serialized).not.toContain('StorageKey');
     expect(serialized).not.toContain('uploadedByUserId');
@@ -111,7 +111,7 @@ describe('toApiProduct', () => {
     const photoA = makePrismaPhoto({ position: 0 });
     const photoB = makePrismaPhoto({ position: 1 });
     const product = makePrismaProduct({ photos: [photoA, photoB] });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.photos.map((p) => p.id)).toEqual([photoA.id, photoB.id]);
   });
 
@@ -121,14 +121,14 @@ describe('toApiProduct', () => {
     const photoPos1 = makePrismaPhoto({ position: 1 });
     // Deliberately out of order, as an unordered Prisma `include` would return them.
     const product = makePrismaProduct({ photos: [photoPos2, photoPos0, photoPos1] });
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.photos.map((p) => p.position)).toEqual([0, 1, 2]);
     expect(api.photos.map((p) => p.id)).toEqual([photoPos0.id, photoPos1.id, photoPos2.id]);
   });
 
   it('defaults to an empty photos array when none are attached', () => {
     const product = makePrismaProduct({ photos: [] });
-    expect(toApiProduct(product as Parameters<typeof toApiProduct>[0]).photos).toEqual([]);
+    expect(toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' }).photos).toEqual([]);
   });
 });
 
@@ -163,12 +163,12 @@ describe('toApiProduct — moderation-status photo filtering (reviewer-p3 C2)', 
     expect(api.photos.map((p) => p.id).sort()).toEqual([pending.id, rejected.id].sort());
   });
 
-  it('shows every photo when no viewer is passed at all — the privileged-call-site default (product-photos.ts/product-drafts.ts, already gated upstream)', () => {
+  it('shows every photo for an explicitly privileged viewer — product-photos.ts/product-drafts.ts/product-moderation.ts call sites, already gated upstream (reviewer-p3 R3: the viewer argument is required now, no fail-open default)', () => {
     const pending = makePrismaPhoto({ moderationStatus: 'pending', position: 0, privateStorageKey: 'private/x', publicStorageKey: null });
     const rejected = makePrismaPhoto({ moderationStatus: 'rejected', position: 1, privateStorageKey: 'private/y', publicStorageKey: null });
     const product = makePrismaProduct({ createdByUserId: ownerId, photos: [pending, rejected] });
 
-    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { kind: 'privileged' });
     expect(api.photos).toHaveLength(2);
   });
 });
