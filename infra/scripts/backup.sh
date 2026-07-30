@@ -94,7 +94,17 @@ DOM=$(date -u +%d)          # 01..31
 LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/pantry}"
 mkdir -p "$LOCAL_DIR/daily" "$LOCAL_DIR/weekly" "$LOCAL_DIR/monthly" "$LOCAL_DIR/work"
 
-GEN_DIR=$(mktemp -d "$LOCAL_DIR/work/gen-${TODAY}-XXXXXX")
+# A stable path, not `mktemp`'s randomized suffix — every restic snapshot's
+# root then sits at the exact same absolute path inside the archive, so
+# restore.sh can compute where its own restore lands directly instead of
+# `find -name db.dump -print -quit` guessing at an arbitrary snapshot member
+# (reviewer-p7 IM12; the `find` fallback is exactly what a randomized path
+# forced). Safe to reuse across nights: this whole tree is removed in
+# on_exit on every run (success or failure) before the next one starts, and
+# nightly cron runs are already serial, never concurrent.
+GEN_DIR="$LOCAL_DIR/work/generation"
+rm -rf "$GEN_DIR"
+mkdir -p "$GEN_DIR"
 VERIFY_DIR=""
 FREEZE_TOKEN=""
 RENEW_PID=""
@@ -233,8 +243,12 @@ if [[ -n "${RESTIC_REPOSITORY:-}" ]]; then
     log "starting restic backup of generation ${TODAY} → ${RESTIC_REPOSITORY}"
     restic backup "$GEN_DIR" --tag "pantry" --tag "date:${TODAY}"
 
-    log "applying retention 7d/4w/3m"
-    restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
+    log "applying retention 7d/4w/3m (pantry-tagged snapshots only)"
+    # Unfiltered `forget` applies retention across every snapshot in the
+    # repository, including other hosts' if it's shared — the same
+    # `--tag pantry` this script's own `backup` call already stamps every
+    # snapshot with (reviewer-p7 IM12).
+    restic forget --tag pantry --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 
     log "restic backup complete"
     SUCCEEDED=1

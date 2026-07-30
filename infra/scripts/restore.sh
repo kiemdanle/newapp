@@ -31,7 +31,10 @@
 #      never guesses.
 #
 # Reads /etc/pantry/secrets/api.env and (if present) /etc/pantry/secrets/backup.env.
-# Requires RESTORE_NONINTERACTIVE=1 (two confirmations otherwise) to run
+# The staging confirmation and the cutover confirmation are gated
+# independently: RESTORE_NONINTERACTIVE=1 bypasses only the staging one
+# (validate a generation with no risk to live resources); the destructive
+# cutover step additionally requires RESTORE_CONFIRM_CUTOVER=1 to run
 # non-interactively.
 
 set -euo pipefail
@@ -61,13 +64,38 @@ MANIFEST_CLI="$PANTRY_API_DIR/dist/scripts/media-manifest-cli.js"
 LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/pantry}"
 GENERATION_ID="restore-$(date -u +%Y%m%dT%H%M%SZ)"
 STAGING_DIR="$LOCAL_DIR/restore-staging/$GENERATION_ID"
-STAGING_MEDIA_ROOT="$STAGING_DIR/media"
+# A sibling of MEDIA_ROOT itself, never nested under $LOCAL_DIR/BACKUP_LOCAL_DIR
+# — those are commonly separate filesystems/mounts, and the final cutover
+# `mv "$STAGING_MEDIA_ROOT" "$MEDIA_ROOT"` degrades to copy+unlink across a
+# filesystem boundary: not atomic, and a mid-copy failure can leave a
+# genuinely partial $MEDIA_ROOT that defeats cutover_rollback's `! -d
+# "$MEDIA_ROOT"` guard (reviewer-p7 IM7). A sibling directory is always on
+# the same filesystem as $MEDIA_ROOT by construction — the exact same
+# assumption $ROLLBACK_MEDIA_ROOT below already relies on.
+STAGING_MEDIA_ROOT="${MEDIA_ROOT}.restore-staging-${GENERATION_ID}"
+
+# Rebuilds a Postgres connection URL with a different database name, by
+# structurally splitting on the authority/path boundary rather than
+# textually substituting the old database name wherever it appears
+# (reviewer-p7 IM8: the previous `sed -E "s#/${LIVE_DB_NAME}(\?|$)#/…\1#"`
+# breaks — silently producing a wrong target — on any URL where the database
+# name also happens to appear earlier, e.g. embedded in the username or
+# password).
+db_url_with_name() {
+    local url="$1" new_name="$2"
+    if [[ "$url" =~ ^(postgres(ql)?://[^/]+)/[^?]*(\?.*)?$ ]]; then
+        printf '%s/%s%s' "${BASH_REMATCH[1]}" "$new_name" "${BASH_REMATCH[3]}"
+    else
+        log "ERROR: DATABASE_URL is not a recognizable postgres connection string"
+        exit 1
+    fi
+}
 
 # The live database name, and a connection URL to Postgres' always-present
 # `postgres` maintenance DB — both DROP DATABASE and ALTER DATABASE ... RENAME
 # require a connection to some OTHER database, never the one being touched.
 LIVE_DB_NAME=$(psql "$DATABASE_URL" -X -tAc 'SELECT current_database()')
-MAINT_DB_URL=$(printf '%s' "$DATABASE_URL" | sed -E "s#/${LIVE_DB_NAME}(\?|$)#/postgres\1#")
+MAINT_DB_URL=$(db_url_with_name "$DATABASE_URL" postgres)
 # Uniquified by GENERATION_ID, matching STAGING_DIR — a fixed name meant two
 # concurrent restores (or a re-run after an aborted one) could destroy each
 # other's staged database via cleanup_staging's unconditional DROP, which is
@@ -100,13 +128,21 @@ wait_for_healthy() {
     return 1
 }
 
+# `gate_var` lets the staging confirmation and the cutover confirmation be
+# bypassed independently — RESTORE_NONINTERACTIVE alone used to satisfy
+# BOTH confirm() calls, so "run non-interactively to validate a generation"
+# and "run non-interactively and actually cut production over to it" were
+# the same opt-in, even though only the first is genuinely low-stakes
+# (reviewer-p7 IM14). The destructive step now needs its own, separately
+# named variable.
 confirm() {
     local prompt="$1"
-    if [[ "${RESTORE_NONINTERACTIVE:-0}" == "1" ]]; then
+    local gate_var="${2:-RESTORE_NONINTERACTIVE}"
+    if [[ "${!gate_var:-0}" == "1" ]]; then
         return 0
     fi
     if [[ ! -t 0 ]]; then
-        log "ERROR: refusing to run non-interactively without RESTORE_NONINTERACTIVE=1"
+        log "ERROR: refusing to run non-interactively without ${gate_var}=1"
         exit 1
     fi
     printf '%s Type RESTORE to continue: ' "$prompt" >&2
@@ -118,8 +154,14 @@ confirm() {
 }
 
 cleanup_staging() {
-    log "removing staging area $STAGING_DIR"
+    log "removing staging area $STAGING_DIR and $STAGING_MEDIA_ROOT"
     rm -rf "$STAGING_DIR"
+    # STAGING_MEDIA_ROOT lives as a sibling of MEDIA_ROOT (reviewer-p7 IM7),
+    # not nested under STAGING_DIR, so it needs its own removal. A no-op if
+    # a completed cutover already renamed it into place as MEDIA_ROOT, or if
+    # cutover_rollback already reclaimed it as a repair-path destination and
+    # this run is simply releasing it now that recovery is done.
+    rm -rf "$STAGING_MEDIA_ROOT"
     # Best-effort: drop the staging DB if the cutover never claimed it (a
     # completed cutover already renamed it away, so this is a no-op then).
     psql "$MAINT_DB_URL" -X -q -c "DROP DATABASE IF EXISTS \"$STAGING_DB_NAME\";" >/dev/null 2>&1 || true
@@ -141,11 +183,16 @@ if [[ "${1:-}" == "restic" ]]; then
     fi
     log "restoring restic snapshot $SNAPSHOT_ID into $STAGING_DIR"
     restic restore "$SNAPSHOT_ID" --target "$STAGING_DIR" --include "/*"
-    # restic restores under a path mirroring the original absolute gen dir;
-    # flatten whatever single directory it produced into $STAGING_DIR itself.
-    FOUND_DB=$(find "$STAGING_DIR" -name db.dump -print -quit)
-    : "${FOUND_DB:?db.dump not found in restic snapshot $SNAPSHOT_ID}"
-    GEN_ROOT=$(dirname "$FOUND_DB")
+    # backup.sh backs up a stable, non-randomized absolute path
+    # ($LOCAL_DIR/work/generation, reviewer-p7 IM12) every night, so restic
+    # always restores it to that exact same absolute path underneath
+    # $STAGING_DIR — computed directly rather than `find -name db.dump
+    # -print -quit` guessing at an arbitrary match, which a snapshot holding
+    # more than one db.dump (any repository shared across hosts/backup runs)
+    # made reachable to pick the wrong one entirely (reviewer-p7 II2's own
+    # threat scenario).
+    GEN_ROOT="$STAGING_DIR$LOCAL_DIR/work/generation"
+    [[ -f "$GEN_ROOT/db.dump" ]] || { log "ERROR: db.dump not found at the expected path $GEN_ROOT — restic snapshot $SNAPSHOT_ID does not match this host's stable backup layout"; exit 1; }
 else
     DATE="${1:?date YYYY-MM-DD is required (or pass 'restic <snapshot_id>')}"
     TIER="${2:-daily}"
@@ -196,7 +243,7 @@ psql "$MAINT_DB_URL" -X -q \
     -c "DROP DATABASE IF EXISTS \"$STAGING_DB_NAME\";" \
     -c "CREATE DATABASE \"$STAGING_DB_NAME\";" >/dev/null
 
-STAGING_DB_URL=$(printf '%s' "$DATABASE_URL" | sed -E "s#/${LIVE_DB_NAME}(\?|$)#/${STAGING_DB_NAME}\1#")
+STAGING_DB_URL=$(db_url_with_name "$DATABASE_URL" "$STAGING_DB_NAME")
 
 log "restoring db.dump into staging database"
 pg_restore --clean --if-exists --no-owner --no-acl -d "$STAGING_DB_URL" "$GEN_ROOT/db.dump"
@@ -240,9 +287,10 @@ log "staging validated successfully"
 
 # ---------------------------------------------------------------------------
 # 5. Cutover — the only step that touches live resources. Gated by its own
-#    confirmation, separate from the staging one above.
+#    confirmation and its own bypass variable, separate from the staging one
+#    above (reviewer-p7 IM14).
 # ---------------------------------------------------------------------------
-confirm "Staging validated. About to enter maintenance mode and cut over live DB + media to this generation."
+confirm "Staging validated. About to enter maintenance mode and cut over live DB + media to this generation." RESTORE_CONFIRM_CUTOVER
 
 ROLLBACK_SUFFIX="rollback-$(date -u +%Y%m%dT%H%M%SZ)"
 ROLLBACK_DB_NAME="${LIVE_DB_NAME}_${ROLLBACK_SUFFIX}"
