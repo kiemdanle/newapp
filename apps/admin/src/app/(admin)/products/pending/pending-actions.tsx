@@ -62,7 +62,7 @@ export function PendingActions({ id }: { id: string }) {
         Approve
       </Button>
       <Button
-        variant="destructive"
+        variant="accent"
         size="sm"
         disabled={pending}
         onClick={() => setRequestingChanges(true)}

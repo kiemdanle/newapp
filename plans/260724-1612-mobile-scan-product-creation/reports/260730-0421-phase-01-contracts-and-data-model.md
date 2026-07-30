@@ -300,3 +300,91 @@ structurally rather than relying on operator discipline alone.
 New evidence (the incident itself) justified this deviation from the original plan
 (which only specified "new unapplied file" without specifying *where*); documenting
 per team-lead's instruction.
+
+---
+
+## Remediation round 2 (task #10) — reviewer-p1 re-verification findings
+
+reviewer-p1 confirmed all 7 round-1 items CLOSED, but found 2 new IMPORTANT + 2
+MODERATE issues introduced by the remediation itself. Fixed all 5 per team-lead's
+decisions:
+
+### 1. Creator dead-end after request_changes (IMPORTANT — new)
+Round 1's `isLegacy: false` fix meant the partial unique index now genuinely blocked
+a second open edit — including the creator's own resubmission after an admin
+requested changes, since `changes_required` counts as "open". `patch.ts` only ever
+created new rows, so after one `request_changes`, the creator's next `PATCH` 409'd
+forever with no route to recover (admin couldn't re-resolve it either — `pending.ts`
+only lists `status: 'pending'`).
+
+Fixed: `patch.ts` now looks for an existing open edit (`draft|changes_required`) by
+the same submitter for the product; if found, updates it in place (new `proposed`,
+`status: 'pending'`, `moderationNotes: null`) instead of creating a second row. A
+`pending` edit is untouched — that 409 is correct (genuinely under review, not a dead
+end; the admin resolving it frees the slot). New tests: sequential (non-racing) second
+patch against a `pending` edit still 409s; full loop patch → admin request_changes →
+patch again → 202, single row updated in place, visible in the pending queue again,
+approvable.
+
+### 2. DEFERRABLE constraints break upsert/ON CONFLICT (IMPORTANT — new, documentation)
+Verified as a real, unavoidable trade-off of round 1's deferrable-constraint fix (not
+a bug to revert): PostgreSQL refuses a deferrable unique constraint as an `ON CONFLICT`
+arbiter (SQLSTATE `55000`), and Prisma's `.upsert(...)` on `ProductPhoto`/
+`ProductEditPhoto` fails the same way with an unclassifiable `err.code === undefined`
+— it will not match the `P2002` handling pattern used everywhere else in this
+codebase. Documented in
+`plans/.../phase-03-product-media-pipeline-and-vps-delivery.md`: a Requirements bullet
+citing the reviewer's SQLSTATE/error-shape probe, plus a pointed reminder inside Task
+3's reorder implementation step (where the code will actually get written) that photo
+position writes must use explicit find-then-create/update + `SET CONSTRAINTS ...
+DEFERRED`, never `upsert`/`ON CONFLICT` on `(product_id, position)` /
+`(product_edit_id, position)`.
+
+### 3. Uncommitted corrected migration-B header (MODERATE — new)
+The committed `d929a56` header still said "Phase 8 owns running `prisma migrate
+deploy`" — the exact instruction class that caused the original incident — while the
+README committed alongside it said the opposite. The corrected header (pointing at the
+README instead of duplicating instructions) was sitting as an uncommitted working-tree
+edit. Included in this task's commit.
+
+### 4. Request Changes button used Alert Red (MODERATE — new)
+`variant="destructive"` on a resumable, non-destructive action violates
+`docs/design-guidelines.md` ("Alert Red — destructive-only"). Added a proper `accent`
+variant to the shared `Button` primitive (`bg-accent text-accent-foreground`, using the
+same theme tokens the `Badge` "expiring" variant already uses) rather than reusing
+`outline` — team-lead specifically asked for the theme's non-destructive emphasis
+color, not neutral. `pending-actions.tsx` now uses `variant="accent"`.
+
+### 5. `is_legacy` DEFAULT (residual, done now per team-lead)
+New migration `20260730052600_default_product_edits_is_legacy_false`:
+`ALTER TABLE product_edits ALTER COLUMN is_legacy SET DEFAULT false`. Applied to both
+`pantry` and `pantry_test` via manual `psql` + `prisma migrate resolve --applied`
+(checked pending state with **`migrate status`**, never `deploy`, per the standing
+rule). Verified via `information_schema.columns` on both DBs: `column_default =
+'false'`. `schema.prisma`'s `@default(true)` → `@default(false)`; Prisma client
+regenerated. New test: a writer that omits `isLegacy` entirely now gets `false` and a
+second such insert for the same product/submitter fails closed — proves the fail-open
+trap the original review flagged is gone for *any* future writer, not just the ones
+I've made explicit.
+
+### Test verification (new DB-per-agent rule)
+`flock` proved insufficient in practice (another process doesn't take the lock it
+doesn't know about). Per team-lead's replacement rule, provisioned a private scratch
+database the same way `products-schema.test.ts`'s upgrade fixture does: `CREATE
+DATABASE`, `pg_trgm` extension, `psql -f` over all 23 migration files in sort order,
+`prisma migrate resolve --applied` for each to reconcile bookkeeping, ran the full
+suite via `TEST_DATABASE_URL` override, then dropped it.
+
+- Full api suite, isolated DB: **561/561 pass** (was 555/558 pass + 3 shared-Redis
+  flakes at reviewer's last check; no attribution ambiguity now, includes Phase 2/3
+  in-flight code from other agents).
+- `products-schema.test.ts`: 30/30 (29 + 1 new is_legacy-default test).
+- `products-patch.test.ts`: 7/7 (5 + 2 new resubmit/dead-end tests).
+- Typecheck: api / packages/shared / apps/admin all clean.
+- `prisma migrate status` (read-only) on both `pantry` and `pantry_test`: "23
+  migrations found... Database schema is up to date!" after applying/resolving the new
+  migration — confirms no dangling/missing record on either DB.
+
+Status: DONE
+Summary: Fixed both new IMPORTANT regressions (creator dead-end, documented the upsert/DEFERRABLE trade-off) plus both new MODERATE items (committed the corrected header, non-destructive button color) plus the is_legacy default residual; verified on a fully isolated scratch database per the new team test-DB rule — 561/561 api tests, typecheck clean across api/shared/admin.
+Concerns/Blockers: none. Phase 3 must respect the upsert/ON CONFLICT prohibition now documented in its phase file when it builds photo insert/reorder services.

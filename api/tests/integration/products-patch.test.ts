@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { makeUser, makeProduct } from '../helpers/factories.js';
+import { makeAdmin } from '../helpers/admin.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { getPrisma } from '../../src/db.js';
 
@@ -67,6 +68,94 @@ describe('PATCH /v1/products/:id', () => {
 
     const edits = await getPrisma().productEdit.findMany({ where: { productId: p.id } });
     expect(edits).toHaveLength(1);
+    await app.close();
+  });
+
+  it('a sequential (non-racing) second patch is blocked while the first edit is genuinely pending', async () => {
+    const app = await buildServer();
+    const { headers } = await authed();
+    const p = await makeProduct({});
+    const first = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'Attempt 1' },
+    });
+    expect(first.statusCode).toBe(202);
+    expect(first.json().status).toBe('pending');
+
+    const second = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'Attempt 2' },
+    });
+    expect(second.statusCode).toBe(409);
+    await app.close();
+  });
+
+  it('resubmits an existing changes_required edit in place instead of dead-ending the creator', async () => {
+    const app = await buildServer();
+    const { headers: adminHeaders } = await makeAdmin();
+    const { headers } = await authed();
+    const p = await makeProduct({ name: 'Original' });
+    const prisma = getPrisma();
+
+    // 1. Creator patches -> pending.
+    const firstPatch = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'First proposal' },
+    });
+    expect(firstPatch.statusCode).toBe(202);
+    const editId = firstPatch.json().editId as string;
+
+    // 2. Admin requests changes -> changes_required, with feedback.
+    const requestChanges = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${editId}`,
+      headers: adminHeaders,
+      payload: { decision: 'request_changes', notes: 'Please fix the name.' },
+    });
+    expect(requestChanges.statusCode).toBe(200);
+    const afterRequestChanges = await prisma.productEdit.findUniqueOrThrow({ where: { id: editId } });
+    expect(afterRequestChanges.status).toBe('changes_required');
+    expect(afterRequestChanges.moderationNotes).toBe('Please fix the name.');
+
+    // 3. Creator patches again — must succeed (not dead-end at 409) by updating the
+    // same edit row in place, clearing the old feedback and returning it to pending.
+    const secondPatch = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'Revised proposal' },
+    });
+    expect(secondPatch.statusCode).toBe(202);
+    expect(secondPatch.json().editId).toBe(editId);
+    expect(secondPatch.json().status).toBe('pending');
+
+    const editsForProduct = await prisma.productEdit.findMany({ where: { productId: p.id } });
+    expect(editsForProduct).toHaveLength(1); // updated in place, not a second row
+    const updated = editsForProduct[0]!;
+    expect(updated.status).toBe('pending');
+    expect(updated.moderationNotes).toBeNull();
+    expect((updated.proposed as { name?: string }).name).toBe('Revised proposal');
+
+    // 4. Admin sees it in the pending queue again and can resolve it.
+    const pendingList = await app.inject({ method: 'GET', url: '/v1/admin/products/pending', headers: adminHeaders });
+    expect(pendingList.statusCode).toBe(200);
+    expect(pendingList.json().items.some((i: { id: string }) => i.id === editId)).toBe(true);
+
+    const approve = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${editId}`,
+      headers: adminHeaders,
+      payload: { decision: 'approve' },
+    });
+    expect(approve.statusCode).toBe(200);
+    const finalProduct = await prisma.product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(finalProduct.name).toBe('Revised proposal');
     await app.close();
   });
 

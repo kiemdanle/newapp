@@ -400,9 +400,12 @@ model ProductEdit {
   resolvedAt         DateTime?         @map("resolved_at")
   notes              String?
   createdAt          DateTime          @default(now()) @map("created_at")
-  // Pre-phase-1 rows default `true` and are exempt from the one-open-edit constraint
-  // below so historical pending/approved/rejected history is never invalidated.
-  isLegacy           Boolean           @default(true) @map("is_legacy")
+  // Pre-phase-1 backfilled rows have `is_legacy = true` and are exempt from the
+  // one-open-edit constraint below so historical pending/approved/rejected history is
+  // never invalidated. The column defaults to `false` (migration
+  // 20260730052600_default_product_edits_is_legacy_false) so every current and future
+  // writer is subject to that constraint unless it explicitly opts out.
+  isLegacy           Boolean           @default(false) @map("is_legacy")
   version            Int               @default(1)
   baseProductVersion Int               @default(1) @map("base_product_version")
   moderationNotes    String?           @map("moderation_notes")

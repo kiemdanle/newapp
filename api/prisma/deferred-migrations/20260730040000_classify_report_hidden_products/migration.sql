@@ -1,18 +1,15 @@
--- DEPLOY GATE — do not run this migration until every precondition below holds:
---   1. This migration A (`..._expand_product_drafts_photos_and_moderation`) and Phase 1
---      compatibility readers are fully deployed, and every pre-compatibility API
---      instance has drained.
---   2. Phase 2's active-only legacy lookup and `report_hidden` report writers are fully
---      deployed — no deployed report writer still emits legacy `pending`.
---   3. `product_creation.mode` has stayed `off` continuously since before migration A,
---      so no row with `status = 'pending'` can be a creator submission.
--- Phase 8 owns running `prisma migrate deploy` for this file. The preflight below
--- checks every precondition that IS DB-checkable: current `product_creation.mode`,
--- and every DB-checkable lifecycle/activity marker that would prove a `pending` row
--- is a creator submission rather than pre-feature report-hidden provenance. It cannot
--- verify deployed-writer state or rollout-mode *history* (whether mode ever flipped
--- on and back off) — those remain operator responsibilities per the preconditions
--- above.
+-- DEPLOY GATE — see ./README.md for the full precondition list and Phase 8's exact
+-- execution procedure. This file deliberately lives under
+-- api/prisma/deferred-migrations/, not api/prisma/migrations/, so `prisma migrate
+-- deploy`/`migrate dev` cannot apply it by accident; a purely procedural comment
+-- warning was not sufficient in practice.
+--
+-- The preflight below checks every precondition that IS DB-checkable: current
+-- `product_creation.mode`, and every DB-checkable lifecycle/activity marker that would
+-- prove a `pending` row is a creator submission rather than pre-feature report-hidden
+-- provenance. It cannot verify deployed-writer state or rollout-mode *history* (whether
+-- mode ever flipped on and back off) — those remain operator responsibilities per
+-- README.md.
 --
 -- Never renames or drops an enum value; only reclassifies existing `pending` rows.
 DO $$

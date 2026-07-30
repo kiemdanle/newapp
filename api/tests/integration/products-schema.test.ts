@@ -18,6 +18,7 @@ const MIGRATION_A1 = '20260726160000_expand_product_lifecycle_enums';
 const MIGRATION_A2 = '20260726160100_expand_product_drafts_photos_and_moderation';
 const MIGRATION_B = '20260730040000_classify_report_hidden_products';
 const MIGRATION_DEFERRABLE = '20260730044500_make_photo_position_deferrable';
+const MIGRATION_IS_LEGACY_DEFAULT_FALSE = '20260730052600_default_product_edits_is_legacy_false';
 
 function readMigrationSql(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name, 'migration.sql'), 'utf8');
@@ -479,6 +480,21 @@ describe('one open lifecycle edit per creator/product', () => {
     expect(fulfilled).toHaveLength(1);
     expect(rejected).toHaveLength(1);
   });
+
+  it('defaults isLegacy to false, so a writer that omits it still fails closed', async () => {
+    const user = await makeUser({ emailVerified: true });
+    const product = await makeProduct();
+    const prisma = getPrisma();
+    const first = await prisma.productEdit.create({
+      data: { productId: product.id, submittedBy: user.id, proposed: {}, status: 'draft' },
+    });
+    expect(first.isLegacy).toBe(false);
+    await expect(
+      prisma.productEdit.create({
+        data: { productId: product.id, submittedBy: user.id, proposed: {}, status: 'draft' },
+      }),
+    ).rejects.toThrow();
+  });
 });
 
 describe('migration B classify (tested only inside a rolled-back transaction)', () => {
@@ -658,7 +674,12 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     const migrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .filter((name) => ![MIGRATION_A1, MIGRATION_A2, MIGRATION_B, MIGRATION_DEFERRABLE].includes(name))
+      .filter(
+        (name) =>
+          ![MIGRATION_A1, MIGRATION_A2, MIGRATION_B, MIGRATION_DEFERRABLE, MIGRATION_IS_LEGACY_DEFAULT_FALSE].includes(
+            name,
+          ),
+      )
       .sort();
     for (const name of migrationNames) {
       psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, name, 'migration.sql')]);
@@ -704,6 +725,7 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_A1, 'migration.sql')]);
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_A2, 'migration.sql')]);
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_DEFERRABLE, 'migration.sql')]);
+    psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_IS_LEGACY_DEFAULT_FALSE, 'migration.sql')]);
 
     const products = await scratchPrisma.product.findMany({
       where: { id: { in: [productNoCreatorId, productWithCreatorId] } },

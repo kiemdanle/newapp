@@ -9,6 +9,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary-dark',
+        // Non-destructive emphasis (e.g. "request changes", "needs attention").
+        // Alert Red (`destructive`) stays reserved for actually destructive actions
+        // per docs/design-guidelines.md — never use it for emphasis alone.
+        accent: 'bg-accent text-accent-foreground hover:bg-accent/90',
         destructive: 'text-expired hover:bg-red-50',
         outline: 'border bg-background text-neutral-dark hover:bg-neutral-light',
         ghost: 'text-neutral-mid hover:bg-neutral-light hover:text-neutral-dark',
