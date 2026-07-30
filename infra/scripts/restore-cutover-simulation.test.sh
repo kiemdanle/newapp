@@ -31,7 +31,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RESTORE_SH="$SCRIPT_DIR/restore.sh"
 
-DB_URL_BASE="${SIM_DB_URL_BASE:-postgresql://pantry_app:pYAg7zDZnUkKLP4x45GCYT5W7rSlgMze@127.0.0.1:5432}"
+# No default — a prior version of this line hardcoded a real credential
+# here (reviewer-p7 R3). Always point this at a disposable, non-production
+# Postgres instance.
+: "${SIM_DB_URL_BASE:?SIM_DB_URL_BASE is required — a disposable Postgres connection base (e.g. postgresql://user:pass@127.0.0.1:5432), never a production credential}"
+DB_URL_BASE="$SIM_DB_URL_BASE"
 MAINT_DB_URL="$DB_URL_BASE/postgres"
 
 FAILURES=0
