@@ -33,6 +33,7 @@ import { adminRoutes } from './routes/admin/index.js';
 import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 import { probeMediaCapabilities } from './services/products/product-image-processor.js';
+import { installMediaFreezePolicy } from './services/products/product-media-freeze.js';
 
 const REDACT_PATHS = [
   'password',
@@ -89,6 +90,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // fixture, not just a static libvips build flag (see product-image-processor.ts)
   // — cached after this first call, so every upload request reuses the result.
   await probeMediaCapabilities();
+
+  // Wires the real (Redis-backed, cross-process) backup-freeze policy into
+  // every `withMediaMutationLease` call — Phase 3 shipped only the always
+  // -allow placeholder. See product-media-freeze.ts's header comment for why
+  // this can't be an in-process flag.
+  installMediaFreezePolicy();
 
   app.addHook('onSend', async (req, reply) => {
     void reply.header('x-request-id', req.id);

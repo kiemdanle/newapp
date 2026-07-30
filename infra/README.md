@@ -148,6 +148,53 @@ those are wired.
 
 ---
 
+## Backup / Restore
+
+A backup **generation** is `{ db.dump, media-manifest.json, media.tar }`,
+captured together under a media-mutation freeze (`infra/scripts/backup.sh`
+calls `dist/scripts/media-freeze-cli.js acquire`) so the three pieces are
+mutually consistent: nothing referenced in the DB dump changed on disk
+between the manifest and the tar snapshot. Quarantine is never included —
+`backup.sh` aborts rather than publishing anything if the freeze can't drain
+in-flight media operations within its timeout, or if a self-check
+(`media-manifest-cli.js verify`) against the just-captured tar fails.
+
+`infra/scripts/restore.sh` never touches the live database or media root
+directly:
+
+1. Fetches and decrypts the requested generation.
+2. Restores `db.dump` into a **staging** database
+   (`<db>_restore_staging`) and extracts `media.tar` into a staging media
+   root under `BACKUP_LOCAL_DIR/restore-staging/`.
+3. Verifies every manifest entry's checksum against the staged media, then
+   real-decodes a sample of the staged WebP files. Any failure here stops
+   the restore with live resources completely untouched — there is nothing
+   to roll back yet.
+4. A **second**, separate confirmation gates the actual cutover: stop
+   `pantry-api`, atomically rename the live database aside and the staging
+   database into its place, move the live media root aside and the staged
+   one into its place, restart `pantry-api`. The renamed-aside database and
+   media root are **retained** as the rollback copy — this script never
+   deletes them; prune old `*_rollback-*` databases/directories by hand once
+   a restore is confirmed healthy.
+5. If a cutover step itself fails partway through, the script attempts an
+   automatic rollback (rename everything back) and prints exactly what to do
+   by hand if that itself can't complete — a host stuck mid-cutover is the
+   one state it refuses to guess its way out of.
+
+```bash
+# age + rclone driver
+./restore.sh 2026-07-29 daily
+# restic driver
+./restore.sh restic latest
+```
+
+Both scripts run `bash -n` clean; validate further with a disposable
+Postgres instance before trusting either against production (see
+`infra/scripts/*.sh`'s own header comments for the exact required env).
+
+---
+
 ## Deploy pipeline
 
 `.github/workflows/deploy.yml` runs on every push to `main`:
