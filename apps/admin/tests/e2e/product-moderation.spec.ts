@@ -4,7 +4,8 @@
 // direct photo correction, and the same-origin private-media proxy.
 
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin, resetStore } from './admin-helpers';
+import { loginAsAdmin, resetStore, MOCK_API } from './admin-helpers';
+import { ACCESS_TOKEN } from './mock-api-constants';
 import { FIXTURE } from './mock-store';
 
 test.beforeEach(async ({ request }) => {
@@ -137,21 +138,37 @@ test.describe('direct photo correction', () => {
 });
 
 test.describe('conflict handling', () => {
-  test('a stale version_conflict on direct correction shows the refresh affordance, never an auto-retry', async ({ page }) => {
+  test('a stale version_conflict on direct correction shows the refresh affordance, never an auto-retry', async ({
+    page,
+    request,
+  }) => {
     await loginAsAdmin(page);
     await page.goto(`/products/${FIXTURE.pendingProductId}`);
+    await expect(page.getByLabel('Name')).toHaveValue('New Scanned Snacks');
 
-    await page.getByLabel('Name').fill('New Scanned Snacks (renamed once)');
-    await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByText('Saved.')).toBeVisible();
+    // A same-tab double-save is not a real conflict: `patchProductAction`'s
+    // `revalidatePath` refetches the RSC payload after a successful save, so
+    // the component re-renders holding the *new* version — a second save
+    // from the same page would just succeed again. A genuine conflict needs
+    // a second actor: bump the product out-of-band, behind this page's back,
+    // via a direct API call the loaded page never sees.
+    const bump = await request.patch(`${MOCK_API}/v1/admin/products/${FIXTURE.pendingProductId}`, {
+      headers: { authorization: `Bearer ${ACCESS_TOKEN}` },
+      data: { version: 1, name: 'Changed by another admin' },
+    });
+    expect(bump.ok()).toBeTruthy();
 
-    // The component still holds the version it loaded with — a second save
-    // without a page reload submits that now-stale token against the version
-    // the first save just incremented server-side.
-    await page.getByLabel('Name').fill('New Scanned Snacks (renamed twice)');
+    // This page still holds version 1 — now stale against the row the bump
+    // just moved to version 2.
+    await page.getByLabel('Name').fill('New Scanned Snacks (my edit)');
     await page.getByRole('button', { name: 'Save changes' }).click();
-    await expect(page.getByText(/refresh/i)).toBeVisible();
+    // Both the error copy and the button text contain "refresh" — scope to
+    // the button specifically to avoid a strict-mode ambiguity between them.
     await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
+    await expect(page.getByText('This record changed since you loaded it')).toBeVisible();
+    // Never auto-retried: the name still reads the failed edit, not what a
+    // blind retry would have silently written.
+    await expect(page.getByLabel('Name')).toHaveValue('New Scanned Snacks (my edit)');
   });
 });
 

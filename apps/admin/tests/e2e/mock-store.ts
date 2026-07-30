@@ -4,9 +4,9 @@
 // (see mock-api.ts) so each spec starts from a clean, known state even though
 // Playwright reuses one mock-server process across tests.
 //
-// reviewer-p6 M7: every response builder below `.parse()`s its own output
-// against the real @expyrico/shared schema the corresponding upstream route
-// actually returns, before handing it back. A hand-shaped mock response that
+// Every response builder below `.parse()`s its own output against the real
+// @expyrico/shared schema the corresponding upstream route actually returns,
+// before handing it back. A hand-shaped mock response that
 // silently diverges from the real contract then fails loudly right here
 // (cheap, in the mock) instead of only surfacing as a confusing client-side
 // parse error deep in a spec, or — worse — never surfacing at all, since

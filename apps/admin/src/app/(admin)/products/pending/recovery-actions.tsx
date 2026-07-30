@@ -66,12 +66,12 @@ function CandidateThumb({
  * (`retained`, keyed by their real `ProductPhoto` id) and this revision's own
  * still-staged photos (`staged`, keyed by their `ProductEditPhoto` id).
  *
- * reviewer-p6 I2/I3: the submitted `desiredPhotoOrder` is rendered directly —
- * a separate "Selected" list, in the exact order/positions that will be sent
- * — rather than an immutable candidate list that visually diverges from what
- * the ↑/↓ controls actually reorder. The contract caps `desiredPhotoOrder` at
- * 5 entries, enforced here too (disabled "Add" past the cap, `n/5` counter,
- * and a valid capped-at-5 default) so the default state is never a guaranteed
+ * The submitted `desiredPhotoOrder` is rendered directly — a separate
+ * "Selected" list, in the exact order/positions that will be sent — rather
+ * than an immutable candidate list that visually diverges from what the ↑/↓
+ * controls actually reorder. The contract caps `desiredPhotoOrder` at 5
+ * entries, enforced here too (disabled "Add" past the cap, `n/5` counter, and
+ * a valid capped-at-5 default) so the default state is never a guaranteed
  * 400.
  */
 export function RecoveryActions({
@@ -189,19 +189,33 @@ export function RecoveryActions({
                 {c.kind === 'retained' ? 'Currently live' : 'Staged in this revision'}
               </span>
               <div className="flex gap-1">
-                <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} className="disabled:opacity-30">
+                <button
+                  type="button"
+                  aria-label="Move up"
+                  disabled={pending || i === 0}
+                  onClick={() => move(i, -1)}
+                  className="disabled:opacity-30"
+                >
                   ↑
                 </button>
                 <button
                   type="button"
                   aria-label="Move down"
-                  disabled={i === order.length - 1}
+                  disabled={pending || i === order.length - 1}
                   onClick={() => move(i, 1)}
                   className="disabled:opacity-30"
                 >
                   ↓
                 </button>
-                <button type="button" aria-label="Remove from selection" onClick={() => remove(i)} className="text-expired">
+                {/* Reversible (Add puts it straight back) — never Alert Red,
+                    which stays reserved for genuinely destructive actions. */}
+                <button
+                  type="button"
+                  aria-label="Remove from selection"
+                  disabled={pending}
+                  onClick={() => remove(i)}
+                  className="text-neutral-mid hover:text-neutral-dark disabled:opacity-30"
+                >
                   Remove
                 </button>
               </div>
@@ -220,7 +234,7 @@ export function RecoveryActions({
                 <span className="flex-1 text-xs text-muted-foreground">
                   {c.kind === 'retained' ? 'Currently live' : 'Staged in this revision'}
                 </span>
-                <Button size="sm" variant="outline" disabled={atCap} onClick={() => add(c)}>
+                <Button size="sm" variant="outline" disabled={pending || atCap} onClick={() => add(c)}>
                   Add
                 </Button>
               </li>

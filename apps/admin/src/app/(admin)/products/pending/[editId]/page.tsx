@@ -40,10 +40,11 @@ export default async function RevisionDetailPage({
   // revision was based on it — recovery (rebase/supersede), not an ordinary
   // approve/request-changes decision, is the only path forward from here.
   const stale = revision.liveProductVersion !== revision.baseProductVersion;
-  // reviewer-p6 I4's class applies here too: `resolveProductEdit` 409s
-  // ("Already resolved") for anything but `pending`, so `changes_required`
-  // (awaiting the creator, not the admin) and any terminal status get a
-  // read-only state instead of dead Approve/Request-Changes buttons.
+  // `resolveProductEdit` 409s ("Already resolved") for anything but `pending`,
+  // so `changes_required` (awaiting the creator, not the admin) and any
+  // terminal status get a read-only state instead of dead Approve/Request
+  // -Changes buttons — the same failure mode as the new-product moderation
+  // panel below, just on the revision side.
   const awaitingResubmission = !stale && revision.status === 'changes_required';
   const alreadyResolved = !stale && (revision.status === 'approved' || revision.status === 'rejected');
 

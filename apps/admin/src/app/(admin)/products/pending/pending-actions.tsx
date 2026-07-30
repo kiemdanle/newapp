@@ -12,9 +12,9 @@ import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
  * This route reads/supplies its own version token server-side, so the realistic
  * conflicts an admin hits here are `edit_base_stale` (live product moved since
  * this revision was based on it) and `conflict` ("already resolved") — both
- * treated the same as `version_conflict` (reviewer-p6 M2): never auto-retry,
- * require an explicit refresh, which re-fetches the edit's current state (and,
- * for a stale base, swaps this panel for the recovery actions).
+ * treated the same as `version_conflict`: never auto-retry, require an
+ * explicit refresh, which re-fetches the edit's current state (and, for a
+ * stale base, swaps this panel for the recovery actions).
  */
 export function PendingActions({ editId }: { editId: string }) {
   const router = useRouter();

@@ -6,11 +6,10 @@ import { DataTable, type Column } from '@/components/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { ModerationFilters } from './moderation-filters';
 
-// reviewer-p6 M5: `sp.status` used to go straight into the upstream query
-// string unvalidated — an arbitrary `?status=bogus` produced an unhandled
-// upstream 400 that propagated out of this Server Component as a generic
-// error page. `safeParse` + a default keeps a malformed value from ever
-// reaching the API.
+// `sp.status` used to go straight into the upstream query string unvalidated —
+// an arbitrary `?status=bogus` produced an unhandled upstream 400 that
+// propagated out of this Server Component as a generic error page.
+// `safeParse` + a default keeps a malformed value from ever reaching the API.
 const queueSearchParamsSchema = z.object({
   type: z.enum(['new', 'revision']).optional(),
   status: adminProductStatusSchema.optional(),
@@ -54,7 +53,12 @@ export default async function ProductsPendingPage({
   const parsedSp = queueSearchParamsSchema.safeParse(rawSp);
   // An invalid value (e.g. a hand-edited `?status=bogus`) falls back to the
   // unfiltered defaults rather than reaching the upstream API at all.
-  const { type, status = 'pending', age } = parsedSp.success ? parsedSp.data : {};
+  const { type, status: validatedStatus, age } = parsedSp.success ? parsedSp.data : {};
+  // The API query always needs a concrete status; the filter UI and
+  // pagination links use `validatedStatus` (still `undefined` when nothing
+  // valid was selected) so they never display/propagate a value the query
+  // didn't actually use.
+  const status = validatedStatus ?? 'pending';
 
   const [newProducts, revisions] = await Promise.all([
     type === 'revision'
@@ -113,16 +117,21 @@ export default async function ProductsPendingPage({
     { header: 'Age', cell: (r) => relativeAge(r.createdAt) },
   ];
 
-  // reviewer-p6 M4: the age filter is applied to each already-fetched page, not
-  // pushed to the API — so pagination stays live (never hard-disabled) rather
-  // than silently truncating a backlog larger than one page to "no more
-  // results". The UI discloses that the filter is page-scoped instead.
+  // The age filter is applied to each already-fetched page, not pushed to the
+  // API — so pagination stays live (never hard-disabled) rather than silently
+  // truncating a backlog larger than one page to "no more results". The UI
+  // discloses that the filter is page-scoped instead.
   const nextCursorNew = newProducts.nextCursor;
   const nextCursorRevision = revisions.nextCursor;
   const hasMore = Boolean(nextCursorNew || nextCursorRevision);
   const moreParams = new URLSearchParams();
   if (type) moreParams.set('type', type);
-  if (rawSp.status) moreParams.set('status', rawSp.status);
+  // The *validated* status, not the raw query value or the query's own
+  // defaulted `status` — an invalid `status` must not survive into "Load
+  // more" links or the filter control's displayed state, and "no filter
+  // selected" (validatedStatus undefined) must not be shown as "Pending"
+  // just because the query defaults to it.
+  if (validatedStatus) moreParams.set('status', validatedStatus);
   if (age) moreParams.set('age', age);
   if (nextCursorNew) moreParams.set('cursorNew', nextCursorNew);
   if (nextCursorRevision) moreParams.set('cursorRevision', nextCursorRevision);
@@ -130,7 +139,7 @@ export default async function ProductsPendingPage({
   return (
     <div className="space-y-6">
       <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Moderation queue</h1>
-      <ModerationFilters type={type} status={rawSp.status} age={age} />
+      <ModerationFilters type={type} status={validatedStatus} age={age} />
       {age && (
         <p className="text-xs text-neutral-mid">
           Age filter applies to this page only — load more pages to see older matches beyond it.

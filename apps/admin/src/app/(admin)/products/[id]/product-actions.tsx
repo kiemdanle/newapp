@@ -39,8 +39,8 @@ export function ProductActions({
   const [form, setForm] = useState({ name, brand: brand ?? '', category: category ?? '' });
   const [requestingChanges, setRequestingChanges] = useState(false);
   const [moderationNotes, setModerationNotes] = useState('');
-  // I4: `moderateProduct` rejects anything but `status === 'pending'` (409) —
-  // a `changes_required` row is not awaiting an admin decision, it's awaiting
+  // `moderateProduct` rejects anything but `status === 'pending'` (409) — a
+  // `changes_required` row is not awaiting an admin decision, it's awaiting
   // the creator's resubmission. Showing live Approve/Request-Changes buttons
   // there was a guaranteed dead end; it gets a read-only state instead.
   const needsModeration = status === 'pending';

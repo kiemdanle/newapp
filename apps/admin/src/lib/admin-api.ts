@@ -75,11 +75,11 @@ export const serverAdminApi = {
     list: (q: Q = {}) =>
       apiServerFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
     // `adminProductRowSchema` carries `version`/`description`/`mergedIntoProductId`
-    // directly (reviewer-p6 I1/M3: a prior two-request composition grafted a
-    // *different* product's version/description onto this row via the general
-    // product-get route, which silently broke identity on a `merged_into` row —
-    // that route resolves merge chains to the canonical product before returning).
-    // Single request, always describes exactly the row asked for.
+    // directly — a prior two-request composition grafted a *different*
+    // product's version/description onto this row via the general
+    // product-get route, which silently broke identity on a `merged_into` row
+    // (that route resolves merge chains to the canonical product before
+    // returning). Single request, always describes exactly the row asked for.
     get: (id: string) => apiServerFetch(`/v1/admin/products/${id}`).then((r) => adminProductRowSchema.parse(r)),
     // `version` is the admin's last-known product version — required so a direct
     // correction is optimistic-concurrency-guarded, not applied blind.

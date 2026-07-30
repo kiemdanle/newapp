@@ -12,7 +12,7 @@ import { E2E_ADMIN_ENROLLED } from './mock-api-constants';
 // see that file for why the 4001/4099 defaults are CI-only and unsafe to
 // assume free on a persistent dev box.
 const ADMIN_PORT = process.env.ADMIN_E2E_PORT ?? '4001';
-const MOCK_API =
+export const MOCK_API =
   process.env.MOCK_API_BASE ?? `http://localhost:${process.env.ADMIN_E2E_MOCK_PORT ?? '4099'}`;
 
 /** Re-seed the mock store. Call at the top of every spec for a known state. */

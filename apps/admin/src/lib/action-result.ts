@@ -18,13 +18,13 @@ export type ActionResult<T = void> =
       identifierConflict?: MergeIdentifierConflict | undefined;
     };
 
-// reviewer-p6 M2: `version_conflict` is nearly unreachable on the routes that
-// supply their own version token server-side (revision resolve/recover) — what
-// an admin actually hits there is `edit_base_stale` (the live product moved
-// since this revision was based on it) or `conflict` ("already resolved").
-// Both are exactly as real a conflict as `version_conflict` and get the same
-// refresh affordance; treating only `version_conflict` this way left the two
-// *more* likely codes as unexplained dead ends.
+// `version_conflict` is nearly unreachable on the routes that supply their own
+// version token server-side (revision resolve/recover) — what an admin
+// actually hits there is `edit_base_stale` (the live product moved since this
+// revision was based on it) or `conflict` ("already resolved"). Both are
+// exactly as real a conflict as `version_conflict` and get the same refresh
+// affordance; treating only `version_conflict` this way left the two *more*
+// likely codes as unexplained dead ends.
 const CONFLICT_CODES = new Set(['version_conflict', 'edit_base_stale', 'conflict']);
 
 export function isConflictCode(code: string): boolean {

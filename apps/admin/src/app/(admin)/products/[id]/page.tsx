@@ -15,9 +15,9 @@ export default async function ProductDetailPage({
   const { id } = await params;
   const p = await serverAdminApi.products.get(id);
 
-  // Reviewer-p6 ruling: a merged_into row always renders as itself — never
-  // silently the canonical product's data — with an explicit banner and link,
-  // detected from this row's own status/mergedIntoProductId.
+  // A merged_into row always renders as itself — never silently the
+  // canonical product's data — with an explicit banner and link, detected
+  // from this row's own status/mergedIntoProductId.
   const isMerged = p.status === 'merged_into';
 
   return (
