@@ -30,7 +30,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 import sharp from 'sharp';
 import { getPrisma } from '../db.js';
 import { disconnectPrisma } from '../db.js';
@@ -98,17 +98,34 @@ async function collectReferencedKeys(): Promise<string[]> {
 async function generate(mediaRoot: string, outFile: string): Promise<number> {
   const keys = await collectReferencedKeys();
   const entries: ManifestEntry[] = [];
+  // Collected rather than thrown per-key: a single orphaned DB reference (the
+  // C1 sweep race, or any other cause) previously crashed the whole command
+  // with an unhandled stack trace and no manifest at all, aborting the
+  // night's backup outright (reviewer-p7 IM9). Still fails the command
+  // overall (matching the fail-safe direction the crash was already taking)
+  // but reports exactly which keys are missing instead of just dying.
+  const missing: Array<{ key: string; variant: 'display' | 'thumb'; path: string }> = [];
   for (const key of keys) {
     const { display, thumb } = keyToVariantPaths(mediaRoot, key);
     for (const [variant, path] of [['display', display], ['thumb', thumb]] as const) {
-      const { sha256, bytes } = await sha256File(path);
-      entries.push({ key, variant, path: path.slice(mediaRoot.length), sha256, bytes });
+      // `relative(resolve(mediaRoot), path)`, not `path.slice(mediaRoot.length)`
+      // — the latter slices off the *raw, unnormalized* mediaRoot argument's
+      // length, so a caller-supplied trailing slash (MEDIA_ROOT=".../media/")
+      // produced relative paths off by one character, and `verify` then
+      // reported every entry missing (reviewer-p7 IM10).
+      const relativePath = relative(resolve(mediaRoot), path);
+      try {
+        const { sha256, bytes } = await sha256File(path);
+        entries.push({ key, variant, path: relativePath, sha256, bytes });
+      } catch {
+        missing.push({ key, variant, path: relativePath });
+      }
     }
   }
   const manifest: Manifest = { generatedAt: new Date().toISOString(), entries };
   await writeFile(outFile, JSON.stringify(manifest, null, 2));
-  process.stdout.write(`${JSON.stringify({ keys: keys.length, entries: entries.length })}\n`);
-  return 0;
+  process.stdout.write(`${JSON.stringify({ keys: keys.length, entries: entries.length, missing })}\n`);
+  return missing.length === 0 ? 0 : 1;
 }
 
 async function verify(mediaRoot: string, manifestFile: string): Promise<number> {
@@ -156,9 +173,27 @@ async function verifyDbReferences(manifestFile: string): Promise<number> {
  * source would pass checksum verification but never decode. Never trusts a
  * static format flag — actually calls into libvips, same principle as
  * `product-image-processor.ts`'s HEIC capability probe. */
+/** Uniform Fisher-Yates shuffle. `[...arr].sort(() => Math.random() - 0.5)`
+ * is not a uniform permutation — sort comparators are called O(n log n)
+ * times with no guarantee every pairwise ordering is independently
+ * randomized, and V8's sort in particular leaves a measurable bias toward
+ * the array's original order. For a 25-entry decode sample meant to be a
+ * real spot-check across the whole archive, a shuffle skewed toward DB-scan
+ * order defeats the point (reviewer-p7 IM13). */
+function shuffle<T>(arr: readonly T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = result[i]!;
+    result[i] = result[j]!;
+    result[j] = tmp;
+  }
+  return result;
+}
+
 async function decodeSample(mediaRoot: string, manifestFile: string, sampleSize = 20): Promise<number> {
   const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as Manifest;
-  const shuffled = [...manifest.entries].sort(() => Math.random() - 0.5);
+  const shuffled = shuffle(manifest.entries);
   const sample = shuffled.slice(0, sampleSize);
   const failures: Array<{ path: string; error: string }> = [];
   for (const entry of sample) {
