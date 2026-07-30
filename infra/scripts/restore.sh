@@ -68,7 +68,37 @@ STAGING_MEDIA_ROOT="$STAGING_DIR/media"
 # require a connection to some OTHER database, never the one being touched.
 LIVE_DB_NAME=$(psql "$DATABASE_URL" -X -tAc 'SELECT current_database()')
 MAINT_DB_URL=$(printf '%s' "$DATABASE_URL" | sed -E "s#/${LIVE_DB_NAME}(\?|$)#/postgres\1#")
-STAGING_DB_NAME="${LIVE_DB_NAME}_restore_staging"
+# Uniquified by GENERATION_ID, matching STAGING_DIR — a fixed name meant two
+# concurrent restores (or a re-run after an aborted one) could destroy each
+# other's staged database via cleanup_staging's unconditional DROP, which is
+# also the exact mechanism IC1 row 2 used to destroy a restored database
+# (reviewer-p7 II4). Hyphens aren't valid in an unquoted Postgres identifier
+# context here, so they're replaced rather than relied on.
+STAGING_DB_NAME="${LIVE_DB_NAME}_staging_${GENERATION_ID//-/_}"
+
+# Post-cutover health gate (reviewer-p7 II6): the phase requires retaining
+# rollback pointers "until post-cutover health succeeds" and lists a failed
+# health check as one of three fault paths that must preserve the prior
+# paired generation — previously the script logged "cutover complete"
+# immediately after `systemctl start`, with no probe at all. Polls the
+# plain, unauthenticated `/health` route (never the admin-gated operational
+# health endpoint, which restore.sh has no credential for) so this works the
+# same way an external liveness check would.
+HEALTH_CHECK_TIMEOUT_SECONDS="${HEALTH_CHECK_TIMEOUT_SECONDS:-30}"
+wait_for_healthy() {
+    local url="http://${HOST:-127.0.0.1}:${PORT:-4000}/health"
+    local deadline=$((SECONDS + HEALTH_CHECK_TIMEOUT_SECONDS))
+    log "waiting for $url to report healthy (up to ${HEALTH_CHECK_TIMEOUT_SECONDS}s)"
+    while (( SECONDS < deadline )); do
+        if curl -fsS -o /dev/null -m 3 "$url"; then
+            log "health check passed"
+            return 0
+        fi
+        sleep 1
+    done
+    log "health check did not pass within ${HEALTH_CHECK_TIMEOUT_SECONDS}s"
+    return 1
+}
 
 confirm() {
     local prompt="$1"
@@ -206,50 +236,138 @@ ROLLBACK_DB_NAME="${LIVE_DB_NAME}_${ROLLBACK_SUFFIX}"
 ROLLBACK_MEDIA_ROOT="${MEDIA_ROOT}.${ROLLBACK_SUFFIX}"
 
 CUTOVER_STARTED=0
+
+db_exists() {
+    psql "$MAINT_DB_URL" -X -tAc "SELECT 1 FROM pg_database WHERE datname='$1'" 2>/dev/null | grep -q 1
+}
+
+# Fixed for reviewer-p7 IC2: the original guard —
+#   if rollback_exists; then if ! live_exists; then rename rollback -> live
+# — is only ever true immediately after the FIRST rename (live -> rollback)
+# and before the second. By the time the only reliably-reached failure point
+# fires (the final media `mv`, after BOTH database renames already
+# succeeded), `$LIVE_DB_NAME` holds the newly-promoted content and
+# `$ROLLBACK_DB_NAME` holds the original — the inner condition is false, so
+# the database rollback was silently skipped while the media rollback still
+# ran, leaving a mismatched pair. Handles all three reachable states
+# explicitly instead of assuming which one it's in, and never starts
+# pantry-api unless both resources actually ended up back on a matched pair.
 cutover_rollback() {
     log "CUTOVER FAILED — attempting automatic rollback"
-    if [[ -d "$ROLLBACK_MEDIA_ROOT" && ! -d "$MEDIA_ROOT" ]]; then
-        mv "$ROLLBACK_MEDIA_ROOT" "$MEDIA_ROOT" && log "media rolled back" \
-            || log "MANUAL ACTION REQUIRED: move $ROLLBACK_MEDIA_ROOT back to $MEDIA_ROOT by hand"
-    fi
-    if psql "$MAINT_DB_URL" -X -tAc "SELECT 1 FROM pg_database WHERE datname='$ROLLBACK_DB_NAME'" 2>/dev/null | grep -q 1; then
-        if ! psql "$MAINT_DB_URL" -X -tAc "SELECT 1 FROM pg_database WHERE datname='$LIVE_DB_NAME'" 2>/dev/null | grep -q 1; then
-            psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$ROLLBACK_DB_NAME\" RENAME TO \"$LIVE_DB_NAME\";" \
-                && log "database rolled back" \
-                || log "MANUAL ACTION REQUIRED: rename database \"$ROLLBACK_DB_NAME\" back to \"$LIVE_DB_NAME\" by hand"
+    local db_ok=1
+    local media_ok=1
+
+    if db_exists "$LIVE_DB_NAME" && ! db_exists "$ROLLBACK_DB_NAME"; then
+        log "database: live database was never renamed away, nothing to roll back"
+    elif ! db_exists "$LIVE_DB_NAME" && db_exists "$ROLLBACK_DB_NAME"; then
+        # Only the first rename succeeded; the staging DB is still under its
+        # own name (untouched) — undo just the one rename that happened.
+        if psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$ROLLBACK_DB_NAME\" RENAME TO \"$LIVE_DB_NAME\";"; then
+            log "database rolled back"
+        else
+            db_ok=0
+            log "MANUAL ACTION REQUIRED: rename database \"$ROLLBACK_DB_NAME\" back to \"$LIVE_DB_NAME\" by hand"
         fi
+    elif db_exists "$LIVE_DB_NAME" && db_exists "$ROLLBACK_DB_NAME"; then
+        # Both renames succeeded — move the newly-promoted content out of the
+        # live name FIRST (there is nowhere else for it to go but back under
+        # the staging name), then restore the original. Doing this in the
+        # other order can't work: $LIVE_DB_NAME is still occupied.
+        if psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$LIVE_DB_NAME\" RENAME TO \"$STAGING_DB_NAME\";" \
+            && psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$ROLLBACK_DB_NAME\" RENAME TO \"$LIVE_DB_NAME\";"; then
+            log "database rolled back (promoted content moved aside as \"$STAGING_DB_NAME\")"
+        else
+            db_ok=0
+            log "MANUAL ACTION REQUIRED: database is in a mixed state — inspect \"$LIVE_DB_NAME\", \"$ROLLBACK_DB_NAME\", \"$STAGING_DB_NAME\" by hand"
+        fi
+    else
+        db_ok=0
+        log "MANUAL ACTION REQUIRED: neither database \"$LIVE_DB_NAME\" nor \"$ROLLBACK_DB_NAME\" exists — inspect by hand"
     fi
-    systemctl start pantry-api 2>/dev/null || true
-    log "rollback attempt finished — verify service health before trusting it"
+
+    if [[ -d "$MEDIA_ROOT" && ! -d "$ROLLBACK_MEDIA_ROOT" ]]; then
+        log "media: live media was never moved away, nothing to roll back"
+    elif [[ ! -d "$MEDIA_ROOT" && -d "$ROLLBACK_MEDIA_ROOT" ]]; then
+        if mv "$ROLLBACK_MEDIA_ROOT" "$MEDIA_ROOT"; then
+            log "media rolled back"
+        else
+            media_ok=0
+            log "MANUAL ACTION REQUIRED: move $ROLLBACK_MEDIA_ROOT back to $MEDIA_ROOT by hand"
+        fi
+    elif [[ -d "$MEDIA_ROOT" && -d "$ROLLBACK_MEDIA_ROOT" ]]; then
+        # Mirrors the database branch above — only reachable from a partial
+        # (e.g. cross-filesystem) `mv`, but handled the same way rather than
+        # guessed at: move the promoted content aside, then restore the
+        # original.
+        if mv "$MEDIA_ROOT" "$STAGING_MEDIA_ROOT" && mv "$ROLLBACK_MEDIA_ROOT" "$MEDIA_ROOT"; then
+            log "media rolled back (promoted content moved aside as $STAGING_MEDIA_ROOT)"
+        else
+            media_ok=0
+            log "MANUAL ACTION REQUIRED: media is in a mixed state — inspect $MEDIA_ROOT, $ROLLBACK_MEDIA_ROOT, $STAGING_MEDIA_ROOT by hand"
+        fi
+    else
+        media_ok=0
+        log "MANUAL ACTION REQUIRED: neither $MEDIA_ROOT nor $ROLLBACK_MEDIA_ROOT exists — inspect by hand"
+    fi
+
+    if [[ "$db_ok" == "1" && "$media_ok" == "1" ]]; then
+        systemctl start pantry-api 2>/dev/null || true
+        log "rollback succeeded — database and media are back on the original matched pair; pantry-api restarted"
+    else
+        log "rollback INCOMPLETE — pantry-api NOT restarted; resolve the manual action(s) above, confirm database and media are a matched pair, then start pantry-api by hand"
+    fi
 }
 
 log "entering maintenance mode: stopping pantry-api"
 systemctl stop pantry-api
 
-{
-    CUTOVER_STARTED=1
+CUTOVER_STARTED=1
 
-    log "terminating connections to $LIVE_DB_NAME before rename"
-    psql "$MAINT_DB_URL" -X -q -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$LIVE_DB_NAME' AND pid <> pg_backend_pid();" >/dev/null
+# Each cutover step is checked explicitly rather than relying on `errexit` to
+# abort the group — `set -e` does NOT apply to a command whose exit status is
+# itself being tested (e.g. as the left-hand side of `||`, or the condition of
+# an `if`), so a `{ …steps… } || { cutover_rollback; exit 1; }` group silently
+# ignores every failure except the last command's, letting the cutover half-
+# apply while the script still reports success (reviewer-p7 IC1).
 
-    log "renaming live database $LIVE_DB_NAME → $ROLLBACK_DB_NAME"
-    psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$LIVE_DB_NAME\" RENAME TO \"$ROLLBACK_DB_NAME\";"
-
-    log "renaming staging database $STAGING_DB_NAME → $LIVE_DB_NAME"
-    psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$STAGING_DB_NAME\" RENAME TO \"$LIVE_DB_NAME\";"
-
-    log "moving live media $MEDIA_ROOT → $ROLLBACK_MEDIA_ROOT"
-    mv "$MEDIA_ROOT" "$ROLLBACK_MEDIA_ROOT"
-
-    log "moving staged media $STAGING_MEDIA_ROOT → $MEDIA_ROOT"
-    mv "$STAGING_MEDIA_ROOT" "$MEDIA_ROOT"
-} || {
+log "terminating connections to $LIVE_DB_NAME before rename"
+if ! psql "$MAINT_DB_URL" -X -q -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$LIVE_DB_NAME' AND pid <> pg_backend_pid();" >/dev/null; then
     cutover_rollback
     exit 1
-}
+fi
+
+log "renaming live database $LIVE_DB_NAME → $ROLLBACK_DB_NAME"
+if ! psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$LIVE_DB_NAME\" RENAME TO \"$ROLLBACK_DB_NAME\";"; then
+    cutover_rollback
+    exit 1
+fi
+
+log "renaming staging database $STAGING_DB_NAME → $LIVE_DB_NAME"
+if ! psql "$MAINT_DB_URL" -X -q -c "ALTER DATABASE \"$STAGING_DB_NAME\" RENAME TO \"$LIVE_DB_NAME\";"; then
+    cutover_rollback
+    exit 1
+fi
+
+log "moving live media $MEDIA_ROOT → $ROLLBACK_MEDIA_ROOT"
+if ! mv "$MEDIA_ROOT" "$ROLLBACK_MEDIA_ROOT"; then
+    cutover_rollback
+    exit 1
+fi
+
+log "moving staged media $STAGING_MEDIA_ROOT → $MEDIA_ROOT"
+if ! mv "$STAGING_MEDIA_ROOT" "$MEDIA_ROOT"; then
+    cutover_rollback
+    exit 1
+fi
 
 log "restarting pantry-api"
 systemctl start pantry-api
+
+if ! wait_for_healthy; then
+    log "CUTOVER health check failed after restart — attempting automatic rollback"
+    cutover_rollback
+    exit 1
+fi
 
 log "cutover complete. Rollback copies retained: database \"$ROLLBACK_DB_NAME\", media $ROLLBACK_MEDIA_ROOT"
 log "restore complete"
