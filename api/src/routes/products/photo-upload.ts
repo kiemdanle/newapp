@@ -3,9 +3,14 @@ import { z } from 'zod';
 import { ERROR_CODES, productSchema } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
+import { logger } from '../../logger.js';
 import { addProductPhoto, assertPhotoMutablePreCheck } from '../../services/products/product-photos.js';
 import { assertProductCreationEligible } from '../../services/products/product-creation-eligibility.js';
-import { assertWithinDailyByteQuota, recordDailyBytesAccepted } from '../../services/products/product-creation-quotas.js';
+import {
+  type DailyByteQuotaReservation,
+  reconcileDailyByteQuota,
+  reserveDailyByteQuota,
+} from '../../services/products/product-creation-quotas.js';
 import { processProductUpload } from '../../services/products/product-image-processor.js';
 import {
   newQuarantineRequestId,
@@ -37,11 +42,11 @@ export async function photoUploadRoute(app: FastifyInstance) {
     // `assertPhotoMutablePreCheck` only ever admits a non-admin onto a
     // draft/changes_required product; the mode gate is an orthogonal capability
     // check on top of that (e.g. a draft created while mode was `all`, now
-    // frozen for mutation because mode flipped to `off`). Admins are exempt —
-    // admin moderation/correction remains available in every mode.
-    if (actor.role !== 'admin') {
-      await assertProductCreationEligible(actor, 'photo');
-    }
+    // frozen for mutation because mode flipped to `off`). `assertProductCreationEligible`
+    // already treats an admin actor as eligible in every mode on its own — one
+    // converged policy across all six call sites (reviewer-p7 I6), same as
+    // create/patch/submit and the other two photo routes.
+    await assertProductCreationEligible(actor, 'photo');
 
     if (!req.isMultipart()) {
       validationError('Expected a multipart/form-data upload');
@@ -66,15 +71,24 @@ export async function photoUploadRoute(app: FastifyInstance) {
 
     const requestId = newQuarantineRequestId();
     let reservationId: string | undefined;
+    let quotaReservation: DailyByteQuotaReservation | undefined;
+    // Real source bytes actually streamed for this attempt, whatever the
+    // outcome — the amount a failed/rejected upload gets charged against the
+    // daily quota (reviewer-p7 I2). Stays 0 if the attempt never reaches
+    // `writeQuarantineFile` (e.g. the quota/capacity reservation itself is
+    // what rejects it), so nothing is charged for work that never happened.
+    let attemptedBytes = 0;
     try {
       const worstCaseBytes = cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes;
       // Per-user/day fair-share quota is checked *before* the global capacity
       // reservation round trip — a quota rejection should never cost a
       // reservation, and it's an independent, complementary limit (quotas bound
       // one user's share; capacity bounds the whole server's budget). Admins
-      // performing a correction are exempt, same as the mode gate above.
+      // performing a correction are exempt, same as the mode gate above. The
+      // check itself atomically reserves the worst-case estimate (reviewer-p7
+      // I1) and must be reconciled on every terminal path below.
       if (actor.role !== 'admin') {
-        await assertWithinDailyByteQuota(actor.id, worstCaseBytes);
+        quotaReservation = await reserveDailyByteQuota(actor.id, worstCaseBytes);
       }
 
       // Reserved *before* a single byte is streamed to disk — worst-case source
@@ -88,6 +102,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       reservationId = reservation.id;
 
       const written = await writeQuarantineFile(root, requestId, filePart.file, cfg.maxUploadBytes);
+      attemptedBytes = written.bytes;
       if (filePart.file.truncated) {
         throw new AppError({
           status: 413,
@@ -129,17 +144,32 @@ export async function photoUploadRoute(app: FastifyInstance) {
         requestMeta: { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
       });
       reservationId = undefined; // addProductPhoto releases it on every terminal path
-      // Only real accepted bytes count toward the daily quota — never the
-      // worst-case estimate checked above, and never for a rejected/failed
-      // upload (this line only runs once `addProductPhoto` has actually
-      // committed the reference transaction).
-      if (actor.role !== 'admin') {
-        await recordDailyBytesAccepted(actor.id, processed.display.bytes + processed.thumb.bytes);
+      // Reconciles the quota reservation down to the real accepted
+      // display+thumb total (only runs once `addProductPhoto` has actually
+      // committed the reference transaction). A Redis blip here must not
+      // turn a fully successful, persisted upload into a 500 — the client
+      // would only retry and upload it again — so failures are logged, not
+      // thrown (reviewer-p7 M3).
+      if (quotaReservation) {
+        const settled = quotaReservation;
+        quotaReservation = undefined;
+        await reconcileDailyByteQuota(settled, processed.display.bytes + processed.thumb.bytes).catch((err: unknown) => {
+          logger.warn({ err, actorId: actor.id }, 'failed to reconcile daily byte quota after a successful upload');
+        });
       }
       return reply.status(201).send(productSchema.parse(product));
     } finally {
       await removeKeyPrefix(root, quarantineDirKey(requestId)).catch(() => {});
       if (reservationId) await releaseMediaCapacityReservation(reservationId).catch(() => {});
+      // Any remaining reservation here means the attempt failed — reconcile
+      // down to the real source bytes actually streamed (never the
+      // worst-case ceiling), so a rejected/corrupt upload still costs real
+      // quota instead of nothing (reviewer-p7 I2).
+      if (quotaReservation) {
+        await reconcileDailyByteQuota(quotaReservation, attemptedBytes).catch((err: unknown) => {
+          logger.warn({ err, actorId: actor.id }, 'failed to reconcile daily byte quota after a failed upload');
+        });
+      }
     }
   });
 }

@@ -6,9 +6,9 @@ import { makeAdmin, makeUserForAdmin } from '../helpers/admin.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import {
   assertWithinActiveDraftQuota,
-  assertWithinDailyByteQuota,
   currentDailyBytesAccepted,
-  recordDailyBytesAccepted,
+  reconcileDailyByteQuota,
+  reserveDailyByteQuota,
 } from '../../src/services/products/product-creation-quotas.js';
 import {
   heartbeatMediaCapacityReservation,
@@ -89,32 +89,70 @@ describe('assertWithinActiveDraftQuota', () => {
   });
 });
 
-describe('assertWithinDailyByteQuota / recordDailyBytesAccepted', () => {
-  it('admits usage under the configured daily byte cap', async () => {
+describe('reserveDailyByteQuota / reconcileDailyByteQuota', () => {
+  it('admits a reservation under the configured daily byte cap', async () => {
     process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
     resetConfigForTests();
     const user = await makeUserForAdmin();
-    await expect(assertWithinDailyByteQuota(user.id, 500)).resolves.toBeUndefined();
+    const reservation = await reserveDailyByteQuota(user.id, 500);
+    expect(reservation.reservedBytes).toBe(500);
+    expect(await currentDailyBytesAccepted(user.id)).toBe(500);
   });
 
-  it('accepts exactly at the boundary and rejects one byte past it', async () => {
+  it('accepts exactly at the boundary and rejects one byte past it, leaving no partial charge behind', async () => {
     process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
     resetConfigForTests();
     const user = await makeUserForAdmin();
-    await recordDailyBytesAccepted(user.id, 900);
-    await expect(assertWithinDailyByteQuota(user.id, 100)).resolves.toBeUndefined();
-    await expect(assertWithinDailyByteQuota(user.id, 101)).rejects.toMatchObject({ status: 429 });
+    await reserveDailyByteQuota(user.id, 900);
+    await expect(reserveDailyByteQuota(user.id, 100)).resolves.toMatchObject({ reservedBytes: 100 });
+    await expect(reserveDailyByteQuota(user.id, 1)).rejects.toMatchObject({ status: 429 });
+    // The rejected reservation's own INCRBY must have been compensated by its
+    // own DECRBY inside the same script — the running total stays exactly at
+    // the cap, not cap+1.
+    expect(await currentDailyBytesAccepted(user.id)).toBe(1000);
   });
 
-  it('only counts bytes actually recorded as accepted, never attempted-but-rejected amounts', async () => {
+  it('never lets concurrent reservations collectively exceed the cap (reviewer-p7 I1)', async () => {
     process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
     resetConfigForTests();
     const user = await makeUserForAdmin();
-    // A failed/rejected attempt never calls recordDailyBytesAccepted at all —
-    // simulated here by simply never calling it, then asserting the quota
-    // check still sees zero usage.
+    // 8 * 200 = 1600 against a 1000-byte cap — the old check-then-act shape
+    // let every one of these pass the same pre-reservation headroom read
+    // (REPRO B in the review: 8/8 passed, final total 1700 against 1000).
+    const attempts = await Promise.allSettled(Array.from({ length: 8 }, () => reserveDailyByteQuota(user.id, 200)));
+    const admitted = attempts.filter((r) => r.status === 'fulfilled').length;
+    const rejected = attempts.filter((r) => r.status === 'rejected').length;
+    expect(admitted).toBeLessThanOrEqual(5); // at most 5*200=1000 can ever fit
+    expect(admitted + rejected).toBe(8);
+    expect(await currentDailyBytesAccepted(user.id)).toBeLessThanOrEqual(1000);
+  });
+
+  it('charges the real attempted bytes on a failed/rejected upload, refunding only the unused headroom (reviewer-p7 I2)', async () => {
+    process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
+    resetConfigForTests();
+    const user = await makeUserForAdmin();
+    const reservation = await reserveDailyByteQuota(user.id, 900); // worst-case estimate
+    // Simulates a rejected/corrupt upload that streamed 300 real bytes before failing.
+    await reconcileDailyByteQuota(reservation, 300);
+    expect(await currentDailyBytesAccepted(user.id)).toBe(300);
+  });
+
+  it('refunds a reservation fully when the attempt fails before any byte was read', async () => {
+    process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
+    resetConfigForTests();
+    const user = await makeUserForAdmin();
+    const reservation = await reserveDailyByteQuota(user.id, 900);
+    await reconcileDailyByteQuota(reservation, 0);
     expect(await currentDailyBytesAccepted(user.id)).toBe(0);
-    await expect(assertWithinDailyByteQuota(user.id, 999)).resolves.toBeUndefined();
+  });
+
+  it('reconciles down to the real accepted bytes on success, never leaving the worst-case estimate charged', async () => {
+    process.env.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER = '1000';
+    resetConfigForTests();
+    const user = await makeUserForAdmin();
+    const reservation = await reserveDailyByteQuota(user.id, 900);
+    await reconcileDailyByteQuota(reservation, 250); // real display+thumb total
+    expect(await currentDailyBytesAccepted(user.id)).toBe(250);
   });
 
   it('isolates usage by UTC day — yesterday does not count against today', async () => {
@@ -122,15 +160,15 @@ describe('assertWithinDailyByteQuota / recordDailyBytesAccepted', () => {
     resetConfigForTests();
     const user = await makeUserForAdmin();
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    await recordDailyBytesAccepted(user.id, 900, yesterday);
+    await reserveDailyByteQuota(user.id, 900, yesterday);
     expect(await currentDailyBytesAccepted(user.id)).toBe(0);
-    await expect(assertWithinDailyByteQuota(user.id, 999)).resolves.toBeUndefined();
+    await expect(reserveDailyByteQuota(user.id, 999)).resolves.toBeDefined();
   });
 
-  it('accumulates across multiple accepted uploads within the same day', async () => {
+  it('accumulates across multiple reservations within the same day', async () => {
     const user = await makeUserForAdmin();
-    await recordDailyBytesAccepted(user.id, 100);
-    await recordDailyBytesAccepted(user.id, 250);
+    await reserveDailyByteQuota(user.id, 100);
+    await reserveDailyByteQuota(user.id, 250);
     expect(await currentDailyBytesAccepted(user.id)).toBe(350);
   });
 });
@@ -142,9 +180,9 @@ describe('product-creation quotas — admin/internal/all cohorts (route level)',
     const { admin } = await makeAdmin();
     // Admin quota exemption is enforced at the route layer (photo-upload.ts);
     // this proves the underlying primitive itself has no special-casing — an
-    // admin's own bytes, if ever recorded, would still be quota-checked like
+    // admin's own bytes, if ever reserved, would still be quota-checked like
     // anyone else's. The route never calls these functions for an admin actor.
-    await expect(assertWithinDailyByteQuota(admin.id, 2)).rejects.toMatchObject({ status: 429 });
+    await expect(reserveDailyByteQuota(admin.id, 2)).rejects.toMatchObject({ status: 429 });
   });
 
   it('a non-allowlisted internal-mode user is blocked by the mode gate before quotas are ever consulted', async () => {
