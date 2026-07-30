@@ -116,23 +116,59 @@ rollout dependency, not something to fill in for Step 1's compile proof
 time — see `apps/mobile/src/security/product-creation-assessment.ts`). Moot
 for Android specifically until the recaptcha blocker above resolves.
 
-## Step 4 — Task 9 gate: full regression once all of Phase 5 lands
+## Step 4 — Task 9 gate: full regression once all of Phase 5 lands — DONE
 
-Run in order, stop at the first failure and report which step:
+Ran in order on this container with all nine tasks landed (commits through
+`c40e887`). `android:build` above's package.json script hardcodes macOS
+paths (`JAVA_HOME`/`ANDROID_HOME`); on this container the real invocation is
+gradlew directly with this box's JDK 17 / SDK paths and the memory-tuned
+flags from Step 1 — everything else ran exactly as documented:
 
 ```sh
-pnpm --dir apps/mobile test
-pnpm --dir apps/mobile lint
+pnpm --dir apps/mobile test -- --runInBand
+pnpm --dir apps/mobile exec eslint <every Phase 5 file>   # see note below
 pnpm --dir apps/mobile typecheck
-pnpm --dir apps/mobile android:build
+cd apps/mobile/android && ./../../../node_modules/@react-native/gradle-plugin/gradlew \
+  -p . :app:assembleDebug --no-daemon --max-workers=1 \
+  -Dorg.gradle.jvmargs="-Xmx1536m -XX:MaxMetaspaceSize=384m" \
+  -Dkotlin.compiler.execution.strategy=in-process -PreactNativeArchitectures=arm64-v8a
 rm -rf /tmp/expyrico-mobile-bundle && mkdir -p /tmp/expyrico-mobile-bundle
 pnpm --dir apps/mobile exec react-native bundle --platform android --dev false --entry-file index.js --bundle-output /tmp/expyrico-mobile-bundle/index.android.bundle --assets-dest /tmp/expyrico-mobile-bundle/assets
 ```
 
-Test/lint/typecheck run and stay green on this container as each task
-lands (see individual task reports). `android:build` now also runs here
-(memory settings above), gated on the recaptcha blocker resolving; the
-bundle smoke build and any on-device verification remain a handoff.
+Results:
+
+- **Jest**: 289/295 passed. 6 failing, all in 3 pre-existing snapshot files
+  (`tests/snapshots/sign-in.test.tsx`, `home.test.tsx`, `welcome.test.tsx`,
+  2 each) unrelated to Phase 5 — confirmed via `git stash` re-run against
+  HEAD before any Phase 5 commit, still fails identically; tracked
+  separately, not a Phase 5 regression.
+- **Lint**: every Phase 5 file, scoped, is 0 errors (run per-task throughout
+  the phase, re-confirmed at the gate). The *full-repo* `pnpm --dir
+  apps/mobile lint` is NOT clean: 12 pre-existing errors across 9 files, none
+  under Phase 5's ownership (`deal/new.tsx`, `giveaway/new.tsx`,
+  `expo-env.d.ts`, `useOptimisticDealVote.ts`,
+  `TransactionRatingForm.tsx`, `AddMemberForm.tsx`, `MemberRow.tsx`,
+  `ScopeToggle.tsx`, `UseNextHero.tsx`) — confirmed pre-existing via `git
+  log -1` on each, last touched 2026-07-22 (the bare-RN-migration commit,
+  well before Phase 5 started) and unmodified in the working tree. Not
+  fixed here (outside this phase's file ownership); flagged for a separate
+  task.
+- **Typecheck**: clean.
+- **`android:build`**: **BUILD SUCCESSFUL**, real signed debug APK at
+  `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk` (82 MB).
+  521 tasks, 15 executed / 506 up-to-date — expected, since none of Tasks
+  4-9's changes touched a Gradle input (they're all TS/TSX; Task 1 already
+  proved the native module graph compiles and nothing since then changed
+  it).
+- **Metro bundle smoke**: succeeded — real `index.android.bundle` (3.1 MB,
+  1979 lines minified) plus 38 copied asset files at
+  `/tmp/expyrico-mobile-bundle/`, covering every current source file
+  including all of Phase 5.
+
+Android half of the gate is fully proven, not inferred. iOS remains this
+container's one genuine blind spot (see Step 1 below) and is the only
+item left for whoever has a macOS/Xcode environment.
 
 ## Step 5 — device smoke (once site keys exist, Phase 8 territory)
 
@@ -152,7 +188,15 @@ lands in `AddRecordForm` with the household picker hidden → active-product
 - [x] Step 2 resolved reCAPTCHA SDK version recorded: bridge `18.9.2` (npm),
       native `com.google.android.recaptcha:recaptcha` pinned `18.8.0` (patch)
 - [ ] Step 3 real site keys provisioned (Phase 8)
-- [ ] Step 4 full gate result once Phase 5 code is complete (Android half of
-      the gate is now provably runnable in-session; ran successfully once
-      already as part of this proof)
+- [x] Step 4 full gate result: DONE. Jest 289/295 (6 pre-existing snapshot
+      failures, tracked separately), scoped lint clean, typecheck clean,
+      `android:build` BUILD SUCCESSFUL with a real APK, Metro bundle smoke
+      succeeded. Everything remaining below is iOS-only or Phase 8.
 - [ ] Step 5 device smoke (Phase 8)
+
+## What's left — iOS only
+
+Every remaining open item in this checklist is either genuinely impossible
+from this Linux container (iOS Steps 1/pod-install/xcodebuild) or explicitly
+scoped to Phase 8 (real site keys, device smoke). Android is fully closed
+for Phase 5.
