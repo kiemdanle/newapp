@@ -37,6 +37,7 @@ import { resolve } from 'node:path';
 // pre-existing values (Vite's own `.env` auto-load, a parent shell's exported vars,
 // etc.) because tests must use the `.env.test` values unconditionally.
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+const testRedisUrl = process.env.TEST_REDIS_URL;
 const envPath = existsSync(resolve('.env.test')) ? '.env.test' : '.env.test.example';
 for (const line of readFileSync(envPath, 'utf8').split('\n')) {
   const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
@@ -50,5 +51,12 @@ for (const line of readFileSync(envPath, 'utf8').split('\n')) {
 // Keep checked-out local .env.test files compatible with config additions without
 // weakening production's fail-fast Firebase credential validation.
 if (testDatabaseUrl) process.env.DATABASE_URL = testDatabaseUrl;
+// Mirrors TEST_DATABASE_URL: concurrent agent runs on the same box otherwise share
+// `.env.test`'s single Redis DB index, so one agent's rate-limit/idempotency/media
+// capacity-reservation state poisons another's. Each agent points this at their own
+// DB index (e.g. `redis://localhost:6379/2`); `tests/helpers/setup.ts` flushes
+// whichever DB `getRedis()` resolves to before every test, same as the Postgres
+// truncate above it.
+if (testRedisUrl) process.env.REDIS_URL = testRedisUrl;
 process.env.FIREBASE_PROJECT_ID ??= 'expyrico-test';
 process.env.FIREBASE_CREDENTIAL_MODE ??= 'workload_identity';
