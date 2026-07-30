@@ -19,35 +19,29 @@ Run these from the repo root unless noted.
 codegen, resources, Java compilation, jar bundling, zero errors, every
 attempt. New Architecture compatibility is proven, not inferred.
 
-`@google-cloud/recaptcha-enterprise-react-native@18.9.2`: **BLOCKED**, fully
-root-caused. Three layered issues:
+`@google-cloud/recaptcha-enterprise-react-native@18.9.2`: **PASS**, after a
+pnpm patch (this repo's pnpm-native equivalent of patch-package) plus a
+native-SDK version pin — full root cause and fix documented in
+`phase-05-task-01-native-dependency-evidence.md`. In short: the library's
+own `android/build.gradle` never applies the Kotlin Android plugin (upstream
+gap, `react-native-builder-bob#774`), and its native
+`com.google.android.recaptcha:recaptcha` dependency was pinned to `18.9.2`,
+whose Kotlin metadata (2.3.0) exceeds what this project's Kotlin 2.0.21 can
+read. The patch
+(`patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch`,
+registered in root `package.json`) adds the missing plugin application and
+repins the native SDK to `18.8.0` (metadata 2.1.0, confirmed via `javap`,
+also plan.md's own originally-documented baseline). **Full
+`:app:assembleDebug` now succeeds** — real 82 MB debug APK produced,
+`-PreactNativeArchitectures=arm64-v8a` to fit this box's memory (a resource
+accommodation, not a correctness scope-down; the flag only limits which
+device ABIs get a native binary, all Java/Kotlin/JS code paths are
+unaffected). Drop condition for the patch/pin is documented in the evidence
+file.
 
-1. Missing core library desugaring — **fixed and kept** in
-   `apps/mobile/android/app/build.gradle` (`coreLibraryDesugaringEnabled
-   true` + `desugar_jdk_libs:2.1.5`). Harmless, standard, needed regardless.
-2. The library's own `android/build.gradle` never applies the Kotlin Android
-   Gradle plugin (upstream packaging gap tied to an unrelated Nitro-modules
-   workaround, `react-native-builder-bob#774`) — its `.kt` module source
-   never compiles, so RN's autolinked `PackageList.java` can't find the
-   class. Two app-side-only fix attempts (a `subprojects{}` block, then the
-   same wrapped in `afterEvaluate`) both failed on Kotlin 2.0's plugin-
-   lifecycle timing rules.
-3. Root cause underneath #2: the real native
-   `com.google.android.recaptcha:recaptcha:18.9.2` AAR was compiled with
-   **Kotlin metadata version 2.3.0**; this project pins Kotlin **2.0.21**
-   (`apps/mobile/android/build.gradle`), which can only read up to metadata
-   2.1.0. Confirmed by temporarily patching the library's own build.gradle
-   directly in `node_modules` to see what surfaces next (diagnostic only,
-   reverted, never committed).
-
-Full root-cause writeup: `phase-05-task-01-native-dependency-evidence.md`.
-**This is not something I'm fixing unilaterally** — the real fix is bumping
-the project's Kotlin Gradle plugin version, which affects every other native
-module (reanimated, vision-camera, screens, svg, etc.), not one adapter
-file. Team-lead has this; decision pending on how to proceed (bump Kotlin
-project-wide and re-verify against every native module, pin an older
-`com.google.android.recaptcha` SDK version if the bridge library allows an
-override, or re-scope the reCAPTCHA integration).
+**Both native dependencies are now proven, not inferred. Phase 5's Android
+native-dependency question is closed** — the only remaining native unknown
+in this checklist is iOS, still this container's genuine (Linux) blind spot.
 
 Resource note for whoever runs this next on a similarly modest box: this
 container has 7.8 GB RAM shared across up to 6 concurrent agent processes
@@ -152,11 +146,13 @@ lands in `AddRecordForm` with the household picker hidden → active-product
 ## Open items this checklist depends on
 
 - [x] Step 1 Android result for react-native-image-crop-picker: PASS
-- [ ] Step 1 Android result for the reCAPTCHA bridge: BLOCKED — decision
-      needed (bump project Kotlin version / pin older native SDK / re-scope)
+- [x] Step 1 Android result for the reCAPTCHA bridge: PASS (patched +
+      pinned to native SDK 18.8.0; full `:app:assembleDebug` succeeded)
 - [ ] Step 1 iOS pod-install/build result
-- [x] Step 2 resolved reCAPTCHA SDK version recorded (18.9.2)
+- [x] Step 2 resolved reCAPTCHA SDK version recorded: bridge `18.9.2` (npm),
+      native `com.google.android.recaptcha:recaptcha` pinned `18.8.0` (patch)
 - [ ] Step 3 real site keys provisioned (Phase 8)
-- [ ] Step 4 full gate result once Phase 5 code is complete and the recaptcha
-      blocker resolves
+- [ ] Step 4 full gate result once Phase 5 code is complete (Android half of
+      the gate is now provably runnable in-session; ran successfully once
+      already as part of this proof)
 - [ ] Step 5 device smoke (Phase 8)

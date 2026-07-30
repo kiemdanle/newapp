@@ -31,5 +31,11 @@
     "react-native": "0.76.9",
     "turbo": "^2.0.0",
     "typescript": "^5.4.0"
+  },
+  "allowScripts": {},
+  "pnpm": {
+    "patchedDependencies": {
+      "@google-cloud/recaptcha-enterprise-react-native@18.9.2": "patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch"
+    }
   }
 }

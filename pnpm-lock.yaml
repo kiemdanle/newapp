@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@google-cloud/recaptcha-enterprise-react-native@18.9.2':
+    hash: 3stgbrawz6nurxjummyqpw4fme
+    path: patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch
+
 importers:
 
   .:
@@ -252,7 +257,7 @@ importers:
         version: file:apps/mobile/local-packages/@expyrico/theme
       '@google-cloud/recaptcha-enterprise-react-native':
         specifier: 18.9.2
-        version: 18.9.2(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
+        version: 18.9.2(patch_hash=3stgbrawz6nurxjummyqpw4fme)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       '@invertase/react-native-apple-authentication':
         specifier: 2.5.1
         version: 2.5.1
@@ -10288,7 +10293,7 @@ snapshots:
   '@google-cloud/promisify@4.0.0':
     optional: true
 
-  '@google-cloud/recaptcha-enterprise-react-native@18.9.2(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)':
+  '@google-cloud/recaptcha-enterprise-react-native@18.9.2(patch_hash=3stgbrawz6nurxjummyqpw4fme)(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)':
     dependencies:
       react: 18.3.1
       react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1)

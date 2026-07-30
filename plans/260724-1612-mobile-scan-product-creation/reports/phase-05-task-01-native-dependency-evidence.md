@@ -190,8 +190,55 @@ layered problems surfaced in sequence as each was resolved:
    scoped to one adapter file. That's exactly the kind of decision this
    report is for, not something to make unilaterally mid-proof-build.
 
-**Net effect:** item 1 stays fixed in the tracked build.gradle (harmless,
-correct, needed regardless of how items 2/3 resolve). Items 2 and 3 are
-reported, not worked around — the reCAPTCHA Enterprise Mobile SDK bridge is
-not currently buildable against this project's pinned Kotlin 2.0.21 on
-Android, full stop, independent of anything in my adapter code.
+**Update — fully resolved, full app build now PASSES.** Team-lead's ruling:
+patch-package-equivalent (this repo is pnpm-based, so `pnpm patch` /
+`pnpm.patchedDependencies` — pnpm's own native mechanism, functionally
+identical to the npm `patch-package` tool team-lead named, chosen instead
+because it needs zero new devDependency/postinstall script, just uses what
+pnpm already provides) for item 2, plus pinning the native SDK to `18.8.0`
+for item 3.
+
+**Evidence the 18.8.0 pin is metadata-compatible**: downloaded the real
+`com.google.android.recaptcha:recaptcha:18.8.0` AAR directly from
+`dl.google.com/android/maven2` and inspected a compiled class's
+`@kotlin.Metadata` annotation via `javap -v` (no build needed for this
+check) — `mv=[2,1,0]`. Metadata version 2.1.0 is exactly the ceiling this
+project's Kotlin 2.0.21 compiler can read; `18.9.2`'s `mv=[2,3,0]` exceeds
+it. `18.8.0` is plan.md's own originally-documented baseline version.
+
+**The patch**: `patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch`,
+registered in root `package.json`'s `pnpm.patchedDependencies`. Two changes
+to the library's own `android/build.gradle`: adds the missing
+`apply plugin: "org.jetbrains.kotlin.android"` line (item 2), and changes
+the hardcoded `implementation 'com.google.android.recaptcha:recaptcha:18.9.2'`
+to `18.8.0` (item 3). Nothing else. Upstream reference kept in the patch's
+context: `react-native-builder-bob#774` (the unrelated Nitro-modules issue
+whose workaround left the plugin unapplied).
+
+**Drop condition** (explicit, for whoever revisits this): remove the patch
+and the version pin together, in one change, once
+`@google-cloud/recaptcha-enterprise-react-native` ships a release that (a)
+applies the Kotlin Android plugin itself and (b) depends on a
+`com.google.android.recaptcha:recaptcha` version whose Kotlin metadata is
+≤ this project's own pinned Kotlin version at that time. Don't drop only
+one half — the two issues are independent and either alone still breaks
+the build.
+
+**Gate result**: ran team-lead's specified gate — the bridge's own
+`compileDebugKotlin`/`compileDebugJavaWithJavac` against the patched
+18.8.0 dependency, clean (2 deprecation warnings only, `getClient()` vs.
+`fetchClient()` — internal to the library's own code, not something this
+adapter controls). Then the **full `:app:assembleDebug`**, all native
+modules including reanimated/vision-camera's C++ CMake builds, restricted
+to `-PreactNativeArchitectures=arm64-v8a` to fit this box's memory —
+**BUILD SUCCESSFUL**, a real 82 MB debug APK at
+`apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`. Also
+answers team-lead's side-question: the bridge's Kotlin code compiled clean
+against 18.8.0, so it doesn't rely on any 18.9-only native APIs.
+
+**Net effect: Phase 5's Android native-dependency question is closed.** Both
+`react-native-image-crop-picker@0.51.1` and
+`@google-cloud/recaptcha-enterprise-react-native@18.9.2` (patched, pinned to
+the 18.8.0 native SDK) compile and package cleanly. iOS remains the plan's
+known external constraint (Linux container) — the only remaining native
+unknown, tracked in the checklist for the user's machine.
