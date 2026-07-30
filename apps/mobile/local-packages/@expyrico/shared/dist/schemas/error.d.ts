@@ -1,11 +1,25 @@
 import { z } from 'zod';
+export declare const mergeIdentifierConflictSchema: z.ZodObject<{
+    slot: z.ZodEnum<["barcode", "qr"]>;
+    sourceValue: z.ZodString;
+    targetValue: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    slot: "barcode" | "qr";
+    sourceValue: string;
+    targetValue: string;
+}, {
+    slot: "barcode" | "qr";
+    sourceValue: string;
+    targetValue: string;
+}>;
+export type MergeIdentifierConflict = z.infer<typeof mergeIdentifierConflictSchema>;
 /**
  * RFC 7807 problem+json with a stable `code` for client matching.
  *
- * `currentVersion`/`canonicalProduct` are safe, explicitly typed structured fields for
- * optimistic-concurrency conflicts (never a generic arbitrary details bag). Both are
- * optional so most problems carry neither, and `canonicalProduct` is only ever present
- * when the server has already decided it is visible to the caller.
+ * `currentVersion`/`canonicalProduct`/`identifierConflict` are safe, explicitly typed
+ * structured fields for specific conflict classes (never a generic arbitrary details
+ * bag). All are optional so most problems carry none, and `canonicalProduct` is only
+ * ever present when the server has already decided it is visible to the caller.
  */
 export declare const problemSchema: z.ZodObject<{
     type: z.ZodOptional<z.ZodString>;
@@ -64,9 +78,9 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -92,9 +106,9 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -120,9 +134,22 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }>>;
+    identifierConflict: z.ZodOptional<z.ZodObject<{
+        slot: z.ZodEnum<["barcode", "qr"]>;
+        sourceValue: z.ZodString;
+        targetValue: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    }, {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    }>>;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     status: number;
+    code: string;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -133,9 +160,9 @@ export declare const problemSchema: z.ZodObject<{
     }[] | undefined;
     currentVersion?: number | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -161,9 +188,14 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     } | undefined;
+    identifierConflict?: {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    } | undefined;
 }, {
-    code: string;
     status: number;
+    code: string;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -174,9 +206,9 @@ export declare const problemSchema: z.ZodObject<{
     }[] | undefined;
     currentVersion?: number | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -201,6 +233,11 @@ export declare const problemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+    } | undefined;
+    identifierConflict?: {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
     } | undefined;
 }>;
 export type Problem = z.infer<typeof problemSchema>;
@@ -259,9 +296,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -287,9 +324,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -315,12 +352,25 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }>>;
+    identifierConflict: z.ZodOptional<z.ZodObject<{
+        slot: z.ZodEnum<["barcode", "qr"]>;
+        sourceValue: z.ZodString;
+        targetValue: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    }, {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    }>>;
 } & {
     code: z.ZodLiteral<"version_conflict">;
     currentVersion: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    code: "version_conflict";
     status: number;
+    code: "version_conflict";
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -331,9 +381,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         message: string;
     }[] | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -359,9 +409,14 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     } | undefined;
+    identifierConflict?: {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
+    } | undefined;
 }, {
-    code: "version_conflict";
     status: number;
+    code: "version_conflict";
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -372,9 +427,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         message: string;
     }[] | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -399,6 +454,11 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+    } | undefined;
+    identifierConflict?: {
+        slot: "barcode" | "qr";
+        sourceValue: string;
+        targetValue: string;
     } | undefined;
 }>;
 export type VersionConflictProblem = z.infer<typeof versionConflictProblemSchema>;
@@ -456,6 +516,7 @@ export declare const ERROR_CODES: {
     readonly TEMPORARILY_UNAVAILABLE: "temporarily_unavailable";
     readonly IDEMPOTENCY_KEY_REUSED: "idempotency_key_reused";
     readonly IDEMPOTENCY_IN_PROGRESS: "idempotency_in_progress";
+    readonly ABUSE_CHECK_FAILED: "abuse_check_failed";
 };
 export declare const ITEM_LIMIT = 50;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

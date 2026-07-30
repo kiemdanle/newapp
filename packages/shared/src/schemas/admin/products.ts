@@ -83,11 +83,31 @@ export const adminProductMergeResponseSchema = z.object({
 export const productEditStatusSchema = z.enum(['draft', 'pending', 'changes_required', 'approved', 'rejected']);
 export type ProductEditStatus = z.infer<typeof productEditStatusSchema>;
 
+// Not imported from `product-edits.ts`'s `productEditPhotoSchema` — that module
+// imports `productEditStatusSchema` from this one, and a reverse import back here
+// would make the two modules circular. Small enough to duplicate the shape
+// directly rather than risk a load-order bug in schemas evaluated eagerly at
+// module scope.
+const adminProductEditCoverPhotoSchema = z.object({
+  id: z.string().uuid(),
+  position: z.number().int().min(0).max(4),
+  retained: z.boolean(),
+  thumbnailUrl: z.string().min(1),
+  displayUrl: z.string().min(1),
+});
+
 export const adminProductEditRowSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
   submittedBy: z.string().uuid(),
   proposed: z.record(z.unknown()),
+  // M6: the queue needs enough to review at a glance without a second per-row
+  // fetch — the proposed name and an ordered cover photo (retained or staged,
+  // same public/private-route derivation every other edit-facing view uses).
+  // Both optional so this schema stays valid for any caller that only has the
+  // raw `proposed` blob (e.g. a future non-list consumer).
+  name: z.string().optional(),
+  coverPhoto: adminProductEditCoverPhotoSchema.nullable().optional(),
   status: productEditStatusSchema,
   version: z.number().int().min(1),
   baseProductVersion: z.number().int().min(1),

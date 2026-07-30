@@ -15,7 +15,7 @@ import {
   reserveMediaCapacity,
 } from './product-media-capacity.js';
 import { publishProductPhoto } from './product-photos.js';
-import { publicProductPhotoPrefix, removeKeyPrefix } from './product-media-storage.js';
+import { publicMediaUrl, publicProductPhotoPrefix, removeKeyPrefix } from './product-media-storage.js';
 
 export interface RequestMeta {
   requestId?: string | undefined;
@@ -46,12 +46,18 @@ async function loadProductWithPhotos(tx: PrismaTypes.TransactionClient, productI
   return tx.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
 }
 
-async function currentVersionOf(productId: string): Promise<number> {
-  const row = await getPrisma().product.findUnique({ where: { id: productId }, select: { version: true } });
+/** M4: must run against the *same* transaction client as the caller's aborting
+ * write, never the pooled `getPrisma()` client — reading through a second pool
+ * connection while the first is held open by an in-progress `$transaction` risks
+ * self-deadlocking the conflict path under pool saturation instead of cleanly
+ * returning a 409. The transaction is rolling back regardless, so a `tx` read is
+ * both correct and consistent. */
+async function currentVersionOf(tx: PrismaTypes.TransactionClient, productId: string): Promise<number> {
+  const row = await tx.product.findUnique({ where: { id: productId }, select: { version: true } });
   // The row disappearing entirely between the version-conflict and this re-read is not
-  // a real-world path (products are never hard-deleted), but return the version the
-  // caller supplied rather than throw here — the conflict path already has a definite
-  // answer to give without a second, avoidable failure mode.
+  // a real-world path (products are never hard-deleted), but return 0 rather than
+  // throw here — the conflict path already has a definite answer to give without a
+  // second, avoidable failure mode.
   return row?.version ?? 0;
 }
 
@@ -79,7 +85,7 @@ async function requestChanges(
         version: { increment: 1 },
       },
     });
-    if (result.count === 0) versionConflict(await currentVersionOf(productId));
+    if (result.count === 0) versionConflict(await currentVersionOf(tx, productId));
     await writeAuditLog(
       {
         adminId: actor.id,
@@ -104,15 +110,17 @@ async function requestChanges(
  * outbox intent is committed under a held media lease, then every photo's bytes
  * are copied to their public key. Only once every copy has succeeded does the
  * single reference transaction run: product active, each photo's public key/
- * moderation status, audit row, intent completion, and old private-key cleanup —
- * all together or none of it. A failure after copying but before that transaction
- * compensates the copied keys immediately; if the process dies first, the
- * uncompleted prepared intent is the durable backstop for expired-intent recovery.
+ * moderation status, cover `imageUrl` (I4 — the position-0 photo's public display
+ * URL, for legacy clients that don't yet read `photos[]`), audit row, intent
+ * completion, and old private-key cleanup — all together or none of it. A failure
+ * after copying but before that transaction compensates the copied keys
+ * immediately; if the process dies first, the uncompleted prepared intent is the
+ * durable backstop for expired-intent recovery.
  */
 async function approve(
   actor: ProductActor,
   requestMeta: RequestMeta,
-  product: { id: string; version: number; photos: { id: string; moderationStatus: string; privateStorageKey: string | null; displayByteSize: number; thumbnailByteSize: number }[] },
+  product: { id: string; version: number; photos: { id: string; position: number; moderationStatus: string; privateStorageKey: string | null; displayByteSize: number; thumbnailByteSize: number }[] },
   version: number,
 ): Promise<ApiProduct> {
   const prisma = getPrisma();
@@ -124,7 +132,7 @@ async function approve(
         where: { id: product.id, status: 'pending', version },
         data: { status: 'active', moderationNotes: null, moderatedByUserId: actor.id, moderatedAt: new Date(), version: { increment: 1 } },
       });
-      if (result.count === 0) versionConflict(await currentVersionOf(product.id));
+      if (result.count === 0) versionConflict(await currentVersionOf(tx, product.id));
       await writeAuditLog(
         {
           adminId: actor.id,
@@ -166,13 +174,23 @@ async function approve(
             where: { id: product.id, status: 'pending', version },
             data: { status: 'active', moderationNotes: null, moderatedByUserId: actor.id, moderatedAt: new Date(), version: { increment: 1 } },
           });
-          if (updateResult.count === 0) versionConflict(await currentVersionOf(product.id));
+          if (updateResult.count === 0) versionConflict(await currentVersionOf(tx, product.id));
 
           for (let i = 0; i < pendingPhotos.length; i++) {
             await tx.productPhoto.update({
               where: { id: pendingPhotos[i]!.id },
               data: { moderationStatus: 'approved', publicStorageKey: publishResults[i]!.publicKey, privateStorageKey: null },
             });
+          }
+
+          // I4: cover imageUrl for legacy clients — the position-0 photo's fresh
+          // public display URL. Every photo here just got a public key (new
+          // products only ever approve once, from `pending` to `active`, so there
+          // is never a pre-existing mix of already-approved photos to consider).
+          const coverIndex = pendingPhotos.findIndex((p) => p.position === 0);
+          if (coverIndex !== -1) {
+            const coverUrl = publicMediaUrl(getConfig().media.publicBaseUrl, publishResults[coverIndex]!.publicKey, 'display');
+            await tx.product.update({ where: { id: product.id }, data: { imageUrl: coverUrl } });
           }
 
           await writeAuditLog(

@@ -46,6 +46,16 @@ function notFound(): never {
   throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Revision not found' });
 }
 
+// Route placement (`adminOnlyPlugin`) is the only thing enforcing this today, but
+// these functions are exported and the admin-only branches (approve/
+// request_changes/rebase/supersede) are the moderation authority — a same-module
+// check makes the invariant local rather than positional (M7).
+function assertAdmin(actor: ProductActor): void {
+  if (actor.role !== 'admin') {
+    throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Admin role required' });
+  }
+}
+
 function editVersionConflict(currentVersion: number): never {
   throw new AppError({
     status: 409,
@@ -255,6 +265,7 @@ async function requestChangesOnEdit(
   version: number,
   notes: string | undefined,
 ): Promise<ProductEditRow> {
+  assertAdmin(actor);
   const prisma = getPrisma();
   const updated = await prisma.$transaction(async (tx) => {
     const result = await tx.productEdit.updateMany({
@@ -304,12 +315,16 @@ interface DesiredEntry {
  * `supersede`, never auto-approval), publishes every staged desired entry to a
  * fresh public key, then atomically applies the complete metadata + photo order to
  * the live product. Live photos dropped from the desired set are removed — first
- * verifying no *other* open revision still retains them (an admin must rebase or
- * supersede those first; this function never does it silently). Legacy
- * compatibility `imageUrl` is never written by this path, so it survives
- * metadata-only approvals automatically.
+ * verifying no *other open* revision still retains them (an admin must rebase or
+ * supersede those first; this function never does it silently); a *resolved*
+ * (approved/rejected) edit's historical retained-photo row is removed instead of
+ * blocking, since `onDelete: Restrict` would otherwise make the photo permanently
+ * undeletable. Legacy compatibility `imageUrl` is only recalculated when the
+ * relation-backed photo set actually changed (add/remove/reorder) — a pure
+ * metadata edit leaves it untouched.
  */
 async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId: string, version: number): Promise<ApiProduct> {
+  assertAdmin(actor);
   const prisma = getPrisma();
   const editRow = await prisma.productEdit.findUnique({ where: { id: editId }, include: EDIT_INCLUDE });
   if (!editRow) notFound();
@@ -334,24 +349,36 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
   const retainedSourceIds = new Set(desired.filter((p) => p.sourceProductPhotoId).map((p) => p.sourceProductPhotoId!));
 
   const liveProductPhotos = await prisma.productPhoto.findMany({ where: { productId: product.id } });
+  const liveProductPhotosById = new Map(liveProductPhotos.map((p) => [p.id, p]));
   const removedLivePhotos = liveProductPhotos.filter((p) => !retainedSourceIds.has(p.id));
+  const originalPositionBySourceId = new Map(liveProductPhotos.map((p) => [p.id, p.position]));
+  const photoSetChanged =
+    staged.length > 0 ||
+    removedLivePhotos.length > 0 ||
+    desired.some((e) => e.sourceProductPhotoId !== null && originalPositionBySourceId.get(e.sourceProductPhotoId) !== e.position);
 
   // "Admin photo correction must first rebase or supersede every open edit
-  // referencing the photo" — a dropped live photo still retained by some *other*
-  // open revision blocks this approval outright rather than silently invalidating
-  // that other revision's desired set.
-  for (const removed of removedLivePhotos) {
-    const blocker = await prisma.productEditPhoto.findFirst({
-      where: { sourceProductPhotoId: removed.id, productEditId: { not: editId }, productEdit: { status: { in: ['draft', 'pending', 'changes_required'] }, isLegacy: false } },
-    });
-    if (blocker) {
-      throw new AppError({
-        status: 409,
-        code: 'photo_referenced_by_open_edit',
-        title: 'A photo in this revision is still referenced by another open revision; rebase or supersede it first',
+  // referencing the photo" — a dropped live photo still retained by some *other
+  // open* revision blocks this approval outright rather than silently invalidating
+  // that other revision's desired set. This pre-check avoids wasted publish work
+  // for the common case; the transaction below re-verifies it under lock (a new
+  // open edit could theoretically appear in the window between this check and the
+  // commit) before actually deleting anything.
+  async function assertNoOpenEditBlocksRemoval(db: PrismaTypes.TransactionClient | ReturnType<typeof getPrisma>): Promise<void> {
+    for (const removed of removedLivePhotos) {
+      const blocker = await db.productEditPhoto.findFirst({
+        where: { sourceProductPhotoId: removed.id, productEditId: { not: editId }, productEdit: { status: { in: ['draft', 'pending', 'changes_required'] }, isLegacy: false } },
       });
+      if (blocker) {
+        throw new AppError({
+          status: 409,
+          code: 'photo_referenced_by_open_edit',
+          title: 'A photo in this revision is still referenced by another open revision; rebase or supersede it first',
+        });
+      }
     }
   }
+  await assertNoOpenEditBlocksRemoval(prisma);
 
   const root = getConfig().media.root;
   const totalBytes = staged.reduce((sum, p) => sum + (p.displayByteSize ?? 0) + (p.thumbnailByteSize ?? 0), 0);
@@ -366,6 +393,21 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       // null" — otherwise approving an old-style name-only edit would wipe out the
       // product's existing description/brand/category.
       const proposed = edit.proposed as ProposedMetadata;
+
+      // Cover `imageUrl` is only recomputed when the photo set genuinely changed
+      // (I4) — a pure metadata edit must never touch it (legacy compatibility).
+      let coverImageUrl: string | null | undefined;
+      if (photoSetChanged) {
+        const coverEntry = desired.find((e) => e.position === 0);
+        let coverPublicKey: string | null = null;
+        if (coverEntry?.sourceProductPhotoId) {
+          coverPublicKey = liveProductPhotosById.get(coverEntry.sourceProductPhotoId)?.publicStorageKey ?? null;
+        } else if (coverEntry) {
+          coverPublicKey = publishResults.get(coverEntry.id)?.publicKey ?? null;
+        }
+        coverImageUrl = coverPublicKey ? publicMediaUrl(getConfig().media.publicBaseUrl, coverPublicKey, 'display') : null;
+      }
+
       const productUpdate = await tx.product.updateMany({
         where: { id: product.id, status: 'active', version: edit.baseProductVersion },
         data: {
@@ -373,6 +415,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
           description: 'description' in proposed ? (proposed.description ?? null) : product.description,
           brand: 'brand' in proposed ? (proposed.brand ?? null) : product.brand,
           category: 'category' in proposed ? (proposed.category ?? null) : product.category,
+          ...(coverImageUrl !== undefined ? { imageUrl: coverImageUrl } : {}),
           version: { increment: 1 },
         },
       });
@@ -380,6 +423,10 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         const current = await tx.product.findUnique({ where: { id: product.id } });
         staleBaseConflict(current?.version ?? product.version);
       }
+
+      // Re-verify under lock: a new open edit could have started retaining a
+      // to-be-removed photo since the pre-check above.
+      await assertNoOpenEditBlocksRemoval(tx);
 
       await tx.$executeRawUnsafe('SET CONSTRAINTS "product_photos_product_id_position_key" DEFERRED');
       for (const entry of desired) {
@@ -408,6 +455,18 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       }
 
       for (const removed of removedLivePhotos) {
+        // A *resolved* (approved/rejected) historical edit's retained-photo row
+        // still points at this photo via `onDelete: Restrict` — an open edit
+        // already blocked the delete above, but resolved history never should
+        // (I1). Nulling the FK alone is not an option: `ProductEditPhoto`'s
+        // representation check constraint is a strict XOR between "retained"
+        // (source id set, every staged field null) and "staged" (source id null,
+        // every staged field set) — a row with neither violates the constraint.
+        // Since there are no staged bytes to fill in for a historical retained
+        // row, the row itself is removed instead; the parent `ProductEdit`'s own
+        // row (status/`proposed` snapshot/audit trail) remains full history, only
+        // this one now-meaningless photo-slot entry is gone.
+        await tx.productEditPhoto.deleteMany({ where: { sourceProductPhotoId: removed.id } });
         await tx.productPhoto.delete({ where: { id: removed.id } });
         if (removed.publicStorageKey) {
           await enqueueMediaCleanup(tx, { operation: 'delete_public', keys: [removed.publicStorageKey] });
@@ -420,10 +479,18 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         }
       }
 
-      await tx.productEdit.update({
-        where: { id: edit.id },
+      // Guarded like every other Phase 4 terminal write (I3): a concurrent
+      // supersede/request_changes/resubmit that already moved this edit off
+      // `pending` (or bumped its version) must make this approval lose cleanly,
+      // never silently overwrite whatever that action just committed.
+      const editUpdateResult = await tx.productEdit.updateMany({
+        where: { id: edit.id, status: 'pending', version: edit.version },
         data: { status: 'approved', resolvedBy: actor.id, resolvedAt: new Date(), version: { increment: 1 } },
       });
+      if (editUpdateResult.count === 0) {
+        const current = await tx.productEdit.findUnique({ where: { id: edit.id }, select: { version: true } });
+        editVersionConflict(current?.version ?? edit.version);
+      }
 
       await writeAuditLog(
         {
@@ -455,7 +522,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
 
       const publishResults = new Map<string, { publicKey: string; display: { bytes: number; width: number; height: number }; thumb: { bytes: number; width: number; height: number } }>();
       for (let i = 0; i < staged.length; i++) {
-        const published = await publishProductEditPhoto(staged[i]!.id, publicationIds[i]!, {
+        const published = await publishProductEditPhoto(staged[i]!.id, publicationIds[i]!, product.id, {
           intentId: intent.id,
           leaseOwner: intent.leaseOwner,
           capacityReservationId: reservation!.id,
@@ -503,15 +570,23 @@ export async function resolveProductEdit(
 const SUPERSEDED_STALE_BASE_REASON = 'superseded:stale_base_version';
 
 /**
- * Recovers a stale open revision (`product.version !== edit.baseProductVersion`).
- * `rebase` requires the admin's own reviewed desired-photo mapping (never
- * auto-computed from a diff) and returns the edit to `pending` for re-review.
- * `supersede` closes it as terminal historical `rejected`, using
- * `ProductEdit.notes` (never `moderationNotes`, which stays admin-free-text-only)
- * to record a fixed, machine-safe reason distinguishable from any admin decision
- * text — and frees the one-open-edit slot so the creator can start again.
+ * Recovers a stale open revision (`product.version !== edit.baseProductVersion`
+ * — recovery is not applicable to a healthy edit, and both actions require this
+ * explicitly, not just the caller's version-guard tokens matching). `rebase`
+ * requires the admin's own reviewed desired-photo mapping (never auto-computed
+ * from a diff), is restricted to an already-submitted revision
+ * (`pending`/`changes_required` — a never-submitted `draft` cannot be pushed into
+ * the moderation queue this way), and returns the edit to `pending` for
+ * re-review. `supersede` closes it as terminal historical `rejected` (may
+ * legitimately apply to a stale `draft` too, since it never re-enters review),
+ * using `ProductEdit.notes` (never `moderationNotes`, which stays admin-free-text
+ * -only) to record a fixed, machine-safe reason distinguishable from any admin
+ * decision text — and frees the one-open-edit slot so the creator can start
+ * again. Neither action clears unread creator feedback when the admin doesn't
+ * supply new notes.
  */
 export async function recoverProductEdit(actor: ProductActor, requestMeta: RequestMeta, input: ProductEditRecoverRequest & { editId: string }): Promise<ProductEditRow> {
+  assertAdmin(actor);
   const prisma = getPrisma();
   const edit = await prisma.productEdit.findUnique({ where: { id: input.editId }, include: EDIT_INCLUDE });
   if (!edit) notFound();
@@ -522,21 +597,42 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
   if (edit.status !== 'pending' && edit.status !== 'draft' && edit.status !== 'changes_required') {
     throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'This revision is already resolved' });
   }
+  if (product.version === edit.baseProductVersion) {
+    throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'This revision is not stale; recovery is not applicable' });
+  }
+  if (input.action === 'rebase' && edit.status === 'draft') {
+    throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'A never-submitted draft cannot be rebased into the moderation queue' });
+  }
 
   if (input.action === 'supersede') {
     const updated = await prisma.$transaction(async (tx) => {
-      await tx.productEdit.update({
-        where: { id: edit.id },
+      // Lock the edit row before re-reading its staged photos (M3): photo staging
+      // is permitted while the edit is `draft`, and this same lock is what
+      // `assertEditPhotoMutable` takes for a concurrent upload, so re-reading here
+      // under the lock (rather than trusting the pre-transaction snapshot) means an
+      // upload landing in the window is either fully visible (and enqueued for
+      // cleanup) or blocked until this transaction commits — never silently missed.
+      await tx.$queryRaw`SELECT id FROM product_edits WHERE id = ${edit.id}::uuid FOR UPDATE`;
+      const currentPhotos = await tx.productEditPhoto.findMany({ where: { productEditId: edit.id } });
+      const stagedKeys = currentPhotos.filter((p) => !p.sourceProductPhotoId && p.privateStorageKey).map((p) => p.privateStorageKey!);
+
+      const result = await tx.productEdit.updateMany({
+        where: { id: edit.id, version: input.editVersion },
         data: {
           status: 'rejected',
           notes: SUPERSEDED_STALE_BASE_REASON,
-          moderationNotes: input.notes ?? null,
+          // Preserve unread creator feedback (M2) when the admin doesn't supply a
+          // new note — never blindly null it out on a state transition.
+          moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,
           resolvedBy: actor.id,
           resolvedAt: new Date(),
           version: { increment: 1 },
         },
       });
-      const stagedKeys = edit.photos.filter((p) => !p.sourceProductPhotoId && p.privateStorageKey).map((p) => p.privateStorageKey!);
+      if (result.count === 0) {
+        const current = await tx.productEdit.findUnique({ where: { id: edit.id }, select: { version: true } });
+        editVersionConflict(current?.version ?? edit.version);
+      }
       if (stagedKeys.length > 0) {
         await enqueueMediaCleanup(tx, { operation: 'delete_private', keys: stagedKeys });
       }
@@ -608,18 +704,25 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
       await enqueueMediaCleanup(tx, { operation: 'delete_private', keys: droppedStagedKeys });
     }
 
-    await tx.productEdit.update({
-      where: { id: edit.id },
+    const rebaseResult = await tx.productEdit.updateMany({
+      where: { id: edit.id, version: input.editVersion },
       data: {
         status: 'pending',
         baseProductVersion: product.version,
-        moderationNotes: input.notes ?? null,
+        // Preserve unread creator feedback (M2) when the admin doesn't supply a
+        // new note — a rebase with no notes must not silently wipe a previous
+        // request_changes reason the creator may not have read yet.
+        moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,
         submittedAt: new Date(),
         resolvedBy: null,
         resolvedAt: null,
         version: { increment: 1 },
       },
     });
+    if (rebaseResult.count === 0) {
+      const current = await tx.productEdit.findUnique({ where: { id: edit.id }, select: { version: true } });
+      editVersionConflict(current?.version ?? edit.version);
+    }
 
     await writeAuditLog(
       {

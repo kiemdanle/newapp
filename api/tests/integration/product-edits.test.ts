@@ -1,23 +1,30 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetConfigForTests } from '../../src/config.js';
 import { buildServer } from '../../src/server.js';
 import { getPrisma } from '../../src/db.js';
 import { makeAdmin, makeUserForAdmin } from '../helpers/admin.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import type { ProcessedVariants } from '../../src/services/products/product-image-processor.js';
-import { addProductPhoto } from '../../src/services/products/product-photos.js';
+import { addProductPhoto, addProductEditPhoto } from '../../src/services/products/product-photos.js';
 import { reserveMediaCapacity } from '../../src/services/products/product-media-capacity.js';
+import { mediaKeyToPath } from '../../src/services/products/product-media-storage.js';
 import {
   createOrResumeProductEdit,
   patchProductEditMetadata,
   resolveProductEdit,
   recoverProductEdit,
 } from '../../src/services/products/product-edits.js';
+import * as auditLog from '../../src/services/audit/log.js';
+
+// I7: same fault-injection shape as admin-product-moderation.test.ts's — forces a
+// failure after `publishProductEditPhoto` has already copied bytes but before the
+// reference transaction (whose last statement is `writeAuditLog`) commits.
+const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
 
 const BOUNDARY = '----expyricoProductEditsTestBoundary';
 
@@ -224,6 +231,63 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     expect(dbProduct.version).toBe(product.version + 1);
   });
 
+  it('I7: leaves no orphaned public bytes and no reference when approveEdit\'s reference transaction fails AFTER the staged photo was already published', async () => {
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+
+    const reservation = await reserveMediaCapacity({ bytes: 10_000 });
+    const processed = await fakeProcessedUpload();
+    await addProductEditPhoto(actor(creator.id), { editId: edit.id, processed, capacityReservationId: reservation.id });
+
+    const staged = await getPrisma().productEditPhoto.findFirstOrThrow({ where: { productEditId: edit.id } });
+    const editAfterUpload = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: editAfterUpload.version });
+    const submittedVersion = (submitted as { version: number }).version;
+
+    writeAuditLogSpy.mockImplementationOnce(() => {
+      throw new Error('forced failure after publish, before commit');
+    });
+
+    await expect(
+      resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'approve', version: submittedVersion }),
+    ).rejects.toThrow('forced failure after publish, before commit');
+
+    // (a) product/edit rows unchanged
+    const dbProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(dbProduct.status).toBe('active');
+    expect(dbProduct.version).toBe(product.version);
+    const dbEdit = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+    expect(dbEdit.status).toBe('pending');
+    const liveProduct = await getPrisma().productPhoto.findMany({ where: { productId: product.id } });
+    expect(liveProduct).toHaveLength(0);
+
+    // (b) no file remains under the public root
+    async function countFilesRecursively(dir: string): Promise<number> {
+      const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+      let count = 0;
+      for (const entry of entries) {
+        if (entry.isDirectory()) count += await countFilesRecursively(`${dir}/${entry.name}`);
+        else count += 1;
+      }
+      return count;
+    }
+    expect(await countFilesRecursively(mediaKeyToPath(root, 'public'))).toBe(0);
+    // The staged private bytes are untouched (never referenced, still cleanable).
+    await expect(stat(mediaKeyToPath(root, staged.privateStorageKey!))).resolves.toBeDefined();
+
+    // (c) the prepared intent row is recoverable
+    const intent = await getPrisma().mediaOperationOutbox.findFirstOrThrow({
+      where: { operation: 'publish_public' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(intent.status).toBe('prepared');
+    const keys = (intent.payload as { keys: string[] }).keys;
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(new RegExp(`^public/products/${product.id}/`));
+  });
+
   it('rejects approve on another user\'s or a non-pending edit, and replay after approval', async () => {
     const creator = await makeUserForAdmin();
     const { admin } = await makeAdmin();
@@ -282,6 +346,90 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     await expect(
       resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'approve', version: (submitted as { version: number }).version }),
     ).rejects.toMatchObject({ status: 409, code: 'edit_base_stale' });
+  });
+
+  it('I4: approving a revision that adds a staged cover photo sets the compatibility imageUrl', async () => {
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+
+    const reservation = await reserveMediaCapacity({ bytes: 10_000 });
+    const processed = await fakeProcessedUpload();
+    await addProductEditPhoto(actor(creator.id), { editId: edit.id, processed, capacityReservationId: reservation.id });
+    const editAfterUpload = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: editAfterUpload.version });
+    await resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'approve', version: (submitted as { version: number }).version });
+
+    const after = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(after.imageUrl).toBeTruthy();
+    const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } });
+    expect(after.imageUrl).toContain(photo.publicStorageKey!.split('/').pop());
+  });
+
+  it('I1: approving a revision that drops a live photo succeeds even when a RESOLVED historical edit retained it (only an OPEN edit blocks)', async () => {
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id, { withPhoto: true });
+    const livePhotoId = (await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } })).id;
+
+    // Creator A's metadata-only revision retains the live photo (default seed),
+    // gets approved — its ProductEditPhoto row for that photo is now history on a
+    // RESOLVED (approved) edit.
+    const editorA = await makeUserForAdmin();
+    const { edit: editA } = await createOrResumeProductEdit(actor(editorA.id), product.id);
+    const submittedA = await resolveProductEdit(actor(editorA.id), {}, { editId: editA.id, action: 'submit', version: editA.version });
+    await resolveProductEdit(adminActor(admin.id), {}, { editId: editA.id, action: 'approve', version: (submittedA as { version: number }).version });
+    const resolvedHistoricalRow = await getPrisma().productEditPhoto.findFirstOrThrow({ where: { productEditId: editA.id } });
+    expect(resolvedHistoricalRow.sourceProductPhotoId).toBe(livePhotoId);
+
+    // Creator B opens a fresh revision and drops the (still-live) photo entirely.
+    const { edit: editB } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    const stagedOnB = await getPrisma().productEditPhoto.findFirstOrThrow({ where: { productEditId: editB.id } });
+    const { removeProductEditPhoto } = await import('../../src/services/products/product-photos.js');
+    await removeProductEditPhoto(actor(creator.id), { editId: editB.id, photoId: stagedOnB.id });
+    const submittedB = await resolveProductEdit(actor(creator.id), {}, { editId: editB.id, action: 'submit', version: 2 });
+
+    const approved = await resolveProductEdit(adminActor(admin.id), {}, { editId: editB.id, action: 'approve', version: (submittedB as { version: number }).version });
+    expect('status' in approved && approved.status).toBe('active');
+
+    const remainingLivePhotos = await getPrisma().productPhoto.findMany({ where: { productId: product.id } });
+    expect(remainingLivePhotos).toHaveLength(0);
+    // The resolved edit's now-meaningless photo-slot row is gone (the XOR
+    // representation check rules out merely detaching its FK); the edit row
+    // itself (status/proposed snapshot/audit trail) remains full history.
+    await expect(getPrisma().productEditPhoto.findUnique({ where: { id: resolvedHistoricalRow.id } })).resolves.toBeNull();
+    const editAStillExists = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: editA.id } });
+    expect(editAStillExists.status).toBe('approved');
+  });
+
+  it('I3: an approval racing a concurrent request_changes on the same pending edit resolves to exactly one winner — the loser gets a typed conflict, never a silent overwrite', async () => {
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: edit.version });
+    const submittedVersion = (submitted as { version: number }).version;
+
+    // Both actions are individually valid against the same starting `pending`
+    // edit and race for the row lock in genuinely concurrent transactions —
+    // exercising the guarded terminal `updateMany` (I3's actual fix), not merely
+    // a pre-transaction read-order assumption.
+    const results = await Promise.allSettled([
+      resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'approve', version: submittedVersion }),
+      resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'request_changes', version: submittedVersion, notes: 'need changes' }),
+    ]);
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ status: 409 });
+
+    // Whichever won, the edit's final state is exactly one clean outcome — never
+    // both `approved` and `changes_required` applied to the same row.
+    const finalEdit = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+    expect(['approved', 'changes_required']).toContain(finalEdit.status);
   });
 });
 
@@ -355,6 +503,88 @@ describe('recoverProductEdit — rebase and supersede', () => {
         productVersion: product.version + 5,
       }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('M1: rejects recovery on a healthy (non-stale) edit — recovery is not applicable when the base version still matches', async () => {
+    const { admin } = await makeAdmin();
+    const creator = await makeUserForAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: edit.version });
+    const submittedVersion = (submitted as { version: number }).version;
+
+    await expect(
+      recoverProductEdit(adminActor(admin.id), {}, {
+        action: 'supersede',
+        editId: edit.id,
+        editVersion: submittedVersion,
+        productVersion: product.version,
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it('M1: rebase rejects a never-submitted draft — it must not promote an unsubmitted draft straight to pending', async () => {
+    const { admin } = await makeAdmin();
+    const creator = await makeUserForAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    // Go stale while still a draft (never submitted).
+    const staleProduct = await getPrisma().product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+
+    await expect(
+      recoverProductEdit(adminActor(admin.id), {}, {
+        action: 'rebase',
+        editId: edit.id,
+        editVersion: edit.version,
+        productVersion: staleProduct.version,
+        desiredPhotoOrder: [],
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+
+    // supersede, by contrast, may legitimately apply to a stale draft.
+    const result = await recoverProductEdit(adminActor(admin.id), {}, {
+      action: 'supersede',
+      editId: edit.id,
+      editVersion: edit.version,
+      productVersion: staleProduct.version,
+    });
+    expect(result.status).toBe('rejected');
+  });
+
+  it('M2: rebase without new notes preserves the creator\'s unread request_changes feedback rather than clearing it', async () => {
+    const { admin } = await makeAdmin();
+    const { product, edit, livePhotoId } = await staleSubmittedEdit();
+    await getPrisma().productEdit.update({ where: { id: edit.id }, data: { moderationNotes: 'please fix the name' } });
+
+    const result = await recoverProductEdit(adminActor(admin.id), {}, {
+      action: 'rebase',
+      editId: edit.id,
+      editVersion: edit.version,
+      productVersion: product.version,
+      desiredPhotoOrder: [{ type: 'retained', sourceProductPhotoId: livePhotoId }],
+    });
+    expect(result.moderationFeedback).toBe('please fix the name');
+  });
+
+  it('M2: supersede without new notes preserves existing moderationNotes rather than clearing it', async () => {
+    const { admin } = await makeAdmin();
+    const { product, edit } = await staleSubmittedEdit();
+    await getPrisma().productEdit.update({ where: { id: edit.id }, data: { moderationNotes: 'earlier feedback' } });
+
+    const result = await recoverProductEdit(adminActor(admin.id), {}, {
+      action: 'supersede',
+      editId: edit.id,
+      editVersion: edit.version,
+      productVersion: product.version,
+    });
+    expect(result.moderationFeedback).toBe('earlier feedback');
+  });
+
+  it('M7: rejects a non-admin actor on both recovery actions', async () => {
+    const { creator, product, edit } = await staleSubmittedEdit();
+    await expect(
+      recoverProductEdit(actor(creator.id), {}, { action: 'supersede', editId: edit.id, editVersion: edit.version, productVersion: product.version }),
+    ).rejects.toMatchObject({ status: 403 });
   });
 });
 

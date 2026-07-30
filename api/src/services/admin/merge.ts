@@ -144,11 +144,30 @@ export async function mergeProducts(
 
     const movedRec = await tx.record.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
 
-    const sourceReviews = await tx.review.findMany({ where: { productId: { in: sourceIds } } });
-    const targetUserIds = new Set(
-      (await tx.review.findMany({ where: { productId: resolvedTargetId }, select: { userId: true } })).map((r) => r.userId),
-    );
-    const toDelete = sourceReviews.filter((r) => targetUserIds.has(r.userId)).map((r) => r.id);
+    // I2: dedupe across the *whole* merge set, not just target-vs-source — two
+    // sources reviewed by the same user collide on `@@unique([userId, productId])`
+    // the instant both get repointed to the same target, even if neither matches
+    // an existing target review. Deterministic keep-one-per-user policy: the
+    // target's own review always wins if present; otherwise the source review
+    // with the lowest id survives (stable, reproducible ordering) and every other
+    // same-user source review is dropped.
+    const targetReviews = await tx.review.findMany({ where: { productId: resolvedTargetId }, select: { userId: true } });
+    const targetUserIds = new Set(targetReviews.map((r) => r.userId));
+    const sourceReviews = await tx.review.findMany({ where: { productId: { in: sourceIds } }, orderBy: { id: 'asc' } });
+    const keptSourceReviewByUser = new Map<string, string>();
+    const toDelete: string[] = [];
+    for (const r of sourceReviews) {
+      if (targetUserIds.has(r.userId)) {
+        toDelete.push(r.id);
+        continue;
+      }
+      const kept = keptSourceReviewByUser.get(r.userId);
+      if (!kept) {
+        keptSourceReviewByUser.set(r.userId, r.id);
+      } else {
+        toDelete.push(r.id);
+      }
+    }
     if (toDelete.length > 0) await tx.review.deleteMany({ where: { id: { in: toDelete } } });
     const movedRev = await tx.review.updateMany({
       where: { productId: { in: sourceIds }, ...(toDelete.length > 0 ? { id: { notIn: toDelete } } : {}) },
@@ -157,6 +176,11 @@ export async function mergeProducts(
 
     await tx.deal.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
     await tx.giveaway.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
+    // M8: `Report.targetId` is a polymorphic (targetType, targetId) pair with no
+    // real FK to `Product` — repointed explicitly here so reports filed against a
+    // merged-away product stay attached to the surviving catalog row instead of
+    // silently dropping out of moderation views.
+    await tx.report.updateMany({ where: { targetType: 'product', targetId: { in: sourceIds } }, data: { targetId: resolvedTargetId } });
 
     const byRating = await tx.review.groupBy({
       by: ['rating'],

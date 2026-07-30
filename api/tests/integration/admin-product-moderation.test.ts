@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetConfigForTests } from '../../src/config.js';
 import { buildServer } from '../../src/server.js';
 import { getPrisma } from '../../src/db.js';
@@ -13,8 +13,19 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import type { ProcessedVariants } from '../../src/services/products/product-image-processor.js';
 import { addProductPhoto } from '../../src/services/products/product-photos.js';
 import { reserveMediaCapacity } from '../../src/services/products/product-media-capacity.js';
-import { keyPrefixExists } from '../../src/services/products/product-media-storage.js';
+import { keyPrefixExists, mediaKeyToPath } from '../../src/services/products/product-media-storage.js';
 import { moderateProduct } from '../../src/services/products/product-moderation.js';
+import * as auditLog from '../../src/services/audit/log.js';
+
+// I7: injects a failure *after* publish (capacity reserved, intent prepared, bytes
+// copied) but before the reference transaction commits — `writeAuditLog` is the
+// last statement inside that transaction, so throwing from it exercises exactly
+// the "process/transaction dies after every public copy but before the DB/audit
+// transaction commits" fault Task 1 requires, without a real fault-injection
+// framework. Delegates to the real implementation by default; only a test that
+// explicitly calls `mockImplementationOnce` sees the forced failure, and every
+// other test in this file still gets a real, verifiable audit row.
+const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
 
 let root: string;
 const baseEnv = { ...process.env };
@@ -23,6 +34,11 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'admin-product-moderation-test-'));
   process.env.MEDIA_ROOT = root;
   resetConfigForTests();
+  // This file exercises moderation/photo-correction mechanics, not the Phase 7
+  // `product_creation` mode gate (covered separately in product-creation-mode.test.ts)
+  // — set mode to `all` so a non-admin creator's own draft mutations aren't
+  // incidentally blocked by the default `off` mode.
+  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
 });
 
 afterEach(async () => {
@@ -162,16 +178,33 @@ describe('POST /v1/admin/products/:id/moderate — approve with photos', () => {
     await app.close();
   });
 
-  it('leaves no orphaned public bytes and no reference when the reference transaction fails', async () => {
+  it('I4: sets the compatibility cover imageUrl to the position-0 photo\'s public display URL', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const creator = await makeUserForAdmin();
+    const product = await makePendingProductWithPhotos(creator.id, 2);
+    const before = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/admin/products/${product.id}/moderate`,
+      headers,
+      payload: { decision: 'approve', version: before.version },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const cover = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id, position: 0 } });
+    const after = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(after.imageUrl).toBeTruthy();
+    expect(after.imageUrl).toContain(cover.publicStorageKey!.split('/').pop());
+    await app.close();
+  });
+
+  it('a stale caller-supplied version never reaches publish work at all', async () => {
     const { admin } = await makeAdmin();
     const creator = await makeUserForAdmin();
     const product = await makePendingProductWithPhotos(creator.id, 1);
 
-    // Force the reference transaction to fail by racing the version out from under it:
-    // bump the product's version behind moderateProduct's back right before it commits
-    // is hard to time deterministically, so instead assert the documented contract via
-    // an intentionally stale version passed by the caller — no public bytes should ever
-    // be referenced by the (unchanged) product/photo rows.
     await expect(
       moderateProduct(
         { id: admin.id, role: 'admin' },
@@ -185,6 +218,70 @@ describe('POST /v1/admin/products/:id/moderate — approve with photos', () => {
     expect(photo.publicStorageKey).toBeNull();
     const untouched = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
     expect(untouched.status).toBe('pending');
+  });
+
+  it('I7: leaves no orphaned public bytes and no reference when the reference transaction fails AFTER every public copy has already happened', async () => {
+    const { admin } = await makeAdmin();
+    const creator = await makeUserForAdmin();
+    const product = await makePendingProductWithPhotos(creator.id, 1);
+    const before = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+
+    // `writeAuditLog` is the last statement inside the reference transaction, so
+    // throwing from it only fires after `reserveMediaCapacity`, `prepareMediaOperation`,
+    // and `publishProductPhoto` (the real byte copy) have all already run — the exact
+    // "process/transaction dies after every public copy but before the DB/audit
+    // transaction commits" scenario Task 1 requires.
+    writeAuditLogSpy.mockImplementationOnce(() => {
+      throw new Error('forced failure after publish, before commit');
+    });
+
+    await expect(
+      moderateProduct(
+        { id: admin.id, role: 'admin' },
+        {},
+        { productId: product.id, decision: 'approve', version: before.version },
+      ),
+    ).rejects.toThrow('forced failure after publish, before commit');
+
+    // (a) product/photo rows unchanged
+    const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } });
+    expect(photo.moderationStatus).toBe('pending');
+    expect(photo.publicStorageKey).toBeNull();
+    expect(photo.privateStorageKey).toBeTruthy();
+    const untouched = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(untouched.status).toBe('pending');
+    expect(untouched.version).toBe(before.version);
+
+    // (b) no file remains under the public root — the compensation path actually
+    // deleted the bytes `publishProductPhoto` copied (this is exactly the check
+    // that would have caught C1: a wrong key namespace makes the compensating
+    // `removeKeyPrefix` call a no-op against a path that was never written).
+    // `removeKeyPrefix` removes the publication-id leaf, not necessarily an
+    // emptied product-id parent directory, so this walks recursively for actual
+    // files rather than asserting the parent directory itself is gone.
+    async function countFilesRecursively(dir: string): Promise<number> {
+      const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+      let count = 0;
+      for (const entry of entries) {
+        if (entry.isDirectory()) count += await countFilesRecursively(join(dir, entry.name));
+        else count += 1;
+      }
+      return count;
+    }
+    const publicRoot = mediaKeyToPath(root, 'public');
+    expect(await countFilesRecursively(publicRoot)).toBe(0);
+
+    // (c) the prepared intent row is recoverable — never left `completed` (this
+    // path never reached `completeMediaOperation`) with keys matching what was
+    // actually written under the product's own id.
+    const intent = await getPrisma().mediaOperationOutbox.findFirstOrThrow({
+      where: { operation: 'publish_public' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(intent.status).toBe('prepared');
+    const keys = (intent.payload as { keys: string[] }).keys;
+    expect(keys).toHaveLength(1);
+    expect(keys[0]).toMatch(new RegExp(`^public/products/${product.id}/`));
   });
 });
 
@@ -396,6 +493,39 @@ describe('admin direct correction — field patch', () => {
     const afterProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
     expect(afterProduct.version).toBe(p.version + 1);
     expect(edit.baseProductVersion).not.toBe(afterProduct.version);
+  });
+
+  it('I5: rejects activating a pending product directly — that bypass must go through moderateProduct', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const creator = await makeUserForAdmin();
+    const p = await makePendingProductWithPhotos(creator.id, 1);
+
+    const res = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, status: 'active' } });
+    expect(res.statusCode).toBe(409);
+
+    const after = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(after.status).toBe('pending');
+    const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: p.id } });
+    expect(photo.moderationStatus).toBe('pending');
+    expect(photo.publicStorageKey).toBeNull();
+  });
+
+  it('I5: rejects setting merged_into directly, but allows the legitimate active <-> report_hidden catalog toggle', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const p = await getPrisma().product.create({ data: { name: 'Live', source: 'off', status: 'active' } });
+
+    const bypass = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, status: 'merged_into' } });
+    expect(bypass.statusCode).toBe(409);
+
+    const hide = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, status: 'report_hidden' } });
+    expect(hide.statusCode).toBe(200);
+    const hidden = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(hidden.status).toBe('report_hidden');
+
+    const unhide = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: hidden.version, status: 'active' } });
+    expect(unhide.statusCode).toBe(200);
   });
 });
 

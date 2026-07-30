@@ -8,8 +8,10 @@ import {
   adminProductEditResolveSchema,
   adminProductModerateRequestSchema,
   productEditRecoverRequestSchema,
+  adminProductMergeSchema,
   type AdminProductEditResolveDecision,
   type AdminProductModerateDecision,
+  type AdminProductMerge,
 } from './products.js';
 
 const now = new Date().toISOString();
@@ -222,5 +224,40 @@ describe('AdminProductModerateDecision', () => {
   it('is the exact schema-derived literal union — a compile-time drift guard', () => {
     const decisions: AdminProductModerateDecision[] = ['approve', 'request_changes'];
     expect(decisions).toEqual(['approve', 'request_changes']);
+  });
+});
+
+describe('adminProductMergeSchema', () => {
+  it('accepts targetId/sourceIds/version and rejects the legacy winnerId/loserIds shape', () => {
+    const target = randomUUID();
+    const source = randomUUID();
+    expect(adminProductMergeSchema.parse({ targetId: target, sourceIds: [source], version: 1 })).toEqual({
+      targetId: target,
+      sourceIds: [source],
+      version: 1,
+    });
+    // The old field names must no longer satisfy the schema — this is exactly the
+    // contract every consumer (admin client, mobile vendored copy) must be updated
+    // for (I6); a stray old-shape caller should fail loudly, not silently 400 at
+    // the HTTP boundary with no compile-time signal.
+    expect(() => adminProductMergeSchema.parse({ winnerId: target, loserIds: [source] })).toThrow();
+  });
+
+  it('rejects target-as-source and duplicate sourceIds', () => {
+    const target = randomUUID();
+    expect(() => adminProductMergeSchema.parse({ targetId: target, sourceIds: [target], version: 1 })).toThrow();
+    const source = randomUUID();
+    expect(() => adminProductMergeSchema.parse({ targetId: target, sourceIds: [source, source], version: 1 })).toThrow();
+  });
+
+  it('requires version', () => {
+    expect(() => adminProductMergeSchema.parse({ targetId: randomUUID(), sourceIds: [randomUUID()] })).toThrow();
+  });
+});
+
+describe('AdminProductMerge', () => {
+  it('is the exact schema-derived field set — a compile-time drift guard against a future silent rename', () => {
+    const sample: AdminProductMerge = { targetId: randomUUID(), sourceIds: [randomUUID()], version: 1 };
+    expect(Object.keys(sample).sort()).toEqual(['sourceIds', 'targetId', 'version']);
   });
 });

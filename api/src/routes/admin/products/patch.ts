@@ -9,6 +9,18 @@ import { toApiProductPhoto } from '../../../services/products/serializer.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
+// I5: this route must never be a moderation bypass. `active <-> report_hidden` is
+// a pure catalog-visibility toggle with no publication side effects, so it's the
+// only status transition this direct-correction endpoint may perform. Every
+// other transition (activating a `pending` submission, clearing `merged_into`,
+// touching `draft`/`changes_required`) has real invariants — capacity/outbox
+// publication, audit action semantics, `mergedIntoProductId` consistency — that
+// only `moderateProduct`/`resolveProductEdit`/`mergeProducts` uphold.
+const ALLOWED_DIRECT_STATUS_TRANSITIONS: Record<string, string[]> = {
+  active: ['report_hidden'],
+  report_hidden: ['active'],
+};
+
 /**
  * Direct admin field correction. Version-guarded like every other Phase 4 write
  * (stale writes get a typed `version_conflict`, never a blind overwrite), and the
@@ -24,6 +36,17 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
     const prisma = getPrisma();
     const before = await prisma.product.findUnique({ where: { id } });
     if (!before) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+
+    if (input.status !== undefined && input.status !== before.status) {
+      const allowed = ALLOWED_DIRECT_STATUS_TRANSITIONS[before.status] ?? [];
+      if (!allowed.includes(input.status)) {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.CONFLICT,
+          title: `Cannot set status directly from ${before.status} to ${input.status}; use the moderation or merge endpoints instead`,
+        });
+      }
+    }
 
     const after = await prisma.$transaction(async (tx) => {
       const result = await tx.product.updateMany({

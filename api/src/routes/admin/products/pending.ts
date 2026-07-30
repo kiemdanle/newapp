@@ -1,7 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import { cursorQuerySchema, adminProductEditsListSchema, encodeCursor, decodeCursor } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
+import { toProductEditRow } from '../../../services/products/product-edits.js';
 
+// Same include shape `product-edits.ts`'s (unexported) `EDIT_INCLUDE` uses —
+// `toProductEditRow` only depends on the shape structurally.
+const EDIT_LIST_INCLUDE = {
+  photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
+};
+
+/** M6: bounded queue projection with ordered private/public review media (not
+ * just the raw `proposed` diff) so an admin can review a revision's photos
+ * before opening the single-edit detail view — reuses the same
+ * `toProductEditRow` projection every other edit-facing route derives its
+ * photo URLs from, so this can never drift from the single-edit view's shape. */
 export async function adminProductsPendingListRoute(app: FastifyInstance) {
   app.get('/pending', async (req) => {
     const q = cursorQuerySchema.parse(req.query);
@@ -11,22 +23,28 @@ export async function adminProductsPendingListRoute(app: FastifyInstance) {
         status: 'pending',
         ...(cur ? { OR: [{ createdAt: { lt: cur.t } }, { AND: [{ createdAt: cur.t }, { id: { lt: cur.i } }] }] } : {}),
       },
+      include: EDIT_LIST_INCLUDE,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: q.limit + 1,
     });
     const hasMore = rows.length > q.limit;
-    const items = (hasMore ? rows.slice(0, -1) : rows).map((e) => ({
-      id: e.id, productId: e.productId, submittedBy: e.submittedBy,
-      proposed: e.proposed as Record<string, unknown>,
-      status: e.status,
-      version: e.version,
-      baseProductVersion: e.baseProductVersion,
-      moderationNotes: e.moderationNotes,
-      submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
-      resolvedBy: e.resolvedBy,
-      resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
-      createdAt: e.createdAt.toISOString(),
-    }));
+    const items = (hasMore ? rows.slice(0, -1) : rows).map((e) => {
+      const row = toProductEditRow(e);
+      return {
+        id: e.id, productId: e.productId, submittedBy: e.submittedBy,
+        proposed: e.proposed as Record<string, unknown>,
+        name: row.name,
+        coverPhoto: row.photos[0] ?? null,
+        status: e.status,
+        version: e.version,
+        baseProductVersion: e.baseProductVersion,
+        moderationNotes: e.moderationNotes,
+        submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
+        resolvedBy: e.resolvedBy,
+        resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
+        createdAt: e.createdAt.toISOString(),
+      };
+    });
     const last = items.at(-1);
     return adminProductEditsListSchema.parse({
       items, nextCursor: hasMore && last ? encodeCursor(new Date(last.createdAt), last.id) : null,

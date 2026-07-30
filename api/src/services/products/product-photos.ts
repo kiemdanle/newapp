@@ -176,6 +176,11 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
     const tempKey = `quarantine/${randomUUID()}-generated`;
     await ensureAndWriteVariantFiles(root, tempKey, input.processed);
 
+    // Same gate `publishProductPhoto`/`publishProductEditPhoto` already apply
+    // before their first byte copy — private promotion writes final bytes too,
+    // and had no capacity-liveness check of its own until now (reviewer-p3 R2).
+    await assertMediaCapacityReservationLive(input.capacityReservationId);
+
     try {
       await promoteKeyPrefix(root, tempKey, prefix);
     } catch (err) {
@@ -426,8 +431,19 @@ export async function publishProductPhoto(photoId: string, publicationId: string
  * already have a public key on their source `ProductPhoto` and need no work
  * here. Never touches the DB — the caller's reference transaction writes the
  * returned `publicKey` onto a fresh `ProductPhoto` row.
+ *
+ * `productId` is the *target product's* id, not the edit id — public keys live
+ * under the product namespace (`public/products/<productId>/...`) exactly like
+ * `publishProductPhoto`, so the caller's prepared intent (whose keys it computed
+ * from the product id), compensation path, and Phase 7's sweeper all agree on
+ * what was actually written. Never derive the prefix from `photo.productEditId`.
  */
-export async function publishProductEditPhoto(editPhotoId: string, publicationId: string, intent: PublishIntentContext): Promise<PublicVariants> {
+export async function publishProductEditPhoto(
+  editPhotoId: string,
+  publicationId: string,
+  productId: string,
+  intent: PublishIntentContext,
+): Promise<PublicVariants> {
   const prisma = getPrisma();
   const root = getConfig().media.root;
   const photo = await prisma.productEditPhoto.findUniqueOrThrow({ where: { id: editPhotoId } });
@@ -438,7 +454,7 @@ export async function publishProductEditPhoto(editPhotoId: string, publicationId
       title: 'This staged photo has no private bytes to publish',
     });
   }
-  const publicPrefix = publicProductPhotoPrefix(photo.productEditId, publicationId);
+  const publicPrefix = publicProductPhotoPrefix(productId, publicationId);
 
   return withMediaMutationLease('publish_public', async () => {
     await renewMediaOperationLease(intent.intentId, intent.leaseOwner);

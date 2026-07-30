@@ -1,8 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { getPrisma } from '../../src/db.js';
 import { makeAdmin, makeUserForAdmin } from '../helpers/admin.js';
 import { mergeProducts } from '../../src/services/admin/merge.js';
+import * as auditLog from '../../src/services/audit/log.js';
+
+// Captured before `vi.spyOn` replaces the module's export in place — calling the
+// spy's own property from inside a mock implementation would recurse into itself.
+const originalWriteAuditLog = auditLog.writeAuditLog;
+const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
 
 const adminActor = (id: string) => ({ id, role: 'admin' as const });
 
@@ -48,6 +54,37 @@ describe('mergeProducts — relations', () => {
     expect(targetReviews).toHaveLength(2);
     expect(targetReviews.find((r) => r.userId === reviewer.id)?.body).toBe('target review');
     expect(result.newReviewCount).toBe(2);
+  });
+
+  it('I2: dedupes a reviewer who reviewed TWO sources (not the target) — keeps exactly one deterministically', async () => {
+    const { admin } = await makeAdmin();
+    const target = await makeActiveProduct();
+    const sourceA = await makeActiveProduct();
+    const sourceB = await makeActiveProduct();
+    const reviewer = await makeUserForAdmin();
+    const rA = await getPrisma().review.create({ data: { userId: reviewer.id, productId: sourceA.id, rating: 'buy_again', body: 'from A' } });
+    const rB = await getPrisma().review.create({ data: { userId: reviewer.id, productId: sourceB.id, rating: 'wont_buy', body: 'from B' } });
+
+    await mergeProducts(adminActor(admin.id), {}, [sourceA.id, sourceB.id], target.id, target.version);
+    const targetReviews = await getPrisma().review.findMany({ where: { productId: target.id, userId: reviewer.id } });
+    expect(targetReviews).toHaveLength(1);
+    // Deterministic: the lower-id review survives (stable, reproducible ordering).
+    const survivingId = [rA.id, rB.id].sort()[0];
+    expect(targetReviews[0]!.id).toBe(survivingId);
+  });
+
+  it('M8: repoints reports filed against a merged-away product to the surviving target', async () => {
+    const { admin } = await makeAdmin();
+    const target = await makeActiveProduct();
+    const source = await makeActiveProduct();
+    const reporter = await makeUserForAdmin();
+    const report = await getPrisma().report.create({
+      data: { reporterId: reporter.id, targetType: 'product', targetId: source.id, reason: 'other' },
+    });
+
+    await mergeProducts(adminActor(admin.id), {}, [source.id], target.id, target.version);
+    const reloaded = await getPrisma().report.findUniqueOrThrow({ where: { id: report.id } });
+    expect(reloaded.targetId).toBe(target.id);
   });
 
   it('repoints deals and giveaways', async () => {
@@ -206,5 +243,64 @@ describe('mergeProducts — identifier transfer', () => {
     const reTarget = await getPrisma().product.findUniqueOrThrow({ where: { id: target.id } });
     expect(reTarget.barcode).toBe('bc-source');
     expect(reTarget.qrPayload).toBe('qr-target');
+  });
+
+  it('M5: a failure after the source\'s barcode was cleared rolls the whole transaction back — the source keeps its original barcode', async () => {
+    const { admin } = await makeAdmin();
+    const target = await makeActiveProduct({ barcode: null });
+    const source = await makeActiveProduct({ barcode: 'bc-source' });
+
+    // `writeAuditLog` runs after the identifier clear/assign writes but before
+    // commit — throwing from it proves the whole transaction (including the
+    // already-issued `barcode: null` on the source) rolls back together, never
+    // partially applied.
+    writeAuditLogSpy.mockImplementationOnce(() => {
+      throw new Error('forced failure after source-clear, before commit');
+    });
+
+    await expect(
+      mergeProducts(adminActor(admin.id), {}, [source.id], target.id, target.version),
+    ).rejects.toThrow('forced failure after source-clear, before commit');
+
+    const [reTarget, reSource] = await Promise.all([
+      getPrisma().product.findUniqueOrThrow({ where: { id: target.id } }),
+      getPrisma().product.findUniqueOrThrow({ where: { id: source.id } }),
+    ]);
+    expect(reTarget.barcode).toBeNull();
+    expect(reTarget.status).toBe('active');
+    expect(reSource.barcode).toBe('bc-source');
+    expect(reSource.status).toBe('active');
+  });
+
+  it('M5: a concurrent lookup never observes the merge\'s half-applied state — the source is either still active or fully merged_into, never in between', async () => {
+    const { admin } = await makeAdmin();
+    const target = await makeActiveProduct();
+    const source = await makeActiveProduct();
+
+    let releaseHold: () => void = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseHold = resolve;
+    });
+    writeAuditLogSpy.mockImplementationOnce(async (...args) => {
+      await held;
+      return originalWriteAuditLog(...args);
+    });
+
+    const mergePromise = mergeProducts(adminActor(admin.id), {}, [source.id], target.id, target.version);
+    // Give the merge transaction time to reach (and block on) the held audit
+    // write — by then it has already issued the source's `merged_into` update
+    // inside its still-uncommitted transaction.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    const midFlight = await getPrisma().product.findUniqueOrThrow({ where: { id: source.id } });
+    // READ COMMITTED: a reader outside the transaction sees only the last
+    // committed state — never the uncommitted `merged_into` write in flight.
+    expect(midFlight.status).toBe('active');
+
+    releaseHold();
+    await mergePromise;
+
+    const afterCommit = await getPrisma().product.findUniqueOrThrow({ where: { id: source.id } });
+    expect(afterCommit.status).toBe('merged_into');
   });
 });
