@@ -53,11 +53,11 @@ export declare const productEditRowSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     photos: {
         id: string;
@@ -67,17 +67,17 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
     }[];
     updatedAt: string;
-    moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     photos: {
         id: string;
@@ -87,10 +87,10 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
     }[];
     updatedAt: string;
-    moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
 }>;
 export type ProductEditRow = z.infer<typeof productEditRowSchema>;
 export declare const productEditMetadataPatchRequestSchema: z.ZodObject<{
@@ -170,11 +170,11 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     liveProductVersion: z.ZodNumber;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     photos: {
         id: string;
@@ -184,19 +184,19 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
     }[];
     updatedAt: string;
-    moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     photos: {
         id: string;
@@ -206,11 +206,11 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
     }[];
     updatedAt: string;
-    moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
 }>;
 export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;

@@ -45,4 +45,46 @@ export const externalApiStateSchema = z.object({
         lastFailureAt: z.string().datetime().nullable(),
     })),
 });
+// Phase 7: the protected operational health payload — media capacity, cleanup
+// sweep staleness, pending-review backlog age, quarantine age, and backup
+// staleness, plus the config-sourced thresholds each `status` is computed
+// against (never hardcoded on the client either).
+const healthStatusSchema = z.enum(['ok', 'warning', 'critical']);
+export const operationalHealthSchema = z.object({
+    status: healthStatusSchema,
+    capacity: z.object({
+        usableBytes: z.number().int(),
+        reserveBytes: z.number().int(),
+        budgetBytes: z.number().int(),
+        reservedBytes: z.number().int(),
+        freeBytes: z.number().int(),
+        freePercent: z.number(),
+        status: healthStatusSchema,
+    }),
+    cleanup: z.object({
+        lastSuccessAt: z.string().datetime().nullable(),
+        lastFailureAt: z.string().datetime().nullable(),
+        stale: z.boolean(),
+    }),
+    pending: z.object({
+        count: z.number().int(),
+        oldestAgeHours: z.number().nullable(),
+        stale: z.boolean(),
+    }),
+    quarantine: z.object({
+        oldestAgeHours: z.number().nullable(),
+    }),
+    backup: z.object({
+        lastSuccessAt: z.string().datetime().nullable(),
+        lastFailureAt: z.string().datetime().nullable(),
+        stale: z.boolean(),
+    }),
+    thresholds: z.object({
+        freeDiskWarningPercent: z.number(),
+        freeDiskHardStopPercent: z.number(),
+        pendingOldestWarningHours: z.number(),
+        cleanupStaleHours: z.number(),
+        backupStaleHours: z.number(),
+    }),
+});
 //# sourceMappingURL=system.js.map
