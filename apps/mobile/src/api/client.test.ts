@@ -61,6 +61,39 @@ describe('apiClient — happy path', () => {
     expect((init as RequestInit).method).toBe('POST');
     expect((init as RequestInit).body).toBe(JSON.stringify({ x: 1 }));
   });
+
+  it('apiClient.put sends a JSON body via PUT', async () => {
+    const f = queueFetch(jsonResponse({ ok: true }));
+    await apiClient.put<{ ok: true }>('/drafts/1', { version: 2, name: 'New' });
+    const [url, init] = f.mock.calls[0]!;
+    expect(url).toBe('http://localhost:4000/v1/drafts/1');
+    expect((init as RequestInit).method).toBe('PUT');
+    expect((init as RequestInit).body).toBe(JSON.stringify({ version: 2, name: 'New' }));
+  });
+
+  it('sends a FormData body as-is, without forcing a JSON content-type', async () => {
+    const f = queueFetch(jsonResponse({ ok: true }));
+    const form = new FormData();
+    form.append('photo', 'fake-file-part');
+    await apiClient.request({ method: 'POST', path: '/upload', body: form });
+    const [, init] = f.mock.calls[0]!;
+    expect((init as RequestInit).body).toBe(form);
+    expect((init as RequestInit).headers as Record<string, string>).not.toHaveProperty('Content-Type');
+  });
+
+  it('surfaces a typed version_conflict with currentVersion from the response body', async () => {
+    queueFetch(
+      new Response(
+        JSON.stringify({ code: 'version_conflict', status: 409, title: 'Stale version', currentVersion: 7 }),
+        { status: 409, headers: { 'content-type': 'application/json' } },
+      ),
+    );
+    await expect(apiClient.patch('/drafts/1', { version: 3 })).rejects.toMatchObject({
+      code: 'version_conflict',
+      status: 409,
+      currentVersion: 7,
+    });
+  });
 });
 
 describe('apiClient — refresh on 401', () => {

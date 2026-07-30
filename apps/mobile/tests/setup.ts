@@ -87,10 +87,18 @@ jest.mock('react-native-vector-icons/Ionicons', () => {
   return () => null;
 });
 
+// This explicit jest.mock takes precedence over jest.config.js's
+// moduleNameMapper entry for the same specifier (both redirect
+// 'react-native-config', but an explicit per-file mock factory wins) — keep
+// this object as the actual single source of default mock Config values;
+// tests/mocks/react-native-config.ts exists for direct, non-setupFiles
+// imports/documentation only.
 jest.mock('react-native-config', () => ({
   API_BASE_URL: 'http://localhost:4000',
   GOOGLE_WEB_CLIENT_ID: 'mock-web-client-id',
   GOOGLE_IOS_CLIENT_ID: 'mock-ios-client-id',
+  RECAPTCHA_SITE_KEY_ANDROID: 'mock-recaptcha-site-key-android',
+  RECAPTCHA_SITE_KEY_IOS: 'mock-recaptcha-site-key-ios',
 }));
 
 // WatermelonDB — native SQLite adapter, mock for Jest

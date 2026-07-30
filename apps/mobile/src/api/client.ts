@@ -17,10 +17,18 @@ interface RefreshResponse {
   expiresIn: number;
 }
 
-function getBaseUrl(): string {
+// Exported so the XHR-based upload transport (product-photo-upload.ts) and
+// the private-image fetcher (product-private-image.tsx) build the exact same
+// `<base>/v1<path>` URL shape as this client, instead of duplicating the
+// trailing-slash-trim/prefix logic.
+export function getBaseUrl(): string {
   const url = Config.API_BASE_URL;
   if (!url) throw new Error('apiBaseUrl not configured');
   return url.replace(/\/+$/, '');
+}
+
+export function apiUrl(path: string): string {
+  return `${getBaseUrl()}/v1${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
 async function parseError(res: Response): Promise<ApiError> {
@@ -30,6 +38,7 @@ async function parseError(res: Response): Promise<ApiError> {
     title?: string;
     detail?: string;
     errors?: Array<{ path: string; message: string }>;
+    currentVersion?: number;
   } = {};
   try {
     body = (await res.json()) as typeof body;
@@ -42,6 +51,7 @@ async function parseError(res: Response): Promise<ApiError> {
     title: body.title ?? res.statusText ?? 'Request failed',
     detail: body.detail,
     errors: body.errors,
+    currentVersion: body.currentVersion,
   });
 }
 
@@ -54,7 +64,12 @@ export function setOnSignOut(cb: () => void) {
   onSignOut = cb;
 }
 
-async function refreshTokensOnce(): Promise<boolean> {
+// Exported so product-photo-upload.ts's XHR transport and
+// product-private-image.tsx's authorized fetch share this exact single-flight
+// promise — two independent refresh implementations racing on the same 401
+// would each mint their own refresh call and only one rotated token would
+// survive, failing the other's replay.
+export async function refreshTokensOnce(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
   refreshInFlight = (async () => {
     try {
@@ -86,12 +101,16 @@ async function refreshTokensOnce(): Promise<boolean> {
 }
 
 async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
-  const url = `${getBaseUrl()}/v1${req.path.startsWith('/') ? '' : '/'}${req.path}`;
+  const url = apiUrl(req.path);
+  const isFormData = typeof FormData !== 'undefined' && req.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'application/json',
     ...(req.headers ?? {}),
   };
-  if (req.body !== undefined) headers['Content-Type'] = 'application/json';
+  // FormData must never get a manually-set Content-Type: fetch/XHR compute
+  // the multipart boundary themselves from the body, and a hand-set header
+  // here would ship without that boundary and the server couldn't parse it.
+  if (req.body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
   if (!req.skipAuth) {
     const access = await secureStore.getAccessToken();
     if (access) headers.Authorization = `Bearer ${access}`;
@@ -99,7 +118,7 @@ async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
   const res = await fetch(url, {
     method: req.method,
     headers,
-    body: req.body !== undefined ? JSON.stringify(req.body) : undefined,
+    body: req.body === undefined ? undefined : isFormData ? (req.body as FormData) : JSON.stringify(req.body),
   });
   if (res.status === 401 && !retrying && !req.skipAuth && !req.path.startsWith('/auth/')) {
     const refreshed = await refreshTokensOnce();
@@ -118,6 +137,8 @@ export const apiClient = {
     doFetch<T>({ method: 'POST', path, body, ...opts }),
   patch: <T>(path: string, body?: unknown, opts?: ApiClientOpts) =>
     doFetch<T>({ method: 'PATCH', path, body, ...opts }),
+  put: <T>(path: string, body?: unknown, opts?: ApiClientOpts) =>
+    doFetch<T>({ method: 'PUT', path, body, ...opts }),
   delete: <T>(path: string, opts?: ApiClientOpts) =>
     doFetch<T>({ method: 'DELETE', path, ...opts }),
 };

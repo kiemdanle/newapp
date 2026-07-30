@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { AuthResult, User } from '@expyrico/shared';
 import { secureStore } from './secure-store';
 import { authEndpoints } from '../api/endpoints';
+import { purgePrivateImageCache } from '../api/product-private-image';
 
 interface SessionState {
   user: User | null;
@@ -25,11 +26,16 @@ export const useSessionStore = create<SessionState>((set) => ({
   hydrated: false,
   pendingAuth: null,
   signIn: async ({ user, tokens }) => {
+    // Covers a user switch without an intervening explicit sign-out (e.g. a
+    // re-auth flow that never called signOut first) — a stale cache entry
+    // must never survive into a different account's session.
+    purgePrivateImageCache();
     await secureStore.setAccessToken(tokens.accessToken);
     await secureStore.setRefreshToken(tokens.refreshToken);
     set({ user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, pendingAuth: null });
   },
   signOut: async () => {
+    purgePrivateImageCache();
     await secureStore.clearAll();
     set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
   },
