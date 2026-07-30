@@ -25,6 +25,17 @@ import * as auditLog from '../../src/services/audit/log.js';
 // framework. Delegates to the real implementation by default; only a test that
 // explicitly calls `mockImplementationOnce` sees the forced failure, and every
 // other test in this file still gets a real, verifiable audit row.
+//
+// Captured before `vi.spyOn` replaces the module's export in place, and
+// re-applied every `afterEach` (R2): `mockReset()` alone would also wipe the
+// spy's passthrough-to-original default (verified — it does not merely clear a
+// leftover `mockImplementationOnce` queue, it replaces the implementation with
+// a no-op), silently turning every later test's audit writes into a no-op
+// rather than a real DB row. `mockClear()` alone leaves a leftover
+// `mockImplementationOnce` queued from an earlier test still armed for the next
+// call. Only reset-then-reapply gives both: a drained queue AND a real
+// passthrough.
+const originalWriteAuditLog = auditLog.writeAuditLog;
 const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
 
 let root: string;
@@ -45,6 +56,15 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
   process.env = { ...baseEnv };
   resetConfigForTests();
+  // R2: an unconsumed `mockImplementationOnce` (a fault test that never actually
+  // triggered the throw, or a test file run order where the "once" queue wasn't
+  // drained) otherwise leaks into the next test — including unrelated ones in
+  // other files sharing this module's mock state — and can poison it in a way
+  // that's hard to trace back to this file. Reset unconditionally every test,
+  // then immediately re-establish the real passthrough (see the spy's own
+  // comment above for why `mockReset()` alone is not enough).
+  writeAuditLogSpy.mockReset();
+  writeAuditLogSpy.mockImplementation(originalWriteAuditLog);
 });
 
 async function makePendingProduct(creatorId: string) {

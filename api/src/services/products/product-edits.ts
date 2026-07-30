@@ -454,6 +454,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         }
       }
 
+      const affectedOtherEditPhotoRows: { editId: string; editPhotoId: string; sourceProductPhotoId: string }[] = [];
       for (const removed of removedLivePhotos) {
         // A *resolved* (approved/rejected) historical edit's retained-photo row
         // still points at this photo via `onDelete: Restrict` — an open edit
@@ -466,7 +467,30 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         // row, the row itself is removed instead; the parent `ProductEdit`'s own
         // row (status/`proposed` snapshot/audit trail) remains full history, only
         // this one now-meaningless photo-slot entry is gone.
-        await tx.productEditPhoto.deleteMany({ where: { sourceProductPhotoId: removed.id } });
+        //
+        // Scope explicitly aligned with `assertNoOpenEditBlocksRemoval`'s
+        // blocking predicate (R3): the blocker never blocks on a legacy edit
+        // (pre-Phase-1 rows are exempt from the one-open-edit lifecycle
+        // entirely), so an open legacy edit's row must be just as eligible for
+        // cleanup here as a resolved edit's — an unscoped delete would also
+        // silently remove any row the blocker *would* have stopped for (it
+        // can't, in practice, since the blocker already threw first, but the
+        // query itself should say so rather than relying on that ordering).
+        const rowsToDelete = await tx.productEditPhoto.findMany({
+          where: {
+            sourceProductPhotoId: removed.id,
+            productEdit: { OR: [{ status: { in: ['approved', 'rejected'] } }, { isLegacy: true }] },
+          },
+          select: { id: true, productEditId: true },
+        });
+        for (const row of rowsToDelete) {
+          if (row.productEditId !== edit.id) {
+            affectedOtherEditPhotoRows.push({ editId: row.productEditId, editPhotoId: row.id, sourceProductPhotoId: removed.id });
+          }
+        }
+        if (rowsToDelete.length > 0) {
+          await tx.productEditPhoto.deleteMany({ where: { id: { in: rowsToDelete.map((r) => r.id) } } });
+        }
         await tx.productPhoto.delete({ where: { id: removed.id } });
         if (removed.publicStorageKey) {
           await enqueueMediaCleanup(tx, { operation: 'delete_public', keys: [removed.publicStorageKey] });
@@ -498,7 +522,19 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
           action: 'product_edit.resolve',
           targetType: 'product_edit',
           targetId: edit.id,
-          diff: { before: { status: 'pending' }, after: { decision: 'approve', publishedPhotos: staged.length, removedPhotos: removedLivePhotos.length } },
+          diff: {
+            before: { status: 'pending' },
+            after: {
+              decision: 'approve',
+              publishedPhotos: staged.length,
+              removedPhotos: removedLivePhotos.length,
+              // R3: this approval mutated (deleted) photo-slot rows belonging to
+              // *other* edits as a side effect of removing a live photo they
+              // historically retained — recorded explicitly so the audit trail
+              // shows the blast radius, not just this edit's own state change.
+              affectedOtherEditPhotoRows,
+            },
+          },
           requestId: requestMeta.requestId,
           ip: requestMeta.ip,
         },

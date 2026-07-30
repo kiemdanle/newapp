@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPrisma } from '../../src/db.js';
 import { makeAdmin, makeUserForAdmin } from '../helpers/admin.js';
 import { mergeProducts } from '../../src/services/admin/merge.js';
@@ -9,6 +9,17 @@ import * as auditLog from '../../src/services/audit/log.js';
 // spy's own property from inside a mock implementation would recurse into itself.
 const originalWriteAuditLog = auditLog.writeAuditLog;
 const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
+
+// R2: an unconsumed `mockImplementationOnce` (a fault/delay test that never
+// actually got consumed) otherwise leaks into the next test. `mockReset()`
+// alone would also wipe the spy's passthrough-to-original default (verified
+// empirically — it replaces the implementation with a no-op, not merely
+// draining the once-queue), so it must be paired with re-applying the real
+// implementation right after.
+afterEach(() => {
+  writeAuditLogSpy.mockReset();
+  writeAuditLogSpy.mockImplementation(originalWriteAuditLog);
+});
 
 const adminActor = (id: string) => ({ id, role: 'admin' as const });
 

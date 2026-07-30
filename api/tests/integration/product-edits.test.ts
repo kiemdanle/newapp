@@ -24,6 +24,15 @@ import * as auditLog from '../../src/services/audit/log.js';
 // I7: same fault-injection shape as admin-product-moderation.test.ts's — forces a
 // failure after `publishProductEditPhoto` has already copied bytes but before the
 // reference transaction (whose last statement is `writeAuditLog`) commits.
+//
+// Captured before `vi.spyOn` replaces the module's export in place, and
+// re-applied every `afterEach` (R2): `mockReset()` alone would also wipe the
+// spy's passthrough-to-original default (verified — it replaces the
+// implementation with a no-op, not merely draining a leftover
+// `mockImplementationOnce` queue), silently turning later tests' audit writes
+// into no-ops. `mockClear()` alone leaves that queue still armed. Only
+// reset-then-reapply gives both a drained queue and a real passthrough.
+const originalWriteAuditLog = auditLog.writeAuditLog;
 const writeAuditLogSpy = vi.spyOn(auditLog, 'writeAuditLog');
 
 const BOUNDARY = '----expyricoProductEditsTestBoundary';
@@ -57,6 +66,11 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
   process.env = { ...baseEnv };
   resetConfigForTests();
+  // R2: reset any leftover `mockImplementationOnce` queue, then immediately
+  // re-establish the real passthrough — see the spy's own comment above for
+  // why `mockReset()` alone would silently no-op every later audit write.
+  writeAuditLogSpy.mockReset();
+  writeAuditLogSpy.mockImplementation(originalWriteAuditLog);
 });
 
 async function fakeProcessedUpload(): Promise<ProcessedVariants> {
