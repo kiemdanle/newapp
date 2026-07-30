@@ -36,6 +36,9 @@ describe('config', () => {
     FIREBASE_CREDENTIAL_MODE: 'workload_identity',
     MEDIA_ROOT: '/tmp',
     MEDIA_PUBLIC_BASE_URL: 'https://media.expyrico.test',
+    RECAPTCHA_PROJECT_ID: 'expyrico-test',
+    RECAPTCHA_SITE_KEY_ANDROID: 'site-key-android',
+    RECAPTCHA_SITE_KEY_IOS: 'site-key-ios',
   };
 
   it('parses a valid env', () => {
@@ -137,5 +140,32 @@ describe('config', () => {
     const cfg = parseConfig({ ...valid, MEDIA_SHARP_CONCURRENCY: '5', MEDIA_WEBP_QUALITY: '60' });
     expect(cfg.media.sharpConcurrency).toBe(5);
     expect(cfg.media.webpQuality).toBe(60);
+  });
+
+  it('defaults recaptcha minScore to 0.5 and an empty internal allowlist', () => {
+    const cfg = parseConfig(valid);
+    expect(cfg.recaptcha.minScore).toBe(0.5);
+    expect(cfg.recaptcha.projectId).toBe('expyrico-test');
+    expect(cfg.recaptcha.siteKeyAndroid).toBe('site-key-android');
+    expect(cfg.recaptcha.siteKeyIos).toBe('site-key-ios');
+    expect(cfg.productCreation.internalAllowlist).toEqual([]);
+  });
+
+  it('rejects a missing RECAPTCHA_SITE_KEY_ANDROID', () => {
+    const { RECAPTCHA_SITE_KEY_ANDROID: _omit, ...rest } = valid;
+    expect(() => parseConfig(rest)).toThrow();
+  });
+
+  it('parses a comma-separated PRODUCT_CREATION_INTERNAL_ALLOWLIST of UUIDs', () => {
+    const a = '11111111-1111-1111-1111-111111111111';
+    const b = '22222222-2222-2222-2222-222222222222';
+    const cfg = parseConfig({ ...valid, PRODUCT_CREATION_INTERNAL_ALLOWLIST: ` ${a} , ${b} ` });
+    expect(cfg.productCreation.internalAllowlist).toEqual([a, b]);
+  });
+
+  it('rejects a PRODUCT_CREATION_INTERNAL_ALLOWLIST entry that is not a UUID', () => {
+    expect(() =>
+      parseConfig({ ...valid, PRODUCT_CREATION_INTERNAL_ALLOWLIST: 'not-a-uuid' }),
+    ).toThrow(/non-UUID/);
   });
 });

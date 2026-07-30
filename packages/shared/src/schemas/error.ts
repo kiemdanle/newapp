@@ -110,6 +110,9 @@ export const ERROR_CODES = {
   TEMPORARILY_UNAVAILABLE: 'temporarily_unavailable',
   IDEMPOTENCY_KEY_REUSED: 'idempotency_key_reused',
   IDEMPOTENCY_IN_PROGRESS: 'idempotency_in_progress',
+
+  // Products: abuse verification (Phase 7)
+  ABUSE_CHECK_FAILED: 'abuse_check_failed',
 } as const;
 
 export const ITEM_LIMIT = 50;

@@ -88,6 +88,23 @@ const envSchema = z.object({
   // placeholders operators are expected to tune, not spec-mandated numbers.
   MEDIA_CAPACITY_USABLE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024 * 1024),
   MEDIA_CAPACITY_RESERVE_BYTES: z.coerce.number().int().nonnegative().default(512 * 1024 * 1024),
+
+  // reCAPTCHA Enterprise (Phase 7): server-side CreateAssessment for the
+  // `submit_product` action. Android and iOS each require a distinct site key
+  // (Google does not allow one key to cover both platforms) — no default for
+  // any of these, since an unset value must fail boot rather than silently
+  // accept every submission or call a nonexistent project.
+  RECAPTCHA_PROJECT_ID: z.string().min(1),
+  RECAPTCHA_SITE_KEY_ANDROID: z.string().min(1),
+  RECAPTCHA_SITE_KEY_IOS: z.string().min(1),
+  RECAPTCHA_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.5),
+  RECAPTCHA_ASSESSMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+
+  // `product_creation` mode (Phase 7): `internal` cohort is admins plus this
+  // environment-managed allowlist of user IDs. Optional/empty is valid — an
+  // `internal`-mode deployment with no allowlist simply has no non-admin
+  // internal cohort yet.
+  PRODUCT_CREATION_INTERNAL_ALLOWLIST: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -155,6 +172,16 @@ export interface Config {
     capacityUsableBytes: number;
     capacityReserveBytes: number;
   };
+  recaptcha: {
+    projectId: string;
+    siteKeyAndroid: string;
+    siteKeyIos: string;
+    minScore: number;
+    assessmentTimeoutMs: number;
+  };
+  productCreation: {
+    internalAllowlist: string[];
+  };
 }
 
 function parseOriginList(...parts: Array<string | undefined>): string[] {
@@ -187,6 +214,22 @@ function parseSha256Fingerprints(raw: string | undefined): string[] {
     .split(',')
     .map((v) => v.trim().toUpperCase())
     .filter(Boolean);
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseUuidAllowlist(raw: string | undefined): string[] {
+  if (!raw?.trim()) return [];
+  const ids = raw
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  for (const id of ids) {
+    if (!uuidPattern.test(id)) {
+      throw new Error(`PRODUCT_CREATION_INTERNAL_ALLOWLIST contains a non-UUID entry: ${id}`);
+    }
+  }
+  return ids;
 }
 
 export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>): Config {
@@ -286,6 +329,16 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
         capacityReserveBytes: e.MEDIA_CAPACITY_RESERVE_BYTES,
       };
     })(),
+    recaptcha: {
+      projectId: e.RECAPTCHA_PROJECT_ID,
+      siteKeyAndroid: e.RECAPTCHA_SITE_KEY_ANDROID,
+      siteKeyIos: e.RECAPTCHA_SITE_KEY_IOS,
+      minScore: e.RECAPTCHA_MIN_SCORE,
+      assessmentTimeoutMs: e.RECAPTCHA_ASSESSMENT_TIMEOUT_MS,
+    },
+    productCreation: {
+      internalAllowlist: parseUuidAllowlist(e.PRODUCT_CREATION_INTERNAL_ALLOWLIST),
+    },
   };
 }
 

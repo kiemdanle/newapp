@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { productDraftReorderRequestSchema, productSchema } from '@expyrico/shared';
 import { reorderProductPhotos } from '../../services/products/product-photos.js';
+import { assertProductCreationEligible } from '../../services/products/product-creation-eligibility.js';
 
 const paramSchema = z.object({ productId: z.string().uuid() });
 
@@ -10,6 +11,12 @@ export async function photoOrderRoute(app: FastifyInstance) {
     const { productId } = paramSchema.parse(req.params);
     const input = productDraftReorderRequestSchema.parse(req.body);
     const actor = { id: req.user!.id, role: req.user!.role };
+    // `reorderProductPhotos` only ever admits a non-admin onto a
+    // draft/changes_required product; the mode gate is an orthogonal capability
+    // check on top of that. Admins are exempt.
+    if (actor.role !== 'admin') {
+      await assertProductCreationEligible(actor, 'photo');
+    }
     const product = await reorderProductPhotos(actor, {
       productId,
       photoIds: input.photoIds,

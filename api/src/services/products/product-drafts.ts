@@ -21,6 +21,7 @@ import { lookupProductV2 } from './lookup.js';
 import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
 import { privateProductPhotoRoute } from './product-media-storage.js';
+import { assertProductCreationEligible } from './product-creation-eligibility.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -85,6 +86,11 @@ export async function createOrResumeDraft(
     throwForNonCreatableOutcome(outcome);
   }
 
+  // Only the actual new-row-creation path is mode-gated — resuming an existing
+  // draft above returns already-owned state and never writes, so it stays
+  // available regardless of mode (existing drafts remain readable/exportable).
+  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'create');
+
   const prisma = getPrisma();
   try {
     const created = await prisma.product.create({
@@ -136,6 +142,7 @@ export async function patchDraft(
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
   assertOwnDraftLike(existing, actorId);
+  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'metadata');
 
   const data: PrismaTypes.ProductUpdateInput = { version: { increment: 1 } };
   if (input.name !== undefined) data.name = input.name;

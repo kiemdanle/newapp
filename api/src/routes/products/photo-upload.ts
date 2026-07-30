@@ -4,6 +4,7 @@ import { ERROR_CODES, productSchema } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { addProductPhoto, assertPhotoMutablePreCheck } from '../../services/products/product-photos.js';
+import { assertProductCreationEligible } from '../../services/products/product-creation-eligibility.js';
 import { processProductUpload } from '../../services/products/product-image-processor.js';
 import {
   newQuarantineRequestId,
@@ -31,6 +32,14 @@ export async function photoUploadRoute(app: FastifyInstance) {
     // Authorize before accepting the multipart body at all — an unauthorized or
     // wrongly-timed request never causes the server to stream/decode a file.
     await assertPhotoMutablePreCheck(actor, productId);
+    // `assertPhotoMutablePreCheck` only ever admits a non-admin onto a
+    // draft/changes_required product; the mode gate is an orthogonal capability
+    // check on top of that (e.g. a draft created while mode was `all`, now
+    // frozen for mutation because mode flipped to `off`). Admins are exempt —
+    // admin moderation/correction remains available in every mode.
+    if (actor.role !== 'admin') {
+      await assertProductCreationEligible(actor, 'photo');
+    }
 
     if (!req.isMultipart()) {
       validationError('Expected a multipart/form-data upload');

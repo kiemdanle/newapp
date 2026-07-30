@@ -11,6 +11,7 @@ import {
   PRODUCT_INCLUDE,
   type ProductWithPhotos,
 } from './product-visibility.js';
+import { isProductCreationEligible } from './product-creation-eligibility.js';
 
 export interface LookupInput {
   barcode?: string;
@@ -182,7 +183,7 @@ export async function lookupProductV2(
   if (local) return classifyLocal(local, actor);
 
   // QR local miss is conclusive; QR payloads aren't queryable externally.
-  if (!input.barcode) return { outcome: 'not_found', canCreate: false };
+  if (!input.barcode) return { outcome: 'not_found', canCreate: await isProductCreationEligible(actor) };
 
   let anyUnavailable = false;
 
@@ -204,7 +205,5 @@ export async function lookupProductV2(
   // found result above always wins. Only when nothing was found do we distinguish
   // an unavailable source from a fully conclusive miss.
   if (anyUnavailable) return { outcome: 'temporarily_unavailable' };
-  // `canCreate` is the actor-specific Phase 7 eligibility capability; false until
-  // that contract ships.
-  return { outcome: 'not_found', canCreate: false };
+  return { outcome: 'not_found', canCreate: await isProductCreationEligible(actor) };
 }

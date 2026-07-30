@@ -12,6 +12,7 @@ import { adminProductsPatchRoute } from './products/patch.js';
 import { adminProductsMergeRoute } from './products/merge.js';
 import { adminProductsModerateRoute } from './products/moderate.js';
 import { adminProductsPendingListRoute } from './products/pending.js';
+import { adminProductsPendingGetRoute } from './products/pending-get.js';
 import { adminProductsPendingResolveRoute } from './products/pending-resolve.js';
 import { adminProductEditRecoveryRoute } from './products/product-edit-recovery.js';
 import { adminReviewsListRoute } from './reviews/list.js';
@@ -36,6 +37,7 @@ import { adminSettingsFeatureFlagsRoute } from './settings/feature-flags.js';
 import { adminSettingsModerationRoute } from './settings/moderation.js';
 import { adminSettingsNotificationTemplatesRoute } from './settings/notification-templates.js';
 import { adminSettingsAdminsRoute } from './settings/admins.js';
+import { adminSettingsProductCreationRoute } from './settings/product-creation.js';
 
 export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminOnlyPlugin);
@@ -50,6 +52,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminUsersImpersonateRoute, { prefix: '/users' });
 
   await app.register(adminProductsPendingListRoute, { prefix: '/products' });
+  await app.register(adminProductsPendingGetRoute, { prefix: '/products' });
   await app.register(adminProductsPendingResolveRoute, { prefix: '/products' });
   await app.register(adminProductsListRoute, { prefix: '/products' });
   await app.register(adminProductsGetRoute, { prefix: '/products' });
@@ -80,6 +83,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminSettingsModerationRoute, { prefix: '/settings' });
   await app.register(adminSettingsNotificationTemplatesRoute, { prefix: '/settings' });
   await app.register(adminSettingsAdminsRoute, { prefix: '/settings' });
+  await app.register(adminSettingsProductCreationRoute, { prefix: '/settings' });
   await app.register(adminDealsListRoute, { prefix: '/deals' });
   await app.register(adminDealsStatusRoute, { prefix: '/deals' });
   await app.register(adminGiveawaysListRoute, { prefix: '/giveaways' });

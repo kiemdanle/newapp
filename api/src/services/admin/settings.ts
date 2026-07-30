@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getPrisma } from '../../db.js';
-import { featureFlagsSchema, moderationSettingsSchema } from '@expyrico/shared';
+import { featureFlagsSchema, moderationSettingsSchema, productCreationSettingsSchema } from '@expyrico/shared';
 
 export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T): Promise<z.infer<T>> {
   const row = await getPrisma().setting.findUnique({ where: { key } });
@@ -26,6 +26,7 @@ export async function putSetting<T extends z.ZodTypeAny>(
 export const SETTING_KEYS = {
   FEATURE_FLAGS: 'feature_flags',
   MODERATION: 'moderation',
+  PRODUCT_CREATION: 'product_creation',
 } as const;
 
-export { featureFlagsSchema, moderationSettingsSchema };
+export { featureFlagsSchema, moderationSettingsSchema, productCreationSettingsSchema };

@@ -1,9 +1,16 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { makeUser, makeProduct } from '../helpers/factories.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { getPrisma } from '../../src/db.js';
 import { randomUUID } from 'node:crypto';
+
+// This file exercises draft create/patch mechanics, not the `product_creation`
+// mode gate itself (covered separately in product-creation-mode.test.ts) — set
+// mode to `all` so a non-allowlisted regular user isn't incidentally blocked.
+beforeEach(async () => {
+  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+});
 
 afterEach(() => {
   vi.doUnmock('../../src/services/products/off-client.js');

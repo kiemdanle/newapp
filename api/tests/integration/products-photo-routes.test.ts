@@ -17,6 +17,10 @@ beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'photo-routes-test-'));
   process.env.MEDIA_ROOT = root;
   resetConfigForTests();
+  // This file exercises upload/delete/order mechanics, not the `product_creation`
+  // mode gate itself (covered separately in product-creation-mode.test.ts) — set
+  // mode to `all` so a non-allowlisted regular user isn't incidentally blocked.
+  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
 });
 
 afterEach(async () => {
