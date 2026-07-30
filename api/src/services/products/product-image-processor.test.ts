@@ -12,6 +12,7 @@ import {
   processProductUpload,
   resetMediaCapabilitiesForTests,
 } from './product-image-processor.js';
+import { readHeicProbeFixture } from './__fixtures__/heic-probe-sample.js';
 
 let dir: string;
 const baseEnv = { ...process.env };
@@ -37,6 +38,41 @@ async function writeFixture(name: string, buffer: Buffer): Promise<string> {
   const path = join(dir, name);
   await writeFile(path, buffer);
   return path;
+}
+
+/** Gaussian noise compresses poorly and is expensive to decode/resize/encode —
+ * unlike a flat-color fixture, this genuinely keeps libvips busy for a measurable
+ * time through the real (no-blur) production pipeline, which is what the deadline
+ * -cancellation and concurrency-bound tests below need to observe. */
+async function noisyJpeg(size: number): Promise<Buffer> {
+  return sharp({ create: { width: size, height: size, channels: 3, background: 'black', noise: { type: 'gaussian', mean: 128, sigma: 45 } } })
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+/** PNG, not JPEG: libjpeg's shrink-on-load lets a JPEG decode directly at a much
+ * lower internal resolution when the pipeline immediately downsizes it (exactly
+ * what `processProductUpload` does), so even a huge noisy JPEG source finishes
+ * well under a second — no good for proving a *slow* decode gets cancelled. PNG
+ * has no equivalent optimization, so a large noisy PNG forces a genuinely
+ * expensive full-resolution decode. Generated at `sharp.concurrency(4)` (module
+ * import elsewhere pins the global to 1 for production single-threaded-per-op
+ * behavior, which would otherwise make fixture generation itself glacially slow)
+ * and restored to 1 immediately after, matching what `processProductUpload` runs
+ * under in every other test in this file. */
+async function slowToProcessNoisyPng(size: number): Promise<Buffer> {
+  sharp.concurrency(4);
+  try {
+    return await sharp({ create: { width: size, height: size, channels: 3, background: 'black', noise: { type: 'gaussian', mean: 128, sigma: 45 } } })
+      .png({ compressionLevel: 1 })
+      .toBuffer();
+  } finally {
+    sharp.concurrency(1);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // CRC32 + minimal IHDR patcher so we can make a real, tiny, cheaply-decodable PNG
@@ -85,6 +121,22 @@ describe('canDecodeAsImage', () => {
 
   it('resolves false for garbage bytes', async () => {
     await expect(canDecodeAsImage(randomBytes(64))).resolves.toBe(false);
+  });
+});
+
+describe('readHeicProbeFixture — build-safety (reviewer-p3 I4)', () => {
+  it('has no filesystem dependency at all, so it cannot vanish when `tsc` copies no non-.ts assets into dist/', () => {
+    // The bug: the previous fixture was read from a sibling `.heic` file resolved
+    // relative to `import.meta.url`. `tsc` never copies non-`.ts` assets into
+    // `dist/`, so that file silently didn't exist in any compiled build — the
+    // probe always reported HEIC unsupported in production, regardless of the
+    // host's real capability. Embedding the bytes as a base64 constant in this
+    // `.ts` module eliminates the file read entirely: if this module compiles,
+    // the fixture ships with it, structurally.
+    const buf = readHeicProbeFixture();
+    expect(buf.length).toBeGreaterThan(100_000); // the real fixture, not a stub
+    // Real ISO-BMFF/HEIF files start with a box-size (4 bytes) then the 'ftyp' box.
+    expect(buf.subarray(4, 8).toString('ascii')).toBe('ftyp');
   });
 });
 
@@ -149,7 +201,7 @@ describe('processProductUpload — accepted formats', () => {
 
   it('rejects the real committed HEIC fixture when the host cannot decode HEVC pixel data (the common case for default Sharp/libvips builds)', async () => {
     const capabilities = await probeMediaCapabilities();
-    const fixturePath = fileUrlToPath('./__fixtures__/heic-probe-sample.heic');
+    const fixturePath = await writeFixture('heic-probe.heic', readHeicProbeFixture());
     if (capabilities.heic) {
       // Host genuinely supports HEIC decode — processing should succeed.
       const result = await processProductUpload({ sourcePath: fixturePath });
@@ -162,10 +214,6 @@ describe('processProductUpload — accepted formats', () => {
     }
   });
 });
-
-function fileUrlToPath(relative: string): string {
-  return new URL(relative, import.meta.url).pathname;
-}
 
 describe('processProductUpload — hostile input rejection', () => {
   it('rejects an unsupported source format (WebP is not in the accept-list)', async () => {
@@ -238,37 +286,64 @@ describe('processProductUpload — hostile input rejection', () => {
     });
   });
 
-  it('aborts processing that exceeds the configured deadline', async () => {
-    overrideMediaEnv({ MEDIA_PROCESSING_DEADLINE_MS: '1' });
-    const source = await sharp({ create: { width: 200, height: 200, channels: 3, background: 'orange' } }).jpeg().toBuffer();
-    const path = await writeFixture('slow.jpg', source);
+  it('aborts processing that exceeds the configured deadline, and actually stops libvips work rather than merely abandoning the JS promise (reviewer-p3 C1)', async () => {
+    overrideMediaEnv({
+      MEDIA_PROCESSING_DEADLINE_MS: '1', // rounds up to sharp's 1-second minimum granularity
+      MEDIA_SHARP_CONCURRENCY: '1',
+      MEDIA_MAX_DECODED_MEGAPIXELS: '100',
+      MEDIA_MAX_DIMENSION_PX: '10000',
+    });
+    // Large enough that the real (no-blur) display-encode step alone takes more
+    // than the 1-second timeout, so a pass here can only mean sharp's own
+    // `.timeout()` genuinely aborted the work (see `slowToProcessNoisyPng`'s
+    // comment for why this has to be a PNG, not a JPEG).
+    const heavy = await slowToProcessNoisyPng(6500);
+    const path = await writeFixture('heavy.png', heavy);
+
     await expect(processProductUpload({ sourcePath: path })).rejects.toMatchObject({
       status: 408,
       code: 'processing_timeout',
     });
-  });
+
+    // Give libvips a brief moment to fully unwind the aborted thread, then prove
+    // nothing is still consuming a worker — this is exactly what shipped broken
+    // before: the promise rejected but `sharp.counters().process` stayed nonzero
+    // because the `.clone()`d encode pipelines kept running unseen.
+    await sleep(300);
+    expect(sharp.counters().process).toBe(0);
+    expect(sharp.counters().queue).toBe(0);
+  }, 20_000);
 });
 
 describe('processProductUpload — concurrency bound', () => {
-  it('serializes decodes through the configured semaphore without deadlocking or corrupting results', async () => {
-    overrideMediaEnv({ MEDIA_SHARP_CONCURRENCY: '1' });
+  it('never lets more decodes run concurrently than MEDIA_SHARP_CONCURRENCY, sampled via sharp.counters() while genuinely-slow decodes overlap', async () => {
+    overrideMediaEnv({ MEDIA_SHARP_CONCURRENCY: '2' });
     const paths = await Promise.all(
-      Array.from({ length: 4 }, async (_, i) => {
-        const buf = await sharp({ create: { width: 30, height: 30, channels: 3, background: 'cyan' } }).jpeg().toBuffer();
-        return writeFixture(`concurrent-${i}.jpg`, buf);
-      }),
+      Array.from({ length: 4 }, async (_, i) => writeFixture(`concurrent-${i}.jpg`, await noisyJpeg(3000))),
     );
-    const start = Date.now();
+
+    let peakProcessing = 0;
+    let sampling = true;
+    const sampler = (async () => {
+      while (sampling) {
+        peakProcessing = Math.max(peakProcessing, sharp.counters().process);
+        await sleep(10);
+      }
+    })();
+
     const results = await Promise.all(paths.map((p) => processProductUpload({ sourcePath: p })));
-    const elapsed = Date.now() - start;
+    sampling = false;
+    await sampler;
+
     expect(results).toHaveLength(4);
     for (const r of results) expect(r.display.buffer.length).toBeGreaterThan(0);
-    // Weak but meaningful: with real concurrency (no semaphore) 4 tiny decodes would
-    // all overlap; serialized through a single slot they queue instead. We don't
-    // assert a hard multiple (CI timing varies) — only that no result was lost/corrupted
-    // and everything eventually completed, which is the property that actually matters.
-    expect(elapsed).toBeGreaterThanOrEqual(0);
-  });
+    // Each in-flight call does at most one resize/encode at a time (display then
+    // thumb, sequentially), so with the semaphore capped at 2 concurrent calls the
+    // real libvips task count must never exceed 2 either — this is what C1's bug
+    // (permit-count drift + uncancelled work) would have broken.
+    expect(peakProcessing).toBeGreaterThan(0);
+    expect(peakProcessing).toBeLessThanOrEqual(2);
+  }, 15_000);
 
   it('handles many concurrent decodes above the configured limit without dropping any', async () => {
     overrideMediaEnv({ MEDIA_SHARP_CONCURRENCY: '2' });

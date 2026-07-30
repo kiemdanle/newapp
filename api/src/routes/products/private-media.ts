@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { readFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { z } from 'zod';
 import { ERROR_CODES } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
@@ -24,7 +25,17 @@ function notFound(): never {
  * a photo ID that belongs to a *different* product 404s exactly like one that
  * doesn't exist at all — no enumeration signal either way. Never serves an already
  * -approved (public) photo's bytes; those are meant to be fetched from their public
- * CDN URL instead.
+ * CDN URL instead (an `approved` row never has `privateStorageKey` set — enforced
+ * by the DB check constraint — so this route structurally can't reach one).
+ *
+ * The route enforces `moderationStatus` itself, independent of the serializer's
+ * own filtering (reviewer-p3 C2 — a trust-boundary defect fixed at both layers,
+ * since redacting a URL from a response never stops a caller who already knows or
+ * guesses the photo ID from requesting it directly): an admin may fetch any
+ * pending/rejected photo; the product's own creator may fetch their own still
+ * -`pending` photos (their own not-yet-reviewed upload); a `rejected` photo is
+ * never served to anyone but an admin, not even its own creator; every other
+ * caller gets the same non-enumerating 404 as a nonexistent photo.
  */
 export async function privateMediaRoute(app: FastifyInstance) {
   app.get('/:productId/photos/:photoId/:variant', { onRequest: app.requireAuth }, async (req, reply) => {
@@ -35,16 +46,25 @@ export async function privateMediaRoute(app: FastifyInstance) {
     const photo = await prisma.productPhoto.findFirst({ where: { id: photoId, productId } });
     if (!photo || !photo.privateStorageKey) notFound();
 
-    const product = await getVisibleProduct(actor, productId);
-    if (!product) notFound();
+    if (actor.role !== 'admin') {
+      if (photo.moderationStatus === 'rejected') notFound();
+      // Remaining case is `pending`: only the product's own creator may view it.
+      const product = await getVisibleProduct(actor, productId);
+      if (!product || product.createdByUserId !== actor.id) notFound();
+    }
 
     const cfg = getConfig().media;
     const path = mediaKeyToPath(cfg.root, variantFileKey(photo.privateStorageKey, variant as MediaVariant));
-    const buffer = await readFile(path).catch(() => notFound());
+    // Stream rather than buffer the whole file into memory (reviewer-p3 M7) —
+    // at the configured 8MiB display ceiling, concurrent fetches would otherwise
+    // multiply directly into heap. `stat` first (cheap, no content read) so a
+    // missing file still 404s cleanly instead of surfacing as a stream error
+    // after headers may already be committed.
+    await stat(path).catch(() => notFound());
 
     void reply.header('Content-Type', 'image/webp');
     void reply.header('X-Content-Type-Options', 'nosniff');
     void reply.header('Cache-Control', 'private, no-store');
-    return reply.send(buffer);
+    return reply.send(createReadStream(path));
   });
 }

@@ -131,3 +131,44 @@ describe('toApiProduct', () => {
     expect(toApiProduct(product as Parameters<typeof toApiProduct>[0]).photos).toEqual([]);
   });
 });
+
+describe('toApiProduct — moderation-status photo filtering (reviewer-p3 C2)', () => {
+  const ownerId = randomUUID();
+
+  it('omits non-approved photos entirely when no viewer is given a privileged reason to see them', () => {
+    const approved = makePrismaPhoto({ moderationStatus: 'approved', position: 0 });
+    const pending = makePrismaPhoto({ moderationStatus: 'pending', position: 1, privateStorageKey: 'private/x', publicStorageKey: null });
+    const rejected = makePrismaPhoto({ moderationStatus: 'rejected', position: 2, privateStorageKey: 'private/y', publicStorageKey: null });
+    const product = makePrismaProduct({ createdByUserId: ownerId, photos: [approved, pending, rejected] });
+
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { id: randomUUID(), role: 'user' });
+    expect(api.photos.map((p) => p.id)).toEqual([approved.id]);
+  });
+
+  it("shows the product's own creator their own still-pending photos, but not a rejected one", () => {
+    const pending = makePrismaPhoto({ moderationStatus: 'pending', position: 0, privateStorageKey: 'private/x', publicStorageKey: null });
+    const rejected = makePrismaPhoto({ moderationStatus: 'rejected', position: 1, privateStorageKey: 'private/y', publicStorageKey: null });
+    const product = makePrismaProduct({ createdByUserId: ownerId, photos: [pending, rejected] });
+
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { id: ownerId, role: 'user' });
+    expect(api.photos.map((p) => p.id)).toEqual([pending.id]);
+  });
+
+  it('shows an admin viewer every photo regardless of moderation status', () => {
+    const pending = makePrismaPhoto({ moderationStatus: 'pending', position: 0, privateStorageKey: 'private/x', publicStorageKey: null });
+    const rejected = makePrismaPhoto({ moderationStatus: 'rejected', position: 1, privateStorageKey: 'private/y', publicStorageKey: null });
+    const product = makePrismaProduct({ createdByUserId: ownerId, photos: [pending, rejected] });
+
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0], { id: randomUUID(), role: 'admin' });
+    expect(api.photos.map((p) => p.id).sort()).toEqual([pending.id, rejected.id].sort());
+  });
+
+  it('shows every photo when no viewer is passed at all — the privileged-call-site default (product-photos.ts/product-drafts.ts, already gated upstream)', () => {
+    const pending = makePrismaPhoto({ moderationStatus: 'pending', position: 0, privateStorageKey: 'private/x', publicStorageKey: null });
+    const rejected = makePrismaPhoto({ moderationStatus: 'rejected', position: 1, privateStorageKey: 'private/y', publicStorageKey: null });
+    const product = makePrismaProduct({ createdByUserId: ownerId, photos: [pending, rejected] });
+
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    expect(api.photos).toHaveLength(2);
+  });
+});

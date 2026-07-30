@@ -108,13 +108,68 @@ describe('prepareMediaOperation / completeMediaOperation', () => {
           privateStorageKey: prefix,
         },
       });
-      await completeMediaOperation(tx, intent.id);
+      await completeMediaOperation(tx, intent.id, intent.leaseOwner);
     });
 
     const completed = await prisma.mediaOperationOutbox.findUniqueOrThrow({ where: { id: intent.id } });
     expect(completed.status).toBe('completed');
     expect(completed.leaseOwner).toBeNull();
     expect(completed.leaseExpiresAt).toBeNull();
+  });
+
+  it('throws and rolls back the reference transaction when the intent was already recovered by an outbox sweep (reviewer-p3 I1)', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser();
+    const product = await makeProduct(user.id);
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix);
+
+    // Prepared with an already-expired lease, exactly as if the producer's
+    // reference transaction was slow enough for a recovery sweep to beat it.
+    const intent = await prisma.$transaction((tx) =>
+      prepareMediaOperation(tx, { operation: 'promote_private', keys: [prefix], leaseTtlSeconds: -1 }),
+    );
+    const swept = await processMediaOutboxOnce(10);
+    expect(swept.completed).toBe(1);
+    expect(await pathExists(prefix)).toBe(false); // recovery already deleted the bytes
+
+    // The "producer" now tries to complete the same intent, unaware it was
+    // already reclaimed and the bytes it's about to reference no longer exist.
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.productPhoto.create({
+          data: {
+            productId: product.id,
+            position: 0,
+            uploadedByUserId: user.id,
+            moderationStatus: 'pending',
+            mimeType: 'image/webp',
+            displayByteSize: 1,
+            displayWidth: 1,
+            displayHeight: 1,
+            thumbnailByteSize: 1,
+            thumbnailWidth: 1,
+            thumbnailHeight: 1,
+            privateStorageKey: prefix,
+          },
+        });
+        await completeMediaOperation(tx, intent.id, intent.leaseOwner);
+      }),
+    ).rejects.toThrow();
+
+    // The whole transaction rolled back — no dangling reference to deleted bytes.
+    const photos = await prisma.productPhoto.findMany({ where: { productId: product.id } });
+    expect(photos).toHaveLength(0);
+  });
+
+  it('throws when the lease owner does not match, even if the row is still prepared', async () => {
+    const prisma = getPrisma();
+    const intent = await prisma.$transaction((tx) => prepareMediaOperation(tx, { operation: 'promote_private', keys: ['private/x'] }));
+    await expect(
+      prisma.$transaction((tx) => completeMediaOperation(tx, intent.id, 'not-the-real-owner')),
+    ).rejects.toThrow();
+    const row = await prisma.mediaOperationOutbox.findUniqueOrThrow({ where: { id: intent.id } });
+    expect(row.status).toBe('prepared'); // untouched
   });
 });
 
@@ -204,7 +259,7 @@ describe('processMediaOutboxOnce — pending cleanup', () => {
     const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
     await writeVariantBytes(prefix);
 
-    const { id } = await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [prefix] }));
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [prefix] })))!;
     // Simulate a worker that claimed the row (processing, leased) and then died
     // before finishing — lease already expired.
     await prisma.mediaOperationOutbox.update({
@@ -219,7 +274,7 @@ describe('processMediaOutboxOnce — pending cleanup', () => {
 
   it('does not claim a pending row whose availableAt is still in the future', async () => {
     const prisma = getPrisma();
-    const { id } = await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: ['private/not-yet'] }));
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: ['private/not-yet'] })))!;
     await prisma.mediaOperationOutbox.update({ where: { id }, data: { availableAt: new Date(Date.now() + 60_000) } });
     const result = await processMediaOutboxOnce(10);
     expect(result.claimed).toBe(0);
@@ -250,7 +305,7 @@ describe('processMediaOutboxOnce — retry/backoff', () => {
     // A key that fails path-containment validation (`..` segment) so removeKeyPrefix
     // throws deterministically, exercising the failure path without mocking fs.
     const badKey = 'private/../escape';
-    const { id } = await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [badKey] }));
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [badKey] })))!;
 
     let lastStatus = '';
     for (let i = 0; i < 5; i++) {

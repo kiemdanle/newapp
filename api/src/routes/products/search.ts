@@ -12,9 +12,10 @@ const querySchema = z.object({
 export async function searchRoute(app: FastifyInstance) {
   app.get('/search', { onRequest: app.requireAuth }, async (req, reply) => {
     const { q, limit } = querySchema.parse(req.query);
+    const actor = { id: req.user!.id, role: req.user!.role };
     const items = await searchProducts(q, limit);
     return reply.send(
-      productSearchResultSchema.parse({ items: items.map(toApiProduct) }),
+      productSearchResultSchema.parse({ items: items.map((item) => toApiProduct(item, actor)) }),
     );
   });
 }

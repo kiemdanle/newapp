@@ -11,8 +11,14 @@ import { logger } from '../../logger.js';
 import type { ProductActor } from './product-visibility.js';
 import { toApiProduct } from './serializer.js';
 import { withMediaMutationLease } from './product-media-coordinator.js';
-import { completeMediaOperation, enqueueMediaCleanup, prepareMediaOperation } from './product-media-outbox.js';
-import { releaseMediaCapacityReservation } from './product-media-capacity.js';
+import {
+  completeMediaOperation,
+  enqueueMediaCleanup,
+  MediaOperationFencedError,
+  prepareMediaOperation,
+  renewMediaOperationLease,
+} from './product-media-outbox.js';
+import { assertMediaCapacityReservationLive, releaseMediaCapacityReservation } from './product-media-capacity.js';
 import type { ProcessedVariants } from './product-image-processor.js';
 import {
   copyKeyPrefix,
@@ -86,15 +92,28 @@ async function assertPhotoMutable(actor: ProductActor, productId: string, tx: Pr
  * body — so an unauthorized or wrongly-timed request never causes the server to
  * stream/decode a file at all. Not a substitute for `assertPhotoMutable`'s locked,
  * transactional check, which still runs before the DB write; this only avoids
- * wasted work on requests that are obviously going to fail.
+ * wasted work on requests that are obviously going to fail. Includes a
+ * non-authoritative count against `MAX_PHOTOS_PER_PRODUCT` so the common abuse
+ * case (repeatedly hitting an already-full product) doesn't pay for a full
+ * stream + decode + WebP encode + temp write + rename before being rejected
+ * (reviewer-p3 M8) — the locked, transactional count inside `addProductPhoto` is
+ * still what's actually enforced; a race that slips past this cheap check is
+ * caught there.
  */
 export async function assertPhotoMutablePreCheck(actor: ProductActor, productId: string): Promise<void> {
   const product = await getPrisma().product.findUnique({
     where: { id: productId },
-    select: { id: true, status: true, createdByUserId: true },
+    select: { id: true, status: true, createdByUserId: true, _count: { select: { photos: true } } },
   });
   if (!product) notFound();
   checkPhotoMutablePolicy(actor, product);
+  if (product._count.photos >= MAX_PHOTOS_PER_PRODUCT) {
+    throw new AppError({
+      status: 409,
+      code: 'photo_limit_reached',
+      title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+    });
+  }
 }
 
 async function loadProductWithPhotos(tx: PrismaTypes.TransactionClient, productId: string) {
@@ -141,6 +160,13 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
       throw err;
     }
 
+    // Renew the lease right before the reference transaction — bytes are already on
+    // disk, so this is the window `completeMediaOperation`'s fencing protects: if the
+    // transaction below is slow (e.g. `FOR UPDATE` contention) and the lease expires
+    // first, a recovery sweep could claim and delete these bytes before the reference
+    // commits. Cheap insurance for a normally-fast path (reviewer-p3 I1).
+    await renewMediaOperationLease(intent.id, intent.leaseOwner);
+
     try {
       const updated = await prisma.$transaction(async (tx) => {
         const product = await assertPhotoMutable(actor, input.productId, tx);
@@ -170,10 +196,10 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
           },
         });
         await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
-        await completeMediaOperation(tx, intent.id);
+        await completeMediaOperation(tx, intent.id, intent.leaseOwner);
         return loadProductWithPhotos(tx, input.productId);
       });
-      return toApiProduct(updated);
+      return toApiProduct(updated, actor);
     } catch (err) {
       // Compensate promptly; outbox recovery is the durable backstop if this itself
       // fails (the intent was never completed, so its lease will expire and a later
@@ -181,6 +207,13 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
       // directory (not just the variant-uuid leaf) since this photoId was freshly
       // generated for this attempt alone — never leaves an empty parent behind.
       await removeKeyPrefix(root, privateProductPhotoDir(input.productId, photoId)).catch(() => {});
+      if (err instanceof MediaOperationFencedError) {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.CONFLICT,
+          title: 'This upload lost a race with cleanup recovery; please retry',
+        });
+      }
       throw err;
     }
   }).finally(() => releaseMediaCapacityReservation(input.capacityReservationId));
@@ -214,7 +247,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
         throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Photo not found' });
       }
 
-      await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
+      await tx.$executeRawUnsafe('SET CONSTRAINTS "product_photos_product_id_position_key" DEFERRED');
       try {
         await tx.productPhoto.delete({ where: { id: photo.id } });
       } catch (err) {
@@ -251,7 +284,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
 
       return loadProductWithPhotos(tx, input.productId);
     });
-    return toApiProduct(updated);
+    return toApiProduct(updated, actor);
   });
 }
 
@@ -285,7 +318,7 @@ export async function reorderProductPhotos(actor: ProductActor, input: ReorderPr
       });
     }
 
-    await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
+    await tx.$executeRawUnsafe('SET CONSTRAINTS "product_photos_product_id_position_key" DEFERRED');
     for (let position = 0; position < input.photoIds.length; position++) {
       const id = input.photoIds[position]!;
       await tx.productPhoto.update({ where: { id }, data: { position } });
@@ -293,7 +326,7 @@ export async function reorderProductPhotos(actor: ProductActor, input: ReorderPr
     await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
     return loadProductWithPhotos(tx, input.productId);
   });
-  return toApiProduct(updated);
+  return toApiProduct(updated, actor);
 }
 
 export interface PublicPhotoVariant {
@@ -308,18 +341,31 @@ export interface PublicVariants {
   thumb: PublicPhotoVariant;
 }
 
+export interface PublishIntentContext {
+  /** The prepared `MediaOperationOutbox` row id the caller already committed via
+   * `prepareMediaOperation` before calling this. */
+  intentId: string;
+  /** That same intent's lease token — renewed here (heartbeated) before the copy,
+   * since a full publication set spans multiple photos under one intent and this
+   * function is typically called once per photo in a loop. */
+  leaseOwner: string;
+  /** A live `reserveMediaCapacity` reservation covering this photo's (or the whole
+   * set's) worst-case bytes. Required, not optional: asserted live immediately
+   * before the first byte is copied, so "no final/public key is created without a
+   * live reservation" is enforced here, not merely documented (reviewer-p3 I2). */
+  capacityReservationId: string;
+}
+
 /**
  * Copies (never moves) a photo's private variants to a fresh, immutable public
  * key. Requires a `prepared` intent the caller already committed via
- * `prepareMediaOperation` (`intentId` is accepted for traceability/logging only —
- * completing or renewing that intent's lease is the caller's responsibility, since
- * a full publication set spans multiple photos under one intent). Does **not**
- * touch the DB: the caller (Phase 4's moderation transaction) writes the returned
- * `publicKey` onto the photo row, completes the intent, and enqueues cleanup of
- * the now-superseded private key — all in the same transaction, so bytes are
- * copied here but only ever referenced/cleaned up atomically with that commit.
+ * `prepareMediaOperation`. Does **not** touch the DB: the caller (Phase 4's
+ * moderation transaction) writes the returned `publicKey` onto the photo row,
+ * completes the intent, and enqueues cleanup of the now-superseded private key —
+ * all in the same transaction, so bytes are copied here but only ever
+ * referenced/cleaned up atomically with that commit.
  */
-export async function publishProductPhoto(photoId: string, publicationId: string, intentId: string): Promise<PublicVariants> {
+export async function publishProductPhoto(photoId: string, publicationId: string, intent: PublishIntentContext): Promise<PublicVariants> {
   const prisma = getPrisma();
   const root = getConfig().media.root;
   const photo = await prisma.productPhoto.findUniqueOrThrow({ where: { id: photoId } });
@@ -333,8 +379,10 @@ export async function publishProductPhoto(photoId: string, publicationId: string
   const publicPrefix = publicProductPhotoPrefix(photo.productId, publicationId);
 
   return withMediaMutationLease('publish_public', async () => {
+    await renewMediaOperationLease(intent.intentId, intent.leaseOwner);
+    await assertMediaCapacityReservationLive(intent.capacityReservationId);
     await copyKeyPrefix(root, photo.privateStorageKey!, publicPrefix);
-    logger.info({ photoId, publicationId, intentId }, 'copied product photo variants to public storage');
+    logger.info({ photoId, publicationId, intentId: intent.intentId }, 'copied product photo variants to public storage');
     return {
       publicKey: publicPrefix,
       display: { bytes: photo.displayByteSize, width: photo.displayWidth, height: photo.displayHeight },

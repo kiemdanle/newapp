@@ -147,14 +147,14 @@ async function classifyLocal(local: ProductWithPhotos, actor: LookupActor): Prom
     return classifyLocal(canonical, actor);
   }
   if (local.status === 'active') {
-    return { outcome: 'found', product: { ...toApiProduct(local), status: 'active' } };
+    return { outcome: 'found', product: { ...toApiProduct(local, actor), status: 'active' } };
   }
   if (actor.role === 'admin') {
     // Moderation tooling gets a read-only authorized view of every non-active
     // status (including report_hidden) — never the mobile edit entitlement.
     return {
       outcome: 'creator_pending',
-      product: { ...toApiProduct(local), status: local.status as 'draft' | 'pending' | 'changes_required' | 'report_hidden' },
+      product: { ...toApiProduct(local, actor), status: local.status as 'draft' | 'pending' | 'changes_required' | 'report_hidden' },
     };
   }
   if (local.status === 'report_hidden') {
@@ -164,10 +164,10 @@ async function classifyLocal(local: ProductWithPhotos, actor: LookupActor): Prom
   }
   if (local.createdByUserId === actor.id) {
     if (local.status === 'draft' || local.status === 'changes_required') {
-      return { outcome: 'editable_private', product: { ...toApiProduct(local), status: local.status } };
+      return { outcome: 'editable_private', product: { ...toApiProduct(local, actor), status: local.status } };
     }
     if (local.status === 'pending') {
-      return { outcome: 'creator_pending', product: { ...toApiProduct(local), status: 'pending' } };
+      return { outcome: 'creator_pending', product: { ...toApiProduct(local, actor), status: 'pending' } };
     }
   }
   // another user's private/pending/draft/changes_required row.

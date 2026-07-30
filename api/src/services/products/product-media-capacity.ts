@@ -18,8 +18,16 @@ export interface MediaCapacityReservation {
 // reservation if the total stays within the configured usable-minus-reserve budget.
 // This is soft, Redis-only abuse/exhaustion protection, not a durability guarantee —
 // a Redis restart resets it to zero, which is an accepted trade-off for a capacity
-// budget (the actual bytes on disk are always the source of truth; this only bounds
-// how much *concurrent* work can be in flight at once).
+// budget. **Scope, precisely**: this bounds concurrent in-flight work (uploads
+// decoding, publication sets being written) so a burst of activity can't spike disk
+// usage past the budget *while it's happening*. It does not persist a running total
+// of bytes already durably on disk — nothing here prevents cumulative disk usage
+// from a large volume of *completed*, no-longer-reserved uploads over time from
+// exceeding the configured usable bytes. A persisted, reconciled-against-real-disk
+// -usage counter is Phase 7's operational-sweeper territory (`currentReservedMediaBytes`
+// below is the primitive it would pair with real `du`/quota data), not implemented
+// here (reviewer-p3 M3).
+
 const RESERVE_SCRIPT = `
 local index_key = KEYS[1]
 local usable_minus_reserve = tonumber(ARGV[1])
@@ -85,11 +93,29 @@ export async function reserveMediaCapacity(input: { bytes: number; ttlSeconds?: 
   return { id, bytes: input.bytes };
 }
 
-/** Renews a reservation's TTL. A no-op (not an error) if the reservation already
- * expired or was released — the caller's own terminal-path handling is what matters,
- * not whether a heartbeat lands on an already-finished operation. */
-export async function heartbeatMediaCapacityReservation(id: string, ttlSeconds = DEFAULT_TTL_SECONDS): Promise<void> {
-  await getRedis().expire(RES_PREFIX + id, ttlSeconds);
+/** Renews a reservation's TTL, returning whether it was actually still live to
+ * renew. Not an error on its own if the reservation already expired or was
+ * released — callers that must not proceed without a live reservation (e.g.
+ * `publishProductPhoto`) check the return value themselves via
+ * `assertMediaCapacityReservationLive`. */
+export async function heartbeatMediaCapacityReservation(id: string, ttlSeconds = DEFAULT_TTL_SECONDS): Promise<boolean> {
+  const renewed = await getRedis().expire(RES_PREFIX + id, ttlSeconds);
+  return renewed === 1;
+}
+
+/** Heartbeats `id` and throws a typed 507 if it was not actually live to renew.
+ * The gate every final-byte-writing operation must pass before writing: a
+ * capacity reservation is not optional bookkeeping, it's what makes "no
+ * final/public key is created without a live reservation" true (reviewer-p3 I2). */
+export async function assertMediaCapacityReservationLive(id: string, ttlSeconds = DEFAULT_TTL_SECONDS): Promise<void> {
+  const live = await heartbeatMediaCapacityReservation(id, ttlSeconds);
+  if (!live) {
+    throw new AppError({
+      status: 507,
+      code: 'capacity_exceeded',
+      title: 'Media capacity reservation expired before the operation completed',
+    });
+  }
 }
 
 /** Updates a reservation's byte amount to the real measured size once known (e.g.

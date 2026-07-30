@@ -70,12 +70,34 @@ export async function renewMediaOperationLease(id: string, leaseOwner: string, l
  * Must be called with the *same* `tx` that writes the reference — that's what makes
  * "bytes exist" and "reference exists" atomic together from an outside observer's
  * perspective, even though the bytes were physically written earlier.
+ *
+ * Fenced by `status: 'prepared'` + the exact `leaseOwner`: without this, a producer
+ * whose lease expired while its reference transaction was still running (e.g. slow
+ * `FOR UPDATE` contention) could "complete" an intent that `processMediaOutboxOnce`
+ * had *already* claimed, found unreferenced, and deleted — committing a reference to
+ * bytes that no longer exist, silently (reviewer-p3 I1). Throwing here instead rolls
+ * the whole reference transaction back, so the caller's own compensation path (or,
+ * durably, a later outbox recovery pass) is what runs, never a dangling key.
  */
-export async function completeMediaOperation(tx: Db, id: string): Promise<void> {
-  await tx.mediaOperationOutbox.update({
-    where: { id },
+export async function completeMediaOperation(tx: Db, id: string, leaseOwner: string): Promise<void> {
+  const result = await tx.mediaOperationOutbox.updateMany({
+    where: { id, status: 'prepared', leaseOwner },
     data: { status: 'completed', leaseOwner: null, leaseExpiresAt: null },
   });
+  if (result.count === 0) {
+    throw new MediaOperationFencedError(id);
+  }
+}
+
+/** Thrown by `completeMediaOperation` when its fencing predicate matches no row —
+ * the intent was already recovered/expired out from under the caller. A distinct
+ * class so callers can recognize "the reference transaction must not commit" versus
+ * an ordinary DB error, without pattern-matching a message string. */
+export class MediaOperationFencedError extends Error {
+  constructor(id: string) {
+    super(`media operation ${id} could not be completed: its prepared intent was not found (already recovered, completed, or a lease-owner mismatch)`);
+    this.name = 'MediaOperationFencedError';
+  }
 }
 
 /**
@@ -86,8 +108,11 @@ export async function completeMediaOperation(tx: Db, id: string): Promise<void> 
  * reference change it follows, so a process death between "reference committed" and
  * "cleanup enqueued" is impossible: either both happened, or neither did.
  */
-export async function enqueueMediaCleanup(tx: Db, input: { operation: MediaOperationType; keys: string[] }): Promise<{ id: string }> {
-  if (input.keys.length === 0) return { id: '' };
+export async function enqueueMediaCleanup(tx: Db, input: { operation: MediaOperationType; keys: string[] }): Promise<{ id: string } | null> {
+  // `null`, not a sentinel empty-string id, for "nothing to enqueue" — an empty
+  // string is indistinguishable from a real ID to a caller that forgets to check
+  // (reviewer-p3 M9); `null` forces the distinction at the type level.
+  if (input.keys.length === 0) return null;
   const row = await tx.mediaOperationOutbox.create({
     data: {
       operation: input.operation,
@@ -155,20 +180,28 @@ async function claimBatch(workerId: string, limit: number): Promise<ClaimedRow[]
   });
 }
 
-async function finalizeSuccess(id: string): Promise<void> {
+// Both finalizers are guarded by `leaseOwner: workerId` (in addition to `id`):
+// without it, a worker whose 60s processing lease expired mid-run — and whose row
+// was already reclaimed and re-processed by a second worker — would still be able
+// to overwrite `status`/`attempts`/`availableAt` on its way out, clobbering the
+// second (live) worker's outcome (reviewer-p3 M5). A count of 0 here just means
+// this worker lost the row to a reclaim; that is the reclaiming worker's outcome to
+// write, not an error for this one to raise.
+
+async function finalizeSuccess(id: string, workerId: string): Promise<void> {
   const prisma = getPrisma();
-  await prisma.mediaOperationOutbox.update({
-    where: { id },
+  await prisma.mediaOperationOutbox.updateMany({
+    where: { id, leaseOwner: workerId },
     data: { status: 'completed', leaseOwner: null, leaseExpiresAt: null },
   });
 }
 
-async function finalizeFailure(id: string, attempts: number, err: unknown): Promise<void> {
+async function finalizeFailure(id: string, workerId: string, attempts: number, err: unknown): Promise<void> {
   const prisma = getPrisma();
   const nextAttempts = attempts + 1;
   const terminal = nextAttempts >= MAX_ATTEMPTS;
-  await prisma.mediaOperationOutbox.update({
-    where: { id },
+  await prisma.mediaOperationOutbox.updateMany({
+    where: { id, leaseOwner: workerId },
     data: {
       status: terminal ? 'failed' : 'pending',
       leaseOwner: null,
@@ -219,10 +252,10 @@ export async function processMediaOutboxOnce(limit = 10): Promise<OutboxSweepRes
           'media outbox row recovered but its keys are still referenced; skipped deletion',
         );
       }
-      await finalizeSuccess(row.id);
+      await finalizeSuccess(row.id, workerId);
       completed++;
     } catch (err) {
-      await finalizeFailure(row.id, row.attempts, err);
+      await finalizeFailure(row.id, workerId, row.attempts, err);
       failed++;
       logger.warn({ err, outboxId: row.id }, 'media outbox row processing failed');
     }

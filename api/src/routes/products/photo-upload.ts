@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES } from '@expyrico/shared';
+import { ERROR_CODES, productSchema } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { addProductPhoto, assertPhotoMutablePreCheck } from '../../services/products/product-photos.js';
@@ -56,6 +56,18 @@ export async function photoUploadRoute(app: FastifyInstance) {
     const requestId = newQuarantineRequestId();
     let reservationId: string | undefined;
     try {
+      // Reserved *before* a single byte is streamed to disk — worst-case source
+      // plus both generated variants at their absolute ceilings. Reserving only
+      // after `writeQuarantineFile` (as an earlier version of this route did) let
+      // N concurrent uploaders put N × MEDIA_MAX_UPLOAD_BYTES on the volume while
+      // the budget still read zero, exactly the disk-exhaustion mode the reserve
+      // headroom exists to prevent (reviewer-p3 I3). Reconciled down to the real
+      // generated size once encoding finishes.
+      const reservation = await reserveMediaCapacity({
+        bytes: cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes,
+      });
+      reservationId = reservation.id;
+
       const written = await writeQuarantineFile(root, requestId, filePart.file, cfg.maxUploadBytes);
       if (filePart.file.truncated) {
         throw new AppError({
@@ -71,14 +83,6 @@ export async function photoUploadRoute(app: FastifyInstance) {
         validationError('Only one file and no additional fields are allowed');
       }
 
-      // Worst-case reservation up front (source + both generated variants at their
-      // absolute ceilings) gates expensive decode work before it starts; reconciled
-      // down to the real generated size once encoding finishes.
-      const reservation = await reserveMediaCapacity({
-        bytes: cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes,
-      });
-      reservationId = reservation.id;
-
       const processed = await processProductUpload({ sourcePath: written.path });
       await reconcileMediaCapacityReservation(reservation.id, processed.display.bytes + processed.thumb.bytes);
 
@@ -88,7 +92,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
         capacityReservationId: reservation.id,
       });
       reservationId = undefined; // addProductPhoto releases it on every terminal path
-      return reply.status(201).send(product);
+      return reply.status(201).send(productSchema.parse(product));
     } finally {
       await removeKeyPrefix(root, quarantineDirKey(requestId)).catch(() => {});
       if (reservationId) await releaseMediaCapacityReservation(reservationId).catch(() => {});

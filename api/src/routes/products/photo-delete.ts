@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { productSchema } from '@expyrico/shared';
 import { removeProductPhoto } from '../../services/products/product-photos.js';
 
 const paramSchema = z.object({ productId: z.string().uuid(), photoId: z.string().uuid() });
@@ -9,6 +10,6 @@ export async function photoDeleteRoute(app: FastifyInstance) {
     const { productId, photoId } = paramSchema.parse(req.params);
     const actor = { id: req.user!.id, role: req.user!.role };
     const product = await removeProductPhoto(actor, { productId, photoId });
-    return reply.status(200).send(product);
+    return reply.status(200).send(productSchema.parse(product));
   });
 }

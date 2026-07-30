@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { resolve, sep } from 'node:path';
+import { AppError } from '../../errors.js';
 import {
   cp,
   mkdir,
@@ -23,7 +24,17 @@ const SEGMENT_RE = /^[A-Za-z0-9_.-]+$/;
 export type MediaVariant = 'display' | 'thumb';
 export const MEDIA_VARIANTS: readonly MediaVariant[] = ['display', 'thumb'];
 
-export class MediaPathError extends Error {}
+// Extends `AppError` (not a bare `Error`) so a path-containment violation that
+// somehow reaches `toProblem` degrades to a typed 400, not a generic
+// signal-free 500 — reviewer-p3 M9. Currently unreachable from any real request
+// (busboy truncates before the independent byte counter fires, and every path
+// segment is always either a fixed literal or a server-generated UUID), but a
+// defensive class hierarchy should never rely on "currently unreachable" alone.
+export class MediaPathError extends AppError {
+  constructor(message: string) {
+    super({ status: 400, code: 'invalid_media_path', title: message });
+  }
+}
 
 /** Throws unless `value` is a UUID (v4 or otherwise well-formed UUID shape). */
 export function assertUuidSegment(value: string, label: string): string {

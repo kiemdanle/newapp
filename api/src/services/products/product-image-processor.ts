@@ -1,10 +1,10 @@
-import { readFile, unlink } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { unlink } from 'node:fs/promises';
 import sharp from 'sharp';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { logger } from '../../logger.js';
 import type { MediaVariant } from './product-media-storage.js';
+import { readHeicProbeFixture } from './__fixtures__/heic-probe-sample.js';
 
 // `sharp`'s CJS `export =` + namespace declaration doesn't resolve cleanly as a type
 // namespace under this project's ESM/NodeNext + Bundler-resolution TS setup, so these
@@ -27,6 +27,18 @@ function unsupportedMediaType(detail: string): never {
 
 function processingFailed(status: number, code: string, detail: string): never {
   throw new AppError({ status, code, title: 'Photo could not be processed', detail });
+}
+
+// Sharp's own `.timeout()` mechanism throws an error whose message starts with
+// `timeout: NN% complete` when libvips genuinely aborts in-flight work (as opposed
+// to any other decode/encode error). Matching on this is how a real, worker
+// -thread-level cancellation is distinguished from a corrupt/unsupported input.
+function isSharpTimeoutError(err: unknown): boolean {
+  return err instanceof Error && /^timeout:/i.test(err.message);
+}
+
+function processingTimedOut(): never {
+  throw new AppError({ status: 408, code: 'processing_timeout', title: 'Photo processing timed out' });
 }
 
 // ---------------------------------------------------------------------------
@@ -55,25 +67,32 @@ export async function canDecodeAsImage(buffer: Buffer): Promise<boolean> {
   }
 }
 
-async function readHeicFixture(): Promise<Buffer> {
-  const fixturePath = fileURLToPath(new URL('./__fixtures__/heic-probe-sample.heic', import.meta.url));
-  return readFile(fixturePath);
-}
-
 /** Cached after first call — the deployed binary's capability can't change at
- * runtime, so re-probing per-request would just waste a real decode every time. */
+ * runtime, so re-probing per-request would just waste a real decode every time.
+ * The fixture is base64-embedded in source (see `__fixtures__/heic-probe-sample.ts`)
+ * specifically so it survives compilation into `dist/` — `tsc` copies no
+ * non-`.ts` assets, so a file-path-relative fixture silently vanished from every
+ * production build and the probe always reported HEIC unsupported regardless of
+ * the host's real capability (reviewer-p3 I4). A static "does this libvips build
+ * declare HEIF input support" flag alone is insufficient too: many prebuilt
+ * libvips/libheif distributions include the HEIF *container* parser without the
+ * HEVC decoder plugin (licensing), reporting the flag `true` while still failing
+ * every real decode — only an actual decode attempt proves the deployed binary
+ * can serve HEIC uploads. An unreadable/corrupt embedded fixture on a host whose
+ * static flag says `true` is a startup **error**, not a silent warning — that
+ * combination is otherwise indistinguishable from a genuinely HEIC-incapable host. */
 export async function probeMediaCapabilities(): Promise<MediaCapabilities> {
   if (cachedCapabilities) return cachedCapabilities;
   const staticHeifSupport = Boolean((sharp.format.heif as { input?: { buffer?: boolean } } | undefined)?.input?.buffer);
   let heic = false;
   if (staticHeifSupport) {
+    let fixture: Buffer;
     try {
-      const fixture = await readHeicFixture();
-      heic = await canDecodeAsImage(fixture);
+      fixture = readHeicProbeFixture();
     } catch (err) {
-      logger.warn({ err }, 'HEIC capability probe fixture unreadable; treating HEIC as unsupported');
-      heic = false;
+      throw new Error('HEIC capability probe fixture is corrupt or unreadable; refusing to start', { cause: err });
     }
+    heic = await canDecodeAsImage(fixture);
   }
   cachedCapabilities = { heic };
   if (heic) {
@@ -101,18 +120,33 @@ sharp.concurrency(1);
 let activeDecodes = 0;
 const decodeWaitQueue: Array<() => void> = [];
 
+/**
+ * Counting semaphore that *transfers* a permit directly to the next waiter on
+ * release rather than decrementing-then-letting-the-waiter-increment — the
+ * previous version did the latter, which let `activeDecodes` drift above `limit`
+ * when a queued `acquireDecodeSlot` call's `await` resolved as a microtask
+ * interleaved between another caller's decrement and the waiter's own increment
+ * (reviewer-p3 C1). Only ever decrement when there is no waiter to hand the
+ * permit to.
+ */
 async function acquireDecodeSlot(limit: number): Promise<() => void> {
-  if (activeDecodes >= limit) {
+  if (activeDecodes < limit) {
+    activeDecodes++;
+  } else {
     await new Promise<void>((resolve) => decodeWaitQueue.push(resolve));
+    // Resumed by a release() that already earmarked this permit for us — the
+    // count was never decremented for it, so we must not increment here either.
   }
-  activeDecodes++;
   let released = false;
   return () => {
     if (released) return;
     released = true;
-    activeDecodes--;
     const next = decodeWaitQueue.shift();
-    if (next) next();
+    if (next) {
+      next();
+    } else {
+      activeDecodes--;
+    }
   };
 }
 
@@ -167,99 +201,103 @@ async function encodeVariant(
  * declared multipart mimetype), decode-time pixel/channel limits, explicit
  * per-dimension caps, a decode concurrency semaphore, an abortable processing
  * deadline, and output-size ceilings on the generated variants.
+ *
+ * The deadline is enforced via Sharp's *own* `.timeout()` — libvips aborts the
+ * in-flight worker-thread task itself, not just the outer JS promise. An earlier
+ * version raced an external `setTimeout` against the decode promise, which only
+ * ever abandoned the JS side: `pipeline.destroy()` doesn't reach the `.clone()`d
+ * pipelines each variant encode runs on, and already-dispatched libvips threadpool
+ * work is not otherwise cancellable, so the semaphore slot was being handed back
+ * while a libvips thread kept consuming CPU/memory for the input's real
+ * processing time — silently defeating `MEDIA_SHARP_CONCURRENCY` (reviewer-p3
+ * C1). `.timeout()` makes libvips itself stop, so `run` always genuinely settles
+ * in bounded time and the semaphore is released only once it has.
  */
 export async function processProductUpload(input: { sourcePath: string }): Promise<ProcessedVariants> {
   const cfg = getConfig().media;
   const release = await acquireDecodeSlot(cfg.sharpConcurrency);
   let pipeline: SharpInstance | undefined;
-  let timer: NodeJS.Timeout | undefined;
   try {
-    const run = (async (): Promise<ProcessedVariants> => {
-      pipeline = sharp(input.sourcePath, {
-        limitInputPixels: cfg.maxDecodedMegapixels * 1_000_000,
-        limitInputChannels: cfg.maxChannels,
-        failOn: 'error',
-        sequentialRead: true,
-      });
+    // Sharp's `.timeout()` only accepts whole seconds (1-3600); round up so a
+    // sub-second configured deadline still gets at least the minimum granularity
+    // sharp supports, rather than silently becoming "no timeout" at 0.
+    const timeoutSeconds = Math.max(1, Math.ceil(cfg.processingDeadlineMs / 1000));
 
-      let metadata: SharpMetadata;
-      try {
-        metadata = await pipeline.metadata();
-      } catch (err) {
-        // `limitInputPixels`/`limitInputChannels` reject at header-read time with a
-        // specific message — classify that as a resource-limit rejection (413), and
-        // everything else (corrupt/polyglot/unreadable) as an unsupported format (415).
-        const message = err instanceof Error ? err.message : 'could not read image metadata';
-        if (/exceeds pixel limit|exceeds channel limit/i.test(message)) {
-          processingFailed(413, 'image_too_large', message);
-        }
-        unsupportedMediaType(message);
-      }
+    pipeline = sharp(input.sourcePath, {
+      limitInputPixels: cfg.maxDecodedMegapixels * 1_000_000,
+      limitInputChannels: cfg.maxChannels,
+      failOn: 'error',
+      sequentialRead: true,
+    }).timeout({ seconds: timeoutSeconds });
 
-      const format = metadata.format;
-      if (!format || !(SOURCE_FORMATS as readonly string[]).includes(format)) {
-        unsupportedMediaType(`unsupported source format: ${format ?? 'unknown'}`);
+    let metadata: SharpMetadata;
+    try {
+      metadata = await pipeline.metadata();
+    } catch (err) {
+      if (isSharpTimeoutError(err)) processingTimedOut();
+      // `limitInputPixels`/`limitInputChannels` reject at header-read time with a
+      // specific message — classify that as a resource-limit rejection (413), and
+      // everything else (corrupt/polyglot/unreadable) as an unsupported format (415).
+      const message = err instanceof Error ? err.message : 'could not read image metadata';
+      if (/exceeds pixel limit|exceeds channel limit/i.test(message)) {
+        processingFailed(413, 'image_too_large', message);
       }
-      const sourceFormat = format as SourceFormat;
+      unsupportedMediaType(message);
+    }
 
-      if (sourceFormat === 'heif') {
-        const capabilities = await probeMediaCapabilities();
-        if (!capabilities.heic) {
-          unsupportedMediaType('HEIC uploads are not supported by this deployment');
-        }
-      }
+    const format = metadata.format;
+    if (!format || !(SOURCE_FORMATS as readonly string[]).includes(format)) {
+      unsupportedMediaType(`unsupported source format: ${format ?? 'unknown'}`);
+    }
+    const sourceFormat = format as SourceFormat;
 
-      const width = metadata.width ?? 0;
-      const height = metadata.height ?? 0;
-      if (width <= 0 || height <= 0) {
-        unsupportedMediaType('image has no readable dimensions');
+    if (sourceFormat === 'heif') {
+      const capabilities = await probeMediaCapabilities();
+      if (!capabilities.heic) {
+        unsupportedMediaType('HEIC uploads are not supported by this deployment');
       }
-      if (width > cfg.maxDimensionPx || height > cfg.maxDimensionPx) {
-        processingFailed(413, 'image_too_large', `dimensions ${width}x${height} exceed the maximum of ${cfg.maxDimensionPx}px per side`);
-      }
-      if (width * height > cfg.maxDecodedMegapixels * 1_000_000) {
-        processingFailed(413, 'image_too_large', 'decoded pixel count exceeds the configured limit');
-      }
-      const channels = metadata.channels ?? 0;
-      if (channels <= 0) {
-        unsupportedMediaType('image has no readable channel data');
-      }
-      if (channels > cfg.maxChannels) {
-        processingFailed(413, 'image_too_large', `channel count ${channels} exceeds the maximum of ${cfg.maxChannels}`);
-      }
+    }
 
-      // EXIF auto-orient, then force sRGB. No `.withMetadata()` call — Sharp strips
-      // all metadata (EXIF/GPS/ICC) from the output by default, which is exactly the
-      // "strip all metadata/GPS" requirement; calling `.withMetadata()` would instead
-      // *preserve* it, so its absence here is load-bearing, not an oversight.
-      const oriented = pipeline.rotate().toColourspace('srgb');
+    const width = metadata.width ?? 0;
+    const height = metadata.height ?? 0;
+    if (width <= 0 || height <= 0) {
+      unsupportedMediaType('image has no readable dimensions');
+    }
+    if (width > cfg.maxDimensionPx || height > cfg.maxDimensionPx) {
+      processingFailed(413, 'image_too_large', `dimensions ${width}x${height} exceed the maximum of ${cfg.maxDimensionPx}px per side`);
+    }
+    if (width * height > cfg.maxDecodedMegapixels * 1_000_000) {
+      processingFailed(413, 'image_too_large', 'decoded pixel count exceeds the configured limit');
+    }
+    const channels = metadata.channels ?? 0;
+    if (channels <= 0) {
+      unsupportedMediaType('image has no readable channel data');
+    }
+    if (channels > cfg.maxChannels) {
+      processingFailed(413, 'image_too_large', `channel count ${channels} exceeds the maximum of ${cfg.maxChannels}`);
+    }
 
+    // EXIF auto-orient, then force sRGB. No `.withMetadata()` call — Sharp strips
+    // all metadata (EXIF/GPS/ICC) from the output by default, which is exactly the
+    // "strip all metadata/GPS" requirement; calling `.withMetadata()` would instead
+    // *preserve* it, so its absence here is load-bearing, not an oversight.
+    const oriented = pipeline.rotate().toColourspace('srgb');
+
+    try {
       const display = await encodeVariant(oriented, 'display', cfg.displayMaxDimensionPx, cfg.maxDisplayBytes, cfg.webpQuality);
       const thumb = await encodeVariant(oriented, 'thumb', cfg.thumbnailMaxDimensionPx, cfg.maxThumbnailBytes, cfg.webpQuality);
-
       return { sourceMimeType: FORMAT_TO_MIME[sourceFormat], display, thumb };
-    })();
-
-    const deadline = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        // Swallow the stream-level 'error' Duplex#destroy() emits — the caller learns
-        // about the timeout through this Promise.race rejection, not a stream event,
-        // and an unhandled 'error' event would otherwise crash the process.
-        pipeline?.on('error', () => {});
-        pipeline?.destroy(new Error('processing deadline exceeded'));
-        reject(
-          new AppError({
-            status: 408,
-            code: 'processing_timeout',
-            title: 'Photo processing timed out',
-          }),
-        );
-      }, cfg.processingDeadlineMs);
-    });
-
-    return await Promise.race([run, deadline]);
+    } catch (err) {
+      if (isSharpTimeoutError(err)) processingTimedOut();
+      throw err;
+    }
   } finally {
-    if (timer) clearTimeout(timer);
+    // Sharp's own timeout already stopped libvips by the time we get here (`run`
+    // has genuinely settled, one way or another) — this is now just tidiness, not
+    // a substitute for cancellation. Swallow any stream-level 'error' `destroy()`
+    // emits so it can't surface as an unhandled event.
+    pipeline?.on('error', () => {});
+    pipeline?.destroy();
     release();
   }
 }

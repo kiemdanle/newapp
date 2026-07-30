@@ -10,7 +10,8 @@ const paramSchema = z.object({ id: z.string().uuid() });
 export async function getProductRoute(app: FastifyInstance) {
   app.get('/:id', { onRequest: app.requireAuth }, async (req, reply) => {
     const { id } = paramSchema.parse(req.params);
-    const product = await getVisibleProduct({ id: req.user!.id, role: req.user!.role }, id);
+    const actor = { id: req.user!.id, role: req.user!.role };
+    const product = await getVisibleProduct(actor, id);
     if (!product) {
       throw new AppError({
         status: 404,
@@ -20,7 +21,7 @@ export async function getProductRoute(app: FastifyInstance) {
     }
     return reply.send(
       productWithReviewsSchema.parse({
-        ...toApiProduct(product),
+        ...toApiProduct(product, actor),
         topReviews: [], // populated in M2
       }),
     );

@@ -47,13 +47,18 @@ async function makeProduct(createdByUserId: string, status: 'draft' | 'pending' 
   });
 }
 
-async function makePrivatePhoto(productId: string, uploaderId: string, prefix: string) {
+async function makePrivatePhoto(
+  productId: string,
+  uploaderId: string,
+  prefix: string,
+  moderationStatus: 'pending' | 'rejected' = 'pending',
+) {
   return getPrisma().productPhoto.create({
     data: {
       productId,
       position: 0,
       uploadedByUserId: uploaderId,
-      moderationStatus: 'pending',
+      moderationStatus,
       mimeType: 'image/webp',
       displayByteSize: 1,
       displayWidth: 1,
@@ -109,6 +114,74 @@ describe('GET /v1/products/:productId/photos/:photoId/:variant', () => {
 
     const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('reviewer-p3 C2 regression: rejects an unrelated authenticated user for a rejected photo on an active product (the exact proven exploit)', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const { headers } = await authHeaders();
+    const product = await makeProduct(owner.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'REJECTED-ABUSIVE-CONTENT');
+    const photo = await makePrivatePhoto(product.id, owner.id, prefix, 'rejected');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('rejects a rejected photo for its own creator too — visible to no one but an admin', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authHeaders();
+    const product = await makeProduct(user.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'rejected-own');
+    const photo = await makePrivatePhoto(product.id, user.id, prefix, 'rejected');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('allows admin to fetch a rejected photo', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const { headers } = await authHeaders('admin');
+    const product = await makeProduct(owner.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'rejected-admin-view');
+    const photo = await makePrivatePhoto(product.id, owner.id, prefix, 'rejected');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('rejects an unrelated user for a merely-pending photo on an active product too', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const { headers } = await authHeaders();
+    const product = await makeProduct(owner.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'pending-on-active');
+    const photo = await makePrivatePhoto(product.id, owner.id, prefix, 'pending');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('allows the creator to fetch their own still-pending photo on their active product', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authHeaders();
+    const product = await makeProduct(user.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'own-pending-on-active');
+    const photo = await makePrivatePhoto(product.id, user.id, prefix, 'pending');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/photos/${photo.id}/display`, headers });
+    expect(res.statusCode).toBe(200);
     await app.close();
   });
 
@@ -300,6 +373,37 @@ describe('GET /v1/product-edits/:editId/photos/:photoId/:variant', () => {
 
     const res = await app.inject({ method: 'GET', url: `/v1/product-edits/${edit.id}/photos/${productPhoto.id}/display`, headers });
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe('GET /v1/products/:id — reviewer-p3 C2 layer (b): the response never enumerates a non-approved photo URL', () => {
+  it("excludes a rejected photo's URL from an unrelated user's product read, even though the product itself is active/visible", async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const { headers } = await authHeaders();
+    const product = await makeProduct(owner.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'rejected');
+    await makePrivatePhoto(product.id, owner.id, prefix, 'rejected');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}`, headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().photos).toEqual([]);
+    await app.close();
+  });
+
+  it("still shows the creator their own product's pending photo URL on their own read", async () => {
+    const app = await buildServer();
+    const { user, headers } = await authHeaders();
+    const product = await makeProduct(user.id, 'active');
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix, 'own-pending');
+    const photo = await makePrivatePhoto(product.id, user.id, prefix, 'pending');
+
+    const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}`, headers });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().photos.map((p: { id: string }) => p.id)).toEqual([photo.id]);
     await app.close();
   });
 });

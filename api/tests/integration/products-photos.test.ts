@@ -168,6 +168,30 @@ describe('removeProductPhoto', () => {
       removeProductPhoto({ id: other.id, role: 'user' }, { productId: product.id, photoId: photo.id }),
     ).rejects.toMatchObject({ status: 404 });
   });
+
+  it('rejects removal with a typed 409 (not a raw FK violation) when a ProductEditPhoto still retains the photo (reviewer-p3 M9)', async () => {
+    const owner = await makeUser({ emailVerified: true });
+    const admin = await makeUser({ emailVerified: true, role: 'admin' });
+    // Only an admin can touch an active product's photos directly; retained
+    // entries only exist against an active product's live photos.
+    const product = await makeProduct({ createdByUserId: owner.id, status: 'active' });
+    await addPhoto({ id: admin.id, role: 'admin' }, product.id);
+    const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } });
+
+    const edit = await getPrisma().productEdit.create({
+      data: { productId: product.id, submittedBy: owner.id, proposed: {}, isLegacy: false },
+    });
+    await getPrisma().productEditPhoto.create({
+      data: { productEditId: edit.id, position: 0, sourceProductPhotoId: photo.id },
+    });
+
+    await expect(
+      removeProductPhoto({ id: admin.id, role: 'admin' }, { productId: product.id, photoId: photo.id }),
+    ).rejects.toMatchObject({ status: 409, code: 'conflict' });
+
+    // Never partially applied: the photo row and its bytes both survive.
+    await expect(getPrisma().productPhoto.findUniqueOrThrow({ where: { id: photo.id } })).resolves.toBeDefined();
+  });
 });
 
 describe('reorderProductPhotos', () => {

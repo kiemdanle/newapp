@@ -31,7 +31,9 @@ export async function lookupRoute(app: FastifyInstance) {
       });
     }
     return reply.send(
-      productLookupResponseSchema.parse({ product: toApiProduct(product) }),
+      productLookupResponseSchema.parse({
+        product: toApiProduct(product, { id: req.user!.id, role: req.user!.role }),
+      }),
     );
   });
 }

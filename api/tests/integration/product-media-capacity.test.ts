@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetConfigForTests } from '../../src/config.js';
 import { getRedis } from '../../src/redis.js';
 import {
+  assertMediaCapacityReservationLive,
   currentReservedMediaBytes,
   heartbeatMediaCapacityReservation,
   reconcileMediaCapacityReservation,
@@ -60,17 +61,17 @@ describe('reserveMediaCapacity', () => {
 });
 
 describe('heartbeatMediaCapacityReservation / reconcileMediaCapacityReservation', () => {
-  it('renews TTL without changing the reserved amount', async () => {
+  it('renews TTL without changing the reserved amount, returning true (still live)', async () => {
     const r = await reserveMediaCapacity({ bytes: 200, ttlSeconds: 5 });
-    await heartbeatMediaCapacityReservation(r.id, 5);
+    await expect(heartbeatMediaCapacityReservation(r.id, 5)).resolves.toBe(true);
     expect(await getRedis().ttl(`media:capacity:res:${r.id}`)).toBeGreaterThan(0);
     expect(await currentReservedMediaBytes()).toBe(200);
   });
 
-  it('is a harmless no-op for an already-released reservation', async () => {
+  it('returns false (not an error) for an already-released reservation', async () => {
     const r = await reserveMediaCapacity({ bytes: 100 });
     await releaseMediaCapacityReservation(r.id);
-    await expect(heartbeatMediaCapacityReservation(r.id)).resolves.toBeUndefined();
+    await expect(heartbeatMediaCapacityReservation(r.id)).resolves.toBe(false);
   });
 
   it('reconciles the reserved amount down to the real measured size, freeing budget', async () => {
@@ -79,6 +80,22 @@ describe('heartbeatMediaCapacityReservation / reconcileMediaCapacityReservation'
     expect(await currentReservedMediaBytes()).toBe(300);
     // Freed budget is now available to a new reservation.
     await expect(reserveMediaCapacity({ bytes: 600 })).resolves.toMatchObject({ bytes: 600 });
+  });
+});
+
+describe('assertMediaCapacityReservationLive', () => {
+  it('resolves silently when the reservation is live', async () => {
+    const r = await reserveMediaCapacity({ bytes: 100 });
+    await expect(assertMediaCapacityReservationLive(r.id)).resolves.toBeUndefined();
+  });
+
+  it('throws a typed 507 when the reservation is not live — the gate every final-byte-writing operation must pass (reviewer-p3 I2)', async () => {
+    const r = await reserveMediaCapacity({ bytes: 100 });
+    await releaseMediaCapacityReservation(r.id);
+    await expect(assertMediaCapacityReservationLive(r.id)).rejects.toMatchObject({
+      status: 507,
+      code: 'capacity_exceeded',
+    });
   });
 });
 

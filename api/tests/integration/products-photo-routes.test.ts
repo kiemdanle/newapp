@@ -166,6 +166,38 @@ describe('POST /v1/products/:productId/photos', () => {
     expect(res.statusCode).toBe(400);
     await app.close();
   });
+
+  it('reserves capacity before streaming a single byte to disk — an exhausted budget leaves no quarantine residue (reviewer-p3 I3)', async () => {
+    process.env.MEDIA_CAPACITY_USABLE_BYTES = '1000';
+    process.env.MEDIA_CAPACITY_RESERVE_BYTES = '0';
+    resetConfigForTests();
+    const { reserveMediaCapacity } = await import('../../src/services/products/product-media-capacity.js');
+    // Fills the entire budget before the request even starts, so the route's own
+    // reservation call must fail immediately — proving it happens before any
+    // `writeQuarantineFile` call, not after (the bug: N concurrent uploaders could
+    // each put a full MEDIA_MAX_UPLOAD_BYTES on disk while the budget read zero).
+    await reserveMediaCapacity({ bytes: 1000 });
+
+    const app = await buildServer();
+    const { user, headers } = await authHeaders();
+    const product = await makeDraftProduct(user.id);
+    const body = multipartBody([{ name: 'file', filename: 'a.jpg', contentType: 'image/jpeg', content: await jpegBytes() }]);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/${product.id}/photos`,
+      headers: { ...headers, 'content-type': `multipart/form-data; boundary=${BOUNDARY}` },
+      payload: body,
+    });
+    expect(res.statusCode).toBe(507);
+
+    const { readdir } = await import('node:fs/promises');
+    const { mediaKeyToPath } = await import('../../src/services/products/product-media-storage.js');
+    const quarantineDir = mediaKeyToPath(root, 'quarantine');
+    const entries = await readdir(quarantineDir).catch(() => []);
+    expect(entries).toHaveLength(0);
+    await app.close();
+  });
 });
 
 describe('DELETE /v1/products/:productId/photos/:photoId', () => {
