@@ -10,6 +10,7 @@ import { getConfig } from '../../config.js';
 import { logger } from '../../logger.js';
 import { enqueueMediaCleanup } from './product-media-outbox.js';
 import { mediaKeyToPath, quarantineDirKey, removeKeyPrefix } from './product-media-storage.js';
+import { isMediaFreezeActive } from './product-media-freeze.js';
 
 const STALE_DRAFT_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const STALE_QUARANTINE_AGE_MS = 24 * 60 * 60 * 1000;
@@ -65,6 +66,17 @@ export async function sweepStaleProductDrafts(
    * production; defaults to a no-op. */
   onBeforeLockedRecheck: (productId: string) => Promise<void> = async () => {},
 ): Promise<StaleDraftSweepResult> {
+  // Skips the whole pass while a backup freeze is active — this sweep
+  // deletes product/photo rows a concurrent pg_dump (T1) or manifest
+  // generate (T2) may still reference, which is exactly the inconsistency
+  // the freeze boundary exists to prevent (reviewer-p7 II1: a stale-draft
+  // sweep firing between the dump and the manifest could delete rows the
+  // dump still references, so the manifest omits keys the archived DB dump
+  // still points at).
+  if (await isMediaFreezeActive()) {
+    logger.info('stale-draft sweep skipped — a backup freeze is active');
+    return { scanned: 0, deleted: 0, skippedReferenced: 0 };
+  }
   const prisma = getPrisma();
   const cutoff = new Date(Date.now() - STALE_DRAFT_AGE_MS);
 
@@ -169,6 +181,15 @@ export interface StaleQuarantineSweepResult {
  * against the phase's own requirement).
  */
 export async function sweepStaleQuarantine(limit = 1000, dryRun = false): Promise<StaleQuarantineSweepResult> {
+  // Quarantine itself is never captured by a backup (backup.sh excludes it
+  // deliberately — it holds no referenced media by definition), but the
+  // phase names this sweep alongside the others as a path the freeze
+  // boundary must cover (reviewer-p7 II1), so it's skipped for the same
+  // uniform reason rather than argued into a special case.
+  if (await isMediaFreezeActive()) {
+    logger.info('stale-quarantine sweep skipped — a backup freeze is active');
+    return { scanned: 0, deleted: 0 };
+  }
   const root = getConfig().media.root;
   const quarantineRoot = mediaKeyToPath(root, 'quarantine');
   let entries: string[];

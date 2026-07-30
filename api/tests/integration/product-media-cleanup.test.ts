@@ -237,6 +237,16 @@ describe('sweepStaleProductDrafts', () => {
     expect(second.deleted).toBe(0);
     expect(second.scanned).toBe(0);
   });
+
+  it('skips the whole pass while a backup freeze is active, deleting nothing (reviewer-p7 II1)', async () => {
+    const user = await makeUser({ emailVerified: true });
+    const draft = await makeDraft(user.id, THIRTY_ONE_DAYS_AGO);
+    await getRedis().set('media:freeze:active', 'sim-token', 'EX', 60);
+    const result = await sweepStaleProductDrafts(10);
+    expect(result).toEqual({ scanned: 0, deleted: 0, skippedReferenced: 0 });
+    expect(await getPrisma().product.findUnique({ where: { id: draft.id } })).not.toBeNull();
+    await getRedis().del('media:freeze:active');
+  });
 });
 
 async function touch(path: string, mtime: Date): Promise<void> {
@@ -293,6 +303,18 @@ describe('sweepStaleQuarantine', () => {
     expect(result.scanned).toBe(2);
     expect(result.deleted).toBe(1);
     spy.mockRestore();
+  });
+
+  it('skips the whole pass while a backup freeze is active, deleting nothing (reviewer-p7 II1)', async () => {
+    const requestId = randomUUID();
+    const dir = mediaKeyToPath(root, quarantineDirKey(requestId));
+    await mkdir(dir, { recursive: true });
+    await touch(dir, new Date(Date.now() - 25 * 60 * 60 * 1000));
+    await getRedis().set('media:freeze:active', 'sim-token', 'EX', 60);
+    const result = await sweepStaleQuarantine();
+    expect(result).toEqual({ scanned: 0, deleted: 0 });
+    await expect(stat(dir)).resolves.toBeTruthy();
+    await getRedis().del('media:freeze:active');
   });
 });
 

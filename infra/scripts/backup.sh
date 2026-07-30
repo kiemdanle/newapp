@@ -73,6 +73,10 @@ FREEZE_CLI="$PANTRY_API_DIR/dist/scripts/media-freeze-cli.js"
 MANIFEST_CLI="$PANTRY_API_DIR/dist/scripts/media-manifest-cli.js"
 SIGNAL_CLI="$PANTRY_API_DIR/dist/scripts/backup-signal-cli.js"
 FREEZE_DRAIN_TIMEOUT_MS="${BACKUP_FREEZE_DRAIN_TIMEOUT_MS:-60000}"
+# Comfortably under product-media-freeze.ts's FREEZE_FLAG_TTL_SECONDS
+# (900s) — a capture running well past this still gets renewed several
+# times before the flag could ever expire out from under it (reviewer-p7 II3).
+FREEZE_RENEW_INTERVAL_SECONDS="${BACKUP_FREEZE_RENEW_INTERVAL_SECONDS:-60}"
 
 # Defer-backups guard: if neither driver is configured, exit cleanly so the
 # nightly cron does not fail. Wire one of the two before production traffic:
@@ -92,14 +96,19 @@ mkdir -p "$LOCAL_DIR/daily" "$LOCAL_DIR/weekly" "$LOCAL_DIR/monthly" "$LOCAL_DIR
 
 GEN_DIR=$(mktemp -d "$LOCAL_DIR/work/gen-${TODAY}-XXXXXX")
 VERIFY_DIR=""
-FREEZE_ACQUIRED=0
+FREEZE_TOKEN=""
+RENEW_PID=""
 SUCCEEDED=0
 
 on_exit() {
     local code=$?
-    if [[ "$FREEZE_ACQUIRED" == "1" ]]; then
+    if [[ -n "$RENEW_PID" ]]; then
+        kill "$RENEW_PID" >/dev/null 2>&1 || true
+        wait "$RENEW_PID" 2>/dev/null || true
+    fi
+    if [[ -n "$FREEZE_TOKEN" ]]; then
         log "releasing media freeze"
-        node "$FREEZE_CLI" release >>"$LOG_FILE" 2>&1 || log "WARNING: failed to release media freeze — it will self-expire"
+        node "$FREEZE_CLI" release "$FREEZE_TOKEN" >>"$LOG_FILE" 2>&1 || log "WARNING: failed to release media freeze — it will self-expire"
     fi
     rm -rf "$GEN_DIR" "$VERIFY_DIR"
     if [[ "$SUCCEEDED" == "1" ]]; then
@@ -115,16 +124,51 @@ trap on_exit EXIT
 # 1. Freeze: block new media mutations, drain in-flight ones. A backup that
 #    can't drain within the timeout aborts rather than capturing a possibly
 #    -inconsistent snapshot — the freeze self-expires on its own TTL either
-#    way, so this never wedges the live system.
+#    way, so this never wedges the live system. Acquire failure is checked
+#    explicitly (not relied on via errexit) so an already-active freeze (a
+#    concurrent backup/restore) gets a specific log line rather than a bare
+#    abort (reviewer-p7 II3).
 # ---------------------------------------------------------------------------
 log "acquiring media freeze (drain timeout ${FREEZE_DRAIN_TIMEOUT_MS}ms)"
-FREEZE_RESULT=$(node "$FREEZE_CLI" acquire "$FREEZE_DRAIN_TIMEOUT_MS")
-FREEZE_ACQUIRED=1
+set +e
+FREEZE_RESULT=$(node "$FREEZE_CLI" acquire "$FREEZE_DRAIN_TIMEOUT_MS" 2>&1)
+FREEZE_ACQUIRE_EXIT=$?
+set -e
 log "freeze result: $FREEZE_RESULT"
-if ! printf '%s' "$FREEZE_RESULT" | grep -q '"drained":true'; then
+
+if [[ "$FREEZE_ACQUIRE_EXIT" == "3" ]]; then
+    log "ERROR: a media freeze is already active (another backup/restore run?) — aborting without capturing anything"
+    exit 1
+fi
+if [[ "$FREEZE_ACQUIRE_EXIT" != "0" && "$FREEZE_ACQUIRE_EXIT" != "1" ]]; then
+    log "ERROR: media freeze acquisition failed unexpectedly (exit $FREEZE_ACQUIRE_EXIT) — aborting without capturing anything"
+    exit 1
+fi
+
+# Exit 0 or 1 both mean the freeze WAS acquired (0 = fully drained, 1 = timed
+# out still draining) — either way this run now holds it and must release it
+# on every exit path, so the token is captured before checking drained state.
+FREEZE_TOKEN=$(printf '%s' "$FREEZE_RESULT" | grep -oE '"token":"[^"]+"' | cut -d'"' -f4)
+if [[ -z "$FREEZE_TOKEN" ]]; then
+    log "ERROR: could not parse a freeze token out of the acquire result — aborting"
+    exit 1
+fi
+
+if [[ "$FREEZE_ACQUIRE_EXIT" != "0" ]] || ! printf '%s' "$FREEZE_RESULT" | grep -q '"drained":true'; then
     log "ERROR: media freeze did not drain within the timeout — aborting backup without capturing anything"
     exit 1
 fi
+
+# Keeps the freeze alive for the duration of the capture below, well under
+# its self-healing TTL — a capture that runs longer than the TTL would
+# otherwise silently lose the freeze mid-tar while believing it still holds
+# it (reviewer-p7 II3). Runs in the background; killed in on_exit.
+(
+    while sleep "$FREEZE_RENEW_INTERVAL_SECONDS"; do
+        node "$FREEZE_CLI" renew "$FREEZE_TOKEN" >>"$LOG_FILE" 2>&1 || true
+    done
+) &
+RENEW_PID=$!
 
 # ---------------------------------------------------------------------------
 # 2. Capture, still under freeze: DB dump, media manifest, media snapshot.
@@ -150,9 +194,14 @@ fi
 # 3. Release freeze — the capture is done; publishing to remote storage can
 #    happen without holding the live system's media mutations hostage.
 # ---------------------------------------------------------------------------
+if [[ -n "$RENEW_PID" ]]; then
+    kill "$RENEW_PID" >/dev/null 2>&1 || true
+    wait "$RENEW_PID" 2>/dev/null || true
+    RENEW_PID=""
+fi
 log "releasing media freeze"
-node "$FREEZE_CLI" release >>"$LOG_FILE" 2>&1
-FREEZE_ACQUIRED=0
+node "$FREEZE_CLI" release "$FREEZE_TOKEN" >>"$LOG_FILE" 2>&1
+FREEZE_TOKEN=""
 
 # ---------------------------------------------------------------------------
 # 4. Verify every manifest-listed key against the just-captured tar contents

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resetConfigForTests } from '../../src/config.js';
 import { getPrisma } from '../../src/db.js';
+import { getRedis } from '../../src/redis.js';
 import {
   completeMediaOperation,
   enqueueMediaCleanup,
@@ -252,6 +253,21 @@ describe('processMediaOutboxOnce — pending cleanup', () => {
     const result = await processMediaOutboxOnce(10);
     expect(result.completed).toBe(1);
     expect(await pathExists(prefix)).toBe(false);
+  });
+
+  it('skips the whole pass while a backup freeze is active, deleting nothing (reviewer-p7 II1)', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser();
+    const product = await makeProduct(user.id);
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix);
+    await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [prefix] }));
+
+    await getRedis().set('media:freeze:active', 'sim-token', 'EX', 60);
+    const result = await processMediaOutboxOnce(10);
+    expect(result).toEqual({ claimed: 0, completed: 0, failed: 0 });
+    expect(await pathExists(prefix)).toBe(true);
+    await getRedis().del('media:freeze:active');
   });
 
   it('recovers a processing row whose worker lease expired (worker crash mid-processing)', async () => {

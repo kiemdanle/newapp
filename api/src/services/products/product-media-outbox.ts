@@ -4,6 +4,7 @@ import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { logger } from '../../logger.js';
 import { removeKeyPrefix } from './product-media-storage.js';
+import { isMediaFreezeActive } from './product-media-freeze.js';
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -229,8 +230,21 @@ export interface OutboxSweepResult {
  * short claim transaction means two concurrent callers can never both claim the same
  * row, so duplicate delivery (e.g. two wake-up signals for the same row) never
  * results in double processing.
+ *
+ * Skips the whole pass (returning all-zero counters, not an error) while a
+ * backup freeze is active — this pass deletes now-unreferenced files, and a
+ * `pg_dump` capture running concurrently could still be reading a row that
+ * references one, or the manifest generator could still be walking the
+ * filesystem tree this pass is mutating. Without this, the backup boundary
+ * the phase requires ("no DB-referenced key changes between completed drain
+ * and manifest capture") was not actually enforced for this pass
+ * (reviewer-p7 II1).
  */
 export async function processMediaOutboxOnce(limit = 10): Promise<OutboxSweepResult> {
+  if (await isMediaFreezeActive()) {
+    logger.info('media outbox sweep skipped — a backup freeze is active');
+    return { claimed: 0, completed: 0, failed: 0 };
+  }
   const prisma = getPrisma();
   const workerId = randomUUID();
   const rows = await claimBatch(workerId, limit);
