@@ -12,7 +12,7 @@ export function useOptimisticDealVote(dealId: string) {
   const del = useDeleteDealVote();
 
   return {
-    mutate: ({ next, prev }: { next: VoteValue; prev: VoteValue | null }) => {
+    mutate: ({ next, prev: _prev }: { next: VoteValue; prev: VoteValue | null }) => {
       if (next === 0) {
         del.mutate(dealId);
       } else {

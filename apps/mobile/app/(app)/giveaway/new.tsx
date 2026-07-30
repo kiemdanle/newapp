@@ -1,6 +1,6 @@
 // apps/mobile/app/(app)/giveaway/new.tsx
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway } from '@/api/giveaways';
 import { useTheme } from '@/theme/useTheme';
@@ -47,6 +47,7 @@ export default function NewGiveawayScreen() {
   return (
     <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }} contentContainerStyle={{ gap: 12 }}>
       <TextInput
+        accessibilityLabel="Title"
         placeholder="Title *"
         placeholderTextColor={theme.colors.textMuted}
         value={title}
@@ -56,6 +57,7 @@ export default function NewGiveawayScreen() {
         style={field}
       />
       <TextInput
+        accessibilityLabel="Description"
         placeholder="Description (optional)"
         placeholderTextColor={theme.colors.textMuted}
         value={description}
@@ -66,6 +68,7 @@ export default function NewGiveawayScreen() {
         style={[field, { minHeight: 104, textAlignVertical: 'top' }]}
       />
       <TextInput
+        accessibilityLabel="Pickup location"
         placeholder="Pickup location *"
         placeholderTextColor={theme.colors.textMuted}
         value={locationText}

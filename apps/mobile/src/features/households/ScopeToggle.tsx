@@ -5,7 +5,7 @@ import { useTheme } from '../../theme/useTheme';
 
 export function ScopeToggle() {
   const theme = useTheme();
-  const { data, isLoading } = useMyHouseholds();
+  const { data } = useMyHouseholds();
   const { scope, householdId, setScope } = usePantryScope();
 
   const households = data?.items ?? [];

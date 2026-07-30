@@ -10,7 +10,7 @@ function pickMostUrgent(groups: GroupedRecords): LocalRecord | null {
   return groups.expired[0] ?? groups.today[0] ?? groups.thisWeek[0] ?? groups.later[0] ?? null;
 }
 
-function urgencyLabel(status: 'green' | 'amber' | 'red', daysLabel: string): string {
+function urgencyLabel(status: 'green' | 'amber' | 'red'): string {
   if (status === 'red') return 'Use now';
   if (status === 'amber') return 'Use soon';
   return 'Plenty of time';
@@ -90,7 +90,7 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
           ]}
         >
           <Text style={[styles.badgeText, { color: statusColor }]}>
-            {urgencyLabel(status, item.expiryDate)}
+            {urgencyLabel(status)}
           </Text>
         </View>
       </View>

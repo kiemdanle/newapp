@@ -61,6 +61,7 @@ export function TransactionRatingForm({ giveawayId, onDone }: Props) {
       </View>
 
       <TextInput
+        accessibilityLabel="Comment"
         placeholder="Comment (optional)"
         placeholderTextColor={theme.colors.textMuted}
         value={comment}

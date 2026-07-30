@@ -45,6 +45,7 @@ export function AddMemberForm({ householdId, onAdded }: Props) {
       <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Add member profile (by user ID)</Text>
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
         <TextInput
+          accessibilityLabel="User ID"
           testID="add-member-user-id"
           style={inputStyle}
           value={userId}

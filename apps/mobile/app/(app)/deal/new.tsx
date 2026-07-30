@@ -26,6 +26,7 @@ export default function NewDealScreen() {
   return (
     <View style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }}>
       <TextInput
+        accessibilityLabel="Search for a product"
         placeholder="Search for a product…"
         placeholderTextColor={theme.colors.textMuted}
         value={q}

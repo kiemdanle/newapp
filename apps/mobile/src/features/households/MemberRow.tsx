@@ -10,7 +10,7 @@ interface Props {
   onRemove: () => void;
 }
 
-export function MemberRow({ member, isCurrentUser, isOwner, canRemove, onRemove }: Props) {
+export function MemberRow({ member, isCurrentUser, isOwner: _isOwner, canRemove, onRemove }: Props) {
   const theme = useTheme();
   const name = member.user?.firstName ?? member.userId.slice(0, 8);
   const roleLabel = member.role === 'owner' ? 'Owner' : 'Member';
