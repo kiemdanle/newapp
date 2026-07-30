@@ -52,7 +52,10 @@ export async function maybeAutoHide(
   if (targetType === 'product') {
     const p = await prisma.product.findUnique({ where: { id: targetId } });
     if (!p || p.status !== 'active') return { hidden: false };
-    await prisma.product.update({ where: { id: targetId }, data: { status: 'pending' } });
+    // `report_hidden` is the distinct catalog-moderation state for a reported
+    // active product; `pending` is reserved for creator-submitted drafts and must
+    // never be written by report auto-hide.
+    await prisma.product.update({ where: { id: targetId }, data: { status: 'report_hidden' } });
     return { hidden: true };
   }
   if (targetType === 'deal') {

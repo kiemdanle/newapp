@@ -4,6 +4,16 @@ import { getPrisma } from '../../db.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 import { maybeActivateReferral } from '../referrals/referral-service.js';
 import { myHouseholdIds } from '../households/permissions.js';
+import { assertProductUse } from '../products/product-visibility.js';
+import { AppError } from '../../errors.js';
+
+/** True product-use rejections (draft/pending/changes_required/report_hidden/
+ * not-found) are a batch-item-level authorization outcome here, not a request-
+ * level failure — like every other per-item authorization check in this sync
+ * loop, a rejected item is dropped silently and the rest of the batch proceeds. */
+function isProductUseRejection(err: unknown): boolean {
+  return err instanceof AppError && (err.status === 403 || err.status === 404);
+}
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -96,71 +106,100 @@ export async function syncRecords(
       // concurrent dissolve / member-remove / other record writes.
       // We wrap the dependent work in a raw transaction for the lock + write.
       // For simplicity, we use the Prisma interactive transaction.
-      await prisma.$transaction(async (tx) => {
-        await lockHouseholdRow(tx as unknown as ReturnType<typeof getPrisma>, recordHouseholdId);
+      try {
+        await prisma.$transaction(async (tx) => {
+          await lockHouseholdRow(tx as unknown as ReturnType<typeof getPrisma>, recordHouseholdId);
 
-        if (existing) {
-          // Server row already exists — server wins; do NOT overwrite with client data.
-          // The server copy will be echoed in the delta (step 3).
-          return;
-        }
+          if (existing) {
+            // Server row already exists — server wins; do NOT overwrite with client data.
+            // The server copy will be echoed in the delta (step 3).
+            return;
+          }
 
-        // Brand-new offline-created household record — insert it.
-        const offsets = u.notificationOffsetsDays ?? userOffsets;
-        const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
-        await tx.record.create({
-          data: {
-            userId,
-            clientId: u.clientId,
-            householdId: recordHouseholdId,
-            productId: u.productId ?? null,
-            customName: u.customName ?? null,
-            expiryDate: new Date(u.expiryDate),
-            purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
-            quantity: u.quantity,
-            unit: u.unit,
-            notes: u.notes ?? null,
-            photoUrl: u.photoUrl ?? null,
-            status: u.status ?? 'active',
-            notifyAt,
-          },
+          // Brand-new offline-created household record — this is always a new
+          // attachment in household scope, never a preserved reference.
+          if (u.productId) {
+            await assertProductUse(userId, u.productId, { purpose: 'household_record' }, tx);
+          }
+
+          const offsets = u.notificationOffsetsDays ?? userOffsets;
+          const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
+          await tx.record.create({
+            data: {
+              userId,
+              clientId: u.clientId,
+              householdId: recordHouseholdId,
+              productId: u.productId ?? null,
+              customName: u.customName ?? null,
+              expiryDate: new Date(u.expiryDate),
+              purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
+              quantity: u.quantity,
+              unit: u.unit,
+              notes: u.notes ?? null,
+              photoUrl: u.photoUrl ?? null,
+              status: u.status ?? 'active',
+              notifyAt,
+            },
+          });
         });
-      });
+      } catch (err) {
+        if (!isProductUseRejection(err)) throw err;
+        // Drop silently, same as every other per-item authorization failure above.
+      }
     } else {
       // --- Personal path: last-write-wins (M1 behavior verbatim) ---
       if (existing && existing.updatedAt >= clientUpdatedAt) continue; // server is newer
 
       const offsets = u.notificationOffsetsDays ?? userOffsets;
       const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
-      await prisma.record.upsert({
-        where: { clientId: u.clientId },
-        create: {
-          userId,
-          clientId: u.clientId,
-          productId: u.productId ?? null,
-          customName: u.customName ?? null,
-          expiryDate: new Date(u.expiryDate),
-          purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
-          quantity: u.quantity,
-          unit: u.unit,
-          notes: u.notes ?? null,
-          photoUrl: u.photoUrl ?? null,
-          status: u.status ?? 'active',
-          notifyAt,
-        },
-        update: {
-          productId: u.productId ?? null,
-          customName: u.customName ?? null,
-          expiryDate: new Date(u.expiryDate),
-          purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
-          quantity: u.quantity,
-          unit: u.unit,
-          notes: u.notes ?? null,
-          photoUrl: u.photoUrl ?? null,
-          status: u.status ?? existing?.status ?? 'active',
-          notifyAt,
-        },
-      });
+      // A stored productId identical to what's already on the row is a preserved
+      // reference; anything else (brand-new row, or the client changing which
+      // product it points at) is a new attachment and must be checked as such.
+      const existingRecordReference = existing?.productId === (u.productId ?? null) && existing?.productId != null;
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          if (u.productId) {
+            await assertProductUse(
+              userId,
+              u.productId,
+              { purpose: 'personal_record', existingRecordReference },
+              tx,
+            );
+          }
+          return tx.record.upsert({
+            where: { clientId: u.clientId },
+            create: {
+              userId,
+              clientId: u.clientId,
+              productId: u.productId ?? null,
+              customName: u.customName ?? null,
+              expiryDate: new Date(u.expiryDate),
+              purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
+              quantity: u.quantity,
+              unit: u.unit,
+              notes: u.notes ?? null,
+              photoUrl: u.photoUrl ?? null,
+              status: u.status ?? 'active',
+              notifyAt,
+            },
+            update: {
+              productId: u.productId ?? null,
+              customName: u.customName ?? null,
+              expiryDate: new Date(u.expiryDate),
+              purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
+              quantity: u.quantity,
+              unit: u.unit,
+              notes: u.notes ?? null,
+              photoUrl: u.photoUrl ?? null,
+              status: u.status ?? existing?.status ?? 'active',
+              notifyAt,
+            },
+          });
+        });
+      } catch (err) {
+        if (!isProductUseRejection(err)) throw err;
+      }
     }
   }
 

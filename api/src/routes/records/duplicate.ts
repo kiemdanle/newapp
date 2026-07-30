@@ -7,6 +7,7 @@ import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
 import { randomUUID } from 'node:crypto';
+import { assertProductUse } from '../../services/products/product-visibility.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -25,6 +26,16 @@ export async function duplicateRecordRoute(app: FastifyInstance) {
     const source = await prisma.record.findFirst({ where: { id, userId } });
     if (!source) {
       throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
+    }
+
+    // Duplicating an eligible creator-owned personal record preserves personal
+    // scope — this is always a personal_record use, never household, and it
+    // preserves the source's own already-established reference.
+    if (source.productId) {
+      await assertProductUse(userId, source.productId, {
+        purpose: 'personal_record',
+        existingRecordReference: true,
+      });
     }
 
     // Duplicate counts against the active-record cap (spec §2.17).

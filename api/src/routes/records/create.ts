@@ -10,6 +10,7 @@ import { notificationScheduleQueue } from '../../queues/index.js';
 import { maybeActivateReferral } from '../../services/referrals/referral-service.js';
 import { assertMember } from '../../services/households/permissions.js';
 import { fanOutHouseholdRecordReminders } from '../../services/households/household-reminders.js';
+import { assertProductUse } from '../../services/products/product-visibility.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
   app.post(
@@ -23,6 +24,12 @@ export async function createRecordRoute(app: FastifyInstance) {
       // If householdId is set, verify membership BEFORE inserting.
       if (input.householdId) {
         await assertMember(input.householdId, userId);
+      }
+
+      if (input.productId) {
+        await assertProductUse(userId, input.productId, {
+          purpose: input.householdId ? 'household_record' : 'personal_record',
+        });
       }
 
       const user = await prisma.user.findUnique({

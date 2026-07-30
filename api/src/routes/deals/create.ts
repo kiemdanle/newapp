@@ -3,6 +3,7 @@ import { ERROR_CODES, dealCreateSchema, DEAL_PHOTO_CDN_HOST } from '@expyrico/sh
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiDeal } from '../../services/deals/repository.js';
+import { assertProductUse } from '../../services/products/product-visibility.js';
 
 const DEFAULT_CURRENCY = 'USD';
 
@@ -30,10 +31,7 @@ export async function createDealRoute(app: FastifyInstance) {
       const prisma = getPrisma();
       const userId = req.user!.id;
 
-      const product = await prisma.product.findUnique({ where: { id: input.productId } });
-      if (!product) {
-        throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
-      }
+      await assertProductUse(userId, input.productId, { purpose: 'deal' });
 
       const currency = input.currency ?? DEFAULT_CURRENCY;
       const poster = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });

@@ -1,39 +1,18 @@
 import type { FastifyInstance } from 'fastify';
-import prismaPkg from '@prisma/client';
-const { Prisma } = prismaPkg;
-import { productCreateRequestSchema, ERROR_CODES } from '@expyrico/shared';
-import { getPrisma } from '../../db.js';
+import { productCreateRequestSchema } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
-import { toApiProduct } from '../../services/products/serializer.js';
 
+// Legacy direct product creation is permanently retired: it published active
+// products straight to the catalog, bypassing conclusive-lookup and moderation
+// entirely. Blocked in every rollout mode — parse the body first so malformed
+// requests still get a validation error, not a false sense that this ever works.
 export async function createProductRoute(app: FastifyInstance) {
-  app.post('/', { onRequest: app.requireAuth }, async (req, reply) => {
-    const input = productCreateRequestSchema.parse(req.body);
-    try {
-      const product = await getPrisma().product.create({
-        data: {
-          barcode: input.barcode ?? null,
-          qrPayload: input.qrPayload ?? null,
-          name: input.name,
-          brand: input.brand ?? null,
-          category: input.category ?? null,
-          imageUrl: input.imageUrl ?? null,
-          defaultShelfLifeDays: input.defaultShelfLifeDays ?? null,
-          source: 'user',
-          sourceId: null,
-          createdByUserId: req.user!.id,
-        },
-      });
-      return reply.status(201).send(toApiProduct(product));
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new AppError({
-          status: 409,
-          code: ERROR_CODES.CONFLICT,
-          title: 'Product already exists for that barcode or QR payload',
-        });
-      }
-      throw err;
-    }
+  app.post('/', { onRequest: app.requireAuth }, async (req) => {
+    productCreateRequestSchema.parse(req.body);
+    throw new AppError({
+      status: 410,
+      code: 'upgrade_required',
+      title: 'Direct product creation has been retired; use the draft creation flow',
+    });
   });
 }

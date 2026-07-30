@@ -12,14 +12,16 @@ import { enqueueLookupBackfill } from '../../services/products/lookup-backfill.j
 export async function lookupRoute(app: FastifyInstance) {
   app.post('/lookup', { onRequest: app.requireAuth }, async (req, reply) => {
     const input = productLookupRequestSchema.parse(req.body);
-    const product = await lookupProduct({
+    const { product, privateReservation } = await lookupProduct({
       ...(input.barcode !== undefined ? { barcode: input.barcode } : {}),
       ...(input.qr !== undefined ? { qr: input.qr } : {}),
     });
     if (!product) {
-      // Synchronous path missed. For barcode misses, enqueue a slow background
-      // backfill so a future request can hit local cache (spec §4.3).
-      if (input.barcode) {
+      // An exact non-active local reservation (draft/pending/changes_required/
+      // report_hidden/merged_into) short-circuits to the same 404 envelope without
+      // ever having called external providers or enqueued backfill above — the
+      // only remaining side effect to skip is backfill for that case.
+      if (input.barcode && !privateReservation) {
         await enqueueLookupBackfill(input.barcode, req.user!.id);
       }
       throw new AppError({

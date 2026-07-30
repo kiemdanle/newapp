@@ -53,4 +53,32 @@ describe('PATCH /v1/admin/reports/:id/resolve', () => {
     expect((await prisma.user.findUniqueOrThrow({ where: { id: offender.id } })).status).toBe('suspended');
     await app.close();
   });
+
+  it('ban on a product-target report suspends the creator without touching product status', async () => {
+    // Regression for the report-writer switch to `report_hidden`: this route has
+    // no product-status write path at all (only auto-hide does), so resolving a
+    // product report must never leave the product in `pending` or any other
+    // unexpected state, and must never fabricate a creator_pending row.
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const reporter = await makeUserForAdmin();
+    const creator = await makeUserForAdmin();
+    const p = await prisma.product.create({
+      data: { name: 'P', source: 'user', status: 'active', createdByUserId: creator.id },
+    });
+    const report = await prisma.report.create({
+      data: { reporterId: reporter.id, targetType: 'product', targetId: p.id, reason: 'abuse', status: 'open' },
+    });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/reports/${report.id}/resolve`,
+      headers,
+      payload: { action: 'ban' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: creator.id } })).status).toBe('suspended');
+    expect((await prisma.product.findUniqueOrThrow({ where: { id: p.id } })).status).toBe('active');
+    await app.close();
+  });
 });

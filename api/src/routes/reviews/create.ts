@@ -9,6 +9,7 @@ import { toApiReview } from '../../services/reviews/repository.js';
 import { containsProfanity } from '../../services/reviews/profanity.js';
 import { enqueueModerationFlag } from '../../queues/jobs/moderation-flag.js';
 import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
+import { assertProductUse } from '../../services/products/product-visibility.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -22,10 +23,7 @@ export async function createReviewRoute(app: FastifyInstance) {
       const userId = req.user!.id;
       const prisma = getPrisma();
 
-      const product = await prisma.product.findUnique({ where: { id: productId } });
-      if (!product) {
-        throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
-      }
+      await assertProductUse(userId, productId, { purpose: 'review' });
 
       const hasProfanity = containsProfanity(input.body ?? null).matched;
       const status = hasProfanity ? ('hidden' as const) : ('visible' as const);

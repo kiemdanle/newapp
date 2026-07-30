@@ -3,6 +3,7 @@ import { giveawayCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiGiveaway } from '../../services/giveaways/repository.js';
+import { assertProductUse } from '../../services/products/product-visibility.js';
 
 export async function createGiveawayRoute(app: FastifyInstance) {
   app.post(
@@ -19,8 +20,7 @@ export async function createGiveawayRoute(app: FastifyInstance) {
         if (record.userId !== userId) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Not your record' });
       }
       if (input.productId) {
-        const product = await prisma.product.findUnique({ where: { id: input.productId } });
-        if (!product) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+        await assertProductUse(userId, input.productId, { purpose: 'giveaway' });
       }
 
       const giver = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });

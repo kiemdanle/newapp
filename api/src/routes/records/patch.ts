@@ -8,6 +8,8 @@ import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/n
 import { notificationScheduleQueue } from '../../queues/index.js';
 import { assertCanWriteRecord, assertCanAssignToHousehold } from '../../services/households/permissions.js';
 import { fanOutHouseholdRecordReminders, reschedulePersonalRecordReminders } from '../../services/households/household-reminders.js';
+import { assertProductUse } from '../../services/products/product-visibility.js';
+import type { ProductUsePurpose } from '../../services/products/product-visibility.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -63,23 +65,41 @@ export async function patchRecordRoute(app: FastifyInstance) {
       nextNotifyAt = (existing.notifyAt as string[]) ?? [];
     }
 
-    const updated = await prisma.record.update({
-      where: { id },
-      data: {
-        ...(input.customName !== undefined ? { customName: input.customName } : {}),
-        ...(input.expiryDate !== undefined ? { expiryDate: new Date(input.expiryDate) } : {}),
-        ...(input.purchaseDate !== undefined
-          ? { purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null }
-          : {}),
-        ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
-        ...(input.unit !== undefined ? { unit: input.unit } : {}),
-        ...(input.notes !== undefined ? { notes: input.notes } : {}),
-        ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
-        ...(input.status !== undefined ? { status: input.status } : {}),
-        ...(input.status === 'consumed' ? { consumedAt: new Date() } : {}),
-        ...(reschedule ? { notifyAt: nextNotifyAt } : {}),
-        ...(input.householdId !== undefined ? { householdId: input.householdId } : {}),
-      },
+    // Moving into a (possibly different) household is a new use of the product in
+    // that scope, not a preserved reference — only an unchanged scope (including a
+    // household->personal downgrade) counts as "existing" for a changes_required
+    // product. Scope-transition authorization and the record write share this one
+    // transaction so the product's state/reference can't change between them.
+    const movingIntoHousehold = newHouseholdId !== null && newHouseholdId !== oldHouseholdId;
+    const usePurpose: ProductUsePurpose = newHouseholdId ? 'household_record' : 'personal_record';
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (existing.productId) {
+        await assertProductUse(
+          userId,
+          existing.productId,
+          { purpose: usePurpose, existingRecordReference: !movingIntoHousehold },
+          tx,
+        );
+      }
+      return tx.record.update({
+        where: { id },
+        data: {
+          ...(input.customName !== undefined ? { customName: input.customName } : {}),
+          ...(input.expiryDate !== undefined ? { expiryDate: new Date(input.expiryDate) } : {}),
+          ...(input.purchaseDate !== undefined
+            ? { purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null }
+            : {}),
+          ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
+          ...(input.unit !== undefined ? { unit: input.unit } : {}),
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+          ...(input.status !== undefined ? { status: input.status } : {}),
+          ...(input.status === 'consumed' ? { consumedAt: new Date() } : {}),
+          ...(reschedule ? { notifyAt: nextNotifyAt } : {}),
+          ...(input.householdId !== undefined ? { householdId: input.householdId } : {}),
+        },
+      });
     });
 
     // Reschedule reminders when scope, expiry, or offsets change.
