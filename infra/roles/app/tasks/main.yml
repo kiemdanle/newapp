@@ -7,39 +7,52 @@
 # MEDIA_ROOT doesn't already exist and isn't writable, so an API version that
 # validates media config must never start against a root Ansible hasn't
 # created yet (see infra/README.md's deployment-ordering note).
-- name: Ensure media root and its private/public/quarantine subtrees exist
+#
+# Least-privilege split (reviewer-p7 II5): private/ and quarantine/ are
+# 0700 — owner (app_user) only, no group or "other" bits at all — so nginx
+# (running as www-data) cannot read them regardless of what group it is or
+# is ever added to. A previous version put every subtree at group-readable
+# 0750 and added www-data to app_group "for public read access", which
+# actually granted www-data read access to private/ and quarantine/ too —
+# the filesystem backstop behind the CDN vhost's single public-only
+# `location` block was gone even though nothing was leaking through nginx
+# config alone. public/ instead gets its OWN group (www-data) with the
+# setgid bit, so www-data can read it directly without ever joining
+# app_group, and every file/directory the API creates underneath it at
+# runtime automatically inherits group=www-data (POSIX setgid propagation)
+# without Ansible needing to know about each dynamically-created path.
+# media_root itself only needs `--x` (traversal, not listing) for "other" so
+# www-data can reach into public/ without any group membership there either.
+- name: Ensure the media root is traversable (not listable) by any process
+  ansible.builtin.file:
+    path: "{{ media_root }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0751"
+
+- name: Ensure private/ and quarantine/ are owner-only, unreadable by nginx
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
-    mode: "0750"
+    mode: "0700"
   loop:
-    - "{{ media_root }}"
     - "{{ media_root }}/private"
     - "{{ media_root }}/private/products"
-    - "{{ media_root }}/public"
-    - "{{ media_root }}/public/products"
     - "{{ media_root }}/quarantine"
 
-# The public tree only needs to be *readable* by nginx (the CDN vhost, a
-# separate `www-data` process) — never writable, and never the private or
-# quarantine trees. Group-readable + nginx added to the app group is enough
-# without loosening the private tree's permissions.
-- name: Ensure the public media tree is readable by the nginx worker
+- name: Ensure public/ is readable by nginx via its own group, with setgid so runtime-created content inherits it
   ansible.builtin.file:
-    path: "{{ media_root }}/public"
+    path: "{{ item }}"
     state: directory
     owner: "{{ app_user }}"
-    group: "{{ app_group }}"
-    mode: "0750"
-    recurse: false
-
-- name: Add www-data to the app group so nginx can read public media
-  ansible.builtin.user:
-    name: www-data
-    groups: "{{ app_group }}"
-    append: true
+    group: www-data
+    mode: "02750"
+  loop:
+    - "{{ media_root }}/public"
+    - "{{ media_root }}/public/products"
 
 - name: Install pantry-api systemd unit
   ansible.builtin.template:
