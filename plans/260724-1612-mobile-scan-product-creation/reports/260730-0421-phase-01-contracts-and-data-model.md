@@ -265,3 +265,38 @@ shared `pantry_test` Postgres instance concurrently, not a regression in this fi
 Status: DONE
 Summary: All CRITICAL/IMPORTANT findings fixed plus the decided reorder-constraint MODERATE item; self-reported and remediated one migrate-deploy incident with verified zero data impact; all touched-file tests green, typecheck clean across shared/api/admin/mobile.
 Concerns/Blockers: none outstanding for this task. Compatibility-reader gap (item 7 of reviewer's IMPORTANT/MODERATE split) remains Phase 2's to close per team-lead. `is_legacy` DB default stays `true` by team-lead decision — Phase 4 should revisit once every writer is confirmed explicit.
+
+---
+
+## Addendum — structural fix for the migrate-deploy incident (260730, same task)
+
+The procedural-comment-only gate around migration B was proven insufficient by the
+incident above: it got applied by accident within minutes of the warning being
+written, during an unrelated pending-state check. Team-lead directed closing the hole
+structurally rather than relying on operator discipline alone.
+
+- Moved the migration from `api/prisma/migrations/20260730040000_.../` to
+  `api/prisma/deferred-migrations/20260730040000_.../` via `git mv`. Prisma only scans
+  `api/prisma/migrations/` for `migrate deploy`/`migrate dev`, so it is now physically
+  unable to apply this file early — confirmed empirically: `prisma migrate status`
+  against both `pantry` and `pantry_test` now reports "22 migrations found" / "Database
+  schema is up to date!" (previously listed migration B as pending, and it's how the
+  incident happened in the first place).
+- Added `README.md` alongside the migration: full precondition list, why the file
+  lives outside the auto-apply path, and Phase 8's exact execution procedure (move
+  back into `migrations/`, review, apply via manual `psql` + `prisma migrate resolve
+  --applied` — explicitly not `migrate deploy`, since that would also apply whatever
+  else has landed in `migrations/` by then in an unreviewed order).
+- Trimmed the migration's own header comment to point at the README instead of
+  duplicating the procedure in two places.
+- `api/tests/integration/products-schema.test.ts`: added `DEFERRED_MIGRATIONS_DIR` +
+  `readDeferredMigrationSql`, repointed all 8 migration-B test call sites at it. Still
+  exercised only inside rolled-back transactions — nothing about test behavior changed,
+  only where the SQL is read from.
+- Re-verified: 29/29 `products-schema.test.ts` tests still pass; `prisma migrate
+  status` on both DBs confirms migration B is invisible to Prisma tooling; `prisma
+  validate` still passes; api typecheck clean.
+
+New evidence (the incident itself) justified this deviation from the original plan
+(which only specified "new unapplied file" without specifying *where*); documenting
+per team-lead's instruction.

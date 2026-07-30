@@ -10,6 +10,10 @@ import { makeUser, makeProduct } from '../helpers/factories.js';
 const { PrismaClient } = prismaPkg;
 
 const MIGRATIONS_DIR = join(process.cwd(), 'prisma', 'migrations');
+// Migration B lives outside the auto-apply `migrations/` directory on purpose — see
+// its README — so `prisma migrate deploy/dev` cannot apply it early. Tests read it
+// from here and only ever exercise it inside a rolled-back transaction.
+const DEFERRED_MIGRATIONS_DIR = join(process.cwd(), 'prisma', 'deferred-migrations');
 const MIGRATION_A1 = '20260726160000_expand_product_lifecycle_enums';
 const MIGRATION_A2 = '20260726160100_expand_product_drafts_photos_and_moderation';
 const MIGRATION_B = '20260730040000_classify_report_hidden_products';
@@ -17,6 +21,10 @@ const MIGRATION_DEFERRABLE = '20260730044500_make_photo_position_deferrable';
 
 function readMigrationSql(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name, 'migration.sql'), 'utf8');
+}
+
+function readDeferredMigrationSql(name: string): string {
+  return readFileSync(join(DEFERRED_MIGRATIONS_DIR, name, 'migration.sql'), 'utf8');
 }
 
 // `$executeRawUnsafe` sends one prepared statement at a time, so a migration file
@@ -484,7 +492,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
       where: { id: withCreator.id },
       data: { status: 'pending', createdByUserId: creator.id },
     });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
 
     const rollbackSentinel = new Error('intentional rollback for a read-only migration-B rehearsal');
     let statusesInsideTransaction: string[] = [];
@@ -517,7 +525,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
       where: { id: product.id },
       data: { status: 'pending', submittedAt: new Date() },
     });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -530,7 +538,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
     await prisma.setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'internal' } } });
     const product = await makeProduct();
     await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -546,7 +554,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
       where: { id: product.id },
       data: { status: 'pending', moderatedAt: new Date(), moderatedByUserId: admin.id },
     });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -558,7 +566,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
     const prisma = getPrisma();
     const product = await makeProduct();
     await prisma.product.update({ where: { id: product.id }, data: { status: 'pending', version: 2 } });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -572,7 +580,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
     const product = await makeProduct();
     await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
     await createValidPhoto(product.id, user.id, { position: 0 });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -588,7 +596,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
     await prisma.productEdit.create({
       data: { productId: product.id, submittedBy: user.id, proposed: {}, isLegacy: false },
     });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     await expect(
       prisma.$transaction(async (tx) => {
         await runMigrationSql(tx, migrationBSql);
@@ -604,7 +612,7 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
     await prisma.productEdit.create({
       data: { productId: product.id, submittedBy: user.id, proposed: {}, isLegacy: true, status: 'approved' },
     });
-    const migrationBSql = readMigrationSql(MIGRATION_B);
+    const migrationBSql = readDeferredMigrationSql(MIGRATION_B);
     let statusInsideTransaction: string | undefined;
     const rollbackSentinel = new Error('intentional rollback for a read-only migration-B rehearsal');
     await expect(
