@@ -250,6 +250,9 @@ importers:
       '@expyrico/theme':
         specifier: file:./local-packages/@expyrico/theme
         version: file:apps/mobile/local-packages/@expyrico/theme
+      '@google-cloud/recaptcha-enterprise-react-native':
+        specifier: 18.9.2
+        version: 18.9.2(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       '@invertase/react-native-apple-authentication':
         specifier: 2.5.1
         version: 2.5.1
@@ -304,6 +307,9 @@ importers:
       react-native-get-random-values:
         specifier: ^2.0.0
         version: 2.0.0(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))
+      react-native-image-crop-picker:
+        specifier: 0.51.1
+        version: 0.51.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)
       react-native-keychain:
         specifier: 9.2.3
         version: 9.2.3
@@ -1938,6 +1944,12 @@ packages:
   '@google-cloud/promisify@4.0.0':
     resolution: {integrity: sha512-Orxzlfb9c67A15cq2JQEyVc7wEsmFBmHjZWZYQMUyJ1qivXyMwdyNOs9odi79hze+2zqdTtu1E19IM/FtqZ10g==}
     engines: {node: '>=14'}
+
+  '@google-cloud/recaptcha-enterprise-react-native@18.9.2':
+    resolution: {integrity: sha512-xl9hC776stHw0uejLbXtzAx5GbGKKsUaDD3bPnnb2ZnarHqwSC03LjYhve++gK+9ExPXClW5oWWzpVtu2dICrA==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   '@google-cloud/recaptcha-enterprise@6.4.2':
     resolution: {integrity: sha512-RmPUgSPeMLeq7G59ieMwJckdO7bhY2o9eUwxoeJ58fi+OXrwGVtvzvl7me+roiYtmO+SN/VugkxA3TJfsfT2ZA==}
@@ -6947,6 +6959,12 @@ packages:
     peerDependencies:
       react-native: '>=0.81'
 
+  react-native-image-crop-picker@0.51.1:
+    resolution: {integrity: sha512-GIFRyXJgv1dPceKd/hraK9q9V38v45rSg2ONR6RiSePcOJemkHpc/PMU86pq6lWPilDYHSxbZmea2pNMk85ayw==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+
   react-native-keychain@9.2.3:
     resolution: {integrity: sha512-dbn50fk4HLr4JQ71X3j6ZSTbKv+G9s85Zv9cE2na7k7KGn1j+wxjqGTE3wG+WKB3nNEylgu/KXR99mtsC/hpRQ==}
     engines: {node: '>=16'}
@@ -10269,6 +10287,11 @@ snapshots:
 
   '@google-cloud/promisify@4.0.0':
     optional: true
+
+  '@google-cloud/recaptcha-enterprise-react-native@18.9.2(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1)
 
   '@google-cloud/recaptcha-enterprise@6.4.2':
     dependencies:
@@ -16299,6 +16322,11 @@ snapshots:
   react-native-get-random-values@2.0.0(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1)):
     dependencies:
       fast-base64-decode: 1.0.0
+      react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1)
+
+  react-native-image-crop-picker@0.51.1(react-native@0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
       react-native: 0.76.9(@babel/core@7.29.7)(@babel/preset-env@7.29.7(@babel/core@7.29.7))(@react-native-community/cli@15.1.3(typescript@5.9.3))(@types/react@18.3.31)(react@18.3.1)
 
   react-native-keychain@9.2.3: {}
