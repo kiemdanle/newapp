@@ -379,12 +379,12 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     const after = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
     expect(after.imageUrl).toBeTruthy();
     const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } });
-    expect(after.imageUrl).toContain(photo.publicStorageKey!.split('/').pop());
 
     // C1: the staged-photo publish site (`publishProductEditPhoto`) must land
     // under the PRODUCT's own namespace, exactly matching what the prepared
     // intent recorded — never the edit id, and never allowed to drift from the
-    // intent's own key list.
+    // intent's own key list. Asserted before the imageUrl check below so this
+    // regression can't be masked by that weaker, filename-only comparison.
     expect(photo.publicStorageKey).toMatch(new RegExp(`^public/products/${product.id}/`));
     const intent = await getPrisma().mediaOperationOutbox.findFirstOrThrow({
       where: { operation: 'publish_public' },
@@ -392,6 +392,9 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     });
     const intentKeys = (intent.payload as { keys: string[] }).keys;
     expect(intentKeys).toContain(photo.publicStorageKey);
+
+    // I4: the compatibility cover imageUrl must point at this same published key.
+    expect(after.imageUrl).toContain(photo.publicStorageKey!.split('/').pop());
   });
 
   it('I1: approving a revision that drops a live photo succeeds even when a RESOLVED historical edit retained it (only an OPEN edit blocks)', async () => {
