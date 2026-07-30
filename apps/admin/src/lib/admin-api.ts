@@ -16,6 +16,7 @@ import {
   adminProductRowSchema,
   adminProductMergeResponseSchema,
   adminProductEditsListSchema,
+  type AdminProductEditResolveDecision,
   adminReviewsListSchema,
   adminReviewRowSchema,
   adminReportsListSchema,
@@ -83,7 +84,7 @@ export const serverAdminApi = {
       apiServerFetch(`/v1/admin/products/pending${qs(q)}`).then((r) =>
         adminProductEditsListSchema.parse(r),
       ),
-    resolveEdit: (id: string, decision: 'approve' | 'reject', notes?: string) =>
+    resolveEdit: (id: string, decision: AdminProductEditResolveDecision, notes?: string) =>
       apiServerFetch(`/v1/admin/products/pending/${id}`, {
         method: 'PATCH',
         body: { decision, notes },

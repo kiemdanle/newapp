@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import {
   productStatusSchema,
-  productDescriptionSchema,
+  productDescriptionValueSchema,
   productPhotoSchema,
   productSchema,
   productLookupV2ResponseSchema,
@@ -38,7 +38,6 @@ function makeProduct(overrides: Partial<Record<string, unknown>> = {}) {
     reviewCount: 0,
     status: 'active',
     version: 1,
-    moderationFeedback: null,
     photos: [],
     createdAt: now,
     updatedAt: now,
@@ -70,6 +69,17 @@ describe('productSchema', () => {
     expect(productSchema.parse(product)).toEqual(product);
   });
 
+  it('never exposes moderation feedback on the public product DTO', () => {
+    const parsed = productSchema.parse(makeProduct());
+    expect(parsed).not.toHaveProperty('moderationFeedback');
+    // Stripped even if a caller accidentally forwards it — productSchema is not
+    // `.strict()`, so extra keys are silently dropped, never surfaced.
+    const withStrayFeedback = productSchema.parse(
+      makeProduct({ moderationFeedback: 'internal note' } as Record<string, unknown>),
+    );
+    expect(withStrayFeedback).not.toHaveProperty('moderationFeedback');
+  });
+
   it('never requires storage keys or moderation internals on the public photo shape', () => {
     const photo = {
       id: randomUUID(),
@@ -85,42 +95,45 @@ describe('productSchema', () => {
   });
 });
 
-describe('productDescriptionSchema', () => {
+describe('productDescriptionValueSchema', () => {
   it('normalizes blank input to null', () => {
-    expect(productDescriptionSchema.parse('   ')).toBeNull();
-    expect(productDescriptionSchema.parse('')).toBeNull();
-    expect(productDescriptionSchema.parse(null)).toBeNull();
-    expect(productDescriptionSchema.parse(undefined)).toBeNull();
+    expect(productDescriptionValueSchema.parse('   ')).toBeNull();
+    expect(productDescriptionValueSchema.parse('')).toBeNull();
+    expect(productDescriptionValueSchema.parse(null)).toBeNull();
+  });
+
+  it('requires a value: does not silently accept undefined', () => {
+    expect(() => productDescriptionValueSchema.parse(undefined)).toThrow();
   });
 
   it('trims surrounding whitespace', () => {
-    expect(productDescriptionSchema.parse('  hello world  ')).toBe('hello world');
+    expect(productDescriptionValueSchema.parse('  hello world  ')).toBe('hello world');
   });
 
   it('permits tab and newline', () => {
-    expect(productDescriptionSchema.parse('line one\nline two\tindented')).toBe(
+    expect(productDescriptionValueSchema.parse('line one\nline two\tindented')).toBe(
       'line one\nline two\tindented',
     );
   });
 
   it('preserves Unicode and literal markup as plain text', () => {
     const value = 'Café ☕ <b>not html</b> — tastes great 中文';
-    expect(productDescriptionSchema.parse(value)).toBe(value);
+    expect(productDescriptionValueSchema.parse(value)).toBe(value);
   });
 
   it('rejects other C0 control characters', () => {
-    expect(() => productDescriptionSchema.parse('badbell')).toThrow();
-    expect(() => productDescriptionSchema.parse('badvtab')).toThrow();
-    expect(() => productDescriptionSchema.parse('bad\rcarriage')).toThrow();
+    expect(() => productDescriptionValueSchema.parse('badbell')).toThrow();
+    expect(() => productDescriptionValueSchema.parse('badvtab')).toThrow();
+    expect(() => productDescriptionValueSchema.parse('bad\rcarriage')).toThrow();
   });
 
   it('rejects C1 control characters', () => {
-    expect(() => productDescriptionSchema.parse('badc1')).toThrow();
+    expect(() => productDescriptionValueSchema.parse('badc1')).toThrow();
   });
 
   it('rejects text over 2000 characters after trim', () => {
-    expect(() => productDescriptionSchema.parse('a'.repeat(2001))).toThrow();
-    expect(productDescriptionSchema.parse('a'.repeat(2000))).toHaveLength(2000);
+    expect(() => productDescriptionValueSchema.parse('a'.repeat(2001))).toThrow();
+    expect(productDescriptionValueSchema.parse('a'.repeat(2000))).toHaveLength(2000);
   });
 });
 
@@ -284,6 +297,23 @@ describe('productDraftPatchRequestSchema', () => {
     expect(
       productDraftPatchRequestSchema.parse({ name: 'New name', description: '  hi  ' }),
     ).toEqual({ name: 'New name', description: 'hi' });
+  });
+
+  it('leaves description untouched (key omitted) when the caller omits it', () => {
+    const parsed = productDraftPatchRequestSchema.parse({ name: 'New name' });
+    expect(parsed).toEqual({ name: 'New name' });
+    expect('description' in parsed).toBe(false);
+  });
+
+  it('clears description (explicit null) only when the caller sends null', () => {
+    expect(productDraftPatchRequestSchema.parse({ description: null })).toEqual({
+      description: null,
+    });
+  });
+
+  it('treats an empty payload as a true no-op patch', () => {
+    const parsed = productDraftPatchRequestSchema.parse({});
+    expect(Object.keys(parsed)).toHaveLength(0);
   });
 
   it('rejects unknown fields', () => {

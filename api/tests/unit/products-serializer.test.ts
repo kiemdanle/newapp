@@ -62,20 +62,25 @@ function makePrismaPhoto(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 describe('toApiProduct', () => {
-  it('maps description, version, and moderation feedback', () => {
-    const product = makePrismaProduct({ description: 'Tastes great', version: 3, moderationNotes: 'Blurry cover photo' });
+  it('maps description and version', () => {
+    const product = makePrismaProduct({ description: 'Tastes great', version: 3 });
     const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
     expect(api.description).toBe('Tastes great');
     expect(api.version).toBe(3);
-    expect(api.moderationFeedback).toBe('Blurry cover photo');
   });
 
-  it('defaults description/moderationFeedback to null and version to 1 when absent', () => {
-    const product = makePrismaProduct({ description: null, moderationNotes: null, version: 1 });
+  it('defaults description to null and version to 1 when absent', () => {
+    const product = makePrismaProduct({ description: null, version: 1 });
     const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
     expect(api.description).toBeNull();
-    expect(api.moderationFeedback).toBeNull();
     expect(api.version).toBe(1);
+  });
+
+  it('never exposes moderationNotes as moderationFeedback on the public DTO', () => {
+    const product = makePrismaProduct({ moderationNotes: 'Blurry cover photo' });
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    expect(api).not.toHaveProperty('moderationFeedback');
+    expect(JSON.stringify(api)).not.toContain('Blurry cover photo');
   });
 
   it('maps ordered photos to the public shape only', () => {
@@ -108,6 +113,17 @@ describe('toApiProduct', () => {
     const product = makePrismaProduct({ photos: [photoA, photoB] });
     const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
     expect(api.photos.map((p) => p.id)).toEqual([photoA.id, photoB.id]);
+  });
+
+  it('sorts photos by position regardless of relation-load order, so cover (0) is always first', () => {
+    const photoPos2 = makePrismaPhoto({ position: 2 });
+    const photoPos0 = makePrismaPhoto({ position: 0 });
+    const photoPos1 = makePrismaPhoto({ position: 1 });
+    // Deliberately out of order, as an unordered Prisma `include` would return them.
+    const product = makePrismaProduct({ photos: [photoPos2, photoPos0, photoPos1] });
+    const api = toApiProduct(product as Parameters<typeof toApiProduct>[0]);
+    expect(api.photos.map((p) => p.position)).toEqual([0, 1, 2]);
+    expect(api.photos.map((p) => p.id)).toEqual([photoPos0.id, photoPos1.id, photoPos2.id]);
   });
 
   it('defaults to an empty photos array when none are attached', () => {

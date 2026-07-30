@@ -13,6 +13,7 @@ const MIGRATIONS_DIR = join(process.cwd(), 'prisma', 'migrations');
 const MIGRATION_A1 = '20260726160000_expand_product_lifecycle_enums';
 const MIGRATION_A2 = '20260726160100_expand_product_drafts_photos_and_moderation';
 const MIGRATION_B = '20260730040000_classify_report_hidden_products';
+const MIGRATION_DEFERRABLE = '20260730044500_make_photo_position_deferrable';
 
 function readMigrationSql(name: string): string {
   return readFileSync(join(MIGRATIONS_DIR, name, 'migration.sql'), 'utf8');
@@ -201,6 +202,47 @@ describe('product_photos constraints', () => {
     await expect(
       prisma.$executeRaw`UPDATE "product_photos" SET "product_id" = ${productB.id}::uuid WHERE "id" = ${photo.id}::uuid`,
     ).rejects.toThrow();
+  });
+
+  it('rejects an immediate position swap but allows it once the unique constraint is deferred', async () => {
+    const user = await makeUser({ emailVerified: true });
+    const product = await makeProduct();
+    const photo0 = await createValidPhoto(product.id, user.id, { position: 0 });
+    const photo1 = await createValidPhoto(product.id, user.id, { position: 1 });
+    const prisma = getPrisma();
+
+    // A reorder written as one row per UPDATE statement (the natural shape for a
+    // service applying an arbitrary target order) collides on the intermediate state
+    // unless the constraint is explicitly deferred: after only the first statement,
+    // both rows would momentarily share position 1.
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`UPDATE "product_photos" SET "position" = 1 WHERE "id" = ${photo0.id}::uuid`;
+        await tx.$executeRaw`UPDATE "product_photos" SET "position" = 0 WHERE "id" = ${photo1.id}::uuid`;
+      }),
+    ).rejects.toThrow();
+
+    // Unaffected by the failed attempt above (rolled back).
+    const beforeDefer = await prisma.productPhoto.findMany({
+      where: { id: { in: [photo0.id, photo1.id] } },
+      select: { id: true, position: true },
+    });
+    expect(beforeDefer.find((p) => p.id === photo0.id)?.position).toBe(0);
+    expect(beforeDefer.find((p) => p.id === photo1.id)?.position).toBe(1);
+
+    // Deferred to end-of-transaction, the same two-statement swap succeeds and commits.
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET CONSTRAINTS "product_photos_product_id_position_key" DEFERRED`;
+      await tx.$executeRaw`UPDATE "product_photos" SET "position" = 1 WHERE "id" = ${photo0.id}::uuid`;
+      await tx.$executeRaw`UPDATE "product_photos" SET "position" = 0 WHERE "id" = ${photo1.id}::uuid`;
+    });
+
+    const swapped = await prisma.productPhoto.findMany({
+      where: { id: { in: [photo0.id, photo1.id] } },
+      select: { id: true, position: true },
+    });
+    expect(swapped.find((p) => p.id === photo0.id)?.position).toBe(1);
+    expect(swapped.find((p) => p.id === photo1.id)?.position).toBe(0);
   });
 });
 
@@ -482,6 +524,99 @@ describe('migration B classify (tested only inside a rolled-back transaction)', 
       }),
     ).rejects.toThrow(/refusing to classify/);
   });
+
+  it('preflight aborts if product_creation.mode is not off', async () => {
+    const prisma = getPrisma();
+    await prisma.setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'internal' } } });
+    const product = await makeProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+      }),
+    ).rejects.toThrow(/product_creation.mode is not off/);
+  });
+
+  it('preflight aborts if a pending row carries a moderation marker', async () => {
+    const prisma = getPrisma();
+    const admin = await makeUser({ role: 'admin', emailVerified: true });
+    const product = await makeProduct();
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { status: 'pending', moderatedAt: new Date(), moderatedByUserId: admin.id },
+    });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+      }),
+    ).rejects.toThrow(/moderation marker/);
+  });
+
+  it('preflight aborts if a pending row has version > 1', async () => {
+    const prisma = getPrisma();
+    const product = await makeProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending', version: 2 } });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+      }),
+    ).rejects.toThrow(/version > 1/);
+  });
+
+  it('preflight aborts if a pending row has any product_photos row', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser({ emailVerified: true });
+    const product = await makeProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
+    await createValidPhoto(product.id, user.id, { position: 0 });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+      }),
+    ).rejects.toThrow(/product_photos rows/);
+  });
+
+  it('preflight aborts if a pending row has a non-legacy product_edits row', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser({ emailVerified: true });
+    const product = await makeProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
+    await prisma.productEdit.create({
+      data: { productId: product.id, submittedBy: user.id, proposed: {}, isLegacy: false },
+    });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+      }),
+    ).rejects.toThrow(/non-legacy product_edits row/);
+  });
+
+  it('does not abort on a legacy product_edits row (historical pending/approved/rejected)', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser({ emailVerified: true });
+    const product = await makeProduct();
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
+    await prisma.productEdit.create({
+      data: { productId: product.id, submittedBy: user.id, proposed: {}, isLegacy: true, status: 'approved' },
+    });
+    const migrationBSql = readMigrationSql(MIGRATION_B);
+    let statusInsideTransaction: string | undefined;
+    const rollbackSentinel = new Error('intentional rollback for a read-only migration-B rehearsal');
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await runMigrationSql(tx, migrationBSql);
+        const row = await tx.product.findUniqueOrThrow({ where: { id: product.id }, select: { status: true } });
+        statusInsideTransaction = row.status;
+        throw rollbackSentinel;
+      }),
+    ).rejects.toBe(rollbackSentinel);
+    expect(statusInsideTransaction).toBe('report_hidden');
+  });
 });
 
 describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () => {
@@ -515,7 +650,7 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     const migrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .filter((name) => ![MIGRATION_A1, MIGRATION_A2, MIGRATION_B].includes(name))
+      .filter((name) => ![MIGRATION_A1, MIGRATION_A2, MIGRATION_B, MIGRATION_DEFERRABLE].includes(name))
       .sort();
     for (const name of migrationNames) {
       psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, name, 'migration.sql')]);
@@ -560,6 +695,7 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
 
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_A1, 'migration.sql')]);
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_A2, 'migration.sql')]);
+    psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_DEFERRABLE, 'migration.sql')]);
 
     const products = await scratchPrisma.product.findMany({
       where: { id: { in: [productNoCreatorId, productWithCreatorId] } },

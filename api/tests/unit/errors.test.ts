@@ -26,7 +26,6 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     reviewCount: 0,
     status: 'active',
     version: 1,
-    moderationFeedback: null,
     photos: [],
     createdAt: now,
     updatedAt: now,

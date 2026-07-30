@@ -39,7 +39,6 @@ describe('resolved @expyrico/shared contract', () => {
       reviewCount: 0,
       status: 'pending',
       version: 1,
-      moderationFeedback: null,
       photos: [],
       createdAt: now,
       updatedAt: now,

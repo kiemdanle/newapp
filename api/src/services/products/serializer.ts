@@ -36,8 +36,9 @@ export function toApiProduct(p: ProductWithPhotos): ApiProduct {
     reviewCount: p.reviewCount,
     status: p.status,
     version: p.version,
-    moderationFeedback: p.moderationNotes,
-    photos: (p.photos ?? []).map(toApiProductPhoto),
+    // Deliberately omitted: `moderationFeedback` is not part of the public product
+    // DTO (see productSchema). Never map `p.moderationNotes` here.
+    photos: [...(p.photos ?? [])].sort((a, b) => a.position - b.position).map(toApiProductPhoto),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };

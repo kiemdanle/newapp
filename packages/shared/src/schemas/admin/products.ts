@@ -97,3 +97,8 @@ export const adminProductEditResolveSchema = z
 
 export type AdminProductPatch = z.infer<typeof adminProductPatchSchema>;
 export type AdminProductMerge = z.infer<typeof adminProductMergeSchema>;
+// Admin callers should build their request from this inferred type rather than a
+// hand-written string-literal union — a contract rename (e.g. reject -> request_changes)
+// then fails typecheck at every call site instead of only failing at runtime.
+export type AdminProductEditResolveInput = z.infer<typeof adminProductEditResolveSchema>;
+export type AdminProductEditResolveDecision = AdminProductEditResolveInput['decision'];

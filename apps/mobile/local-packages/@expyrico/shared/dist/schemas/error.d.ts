@@ -45,7 +45,6 @@ export declare const problemSchema: z.ZodObject<{
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
         version: z.ZodNumber;
-        moderationFeedback: z.ZodNullable<z.ZodString>;
         photos: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             position: z.ZodNumber;
@@ -66,9 +65,7 @@ export declare const problemSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -77,7 +74,7 @@ export declare const problemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -86,18 +83,17 @@ export declare const problemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     }, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -106,7 +102,7 @@ export declare const problemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -115,17 +111,18 @@ export declare const problemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     }>>;
 }, "strip", z.ZodTypeAny, {
-    status: number;
     code: string;
+    status: number;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -137,9 +134,7 @@ export declare const problemSchema: z.ZodObject<{
     currentVersion?: number | undefined;
     canonicalProduct?: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -148,7 +143,7 @@ export declare const problemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -157,17 +152,18 @@ export declare const problemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     } | undefined;
 }, {
-    status: number;
     code: string;
+    status: number;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -179,9 +175,7 @@ export declare const problemSchema: z.ZodObject<{
     currentVersion?: number | undefined;
     canonicalProduct?: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -190,7 +184,7 @@ export declare const problemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -199,13 +193,14 @@ export declare const problemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     } | undefined;
 }>;
 export type Problem = z.infer<typeof problemSchema>;
@@ -245,7 +240,6 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
         version: z.ZodNumber;
-        moderationFeedback: z.ZodNullable<z.ZodString>;
         photos: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
             position: z.ZodNumber;
@@ -266,9 +260,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -277,7 +269,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -286,18 +278,17 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     }, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -306,7 +297,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -315,20 +306,21 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     }>>;
 } & {
     code: z.ZodLiteral<"version_conflict">;
     currentVersion: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    status: number;
     code: "version_conflict";
+    status: number;
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -340,9 +332,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
     }[] | undefined;
     canonicalProduct?: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -351,7 +341,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -360,17 +350,18 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     } | undefined;
 }, {
-    status: number;
     code: "version_conflict";
+    status: number;
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -382,9 +373,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
     }[] | undefined;
     canonicalProduct?: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -393,7 +382,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -402,13 +391,14 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
-        moderationFeedback: string | null;
         photos: {
             id: string;
             position: number;
             thumbnailUrl: string;
             displayUrl: string;
         }[];
+        createdAt: string;
+        updatedAt: string;
     } | undefined;
 }>;
 export type VersionConflictProblem = z.infer<typeof versionConflictProblemSchema>;

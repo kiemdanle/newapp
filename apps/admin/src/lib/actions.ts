@@ -3,6 +3,7 @@
 // (cookie -> Bearer to the Fastify API, which audit-logs the mutation), then
 // `revalidatePath` so the affected list/detail re-renders with fresh data.
 import { revalidatePath } from 'next/cache';
+import type { AdminProductEditResolveDecision } from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
 
 // --- Users ---
@@ -35,7 +36,7 @@ export async function mergeProductsAction(winnerId: string, loserIds: string[]) 
 
 export async function resolveProductEditAction(
   id: string,
-  decision: 'approve' | 'reject',
+  decision: AdminProductEditResolveDecision,
   notes?: string,
 ) {
   await serverAdminApi.products.resolveEdit(id, decision, notes);

@@ -21,10 +21,13 @@ export async function adminProductsPendingResolveRoute(app: FastifyInstance) {
       await tx.productEdit.update({
         where: { id },
         data: {
-          status: input.decision === 'approve' ? 'approved' : 'rejected',
+          // `request_changes` -> `changes_required`: resumable and read/write, never
+          // the terminal `rejected` state. The only writer of `rejected` is Phase 4's
+          // explicit stale-revision `supersede` action.
+          status: input.decision === 'approve' ? 'approved' : 'changes_required',
           resolvedBy: req.user!.id,
           resolvedAt: new Date(),
-          notes: input.notes ?? null,
+          moderationNotes: input.notes ?? null,
         },
       });
     });

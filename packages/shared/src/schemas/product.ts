@@ -43,12 +43,18 @@ function hasDisallowedDescriptionControlCharacter(value: string): boolean {
 
 const DESCRIPTION_MAX_LENGTH = 2000;
 
-export const productDescriptionSchema = z
+// Required-value form: input must be `string | null` (normalized: trimmed, blank ->
+// null). Use this directly wherever a description value is always supplied. For a
+// PATCH-style field where an *omitted* key must leave the value unchanged (as opposed
+// to an explicit `null`, which clears it), compose `productDescriptionValueSchema.optional()`
+// at the call site — `ZodOptional` short-circuits on `undefined` input without ever
+// invoking this schema's transform, so omitted stays omitted. Do not fold `.optional()`
+// into this schema itself: that would make every omitted key collapse to `null` again.
+export const productDescriptionValueSchema = z
   .string()
   .nullable()
-  .optional()
   .transform((value) => {
-    if (value == null) return null;
+    if (value === null) return null;
     const trimmed = value.trim();
     return trimmed.length === 0 ? null : trimmed;
   })
@@ -58,7 +64,7 @@ export const productDescriptionSchema = z
   .refine((value) => value === null || !hasDisallowedDescriptionControlCharacter(value), {
     message: 'description contains unsupported control characters',
   });
-export type ProductDescription = z.infer<typeof productDescriptionSchema>;
+export type ProductDescription = z.infer<typeof productDescriptionValueSchema>;
 
 // Public photo projection only: never storage keys, uploader, or moderation internals.
 // `thumbnailUrl`/`displayUrl` are authorized same-origin API routes (consumed through
@@ -93,7 +99,11 @@ export const productSchema = z.object({
   reviewCount: z.number().int().min(0),
   status: productStatusSchema,
   version: z.number().int().min(1),
-  moderationFeedback: z.string().nullable(),
+  // Deliberately no `moderationFeedback` here: this is the public product DTO, and
+  // moderation notes are an internal/creator-scoped detail. `productDraftRowSchema`
+  // carries `moderationFeedback` for the creator's own private draft list; any other
+  // creator-scoped single-product surface is Phase 4's responsibility to add
+  // explicitly (viewer-scoped), not to inherit implicitly from this shape.
   photos: z.array(productPhotoSchema),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -240,7 +250,7 @@ export type ProductDraftCreateRequest = z.infer<typeof productDraftCreateRequest
 export const productDraftPatchRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(200).optional(),
-    description: productDescriptionSchema,
+    description: productDescriptionValueSchema.optional(),
     brand: z.string().trim().max(120).nullable().optional(),
     category: z.string().trim().max(120).nullable().optional(),
   })

@@ -108,4 +108,71 @@ describe('admin pending product edits', () => {
     expect(log).toBeTruthy();
     await app.close();
   });
+
+  it('request_changes writes changes_required (never rejected) and persists moderationNotes, without applying the proposal', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const p = await prisma.product.create({ data: { name: 'Untouched', source: 'off', status: 'active' } });
+    const u = await makeUserForAdmin();
+    const edit = await prisma.productEdit.create({
+      data: { productId: p.id, submittedBy: u.id, proposed: { name: 'Should not apply' }, status: 'pending' },
+    });
+
+    const resolveRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${edit.id}`,
+      headers,
+      payload: { decision: 'request_changes', notes: 'Please add a clearer name.' },
+    });
+    expect(resolveRes.statusCode).toBe(200);
+
+    const resolvedEdit = await prisma.productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+    expect(resolvedEdit.status).toBe('changes_required');
+    expect(resolvedEdit.moderationNotes).toBe('Please add a clearer name.');
+
+    const untouchedProduct = await prisma.product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(untouchedProduct.name).toBe('Untouched');
+    await app.close();
+  });
+
+  it('rejects request_changes without notes', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const p = await prisma.product.create({ data: { name: 'Product', source: 'off', status: 'active' } });
+    const u = await makeUserForAdmin();
+    const edit = await prisma.productEdit.create({
+      data: { productId: p.id, submittedBy: u.id, proposed: {}, status: 'pending' },
+    });
+
+    const resolveRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${edit.id}`,
+      headers,
+      payload: { decision: 'request_changes' },
+    });
+    expect(resolveRes.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('rejects the legacy reject decision', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const p = await prisma.product.create({ data: { name: 'Product', source: 'off', status: 'active' } });
+    const u = await makeUserForAdmin();
+    const edit = await prisma.productEdit.create({
+      data: { productId: p.id, submittedBy: u.id, proposed: {}, status: 'pending' },
+    });
+
+    const resolveRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${edit.id}`,
+      headers,
+      payload: { decision: 'reject' },
+    });
+    expect(resolveRes.statusCode).toBe(400);
+    await app.close();
+  });
 });

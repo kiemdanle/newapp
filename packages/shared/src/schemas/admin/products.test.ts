@@ -5,6 +5,7 @@ import {
   adminProductEditRowSchema,
   productEditStatusSchema,
   adminProductEditResolveSchema,
+  type AdminProductEditResolveDecision,
 } from './products.js';
 
 const now = new Date().toISOString();
@@ -85,5 +86,17 @@ describe('adminProductEditResolveSchema', () => {
 
   it('requires notes when requesting changes', () => {
     expect(() => adminProductEditResolveSchema.parse({ decision: 'request_changes' })).toThrow();
+  });
+});
+
+describe('AdminProductEditResolveDecision', () => {
+  it('is the exact schema-derived literal union — a compile-time drift guard', () => {
+    // If a future rename changes the schema's decision literals without updating
+    // callers, this line fails `tsc` instead of only failing at runtime in admin.
+    const decisions: AdminProductEditResolveDecision[] = ['approve', 'request_changes'];
+    expect(decisions).toEqual(['approve', 'request_changes']);
+    // @ts-expect-error 'reject' is not a valid decision after the request_changes rename
+    const legacyRejectIsNoLongerValid: AdminProductEditResolveDecision = 'reject';
+    expect(legacyRejectIsNoLongerValid).toBe('reject');
   });
 });

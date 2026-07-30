@@ -34,12 +34,18 @@ function hasDisallowedDescriptionControlCharacter(value) {
     return false;
 }
 const DESCRIPTION_MAX_LENGTH = 2000;
-export const productDescriptionSchema = z
+// Required-value form: input must be `string | null` (normalized: trimmed, blank ->
+// null). Use this directly wherever a description value is always supplied. For a
+// PATCH-style field where an *omitted* key must leave the value unchanged (as opposed
+// to an explicit `null`, which clears it), compose `productDescriptionValueSchema.optional()`
+// at the call site — `ZodOptional` short-circuits on `undefined` input without ever
+// invoking this schema's transform, so omitted stays omitted. Do not fold `.optional()`
+// into this schema itself: that would make every omitted key collapse to `null` again.
+export const productDescriptionValueSchema = z
     .string()
     .nullable()
-    .optional()
     .transform((value) => {
-    if (value == null)
+    if (value === null)
         return null;
     const trimmed = value.trim();
     return trimmed.length === 0 ? null : trimmed;
@@ -81,7 +87,11 @@ export const productSchema = z.object({
     reviewCount: z.number().int().min(0),
     status: productStatusSchema,
     version: z.number().int().min(1),
-    moderationFeedback: z.string().nullable(),
+    // Deliberately no `moderationFeedback` here: this is the public product DTO, and
+    // moderation notes are an internal/creator-scoped detail. `productDraftRowSchema`
+    // carries `moderationFeedback` for the creator's own private draft list; any other
+    // creator-scoped single-product surface is Phase 4's responsibility to add
+    // explicitly (viewer-scoped), not to inherit implicitly from this shape.
     photos: z.array(productPhotoSchema),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -191,7 +201,7 @@ export const productDraftCreateRequestSchema = z
 export const productDraftPatchRequestSchema = z
     .object({
     name: z.string().trim().min(1).max(200).optional(),
-    description: productDescriptionSchema,
+    description: productDescriptionValueSchema.optional(),
     brand: z.string().trim().max(120).nullable().optional(),
     category: z.string().trim().max(120).nullable().optional(),
 })

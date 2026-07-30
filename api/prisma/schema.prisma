@@ -448,6 +448,9 @@ model ProductPhoto {
   uploadedBy      User               @relation("ProductPhotoUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
   retainedByEdits ProductEditPhoto[] @relation("ProductEditPhotoSource")
 
+  // DEFERRABLE INITIALLY IMMEDIATE in migration.sql (Prisma cannot express deferrable
+  // constraints) so a reorder transaction can `SET CONSTRAINTS ... DEFERRED` and write
+  // the whole target position order in one statement, checked only at commit.
   @@unique([productId, position])
   @@map("product_photos")
 }
@@ -476,6 +479,7 @@ model ProductEditPhoto {
   sourceProductPhoto ProductPhoto? @relation("ProductEditPhotoSource", fields: [sourceProductPhotoId], references: [id], onDelete: Restrict)
   uploadedBy         User?         @relation("ProductEditPhotoUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
 
+  // DEFERRABLE INITIALLY IMMEDIATE in migration.sql — see ProductPhoto's matching note.
   @@unique([productEditId, position])
   @@map("product_edit_photos")
 }
