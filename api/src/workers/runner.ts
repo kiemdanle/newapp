@@ -5,6 +5,7 @@ import { startProductLookupWorker } from './product-lookup.js';
 import { startScoreRecalcWorker } from '../queues/jobs/score-recalc.js';
 import { startModerationFlagWorker } from '../queues/jobs/moderation-flag.js';
 import { startProductRatingWorker } from '../queues/jobs/product-rating-recalc.js';
+import { startProductMediaCleanupWorker, scheduleProductMediaCleanup } from '../queues/jobs/product-media-cleanup.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
 
@@ -24,7 +25,13 @@ export function startWorkers(): Worker[] {
     startScoreRecalcWorker(),
     startModerationFlagWorker(),
     startProductRatingWorker(),
+    startProductMediaCleanupWorker(),
   ];
+  // Registers (or idempotently re-registers) the repeatable tick — BullMQ
+  // dedupes an identical repeat config, so this is safe on every boot.
+  scheduleProductMediaCleanup().catch((err: unknown) => {
+    logger.error({ err }, 'failed to schedule product-media-cleanup repeat job');
+  });
   logger.info({ count: _workers.length }, 'workers started');
   return _workers;
 }
