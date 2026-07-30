@@ -38,15 +38,15 @@ export declare const adminProductRowSchema: z.ZodObject<{
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-    barcode: string | null;
     id: string;
+    barcode: string | null;
     qrPayload: string | null;
     name: string;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
     source: "off" | "upcitemdb" | "user";
+    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
@@ -64,15 +64,15 @@ export declare const adminProductRowSchema: z.ZodObject<{
     moderationNotes?: string | null | undefined;
     moderatedAt?: string | null | undefined;
 }, {
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-    barcode: string | null;
     id: string;
+    barcode: string | null;
     qrPayload: string | null;
     name: string;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
     source: "off" | "upcitemdb" | "user";
+    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
@@ -99,13 +99,13 @@ export declare const adminProductsQuerySchema: z.ZodObject<{
     q: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     source?: "off" | "upcitemdb" | "user" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     cursor?: string | undefined;
     q?: string | undefined;
 }, {
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     source?: "off" | "upcitemdb" | "user" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
     q?: string | undefined;
@@ -148,15 +148,15 @@ export declare const adminProductsListSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-        barcode: string | null;
         id: string;
+        barcode: string | null;
         qrPayload: string | null;
         name: string;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
         source: "off" | "upcitemdb" | "user";
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -174,15 +174,15 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderationNotes?: string | null | undefined;
         moderatedAt?: string | null | undefined;
     }, {
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-        barcode: string | null;
         id: string;
+        barcode: string | null;
         qrPayload: string | null;
         name: string;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
         source: "off" | "upcitemdb" | "user";
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -203,15 +203,15 @@ export declare const adminProductsListSchema: z.ZodObject<{
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-        barcode: string | null;
         id: string;
+        barcode: string | null;
         qrPayload: string | null;
         name: string;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
         source: "off" | "upcitemdb" | "user";
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -232,15 +232,15 @@ export declare const adminProductsListSchema: z.ZodObject<{
     nextCursor: string | null;
 }, {
     items: {
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
-        barcode: string | null;
         id: string;
+        barcode: string | null;
         qrPayload: string | null;
         name: string;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
         source: "off" | "upcitemdb" | "user";
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -260,6 +260,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
     }[];
     nextCursor: string | null;
 }>;
+export declare const adminProductDirectStatusSchema: z.ZodEnum<["active", "report_hidden"]>;
 export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
     version: z.ZodNumber;
     name: z.ZodOptional<z.ZodString>;
@@ -267,38 +268,38 @@ export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
     category: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     defaultShelfLifeDays: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
-    status: z.ZodOptional<z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>>;
+    status: z.ZodOptional<z.ZodEnum<["active", "report_hidden"]>>;
 }, "strip", z.ZodTypeAny, {
     version: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     name?: string | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
+    status?: "active" | "report_hidden" | undefined;
     defaultShelfLifeDays?: number | null | undefined;
 }, {
     version: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     name?: string | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
+    status?: "active" | "report_hidden" | undefined;
     defaultShelfLifeDays?: number | null | undefined;
 }>, {
     version: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     name?: string | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
+    status?: "active" | "report_hidden" | undefined;
     defaultShelfLifeDays?: number | null | undefined;
 }, {
     version: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
     name?: string | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
+    status?: "active" | "report_hidden" | undefined;
     defaultShelfLifeDays?: number | null | undefined;
 }>;
 export declare const adminProductMergeSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
@@ -365,6 +366,26 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     productId: z.ZodString;
     submittedBy: z.ZodString;
     proposed: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    name: z.ZodOptional<z.ZodString>;
+    coverPhoto: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        position: z.ZodNumber;
+        retained: z.ZodBoolean;
+        thumbnailUrl: z.ZodString;
+        displayUrl: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+        retained: boolean;
+    }, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+        retained: boolean;
+    }>>>;
     status: z.ZodEnum<["draft", "pending", "changes_required", "approved", "rejected"]>;
     version: z.ZodNumber;
     baseProductVersion: z.ZodNumber;
@@ -374,11 +395,11 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     resolvedAt: z.ZodNullable<z.ZodString>;
     createdAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     id: string;
-    version: number;
-    createdAt: string;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     moderationNotes: string | null;
+    createdAt: string;
+    version: number;
     productId: string;
     submittedBy: string;
     proposed: Record<string, unknown>;
@@ -386,12 +407,20 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     submittedAt: string | null;
     resolvedBy: string | null;
     resolvedAt: string | null;
+    name?: string | undefined;
+    coverPhoto?: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+        retained: boolean;
+    } | null | undefined;
 }, {
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     id: string;
-    version: number;
-    createdAt: string;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     moderationNotes: string | null;
+    createdAt: string;
+    version: number;
     productId: string;
     submittedBy: string;
     proposed: Record<string, unknown>;
@@ -399,6 +428,14 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     submittedAt: string | null;
     resolvedBy: string | null;
     resolvedAt: string | null;
+    name?: string | undefined;
+    coverPhoto?: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+        retained: boolean;
+    } | null | undefined;
 }>;
 export declare const adminProductEditsListSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{
@@ -406,6 +443,26 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         productId: z.ZodString;
         submittedBy: z.ZodString;
         proposed: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        name: z.ZodOptional<z.ZodString>;
+        coverPhoto: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            retained: z.ZodBoolean;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        }>>>;
         status: z.ZodEnum<["draft", "pending", "changes_required", "approved", "rejected"]>;
         version: z.ZodNumber;
         baseProductVersion: z.ZodNumber;
@@ -415,11 +472,11 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         resolvedAt: z.ZodNullable<z.ZodString>;
         createdAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         id: string;
-        version: number;
-        createdAt: string;
+        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         moderationNotes: string | null;
+        createdAt: string;
+        version: number;
         productId: string;
         submittedBy: string;
         proposed: Record<string, unknown>;
@@ -427,12 +484,20 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         submittedAt: string | null;
         resolvedBy: string | null;
         resolvedAt: string | null;
+        name?: string | undefined;
+        coverPhoto?: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        } | null | undefined;
     }, {
-        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         id: string;
-        version: number;
-        createdAt: string;
+        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         moderationNotes: string | null;
+        createdAt: string;
+        version: number;
         productId: string;
         submittedBy: string;
         proposed: Record<string, unknown>;
@@ -440,15 +505,23 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         submittedAt: string | null;
         resolvedBy: string | null;
         resolvedAt: string | null;
+        name?: string | undefined;
+        coverPhoto?: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        } | null | undefined;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         id: string;
-        version: number;
-        createdAt: string;
+        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         moderationNotes: string | null;
+        createdAt: string;
+        version: number;
         productId: string;
         submittedBy: string;
         proposed: Record<string, unknown>;
@@ -456,15 +529,23 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         submittedAt: string | null;
         resolvedBy: string | null;
         resolvedAt: string | null;
+        name?: string | undefined;
+        coverPhoto?: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        } | null | undefined;
     }[];
     nextCursor: string | null;
 }, {
     items: {
-        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         id: string;
-        version: number;
-        createdAt: string;
+        status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         moderationNotes: string | null;
+        createdAt: string;
+        version: number;
         productId: string;
         submittedBy: string;
         proposed: Record<string, unknown>;
@@ -472,6 +553,14 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         submittedAt: string | null;
         resolvedBy: string | null;
         resolvedAt: string | null;
+        name?: string | undefined;
+        coverPhoto?: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+            retained: boolean;
+        } | null | undefined;
     }[];
     nextCursor: string | null;
 }>;

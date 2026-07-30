@@ -8,15 +8,15 @@ export declare const productEditPhotoSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     position: number;
-    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
+    retained: boolean;
 }, {
     id: string;
     position: number;
-    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
+    retained: boolean;
 }>;
 export type ProductEditPhoto = z.infer<typeof productEditPhotoSchema>;
 export declare const productEditRowSchema: z.ZodObject<{
@@ -38,59 +38,59 @@ export declare const productEditRowSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
     submittedAt: z.ZodNullable<z.ZodString>;
     updatedAt: z.ZodString;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
-    description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    version: number;
+    productId: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    description: string | null;
+    moderationFeedback: string | null;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
-    description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    version: number;
+    productId: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    description: string | null;
+    moderationFeedback: string | null;
 }>;
 export type ProductEditRow = z.infer<typeof productEditRowSchema>;
 export declare const productEditMetadataPatchRequestSchema: z.ZodObject<{
@@ -102,15 +102,15 @@ export declare const productEditMetadataPatchRequestSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     version: number;
     name?: string | undefined;
-    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
+    description?: string | null | undefined;
 }, {
     version: number;
     name?: string | undefined;
-    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
+    description?: string | null | undefined;
 }>;
 export type ProductEditMetadataPatchRequest = z.infer<typeof productEditMetadataPatchRequestSchema>;
 export declare const productEditPhotoReorderRequestSchema: z.ZodEffects<z.ZodObject<{
@@ -152,15 +152,15 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
     submittedAt: z.ZodNullable<z.ZodString>;
@@ -170,47 +170,47 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     liveProductVersion: z.ZodNumber;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
-    description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    version: number;
+    productId: string;
     submittedBy: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    description: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
-    description: string | null;
     brand: string | null;
     category: string | null;
+    status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    version: number;
+    productId: string;
     submittedBy: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    description: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
 }>;
 export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;

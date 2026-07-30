@@ -9,6 +9,8 @@ import {
   adminProductModerateRequestSchema,
   productEditRecoverRequestSchema,
   adminProductMergeSchema,
+  adminProductPatchSchema,
+  adminProductDirectStatusSchema,
   type AdminProductEditResolveDecision,
   type AdminProductModerateDecision,
   type AdminProductMerge,
@@ -259,5 +261,20 @@ describe('AdminProductMerge', () => {
   it('is the exact schema-derived field set — a compile-time drift guard against a future silent rename', () => {
     const sample: AdminProductMerge = { targetId: randomUUID(), sourceIds: [randomUUID()], version: 1 };
     expect(Object.keys(sample).sort()).toEqual(['sourceIds', 'targetId', 'version']);
+  });
+});
+
+describe('adminProductPatchSchema — I5: status restricted at the schema boundary', () => {
+  it('accepts the catalog-visibility toggle values', () => {
+    expect(adminProductDirectStatusSchema.parse('active')).toBe('active');
+    expect(adminProductDirectStatusSchema.parse('report_hidden')).toBe('report_hidden');
+    expect(adminProductPatchSchema.parse({ version: 1, status: 'active' })).toEqual({ version: 1, status: 'active' });
+  });
+
+  it('rejects every lifecycle status that has real publication/merge invariants before the request ever reaches the service layer', () => {
+    for (const status of ['pending', 'draft', 'changes_required', 'merged_into']) {
+      expect(() => adminProductDirectStatusSchema.parse(status)).toThrow();
+      expect(() => adminProductPatchSchema.parse({ version: 1, status })).toThrow();
+    }
   });
 });

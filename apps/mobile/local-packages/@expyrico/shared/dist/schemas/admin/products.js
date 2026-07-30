@@ -36,6 +36,15 @@ export const adminProductsQuerySchema = cursorQuerySchema.extend({
     q: z.string().trim().min(1).optional(),
 });
 export const adminProductsListSchema = cursorPageSchema(adminProductRowSchema);
+// Direct admin correction may only perform the pure catalog-visibility toggle
+// (no publication side effects) — every other transition (activating a
+// `pending` submission, clearing `merged_into`, touching `draft`/
+// `changes_required`) has real invariants (capacity/outbox publication, audit
+// action semantics, `mergedIntoProductId` consistency) that only
+// `moderateProduct`/`resolveProductEdit`/`mergeProducts` uphold. Restricted at
+// the schema boundary — not just route-level logic — so a stray value never
+// even reaches the service layer as a candidate write.
+export const adminProductDirectStatusSchema = z.enum(['active', 'report_hidden']);
 // `version` is the admin's last-known product version — required so a direct
 // correction is optimistic-concurrency-guarded like every other Phase 4 write,
 // not applied blind. Excluded from the "at least one field" count below since
@@ -47,7 +56,7 @@ export const adminProductPatchSchema = z.object({
     category: z.string().nullable().optional(),
     imageUrl: z.string().url().nullable().optional(),
     defaultShelfLifeDays: z.number().int().min(0).nullable().optional(),
-    status: adminProductStatusSchema.optional(),
+    status: adminProductDirectStatusSchema.optional(),
 }).refine((d) => Object.keys(d).filter((k) => k !== 'version').length > 0, { message: 'no fields to update' });
 // `version` is the target's last-known version — merge is optimistic-concurrency
 // guarded like every other Phase 4 write, and it locks `[targetId, ...sourceIds]` in
@@ -73,11 +82,30 @@ export const adminProductMergeResponseSchema = z.object({
 // an explicit stale-revision `supersede` (Phase 4), which is not part of this resolve
 // contract.
 export const productEditStatusSchema = z.enum(['draft', 'pending', 'changes_required', 'approved', 'rejected']);
+// Not imported from `product-edits.ts`'s `productEditPhotoSchema` — that module
+// imports `productEditStatusSchema` from this one, and a reverse import back here
+// would make the two modules circular. Small enough to duplicate the shape
+// directly rather than risk a load-order bug in schemas evaluated eagerly at
+// module scope.
+const adminProductEditCoverPhotoSchema = z.object({
+    id: z.string().uuid(),
+    position: z.number().int().min(0).max(4),
+    retained: z.boolean(),
+    thumbnailUrl: z.string().min(1),
+    displayUrl: z.string().min(1),
+});
 export const adminProductEditRowSchema = z.object({
     id: z.string().uuid(),
     productId: z.string().uuid(),
     submittedBy: z.string().uuid(),
     proposed: z.record(z.unknown()),
+    // M6: the queue needs enough to review at a glance without a second per-row
+    // fetch — the proposed name and an ordered cover photo (retained or staged,
+    // same public/private-route derivation every other edit-facing view uses).
+    // Both optional so this schema stays valid for any caller that only has the
+    // raw `proposed` blob (e.g. a future non-list consumer).
+    name: z.string().optional(),
+    coverPhoto: adminProductEditCoverPhotoSchema.nullable().optional(),
     status: productEditStatusSchema,
     version: z.number().int().min(1),
     baseProductVersion: z.number().int().min(1),

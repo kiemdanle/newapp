@@ -41,6 +41,16 @@ export const adminProductsQuerySchema = cursorQuerySchema.extend({
 
 export const adminProductsListSchema = cursorPageSchema(adminProductRowSchema);
 
+// Direct admin correction may only perform the pure catalog-visibility toggle
+// (no publication side effects) — every other transition (activating a
+// `pending` submission, clearing `merged_into`, touching `draft`/
+// `changes_required`) has real invariants (capacity/outbox publication, audit
+// action semantics, `mergedIntoProductId` consistency) that only
+// `moderateProduct`/`resolveProductEdit`/`mergeProducts` uphold. Restricted at
+// the schema boundary — not just route-level logic — so a stray value never
+// even reaches the service layer as a candidate write.
+export const adminProductDirectStatusSchema = z.enum(['active', 'report_hidden']);
+
 // `version` is the admin's last-known product version — required so a direct
 // correction is optimistic-concurrency-guarded like every other Phase 4 write,
 // not applied blind. Excluded from the "at least one field" count below since
@@ -52,7 +62,7 @@ export const adminProductPatchSchema = z.object({
   category: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
   defaultShelfLifeDays: z.number().int().min(0).nullable().optional(),
-  status: adminProductStatusSchema.optional(),
+  status: adminProductDirectStatusSchema.optional(),
 }).refine((d) => Object.keys(d).filter((k) => k !== 'version').length > 0, { message: 'no fields to update' });
 
 // `version` is the target's last-known version — merge is optimistic-concurrency

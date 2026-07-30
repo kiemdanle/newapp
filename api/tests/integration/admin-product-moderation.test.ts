@@ -169,10 +169,21 @@ describe('POST /v1/admin/products/:id/moderate — approve with photos', () => {
 
     const photos = await getPrisma().productPhoto.findMany({ where: { productId: product.id } });
     expect(photos).toHaveLength(2);
+
+    // C1: the public key must live under the PRODUCT's own namespace and be
+    // exactly what the prepared intent recorded — the two must never be able to
+    // drift apart (that drift is precisely what C1 was).
+    const intent = await getPrisma().mediaOperationOutbox.findFirstOrThrow({
+      where: { operation: 'publish_public' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const intentKeys = (intent.payload as { keys: string[] }).keys;
     for (const photo of photos) {
       expect(photo.moderationStatus).toBe('approved');
       expect(photo.publicStorageKey).toBeTruthy();
       expect(photo.privateStorageKey).toBeNull();
+      expect(photo.publicStorageKey).toMatch(new RegExp(`^public/products/${product.id}/`));
+      expect(intentKeys).toContain(photo.publicStorageKey);
       await expect(keyPrefixExists(root, photo.publicStorageKey!)).resolves.toBe(true);
     }
     await app.close();
@@ -511,13 +522,16 @@ describe('admin direct correction — field patch', () => {
     expect(photo.publicStorageKey).toBeNull();
   });
 
-  it('I5: rejects setting merged_into directly, but allows the legitimate active <-> report_hidden catalog toggle', async () => {
+  it('I5: rejects setting merged_into directly at the schema boundary, but allows the legitimate active <-> report_hidden catalog toggle', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const p = await getPrisma().product.create({ data: { name: 'Live', source: 'off', status: 'active' } });
 
+    // Not merely a route-level 409 — `merged_into` is not a valid value for this
+    // schema at all, so it never even reaches the handler.
     const bypass = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, status: 'merged_into' } });
-    expect(bypass.statusCode).toBe(409);
+    expect(bypass.statusCode).toBe(400);
+    expect(bypass.json().code).toBe('validation_error');
 
     const hide = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, status: 'report_hidden' } });
     expect(hide.statusCode).toBe(200);

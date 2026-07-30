@@ -366,6 +366,18 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     expect(after.imageUrl).toBeTruthy();
     const photo = await getPrisma().productPhoto.findFirstOrThrow({ where: { productId: product.id } });
     expect(after.imageUrl).toContain(photo.publicStorageKey!.split('/').pop());
+
+    // C1: the staged-photo publish site (`publishProductEditPhoto`) must land
+    // under the PRODUCT's own namespace, exactly matching what the prepared
+    // intent recorded — never the edit id, and never allowed to drift from the
+    // intent's own key list.
+    expect(photo.publicStorageKey).toMatch(new RegExp(`^public/products/${product.id}/`));
+    const intent = await getPrisma().mediaOperationOutbox.findFirstOrThrow({
+      where: { operation: 'publish_public' },
+      orderBy: { createdAt: 'desc' },
+    });
+    const intentKeys = (intent.payload as { keys: string[] }).keys;
+    expect(intentKeys).toContain(photo.publicStorageKey);
   });
 
   it('I1: approving a revision that drops a live photo succeeds even when a RESOLVED historical edit retained it (only an OPEN edit blocks)', async () => {
@@ -430,6 +442,47 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     // both `approved` and `changes_required` applied to the same row.
     const finalEdit = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
     expect(['approved', 'changes_required']).toContain(finalEdit.status);
+  });
+
+  it('I3: a concurrent supersede racing an approve on a since-gone-stale edit never leaves the edit both approved and superseded', async () => {
+    // Note on why this differs from the request_changes race above: M1 now
+    // requires genuine staleness for recovery, so `supersede` is only reachable
+    // once `product.version !== edit.baseProductVersion` — but that same
+    // staleness is exactly what `approveEdit`'s own pre-existing pre-check
+    // rejects with `edit_base_stale` before it ever reaches the new I3 guard.
+    // The two fixes compose to make the *supersede-specific* variant of this
+    // race unreachable rather than merely guarded — this test proves that
+    // composition holds (approve always loses, supersede always wins, the edit
+    // never ends up in a corrupted dual state), while the request_changes race
+    // above is what actually exercises I3's guarded terminal `updateMany` for a
+    // still-pending, non-stale edit.
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: edit.version });
+    const submittedVersion = (submitted as { version: number }).version;
+
+    const staleProduct = await getPrisma().product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+
+    const results = await Promise.allSettled([
+      resolveProductEdit(adminActor(admin.id), {}, { editId: edit.id, action: 'approve', version: submittedVersion }),
+      recoverProductEdit(adminActor(admin.id), {}, {
+        action: 'supersede',
+        editId: edit.id,
+        editVersion: submittedVersion,
+        productVersion: staleProduct.version,
+      }),
+    ]);
+    const fulfilled = results.filter((r) => r.status === 'fulfilled');
+    const rejected = results.filter((r) => r.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ status: 409 });
+
+    const finalEdit = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
+    expect(finalEdit.status).toBe('rejected');
+    expect(finalEdit.notes).toBe('superseded:stale_base_version');
   });
 });
 
