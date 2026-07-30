@@ -12,6 +12,7 @@ import { photoUploadRoute } from './photo-upload.js';
 import { photoDeleteRoute } from './photo-delete.js';
 import { photoOrderRoute } from './photo-order.js';
 import { privateMediaRoute } from './private-media.js';
+import { editCreateRoute } from './edit-create.js';
 
 export async function productRoutes(app: FastifyInstance) {
   await app.register(lookupRoute);
@@ -27,4 +28,5 @@ export async function productRoutes(app: FastifyInstance) {
   await app.register(photoDeleteRoute);
   await app.register(photoOrderRoute);
   await app.register(privateMediaRoute);
+  await app.register(editCreateRoute);
 }

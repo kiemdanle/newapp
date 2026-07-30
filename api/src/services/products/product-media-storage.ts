@@ -123,6 +123,16 @@ export function privateProductEditPhotoPrefix(editId: string, photoId: string, v
   return `private/product-edits/${editId}/${photoId}/${variantId}`;
 }
 
+/** The photo-level directory one level above a specific staged edit-photo variant
+ * prefix — mirrors `privateProductPhotoDir`'s "always safe to remove the whole
+ * directory on rollback" guarantee (a fresh `photoId` is generated per upload
+ * attempt and never reused). */
+export function privateProductEditPhotoDir(editId: string, photoId: string): string {
+  assertUuidSegment(editId, 'editId');
+  assertUuidSegment(photoId, 'photoId');
+  return `private/product-edits/${editId}/${photoId}`;
+}
+
 export function publicProductPhotoPrefix(productId: string, publicationId: string): string {
   assertUuidSegment(productId, 'productId');
   assertUuidSegment(publicationId, 'publicationId');

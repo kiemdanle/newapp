@@ -1,13 +1,24 @@
 import { z } from 'zod';
 import { productSchema } from './product.js';
 
+// A merge identifier conflict (target already has a *different* barcode/QR than the
+// source) needs both original values and which slot conflicted so an admin UI can
+// present the explicit choice without a second lookup — a generic details bag would
+// force the client to re-fetch both products just to render the conflict.
+export const mergeIdentifierConflictSchema = z.object({
+  slot: z.enum(['barcode', 'qr']),
+  sourceValue: z.string(),
+  targetValue: z.string(),
+});
+export type MergeIdentifierConflict = z.infer<typeof mergeIdentifierConflictSchema>;
+
 /**
  * RFC 7807 problem+json with a stable `code` for client matching.
  *
- * `currentVersion`/`canonicalProduct` are safe, explicitly typed structured fields for
- * optimistic-concurrency conflicts (never a generic arbitrary details bag). Both are
- * optional so most problems carry neither, and `canonicalProduct` is only ever present
- * when the server has already decided it is visible to the caller.
+ * `currentVersion`/`canonicalProduct`/`identifierConflict` are safe, explicitly typed
+ * structured fields for specific conflict classes (never a generic arbitrary details
+ * bag). All are optional so most problems carry none, and `canonicalProduct` is only
+ * ever present when the server has already decided it is visible to the caller.
  */
 export const problemSchema = z.object({
   type: z.string().url().optional(),
@@ -19,6 +30,7 @@ export const problemSchema = z.object({
   errors: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
   currentVersion: z.number().int().optional(),
   canonicalProduct: productSchema.optional(),
+  identifierConflict: mergeIdentifierConflictSchema.optional(),
 });
 export type Problem = z.infer<typeof problemSchema>;
 

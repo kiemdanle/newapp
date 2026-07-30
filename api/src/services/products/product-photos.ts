@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
-import type { Prisma as PrismaTypes, Product, ProductPhoto } from '@prisma/client';
+import type { Prisma as PrismaTypes, Product, ProductEdit, ProductEditPhoto, ProductPhoto } from '@prisma/client';
 import { ERROR_CODES, type Product as ApiProduct } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
+import { writeAuditLog } from '../audit/log.js';
 import { logger } from '../../logger.js';
 import type { ProductActor } from './product-visibility.js';
 import { toApiProduct } from './serializer.js';
@@ -23,6 +24,8 @@ import type { ProcessedVariants } from './product-image-processor.js';
 import {
   copyKeyPrefix,
   mediaKeyToPath,
+  privateProductEditPhotoDir,
+  privateProductEditPhotoPrefix,
   privateProductPhotoDir,
   privateProductPhotoPrefix,
   promoteKeyPrefix,
@@ -127,6 +130,26 @@ export interface AddProductPhotoInput {
   productId: string;
   processed: ProcessedVariants;
   capacityReservationId: string;
+  requestMeta?: { requestId?: string | undefined; ip?: string | undefined };
+}
+
+/** Admin direct photo mutations get the same atomic-audit invariant as every other
+ * Phase 4 admin write; a creator's own photo changes on their own draft/
+ * changes_required product are routine self-service, not an admin action, and are
+ * never audited. */
+async function auditIfAdmin(
+  tx: PrismaTypes.TransactionClient,
+  actor: ProductActor,
+  action: string,
+  productId: string,
+  diff: unknown,
+  requestMeta: { requestId?: string | undefined; ip?: string | undefined } = {},
+): Promise<void> {
+  if (actor.role !== 'admin') return;
+  await writeAuditLog(
+    { adminId: actor.id, action, targetType: 'product', targetId: productId, diff, requestId: requestMeta.requestId, ip: requestMeta.ip },
+    tx,
+  );
 }
 
 /**
@@ -197,6 +220,7 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
         });
         await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
         await completeMediaOperation(tx, intent.id, intent.leaseOwner);
+        await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId } }, input.requestMeta);
         return loadProductWithPhotos(tx, input.productId);
       });
       return toApiProduct(updated, actor);
@@ -229,6 +253,7 @@ async function ensureAndWriteVariantFiles(root: string, tempKey: string, process
 export interface RemoveProductPhotoInput {
   productId: string;
   photoId: string;
+  requestMeta?: { requestId?: string | undefined; ip?: string | undefined };
 }
 
 /** Removes a photo and closes the position gap so the remaining photos stay a
@@ -282,6 +307,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
         });
       }
 
+      await auditIfAdmin(tx, actor, 'product.photo.remove', input.productId, { before: { photoId: photo.id } }, input.requestMeta);
       return loadProductWithPhotos(tx, input.productId);
     });
     return toApiProduct(updated, actor);
@@ -291,6 +317,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
 export interface ReorderProductPhotosInput {
   productId: string;
   photoIds: string[];
+  requestMeta?: { requestId?: string | undefined; ip?: string | undefined };
 }
 
 /** Applies an exact target order. `photoIds` must be exactly the product's current
@@ -324,6 +351,7 @@ export async function reorderProductPhotos(actor: ProductActor, input: ReorderPr
       await tx.productPhoto.update({ where: { id }, data: { position } });
     }
     await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+    await auditIfAdmin(tx, actor, 'product.photo.reorder', input.productId, { after: { photoIds: input.photoIds } }, input.requestMeta);
     return loadProductWithPhotos(tx, input.productId);
   });
   return toApiProduct(updated, actor);
@@ -388,5 +416,245 @@ export async function publishProductPhoto(photoId: string, publicationId: string
       display: { bytes: photo.displayByteSize, width: photo.displayWidth, height: photo.displayHeight },
       thumb: { bytes: photo.thumbnailByteSize, width: photo.thumbnailWidth, height: photo.thumbnailHeight },
     };
+  });
+}
+
+/**
+ * Same publication primitive as `publishProductPhoto`, but reads a staged
+ * `ProductEditPhoto` row instead of a live `ProductPhoto` — used only for a
+ * revision's newly-uploaded entries during edit approval; retained entries
+ * already have a public key on their source `ProductPhoto` and need no work
+ * here. Never touches the DB — the caller's reference transaction writes the
+ * returned `publicKey` onto a fresh `ProductPhoto` row.
+ */
+export async function publishProductEditPhoto(editPhotoId: string, publicationId: string, intent: PublishIntentContext): Promise<PublicVariants> {
+  const prisma = getPrisma();
+  const root = getConfig().media.root;
+  const photo = await prisma.productEditPhoto.findUniqueOrThrow({ where: { id: editPhotoId } });
+  if (!photo.privateStorageKey) {
+    throw new AppError({
+      status: 409,
+      code: ERROR_CODES.CONFLICT,
+      title: 'This staged photo has no private bytes to publish',
+    });
+  }
+  const publicPrefix = publicProductPhotoPrefix(photo.productEditId, publicationId);
+
+  return withMediaMutationLease('publish_public', async () => {
+    await renewMediaOperationLease(intent.intentId, intent.leaseOwner);
+    await assertMediaCapacityReservationLive(intent.capacityReservationId);
+    await copyKeyPrefix(root, photo.privateStorageKey!, publicPrefix);
+    logger.info({ editPhotoId, publicationId, intentId: intent.intentId }, 'copied staged edit photo variants to public storage');
+    return {
+      publicKey: publicPrefix,
+      display: { bytes: photo.displayByteSize!, width: photo.displayWidth!, height: photo.displayHeight! },
+      thumb: { bytes: photo.thumbnailByteSize!, width: photo.thumbnailWidth!, height: photo.thumbnailHeight! },
+    };
+  });
+}
+
+// --- Edit-scoped photo staging (creator revision desired-photo-set editing) -------
+//
+// A `ProductEdit`'s desired photo set mixes `retained` entries (bytes belong to the
+// live `ProductPhoto` they reference, immutable here) and `staged` entries (bytes
+// belong to this edit alone, served through the edit-scoped private media route
+// until approval publishes them). Position/quota/deferred-constraint handling below
+// mirrors the live-product functions above exactly, targeting `ProductEditPhoto`
+// instead of `ProductPhoto`.
+
+interface EditPhotoMutableRow {
+  id: string;
+  status: ProductEdit['status'];
+  submittedBy: string;
+}
+
+function editForbidden(): never {
+  throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'This edit cannot be changed right now' });
+}
+
+/** Edit-scoped photo staging is creator-only (never admin — admin's photo work is
+ * either the direct live-product path above, or `recoverProductEdit`'s reviewed
+ * `rebase` mapping, which writes the desired set itself rather than going through
+ * these per-photo mutation endpoints). Locked to `draft`/`changes_required`, same as
+ * metadata patching — never while `pending` (under review) or any resolved state. */
+function checkEditPhotoMutablePolicy(actor: ProductActor, row: EditPhotoMutableRow): void {
+  if (row.submittedBy !== actor.id) notFound();
+  if (row.status === 'draft' || row.status === 'changes_required') return;
+  editForbidden();
+}
+
+async function assertEditPhotoMutable(actor: ProductActor, editId: string, tx: PrismaTypes.TransactionClient): Promise<EditPhotoMutableRow> {
+  const rows = await tx.$queryRaw<EditPhotoMutableRow[]>`
+    SELECT "id", "status", "submitted_by" AS "submittedBy"
+    FROM "product_edits"
+    WHERE "id" = ${editId}::uuid
+    FOR UPDATE
+  `;
+  const row = rows[0];
+  if (!row) notFound();
+  checkEditPhotoMutablePolicy(actor, row);
+  return row;
+}
+
+export async function assertEditPhotoMutablePreCheck(actor: ProductActor, editId: string): Promise<void> {
+  const edit = await getPrisma().productEdit.findUnique({ where: { id: editId }, select: { id: true, status: true, submittedBy: true } });
+  if (!edit) notFound();
+  checkEditPhotoMutablePolicy(actor, edit);
+}
+
+async function loadEditWithPhotos(tx: PrismaTypes.TransactionClient, editId: string) {
+  return tx.productEdit.findUniqueOrThrow({
+    where: { id: editId },
+    include: { photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' } } },
+  });
+}
+
+export interface AddProductEditPhotoInput {
+  editId: string;
+  processed: ProcessedVariants;
+  capacityReservationId: string;
+}
+
+/** Stages a newly-uploaded photo onto an edit's desired set (always appended at the
+ * current end position). Same prepare-intent/promote/complete-in-tx durability
+ * pattern as `addProductPhoto`. */
+export async function addProductEditPhoto(actor: ProductActor, input: AddProductEditPhotoInput) {
+  const prisma = getPrisma();
+  const root = getConfig().media.root;
+  const photoId = randomUUID();
+  const variantId = randomUUID();
+  const prefix = privateProductEditPhotoPrefix(input.editId, photoId, variantId);
+
+  return withMediaMutationLease('promote_private', async () => {
+    const intent = await prisma.$transaction((tx) => prepareMediaOperation(tx, { operation: 'promote_private', keys: [prefix] }));
+
+    const tempKey = `quarantine/${randomUUID()}-generated`;
+    await ensureAndWriteVariantFiles(root, tempKey, input.processed);
+
+    try {
+      await promoteKeyPrefix(root, tempKey, prefix);
+    } catch (err) {
+      await removeKeyPrefix(root, tempKey).catch(() => {});
+      throw err;
+    }
+
+    // See `addProductPhoto`'s matching comment: renew right before the reference
+    // transaction so a slow transaction can't outlive the lease before
+    // `completeMediaOperation`'s fencing check runs (reviewer-p3 I1).
+    await renewMediaOperationLease(intent.id, intent.leaseOwner);
+
+    try {
+      const updated = await prisma.$transaction(async (tx) => {
+        const edit = await assertEditPhotoMutable(actor, input.editId, tx);
+        const currentCount = await tx.productEditPhoto.count({ where: { productEditId: input.editId } });
+        if (currentCount >= MAX_PHOTOS_PER_PRODUCT) {
+          throw new AppError({
+            status: 409,
+            code: 'photo_limit_reached',
+            title: `A revision may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+          });
+        }
+        await tx.productEditPhoto.create({
+          data: {
+            id: photoId,
+            productEditId: input.editId,
+            position: currentCount,
+            uploadedByUserId: actor.id,
+            mimeType: 'image/webp',
+            displayByteSize: input.processed.display.bytes,
+            displayWidth: input.processed.display.width,
+            displayHeight: input.processed.display.height,
+            thumbnailByteSize: input.processed.thumb.bytes,
+            thumbnailWidth: input.processed.thumb.width,
+            thumbnailHeight: input.processed.thumb.height,
+            privateStorageKey: prefix,
+          },
+        });
+        await tx.productEdit.update({ where: { id: edit.id }, data: { version: { increment: 1 } } });
+        await completeMediaOperation(tx, intent.id, intent.leaseOwner);
+        return loadEditWithPhotos(tx, input.editId);
+      });
+      return updated;
+    } catch (err) {
+      await removeKeyPrefix(root, privateProductEditPhotoDir(input.editId, photoId)).catch(() => {});
+      throw err;
+    }
+  }).finally(() => releaseMediaCapacityReservation(input.capacityReservationId));
+}
+
+export interface RemoveProductEditPhotoInput {
+  editId: string;
+  photoId: string;
+}
+
+/** Removes an entry from an edit's desired set and closes the position gap. A
+ * `retained` entry's removal never touches the live `ProductPhoto` or enqueues any
+ * cleanup — those bytes still belong to the live product regardless of this edit's
+ * desired set. A `staged` entry's own private bytes are enqueued for durable
+ * cleanup, same as a live product photo removal. */
+export async function removeProductEditPhoto(actor: ProductActor, input: RemoveProductEditPhotoInput) {
+  const prisma = getPrisma();
+  return prisma.$transaction(async (tx) => {
+    const edit = await assertEditPhotoMutable(actor, input.editId, tx);
+    const photo = await tx.productEditPhoto.findFirst({ where: { id: input.photoId, productEditId: input.editId } });
+    if (!photo) {
+      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Photo not found' });
+    }
+
+    await tx.$executeRawUnsafe('SET CONSTRAINTS "product_edit_photos_product_edit_id_position_key" DEFERRED');
+    await tx.productEditPhoto.delete({ where: { id: photo.id } });
+
+    const remaining = await tx.productEditPhoto.findMany({
+      where: { productEditId: input.editId },
+      orderBy: { position: 'asc' },
+    });
+    for (let i = 0; i < remaining.length; i++) {
+      const row = remaining[i]!;
+      if (row.position !== i) {
+        await tx.productEditPhoto.update({ where: { id: row.id }, data: { position: i } });
+      }
+    }
+
+    await tx.productEdit.update({ where: { id: edit.id }, data: { version: { increment: 1 } } });
+
+    if (photo.privateStorageKey) {
+      await enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [photo.privateStorageKey] });
+    }
+
+    return loadEditWithPhotos(tx, input.editId);
+  });
+}
+
+export interface ReorderProductEditPhotosInput {
+  editId: string;
+  photoIds: string[];
+}
+
+export async function reorderProductEditPhotos(actor: ProductActor, input: ReorderProductEditPhotosInput) {
+  const prisma = getPrisma();
+  return prisma.$transaction(async (tx) => {
+    const edit = await assertEditPhotoMutable(actor, input.editId, tx);
+    const current = await tx.productEditPhoto.findMany({ where: { productEditId: input.editId } });
+    const currentIds = new Set(current.map((p: ProductEditPhoto) => p.id));
+    const requestedIds = new Set(input.photoIds);
+    const isExactSet =
+      input.photoIds.length === current.length &&
+      requestedIds.size === input.photoIds.length &&
+      [...requestedIds].every((id) => currentIds.has(id));
+    if (!isExactSet) {
+      throw new AppError({
+        status: 400,
+        code: ERROR_CODES.VALIDATION,
+        title: 'photoIds must contain exactly the edit\'s current photo set',
+      });
+    }
+
+    await tx.$executeRawUnsafe('SET CONSTRAINTS "product_edit_photos_product_edit_id_position_key" DEFERRED');
+    for (let position = 0; position < input.photoIds.length; position++) {
+      const id = input.photoIds[position]!;
+      await tx.productEditPhoto.update({ where: { id }, data: { position } });
+    }
+    await tx.productEdit.update({ where: { id: edit.id }, data: { version: { increment: 1 } } });
+    return loadEditWithPhotos(tx, input.editId);
   });
 }

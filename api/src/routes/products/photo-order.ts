@@ -10,7 +10,11 @@ export async function photoOrderRoute(app: FastifyInstance) {
     const { productId } = paramSchema.parse(req.params);
     const input = productDraftReorderRequestSchema.parse(req.body);
     const actor = { id: req.user!.id, role: req.user!.role };
-    const product = await reorderProductPhotos(actor, { productId, photoIds: input.photoIds });
+    const product = await reorderProductPhotos(actor, {
+      productId,
+      photoIds: input.photoIds,
+      requestMeta: { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
+    });
     return reply.status(200).send(productSchema.parse(product));
   });
 }

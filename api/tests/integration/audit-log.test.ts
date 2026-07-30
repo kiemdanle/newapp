@@ -58,4 +58,40 @@ describe('writeAuditLog', () => {
       }),
     ).rejects.toThrow(/adminId/);
   });
+
+  it('accepts a transaction client so the row commits atomically with the state change it records', async () => {
+    const admin = await makeUser({ role: 'admin' });
+    const prisma = getPrisma();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: admin.id }, data: { firstName: 'Audited' } });
+      await writeAuditLog(
+        { adminId: admin.id, action: 'user.update', targetType: 'user', targetId: admin.id },
+        tx,
+      );
+    });
+
+    const row = await prisma.adminAuditLog.findFirstOrThrow({ where: { adminId: admin.id, action: 'user.update' } });
+    expect(row).toBeTruthy();
+    const updatedUser = await prisma.user.findUniqueOrThrow({ where: { id: admin.id } });
+    expect(updatedUser.firstName).toBe('Audited');
+  });
+
+  it('rolls back the audit row together with the rest of the transaction on failure', async () => {
+    const admin = await makeUser({ role: 'admin' });
+    const prisma = getPrisma();
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        await writeAuditLog(
+          { adminId: admin.id, action: 'user.update', targetType: 'user', targetId: admin.id },
+          tx,
+        );
+        throw new Error('forced rollback');
+      }),
+    ).rejects.toThrow('forced rollback');
+
+    const rows = await prisma.adminAuditLog.findMany({ where: { adminId: admin.id, action: 'user.update' } });
+    expect(rows).toHaveLength(0);
+  });
 });

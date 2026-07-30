@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, productSchema } from '@expyrico/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
-import { addProductPhoto, assertPhotoMutablePreCheck } from '../../services/products/product-photos.js';
+import { addProductEditPhoto, assertEditPhotoMutablePreCheck } from '../../services/products/product-photos.js';
+import { toProductEditRow } from '../../services/products/product-edits.js';
 import { processProductUpload } from '../../services/products/product-image-processor.js';
 import {
   newQuarantineRequestId,
@@ -17,20 +18,18 @@ import {
   reserveMediaCapacity,
 } from '../../services/products/product-media-capacity.js';
 
-const paramSchema = z.object({ productId: z.string().uuid() });
+const paramSchema = z.object({ editId: z.string().uuid() });
 
 function validationError(title: string): never {
   throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title });
 }
 
-export async function photoUploadRoute(app: FastifyInstance) {
-  app.post('/:productId/photos', { onRequest: app.requireAuth }, async (req, reply) => {
-    const { productId } = paramSchema.parse(req.params);
+export async function editPhotoUploadRoute(app: FastifyInstance) {
+  app.post('/:editId/photos', { onRequest: app.requireAuth }, async (req, reply) => {
+    const { editId } = paramSchema.parse(req.params);
     const actor = { id: req.user!.id, role: req.user!.role };
 
-    // Authorize before accepting the multipart body at all — an unauthorized or
-    // wrongly-timed request never causes the server to stream/decode a file.
-    await assertPhotoMutablePreCheck(actor, productId);
+    await assertEditPhotoMutablePreCheck(actor, editId);
 
     if (!req.isMultipart()) {
       validationError('Expected a multipart/form-data upload');
@@ -40,10 +39,6 @@ export async function photoUploadRoute(app: FastifyInstance) {
     const root = cfg.root;
     const parts = req.parts();
 
-    // One file, no extra fields/parts. Busboy delivers parts sequentially over the
-    // same request stream, so "is there a second part" can only be answered *after*
-    // the first part's stream has been fully drained — hence the two-phase read
-    // below rather than a single-pass loop.
     const first = await parts.next();
     if (first.done || first.value.type !== 'file') {
       if (!first.done && first.value.type === 'field') {
@@ -56,18 +51,6 @@ export async function photoUploadRoute(app: FastifyInstance) {
     const requestId = newQuarantineRequestId();
     let reservationId: string | undefined;
     try {
-      // Reserved *before* a single byte is streamed to disk — worst-case source
-      // plus both generated variants at their absolute ceilings. Reserving only
-      // after `writeQuarantineFile` (as an earlier version of this route did) let
-      // N concurrent uploaders put N × MEDIA_MAX_UPLOAD_BYTES on the volume while
-      // the budget still read zero, exactly the disk-exhaustion mode the reserve
-      // headroom exists to prevent (reviewer-p3 I3). Reconciled down to the real
-      // generated size once encoding finishes.
-      const reservation = await reserveMediaCapacity({
-        bytes: cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes,
-      });
-      reservationId = reservation.id;
-
       const written = await writeQuarantineFile(root, requestId, filePart.file, cfg.maxUploadBytes);
       if (filePart.file.truncated) {
         throw new AppError({
@@ -83,17 +66,21 @@ export async function photoUploadRoute(app: FastifyInstance) {
         validationError('Only one file and no additional fields are allowed');
       }
 
+      const reservation = await reserveMediaCapacity({
+        bytes: cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes,
+      });
+      reservationId = reservation.id;
+
       const processed = await processProductUpload({ sourcePath: written.path });
       await reconcileMediaCapacityReservation(reservation.id, processed.display.bytes + processed.thumb.bytes);
 
-      const product = await addProductPhoto(actor, {
-        productId,
+      const edit = await addProductEditPhoto(actor, {
+        editId,
         processed,
         capacityReservationId: reservation.id,
-        requestMeta: { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
       });
-      reservationId = undefined; // addProductPhoto releases it on every terminal path
-      return reply.status(201).send(productSchema.parse(product));
+      reservationId = undefined; // addProductEditPhoto releases it on every terminal path
+      return reply.status(201).send(toProductEditRow(edit));
     } finally {
       await removeKeyPrefix(root, quarantineDirKey(requestId)).catch(() => {});
       if (reservationId) await releaseMediaCapacityReservation(reservationId).catch(() => {});

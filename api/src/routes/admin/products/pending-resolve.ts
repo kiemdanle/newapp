@@ -3,37 +3,37 @@ import { z } from 'zod';
 import { adminProductEditResolveSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
+import { resolveProductEdit } from '../../../services/products/product-edits.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
+/**
+ * Admin decision on a pending revision. Delegates to `resolveProductEdit`, which
+ * owns the real transactional/audit/photo-publish invariants — this route only
+ * adds the contract-preserving pieces: this endpoint's request shape has no
+ * client-supplied edit version (unlike the creator-facing submit/metadata
+ * endpoints), so it reads the edit fresh and passes its current version through
+ * as the optimistic-concurrency token. A genuinely stale read still surfaces as a
+ * `version_conflict` if the edit changed between this read and the write.
+ */
 export async function adminProductsPendingResolveRoute(app: FastifyInstance) {
   app.patch('/pending/:id', async (req) => {
     const { id } = paramsSchema.parse(req.params);
     const input = adminProductEditResolveSchema.parse(req.body);
-    const prisma = getPrisma();
-    const edit = await prisma.productEdit.findUnique({ where: { id } });
+    const edit = await getPrisma().productEdit.findUnique({ where: { id } });
     if (!edit) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Edit not found' });
     if (edit.status !== 'pending') throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'Already resolved' });
-    await prisma.$transaction(async (tx) => {
-      if (input.decision === 'approve') {
-        await tx.product.update({ where: { id: edit.productId }, data: edit.proposed as Record<string, unknown> });
-      }
-      await tx.productEdit.update({
-        where: { id },
-        data: {
-          // `request_changes` -> `changes_required`: resumable and read/write, never
-          // the terminal `rejected` state. The only writer of `rejected` is Phase 4's
-          // explicit stale-revision `supersede` action.
-          status: input.decision === 'approve' ? 'approved' : 'changes_required',
-          resolvedBy: req.user!.id,
-          resolvedAt: new Date(),
-          moderationNotes: input.notes ?? null,
-        },
-      });
-    });
-    await req.auditLog('product_edit.resolve', { type: 'product_edit', id }, {
-      before: { status: 'pending' }, after: { decision: input.decision, notes: input.notes ?? null },
-    });
-    return { ok: true };
+
+    const result = await resolveProductEdit(
+      { id: req.user!.id, role: 'admin' },
+      { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
+      {
+        editId: id,
+        action: input.decision === 'approve' ? 'approve' : 'request_changes',
+        version: edit.version,
+        notes: input.notes,
+      },
+    );
+    return result;
   });
 }

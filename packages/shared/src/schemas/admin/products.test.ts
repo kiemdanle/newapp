@@ -3,12 +3,54 @@ import { randomUUID } from 'node:crypto';
 import {
   adminProductStatusSchema,
   adminProductEditRowSchema,
+  adminProductRowSchema,
   productEditStatusSchema,
   adminProductEditResolveSchema,
+  adminProductModerateRequestSchema,
+  productEditRecoverRequestSchema,
   type AdminProductEditResolveDecision,
+  type AdminProductModerateDecision,
 } from './products.js';
 
 const now = new Date().toISOString();
+
+describe('adminProductRowSchema', () => {
+  const base = {
+    id: randomUUID(),
+    barcode: null,
+    qrPayload: null,
+    name: 'Milk',
+    brand: null,
+    category: null,
+    imageUrl: null,
+    source: 'user' as const,
+    status: 'pending' as const,
+    isCommunityEligible: false,
+    buyAgainCount: 0,
+    buyAgainOnSaleCount: 0,
+    wontBuyCount: 0,
+    ratingCount: 0,
+    reviewCount: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  it('parses without the optional review-media/moderation-history fields', () => {
+    expect(adminProductRowSchema.parse(base)).toMatchObject({ id: base.id, name: 'Milk' });
+  });
+
+  it('parses ordered review photos and moderation history when present', () => {
+    const withReview = {
+      ...base,
+      photos: [{ id: randomUUID(), position: 0, thumbnailUrl: '/v1/products/x/photos/y/thumb', displayUrl: '/v1/products/x/photos/y/display' }],
+      moderationNotes: 'add a clearer name',
+      moderatedAt: now,
+    };
+    const parsed = adminProductRowSchema.parse(withReview);
+    expect(parsed.photos).toHaveLength(1);
+    expect(parsed.moderationNotes).toBe('add a clearer name');
+  });
+});
 
 describe('adminProductStatusSchema', () => {
   it('includes the full product lifecycle', () => {
@@ -89,6 +131,34 @@ describe('adminProductEditResolveSchema', () => {
   });
 });
 
+describe('adminProductModerateRequestSchema', () => {
+  it('accepts approve without notes and requires a version', () => {
+    expect(adminProductModerateRequestSchema.parse({ decision: 'approve', version: 1 })).toEqual({
+      decision: 'approve',
+      version: 1,
+    });
+    expect(() => adminProductModerateRequestSchema.parse({ decision: 'approve' })).toThrow();
+  });
+
+  it('requires notes when requesting changes', () => {
+    expect(() =>
+      adminProductModerateRequestSchema.parse({ decision: 'request_changes', version: 1 }),
+    ).toThrow();
+    expect(
+      adminProductModerateRequestSchema.parse({
+        decision: 'request_changes',
+        version: 1,
+        notes: 'add a real name',
+      }),
+    ).toEqual({ decision: 'request_changes', version: 1, notes: 'add a real name' });
+  });
+
+  it('rejects the legacy reject decision and a non-positive version', () => {
+    expect(() => adminProductModerateRequestSchema.parse({ decision: 'reject', version: 1 })).toThrow();
+    expect(() => adminProductModerateRequestSchema.parse({ decision: 'approve', version: 0 })).toThrow();
+  });
+});
+
 describe('AdminProductEditResolveDecision', () => {
   it('is the exact schema-derived literal union — a compile-time drift guard', () => {
     // If a future rename changes the schema's decision literals without updating
@@ -98,5 +168,59 @@ describe('AdminProductEditResolveDecision', () => {
     // @ts-expect-error 'reject' is not a valid decision after the request_changes rename
     const legacyRejectIsNoLongerValid: AdminProductEditResolveDecision = 'reject';
     expect(legacyRejectIsNoLongerValid).toBe('reject');
+  });
+});
+
+describe('productEditRecoverRequestSchema', () => {
+  it('accepts a rebase action with a unique reviewed desired-photo mapping', () => {
+    const sourceId = randomUUID();
+    const editPhotoId = randomUUID();
+    const parsed = productEditRecoverRequestSchema.parse({
+      action: 'rebase',
+      editVersion: 2,
+      productVersion: 5,
+      desiredPhotoOrder: [
+        { type: 'retained', sourceProductPhotoId: sourceId },
+        { type: 'staged', editPhotoId },
+      ],
+    });
+    expect(parsed).toMatchObject({ action: 'rebase' });
+  });
+
+  it('rejects a rebase mapping with duplicate entries', () => {
+    const sourceId = randomUUID();
+    expect(() =>
+      productEditRecoverRequestSchema.parse({
+        action: 'rebase',
+        editVersion: 1,
+        productVersion: 1,
+        desiredPhotoOrder: [
+          { type: 'retained', sourceProductPhotoId: sourceId },
+          { type: 'retained', sourceProductPhotoId: sourceId },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it('accepts a supersede action without a photo mapping', () => {
+    const parsed = productEditRecoverRequestSchema.parse({
+      action: 'supersede',
+      editVersion: 3,
+      productVersion: 7,
+    });
+    expect(parsed).toEqual({ action: 'supersede', editVersion: 3, productVersion: 7 });
+  });
+
+  it('rejects an unknown action', () => {
+    expect(() =>
+      productEditRecoverRequestSchema.parse({ action: 'approve', editVersion: 1, productVersion: 1 }),
+    ).toThrow();
+  });
+});
+
+describe('AdminProductModerateDecision', () => {
+  it('is the exact schema-derived literal union — a compile-time drift guard', () => {
+    const decisions: AdminProductModerateDecision[] = ['approve', 'request_changes'];
+    expect(decisions).toEqual(['approve', 'request_changes']);
   });
 });

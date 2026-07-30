@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { problemSchema, versionConflictProblemSchema, ERROR_CODES } from './error.js';
+import { problemSchema, versionConflictProblemSchema, mergeIdentifierConflictSchema, ERROR_CODES } from './error.js';
 
 const now = new Date().toISOString();
 
@@ -80,6 +80,19 @@ describe('versionConflictProblemSchema', () => {
       canonicalProduct: product,
     };
     expect(versionConflictProblemSchema.parse(problem).canonicalProduct).toEqual(product);
+  });
+});
+
+describe('mergeIdentifierConflictSchema / problemSchema.identifierConflict', () => {
+  it('carries both conflicting values and which slot conflicted', () => {
+    const conflict = { slot: 'barcode' as const, sourceValue: '111', targetValue: '222' };
+    expect(mergeIdentifierConflictSchema.parse(conflict)).toEqual(conflict);
+    const problem = { title: 'Identifier conflict', status: 409, code: 'conflict', identifierConflict: conflict };
+    expect(problemSchema.parse(problem)).toEqual(problem);
+  });
+
+  it('rejects an unknown slot', () => {
+    expect(() => mergeIdentifierConflictSchema.parse({ slot: 'sku', sourceValue: '1', targetValue: '2' })).toThrow();
   });
 });
 

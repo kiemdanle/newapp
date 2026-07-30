@@ -46,42 +46,52 @@ describe('PATCH /v1/admin/products/:id', () => {
     const app = await buildServer();
     const { admin, headers } = await makeAdmin();
     const p = await getPrisma().product.create({ data: { name: 'Old', source: 'user', status: 'active' } });
-    const res = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { name: 'New', brand: 'Acme' } });
+    const res = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version, name: 'New', brand: 'Acme' } });
     expect(res.statusCode).toBe(200);
     expect(res.json().name).toBe('New');
     const log = await getPrisma().adminAuditLog.findFirstOrThrow({ where: { adminId: admin.id, targetId: p.id } });
     expect(log.action).toBe('product.update');
     await app.close();
   });
+
+  it('rejects a stale version with a typed conflict', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const p = await getPrisma().product.create({ data: { name: 'Old', source: 'user', status: 'active' } });
+    const res = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: p.version + 1, name: 'New' } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('version_conflict');
+    await app.close();
+  });
 });
 
 describe('POST /v1/admin/products/:id/merge', () => {
-  it('merges losers into winner', async () => {
+  it('merges sources into target', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const prisma = getPrisma();
-    const winner = await prisma.product.create({ data: { name: 'Winner', source: 'off', status: 'active' } });
-    const loser = await prisma.product.create({ data: { name: 'Loser', source: 'off', status: 'active' } });
+    const target = await prisma.product.create({ data: { name: 'Target', source: 'off', status: 'active' } });
+    const source = await prisma.product.create({ data: { name: 'Source', source: 'off', status: 'active' } });
     const u = await makeUserForAdmin();
     await prisma.record.create({
-      data: { userId: u.id, productId: loser.id, expiryDate: new Date('2026-12-01'), clientId: `${crypto.randomUUID()}`, notifyAt: [] },
+      data: { userId: u.id, productId: source.id, expiryDate: new Date('2026-12-01'), clientId: `${crypto.randomUUID()}`, notifyAt: [] },
     });
     const res = await app.inject({
-      method: 'POST', url: `/v1/admin/products/${winner.id}/merge`, headers,
-      payload: { winnerId: winner.id, loserIds: [loser.id] },
+      method: 'POST', url: `/v1/admin/products/${target.id}/merge`, headers,
+      payload: { targetId: target.id, sourceIds: [source.id], version: target.version },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().movedRecords).toBe(1);
-    const l = await prisma.product.findUniqueOrThrow({ where: { id: loser.id } });
+    const l = await prisma.product.findUniqueOrThrow({ where: { id: source.id } });
     expect(l.status).toBe('merged_into');
     await app.close();
   });
 
-  it('rejects merging winner into itself', async () => {
+  it('rejects merging target into itself', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const p = await getPrisma().product.create({ data: { name: 'Self', source: 'off', status: 'active' } });
-    const res = await app.inject({ method: 'POST', url: `/v1/admin/products/${p.id}/merge`, headers, payload: { winnerId: p.id, loserIds: [p.id] } });
+    const res = await app.inject({ method: 'POST', url: `/v1/admin/products/${p.id}/merge`, headers, payload: { targetId: p.id, sourceIds: [p.id], version: p.version } });
     expect(res.statusCode).toBe(400);
     await app.close();
   });

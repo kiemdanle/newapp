@@ -1,16 +1,17 @@
 import { ZodError } from 'zod';
-import type { Problem, ErrorCode, Product } from '@expyrico/shared';
+import type { Problem, ErrorCode, Product, MergeIdentifierConflict } from '@expyrico/shared';
 
 export class AppError extends Error {
   status: number;
   code: ErrorCode | string;
   title: string;
   detail?: string | undefined;
-  // Structured, explicitly typed fields for optimistic-concurrency conflicts — never a
+  // Structured, explicitly typed fields for specific conflict classes — never a
   // generic arbitrary details bag. `canonicalProduct` must only be set by callers that
   // have already decided it is visible to the caller; toProblem() serializes it as-is.
   currentVersion?: number | undefined;
   canonicalProduct?: Product | undefined;
+  identifierConflict?: MergeIdentifierConflict | undefined;
 
   constructor(opts: {
     status: number;
@@ -19,6 +20,7 @@ export class AppError extends Error {
     detail?: string;
     currentVersion?: number;
     canonicalProduct?: Product;
+    identifierConflict?: MergeIdentifierConflict;
   }) {
     super(opts.title);
     this.status = opts.status;
@@ -27,6 +29,7 @@ export class AppError extends Error {
     this.detail = opts.detail;
     this.currentVersion = opts.currentVersion;
     this.canonicalProduct = opts.canonicalProduct;
+    this.identifierConflict = opts.identifierConflict;
   }
 }
 
@@ -63,6 +66,7 @@ export function toProblem(err: unknown): Problem {
       ...(err.detail !== undefined ? { detail: err.detail } : {}),
       ...(err.currentVersion !== undefined ? { currentVersion: err.currentVersion } : {}),
       ...(err.canonicalProduct !== undefined ? { canonicalProduct: err.canonicalProduct } : {}),
+      ...(err.identifierConflict !== undefined ? { identifierConflict: err.identifierConflict } : {}),
     };
   }
   if (err instanceof ZodError) {

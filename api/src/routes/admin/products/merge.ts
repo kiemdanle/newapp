@@ -10,14 +10,16 @@ export async function adminProductsMergeRoute(app: FastifyInstance) {
   app.post('/:id/merge', async (req) => {
     const { id } = paramsSchema.parse(req.params);
     const input = adminProductMergeSchema.parse(req.body);
-    if (input.winnerId !== id) {
-      throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title: 'winnerId must match :id' });
+    if (input.targetId !== id) {
+      throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title: 'targetId must match :id' });
     }
-    const result = await mergeProducts(input.winnerId, input.loserIds);
-    await req.auditLog('product.merge', { type: 'product', id }, {
-      before: null,
-      after: { loserIds: input.loserIds, movedRecords: result.movedRecords, movedReviews: result.movedReviews },
-    });
+    const result = await mergeProducts(
+      { id: req.user!.id, role: 'admin' },
+      { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
+      input.sourceIds,
+      input.targetId,
+      input.version,
+    );
     return adminProductMergeResponseSchema.parse(result);
   });
 }

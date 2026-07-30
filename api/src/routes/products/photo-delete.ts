@@ -9,7 +9,11 @@ export async function photoDeleteRoute(app: FastifyInstance) {
   app.delete('/:productId/photos/:photoId', { onRequest: app.requireAuth }, async (req, reply) => {
     const { productId, photoId } = paramSchema.parse(req.params);
     const actor = { id: req.user!.id, role: req.user!.role };
-    const product = await removeProductPhoto(actor, { productId, photoId });
+    const product = await removeProductPhoto(actor, {
+      productId,
+      photoId,
+      requestMeta: { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
+    });
     return reply.status(200).send(productSchema.parse(product));
   });
 }

@@ -18,15 +18,22 @@ export interface AuditLogInput {
 }
 
 /**
- * Append-only writer for admin_audit_log. Called from every admin mutation in M3.
+ * Append-only writer for admin_audit_log. Called from every admin mutation.
+ *
+ * Pass `tx` (a Prisma transaction client) whenever the audit row must commit
+ * atomically with the state change it records — every Phase 4 moderation/
+ * revision/merge/recovery service does this, inserting the audit row inside the
+ * same `$transaction` as the write instead of via the post-response `req.auditLog`
+ * plugin. Omit it only for non-domain/simple admin CRUD where a post-commit,
+ * best-effort audit write is an accepted trade-off.
  */
-export async function writeAuditLog(input: AuditLogInput): Promise<void> {
+export async function writeAuditLog(input: AuditLogInput, tx?: Prisma.TransactionClient): Promise<void> {
   if (!input.adminId) throw new Error('adminId is required');
   if (!input.action) throw new Error('action is required');
   if (!input.targetType) throw new Error('targetType is required');
   if (!input.targetId) throw new Error('targetId is required');
 
-  await getPrisma().adminAuditLog.create({
+  await (tx ?? getPrisma()).adminAuditLog.create({
     data: {
       adminId: input.adminId,
       action: input.action,
