@@ -12,10 +12,10 @@ export async function photoDeleteRoute(app: FastifyInstance) {
     const actor = { id: req.user!.id, role: req.user!.role };
     // `removeProductPhoto` only ever admits a non-admin onto a
     // draft/changes_required product; the mode gate is an orthogonal capability
-    // check on top of that. Admins are exempt.
-    if (actor.role !== 'admin') {
-      await assertProductCreationEligible(actor, 'photo');
-    }
+    // check on top of that. `assertProductCreationEligible` already treats an
+    // admin actor as eligible in every mode on its own — one converged policy
+    // across all six call sites (reviewer-p7 I6), same as photo-order.ts.
+    await assertProductCreationEligible(actor, 'photo');
     const product = await removeProductPhoto(actor, {
       productId,
       photoId,

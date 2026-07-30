@@ -13,10 +13,12 @@ export async function photoOrderRoute(app: FastifyInstance) {
     const actor = { id: req.user!.id, role: req.user!.role };
     // `reorderProductPhotos` only ever admits a non-admin onto a
     // draft/changes_required product; the mode gate is an orthogonal capability
-    // check on top of that. Admins are exempt.
-    if (actor.role !== 'admin') {
-      await assertProductCreationEligible(actor, 'photo');
-    }
+    // check on top of that. `assertProductCreationEligible` already treats an
+    // admin actor as eligible in every mode on its own (no separate `role !==
+    // 'admin'` special-case needed here) — the same single policy now used by
+    // create/patch/submit, converging what were six independently-decided
+    // admin exemptions into one (reviewer-p7 I6).
+    await assertProductCreationEligible(actor, 'photo');
     const product = await reorderProductPhotos(actor, {
       productId,
       photoIds: input.photoIds,

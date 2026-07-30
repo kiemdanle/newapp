@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { getPrisma } from '../../src/db.js';
@@ -6,6 +7,10 @@ import { makeAdmin, makeUserForAdmin } from '../helpers/admin.js';
 import { makeUser } from '../helpers/factories.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { isProductCreationEligible } from '../../src/services/products/product-creation-eligibility.js';
+import {
+  setProductCreationAssessmentClientForTests,
+  resetProductCreationAssessmentBreakerForTests,
+} from '../../src/services/abuse/product-creation-assessment.js';
 
 const baseEnv = { ...process.env };
 
@@ -15,7 +20,36 @@ afterEach(() => {
   vi.doUnmock('../../src/services/products/off-client.js');
   vi.doUnmock('../../src/services/products/upcitemdb-client.js');
   vi.resetModules();
+  setProductCreationAssessmentClientForTests(undefined);
+  resetProductCreationAssessmentBreakerForTests();
 });
+
+function idemHeaders(base: Record<string, string>) {
+  return { ...base, 'idempotency-key': randomUUID() };
+}
+
+function stubAssessmentClient(score = 0.9, action = 'submit_product') {
+  setProductCreationAssessmentClientForTests({
+    projectPath: (p: string) => `projects/${p}`,
+    createAssessment: async () => [
+      { tokenProperties: { valid: true, action }, riskAnalysis: { score, reasons: [] } },
+    ],
+  } as never);
+}
+
+/** Same shape as `buildServerWithExternalMiss` but also hands back the mock
+ * functions themselves, so a test can assert on call counts — the load-bearing
+ * proof for reviewer-p7 I5 ("mode gate must run before the expensive external
+ * lookup", not merely "before the write"). */
+async function buildServerWithTrackedExternalMiss() {
+  const offMock = vi.fn().mockResolvedValue({ status: 'not_found' });
+  const upcMock = vi.fn().mockResolvedValue({ status: 'not_found' });
+  vi.doMock('../../src/services/products/off-client.js', () => ({ lookupOff: offMock }));
+  vi.doMock('../../src/services/products/upcitemdb-client.js', () => ({ lookupUpcitemdb: upcMock }));
+  vi.resetModules();
+  const { buildServer: build2 } = await import('../../src/server.js');
+  return { app: await build2(), offMock, upcMock };
+}
 
 type Mode = 'off' | 'internal' | 'all';
 
@@ -184,6 +218,213 @@ describe('POST /v1/products/lookup-v2 canCreate — mode gates the read-side cap
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ outcome: 'not_found', canCreate: true });
+    await app.close();
+  });
+});
+
+describe('POST /v1/products/drafts — mode gate runs before the external lookup (reviewer-p7 I5)', () => {
+  it('under off, a genuine not_found create attempt is rejected without ever calling either external provider', async () => {
+    await setMode('off');
+    const { app, offMock, upcMock } = await buildServerWithTrackedExternalMiss();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode: `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13) },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('feature_disabled');
+    expect(offMock).not.toHaveBeenCalled();
+    expect(upcMock).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('under all, the same request is admitted and does reach both external providers', async () => {
+    await setMode('all');
+    const { app, offMock, upcMock } = await buildServerWithTrackedExternalMiss();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode: `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13) },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(offMock).toHaveBeenCalledTimes(1);
+    expect(upcMock).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('resuming the caller\'s own existing draft never calls an external provider, in any mode', async () => {
+    await setMode('off');
+    const { app, offMock, upcMock } = await buildServerWithTrackedExternalMiss();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const barcode = `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13);
+    await getPrisma().product.create({
+      data: { barcode, name: 'Existing', source: 'user', createdByUserId: user.id, status: 'draft' },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().resumed).toBe(true);
+    expect(offMock).not.toHaveBeenCalled();
+    expect(upcMock).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('Admin cohort under internal mode — one converged policy (reviewer-p7 I6)', () => {
+  it('an internal-mode admin can create, patch, and submit their own draft end to end', async () => {
+    await setMode('internal');
+    const app = await buildServer();
+    const { headers, admin } = await makeAdmin();
+    const barcode = `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13);
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode },
+    });
+    expect(created.statusCode).toBe(201);
+    const draft = created.json();
+    expect(draft.product.status).toBe('draft');
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/drafts/${draft.product.id}`,
+      headers,
+      payload: { version: draft.product.version, name: 'Admin Own Draft' },
+    });
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().name).toBe('Admin Own Draft');
+
+    stubAssessmentClient();
+    const submitted = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${draft.product.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: patched.json().version, abuseToken: 'tok', platform: 'android' },
+    });
+    expect(submitted.statusCode).toBe(200);
+    expect(submitted.json().status).toBe('pending');
+
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: draft.product.id } });
+    expect(row.createdByUserId).toBe(admin.id);
+    expect(row.status).toBe('pending');
+    await app.close();
+  });
+
+  it('a non-allowlisted regular user is still blocked from all three mutations under internal mode', async () => {
+    await setMode('internal');
+    const app = await buildServer();
+    const user = await makeUserForAdmin();
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const barcode = `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('feature_disabled');
+    await app.close();
+  });
+});
+
+describe('POST /v1/products/drafts/:id/submit — completeness validation (reviewer-p7 I8)', () => {
+  it('rejects submitting a draft that was never given a name, leaving it in draft status', async () => {
+    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+    const app = await buildServer();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const draft = await getPrisma().product.create({
+      data: {
+        barcode: `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13),
+        name: '',
+        source: 'user',
+        createdByUserId: user.id,
+        status: 'draft',
+      },
+    });
+    stubAssessmentClient();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${draft.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: draft.version, abuseToken: 'tok', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('validation_error');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(row.status).toBe('draft');
+    await app.close();
+  });
+
+  it('rejects a whitespace-only name identically to an empty one', async () => {
+    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+    const app = await buildServer();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const draft = await getPrisma().product.create({
+      data: {
+        barcode: `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13),
+        name: '   ',
+        source: 'user',
+        createdByUserId: user.id,
+        status: 'draft',
+      },
+    });
+    stubAssessmentClient();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${draft.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: draft.version, abuseToken: 'tok', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('accepts submitting a draft once a real name was set via PATCH', async () => {
+    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+    const app = await buildServer();
+    const user = await makeUser({ emailVerified: true });
+    const headers = await authHeadersFor(user.id, user.tokenVersion);
+    const draft = await getPrisma().product.create({
+      data: {
+        barcode: `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13),
+        name: '',
+        source: 'user',
+        createdByUserId: user.id,
+        status: 'draft',
+      },
+    });
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/drafts/${draft.id}`,
+      headers,
+      payload: { version: draft.version, name: 'Real Name' },
+    });
+    expect(patched.statusCode).toBe(200);
+    stubAssessmentClient();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${draft.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: patched.json().version, abuseToken: 'tok', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe('pending');
     await app.close();
   });
 });

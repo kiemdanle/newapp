@@ -18,7 +18,7 @@ import {
 } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
-import { lookupProductV2 } from './lookup.js';
+import { hasLocalMatch, lookupProductV2 } from './lookup.js';
 import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
 import { privateProductPhotoRoute } from './product-media-storage.js';
@@ -68,6 +68,16 @@ function throwForNonCreatableOutcome(outcome: ProductLookupV2Response): never {
   });
 }
 
+/** The real, authenticated actor performing a draft mutation — threaded
+ * through every call site so the mode-gate/eligibility check evaluates the
+ * actor's actual role, never a hardcoded stand-in (reviewer-p7 I6: `internal`
+ * mode's admin grant was silently defeated because create/patch/submit each
+ * hardcoded `{ role: 'user' }` regardless of who was actually calling). */
+export interface DraftActor {
+  id: string;
+  role: 'user' | 'admin';
+}
+
 /**
  * Creates a new creator-private draft, or resumes the caller's own existing
  * draft/changes_required product for the same identifier. Always repeats the
@@ -76,11 +86,33 @@ function throwForNonCreatableOutcome(outcome: ProductLookupV2Response): never {
  * through the same visibility classification lookup-v2 uses.
  */
 export async function createOrResumeDraft(
-  actorId: string,
+  actor: DraftActor,
   input: ProductDraftCreateRequest,
 ): Promise<{ product: ApiProduct; resumed: boolean }> {
   const identifierInput = draftIdentifierInput(input);
-  const outcome = await lookupProductV2(identifierInput, { id: actorId, role: 'user' });
+
+  // Only the actual new-row-creation path is mode-gated — resuming an existing
+  // draft below returns already-owned state and never writes, so it stays
+  // available regardless of mode (existing drafts remain readable/exportable).
+  // A resumed outcome is always resolved from a pure local DB match (never an
+  // external provider call), so checking that first lets an ineligible actor
+  // be rejected *before* paying for lookupProductV2's off/upcitemdb round
+  // trip on a genuine "not_found" — previously `off` mode still let every
+  // caller drive two full external lookups before being rejected (reviewer-p7
+  // I5).
+  if (!(await hasLocalMatch(identifierInput))) {
+    await assertProductCreationEligible(actor, 'create');
+    await assertWithinActiveDraftQuota(actor.id);
+  }
+
+  // Always classified as a plain creator here, never the actor's real role —
+  // lookupProductV2's admin branch returns a read-only moderation view
+  // (`creator_pending`) for *any* non-active local row, which would make an
+  // admin using the feature under their `internal`-mode grant unable to ever
+  // resume their own draft. The eligibility check above is what enforces the
+  // real role; classification here must stay creator-shaped, matching every
+  // other actor.
+  const outcome = await lookupProductV2(identifierInput, { id: actor.id, role: 'user' });
 
   if (outcome.outcome === 'editable_private') {
     return { product: outcome.product, resumed: true };
@@ -88,12 +120,6 @@ export async function createOrResumeDraft(
   if (outcome.outcome !== 'not_found') {
     throwForNonCreatableOutcome(outcome);
   }
-
-  // Only the actual new-row-creation path is mode-gated — resuming an existing
-  // draft above returns already-owned state and never writes, so it stays
-  // available regardless of mode (existing drafts remain readable/exportable).
-  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'create');
-  await assertWithinActiveDraftQuota(actorId);
 
   const prisma = getPrisma();
   try {
@@ -104,7 +130,7 @@ export async function createOrResumeDraft(
         // creator fills it in via PATCH before submit is possible.
         name: '',
         source: 'user',
-        createdByUserId: actorId,
+        createdByUserId: actor.id,
         status: 'draft',
       },
       include: PRODUCT_INCLUDE,
@@ -114,7 +140,7 @@ export async function createOrResumeDraft(
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       // Lost a create race for the same identifier — resolve through the same
       // classification the winner would have produced, never a raw DB retry.
-      const raced = await lookupProductV2(identifierInput, { id: actorId, role: 'user' });
+      const raced = await lookupProductV2(identifierInput, { id: actor.id, role: 'user' });
       if (raced.outcome === 'editable_private') return { product: raced.product, resumed: true };
       throwForNonCreatableOutcome(raced);
     }
@@ -136,7 +162,7 @@ function assertOwnDraftLike(product: Product, actorId: string): void {
 }
 
 export async function patchDraft(
-  actorId: string,
+  actor: DraftActor,
   productId: string,
   input: ProductDraftPatchRequest,
 ): Promise<ApiProduct> {
@@ -145,8 +171,8 @@ export async function patchDraft(
   if (!existing) {
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
-  assertOwnDraftLike(existing, actorId);
-  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'metadata');
+  assertOwnDraftLike(existing, actor.id);
+  await assertProductCreationEligible(actor, 'metadata');
 
   const data: PrismaTypes.ProductUpdateInput = { version: { increment: 1 } };
   if (input.name !== undefined) data.name = input.name;
@@ -161,7 +187,7 @@ export async function patchDraft(
   const result = await prisma.product.updateMany({
     where: {
       id: productId,
-      createdByUserId: actorId,
+      createdByUserId: actor.id,
       status: { in: ['draft', 'changes_required'] },
       version: input.version,
     },
@@ -176,7 +202,7 @@ export async function patchDraft(
     // Re-run the informative checks in case ownership/state changed too (e.g. a
     // concurrent submit) — only fall through to version_conflict when those
     // still pass, so the error message matches the real cause.
-    assertOwnDraftLike(current, actorId);
+    assertOwnDraftLike(current, actor.id);
     throw new AppError({
       status: 409,
       code: ERROR_CODES.VERSION_CONFLICT,
@@ -202,7 +228,7 @@ export async function patchDraft(
  * the idempotency layer.
  */
 export async function submitDraft(
-  actorId: string,
+  actor: DraftActor,
   productId: string,
   input: ProductDraftSubmitRequest,
 ): Promise<ApiProduct> {
@@ -211,8 +237,24 @@ export async function submitDraft(
   if (!existing) {
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
-  assertOwnDraftLike(existing, actorId);
-  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'submit');
+  assertOwnDraftLike(existing, actor.id);
+  await assertProductCreationEligible(actor, 'submit');
+
+  // Completeness, checked before the billed external assessment call below —
+  // `createOrResumeDraft` deliberately writes `name: ''`, and PATCH never
+  // requires setting one, so nothing before this point guarantees a
+  // reviewable row. Violates the plan's global "Name required: trimmed
+  // 1–200 characters" constraint otherwise, pushing an empty-name draft into
+  // Phase 6's moderation queue (reviewer-p7 I8). PATCH already enforces the
+  // trim/length bounds when a name *is* provided, so only presence needs
+  // checking here.
+  if (existing.name.trim().length === 0) {
+    throw new AppError({
+      status: 400,
+      code: ERROR_CODES.VALIDATION,
+      title: 'This draft needs a name before it can be submitted',
+    });
+  }
 
   // Client-reported success is never trusted: this is the real, server-side
   // verification. Throws a retryable 503 on provider timeout/error (nothing
@@ -223,7 +265,7 @@ export async function submitDraft(
   const result = await prisma.product.updateMany({
     where: {
       id: productId,
-      createdByUserId: actorId,
+      createdByUserId: actor.id,
       status: { in: ['draft', 'changes_required'] },
       version: input.version,
     },
@@ -235,7 +277,7 @@ export async function submitDraft(
     if (!current) {
       throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
     }
-    assertOwnDraftLike(current, actorId);
+    assertOwnDraftLike(current, actor.id);
     throw new AppError({
       status: 409,
       code: ERROR_CODES.VERSION_CONFLICT,

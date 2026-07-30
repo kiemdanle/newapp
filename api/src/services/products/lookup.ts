@@ -36,6 +36,22 @@ async function findLocalExact(input: LookupInput): Promise<ProductWithPhotos | n
   return null;
 }
 
+/**
+ * True when `input` already resolves to *some* local row, regardless of what
+ * it classifies to for `actor` — a pure DB existence check that never calls
+ * an external provider. `lookupProductV2`'s `not_found` outcome (the only one
+ * that can lead to `createOrResumeDraft` actually creating a new row) is only
+ * ever reached when this is `false`, so callers can use it to decide whether
+ * the create-mode gate needs to run *before* paying for the external lookup
+ * round trip, without duplicating `classifyLocal`'s classification logic or
+ * changing `lookupProductV2`'s own behaviour (which must keep running the
+ * full external lookup unconditionally for its read-only capability-flag
+ * response; reviewer-p7 I5).
+ */
+export async function hasLocalMatch(input: LookupInput): Promise<boolean> {
+  return (await findLocalExact(input)) !== null;
+}
+
 // Re-reads on conflict inside a transaction and never overwrites a user-sourced or
 // non-active (private/moderation) row — an external hit can only ever create a new
 // row or refresh an existing active external one. Exported for a focused race-safety

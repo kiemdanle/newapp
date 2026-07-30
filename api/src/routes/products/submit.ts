@@ -12,7 +12,7 @@ export async function draftSubmitRoute(app: FastifyInstance) {
     async (req, reply) => {
       const { id } = paramSchema.parse(req.params);
       const input = productDraftSubmitRequestSchema.parse(req.body);
-      const product = await submitDraft(req.user!.id, id, input);
+      const product = await submitDraft({ id: req.user!.id, role: req.user!.role }, id, input);
       return reply.send(product);
     },
   );

@@ -12,7 +12,7 @@ export async function draftsRoute(app: FastifyInstance) {
     { onRequest: app.requireAuth, config: { idempotent: 'required' } },
     async (req, reply) => {
       const input = productDraftCreateRequestSchema.parse(req.body);
-      const { product, resumed } = await createOrResumeDraft(req.user!.id, input);
+      const { product, resumed } = await createOrResumeDraft({ id: req.user!.id, role: req.user!.role }, input);
       return reply.status(resumed ? 200 : 201).send({ product, resumed });
     },
   );
