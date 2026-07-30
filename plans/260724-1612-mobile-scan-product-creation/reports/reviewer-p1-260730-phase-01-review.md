@@ -145,3 +145,45 @@ To get an attributable result I provisioned my **own throwaway database** the sa
 ## Re-verification verdict
 
 All 1 CRITICAL + 5 IMPORTANT findings are **CLOSED with tests I re-ran myself**, and both decide-now MODERATEs (reorder deferrability, photo sort) are **CLOSED**. The remediation is high quality: it fixed the reported defects at the contract level rather than patching call sites, and added real negative/race tests for each. **Not clean, however:** two new IMPORTANT issues were introduced (creator dead-end after `request_changes`; deferrable constraints breaking `upsert`/`ON CONFLICT` with an unclassifiable error) plus two MODERATEs. The dead-end is the only one that affects a live endpoint today and should be fixed before Phase 4 moderation work lands.
+
+---
+
+# Re-verification round 2 — commit `ced0e72`
+
+## Verification performed
+
+Provisioned a fresh isolated database (`psql -c CREATE DATABASE`, `CREATE EXTENSION pg_trgm`, `psql -f` over all **23** migration files in sort order), ran with `TEST_DATABASE_URL`, dropped it after (`pantry_rev2_1n3u2ahx`). No `prisma migrate deploy/dev/reset` run; `pantry` read only.
+
+| Check | Result |
+|---|---|
+| Full api suite, isolated DB | **561/561 pass, 88/88 files, zero flakes** — matches dev-1's claim exactly |
+| Shared suite / typecheck | 57/57 pass; clean |
+| api / admin typecheck | clean (admin catches an invalid `variant`, so the new `accent` value is real) |
+| Mobile `shared-contract` | 5/5 pass |
+| `prisma migrate status`, read-only, `pantry` **and** `pantry_test` | both "23 migrations found… Database schema is up to date!" — no pending, no applied-but-missing |
+| `is_legacy` default, read-only, both DBs | `column_default = 'false'` on both |
+| Classify migration still ungated | absent from `_prisma_migrations` on both DBs; only `…_make_photo_position_deferrable` and `…_default_product_edits_is_legacy_false` recorded for 2026-07-30 |
+| `pantry` data | `active=3`, zero `pending`/`report_hidden`; `product_edits` empty on both DBs (so the default flip could not have relabelled history; the backfill=`true` path stays covered by the scratch-DB upgrade fixture) |
+| Working tree for dev-1's files | clean (`git status -- api/prisma api/src/routes/products/patch.ts apps/admin`) → the migration-B header fix is genuinely committed, not a stray diff |
+
+## Finding-by-finding
+
+**[IMPORTANT] Creator dead-end after `request_changes` — CLOSED.** `patch.ts:33-58` looks up the caller's own open edit (`submittedBy: req.user!.id`, `isLegacy: false`, `status: { in: ['draft','changes_required'] }`) and updates it in place to `pending` with `moderationNotes: null`, only falling through to `create` (+ `P2002` → 409) when none exists. Ownership is scoped correctly — no cross-user edit can be hijacked. Two new tests, both of which I ran as part of the 561: a sequential second patch while the first is genuinely `pending` still 409s, and the full loop patch → `request_changes` → patch → 202 keeps **one** row (same `editId`), clears feedback, reappears in the admin queue, and the final approve applies "Revised proposal" to the product.
+
+**[IMPORTANT] Deferrable constraints vs `upsert`/`ON CONFLICT` — CLOSED (documented).** `phase-03-product-media-pipeline-and-vps-delivery.md` now carries it in both Requirements and Task 3, with the SQLSTATE `55000` text, the `err.code === undefined` caveat, and an explicit "must never call `upsert`/`ON CONFLICT` against `(product_id, position)` / `(product_edit_id, position)`" instruction plus the reason not to revert the deferrability. That is the right place — Phase 3 cannot miss it while writing the photo service.
+
+**[MODERATE] Contradictory migration-B header — CLOSED.** The corrected header (pointing at `README.md`, no `prisma migrate deploy` instruction) is committed in `ced0e72`; working tree clean for that path.
+
+**[MODERATE] Alert Red on a non-destructive action — CLOSED.** `pending-actions.tsx:65` now uses `variant="accent"`, and `button.tsx:12-15` adds that variant as `bg-accent text-accent-foreground` with a comment reserving `destructive` for actual destruction. Token verified real, not a dead class: `apps/admin/tailwind.config.ts:18-21` maps `accent`/`accent-foreground`, and `globals.css:19-21` defines `--accent: 37 91% 55%` ≈ `#F5A623` — the Honey accent from the brand palette, which is the correct semantic for "needs attention".
+
+**[Residual] `is_legacy` fail-open default — CLOSED.** New migration `20260730052600_default_product_edits_is_legacy_false` does `ALTER COLUMN is_legacy SET DEFAULT false`; `schema.prisma:408` mirrors it with `@default(false)`; both live DBs verified. New test proves the fail-closed behaviour *without* passing `isLegacy` at all (`products-schema.test.ts:484-495`), which is exactly the gap the previous round's tests left. The upgrade fixture was extended to replay this migration too, so the historical `is_legacy = true` backfill is still asserted.
+
+## New issues (round 2)
+
+**[MODERATE — NEW] The in-place resubmission is an unguarded read-then-write, so a concurrent proposal is silently lost (and a future Phase 4 writer could be overwritten).** `patch.ts:36-58` does `findFirst` then `update({ where: { id } })` with no status predicate and no transaction. Two concurrent resubmissions from the same creator both read the same `changes_required` row, both update it, both return **202** — one proposal is discarded with no signal to the client. There is no admin-side transition out of `draft|changes_required` today (`pending.ts:11` lists only `pending`; `pending-resolve.ts:16` rejects non-`pending`), so nothing worse is reachable *yet* — but Phase 4 adds `rebase`/`supersede` writers that move edits out of those states, and this write would then resurrect a superseded edit into `pending`. — **Recommendation:** make it a conditional write — `updateMany({ where: { id, status: { in: ['draft','changes_required'] } }, … })` and treat `count === 0` as the 409 path (or re-read inside a transaction). Three lines, and it removes the trap before Phase 4 lands.
+
+**[MODERATE — NEW] Resubmission does not refresh moderation-lifecycle metadata.** Probed on the isolated DB by replaying exactly the route's `update` against a row in the post-`request_changes` state (`resolvedBy`/`resolvedAt` set, product at `version = 3`): after the update the row is `status: 'pending'`, `moderationNotes: null` — correct — but `resolvedBy_cleared: false`, `resolvedAt_cleared: false`, `submittedAt: null`, `baseProductVersion: 1` (vs product `version: 3`), `version: 1`, `createdAt` unchanged. Consequences: (a) `adminProductEditRowSchema` exposes `resolvedBy`/`resolvedAt`, so the admin queue shows an awaiting-review row stamped "resolved by <admin> at <time>", and any Phase 4/6 logic reading `resolvedAt != null` as "already resolved" will misclassify it; (b) `submittedAt` is never written by any code path (`grep` shows `pending.ts:25` reads it, nothing writes it) and the queue orders by `createdAt desc`, so a revision keeps its original queue position and its actual (re)submission time is unknowable; (c) `baseProductVersion` stays at the create-time default while the product moves on, which is precisely the input Phase 4's stale-revision rebase/supersede decision depends on. (b) and (c) predate this commit; the resubmission path makes them materially worse because one row now spans several moderation rounds. — **Recommendation:** clear `resolvedBy`/`resolvedAt`, set `submittedAt: new Date()`, and set `baseProductVersion` to the current `product.version` on both the create and the resubmit paths; if Phase 4 would rather own that, record it there explicitly so its staleness model does not assume these fields are maintained.
+
+## Round-2 verdict
+
+**Clean at IMPORTANT and above.** Both round-1-introduced IMPORTANT issues, both MODERATEs, and the `is_legacy` residual are closed, each with a test that fails without the fix, and the whole suite is green on an isolated database (561/561, no flakes). Phase 1 is landable. Two new MODERATEs remain, both inside the `ProductEdit` moderation lifecycle: the unguarded resubmission write is worth the three-line conditional now, and the stale `resolvedBy`/`resolvedAt`/`submittedAt`/`baseProductVersion` metadata should be assigned to Phase 4 explicitly rather than left implicit.
