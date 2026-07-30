@@ -121,6 +121,141 @@ describe('POST /v1/records — product-use authorization', () => {
   });
 });
 
+describe('report_hidden preserves existing pantry references (never freezes them)', () => {
+  it('PATCH (status: consumed) on an existing record succeeds after its product is auto-hidden', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const p = await statusProduct('active');
+    const record = await makeRecord(someone.id, { productId: p.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/records/${record.id}`,
+      headers: await authHeaders(someone),
+      payload: { status: 'consumed' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe('consumed');
+    await app.close();
+  });
+
+  it('PATCH also succeeds for an existing household-scoped record after auto-hide', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const household = await makeHousehold(owner.id);
+    const p = await statusProduct('active');
+    const record = await makeRecord(owner.id, { productId: p.id, householdId: household.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/records/${record.id}`,
+      headers: await authHeaders(owner),
+      payload: { quantity: 2 },
+    });
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('duplicate of an existing record succeeds after its product is auto-hidden', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const p = await statusProduct('active');
+    const record = await makeRecord(someone.id, { productId: p.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/records/${record.id}/duplicate`,
+      headers: await authHeaders(someone),
+      payload: { expiryDate: '2099-03-01' },
+    });
+    expect(res.statusCode).toBe(201);
+    await app.close();
+  });
+
+  it('sync upsert of an existing record (unchanged productId) succeeds after auto-hide, no dropped conflict', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const p = await statusProduct('active');
+    const record = await makeRecord(someone.id, { productId: p.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/records/sync',
+      headers: await authHeaders(someone),
+      payload: {
+        upserts: [{
+          clientId: record.clientId, productId: p.id, expiryDate: '2099-01-01',
+          quantity: 9, notes: 'edited offline', unit: 'pcs', updatedAt: new Date(Date.now() + 60_000).toISOString(),
+        }],
+        deletes: [],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().conflicts).toEqual([]);
+    const row = await getPrisma().record.findUniqueOrThrow({ where: { id: record.id } });
+    expect(Number(row.quantity)).toBe(9);
+    expect(row.notes).toBe('edited offline');
+    await app.close();
+  });
+
+  it('a brand-new sync upsert that newly attaches a report_hidden product is never silently dropped — surfaces as a conflict', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const p = await statusProduct('report_hidden');
+    const clientId = randomUUID();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/records/sync',
+      headers: await authHeaders(someone),
+      payload: {
+        upserts: [{
+          clientId, productId: p.id, expiryDate: '2099-01-01',
+          quantity: 1, unit: 'pcs', updatedAt: new Date().toISOString(),
+        }],
+        deletes: [],
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().conflicts).toEqual([{ clientId, reason: 'product_unavailable' }]);
+    const row = await getPrisma().record.findFirst({ where: { clientId } });
+    expect(row).toBeNull();
+    await app.close();
+  });
+
+  it('cannot move an existing report_hidden-product record into a household (new attachment in that scope)', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const household = await makeHousehold(someone.id);
+    const p = await statusProduct('active');
+    const record = await makeRecord(someone.id, { productId: p.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/records/${record.id}`,
+      headers: await authHeaders(someone),
+      payload: { householdId: household.id },
+    });
+    // Non-enumerating, same as every other report_hidden rejection — this is a
+    // new use (household attachment), not a preserved reference.
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('cannot create a brand-new review against a report_hidden product', async () => {
+    const app = await buildServer();
+    const someone = await makeUser({ emailVerified: true });
+    const p = await statusProduct('report_hidden');
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/${p.id}/reviews`,
+      headers: await authHeaders(someone),
+      payload: { rating: 'buy_again' },
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
 describe('PATCH /v1/records/:id — scope-transition authorization', () => {
   it('a changes_required product reference may remain while the record stays personal', async () => {
     const app = await buildServer();

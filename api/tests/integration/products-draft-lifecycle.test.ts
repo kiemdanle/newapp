@@ -235,7 +235,7 @@ describe('PATCH /v1/products/drafts/:id', () => {
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { name: 'Grandma\'s Salsa', description: 'Spicy and smooth', brand: 'Grandma' },
+      payload: { version: p.version, name: 'Grandma\'s Salsa', description: 'Spicy and smooth', brand: 'Grandma' },
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
@@ -254,7 +254,7 @@ describe('PATCH /v1/products/drafts/:id', () => {
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { name: 'New Name' },
+      payload: { version: p.version, name: 'New Name' },
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().description).toBe('Keep me');
@@ -265,11 +265,12 @@ describe('PATCH /v1/products/drafts/:id', () => {
     const app = await buildServer();
     const { user, headers } = await authedUser();
     const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
     const res = await app.inject({
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { description: 'bad\x07value' },
+      payload: { version: p.version, description: 'bad\x07value' },
     });
     expect(res.statusCode).toBe(400);
     await app.close();
@@ -279,15 +280,80 @@ describe('PATCH /v1/products/drafts/:id', () => {
     const app = await buildServer();
     const { user, headers } = await authedUser();
     const p = await makeProduct({ createdByUserId: user.id, barcode: '2223334440001' });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
     const res = await app.inject({
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { barcode: '9999999999999' },
+      payload: { version: p.version, barcode: '9999999999999' },
     });
     expect(res.statusCode).toBe(400);
     const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
     expect(row.barcode).toBe('2223334440001');
+    await app.close();
+  });
+
+  it('requires version', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+      payload: { name: 'Missing version' },
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('a stale version is rejected with 409 version_conflict and the current version', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    // Apply one patch so the stored version has already moved past `p.version`.
+    await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+      payload: { version: p.version, name: 'First edit' },
+    });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+      payload: { version: p.version, name: 'Stale edit' },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('version_conflict');
+    expect(res.json().currentVersion).toBe(p.version + 1);
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.name).toBe('First edit');
+    await app.close();
+  });
+
+  it('two concurrent patches at the same version: exactly one 200 and one 409', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const [r1, r2] = await Promise.all([
+      app.inject({
+        method: 'PATCH',
+        url: `/v1/products/drafts/${p.id}`,
+        headers,
+        payload: { version: p.version, name: 'Writer A' },
+      }),
+      app.inject({
+        method: 'PATCH',
+        url: `/v1/products/drafts/${p.id}`,
+        headers,
+        payload: { version: p.version, name: 'Writer B' },
+      }),
+    ]);
+    expect([r1.statusCode, r2.statusCode].sort()).toEqual([200, 409]);
     await app.close();
   });
 
@@ -300,7 +366,7 @@ describe('PATCH /v1/products/drafts/:id', () => {
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { name: 'Hijack' },
+      payload: { version: p.version, name: 'Hijack' },
     });
     expect(res.statusCode).toBe(404);
     await app.close();
@@ -315,7 +381,7 @@ describe('PATCH /v1/products/drafts/:id', () => {
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { name: 'Too late' },
+      payload: { version: p.version, name: 'Too late' },
     });
     expect(res.statusCode).toBe(409);
     await app.close();
@@ -330,7 +396,7 @@ describe('PATCH /v1/products/drafts/:id', () => {
       method: 'PATCH',
       url: `/v1/products/drafts/${p.id}`,
       headers,
-      payload: { name: 'Fixed per feedback' },
+      payload: { version: p.version, name: 'Fixed per feedback' },
     });
     expect(res.statusCode).toBe(200);
     await app.close();
@@ -434,6 +500,22 @@ describe('GET /v1/products/drafts', () => {
     const app = await buildServer();
     const res = await app.inject({ method: 'GET', url: '/v1/products/drafts' });
     expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it.each([
+    Buffer.from(JSON.stringify({ t: 'not-a-date', i: 'not-a-uuid' })).toString('base64url'),
+    Buffer.from(JSON.stringify({ t: '2026-01-01T00:00:00.000Z', i: { $ne: null } })).toString('base64url'),
+    Buffer.from(JSON.stringify({ t: null, i: null })).toString('base64url'),
+  ])('a hostile cursor is a 400 validation error, never a 500', async (hostileCursor) => {
+    const app = await buildServer();
+    const { headers } = await authedUser();
+    const res = await app.inject({
+      method: 'GET',
+      url: `/v1/products/drafts?cursor=${encodeURIComponent(hostileCursor)}`,
+      headers,
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 });

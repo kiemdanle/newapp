@@ -5,6 +5,7 @@ const { Prisma } = prismaPkg;
 import { productPatchRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
+import { getVisibleProduct } from '../../services/products/product-visibility.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -20,8 +21,14 @@ export async function patchProductRoute(app: FastifyInstance) {
       });
     }
     const prisma = getPrisma();
-    const product = await prisma.product.findUnique({ where: { id } });
-    if (!product) {
+    // Creator revisions apply only to active products (a product FK writer this
+    // route must close, same as every other one): a bare existence check would
+    // let any authenticated caller open a ProductEdit against another user's
+    // draft/pending/report_hidden product and turn this endpoint into a
+    // 404-vs-202 existence oracle for private rows. `getVisibleProduct`
+    // resolves `merged_into` to its canonical row first, same as lookup.
+    const product = await getVisibleProduct({ id: req.user!.id, role: req.user!.role }, id);
+    if (!product || product.status !== 'active') {
       throw new AppError({
         status: 404,
         code: ERROR_CODES.NOT_FOUND,
@@ -38,7 +45,7 @@ export async function patchProductRoute(app: FastifyInstance) {
     // correct, not a dead end (the admin resolves it, freeing the slot).
     const existingOpenEdit = await prisma.productEdit.findFirst({
       where: {
-        productId: id,
+        productId: product.id,
         submittedBy: req.user!.id,
         isLegacy: false,
         status: { in: ['draft', 'changes_required'] },
@@ -86,7 +93,7 @@ export async function patchProductRoute(app: FastifyInstance) {
       try {
         edit = await prisma.productEdit.create({
           data: {
-            productId: id,
+            productId: product.id,
             submittedBy: req.user!.id,
             proposed: input,
             // Every edit created through current application code is subject to the
@@ -111,7 +118,7 @@ export async function patchProductRoute(app: FastifyInstance) {
     return reply.status(202).send({
       editId: edit.id,
       status: edit.status,
-      productId: id,
+      productId: product.id,
     });
   });
 }

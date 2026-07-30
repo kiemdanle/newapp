@@ -66,3 +66,38 @@ describe('reporting a product', () => {
     await app.close();
   });
 });
+
+describe('POST /v1/reports against a product target', () => {
+  it("non-enumerating 404 for another user's private draft (never a discoverable existence oracle)", async () => {
+    const app = await buildServer();
+    const owner = await makeUser();
+    const reporter = await makeUser();
+    const product = await makeProduct({ createdByUserId: owner.id });
+    await getPrisma().product.update({ where: { id: product.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/reports',
+      headers: await h(reporter.id),
+      payload: { targetType: 'product', targetId: product.id, reason: 'spam' },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().code).toBe('report_target_not_found');
+    const created = await getPrisma().report.findFirst({ where: { targetId: product.id } });
+    expect(created).toBeNull();
+    await app.close();
+  });
+
+  it('201 for an active product (regression)', async () => {
+    const app = await buildServer();
+    const reporter = await makeUser();
+    const product = await makeProduct();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/reports',
+      headers: await h(reporter.id),
+      payload: { targetType: 'product', targetId: product.id, reason: 'spam' },
+    });
+    expect(res.statusCode).toBe(201);
+    await app.close();
+  });
+});

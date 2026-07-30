@@ -93,6 +93,11 @@ export const ERROR_CODES = {
   PIXEL_LIMIT_EXCEEDED: 'pixel_limit_exceeded',
   PROCESSING_TIMEOUT: 'processing_timeout',
   STORAGE_CAPACITY_UNAVAILABLE: 'storage_capacity_unavailable',
+  UPGRADE_REQUIRED: 'upgrade_required',
+  FEATURE_DISABLED: 'feature_disabled',
+  TEMPORARILY_UNAVAILABLE: 'temporarily_unavailable',
+  IDEMPOTENCY_KEY_REUSED: 'idempotency_key_reused',
+  IDEMPOTENCY_IN_PROGRESS: 'idempotency_in_progress',
 } as const;
 
 export const ITEM_LIMIT = 50;

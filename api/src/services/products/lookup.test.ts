@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { randomUUID } from 'node:crypto';
 
 const { lookupOffMock, lookupUpcitemdbMock } = vi.hoisted(() => ({
   lookupOffMock: vi.fn(),
@@ -84,6 +85,32 @@ describe('lookupProduct (legacy)', () => {
     expect(result.product).toBeNull();
     expect(lookupOffMock).not.toHaveBeenCalled();
     expect(lookupUpcitemdbMock).not.toHaveBeenCalled();
+  });
+
+  it('a private draft created during the external round trip is a plain 404, never serialized', async () => {
+    const barcode = '9990000000011';
+    const other = await makeUser();
+    lookupOffMock.mockImplementation(async () => {
+      await getPrisma().product.create({
+        data: { barcode, name: 'Race Draft 2', source: 'user', createdByUserId: other.id, status: 'draft' },
+      });
+      return { status: 'found', data: { barcode, name: 'External Name', brand: null, category: null, imageUrl: null, source: 'off' as const, sourceId: barcode } };
+    });
+    const result = await lookupProduct({ barcode });
+    expect(result.product).toBeNull();
+    expect(result.privateReservation).toBe(true);
+  });
+
+  it('merged_into resolves to the active canonical row, serialized as the canonical product', async () => {
+    const canonical = await makeProduct({ barcode: '9990000000025', name: 'Canonical Legacy' });
+    const loser = await makeProduct({ barcode: '9990000000026' });
+    await getPrisma().product.update({
+      where: { id: loser.id },
+      data: { status: 'merged_into', mergedIntoProductId: canonical.id },
+    });
+    const result = await lookupProduct({ barcode: '9990000000026' });
+    expect(result.product?.id).toBe(canonical.id);
+    expect(result.privateReservation).toBe(false);
   });
 });
 
@@ -194,6 +221,62 @@ describe('lookupProductV2', () => {
     expect(res).toEqual({ outcome: 'not_found', canCreate: false });
   });
 
+  it('a private draft created during the external round trip is never exposed as found', async () => {
+    const barcode = '9990000000010';
+    const other = await makeUser();
+    lookupOffMock.mockImplementation(async () => {
+      // Simulates another user's draft winning the create race while this
+      // request's OFF HTTP call is in flight.
+      await getPrisma().product.create({
+        data: { barcode, name: 'Race Draft', source: 'user', createdByUserId: other.id, status: 'draft' },
+      });
+      return { status: 'found', data: { barcode, name: 'External Name', brand: null, category: null, imageUrl: null, source: 'off' as const, sourceId: barcode } };
+    });
+    const actor = await makeUser();
+    const res = await lookupProductV2({ barcode }, { id: actor.id, role: 'user' });
+    expect(res).toEqual({ outcome: 'under_review' });
+  });
+
+  it('merged_into resolves to the active canonical product -> found', async () => {
+    const canonical = await makeProduct({ barcode: '9990000000020', name: 'Canonical' });
+    const loser = await makeProduct({ barcode: '9990000000021' });
+    await getPrisma().product.update({
+      where: { id: loser.id },
+      data: { status: 'merged_into', mergedIntoProductId: canonical.id },
+    });
+    const actor = await makeUser();
+    const res = await lookupProductV2({ barcode: '9990000000021' }, { id: actor.id, role: 'user' });
+    expect(res.outcome).toBe('found');
+    if (res.outcome === 'found') expect(res.product.id).toBe(canonical.id);
+  });
+
+  it('merged_into resolves to a non-active canonical and classifies it normally', async () => {
+    const creator = await makeUser();
+    const canonicalDraft = await makeProduct({ barcode: '9990000000022', createdByUserId: creator.id });
+    await getPrisma().product.update({ where: { id: canonicalDraft.id }, data: { status: 'draft' } });
+    const loser = await makeProduct({ barcode: '9990000000023' });
+    await getPrisma().product.update({
+      where: { id: loser.id },
+      data: { status: 'merged_into', mergedIntoProductId: canonicalDraft.id },
+    });
+    const res = await lookupProductV2({ barcode: '9990000000023' }, { id: creator.id, role: 'user' });
+    expect(res.outcome).toBe('editable_private');
+  });
+
+  it('a cyclical merge chain is depth-capped to a non-disclosing dead end, even for admin', async () => {
+    // FK-enforced pointers rule out a truly dangling reference, but a cycle
+    // (A -> B -> A) is representable and would loop forever without the depth
+    // cap — this proves the cap actually terminates it.
+    const a = await makeProduct({ barcode: '9990000000024' });
+    const b = await makeProduct({ barcode: '9990000000027' });
+    await getPrisma().product.update({ where: { id: a.id }, data: { mergedIntoProductId: b.id } });
+    await getPrisma().product.update({ where: { id: b.id }, data: { mergedIntoProductId: a.id } });
+    await getPrisma().product.update({ where: { id: a.id }, data: { status: 'merged_into' } });
+    await getPrisma().product.update({ where: { id: b.id }, data: { status: 'merged_into' } });
+    const admin = await makeUser({ role: 'admin' });
+    const res = await lookupProductV2({ barcode: '9990000000024' }, { id: admin.id, role: 'admin' });
+    expect(res).toEqual({ outcome: 'under_review' });
+  });
 });
 
 describe('persistExternal race safety', () => {

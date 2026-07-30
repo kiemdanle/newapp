@@ -295,29 +295,34 @@ describe('productDraftCreateRequestSchema', () => {
 describe('productDraftPatchRequestSchema', () => {
   it('accepts a partial metadata patch and normalizes description', () => {
     expect(
-      productDraftPatchRequestSchema.parse({ name: 'New name', description: '  hi  ' }),
-    ).toEqual({ name: 'New name', description: 'hi' });
+      productDraftPatchRequestSchema.parse({ version: 1, name: 'New name', description: '  hi  ' }),
+    ).toEqual({ version: 1, name: 'New name', description: 'hi' });
   });
 
   it('leaves description untouched (key omitted) when the caller omits it', () => {
-    const parsed = productDraftPatchRequestSchema.parse({ name: 'New name' });
-    expect(parsed).toEqual({ name: 'New name' });
+    const parsed = productDraftPatchRequestSchema.parse({ version: 1, name: 'New name' });
+    expect(parsed).toEqual({ version: 1, name: 'New name' });
     expect('description' in parsed).toBe(false);
   });
 
   it('clears description (explicit null) only when the caller sends null', () => {
-    expect(productDraftPatchRequestSchema.parse({ description: null })).toEqual({
+    expect(productDraftPatchRequestSchema.parse({ version: 1, description: null })).toEqual({
+      version: 1,
       description: null,
     });
   });
 
-  it('treats an empty payload as a true no-op patch', () => {
-    const parsed = productDraftPatchRequestSchema.parse({});
-    expect(Object.keys(parsed)).toHaveLength(0);
+  it('treats a version-only payload as a true no-op patch', () => {
+    const parsed = productDraftPatchRequestSchema.parse({ version: 1 });
+    expect(Object.keys(parsed)).toEqual(['version']);
+  });
+
+  it('requires version', () => {
+    expect(() => productDraftPatchRequestSchema.parse({ name: 'New name' })).toThrow();
   });
 
   it('rejects unknown fields', () => {
-    expect(() => productDraftPatchRequestSchema.parse({ imageUrl: 'https://x' })).toThrow();
+    expect(() => productDraftPatchRequestSchema.parse({ version: 1, imageUrl: 'https://x' })).toThrow();
   });
 });
 

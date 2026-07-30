@@ -1,6 +1,7 @@
-import type { Product, ProductPhoto, Prisma as PrismaTypes } from '@prisma/client';
+import type { Product, Prisma as PrismaTypes } from '@prisma/client';
 import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
+import { z } from 'zod';
 import {
   ERROR_CODES,
   encodeCursor,
@@ -18,6 +19,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { lookupProductV2 } from './lookup.js';
 import { toApiProduct } from './serializer.js';
+import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -48,7 +50,7 @@ function throwForNonCreatableOutcome(outcome: ProductLookupV2Response): never {
   if (outcome.outcome === 'temporarily_unavailable') {
     throw new AppError({
       status: 503,
-      code: 'temporarily_unavailable',
+      code: ERROR_CODES.TEMPORARILY_UNAVAILABLE,
       title: 'Product lookup is temporarily unavailable; try again shortly',
     });
   }
@@ -94,6 +96,7 @@ export async function createOrResumeDraft(
         createdByUserId: actorId,
         status: 'draft',
       },
+      include: PRODUCT_INCLUDE,
     });
     return { product: toApiProduct(created), resumed: false };
   } catch (err) {
@@ -139,7 +142,38 @@ export async function patchDraft(
   if (input.brand !== undefined) data.brand = input.brand;
   if (input.category !== undefined) data.category = input.category;
 
-  const updated = await prisma.product.update({ where: { id: productId }, data });
+  // Conditional write: the WHERE clause carries owner, state, AND the caller's
+  // last-known version, so this is the actual optimistic-concurrency guard, not
+  // just the informative pre-check above (which can go stale between the read
+  // and this write under concurrent patches).
+  const result = await prisma.product.updateMany({
+    where: {
+      id: productId,
+      createdByUserId: actorId,
+      status: { in: ['draft', 'changes_required'] },
+      version: input.version,
+    },
+    data,
+  });
+
+  if (result.count === 0) {
+    const current = await prisma.product.findUnique({ where: { id: productId } });
+    if (!current) {
+      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
+    }
+    // Re-run the informative checks in case ownership/state changed too (e.g. a
+    // concurrent submit) — only fall through to version_conflict when those
+    // still pass, so the error message matches the real cause.
+    assertOwnDraftLike(current, actorId);
+    throw new AppError({
+      status: 409,
+      code: ERROR_CODES.VERSION_CONFLICT,
+      title: 'This draft was changed since you last loaded it',
+      currentVersion: current.version,
+    });
+  }
+
+  const updated = await prisma.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
   return toApiProduct(updated);
 }
 
@@ -160,12 +194,12 @@ export async function submitDraft(actorId: string, productId: string): Promise<n
   assertOwnDraftLike(existing, actorId);
   throw new AppError({
     status: 403,
-    code: 'feature_disabled',
+    code: ERROR_CODES.FEATURE_DISABLED,
     title: 'Product submission is not yet available',
   });
 }
 
-function toDraftRow(product: Product & { photos: ProductPhoto[] }): ProductDraftRow {
+function toDraftRow(product: ProductWithPhotos): ProductDraftRow {
   const identifier =
     product.barcode !== null
       ? ({ kind: 'barcode', value: product.barcode } as const)
@@ -183,11 +217,28 @@ function toDraftRow(product: Product & { photos: ProductPhoto[] }): ProductDraft
   };
 }
 
+// `decodeCursor` only base64/JSON-decodes and wraps `t` in `new Date(...)` — it
+// does not validate the result is a real date or that `i` looks like an ID.
+// `z.date()` alone would accept an Invalid Date (still `instanceof Date`), so
+// the timestamp is explicitly re-validated here too.
+const draftsCursorPositionSchema = z.object({
+  t: z.date().refine((d) => !Number.isNaN(d.getTime()), 'invalid cursor timestamp'),
+  i: z.string().uuid(),
+});
+
 /** Cursor-paginated list of the caller's own private drafts only — never
  * another user's rows, and never the admin/global moderation queue. */
 export async function listDrafts(actorId: string, query: ProductDraftsQuery): Promise<ProductDraftsPage> {
   const prisma = getPrisma();
-  const cursor = decodeCursor(query.cursor);
+  const decoded = decodeCursor(query.cursor);
+  let cursor: { t: Date; i: string } | null = null;
+  if (decoded) {
+    const parsed = draftsCursorPositionSchema.safeParse(decoded);
+    if (!parsed.success) {
+      throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title: 'Invalid cursor' });
+    }
+    cursor = parsed.data;
+  }
   const rows = await prisma.product.findMany({
     where: {
       createdByUserId: actorId,

@@ -221,7 +221,7 @@ export type ProductWithReviews = z.infer<typeof productWithReviewsSchema>;
 export declare const productLookupRequestSchema: z.ZodEffects<z.ZodObject<{
     barcode: z.ZodOptional<z.ZodString>;
     qr: z.ZodOptional<z.ZodString>;
-}, "strip", z.ZodTypeAny, {
+}, "strict", z.ZodTypeAny, {
     barcode?: string | undefined;
     qr?: string | undefined;
 }, {
@@ -617,7 +617,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         wontBuyCount: z.ZodNumber;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
-        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
         version: z.ZodNumber;
         photos: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -637,9 +636,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }>, "many">;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
+    } & {
+        status: z.ZodLiteral<"active">;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -667,7 +668,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         updatedAt: string;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -697,7 +698,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -728,7 +729,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -776,7 +777,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         wontBuyCount: z.ZodNumber;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
-        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
         version: z.ZodNumber;
         photos: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -796,9 +796,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }>, "many">;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
+    } & {
+        status: z.ZodEnum<["draft", "changes_required"]>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "changes_required";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -826,7 +828,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         updatedAt: string;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "changes_required";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -856,7 +858,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "changes_required";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -887,7 +889,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "changes_required";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -935,7 +937,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         wontBuyCount: z.ZodNumber;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
-        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
         version: z.ZodNumber;
         photos: z.ZodArray<z.ZodObject<{
             id: z.ZodString;
@@ -955,9 +956,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }>, "many">;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
+    } & {
+        status: z.ZodEnum<["draft", "pending", "changes_required", "report_hidden"]>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "pending" | "changes_required" | "report_hidden";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -985,7 +988,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         updatedAt: string;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "pending" | "changes_required" | "report_hidden";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1015,7 +1018,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "pending" | "changes_required" | "report_hidden";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1046,7 +1049,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
 }, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "draft" | "pending" | "changes_required" | "report_hidden";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1347,16 +1350,19 @@ export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodObject<{
 }>;
 export type ProductDraftCreateRequest = z.infer<typeof productDraftCreateRequestSchema>;
 export declare const productDraftPatchRequestSchema: z.ZodObject<{
+    version: z.ZodNumber;
     name: z.ZodOptional<z.ZodString>;
     description: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodNullable<z.ZodString>, string | null, string | null>, string | null, string | null>, string | null, string | null>>;
     brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     category: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
+    version: number;
     name?: string | undefined;
     description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
 }, {
+    version: number;
     name?: string | undefined;
     description?: string | null | undefined;
     brand?: string | null | undefined;

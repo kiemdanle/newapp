@@ -104,6 +104,7 @@ export const productLookupRequestSchema = z
     barcode: barcodeField.optional(),
     qr: qrField.optional(),
 })
+    .strict()
     .refine((v) => Boolean(v.barcode) !== Boolean(v.qr), {
     message: 'exactly one of barcode | qr is required',
 });
@@ -130,14 +131,27 @@ export const productPatchRequestSchema = z.object({
     defaultShelfLifeDays: z.number().int().positive().max(3650).nullable().optional(),
 });
 // --- Lookup v2: explicit, non-disclosing outcomes ---------------------------------
+// `status` is pinned per outcome so a misclassification (e.g. a raced external
+// hit handing back someone else's private row) fails schema validation instead
+// of silently shipping — defense in depth alongside the service-level checks.
 const productLookupV2FoundOutcomeSchema = z
-    .object({ outcome: z.literal('found'), product: productSchema })
+    .object({ outcome: z.literal('found'), product: productSchema.extend({ status: z.literal('active') }) })
     .strict();
 const productLookupV2EditablePrivateOutcomeSchema = z
-    .object({ outcome: z.literal('editable_private'), product: productSchema })
+    .object({
+    outcome: z.literal('editable_private'),
+    product: productSchema.extend({ status: z.enum(['draft', 'changes_required']) }),
+})
     .strict();
+// Covers both the creator's own submitted-and-pending product and the admin
+// read-only view of any other non-active, non-merged status.
 const productLookupV2CreatorPendingOutcomeSchema = z
-    .object({ outcome: z.literal('creator_pending'), product: productSchema })
+    .object({
+    outcome: z.literal('creator_pending'),
+    product: productSchema.extend({
+        status: z.enum(['draft', 'pending', 'changes_required', 'report_hidden']),
+    }),
+})
     .strict();
 // Strictly no product ID, creator, status, or metadata: reserved-by-another-user and
 // report-hidden catalog rows must be indistinguishable to the caller.
@@ -200,6 +214,9 @@ export const productDraftCreateRequestSchema = z
 });
 export const productDraftPatchRequestSchema = z
     .object({
+    // Optimistic-concurrency token: the caller's last-known version. The server
+    // applies the patch only if it still matches, otherwise 409 version_conflict.
+    version: z.number().int().min(1),
     name: z.string().trim().min(1).max(200).optional(),
     description: productDescriptionValueSchema.optional(),
     brand: z.string().trim().max(120).nullable().optional(),

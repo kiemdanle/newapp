@@ -17,6 +17,14 @@ declare module 'fastify' {
 
 // Completed responses are replayable for a day; an in-flight reservation is much
 // shorter-lived so a process that dies mid-request can't wedge the key forever.
+//
+// IN_FLIGHT_TTL_SECONDS is a hard latent bound: no route handler in this
+// codebase can run anywhere close to 30s (no synchronous external calls
+// live under an idempotent route today). If a future idempotent route can
+// legitimately take longer, this reservation must be heartbeated/extended
+// from within the handler, or it will lapse and let a retry double-execute
+// concurrently with a still-live original — do not just raise this constant
+// without also solving that.
 const COMPLETE_TTL_SECONDS = 24 * 60 * 60;
 const IN_FLIGHT_TTL_SECONDS = 30;
 const WAIT_POLL_MS = 40;
@@ -51,18 +59,31 @@ function stableStringify(value: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`).join(',')}}`;
 }
 
-function hashRequest(body: unknown): string {
-  return createHash('sha256').update(stableStringify(body ?? null)).digest('hex');
+// The query string is part of the request's identity for hashing purposes —
+// two requests that differ only in query params are not "the same" retry.
+function hashRequest(body: unknown, query: unknown): string {
+  return createHash('sha256').update(stableStringify({ body: body ?? null, query: query ?? null })).digest('hex');
 }
 
-/** Exported for tests that need to manipulate a reservation directly in Redis. */
+/** Exported for tests that need to manipulate a reservation directly in Redis.
+ * `route` should be the canonical route pattern (`req.routeOptions.url`, e.g.
+ * `/drafts/:id/submit`) plus resolved path params folded in — not the raw
+ * concrete URL — so the key is actually "this operation on this resource",
+ * matching the Produced Interfaces' "canonical route" language. */
 export function buildIdempotencyKey(
   actorId: string,
   method: string,
-  path: string,
+  route: string,
   clientKey: string,
 ): string {
-  return `idem:${actorId}:${method}:${path}:${clientKey}`;
+  return `idem:${actorId}:${method}:${route}:${clientKey}`;
+}
+
+function canonicalRoute(req: FastifyRequest): string {
+  const pattern = req.routeOptions.url ?? req.url.split('?')[0] ?? req.url;
+  const params = req.params as Record<string, unknown> | undefined;
+  if (!params || Object.keys(params).length === 0) return pattern;
+  return `${pattern}#${stableStringify(params)}`;
 }
 
 // Atomically "reserve or read": if the key is absent, create it as an in_flight
@@ -116,7 +137,7 @@ async function waitForCompletion(key: string, requestHash: string): Promise<Wait
     if (record.requestHash !== requestHash) {
       throw new AppError({
         status: 409,
-        code: 'idempotency_key_reused',
+        code: ERROR_CODES.IDEMPOTENCY_KEY_REUSED,
         title: 'Idempotency-Key was reused with a different request body',
       });
     }
@@ -156,9 +177,8 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
     const actorId = req.user?.id;
     if (!actorId) return;
 
-    const path = req.url.split('?')[0] ?? req.url;
-    const key = buildIdempotencyKey(actorId, req.method, path, clientKey);
-    const requestHash = hashRequest(req.body);
+    const key = buildIdempotencyKey(actorId, req.method, canonicalRoute(req), clientKey);
+    const requestHash = hashRequest(req.body, req.query);
 
     const outcome = await reserve(key, { state: 'in_flight', requestHash });
     if (outcome === 'reserved') {
@@ -169,7 +189,7 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
     if (outcome.requestHash !== requestHash) {
       throw new AppError({
         status: 409,
-        code: 'idempotency_key_reused',
+        code: ERROR_CODES.IDEMPOTENCY_KEY_REUSED,
         title: 'Idempotency-Key was reused with a different request body',
       });
     }
@@ -197,7 +217,7 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
     }
     throw new AppError({
       status: 409,
-      code: 'idempotency_in_progress',
+      code: ERROR_CODES.IDEMPOTENCY_IN_PROGRESS,
       title: 'Request is still processing; retry shortly',
     });
   });
@@ -215,7 +235,7 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
     const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
     const record: CompleteRecord = {
       state: 'complete',
-      requestHash: hashRequest(req.body),
+      requestHash: hashRequest(req.body, req.query),
       response: {
         status: reply.statusCode,
         body,

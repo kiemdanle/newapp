@@ -254,4 +254,62 @@ describe('POST /v1/products/lookup-v2', () => {
     expect(res.json()).toEqual({ outcome: 'not_found', canCreate: false });
     await app.close();
   });
+
+  it('a private draft that wins the create race during the external round trip is never leaked as found', async () => {
+    const other = await makeUser({ emailVerified: true });
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockImplementation(async () => {
+        await getPrisma().product.create({
+          data: {
+            barcode: '1230000000009',
+            name: 'Race Draft',
+            source: 'user',
+            createdByUserId: other.id,
+            status: 'draft',
+          },
+        });
+        return { status: 'found', data: { barcode: '1230000000009', name: 'External Name', brand: null, category: null, imageUrl: null, source: 'off', sourceId: '1230000000009' } };
+      }),
+    }));
+    vi.doMock('../../src/services/products/upcitemdb-client.js', () => ({
+      lookupUpcitemdb: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    vi.resetModules();
+    const { buildServer: build2 } = await import('../../src/server.js');
+    const app = await build2();
+    const { headers } = await authHeaders();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/lookup-v2',
+      headers,
+      payload: { barcode: '1230000000009' },
+    });
+    // The route always parses the response through productLookupV2ResponseSchema,
+    // which pins `status` per outcome — this response must both avoid 'found' at
+    // the service level AND pass schema validation (no 500).
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ outcome: 'under_review' });
+    await app.close();
+  });
+
+  it('merged_into resolves to the active canonical product over HTTP', async () => {
+    const app = await buildServer();
+    const { headers } = await authHeaders();
+    const canonical = await makeProduct({ barcode: '1230000000010', name: 'Canonical Product' });
+    const loser = await makeProduct({ barcode: '1230000000011' });
+    await getPrisma().product.update({
+      where: { id: loser.id },
+      data: { status: 'merged_into', mergedIntoProductId: canonical.id },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/lookup-v2',
+      headers,
+      payload: { barcode: '1230000000011' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ outcome: 'found' });
+    expect(res.json().product.id).toBe(canonical.id);
+    await app.close();
+  });
 });

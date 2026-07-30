@@ -451,6 +451,11 @@ export declare const ERROR_CODES: {
     readonly PIXEL_LIMIT_EXCEEDED: "pixel_limit_exceeded";
     readonly PROCESSING_TIMEOUT: "processing_timeout";
     readonly STORAGE_CAPACITY_UNAVAILABLE: "storage_capacity_unavailable";
+    readonly UPGRADE_REQUIRED: "upgrade_required";
+    readonly FEATURE_DISABLED: "feature_disabled";
+    readonly TEMPORARILY_UNAVAILABLE: "temporarily_unavailable";
+    readonly IDEMPOTENCY_KEY_REUSED: "idempotency_key_reused";
+    readonly IDEMPOTENCY_IN_PROGRESS: "idempotency_in_progress";
 };
 export declare const ITEM_LIMIT = 50;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

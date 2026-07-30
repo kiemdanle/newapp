@@ -275,4 +275,91 @@ describe('PATCH /v1/products/:id', () => {
     expect(res.statusCode).toBe(400);
     await app.close();
   });
+
+  describe('product FK writer gating (never an existence oracle for private rows)', () => {
+    it.each(['draft', 'pending', 'changes_required'] as const)(
+      'non-enumerating 404 against another user\'s %s product',
+      async (status) => {
+        const app = await buildServer();
+        const owner = await makeUser({ emailVerified: true });
+        const { headers } = await authed();
+        const p = await makeProduct({ createdByUserId: owner.id });
+        await getPrisma().product.update({ where: { id: p.id }, data: { status } });
+        const res = await app.inject({
+          method: 'PATCH',
+          url: `/v1/products/${p.id}`,
+          headers,
+          payload: { name: 'Hijack proposal' },
+        });
+        expect(res.statusCode).toBe(404);
+        const edits = await getPrisma().productEdit.findMany({ where: { productId: p.id } });
+        expect(edits).toHaveLength(0);
+        await app.close();
+      },
+    );
+
+    it('404 against a report_hidden product, even for its own creator', async () => {
+      const app = await buildServer();
+      const { user, headers } = await authed();
+      const p = await makeProduct({ createdByUserId: user.id });
+      await getPrisma().product.update({ where: { id: p.id }, data: { status: 'report_hidden' } });
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/v1/products/${p.id}`,
+        headers,
+        payload: { name: 'X' },
+      });
+      expect(res.statusCode).toBe(404);
+      await app.close();
+    });
+
+    it("404 against the creator's OWN draft too — active-product revisions only", async () => {
+      const app = await buildServer();
+      const { user, headers } = await authed();
+      const p = await makeProduct({ createdByUserId: user.id });
+      await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/v1/products/${p.id}`,
+        headers,
+        payload: { name: 'X' },
+      });
+      expect(res.statusCode).toBe(404);
+      await app.close();
+    });
+
+    it('resolves merged_into to its active canonical and opens the edit against that row', async () => {
+      const app = await buildServer();
+      const { headers } = await authed();
+      const canonical = await makeProduct({ name: 'Canonical' });
+      const loser = await makeProduct({});
+      await getPrisma().product.update({
+        where: { id: loser.id },
+        data: { status: 'merged_into', mergedIntoProductId: canonical.id },
+      });
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/v1/products/${loser.id}`,
+        headers,
+        payload: { name: 'Proposed via loser id' },
+      });
+      expect(res.statusCode).toBe(202);
+      expect(res.json().productId).toBe(canonical.id);
+      await app.close();
+    });
+
+    it('still works normally against an active product (regression)', async () => {
+      const app = await buildServer();
+      const { headers } = await authed();
+      const p = await makeProduct({ name: 'Active Thing' });
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/v1/products/${p.id}`,
+        headers,
+        payload: { name: 'Updated Active Thing' },
+      });
+      expect(res.statusCode).toBe(202);
+      await app.close();
+    });
+  });
 });

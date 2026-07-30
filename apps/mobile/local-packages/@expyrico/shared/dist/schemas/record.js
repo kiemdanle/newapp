@@ -64,7 +64,12 @@ export const recordListQuerySchema = z.object({
 });
 export const recordSyncConflictSchema = z.object({
     clientId: z.string().uuid(),
-    reason: z.enum(['scope_changed']),
+    // `scope_changed`: the record's household/personal scope moved on the server
+    // since the client last synced. `product_unavailable`: the upsert's productId
+    // can no longer be used this way (draft/pending/changes_required it isn't
+    // entitled to, or a newly-private/report-hidden reference) — the item is
+    // never silently dropped, it always surfaces here instead.
+    reason: z.enum(['scope_changed', 'product_unavailable']),
 });
 export const recordSyncBatchSchema = z.object({
     since: z.string().datetime().nullable().optional(),

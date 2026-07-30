@@ -4,16 +4,7 @@ import { getPrisma } from '../../db.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 import { maybeActivateReferral } from '../referrals/referral-service.js';
 import { myHouseholdIds } from '../households/permissions.js';
-import { assertProductUse } from '../products/product-visibility.js';
-import { AppError } from '../../errors.js';
-
-/** True product-use rejections (draft/pending/changes_required/report_hidden/
- * not-found) are a batch-item-level authorization outcome here, not a request-
- * level failure — like every other per-item authorization check in this sync
- * loop, a rejected item is dropped silently and the rest of the batch proceeds. */
-function isProductUseRejection(err: unknown): boolean {
-  return err instanceof AppError && (err.status === 403 || err.status === 404);
-}
+import { assertProductUse, ProductUseRejectionError } from '../products/product-visibility.js';
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -143,8 +134,11 @@ export async function syncRecords(
           });
         });
       } catch (err) {
-        if (!isProductUseRejection(err)) throw err;
-        // Drop silently, same as every other per-item authorization failure above.
+        if (!(err instanceof ProductUseRejectionError)) throw err;
+        // Never silently discard an offline edit: surface it as a per-item
+        // conflict so the client knows this item was not applied, instead of
+        // believing (via a plain 200) that it synced.
+        conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
       }
     } else {
       // --- Personal path: last-write-wins (M1 behavior verbatim) ---
@@ -198,7 +192,8 @@ export async function syncRecords(
           });
         });
       } catch (err) {
-        if (!isProductUseRejection(err)) throw err;
+        if (!(err instanceof ProductUseRejectionError)) throw err;
+        conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
       }
     }
   }

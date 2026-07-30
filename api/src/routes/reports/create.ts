@@ -3,11 +3,16 @@ import { reportCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiReport, maybeAutoHide } from '../../services/reports/repository.js';
+import { getVisibleProduct, type ProductActor } from '../../services/products/product-visibility.js';
 
-async function targetExists(type: string, id: string): Promise<boolean> {
+async function targetExists(type: string, id: string, actor: ProductActor): Promise<boolean> {
   const prisma = getPrisma();
   if (type === 'review') return (await prisma.review.findUnique({ where: { id } })) !== null;
-  if (type === 'product') return (await prisma.product.findUnique({ where: { id } })) !== null;
+  // Route through the same visibility gate as everything else: a private
+  // draft/pending/report_hidden row must answer "not found" here too, or a
+  // stranger can use this endpoint as an existence oracle for other users'
+  // private products.
+  if (type === 'product') return (await getVisibleProduct(actor, id)) !== null;
   if (type === 'user') return (await prisma.user.findUnique({ where: { id } })) !== null;
   if (type === 'deal') return (await prisma.deal.findUnique({ where: { id } })) !== null;
   return false;
@@ -17,7 +22,7 @@ export async function createReportRoute(app: FastifyInstance) {
   app.post('/reports', { onRequest: [app.requireAuth] }, async (req, reply) => {
     const input = reportCreateSchema.parse(req.body);
     const userId = req.user!.id;
-    const exists = await targetExists(input.targetType, input.targetId);
+    const exists = await targetExists(input.targetType, input.targetId, { id: userId, role: req.user!.role });
     if (!exists) {
       throw new AppError({ status: 404, code: ERROR_CODES.REPORT_TARGET_NOT_FOUND, title: 'Report target not found' });
     }

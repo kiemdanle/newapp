@@ -6,8 +6,11 @@ import { makeUser } from '../helpers/factories.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { buildIdempotencyKey } from '../../src/plugins/idempotency.js';
 
-function nullBodyHash(): string {
-  return createHash('sha256').update(JSON.stringify(null)).digest('hex');
+// Matches hashRequest's stableStringify({ body, query }) shape for a request
+// with no payload and no query string (Fastify parses an absent querystring
+// as `{}`, not null/undefined).
+function noPayloadNoQueryHash(): string {
+  return createHash('sha256').update('{"body":null,"query":{}}').digest('hex');
 }
 
 async function authedUser() {
@@ -183,7 +186,7 @@ describe('idempotency plugin', () => {
     // Simulate a reservation left behind by a crashed worker: state in_flight,
     // matching hash, but with a very short TTL so it vacates almost immediately —
     // well within the plugin's bounded wait window.
-    const requestHash = nullBodyHash();
+    const requestHash = noPayloadNoQueryHash();
     await getRedis().set(key, JSON.stringify({ state: 'in_flight', requestHash }), 'PX', 200);
     const res = await app.inject({ method: 'POST', url: '/recovered', headers });
     expect(res.statusCode).toBe(201);
@@ -200,7 +203,7 @@ describe('idempotency plugin', () => {
     );
     const { user, headers } = await authedUser();
     const key = buildIdempotencyKey(user.id, 'POST', '/stuck', 'abc-123');
-    const requestHash = nullBodyHash();
+    const requestHash = noPayloadNoQueryHash();
     // Long-lived reservation that never completes within the wait bound.
     await getRedis().set(key, JSON.stringify({ state: 'in_flight', requestHash }), 'EX', 30);
     const res = await app.inject({ method: 'POST', url: '/stuck', headers });
@@ -222,6 +225,42 @@ describe('idempotency plugin', () => {
     const ttl = await getRedis().ttl(key);
     expect(ttl).toBeGreaterThan(0);
     expect(ttl).toBeLessThanOrEqual(86_400);
+    await app.close();
+  });
+
+  it('the query string is part of the request identity — a differing query on the same key is a mismatch', async () => {
+    const app = await buildServer();
+    app.get(
+      '/query-idem',
+      { onRequest: app.requireAuth, config: { idempotent: true } },
+      async (_req, reply) => reply.send({ ok: true }),
+    );
+    const { headers } = await authedUser();
+    const r1 = await app.inject({ method: 'GET', url: '/query-idem?scope=a', headers });
+    const r2 = await app.inject({ method: 'GET', url: '/query-idem?scope=b', headers });
+    expect(r1.statusCode).toBe(200);
+    expect(r2.statusCode).toBe(409);
+    expect(r2.json().code).toBe('idempotency_key_reused');
+    await app.close();
+  });
+
+  it('two different path params on the same route pattern do not collide on the same client key', async () => {
+    const app = await buildServer();
+    let calls = 0;
+    app.post(
+      '/resources/:id/idem',
+      { onRequest: app.requireAuth, config: { idempotent: true } },
+      async (_req, reply) => {
+        calls += 1;
+        return reply.status(201).send({ calls });
+      },
+    );
+    const { headers } = await authedUser();
+    const r1 = await app.inject({ method: 'POST', url: '/resources/aaa/idem', headers, payload: {} });
+    const r2 = await app.inject({ method: 'POST', url: '/resources/bbb/idem', headers, payload: {} });
+    expect(r1.statusCode).toBe(201);
+    expect(r2.statusCode).toBe(201);
+    expect(calls).toBe(2);
     await app.close();
   });
 });

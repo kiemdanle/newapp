@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { productCreateRequestSchema } from '@expyrico/shared';
+import { productCreateRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 
 // Legacy direct product creation is permanently retired: it published active
@@ -11,7 +11,7 @@ export async function createProductRoute(app: FastifyInstance) {
     productCreateRequestSchema.parse(req.body);
     throw new AppError({
       status: 410,
-      code: 'upgrade_required',
+      code: ERROR_CODES.UPGRADE_REQUIRED,
       title: 'Direct product creation has been retired; use the draft creation flow',
     });
   });

@@ -317,13 +317,13 @@ export declare const recordListQuerySchema: z.ZodObject<{
 export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
 export declare const recordSyncConflictSchema: z.ZodObject<{
     clientId: z.ZodString;
-    reason: z.ZodEnum<["scope_changed"]>;
+    reason: z.ZodEnum<["scope_changed", "product_unavailable"]>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
-    reason: "scope_changed";
+    reason: "scope_changed" | "product_unavailable";
 }, {
     clientId: string;
-    reason: "scope_changed";
+    reason: "scope_changed" | "product_unavailable";
 }>;
 export type RecordSyncConflict = z.infer<typeof recordSyncConflictSchema>;
 export declare const recordSyncBatchSchema: z.ZodObject<{
@@ -477,13 +477,13 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
     deletedIds: z.ZodArray<z.ZodString, "many">;
     conflicts: z.ZodDefault<z.ZodArray<z.ZodObject<{
         clientId: z.ZodString;
-        reason: z.ZodEnum<["scope_changed"]>;
+        reason: z.ZodEnum<["scope_changed", "product_unavailable"]>;
     }, "strip", z.ZodTypeAny, {
         clientId: string;
-        reason: "scope_changed";
+        reason: "scope_changed" | "product_unavailable";
     }, {
         clientId: string;
-        reason: "scope_changed";
+        reason: "scope_changed" | "product_unavailable";
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
     serverTime: string;
@@ -509,7 +509,7 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
     deletedIds: string[];
     conflicts: {
         clientId: string;
-        reason: "scope_changed";
+        reason: "scope_changed" | "product_unavailable";
     }[];
 }, {
     serverTime: string;
@@ -535,7 +535,7 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
     deletedIds: string[];
     conflicts?: {
         clientId: string;
-        reason: "scope_changed";
+        reason: "scope_changed" | "product_unavailable";
     }[] | undefined;
 }>;
 export type RecordSyncResponse = z.infer<typeof recordSyncResponseSchema>;
