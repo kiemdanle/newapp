@@ -7,7 +7,7 @@ import { resetConfigForTests } from '../../src/config.js';
 import { getPrisma } from '../../src/db.js';
 import { getRedis } from '../../src/redis.js';
 import { makeUser } from '../helpers/factories.js';
-import { sweepStaleProductDrafts, sweepStaleQuarantine } from '../../src/services/products/product-media-cleanup.js';
+import { oldestQuarantineAgeMs, sweepStaleProductDrafts, sweepStaleQuarantine } from '../../src/services/products/product-media-cleanup.js';
 import { mediaKeyToPath, quarantineDirKey } from '../../src/services/products/product-media-storage.js';
 import { processProductMediaCleanupOnce } from '../../src/queues/jobs/product-media-cleanup.js';
 
@@ -220,6 +220,36 @@ describe('sweepStaleQuarantine', () => {
     expect(result.scanned).toBe(2);
     expect(result.deleted).toBe(1);
     spy.mockRestore();
+  });
+});
+
+describe('oldestQuarantineAgeMs', () => {
+  it('returns null when the quarantine tree does not exist', async () => {
+    await expect(oldestQuarantineAgeMs()).resolves.toBeNull();
+  });
+
+  it('returns null for an empty (but existing) quarantine tree', async () => {
+    await mkdir(mediaKeyToPath(root, 'quarantine'), { recursive: true });
+    await expect(oldestQuarantineAgeMs()).resolves.toBeNull();
+  });
+
+  it('reports the age of the oldest entry, and never deletes anything', async () => {
+    const older = randomUUID();
+    const newer = randomUUID();
+    const olderDir = mediaKeyToPath(root, quarantineDirKey(older));
+    const newerDir = mediaKeyToPath(root, quarantineDirKey(newer));
+    await mkdir(olderDir, { recursive: true });
+    await mkdir(newerDir, { recursive: true });
+    await touch(olderDir, new Date(Date.now() - 5 * 60 * 60 * 1000)); // 5h old
+    await touch(newerDir, new Date(Date.now() - 1 * 60 * 60 * 1000)); // 1h old
+
+    const ageMs = await oldestQuarantineAgeMs();
+    expect(ageMs).toBeGreaterThan(4.9 * 60 * 60 * 1000);
+    expect(ageMs).toBeLessThan(5.5 * 60 * 60 * 1000);
+
+    // Both entries still on disk — this is a read-only helper.
+    await expect(stat(olderDir)).resolves.toBeTruthy();
+    await expect(stat(newerDir)).resolves.toBeTruthy();
   });
 });
 

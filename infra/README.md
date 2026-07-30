@@ -193,6 +193,30 @@ Both scripts run `bash -n` clean; validate further with a disposable
 Postgres instance before trusting either against production (see
 `infra/scripts/*.sh`'s own header comments for the exact required env).
 
+### Operational health
+
+`GET /v1/admin/system/operational-health` (admin-only) reports media
+capacity, the cleanup sweep's and backup's last-success staleness, the
+pending-review backlog's oldest age, and quarantine's oldest age — plus the
+exact thresholds each `status` was computed against. Every threshold is an
+env var with the spec's default (see `HEALTH_*` in `api/.env.example`), so
+Phase 8 monitoring can tune them without a code change:
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `HEALTH_FREE_DISK_WARNING_PERCENT` | 20 | capacity `status: warning` below this |
+| `HEALTH_FREE_DISK_HARD_STOP_PERCENT` | 15 | capacity `status: critical` below this |
+| `HEALTH_PENDING_OLDEST_WARNING_HOURS` | 24 | oldest pending-review product age warning |
+| `HEALTH_CLEANUP_STALE_HOURS` | 26 | cleanup sweep last-success staleness |
+| `HEALTH_BACKUP_STALE_HOURS` | 26 | backup last-success staleness |
+| `HEALTH_ASSESSMENT_FAILURE_RATE_PERCENT` | 5 | reCAPTCHA provider failure rate (investigation) |
+| `HEALTH_API_5XX_RATE_PERCENT` | 2 | API error rate (investigation) |
+| `HEALTH_UPLOAD_REJECTION_RATE_PERCENT` | 25 | upload validation rejection rate (investigation) |
+
+The last three are documented alert thresholds for UptimeRobot/log-based
+alerting to consume against existing signals (`api_errors` table, breaker
+stats) — they are not yet computed into the health payload itself.
+
 ---
 
 ## Deploy pipeline

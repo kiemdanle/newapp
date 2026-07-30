@@ -33,7 +33,7 @@
 #     MEDIA_ROOT                  — must match the running api.env's MEDIA_ROOT
 #     PANTRY_API_DIR              — default /opt/pantry/current/api (compiled
 #                                    dist/scripts/media-{freeze,manifest}-cli.js
-#                                    live here)
+#                                    and backup-signal-cli.js live here)
 #
 #   age + rclone driver:
 #     BACKUP_AGE_RECIPIENT        — age public key (or read from /etc/pantry/secrets/age.pub)
@@ -71,6 +71,7 @@ done
 PANTRY_API_DIR="${PANTRY_API_DIR:-/opt/pantry/current/api}"
 FREEZE_CLI="$PANTRY_API_DIR/dist/scripts/media-freeze-cli.js"
 MANIFEST_CLI="$PANTRY_API_DIR/dist/scripts/media-manifest-cli.js"
+SIGNAL_CLI="$PANTRY_API_DIR/dist/scripts/backup-signal-cli.js"
 FREEZE_DRAIN_TIMEOUT_MS="${BACKUP_FREEZE_DRAIN_TIMEOUT_MS:-60000}"
 
 # Defer-backups guard: if neither driver is configured, exit cleanly so the
@@ -90,16 +91,25 @@ LOCAL_DIR="${BACKUP_LOCAL_DIR:-/var/backups/pantry}"
 mkdir -p "$LOCAL_DIR/daily" "$LOCAL_DIR/weekly" "$LOCAL_DIR/monthly" "$LOCAL_DIR/work"
 
 GEN_DIR=$(mktemp -d "$LOCAL_DIR/work/gen-${TODAY}-XXXXXX")
+VERIFY_DIR=""
 FREEZE_ACQUIRED=0
+SUCCEEDED=0
 
-cleanup() {
+on_exit() {
+    local code=$?
     if [[ "$FREEZE_ACQUIRED" == "1" ]]; then
         log "releasing media freeze"
         node "$FREEZE_CLI" release >>"$LOG_FILE" 2>&1 || log "WARNING: failed to release media freeze — it will self-expire"
     fi
-    rm -rf "$GEN_DIR"
+    rm -rf "$GEN_DIR" "$VERIFY_DIR"
+    if [[ "$SUCCEEDED" == "1" ]]; then
+        node "$SIGNAL_CLI" success >>"$LOG_FILE" 2>&1 || log "WARNING: failed to record backup success signal"
+    elif [[ "$code" != "0" ]]; then
+        node "$SIGNAL_CLI" failure >>"$LOG_FILE" 2>&1 || log "WARNING: failed to record backup failure signal"
+    fi
+    exit "$code"
 }
-trap cleanup EXIT
+trap on_exit EXIT
 
 # ---------------------------------------------------------------------------
 # 1. Freeze: block new media mutations, drain in-flight ones. A backup that
@@ -152,7 +162,6 @@ FREEZE_ACQUIRED=0
 # ---------------------------------------------------------------------------
 log "verifying media manifest against the captured tar"
 VERIFY_DIR=$(mktemp -d "$LOCAL_DIR/work/verify-XXXXXX")
-trap 'rm -rf "$VERIFY_DIR"; cleanup' EXIT
 tar -xf "$GEN_DIR/media.tar" -C "$VERIFY_DIR"
 if ! node "$MANIFEST_CLI" verify "$VERIFY_DIR" "$GEN_DIR/media-manifest.json" >>"$LOG_FILE" 2>&1; then
     log "ERROR: media manifest verification failed against the captured tar — backup is not consistent, aborting"
@@ -179,6 +188,7 @@ if [[ -n "${RESTIC_REPOSITORY:-}" ]]; then
     restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3 --prune
 
     log "restic backup complete"
+    SUCCEEDED=1
     exit 0
 fi
 
@@ -261,4 +271,5 @@ prune_local_and_remote daily 7
 prune_local_and_remote weekly 4
 prune_local_and_remote monthly 3
 
+SUCCEEDED=1
 log "backup complete"

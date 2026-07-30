@@ -10,6 +10,7 @@ import { getRedis } from '../../redis.js';
 import { logger } from '../../logger.js';
 import { processMediaOutboxOnce } from '../../services/products/product-media-outbox.js';
 import { sweepStaleProductDrafts, sweepStaleQuarantine } from '../../services/products/product-media-cleanup.js';
+import { recordCleanupFailure, recordCleanupSuccess } from '../../services/products/product-operational-health.js';
 
 export const PRODUCT_MEDIA_CLEANUP_QUEUE = 'product-media-cleanup';
 
@@ -79,7 +80,11 @@ export async function processProductMediaCleanupOnce(): Promise<ProductMediaClea
       staleQuarantineDeleted: quarantine.deleted,
     };
     logger.info(counters, 'product-media-cleanup: sweep complete');
+    await recordCleanupSuccess();
     return counters;
+  } catch (err) {
+    await recordCleanupFailure();
+    throw err;
   } finally {
     await redis.del(LOCK_KEY);
   }

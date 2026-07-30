@@ -25,6 +25,7 @@ import { adminAnalyticsScansRoute } from './analytics/scans.js';
 import { adminAnalyticsReviewsRoute } from './analytics/reviews.js';
 import { adminAnalyticsGeographyRoute } from './analytics/geography.js';
 import { adminSystemQueueHealthRoute } from './system/queue-health.js';
+import { adminSystemOperationalHealthRoute } from './system/operational-health.js';
 import { adminSystemPushLogsRoute } from './system/push-logs.js';
 import { adminSystemApiErrorsRoute } from './system/api-errors.js';
 import { adminSystemExternalApisRoute } from './system/external-apis.js';
@@ -74,6 +75,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminAnalyticsGeographyRoute, { prefix: '/analytics' });
 
   await app.register(adminSystemQueueHealthRoute, { prefix: '/system' });
+  await app.register(adminSystemOperationalHealthRoute, { prefix: '/system' });
   await app.register(adminSystemPushLogsRoute, { prefix: '/system' });
   await app.register(adminSystemApiErrorsRoute, { prefix: '/system' });
   await app.register(adminSystemExternalApisRoute, { prefix: '/system' });

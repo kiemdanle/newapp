@@ -110,6 +110,18 @@ const envSchema = z.object({
   // conservative starting points rather than spec-mandated numbers.
   PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER: z.coerce.number().int().positive().default(20),
   PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER: z.coerce.number().int().positive().default(200 * 1024 * 1024),
+
+  // Operational health thresholds (Phase 7 Task 7). Defaults are exactly the
+  // spec's numbers; every one is env-overridable so Phase 8 monitoring can be
+  // tuned without a code change.
+  HEALTH_FREE_DISK_WARNING_PERCENT: z.coerce.number().min(0).max(100).default(20),
+  HEALTH_FREE_DISK_HARD_STOP_PERCENT: z.coerce.number().min(0).max(100).default(15),
+  HEALTH_PENDING_OLDEST_WARNING_HOURS: z.coerce.number().positive().default(24),
+  HEALTH_CLEANUP_STALE_HOURS: z.coerce.number().positive().default(26),
+  HEALTH_BACKUP_STALE_HOURS: z.coerce.number().positive().default(26),
+  HEALTH_ASSESSMENT_FAILURE_RATE_PERCENT: z.coerce.number().min(0).max(100).default(5),
+  HEALTH_API_5XX_RATE_PERCENT: z.coerce.number().min(0).max(100).default(2),
+  HEALTH_UPLOAD_REJECTION_RATE_PERCENT: z.coerce.number().min(0).max(100).default(25),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -188,6 +200,16 @@ export interface Config {
     internalAllowlist: string[];
     maxActiveDraftsPerUser: number;
     maxDailyBytesPerUser: number;
+  };
+  health: {
+    freeDiskWarningPercent: number;
+    freeDiskHardStopPercent: number;
+    pendingOldestWarningHours: number;
+    cleanupStaleHours: number;
+    backupStaleHours: number;
+    assessmentFailureRatePercent: number;
+    api5xxRatePercent: number;
+    uploadRejectionRatePercent: number;
   };
 }
 
@@ -347,6 +369,16 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       internalAllowlist: parseUuidAllowlist(e.PRODUCT_CREATION_INTERNAL_ALLOWLIST),
       maxActiveDraftsPerUser: e.PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER,
       maxDailyBytesPerUser: e.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER,
+    },
+    health: {
+      freeDiskWarningPercent: e.HEALTH_FREE_DISK_WARNING_PERCENT,
+      freeDiskHardStopPercent: e.HEALTH_FREE_DISK_HARD_STOP_PERCENT,
+      pendingOldestWarningHours: e.HEALTH_PENDING_OLDEST_WARNING_HOURS,
+      cleanupStaleHours: e.HEALTH_CLEANUP_STALE_HOURS,
+      backupStaleHours: e.HEALTH_BACKUP_STALE_HOURS,
+      assessmentFailureRatePercent: e.HEALTH_ASSESSMENT_FAILURE_RATE_PERCENT,
+      api5xxRatePercent: e.HEALTH_API_5XX_RATE_PERCENT,
+      uploadRejectionRatePercent: e.HEALTH_UPLOAD_REJECTION_RATE_PERCENT,
     },
   };
 }

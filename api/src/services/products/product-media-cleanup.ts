@@ -137,3 +137,28 @@ export async function sweepStaleQuarantine(): Promise<StaleQuarantineSweepResult
   }
   return { scanned: entries.length, deleted };
 }
+
+/** Read-only — the oldest quarantine entry's age in milliseconds, or `null`
+ * when the quarantine tree is empty/missing. Health-endpoint primitive
+ * (Phase 7 Task 7); never deletes anything, unlike `sweepStaleQuarantine`. */
+export async function oldestQuarantineAgeMs(): Promise<number | null> {
+  const root = getConfig().media.root;
+  const quarantineRoot = mediaKeyToPath(root, 'quarantine');
+  let entries: string[];
+  try {
+    entries = await readdir(quarantineRoot);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+  let oldestMtimeMs: number | null = null;
+  for (const entry of entries) {
+    try {
+      const mtimeMs = (await stat(mediaKeyToPath(root, quarantineDirKey(entry)))).mtimeMs;
+      if (oldestMtimeMs === null || mtimeMs < oldestMtimeMs) oldestMtimeMs = mtimeMs;
+    } catch {
+      continue;
+    }
+  }
+  return oldestMtimeMs === null ? null : Date.now() - oldestMtimeMs;
+}
