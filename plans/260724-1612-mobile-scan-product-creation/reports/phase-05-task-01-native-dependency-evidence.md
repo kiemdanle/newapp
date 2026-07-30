@@ -1,11 +1,28 @@
 # Phase 5 Task 1: native dependency compatibility evidence
 
-Not a compile proof (this container has no Android/iOS toolchain — see
-`phase-05-native-verification-checklist.md`, which converts this evidence
-into an executable Step 1 for the user). This document is the "documented-
-compatible pending compile proof" research team-lead asked for, so a real
-proof-build failure has a concrete list of what was already checked versus
-what's still unknown.
+**Update — real Android proof build completed on this container.** The
+user later approved keeping an Android toolchain here (JDK 17 + Android SDK
+platform 36/build-tools 36.0.0, provisioned and gone through review — see
+the team thread), so the sections below that originally said "documented-
+compatible pending compile proof" are now backed by an actual `gradlew
+assembleDebug` run, not just research. Results, in short:
+
+- **react-native-image-crop-picker@0.51.1: PROVEN.** Compiles clean —
+  codegen, resource compilation, Java compilation, and jar bundling all
+  succeeded with zero errors across every attempt. The New Architecture
+  compatibility claimed below is now directly confirmed, not just inferred.
+- **@google-cloud/recaptcha-enterprise-react-native@18.9.2: BLOCKED**, with
+  the exact root cause fully diagnosed (three layered issues, one already
+  fixed and kept, two real and unresolved — see "Android proof build
+  results" below). Per team-lead's standing instruction, I'm stopping and
+  reporting rather than working around this myself, since the real fix
+  requires a project-wide Kotlin version decision outside this adapter's
+  blast radius.
+
+iOS remains untested (Linux container, genuinely impossible here) — still
+the plan's known external constraint, tracked in the checklist.
+
+Original research (still accurate background) follows.
 
 ## react-native-image-crop-picker — pinned 0.51.1
 
@@ -91,3 +108,90 @@ are the full Task 1 diff. `pnpm --dir apps/mobile typecheck` and a scoped
 repo-wide `pnpm --dir apps/mobile lint` has 12 pre-existing errors in
 unrelated files (deal/giveaway forms, a11y descriptors, unused vars) not
 touched by this change.
+
+## Android proof build results (real compile, not research)
+
+Ran `gradlew -p android :app:assembleDebug` repeatedly against JDK 17 +
+Android SDK platform 36 / build-tools 36.0.0 (compileSdk/buildToolsVersion
+this project already pins), with `--no-daemon --max-workers=1` and a
+reduced heap to fit this box's ~7.8 GB shared with five other concurrent
+agent processes — a resource constraint of this specific machine, not a
+build-correctness issue; every failure below reproduced identically once
+memory pressure was controlled for.
+
+**react-native-image-crop-picker@0.51.1** — every one of its own Gradle
+module tasks succeeded with zero errors, every attempt:
+`generateCodegenSchemaFromJavaScript`, `generateCodegenArtifactsFromSchema`,
+`writeDebugAarMetadata`, `compileDebugLibraryResources`,
+`parseDebugLocalResources`, `generateDebugRFile`, `generateDebugBuildConfig`,
+`javaPreCompileDebug`, `compileDebugJavaWithJavac`,
+`bundleLibCompileToJarDebug`. New Architecture support is now a proven fact
+for this project's exact toolchain, not an inference from `codegenConfig`.
+
+**@google-cloud/recaptcha-enterprise-react-native@18.9.2** — three distinct,
+layered problems surfaced in sequence as each was resolved:
+
+1. **Missing core library desugaring** (fixed, kept in
+   `apps/mobile/android/app/build.gradle`): the library's AAR metadata
+   requires `coreLibraryDesugaringEnabled true` on the consuming app module.
+   Added `compileOptions { coreLibraryDesugaringEnabled true;
+   sourceCompatibility/targetCompatibility JavaVersion.VERSION_1_8 }` and
+   `coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'` (latest
+   published, confirmed via `dl.google.com/android/maven2` metadata). This is
+   a normal, standard Android config addition — not a compatibility problem,
+   just a missing wiring step, and it's staying in the code.
+
+2. **The library's own `android/build.gradle` never applies the Kotlin
+   Android Gradle plugin.** It ships a Kotlin module
+   (`RecaptchaEnterpriseReactNativePackage.kt`,
+   `RecaptchaEnterpriseReactNativeModule.kt`) and depends on
+   `kotlin-stdlib`, but only declares Kotlin in its `buildscript{}`
+   classpath — there's no `apply plugin: "org.jetbrains.kotlin.android"`
+   line. The file itself explains why: a commented-out
+   `apply plugin: "com.facebook.react"` block with the note "Remove per:
+   https://github.com/callstack/react-native-builder-bob/issues/774" — an
+   unrelated Nitro-modules duplicate-class workaround that left this
+   non-Nitro, standard-autolinking case with an uncompiled `.kt` source.
+   RN's autolinked `PackageList.java` correctly references
+   `com.google.recaptchaenterprisereactnative.RecaptchaEnterpriseReactNativePackage`
+   by its real name (confirmed the source file exists at that exact path) —
+   the class just was never built, so `:app:compileDebugJavaWithJavac` fails
+   with "cannot find symbol".
+
+   Tried to fix this from `apps/mobile/android/build.gradle` (app-side only,
+   no node_modules patch) two ways — a plain `subprojects { … apply plugin:
+   … }` block, and the same wrapped in `afterEvaluate` for correct plugin-
+   application ordering. Both failed: the first because the Android plugin's
+   extension wasn't registered yet at that point in project evaluation, the
+   second because Kotlin 2.0's newer `KotlinPluginLifecycle` model rejects
+   applying the plugin once the project has moved past the configuration
+   phase (`cannot be started in ProjectState 'EXECUTING'`). No further
+   app-side-only fix attempted after that — see item 3, which makes this
+   moot anyway.
+
+3. **Real, confirmed Kotlin metadata version skew** — diagnosed by
+   temporarily patching the library's own `android/build.gradle` directly in
+   `node_modules` (diagnostic only, reverted immediately after, never
+   committed) to add the missing `apply plugin` line from item 2, purely to
+   see what error surfaces next. Result: `compileDebugKotlin` fails with
+   "Incompatible classes were found in dependencies" — the actual native
+   `com.google.android.recaptcha:recaptcha:18.9.2` AAR (a closed-source
+   Google Play Services–style SDK, not something this project controls) was
+   compiled with **Kotlin metadata version 2.3.0**. This project pins
+   `kotlinVersion = "2.0.21"` in `apps/mobile/android/build.gradle` — a
+   2.0.21 compiler can read metadata up to version 2.1.0, not 2.3.0. This is
+   a genuine, verified toolchain version-skew incompatibility, not a
+   misconfiguration.
+
+   Fixing this for real means bumping the project's Kotlin Gradle plugin
+   version to something that can read 2.3.0 metadata — a change that affects
+   every other native module in the app (reanimated, vision-camera, screens,
+   svg, etc., each with their own tested Kotlin ranges), not something
+   scoped to one adapter file. That's exactly the kind of decision this
+   report is for, not something to make unilaterally mid-proof-build.
+
+**Net effect:** item 1 stays fixed in the tracked build.gradle (harmless,
+correct, needed regardless of how items 2/3 resolve). Items 2 and 3 are
+reported, not worked around — the reCAPTCHA Enterprise Mobile SDK bridge is
+not currently buildable against this project's pinned Kotlin 2.0.21 on
+Android, full stop, independent of anything in my adapter code.

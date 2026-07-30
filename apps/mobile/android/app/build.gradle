@@ -41,6 +41,15 @@ android {
         manifestPlaceholders = [ENVFILE: project.findProperty('ENVFILE') ?: '.env']
     }
 
+    // Phase 5: @google-cloud/recaptcha-enterprise-react-native's AAR requires
+    // core library desugaring (its metadata check fails the build otherwise
+    // — proven empirically via the Task 1 native proof build, not assumed).
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
     buildTypes {
         debug {
         }
@@ -60,4 +69,8 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Latest published version as of this pin (dl.google.com/android/maven2
+    // metadata) — required by coreLibraryDesugaringEnabled above.
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }
