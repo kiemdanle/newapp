@@ -57,6 +57,29 @@ before I found stable settings: `--no-daemon --max-workers=1
 -Dkotlin.compiler.execution.strategy=in-process`. Not needed on a dedicated
 dev machine with more headroom, but worth knowing if the box is shared.
 
+**Fresh-machine note:** `gradlew` for this project lives inside
+`node_modules/@react-native/gradle-plugin` (no `android/gradlew` checked in).
+On a machine running this repo's ClaudeKit `scout-block` hook, executing it
+requires a *local, untracked* `.claude/.ckignore` entry — `.claude/` is
+gitignored repo-wide, so this does not travel with the repo and every fresh
+checkout/agent needs the same local addition (or must run outside the hook
+entirely, e.g. a plain developer machine with no ClaudeKit tooling). The
+working pattern (a single `!node_modules/@react-native/gradle-plugin/**` line
+is NOT sufficient — the base `node_modules` block-pattern also excludes the
+bare directory name, and per real gitignore-spec semantics nothing below an
+excluded directory can be re-included unless that directory-name match is
+undone too):
+
+```
+!node_modules
+!**/node_modules
+!node_modules/@react-native
+!**/node_modules/@react-native
+node_modules/@react-native/*
+!node_modules/@react-native/gradle-plugin
+!node_modules/@react-native/gradle-plugin/**
+```
+
 ### iOS — still not attempted (Linux container)
 
 ```sh
