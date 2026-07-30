@@ -1,6 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type {
   Product,
+  ProductDraftsPage,
+  ProductDraftStatus,
   ProductLookupV2Response,
   ProductSearchResult,
   ProductWithReviews,
@@ -43,16 +45,45 @@ export function useProduct(id: string | undefined) {
   });
 }
 
-export function useCreateProduct() {
+/** Create-or-resume: idempotent by (caller, identifier) on the server, so
+ * calling this again for an identifier the creator already has a draft for
+ * returns that same draft (`resumed: true`) rather than a duplicate. This is
+ * the entry point for both a fresh "Create" from a conclusive miss and a
+ * `editable_private`/`creator_pending` scan resume. */
+export function useCreateOrResumeDraft() {
+  return useMutation({
+    mutationFn: async (input: { barcode?: string | null; qrPayload?: string | null }) => {
+      return await apiClient.post<{ product: Product; resumed: boolean }>('/products/drafts', input);
+    },
+  });
+}
+
+export function usePatchDraft() {
   return useMutation({
     mutationFn: async (input: {
-      barcode?: string | null;
-      qrPayload?: string | null;
-      name: string;
+      id: string;
+      version: number;
+      name?: string;
+      description?: string | null;
       brand?: string | null;
-      defaultShelfLifeDays?: number | null;
+      category?: string | null;
     }) => {
-      return await apiClient.post<Product>('/products', input);
+      const { id, ...body } = input;
+      return await apiClient.patch<Product>(`/products/drafts/${id}`, body);
     },
+  });
+}
+
+export function useProductDrafts(status?: ProductDraftStatus) {
+  return useInfiniteQuery<ProductDraftsPage>({
+    queryKey: ['products', 'drafts', status ?? 'all'],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const statusQs = status ? `status=${status}` : '';
+      const cursorQs = pageParam ? `cursor=${pageParam}` : '';
+      const qs = [statusQs, cursorQs].filter(Boolean).join('&');
+      return apiClient.get<ProductDraftsPage>(`/products/drafts${qs ? `?${qs}` : ''}`);
+    },
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
 }

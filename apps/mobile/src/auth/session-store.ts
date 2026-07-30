@@ -3,6 +3,7 @@ import type { AuthResult, User } from '@expyrico/shared';
 import { secureStore } from './secure-store';
 import { authEndpoints } from '../api/endpoints';
 import { purgePrivateImageCache } from '../api/product-private-image';
+import { clearDraftLocalStateForUser } from '../features/products/product-draft-storage';
 
 interface SessionState {
   user: User | null;
@@ -19,7 +20,7 @@ interface SessionState {
   setPendingAuth: (result: AuthResult | null) => void;
 }
 
-export const useSessionStore = create<SessionState>((set) => ({
+export const useSessionStore = create<SessionState>((set, get) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -36,6 +37,10 @@ export const useSessionStore = create<SessionState>((set) => ({
   },
   signOut: async () => {
     purgePrivateImageCache();
+    // Data-hygiene cleanup for a shared device — read the outgoing user's ID
+    // before it's cleared below.
+    const outgoingUserId = get().user?.id;
+    if (outgoingUserId) await clearDraftLocalStateForUser(outgoingUserId);
     await secureStore.clearAll();
     set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
   },

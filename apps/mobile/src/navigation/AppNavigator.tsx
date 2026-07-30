@@ -8,6 +8,7 @@ import InviteScreen from '../../app/(app)/invite';
 import HouseholdScreen from '../../app/(app)/household/index';
 import ProductScreen from '../../app/(app)/product/[id]';
 import ProductNewScreen from '../../app/(app)/product/new';
+import ProductDraftsScreen from '../../app/(app)/product/drafts';
 import ProductReviewScreen from '../../app/(app)/product/[id]/review';
 import DealScreen from '../../app/(app)/deal/[id]';
 import DealNewScreen from '../../app/(app)/deal/new';
@@ -32,7 +33,18 @@ export type AppStackParamList = {
   // `editable_private` (resume: 'edit') or `creator_pending` (resume:
   // 'pending') outcome — Phase 5 Task 4 wires the screen to actually consume
   // them; Task 3 only needs the navigation contract to exist and be typed.
-  ProductNew: { barcode?: string; qr?: string; productId?: string; resume?: 'edit' | 'pending' } | undefined;
+  // `feedback` is only populated when navigating from the drafts list (which
+  // already has moderationFeedback from GET /products/drafts) — the single-
+  // product GET the editor otherwise resumes through deliberately excludes
+  // it (server-side, moderation notes aren't part of the public product DTO).
+  ProductNew: {
+    barcode?: string;
+    qr?: string;
+    productId?: string;
+    resume?: 'edit' | 'pending';
+    feedback?: string;
+  } | undefined;
+  ProductDrafts: undefined;
   ProductReview: { id: string };
   Deal: { id: string };
   DealNew: { editId?: string } | undefined;
@@ -62,6 +74,7 @@ export function AppNavigator() {
       <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
       <Stack.Screen name="Product" component={ProductScreen} />
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />
+      <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'My drafts' }} />
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
       <Stack.Screen name="Deal" component={DealScreen} />
       <Stack.Screen name="DealNew" component={DealNewScreen} options={{ headerShown: true, title: 'Post a deal' }} />

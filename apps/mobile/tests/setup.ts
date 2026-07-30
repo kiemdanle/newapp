@@ -2,11 +2,19 @@ import * as mockNavigation from './mocks/react-navigation';
 
 // Default React Navigation mocks for screens rendered outside a navigator in tests
 jest.mock('@react-navigation/native', () => {
+  // Required inside the factory: jest.mock() factories can't reference
+  // outer-scope imports (hoisting restriction).
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { useEffect } = require('react');
   const actual = jest.requireActual('@react-navigation/native');
   return {
     ...actual,
     useNavigation: mockNavigation.useNavigation,
     useRoute: mockNavigation.useRoute,
+    // The real useFocusEffect needs a NavigationContext a bare `render()`
+    // (no NavigationContainer) never provides. Screens tested in isolation
+    // are always "focused" for the test's purposes, so just run the effect.
+    useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, []),
   };
 });
 
@@ -100,6 +108,11 @@ jest.mock('react-native-config', () => ({
   RECAPTCHA_SITE_KEY_ANDROID: 'mock-recaptcha-site-key-android',
   RECAPTCHA_SITE_KEY_IOS: 'mock-recaptcha-site-key-ios',
 }));
+
+// Official in-memory Jest mock shipped by the package itself.
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
 
 // WatermelonDB — native SQLite adapter, mock for Jest
 jest.mock('../src/db/index', () => {

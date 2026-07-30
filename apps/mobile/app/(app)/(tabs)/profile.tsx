@@ -69,6 +69,27 @@ export default function Profile() {
 
       <View style={{ gap: 8, marginTop: 4 }}>
         <Pressable
+          testID="profile-drafts"
+          accessibilityRole="button"
+          accessibilityLabel="Open my product drafts"
+          onPress={() => navigation.push('ProductDrafts')}
+          style={({ pressed }) => [
+            styles.row,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderRadius: theme.radii.md,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <View style={styles.rowMain}>
+            <Ionicons name="document-text-outline" size={20} color={theme.colors.primary} />
+            <Text style={[styles.rowLabel, { color: theme.colors.text }]}>My product drafts</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.textMuted} />
+        </Pressable>
+
+        <Pressable
           testID="profile-settings"
           accessibilityRole="button"
           accessibilityLabel="Open settings"
