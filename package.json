@@ -17,6 +17,7 @@
     "mobile:apk:debug": "pnpm --filter @expyrico/mobile android:build",
     "mobile:apk:release": "pnpm --filter @expyrico/mobile android:release",
     "mobile:android": "pnpm --filter @expyrico/mobile android",
+    "check:vendored-shared-dist": "node scripts/check-vendored-shared-dist.mjs",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

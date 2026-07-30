@@ -23,6 +23,8 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
+      - name: Check vendored @expyrico/shared dist is in sync
+        run: pnpm check:vendored-shared-dist
       - name: Typecheck mobile
         run: pnpm --filter @expyrico/mobile typecheck
       - name: Lint mobile (a11y)
