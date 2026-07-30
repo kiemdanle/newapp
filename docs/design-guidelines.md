@@ -1,17 +1,17 @@
 # Expyrico — Design Guidelines
 
 These guidelines cover the Expyrico brand palette and the theme system shared
-across mobile and admin. Colors are mandated; shape, elevation, spacing, and
-typography may vary by theme variant, but the palette must be preserved.
+across mobile and admin. The package currently provides the Expyrico light and
+dark themes; use semantic tokens rather than hard-coded colors.
 
 > There is **no "Aurora" theme**. The default and brand theme is **Expyrico**.
 > Do not introduce alternate brand palettes.
 
 ## Mandated palette
 
-The palette is defined in `packages/theme/src/palette.ts` and mandated by the
-project instructions. Every theme variant must resolve its colors to these
-values.
+The palette is defined in the tracked source file `packages/theme/src/palette.ts`
+and mandated by project instructions. The dark theme derives its semantic colors
+from this brand palette where appropriate.
 
 | Token | Name | Hex | Usage |
 | --- | --- | --- | --- |
@@ -51,19 +51,16 @@ The package has no runtime dependencies. `tokens.ts` defines the Theme contract:
 `palette.ts` holds the mandated palette. `index.ts` exports a `themes` record and
 a `themeList`.
 
-### Variants
+### Available themes
 
-`ThemeId = expyrico | expyricoDark | bento | clay | material`.
+`ThemeId = 'expyrico' | 'expyricoDark'`.
 
-- All four **light** variants (`expyrico`, `bento`, `clay`, `material`) share the
-  same `expyricoColors`. They differ only in radii, shadows, typography,
-  typeRamp, elevation, and animation — that is, shape and feel, not color.
-- Only **`expyricoDark`** swaps the color set. It is the single dark variant.
+- **`expyrico`** is the default light theme.
+- **`expyricoDark`** is the dark theme. It preserves the semantic brand/status
+  mapping while using dark-surface tokens for readability.
 
-This is the key mental model: switching between the light variants changes the
-"physical" character of the UI (rounded vs sharp, soft vs flat, type rhythm)
-while keeping the exact same Expyrico colors. Dark mode is the one place colors
-change.
+Do not document or offer legacy `bento`, `clay`, or `material` variants: they
+are not in the current theme source or mobile preference validation.
 
 ## Mobile theming runtime
 
@@ -71,7 +68,7 @@ change.
   persisted to SecureStore. Any non-`system` preference is synced to the server.
 - `ThemeProvider` resolves `'system'` via `useColorScheme` and applies a 200ms
   cross-fade on theme changes.
-- `settings/theme.tsx` renders a preview-card grid for picking a variant.
+- The settings theme screen exposes the supported Expyrico light/dark choices.
 - Styling combines nativewind + tailwind with runtime `@expyrico/theme` tokens.
   Use tokens rather than hard-coded colors so variant/dark switching works.
 
@@ -98,9 +95,8 @@ change.
 - Full WCAG conformance requires manual testing with assistive technologies and
   expert review beyond the automated contrast checks.
 
-## Theme-related known issues
+## Theme maintenance
 
-- `packages/theme/src/palette.ts` is **untracked in git** while every variant and
-  `index.ts` imports `./palette.js`. A clean build of `@expyrico/theme` fails
-  until it is committed. This is the highest-priority theming fix (see
-  `project-roadmap.md`).
+`packages/theme/src/palette.ts` is tracked source. When palette or token changes
+are made, rebuild the package and refresh the vendored mobile `dist` copy before
+relying on the result in the mobile app.

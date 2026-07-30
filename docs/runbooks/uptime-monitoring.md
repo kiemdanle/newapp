@@ -8,23 +8,23 @@ Goal: be paged within 5 minutes of `/health` failing.
 
 ## Monitors
 
-1. **API liveness** — HTTPS GET `https://api.pantry.example/health` every 5 min, expect 200
-2. **API readiness** — HTTPS GET `https://api.pantry.example/health/ready` every 5 min, expect 200 AND `db:true` AND `redis:true` (use "keyword exists" check)
-3. **Admin landing** — HTTPS GET `https://admin.pantry.example/login` every 5 min, expect 200
+1. **API liveness** — HTTPS GET `https://api.linhkienkts.com/health` every 5 min, expect 200
+2. **API readiness** — HTTPS GET `https://api.linhkienkts.com/health/ready` every 5 min, expect 200 AND `db:true` AND `redis:true` (use "keyword exists" check)
+3. **Admin landing** — HTTPS GET `https://admin.linhkienkts.com/login` every 5 min, expect 200
 
 ## Alert contacts
 
 ### Primary: email
 
-Add `ops@pantry.example` (forwards to operator personal email + on-call phone via Gmail filter).
+Add `<operator email>` (forwards to operator personal email + on-call phone via Gmail filter).
 
 ### Secondary: choose one of Telegram or Discord
 
 **Telegram (recommended for a one-operator service):**
 
-1. Open Telegram, message `@BotFather`, run `/newbot`, name it `PantryAlertBot`
+1. Open Telegram, message `@BotFather`, run `/newbot`, name it `ExpyricoAlertBot`
 2. Save the bot token
-3. Create a private channel `Pantry Alerts`, add the bot as admin
+3. Create a private channel `Expyrico Alerts`, add the bot as admin
 4. Get the channel ID:
    ```bash
    curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | jq '.result[].channel_post.chat.id'
@@ -36,7 +36,7 @@ Add `ops@pantry.example` (forwards to operator personal email + on-call phone vi
 
 **Discord (alternative):**
 
-1. In your Discord server: Server Settings → Integrations → Webhooks → New Webhook → `#pantry-alerts`
+1. In your Discord server: Server Settings → Integrations → Webhooks → New Webhook → `#expyrico-alerts`
 2. Copy webhook URL
 3. UptimeRobot → Alert Contacts → Add → Webhook
    - URL: `<webhook URL>?wait=true`

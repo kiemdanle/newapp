@@ -15,9 +15,11 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 
 ### 1. Declare
 
-- Post in #incidents Slack/Discord with `[INC YYYY-MM-DD-NN] S<n>: <one-line summary>`
+- Notify the operator incident channel with `[INC YYYY-MM-DD-NN] S<n>: <one-line summary>`
 - Open a ticket; this is your scratchpad and the seed for the postmortem
-- If S1/S2: enable the maintenance banner via `/admin/settings/feature-flags → maintenanceBanner = "We are investigating an issue. Updates at status.pantry.example."` (string value; set `null` to clear). The PATCH body shape is `{ "maintenanceBanner": "..." }`, Zod-validated against M3's `feature_flags` seed.
+- If S1/S2: use the existing admin feature-flag interface to enable a maintenance
+  banner when available. Verify the current route and request contract before
+  scripting it; this repository does not provide a stable public status URL.
 
 ### 2. Triage (first 15 min)
 
@@ -25,7 +27,7 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 - Is `/health/ready` returning ok?
 - Are DB and Redis up? `systemctl status postgresql redis-server`
 - Tail logs: `sudo journalctl -u pantry-api -f --since "10 minutes ago"`
-- Check `/admin/system/queue-health` and `/admin/system/api-errors`
+- Check the admin system queue-health and API-error views
 - If recent deploy + symptoms started right after: ROLLBACK first, investigate second (see `rollback.md`)
 
 ### 3. Comms
@@ -34,22 +36,24 @@ A lightweight playbook for a one-operator service. Use it the moment you suspect
 
 **External:**
 
-- Update the status page (Statuspage-lite at `https://status.pantry.example`). Post: investigating → identified → monitoring → resolved.
-- For S1/S2 with > 30 min impact, email affected users from the operator inbox using this template:
+- Update the status channel or page configured for the deployment: investigating
+  → identified → monitoring → resolved.
+- For S1/S2 with > 30 min impact, email affected users from the operator inbox
+  using this template:
 
   ```
-  Subject: Pantry — service disruption update
+  Subject: Expyrico — service disruption update
 
   Hi,
 
-  Between <start UTC> and <end UTC>, Pantry was <briefly degraded / unavailable / unable to deliver push notifications>.
+  Between <start UTC> and <end UTC>, Expyrico was <briefly degraded / unavailable / unable to deliver push notifications>.
   We have identified the cause as <one sentence, plain language> and the service has been restored.
 
   Your data is safe. <If true: No records or reviews were lost.>
 
   We are sorry for the disruption.
 
-  — The Pantry team
+  — The Expyrico team
   ```
 
 ### 4. Mitigate

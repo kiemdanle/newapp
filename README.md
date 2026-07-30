@@ -13,10 +13,10 @@ is self-hosted and the product is mobile-first.
 
 ```
 api/            Fastify backend (@expyrico/api)
-apps/mobile/    Expo / React Native app (@expyrico/mobile)
+apps/mobile/    React Native app (@expyrico/mobile)
 apps/admin/     Next.js admin console (@expyrico/admin)
 packages/shared/  Zod schemas + inferred types (@expyrico/shared)
-packages/theme/   Design tokens + theme variants (@expyrico/theme)
+packages/theme/   Design tokens + Expyrico light/dark themes (@expyrico/theme)
 infra/          Ansible roles, nginx, deploy scripts
 docs/           Project documentation
 ```
@@ -62,7 +62,7 @@ HttpOnly cookies and requires an admin account with TOTP enrolled.
 
 ### Mobile
 
-Expo Go and EAS are **not** used. Builds are local Gradle + adb.
+Mobile builds use local Gradle + adb.
 
 ```bash
 pnpm --filter @expyrico/mobile start     # Metro dev server
@@ -101,8 +101,6 @@ APK output: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`.
 
 These are tracked in detail in the roadmap and deployment guide:
 
-- `packages/theme/src/palette.ts` is **untracked in git** while every theme
-  variant imports from it; a clean clone/CI build of `@expyrico/theme` would fail.
 - `infra/scripts/deploy-remote.sh` filters Prisma steps on `@pantry/api`, but the
   package is `@expyrico/api`, so migrations would not run during deploy.
 - Mobile release builds are signed with the **debug** keystore

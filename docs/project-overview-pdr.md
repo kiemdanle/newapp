@@ -25,8 +25,8 @@ Next.js admin console for moderation and operations.
 
 ## Target platforms
 
-- **Mobile** (primary): Android via Expo / React Native, built locally with
-  Gradle (no Expo Go, no EAS). iOS-capable stack (Apple OAuth, Apple auth) but
+- **Mobile** (primary): Android via React Native, built locally with
+  Gradle. iOS-capable stack (Apple OAuth, Apple auth) but
   the shipped build target and verified build path is Android.
 - **Admin** (operations): Next.js 15 web console, server-rendered, bound to
   localhost and fronted by nginx in production.

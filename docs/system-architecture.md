@@ -12,7 +12,7 @@ by all clients. Background work runs as BullMQ workers alongside the API.
 ```mermaid
 flowchart TB
   subgraph Clients
-    M["Mobile app<br/>Expo / React Native<br/>WatermelonDB (offline)"]
+    M["Mobile app<br/>React Native<br/>WatermelonDB (offline)"]
     A["Admin console<br/>Next.js 15 (Server Components)"]
   end
 
@@ -40,7 +40,7 @@ flowchart TB
 
   subgraph External
     OFF["OpenFoodFacts / upcitemdb"]
-    EXPO["Expo Push"]
+    FCM["Firebase Cloud Messaging"]
     SMTP["SMTP (nodemailer)"]
     OAUTH["Google / Apple OAuth"]
   end
@@ -55,7 +55,7 @@ flowchart TB
   Workers --> PG
   Workers --> RD
   W1 -.->|"via circuit breaker"| OFF
-  W3 --> EXPO
+  W3 --> FCM
   API --> SMTP
   API --> OAUTH
 ```

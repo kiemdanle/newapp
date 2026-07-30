@@ -18,21 +18,18 @@ Phases are ordered by risk and dependency, not by calendar. Items flagged
 - **Admin**: Next.js 15 console with cookie/TOTP auth, moderation, user
   management, settings, and system observability.
 - **Shared/theme packages**: single-source zod contracts and design tokens with
-  five theme variants.
+  the `expyrico` and `expyricoDark` themes.
 - **Infra**: Ansible provisioning, nginx, systemd units, ordered deploy script,
   backups, CI/CD via GitHub Actions.
 
-## Phase 0 — Unblock builds and deploys (verified bugs, high priority)
+## Phase 0 — Unblock deploys (verified bug, high priority)
 
-1. **Commit `packages/theme/src/palette.ts`.** It is untracked in git while every
-   theme variant + `index.ts` imports `./palette.js`. A clean clone or CI build
-   of `@expyrico/theme` currently fails. This is the highest-priority fix.
-2. **Fix the deploy script package filter.**
-   `infra/scripts/deploy-remote.sh` (lines ~57-59) filters Prisma steps on
-   `@pantry/api`, but the package is `@expyrico/api`. `prisma generate` /
-   `migrate deploy` do not match and no-op or fail during release.
-   `deploy.yml` already uses the correct `@expyrico/api`.
-3. **Resolve the deep-link scheme mismatch.** `app.config.ts` scheme is
+1. **Fix the deploy script package filter.**
+   `infra/scripts/deploy-remote.sh` filters Prisma steps on `@pantry/api`, but
+   the package is `@expyrico/api`. `prisma generate` / `migrate deploy` therefore
+   do not match the application package during release. `deploy.yml` already uses
+   the correct `@expyrico/api` filter.
+2. **Resolve the deep-link scheme mismatch.** `app.config.ts` scheme is
    `Expyrico`, the Android manifest registers `expyrico`, but
    `parseAuthDeepLink` only accepts `pantry:` and SecureStore keys are `pantry.*`.
    Password-reset deep links depend on the backend emitting the `pantry:` scheme.
@@ -46,9 +43,6 @@ Phases are ordered by risk and dependency, not by calendar. Items flagged
   are signed with the debug key: fine for sideload testing, but blocks Play Store
   distribution. Introduce a production keystore + secure signing config before any
   store submission.
-- Decide the update strategy: `expo-updates` is configured with an EAS URL but
-  dormant under the local-Gradle workflow. Either wire it up intentionally or
-  remove the dormant config to avoid confusion.
 
 ## Phase 2 — Close security-mandate gaps
 

@@ -15,7 +15,8 @@ to a non-optional field).
 - **API**: pure ESM, `module: NodeNext`. Use explicit `.js` import specifiers in
   source where NodeNext requires them.
 - **shared / theme packages**: ESM, built with `tsc` to `dist/`. `shared`
-  exposes a single `"."` export; `theme` exports a themes record + `themeList`.
+  exposes a single `"."` export; `theme` exports the `expyrico` and
+  `expyricoDark` themes through a themes record + `themeList`.
 - **admin**: Next.js resolves shared ESM via `transpilePackages` plus a webpack
   `extensionAlias` mapping `.js -> .ts`.
 
@@ -93,9 +94,8 @@ swallowing them.
 
 ## Mobile conventions
 
-- Navigation is file-based via Expo Router with typed routes; route groups
-  `(auth)` and `(app)` gate authenticated vs unauthenticated flows through
-  `AuthGate`.
+- Navigation uses React Navigation; `AuthGate` selects authenticated and
+  unauthenticated navigation flows.
 - State: zustand for session/theme/pantry-scope; react-query for server state
   (`staleTime` 30s, `gcTime` 5m, no retry on 4xx). Local persistence via
   WatermelonDB.

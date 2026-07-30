@@ -32,7 +32,9 @@ common  -> postgres -> redis -> nodejs -> secrets -> app -> nginx -> certbot
 - **postgres**: PostgreSQL + `pg_hba` template.
 - **redis**: Redis + `redis.conf`.
 - **nodejs**: Node runtime.
-- **secrets**: writes environment/secret material to the host.
+- **secrets**: validates operator-provided `api.env` and `admin.env`, enforces
+  their ownership/mode, and creates the backup age keypair once. It does not
+  create application secrets.
 - **app**: systemd units, sudoers, deploy key, backup cron (see below).
 - **nginx**: two vhosts + shared rate-limit config.
 - **certbot**: Let's Encrypt via webroot + `reload-nginx.sh`.
@@ -149,12 +151,15 @@ Validated in `src/lib/env.ts` (cached, fail-fast): `API_BASE_URL`,
 `COOKIE_SECURE`, `COOKIE_DOMAIN`, `NODE_ENV`. Cookies are `SameSite=Lax`, with
 `Secure`/`Domain` driven by `COOKIE_SECURE`/`COOKIE_DOMAIN`.
 
-Never commit `.env*` files, secrets, or keys. Secrets are delivered to the host
-by the Ansible `secrets` role.
+Never commit `.env*` files, secrets, or keys. Before provisioning, the operator
+must place application values in `/etc/pantry/secrets/api.env` and
+`/etc/pantry/secrets/admin.env`; the Ansible `secrets` role validates and locks
+down those files rather than writing their contents. It generates only the age
+keypair used by the backup scripts.
 
 ## Mobile build and distribution
 
-Expo Go and EAS are not used. Builds are local Gradle + adb.
+Mobile builds use local Gradle + adb.
 
 ```bash
 pnpm mobile:apk   # assembleRelease; pins JAVA_HOME to Android Studio JBR

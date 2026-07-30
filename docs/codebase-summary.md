@@ -1,5 +1,8 @@
 # Expyrico — Codebase Summary
 
+> Refreshed from `/opt/newapp/repomix-output.xml` on 2026-07-30; verify
+> operational details against the source before executing them.
+
 A pnpm + Turbo monorepo. Node >= 20, pnpm@9. Workspaces: `api`, `apps/*`,
 `packages/*`. Turbo tasks: `build`, `dev` (persistent), `lint`, `typecheck`
 (depends `^build`), `test` (depends `^build`), `clean`. Global env dependency
@@ -15,10 +18,10 @@ patch automerge, majors gated, security alerts labeled `security`.
 
 ```
 api/            @expyrico/api      Fastify backend
-apps/mobile/    @expyrico/mobile   Expo / React Native
+apps/mobile/    @expyrico/mobile   React Native
 apps/admin/     @expyrico/admin    Next.js admin
 packages/shared/ @expyrico/shared  zod schemas + types
-packages/theme/  @expyrico/theme   design tokens + variants
+packages/theme/  @expyrico/theme   design tokens + light/dark themes
 infra/          Ansible, nginx, deploy scripts
 docs/           documentation
 ```
@@ -85,7 +88,7 @@ Models: `User`, `AuthCredential`, `Session`, `PushToken`, `EmailToken`,
 - **Background jobs** (BullMQ + Redis via ioredis; 6 workers in
   `src/workers/runner.ts`, skipped in test unless `RUN_WORKERS=1`):
   `product-lookup` (OpenFoodFacts + upcitemdb), `notification-schedule`,
-  `notification-send` (Expo push via expo-server-sdk), `score-recalc`
+  `notification-send` (FCM push delivery), `score-recalc`
   (reputation), `moderation-flag` (profanity auto-flag -> reports as system
   user), `product-rating-recalc` (Wilson score). Bull-board mounted at
   `/v1/admin/bullboard` (admin-only). NotificationOutbox pattern: enqueue in the
@@ -105,9 +108,8 @@ truncates all tables before each test, loads `.env.test`). Scripts: `test`,
 
 ## Mobile (`apps/mobile/`)
 
-Expo SDK ~52, RN 0.76.9, React 18.3.1, New Architecture + Hermes on. Expo Router
-~4 (file-based, typed routes). Builds are local Gradle + adb — no Expo Go, no
-EAS.
+React Native 0.76.9 and React 18.3.1, with the New Architecture and Hermes.
+Navigation uses React Navigation. Builds are local Gradle + adb.
 
 - **State**: zustand ^4.5 (session, theme, pantry-scope stores) +
   @tanstack/react-query ^5.51.
@@ -126,14 +128,11 @@ Root `app/_layout.tsx` renders providers (GestureHandlerRootView >
 SafeAreaProvider > QueryClientProvider > ThemeProvider) plus `AuthGate`
 (redirects `(auth)/welcome` vs `(app)/(tabs)/home`) and `DeepLinkHandler`.
 
-- `(auth)`: welcome, sign-in (email/pw + Google/Apple/passkey), sign-up,
-  verify-email (6-digit OTP), forgot-password, reset-password (via
-  `pantry://reset-password?token=`).
-- `(app)`: `(tabs)` floating pill bar = home, giveaways, deals, browse, reviews,
-  profile; `settings/{index,theme,add-passkey}`; `product/{new,[id],[id]/review}`;
-  `record/[id]`; `deal/{new,[id]}`;
-  `giveaway/{new,mine,[id],[id]/rate,[id]/manage}`; household, report, invite,
-  scan.
+- Auth flow: welcome, sign-in (email/password, Google, Apple, passkey), sign-up,
+  email verification, password recovery, and reset-password deep links.
+- App flow: pantry records and products, scanning, community content (reviews,
+  deals, giveaways), households, referrals, and settings including theme and
+  passkey management.
 
 ### API integration
 
@@ -174,8 +173,7 @@ eslint-plugin-react-native-a11y, wcag-contrast; global font-scale cap 1.5x.
 - Release build signed with debug keystore — see deployment guide.
 - `app/(app)/product/[id]/review.tsx:24` TODO "wire to API when M2 backend
   lands" — review submission not yet connected.
-- `expo-updates` is configured with an EAS URL but dormant (local-Gradle
-  workflow). `react-native-worklets` is a local stub.
+- `react-native-worklets` is a local stub.
 
 ## Admin (`apps/admin/`)
 
@@ -232,13 +230,9 @@ contracts across api/mobile/admin.
 
 ### `packages/theme` (`@expyrico/theme`)
 
-ESM, `tsc` build, no runtime deps. `tokens.ts` is the Theme contract
-(ColorTokens, radii, shadows, clay + md3 elevation, typography, MD3 typeRamp
-displayLarge...labelSmall, spacing, animation). `palette.ts` is the mandated
-Expyrico palette. Variants `themes/{expyrico(+expyricoDark),bento,clay,material}`.
-`index.ts` exports the themes record + `themeList`. See `design-guidelines.md`.
-
-> **Verified build blocker**: `packages/theme/src/palette.ts` is **untracked in
-> git** while every theme variant + `index.ts` imports from `./palette.js`. A
-> clean clone or CI build of `@expyrico/theme` would fail. High priority to
-> commit.
+ESM, `tsc` build, no runtime dependencies. `tokens.ts` defines the semantic
+Theme contract (color tokens, radii, shadows, typography, spacing, and
+animation). The tracked `palette.ts` is the mandated Expyrico palette.
+`themes/expyrico.ts` and `index.ts` provide only the `expyrico` and
+`expyricoDark` themes through the `themes` record and `themeList`. See
+[design guidelines](design-guidelines.md).

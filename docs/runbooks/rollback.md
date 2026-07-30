@@ -11,7 +11,7 @@
 
 ## 1. Identify the last good SHA (30 seconds)
 
-Open https://github.com/pantry-org/pantry/actions?query=branch%3Amain+is%3Asuccess. Note the SHA from the deploy job that was green before the bad one.
+Open the repository Actions page, filtered to successful `main` deploys. Note the SHA from the deploy job that was green before the bad one.
 
 Alternatively on the host:
 
@@ -41,10 +41,10 @@ sudo systemctl restart pantry-api pantry-admin
 ## 4. Smoke test (30 seconds)
 
 ```bash
-curl -fsS https://api.pantry.example/health/ready
+curl -fsS https://api.linhkienkts.com/health/ready
 # Expected: {"status":"ok","db":true,"redis":true}
 
-curl -fsS https://api.pantry.example/v1/products/search?q=milk -H "Authorization: Bearer <test-token>"
+curl -fsS https://api.linhkienkts.com/v1/products/search?q=milk -H "Authorization: Bearer <test-token>"
 # Expected: 200 with results array
 ```
 
@@ -60,7 +60,7 @@ Expected: error rate drops back to baseline within 60 seconds. If not, you rolle
 
 ## 6. Announce
 
-- Post in #incidents: "Rolled back pantry-api + pantry-admin to <sha>. Smoke tests green."
+- Post in #incidents: "Rolled back Expyrico services to <sha>. Smoke tests green."
 - Open a ticket to investigate root cause of the bad deploy. Block re-deploy of the bad SHA.
 
 ---
@@ -82,34 +82,14 @@ Expected: error rate drops back to baseline within 60 seconds. If not, you rolle
    - **Forward fix:** write a corrective migration and re-deploy. Preferred for small blast radius.
    - **PITR-like restore:** restore the most recent pre-incident backup into a parallel schema, write a SQL diff to copy corrected rows back. See below.
 
-### Restore a single table from backup
+### Data recovery
 
-```bash
-# On the prod host:
-ssh pantry@prod-host
-# Pull the most recent pre-incident dump
-rclone copy b2:pantry-backups/daily/2026-05-23.age /tmp/
-mv /tmp/2026-05-23.age /tmp/backup.dump.age
-age -d -i ~/.config/age/pantry.key -o /tmp/backup.dump /tmp/backup.dump.age
-
-# Restore one table into a recovery schema
-sudo -u postgres psql -d pantry -c "CREATE SCHEMA recovery;"
-sudo -u postgres pg_restore -d pantry --schema=public --table=records \
-  --no-owner --use-set-session-authorization \
-  /tmp/backup.dump | sed 's/public\.records/recovery.records/g' | sudo -u postgres psql -d pantry
-
-# Inspect, then copy good rows back
-sudo -u postgres psql -d pantry -c "
-  BEGIN;
-  UPDATE public.records p
-  SET col = r.col
-  FROM recovery.records r
-  WHERE p.id = r.id AND <condition>;
-  COMMIT;
-"
-```
-
-After recovery: `DROP SCHEMA recovery CASCADE;` and `shred -u /tmp/backup.dump*`.
+Do not improvise a partial restore against production. The supported restore
+script performs a destructive complete restore into its target database. Restore
+a selected backup into a scratch database first, inspect and prepare a reviewed
+repair plan, then make a separate, narrowly reviewed production change. See
+[restore-drill.md](restore-drill.md) for the current driver, filename, and
+confirmation behavior.
 
 ## 7. Postmortem
 

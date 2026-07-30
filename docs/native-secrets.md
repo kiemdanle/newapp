@@ -11,4 +11,6 @@ Example placeholders are committed so CI and new contributors know what files ar
 | `*.keystore`, `*.jks` | Android app signing material | Generate locally via `keytool` |
 | `*.p8`, `*.p12` | Apple push/AuthKey/signing material | Download from Apple Developer / App Store Connect |
 
-Add real copies to `.env`/keystores locally; the CI pipeline injects them at build time.
+Store real copies only in the approved local secret store or CI secret mechanism
+when one is configured. Do not assume the current workflows inject native
+credentials: verify the workflow before relying on a build or release path.
