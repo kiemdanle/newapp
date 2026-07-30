@@ -28,7 +28,11 @@ export type AppStackParamList = {
   Invite: undefined;
   Household: undefined;
   Product: { id: string };
-  ProductNew: { barcode?: string; qr?: string } | undefined;
+  // `productId`/`resume` are set when scan.tsx routes here for an
+  // `editable_private` (resume: 'edit') or `creator_pending` (resume:
+  // 'pending') outcome — Phase 5 Task 4 wires the screen to actually consume
+  // them; Task 3 only needs the navigation contract to exist and be typed.
+  ProductNew: { barcode?: string; qr?: string; productId?: string; resume?: 'edit' | 'pending' } | undefined;
   ProductReview: { id: string };
   Deal: { id: string };
   DealNew: { editId?: string } | undefined;

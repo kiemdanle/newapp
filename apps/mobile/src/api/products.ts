@@ -1,17 +1,21 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type {
   Product,
-  ProductLookupResponse,
+  ProductLookupV2Response,
   ProductSearchResult,
   ProductWithReviews,
 } from '@expyrico/shared';
 import { apiClient } from './client';
 
-export function useProductLookup() {
+/** Conclusive-outcome lookup: `found | editable_private | creator_pending |
+ * under_review | not_found | temporarily_unavailable`. A thrown network/5xx
+ * error is a SEPARATE failure mode from the `temporarily_unavailable`
+ * outcome (still a 200) — callers must treat both the same way (retry, never
+ * route to creation) but cannot conflate them with a schema-valid response. */
+export function useProductLookupV2() {
   return useMutation({
     mutationFn: async (input: { barcode?: string; qr?: string }) => {
-      const data = await apiClient.post<ProductLookupResponse>('/products/lookup', input);
-      return data.product;
+      return await apiClient.post<ProductLookupV2Response>('/products/lookup-v2', input);
     },
   });
 }
