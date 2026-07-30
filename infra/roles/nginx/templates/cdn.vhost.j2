@@ -41,8 +41,21 @@ server {
     add_header Referrer-Policy "no-referrer" always;
 
     # No client uploads land here — this vhost only ever serves already
-    # -generated WebP variants.
-    client_max_body_size 0;
+    # -generated WebP variants. `0` means UNLIMITED (the opposite of the
+    # comment's intent, reviewer-p7 IM4) — a small explicit cap actually
+    # rejects a body instead of silently accepting and reading one before the
+    # request 404s/405s anyway.
+    client_max_body_size 1k;
+
+    # Denies any dotfile/dot-segment path before the products location below
+    # gets a chance to match it — `^/products/.+\.webp$` itself has no
+    # anchoring against a leading dot, so `/products/.hidden.webp` matched it
+    # and was served (reviewer-p7 IM2). Regex locations are evaluated in file
+    # order with first-match-wins, so this must stay declared first.
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
 
     # Every path segment below `products/` is server-generated (a UUID
     # product ID, then a UUID publication ID, then a literal `display.webp`
@@ -56,6 +69,14 @@ server {
     # (verified empirically while writing this template). `alias` alone
     # already 404s correctly for a missing file.
     location ~ ^/products/.+\.webp$ {
+        # A symlink inside public/products/ (nothing server-generated ever
+        # creates one, but the filesystem doesn't enforce that) would
+        # otherwise let `alias` follow it straight out of the public
+        # namespace — the one unauthenticated surface on this vhost, against
+        # a plan that rates a CDN private leak Critical-impact (reviewer-p7
+        # IM1, proven empirically: a symlink under public/products/ served
+        # the file it pointed at, including outside public/).
+        disable_symlinks on;
         alias {{ media_root }}/public/$uri;
         autoindex off;
         # `default_type`, not `add_header Content-Type` — the latter only ever
@@ -65,6 +86,14 @@ server {
         # text/plain and the response would carry two conflicting
         # Content-Type headers). `default_type` sets the one true value.
         default_type image/webp;
+        # `add_header` in a location block replaces the ENTIRE inherited set
+        # from the server block, not just adds to it — the two security
+        # headers above were silently absent from every real image response
+        # while still present on the catch-all 404 (reviewer-p7 IM3,
+        # measured). Repeated explicitly here for the same reason
+        # X-Content-Type-Options already was.
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;
         # Immutable: approval always publishes a *fresh* UUID path and never
         # overwrites an existing one, so a cached response is valid forever.
