@@ -1,6 +1,46 @@
 ---
-# App role: systemd units, sudoers, deploy SSH key, backup cron, and the
-# UptimeRobot operator reminder (amendment 5 — never automated).
+# App role: media directories, systemd units, sudoers, deploy SSH key, backup
+# cron, and the UptimeRobot operator reminder (amendment 5 — never automated).
+#
+# Media directories are provisioned FIRST, before the systemd unit is
+# installed/started: Phase 3's config validation fails fast at boot if
+# MEDIA_ROOT doesn't already exist and isn't writable, so an API version that
+# validates media config must never start against a root Ansible hasn't
+# created yet (see infra/README.md's deployment-ordering note).
+- name: Ensure media root and its private/public/quarantine subtrees exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0750"
+  loop:
+    - "{{ media_root }}"
+    - "{{ media_root }}/private"
+    - "{{ media_root }}/private/products"
+    - "{{ media_root }}/public"
+    - "{{ media_root }}/public/products"
+    - "{{ media_root }}/quarantine"
+
+# The public tree only needs to be *readable* by nginx (the CDN vhost, a
+# separate `www-data` process) — never writable, and never the private or
+# quarantine trees. Group-readable + nginx added to the app group is enough
+# without loosening the private tree's permissions.
+- name: Ensure the public media tree is readable by the nginx worker
+  ansible.builtin.file:
+    path: "{{ media_root }}/public"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0750"
+    recurse: false
+
+- name: Add www-data to the app group so nginx can read public media
+  ansible.builtin.user:
+    name: www-data
+    groups: "{{ app_group }}"
+    append: true
+
 - name: Install pantry-api systemd unit
   ansible.builtin.template:
     src: pantry-api.service.j2

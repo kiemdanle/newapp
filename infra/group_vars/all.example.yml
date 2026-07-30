@@ -9,6 +9,10 @@
 domain_root: linhkienkts.com
 api_domain: "api.{{ domain_root }}"
 admin_domain: "admin.{{ domain_root }}"
+# Public-only CDN for approved product photos (Phase 7) — a dedicated vhost so
+# no request to it can ever reach the API origin, private media, or an admin
+# surface. Must resolve to this host before certbot can obtain its cert.
+cdn_domain: "cdn.{{ domain_root }}"
 # Email used for Let's Encrypt registration; expiry warnings will go here.
 letsencrypt_email: ops@{{ domain_root }}
 
@@ -36,6 +40,12 @@ secrets_dir: "{{ config_dir }}/secrets"
 # entrypoint.
 api_port: 4000
 admin_port: 4001
+
+# Product media root (Phase 7) — private/public/quarantine subtrees are
+# created here by the app role, before the API unit is ever started, and must
+# match MEDIA_ROOT in api.env exactly. The CDN vhost aliases only
+# {{ media_root }}/public/products/.
+media_root: /var/lib/expyrico/media
 
 # Public key in /home/<app_user>/.ssh/authorized_keys for the GitHub Actions
 # deploy job. Generated locally during first apply (see infra/README.md).

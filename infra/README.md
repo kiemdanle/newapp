@@ -6,7 +6,8 @@ Ubuntu 22.04 / 24.04 LTS VPS and produces a running Pantry stack:
 - Postgres 16 (PGDG) + pg_trgm + pgcrypto, localhost-only, scram auth
 - Redis 7 (RDB only, allkeys-lru, localhost-only)
 - Node 20 LTS via NodeSource + corepack pnpm 9
-- nginx (HTTP/2, gzip, IP-allowlistable admin vhost) + certbot via webroot
+- nginx (HTTP/2, gzip, IP-allowlistable admin vhost, public-only immutable-cached
+  CDN vhost for approved product photos) + certbot via webroot
 - systemd units `pantry-api` (port 4000) and `pantry-admin` (port 4001)
 - Encrypted nightly backups (`pg_dump | age | rclone`, 7 daily / 4 weekly /
   3 monthly), with an opt-in restic driver for Hetzner Storage Box
@@ -63,11 +64,19 @@ renders them now that certbot has obtained certs.
 5. **`secrets`** asserts `/etc/pantry/secrets/api.env` and
    `/etc/pantry/secrets/admin.env` exist (operator-managed) and generates
    the age keypair for backup encryption
-6. **`app`** installs the systemd units, sudoers fragment, deploy authorized_keys,
-   and the nightly backup cron
-7. **`nginx`** installs vhosts (HTTP-only on first run, HTTPS once certs are
-   present)
-8. **`certbot`** obtains TLS certs via `--webroot` and installs the renewal cron
+6. **`app`** provisions the product media root's private/public/quarantine
+   subtrees FIRST (owned by `pantry:pantry`, `www-data` added to the `pantry`
+   group for public-tree read access), then installs the systemd units,
+   sudoers fragment, deploy authorized_keys, and the nightly backup cron.
+   **Ordering matters here**: `pantry-api`'s config validation fails fast at
+   boot if `MEDIA_ROOT` doesn't already exist and isn't writable — the media
+   directories must exist before this step's systemd unit is ever started,
+   which this task ordering guarantees regardless of which API build the unit
+   points at.
+7. **`nginx`** installs vhosts — api, admin, and cdn (HTTP-only on first run,
+   HTTPS once certs are present)
+8. **`certbot`** obtains TLS certs via `--webroot` (api, admin, and cdn
+   domains) and installs the renewal cron
 
 After step 8, re-run the playbook so the nginx role re-renders the HTTPS
 server blocks.
@@ -106,6 +115,16 @@ JWT_REFRESH_SECRET=<32+ chars random>
 COOKIE_SECRET=<32+ chars random>
 PUBLIC_API_BASE_URL=https://api.linhkienkts.com
 PUBLIC_ADMIN_BASE_URL=https://admin.linhkienkts.com
+# Product media (Phase 3/7) — MEDIA_ROOT must exactly match group_vars'
+# media_root (default /var/lib/expyrico/media); the app role creates this
+# path before pantry-api ever starts. MEDIA_PUBLIC_BASE_URL is the CDN vhost.
+MEDIA_ROOT=/var/lib/expyrico/media
+MEDIA_PUBLIC_BASE_URL=https://cdn.linhkienkts.com
+# reCAPTCHA Enterprise (Phase 7) — server-side submit_product assessment.
+# Android and iOS each require their own registered site key.
+RECAPTCHA_PROJECT_ID=<gcp project id>
+RECAPTCHA_SITE_KEY_ANDROID=<android site key>
+RECAPTCHA_SITE_KEY_IOS=<ios site key>
 # Backup driver fields are read from this file too:
 BACKUP_RCLONE_REMOTE=b2:pantry-backups
 # BACKUP_AGE_RECIPIENT is read from /etc/pantry/secrets/age.pub by default.

@@ -35,6 +35,15 @@
   args:
     creates: "/etc/letsencrypt/live/{{ admin_domain }}/fullchain.pem"
 
+- name: Obtain TLS cert for CDN domain
+  ansible.builtin.command: >-
+    certbot certonly --non-interactive --agree-tos
+    --email {{ letsencrypt_email }}
+    --webroot -w /var/www/letsencrypt
+    -d {{ cdn_domain }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ cdn_domain }}/fullchain.pem"
+
 - name: Install deploy hook to reload nginx on renew
   ansible.builtin.copy:
     src: reload-nginx.sh

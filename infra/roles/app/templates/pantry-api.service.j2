@@ -26,7 +26,10 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/log/pantry
+# Media root (private/public/quarantine trees) is provisioned by the app
+# role's directory tasks, ahead of this unit ever starting — ProtectSystem=strict
+# denies writes everywhere except the paths listed here.
+ReadWritePaths=/var/log/pantry {{ media_root }}
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes

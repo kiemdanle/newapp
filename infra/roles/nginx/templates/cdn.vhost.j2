@@ -1,0 +1,78 @@
+# CDN vhost — public-only, immutable-cached delivery of approved product
+# photos. Aliases EXCLUSIVELY {{ media_root }}/public/products/ — never the
+# private/ or quarantine/ trees, and never proxies to the API origin. This is
+# the one nginx surface with zero rate limiting and zero auth: every approved
+# photo byte here is already meant to be publicly, permanently fetchable.
+#
+# cdn_tls_enabled follows the same first-apply bootstrap pattern as api.vhost.j2
+# / admin.vhost.j2: HTTP-only until the cert exists, HTTPS block on the next
+# apply.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ cdn_domain }};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+    }
+
+{% if cdn_tls_enabled | default(false) %}
+    location / { return 301 https://$host$request_uri; }
+{% else %}
+    location / { return 503; }
+{% endif %}
+}
+
+{% if cdn_tls_enabled | default(false) %}
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {{ cdn_domain }};
+
+    ssl_certificate     /etc/letsencrypt/live/{{ cdn_domain }}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{ cdn_domain }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:10m;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+
+    # No client uploads land here — this vhost only ever serves already
+    # -generated WebP variants.
+    client_max_body_size 0;
+
+    # Every path segment below `products/` is server-generated (a UUID
+    # product ID, then a UUID publication ID, then a literal `display.webp`
+    # or `thumb.webp`) — nothing here is client-influenced, so a strict alias
+    # with no rewriting is safe. Every generated variant is WebP; anything
+    # that doesn't end in .webp 404s rather than letting nginx guess a
+    # content-type for an unexpected extension.
+    # No `try_files` here deliberately: combined with `alias` inside a regex
+    # location, `try_files $uri` re-resolves the original request URI against
+    # the alias a second time and 404s every request, even an existing file
+    # (verified empirically while writing this template). `alias` alone
+    # already 404s correctly for a missing file.
+    location ~ ^/products/.+\.webp$ {
+        alias {{ media_root }}/public/$uri;
+        autoindex off;
+        # `default_type`, not `add_header Content-Type` — the latter only ever
+        # *adds* a second Content-Type header alongside nginx's own
+        # mime.types-derived guess (verified empirically: some hosts' default
+        # mime.types has no .webp entry, so the guess falls back to
+        # text/plain and the response would carry two conflicting
+        # Content-Type headers). `default_type` sets the one true value.
+        default_type image/webp;
+        add_header X-Content-Type-Options "nosniff" always;
+        # Immutable: approval always publishes a *fresh* UUID path and never
+        # overwrites an existing one, so a cached response is valid forever.
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
+
+    # Nothing else is served from this origin — no admin surface, no API
+    # proxy, no directory listing, no private/quarantine trees.
+    location / { return 404; }
+}
+{% endif %}
