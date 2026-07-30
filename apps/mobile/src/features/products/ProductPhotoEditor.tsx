@@ -197,13 +197,26 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         {orderedServerPhotos.map((photo, index) => (
           <View key={photo.id} testID={`photo-${photo.id}`} style={{ width: 96, gap: 4 }}>
-            <PrivateProductImage
-              testID={`photo-${photo.id}-image`}
-              target={target}
-              photoId={photo.id}
-              variant="thumb"
-              style={{ width: 96, height: 96, borderRadius: theme.radii.md }}
-            />
+            {photo.retained ? (
+              // A retained edit photo's bytes are already public (its
+              // `thumbnailUrl` is a real absolute URL) — the edit's private
+              // media route 404s for retained entries by server design, so
+              // this must never go through PrivateProductImage.
+              <Image
+                testID={`photo-${photo.id}-image`}
+                source={{ uri: photo.thumbnailUrl }}
+                accessibilityIgnoresInvertColors
+                style={{ width: 96, height: 96, borderRadius: theme.radii.md }}
+              />
+            ) : (
+              <PrivateProductImage
+                testID={`photo-${photo.id}-image`}
+                target={target}
+                photoId={photo.id}
+                variant="thumb"
+                style={{ width: 96, height: 96, borderRadius: theme.radii.md }}
+              />
+            )}
             {index === 0 ? (
               <Text testID={`photo-${photo.id}-cover`} style={{ color: theme.colors.primary, fontSize: 11, fontWeight: '700' }}>
                 Cover

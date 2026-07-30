@@ -10,6 +10,7 @@ import ProductScreen from '../../app/(app)/product/[id]';
 import ProductNewScreen from '../../app/(app)/product/new';
 import ProductDraftsScreen from '../../app/(app)/product/drafts';
 import ProductReviewScreen from '../../app/(app)/product/[id]/review';
+import ProductEditScreen from '../../app/(app)/product/[id]/edit';
 import DealScreen from '../../app/(app)/deal/[id]';
 import DealNewScreen from '../../app/(app)/deal/new';
 import GiveawayScreen from '../../app/(app)/giveaway/[id]';
@@ -46,6 +47,7 @@ export type AppStackParamList = {
   } | undefined;
   ProductDrafts: undefined;
   ProductReview: { id: string };
+  ProductEdit: { id: string };
   Deal: { id: string };
   DealNew: { editId?: string } | undefined;
   Giveaway: { id: string };
@@ -76,6 +78,7 @@ export function AppNavigator() {
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />
       <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'My drafts' }} />
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
+      <Stack.Screen name="ProductEdit" component={ProductEditScreen} options={{ headerShown: true, title: 'Suggest an edit' }} />
       <Stack.Screen name="Deal" component={DealScreen} />
       <Stack.Screen name="DealNew" component={DealNewScreen} options={{ headerShown: true, title: 'Post a deal' }} />
       {/* Native headers restore the only back affordance on these stack screens

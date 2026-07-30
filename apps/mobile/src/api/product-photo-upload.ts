@@ -72,14 +72,20 @@ function errorFromXhr(xhr: XMLHttpRequest): ApiError {
  * in-flight transport; the returned promise then rejects and never resolves
  * with a stale success, even if a response was already in flight when abort
  * was called.
+ *
+ * Generic over the response DTO — a draft target's server response is a
+ * `Product`, an edit target's is a `ProductEditRow`; the transport itself is
+ * identical either way, only the caller knows which target it passed and so
+ * which shape to expect back. Defaults to `Product` so every pre-existing
+ * (draft-only) call site is unaffected.
  */
-export function uploadProductPhoto(target: ProductPhotoTarget, photo: UploadablePhoto): UploadHandle<Product> {
+export function uploadProductPhoto<T = Product>(target: ProductPhotoTarget, photo: UploadablePhoto): UploadHandle<T> {
   const progressListeners = new Set<(ratio: number) => void>();
   let cancelled = false;
   let activeXhr: XMLHttpRequest | null = null;
 
-  const attempt = (retrying: boolean): Promise<Product> =>
-    new Promise<Product>((resolve, reject) => {
+  const attempt = (retrying: boolean): Promise<T> =>
+    new Promise<T>((resolve, reject) => {
       if (cancelled) {
         reject(new ApiError({ code: 'upload_cancelled', status: 0, title: 'Upload was cancelled' }));
         return;
@@ -130,7 +136,7 @@ export function uploadProductPhoto(target: ProductPhotoTarget, photo: Uploadable
           }
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              resolve(JSON.parse(xhr.responseText) as Product);
+              resolve(JSON.parse(xhr.responseText) as T);
             } catch {
               reject(new ApiError({ code: 'unknown_error', status: xhr.status, title: 'Invalid upload response' }));
             }
@@ -163,13 +169,14 @@ export function uploadProductPhoto(target: ProductPhotoTarget, photo: Uploadable
   };
 }
 
-/** Deletes one photo from a draft product or staged product-edit. */
-export async function deleteProductPhoto(target: ProductPhotoTarget, photoId: string): Promise<Product> {
-  return apiClient.delete<Product>(`${photosPathFor(target)}/${photoId}`);
+/** Deletes one photo from a draft product or staged product-edit. Generic for
+ * the same reason as `uploadProductPhoto` above. */
+export async function deleteProductPhoto<T = Product>(target: ProductPhotoTarget, photoId: string): Promise<T> {
+  return apiClient.delete<T>(`${photosPathFor(target)}/${photoId}`);
 }
 
 /** Rewrites the full photo order (index 0 is cover) for a draft product or
  * staged product-edit — the server requires the complete desired ordering. */
-export async function reorderProductPhotos(target: ProductPhotoTarget, photoIds: string[]): Promise<Product> {
-  return apiClient.patch<Product>(`${photosPathFor(target)}/order`, { photoIds });
+export async function reorderProductPhotos<T = Product>(target: ProductPhotoTarget, photoIds: string[]): Promise<T> {
+  return apiClient.patch<T>(`${photosPathFor(target)}/order`, { photoIds });
 }

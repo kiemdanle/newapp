@@ -7,6 +7,7 @@ import { OcrCamera } from '../../../src/features/expiry/OcrCamera';
 import { useTheme } from '../../../src/theme/useTheme';
 import { ensurePushTokenRegistered } from '../../../src/features/push/registerPushToken';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
+import { Button } from '../../../src/components/Button';
 
 export default function ProductDetail() {
   const theme = useTheme();
@@ -72,6 +73,14 @@ export default function ProductDetail() {
         >
           <Text style={{ color: theme.colors.textMuted }}>Save it now, then add an expiry date to keep it on your radar.</Text>
         </View>
+        {data.status === 'active' ? (
+          <Button
+            testID="product-suggest-edit"
+            label="Suggest an edit"
+            variant="ghost"
+            onPress={() => navigation.navigate('ProductEdit', { id: data.id })}
+          />
+        ) : null}
       </View>
       <AddRecordForm
         productId={data.id}

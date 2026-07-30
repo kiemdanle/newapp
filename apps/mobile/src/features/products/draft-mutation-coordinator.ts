@@ -17,6 +17,14 @@ export interface CoordinatedEntityPhoto {
   id: string;
   position: number;
   thumbnailUrl: string;
+  /** True for a `ProductEditRow` photo carried over from the live product
+   * unchanged — its bytes already live at a real public URL (`thumbnailUrl`
+   * itself), never behind the edit's private authenticated route (which
+   * 404s for a retained entry by server design; see
+   * `api/src/routes/products/edit-private-media.ts`). Absent/false for every
+   * draft photo, which is always private. `ProductPhotoEditor` uses this to
+   * choose how to render a server photo's thumbnail. */
+  retained?: boolean;
 }
 
 /** The minimal shape both `Product` (drafts) and `ProductEditRow` (active

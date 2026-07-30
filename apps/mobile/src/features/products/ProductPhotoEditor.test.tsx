@@ -279,6 +279,41 @@ describe('<ProductPhotoEditor />', () => {
     await waitFor(() => expect(enqueue).toHaveBeenCalledWith({ kind: 'order', photoIds: ['photo-2', 'photo-1'] }));
   });
 
+  it('a retained edit photo renders its already-public thumbnailUrl directly, never through the authenticated private fetch', async () => {
+    const { coordinator } = makeCoordinator(
+      entity([{ id: 'photo-1', position: 0, thumbnailUrl: 'https://cdn.example.com/pub/photo-1-thumb.webp', retained: true }]),
+    );
+    // No queueFetch response staged for a private-image request — if the
+    // component wrongly routed this through PrivateProductImage, the
+    // unmocked fetch call would reject/hang and the image would never render.
+    const { getByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'product_edit', editId: 'edit-1' }} coordinator={coordinator} />));
+
+    const image = await waitFor(() => getByTestId('photo-photo-1-image'));
+    expect(image.props.source).toEqual({ uri: 'https://cdn.example.com/pub/photo-1-thumb.webp' });
+  });
+
+  it('reports unsettled state while an upload is pending/uploading and clears it once settled', async () => {
+    const { coordinator } = makeCoordinator(entity());
+    mockTakePhoto.mockResolvedValue({ path: '/tmp/a.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 100 });
+    const gate = deferred<Entity>();
+    coordinator.enqueue = jest.fn().mockImplementation((op: { kind: string }) => {
+      if (op.kind === 'upload') return gate.promise;
+      return Promise.resolve(coordinator.getState());
+    });
+    const onUnsettledChange = jest.fn();
+
+    const { getByTestId } = render(
+      wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} onUnsettledChange={onUnsettledChange} />),
+    );
+    expect(onUnsettledChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.press(getByTestId('photo-take'));
+    await waitFor(() => expect(onUnsettledChange).toHaveBeenLastCalledWith(true));
+
+    gate.resolve(entity([{ id: 'new-1', position: 0, thumbnailUrl: '/new' }]));
+    await waitFor(() => expect(onUnsettledChange).toHaveBeenLastCalledWith(false));
+  });
+
   it('every interactive control meets the 48px touch-target minimum', async () => {
     const { coordinator } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]));
     queueFetch(jsonResponse('bytes'));
