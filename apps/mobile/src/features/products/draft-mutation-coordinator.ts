@@ -9,6 +9,16 @@ import { isApiError } from '../../api/errors';
 // behavior here is proven against fixtures that resolve responses
 // out of order before any real screen depends on it (Task 6).
 
+/** The minimal photo projection both `ProductPhoto` and `ProductEditPhoto`
+ * satisfy (the latter also carries `retained`, irrelevant to the
+ * coordinator/editor's own bookkeeping — only position and identity matter
+ * for queueing/reordering). */
+export interface CoordinatedEntityPhoto {
+  id: string;
+  position: number;
+  thumbnailUrl: string;
+}
+
 /** The minimal shape both `Product` (drafts) and `ProductEditRow` (active
  * revisions) satisfy — the coordinator itself never imports either type, so
  * the same implementation serves both Task 5 (drafts) and Task 8
@@ -20,6 +30,7 @@ export interface CoordinatedEntity {
   description: string | null;
   brand: string | null;
   category: string | null;
+  photos: readonly CoordinatedEntityPhoto[];
 }
 
 export interface MetadataFields {
