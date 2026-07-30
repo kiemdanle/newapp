@@ -10,10 +10,23 @@
 // Usage:
 //   node dist/scripts/media-manifest-cli.js generate <mediaRoot> <outFile>
 //   node dist/scripts/media-manifest-cli.js verify <mediaRoot> <manifestFile>
+//   node dist/scripts/media-manifest-cli.js verify-db-refs <manifestFile>
 //
-// Exit codes: 0 = success (generate: manifest written; verify: every entry
-// matched); 1 = verify found a missing/mismatched file (details on stdout as
-// JSON); 2 = usage/other error.
+// `verify-db-refs` connects via whatever DATABASE_URL is set in its own
+// process env (restore.sh runs it with DATABASE_URL pointed at the STAGING
+// database, never live) and asserts the manifest's key set is *exactly* the
+// staged database's referenced key set — every DB-referenced key has a
+// manifest entry, and every manifest entry is actually referenced. Without
+// this, a db.dump paired with a foreign manifest+tar (e.g. `restic restore`
+// picking an arbitrary db.dump via `find -name db.dump -print -quit` when a
+// snapshot holds more than one) validates cleanly against the file-checksum
+// `verify` above, which only ever checks manifest -> file, never database ->
+// manifest (reviewer-p7 II2).
+//
+// Exit codes: 0 = success (generate: manifest written; verify/verify-db-refs:
+// every entry matched); 1 = verify found a missing/mismatched file, or
+// verify-db-refs found a set mismatch (details on stdout as JSON); 2 =
+// usage/other error.
 import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
@@ -115,6 +128,29 @@ async function verify(mediaRoot: string, manifestFile: string): Promise<number> 
   return problems.length === 0 ? 0 : 1;
 }
 
+/**
+ * Cross-checks the manifest's key set against `collectReferencedKeys()` run
+ * against whatever database this process's `DATABASE_URL` points at —
+ * restore.sh always runs this against the staging database, never live
+ * (reviewer-p7 II2). Reports both directions of mismatch: a key the database
+ * references but the manifest never captured (an incomplete/foreign
+ * manifest), and a key the manifest lists but no live row references (a
+ * foreign/stale manifest paired with the wrong database).
+ */
+async function verifyDbReferences(manifestFile: string): Promise<number> {
+  const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as Manifest;
+  const manifestKeys = new Set(manifest.entries.map((e) => e.key));
+  const dbKeys = new Set(await collectReferencedKeys());
+
+  const missingFromManifest = [...dbKeys].filter((k) => !manifestKeys.has(k)).sort();
+  const extraInManifest = [...manifestKeys].filter((k) => !dbKeys.has(k)).sort();
+
+  process.stdout.write(
+    `${JSON.stringify({ dbKeys: dbKeys.size, manifestKeys: manifestKeys.size, missingFromManifest, extraInManifest })}\n`,
+  );
+  return missingFromManifest.length === 0 && extraInManifest.length === 0 ? 0 : 1;
+}
+
 /** Real-decode sanity check on a random sample of the manifest, independent
  * of the checksum path above: a byte-identical copy of an already-corrupt
  * source would pass checksum verification but never decode. Never trusts a
@@ -137,16 +173,30 @@ async function decodeSample(mediaRoot: string, manifestFile: string, sampleSize 
   return failures.length === 0 ? 0 : 1;
 }
 
+const USAGE =
+  'media-manifest-cli: usage: media-manifest-cli.js <generate|verify|decode-sample> <mediaRoot> <file> [sampleSize] | media-manifest-cli.js verify-db-refs <manifestFile>\n';
+
 async function main(): Promise<number> {
-  const [command, mediaRoot, target, sampleArg] = process.argv.slice(2);
+  const [command, ...rest] = process.argv.slice(2);
+
+  if (command === 'verify-db-refs') {
+    const [manifestFile] = rest;
+    if (!manifestFile) {
+      process.stderr.write(USAGE);
+      return 2;
+    }
+    return verifyDbReferences(manifestFile);
+  }
+
+  const [mediaRoot, target, sampleArg] = rest;
   if (!mediaRoot || !target) {
-    process.stderr.write('media-manifest-cli: usage: media-manifest-cli.js <generate|verify|decode-sample> <mediaRoot> <file> [sampleSize]\n');
+    process.stderr.write(USAGE);
     return 2;
   }
   if (command === 'generate') return generate(mediaRoot, target);
   if (command === 'verify') return verify(mediaRoot, target);
   if (command === 'decode-sample') return decodeSample(mediaRoot, target, sampleArg ? Number(sampleArg) : undefined);
-  process.stderr.write('media-manifest-cli: usage: media-manifest-cli.js <generate|verify|decode-sample> <mediaRoot> <file> [sampleSize]\n');
+  process.stderr.write(USAGE);
   return 2;
 }
 

@@ -208,12 +208,25 @@ log "extracting media.tar into $STAGING_MEDIA_ROOT"
 tar -xf "$GEN_ROOT/media.tar" -C "$STAGING_MEDIA_ROOT"
 
 # ---------------------------------------------------------------------------
-# 4. Validate: checksums against the staged media, then a real-decode sample.
-#    A failure here leaves live DB and live media completely untouched.
+# 4. Validate: checksums against the staged media, database references
+#    against the staged database, then a real-decode sample. A failure here
+#    leaves live DB and live media completely untouched.
 # ---------------------------------------------------------------------------
 log "verifying media manifest against staged media"
 if ! node "$MANIFEST_CLI" verify "$STAGING_MEDIA_ROOT" "$GEN_ROOT/media-manifest.json"; then
     log "ERROR: manifest verification failed against staged media — restore aborted, live resources untouched"
+    exit 1
+fi
+
+# Cross-checks the manifest's key set against the STAGING database's actual
+# referenced keys — the file-checksum check above only ever proves
+# manifest -> file; without this, a db.dump paired with a foreign
+# manifest+tar (e.g. the restic path's `find -name db.dump -print -quit`
+# picking an arbitrary snapshot member) would still validate cleanly
+# (reviewer-p7 II2).
+log "verifying media manifest against database references in the staged database"
+if ! DATABASE_URL="$STAGING_DB_URL" node "$MANIFEST_CLI" verify-db-refs "$GEN_ROOT/media-manifest.json"; then
+    log "ERROR: media manifest does not match the staged database's referenced media keys — restore aborted, live resources untouched"
     exit 1
 fi
 
