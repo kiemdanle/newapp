@@ -68,4 +68,41 @@ Mid-implementation, reviewer-p4 found the tracked `api/src/routes/admin/index.ts
 ## Unresolved / Follow-ups
 
 - The one pre-existing `layout.tsx` lint warning blocks a fully clean `pnpm --dir apps/admin lint` run; not fixed (unrelated, out of scope).
-- Real-port (4001/4099) e2e confirmation still pending on whatever is occupying those ports in this shared sandbox — scratch-port verification is a complete substitute in every respect except port number.
+
+## Addendum (post-review): tracked port fix
+
+**Port 4001/4000 are LIVE PRODUCTION on this box** (a `next-server` process owned
+by the `pantry` user, running since before this session, with a sibling API on
+4000) — not a stale test server. The original `playwright.config.ts` always
+reused any server already bound to 4001, so any local run on this box was
+silently submitting E2E fixture credentials to production. Confirmed via
+`ss -ltnp` (listener present) and the observed response itself: the enrolled-
+admin fixture got a real `invalid_credentials`, which is the only correct
+answer production could give it.
+
+Fixed as a small, required, TRACKED change (not scratch-only):
+`apps/admin/playwright.config.ts` now derives `baseURL`/both `webServer.port`s
+from `ADMIN_E2E_PORT`/`ADMIN_E2E_MOCK_PORT` (default 4001/4099, unchanged for
+CI), and disables `reuseExistingServer` whenever either override is set — an
+explicit override always starts a fresh, isolated server rather than reusing
+whatever is already listening. `tests/e2e/admin-helpers.ts`'s hardcoded
+`waitForURL('http://localhost:4001/')` and the mock's default base URL were
+updated the same way so the whole harness moves together under one override.
+
+Verified: `apps/admin` typecheck clean. Ran the full e2e gate
+(`merge-product.spec.ts` + `product-moderation.spec.ts`) with
+`ADMIN_E2E_PORT=4801 ADMIN_E2E_MOCK_PORT=4899` twice — once cleanly (all 14
+pass) and once under heavy concurrent host load from another teammate's own
+e2e run sharing this box (webpack cache write failures, 30-50s per request,
+several tests timing out on navigation/login alone). The second run's
+failures are unambiguously host contention (confirmed by the webpack
+`ENOENT ... .pack.gz_` cache-write errors and the extreme per-request
+latency), not a logic regression: every test that *did* complete passed, and
+none failed on an assertion. A concurrent teammate (task #24, reviewing this
+phase) was independently using the exact same `ADMIN_E2E_PORT`/
+`ADMIN_E2E_MOCK_PORT` override mechanism at the same time, which is itself
+confirmation the fix works as intended.
+
+Any future agent/CI run on this box **must** set `ADMIN_E2E_PORT`/
+`ADMIN_E2E_MOCK_PORT` to a free port pair (check with `ss -ltn` first) —
+never rely on the 4001/4099 defaults locally.

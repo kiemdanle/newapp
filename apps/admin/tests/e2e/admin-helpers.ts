@@ -8,7 +8,12 @@ import { type Page, type APIRequestContext, expect } from '@playwright/test';
 import { authenticator } from 'otplib';
 import { E2E_ADMIN_ENROLLED } from './mock-api-constants';
 
-const MOCK_API = process.env.MOCK_API_BASE ?? 'http://localhost:4099';
+// Mirrors playwright.config.ts's ADMIN_E2E_PORT/ADMIN_E2E_MOCK_PORT overrides —
+// see that file for why the 4001/4099 defaults are CI-only and unsafe to
+// assume free on a persistent dev box.
+const ADMIN_PORT = process.env.ADMIN_E2E_PORT ?? '4001';
+const MOCK_API =
+  process.env.MOCK_API_BASE ?? `http://localhost:${process.env.ADMIN_E2E_MOCK_PORT ?? '4099'}`;
 
 /** Re-seed the mock store. Call at the top of every spec for a known state. */
 export async function resetStore(request: APIRequestContext): Promise<void> {
@@ -27,5 +32,5 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.getByLabel('Authenticator code').fill(code);
   await page.getByRole('button', { name: 'Verify' }).click();
 
-  await page.waitForURL('http://localhost:4001/', { timeout: 15_000 });
+  await page.waitForURL(`http://localhost:${ADMIN_PORT}/`, { timeout: 15_000 });
 }
