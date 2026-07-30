@@ -37,13 +37,30 @@ function listFiles(dir) {
   return out;
 }
 
+// A union type's member order is not semantically meaningful (`"a" | "b"`
+// and `"b" | "a"` are the same type), but `tsc` doesn't always emit them in
+// a stable order across otherwise-identical builds — this reorders the
+// pipe-separated members within a single line (quoted string literals or
+// bare identifiers, e.g. a trailing `undefined` on an optional property) so
+// two structurally-identical declarations compare equal regardless of that
+// emit-order nondeterminism. Matches only inside `.d.ts` lines, which are
+// pure type declarations — `|` never means anything but a union there.
+function canonicalizeUnionMemberOrder(line) {
+  return line.replace(
+    /(?:"[^"]*"|[A-Za-z_$][\w$]*)(?:\s*\|\s*(?:"[^"]*"|[A-Za-z_$][\w$]*))+/g,
+    (unionExpr) => unionExpr.split('|').map((member) => member.trim()).sort().join(' | '),
+  );
+}
+
 // `.d.ts.map`/`.js.map` source maps embed an absolute `sourceRoot`/`sources`
 // path that differs by checkout location and carries no runtime meaning —
 // never worth failing the gate over. `.d.ts` declaration order can shuffle
-// harmlessly across TypeScript versions without any actual type change, so
-// those compare as a sorted set of trimmed non-empty lines rather than exact
-// bytes. `.js` runtime files compare byte-for-byte: any difference there is
-// real, load-bearing drift.
+// harmlessly across TypeScript versions without any actual type change, and
+// individual union members within one declaration can too (see
+// `canonicalizeUnionMemberOrder` above), so those compare as a sorted set of
+// trimmed, union-canonicalized, non-empty lines rather than exact bytes.
+// `.js` runtime files compare byte-for-byte: any difference there is real,
+// load-bearing drift.
 function normalizedContent(path) {
   const raw = readFileSync(path, 'utf8');
   if (path.endsWith('.map')) return null; // never compared
@@ -52,6 +69,7 @@ function normalizedContent(path) {
       .split('\n')
       .map((l) => l.trim())
       .filter(Boolean)
+      .map(canonicalizeUnionMemberOrder)
       .sort()
       .join('\n');
   }
