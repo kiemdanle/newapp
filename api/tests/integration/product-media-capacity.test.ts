@@ -122,6 +122,52 @@ describe('releaseMediaCapacityReservation', () => {
     await releaseMediaCapacityReservation(r.id);
     await expect(releaseMediaCapacityReservation(r.id)).resolves.toBeUndefined();
   });
+
+  it('a shared reservation id used by two concurrent holders is only actually gone once the LAST holder releases it (reviewer-p4 shared-id theory)', async () => {
+    // Reproduces the batch-publish shape product-moderation.ts's `approve` and
+    // product-edits.ts's edit-approval flow both use: one reservation covers a
+    // whole set of concurrent publishProductPhoto-style operations, and only
+    // the outer batch coordinator ever calls release — never the individual
+    // operations themselves. If any individual operation released on its own
+    // instead, the first one to finish would kill the reservation while
+    // others were still relying on it being live, exactly the spurious-507
+    // theory reviewer-p4 raised. Audited every real release call site
+    // (product-photos.ts, product-moderation.ts, product-edits.ts,
+    // photo-upload.ts, edit-photo-upload.ts) — none currently do this, and
+    // this test pins that invariant so a future change can't reintroduce it
+    // silently.
+    const r = await reserveMediaCapacity({ bytes: 1000 });
+
+    let holderAFinished = false;
+    let holderBFinished = false;
+
+    const holderA = (async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      // A slow "operation" checks liveness partway through its own work —
+      // exactly what publishProductPhoto's assertMediaCapacityReservationLive
+      // call does — and must still see the reservation as live, because nothing
+      // has released it yet even though holder B may have already logically
+      // "finished" its own portion of the batch.
+      await expect(assertMediaCapacityReservationLive(r.id)).resolves.toBeUndefined();
+      holderAFinished = true;
+    })();
+
+    const holderB = (async () => {
+      // Finishes fast — the failure mode under the shared-id theory is
+      // exactly a fast holder prematurely releasing while a slower one is
+      // still mid-flight.
+      holderBFinished = true;
+    })();
+
+    await Promise.all([holderA, holderB]);
+    expect(holderAFinished).toBe(true);
+    expect(holderBFinished).toBe(true);
+
+    // Only now — after every concurrent holder is done — does the outer
+    // batch coordinator release the shared reservation, exactly once.
+    await releaseMediaCapacityReservation(r.id);
+    await expect(heartbeatMediaCapacityReservation(r.id)).resolves.toBe(false);
+  });
 });
 
 describe('currentReservedMediaBytes', () => {

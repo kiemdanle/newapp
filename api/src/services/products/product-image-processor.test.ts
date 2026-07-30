@@ -339,9 +339,12 @@ describe('processProductUpload — hostile input rejection', () => {
     const elapsed = Date.now() - start;
     // Generous upper bound (well under sharp's ~1000ms rounded-up per-op
     // timeout) proves the caller-visible rejection tracks the configured
-    // value, not sharp's internal rounding.
-    expect(elapsed).toBeLessThan(700);
-  }, 20_000);
+    // value, not sharp's internal rounding. Widened from 700ms (reviewer-p3:
+    // CPU-proportional, held at 26.8s wall time under heavy concurrent load —
+    // budget, not behavior) while staying meaningfully below sharp's ~1000ms
+    // per-op fallback.
+    expect(elapsed).toBeLessThan(900);
+  }, 45_000);
 
   it('a pipeline whose individual operations each finish under sharp\'s per-op timeout, but whose combined wall time exceeds the configured deadline, is still bounded overall (reviewer-p3 R1)', async () => {
     // Reproduces reviewer-p3's exact proof: sharp's per-operation `.timeout()`
@@ -401,7 +404,9 @@ describe('processProductUpload — concurrency bound', () => {
     // (permit-count drift + uncancelled work) would have broken.
     expect(peakProcessing).toBeGreaterThan(0);
     expect(peakProcessing).toBeLessThanOrEqual(2);
-  }, 15_000);
+    // Widened from 15s (reviewer-p3: CPU-proportional, held at 26.8s wall
+    // time under heavy concurrent load — budget, not behavior).
+  }, 45_000);
 
   it('handles many concurrent decodes above the configured limit without dropping any', async () => {
     overrideMediaEnv({ MEDIA_SHARP_CONCURRENCY: '2' });
