@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { CoordinatedEntity, DraftMutationCoordinator } from './draft-mutation-coordinator';
@@ -39,6 +39,11 @@ export function resetLocalPhotoIdCounterForTests(): void {
 export interface ProductPhotoEditorProps<T extends CoordinatedEntity> {
   target: PrivateMediaTarget;
   coordinator: DraftMutationCoordinator<T>;
+  /** Reports whether any local photo is still `pending`/`uploading` — a
+   * submit flow (Task 7) must block while this is true, since the coordinator
+   * only serializes mutations it knows about, not a queue entry that hasn't
+   * been enqueued yet. */
+  onUnsettledChange?: (unsettled: boolean) => void;
 }
 
 /**
@@ -48,7 +53,7 @@ export interface ProductPhotoEditorProps<T extends CoordinatedEntity> {
  * this component only manages the queue of local-vs-uploaded entries and
  * their interaction with the serialized mutation coordinator.
  */
-export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordinator }: ProductPhotoEditorProps<T>) {
+export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordinator, onUnsettledChange }: ProductPhotoEditorProps<T>) {
   const theme = useTheme();
   const [, forceRerender] = useState(0);
   const [localQueue, setLocalQueue] = useState<LocalPhotoEntry[]>([]);
@@ -65,6 +70,11 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   const hasUnsettled = localQueue.some((e) => e.status === 'pending' || e.status === 'uploading');
 
   const refresh = useCallback(() => forceRerender((n) => n + 1), []);
+
+  useEffect(() => {
+    onUnsettledChange?.(hasUnsettled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsettled]);
 
   const updateEntry = useCallback((localId: string, patch: Partial<LocalPhotoEntry>) => {
     setLocalQueue((q) => q.map((e) => (e.localId === localId ? { ...e, ...patch } : e)));

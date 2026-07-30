@@ -4,6 +4,8 @@ import type { Product } from '@expyrico/shared';
 import { isApiError } from '../../api/errors';
 import { usePatchDraft } from '../../api/products';
 import { apiClient } from '../../api/client';
+import type { DraftMutationCoordinator } from './draft-mutation-coordinator';
+import { DraftConflictBanner } from './DraftConflictBanner';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 
@@ -38,12 +40,18 @@ export interface ProductDraftFormProps {
   /** Rendered above the fields — used by the drafts screen to surface
    * `moderationFeedback` for a `changes_required` row. */
   feedbackBanner?: React.ReactNode;
+  /** When provided, metadata saves route through the same serialized queue
+   * as the photo editor mounted alongside this form (Task 7) instead of
+   * issuing an independent PATCH — required so the two never race for the
+   * same product `version`. Omitted for the read-only pending view, which
+   * never saves at all. */
+  coordinator?: DraftMutationCoordinator<Product>;
 }
 
 /** The identifier (barcode/QR) is immutable and shown read-only — it's the
  * one field this form never lets the creator change, since it's the key the
  * whole draft/resume flow is keyed by. */
-export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readOnly, feedbackBanner }: ProductDraftFormProps) {
+export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readOnly, feedbackBanner, coordinator }: ProductDraftFormProps) {
   const theme = useTheme();
   const patchDraft = usePatchDraft();
   const [known, setKnown] = useState(initialProduct);
@@ -51,6 +59,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<{ currentVersion: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const dirty = !fieldsEqual(fields, fieldsFrom(known));
 
@@ -59,6 +68,19 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty]);
 
+  // Coordinator conflicts arrive asynchronously (a photo mutation can also
+  // trigger one) — subscribe rather than only checking after this form's own
+  // save, so a conflict raised elsewhere still surfaces here.
+  useEffect(() => {
+    if (!coordinator) return;
+    if (coordinator.hasConflict()) setConflict({ currentVersion: known.version });
+    return coordinator.onConflict((info) => {
+      setKnown(info.serverEntity);
+      setConflict({ currentVersion: info.currentVersion });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coordinator]);
+
   const save = async () => {
     if (!fields.name.trim()) {
       setError('Name is required');
@@ -66,15 +88,17 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
     }
     setError(null);
     setConflict(null);
+    const patch = {
+      name: fields.name.trim(),
+      description: fields.description.trim() || null,
+      brand: fields.brand.trim() || null,
+      category: fields.category.trim() || null,
+    };
+    setSaving(true);
     try {
-      const updated = await patchDraft.mutateAsync({
-        id: known.id,
-        version: known.version,
-        name: fields.name.trim(),
-        description: fields.description.trim() || null,
-        brand: fields.brand.trim() || null,
-        category: fields.category.trim() || null,
-      });
+      const updated = coordinator
+        ? await coordinator.enqueue({ kind: 'metadata', fields: patch })
+        : await patchDraft.mutateAsync({ id: known.id, version: known.version, ...patch });
       setKnown(updated);
       setFields(fieldsFrom(updated));
       onSaved?.(updated);
@@ -86,18 +110,19 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
         return;
       }
       setError((e as Error).message);
+    } finally {
+      setSaving(false);
     }
   };
 
+  // Non-coordinator path only: a plain refetch that preserves dirty text —
+  // the coordinator path below uses reconcileConflict() instead, which also
+  // resolves the save() promise still pending from the conflicting attempt.
   const refreshFromServer = async () => {
     setRefreshing(true);
     try {
       const fresh = await apiClient.get<Product>(`/products/${known.id}`);
       setKnown(fresh);
-      // Dirty text is intentionally preserved here — only the "known server
-      // state" (used for the next save's version + the identifier/status
-      // display) advances. The creator decides whether to keep typing or
-      // discard by editing the fields themselves.
       setConflict(null);
     } catch (e) {
       setError((e as Error).message);
@@ -105,6 +130,23 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
       setRefreshing(false);
     }
   };
+
+  const reconcile = async (resolution: 'retry' | 'discard-local') => {
+    if (!coordinator) return;
+    setRefreshing(true);
+    try {
+      const resolved = await coordinator.reconcileConflict(resolution);
+      setKnown(resolved);
+      if (resolution === 'discard-local') setFields(fieldsFrom(resolved));
+      setConflict(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const isSaving = coordinator ? saving : patchDraft.isPending;
 
   const input = {
     color: theme.colors.text,
@@ -172,20 +214,20 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 
       {conflict ? (
-        <View testID="draft-conflict-banner" style={{ gap: theme.spacing.sm }}>
-          <Text style={{ color: theme.colors.danger }}>
-            This draft changed elsewhere (now at version {conflict.currentVersion}). Refresh before saving again —
-            your typed text here is unaffected.
-          </Text>
-          <Button testID="draft-refresh" label={refreshing ? 'Refreshing…' : 'Refresh'} variant="outline" loading={refreshing} onPress={refreshFromServer} />
-        </View>
+        <DraftConflictBanner
+          currentVersion={conflict.currentVersion}
+          mode={coordinator ? 'coordinator' : 'refresh-only'}
+          busy={refreshing}
+          onRetry={coordinator ? () => reconcile('retry') : refreshFromServer}
+          onDiscard={coordinator ? () => reconcile('discard-local') : undefined}
+        />
       ) : null}
 
       {!readOnly ? (
         <Button
           testID="draft-save"
-          label={patchDraft.isPending ? 'Saving…' : 'Save'}
-          loading={patchDraft.isPending}
+          label={isSaving ? 'Saving…' : 'Save'}
+          loading={isSaving}
           disabled={!dirty || Boolean(conflict)}
           onPress={save}
         />

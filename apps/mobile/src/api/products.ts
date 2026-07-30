@@ -8,6 +8,8 @@ import type {
   ProductWithReviews,
 } from '@expyrico/shared';
 import { apiClient } from './client';
+import { uploadProductPhoto, deleteProductPhoto, reorderProductPhotos } from './product-photo-upload';
+import type { CoordinatorAdapter } from '../features/products/draft-mutation-coordinator';
 
 /** Conclusive-outcome lookup: `found | editable_private | creator_pending |
  * under_review | not_found | temporarily_unavailable`. A thrown network/5xx
@@ -85,5 +87,47 @@ export function useProductDrafts(status?: ProductDraftStatus) {
       return apiClient.get<ProductDraftsPage>(`/products/drafts${qs ? `?${qs}` : ''}`);
     },
     getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+/** Wires the generic mutation coordinator (Task 5) to a specific draft's
+ * routes. The coordinator itself never imports `Product` or this module —
+ * this is the one place that binds the two together, so Task 8's active-
+ * revision editor can supply its own adapter against `/product-edits/:id/*`
+ * without this module knowing about `ProductEditRow` at all. */
+export function createProductDraftCoordinatorAdapter(productId: string): CoordinatorAdapter<Product> {
+  const target = { kind: 'draft' as const, productId };
+  return {
+    patchMetadata: (id, version, fields) => apiClient.patch<Product>(`/products/drafts/${id}`, { version, ...fields }),
+    // No separate "refresh" endpoint exists for a draft — the plain product
+    // GET is authoritative for both draft and active rows.
+    refetch: (id) => apiClient.get<Product>(`/products/${id}`),
+    uploadPhoto: (photo) => uploadProductPhoto(target, photo),
+    deletePhoto: (photoId) => deleteProductPhoto(target, photoId),
+    orderPhotos: (photoIds) => reorderProductPhotos(target, photoIds),
+  };
+}
+
+export interface SubmitDraftInput {
+  id: string;
+  version: number;
+  abuseToken: string;
+  platform: 'android' | 'ios';
+  /** Stable across a `temporarily_unavailable` (503) retry of the exact same
+   * submit attempt; a fresh key is required for any other retry (the
+   * server's idempotency plugin only releases its reservation on a 5xx —
+   * replaying the same key with a different body after a 2xx/4xx outcome is
+   * rejected as `idempotency_key_reused`). See DraftSubmitPanel. */
+  idempotencyKey: string;
+}
+
+export function useSubmitDraft() {
+  return useMutation({
+    mutationFn: async (input: SubmitDraftInput) => {
+      const { id, idempotencyKey, ...body } = input;
+      return await apiClient.post<Product>(`/products/drafts/${id}/submit`, body, {
+        headers: { 'Idempotency-Key': idempotencyKey },
+      });
+    },
   });
 }

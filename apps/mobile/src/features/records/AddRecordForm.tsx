@@ -11,11 +11,16 @@ interface Props {
   customName?: string | null;
   onSaved: (localId: string) => void;
   onOpenOcr?: () => void;
+  /** True while the product this record attaches to is still private
+   * (draft/pending, pre-approval) — the household picker is hidden and the
+   * record is unconditionally created in the signed-in user's personal
+   * scope, never a shared household, until the product goes public. */
+  lockedPersonalScope?: boolean;
 }
 
 const isoRe = /^\d{4}-\d{2}-\d{2}$/;
 
-export function AddRecordForm({ productId, productName, customName, onSaved, onOpenOcr }: Props) {
+export function AddRecordForm({ productId, productName, customName, onSaved, onOpenOcr, lockedPersonalScope }: Props) {
   const theme = useTheme();
   const [expiry, setExpiry] = useState('');
   const [category, setCategory] = useState('');
@@ -34,9 +39,11 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const { data: myHh } = useMyHouseholds();
   const households = myHh?.items ?? [];
 
-  // If the active scope is a household, pre-select it.
-  const effectiveHouseholdId =
-    selectedHouseholdId ?? (activeScope === 'household' ? scopeHhId : null);
+  // If the active scope is a household, pre-select it — unless the product
+  // is still private, in which case personal scope is the only option.
+  const effectiveHouseholdId = lockedPersonalScope
+    ? null
+    : (selectedHouseholdId ?? (activeScope === 'household' ? scopeHhId : null));
 
   const save = async () => {
     if (!isoRe.test(expiry)) {
@@ -172,8 +179,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
 
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 
-      {/* Household picker — only shown when user has households */}
-      {households.length > 0 ? (
+      {/* Household picker — only shown when user has households and the
+          product isn't still private (lockedPersonalScope). */}
+      {households.length > 0 && !lockedPersonalScope ? (
         <View style={{ gap: theme.spacing.xs }}>
           <Text style={{ color: theme.colors.textMuted }}>Pantry</Text>
           <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>

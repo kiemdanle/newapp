@@ -7,7 +7,7 @@ import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { createQueryClient } from '../../src/api/query-client';
 import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
-import { queueFetch, jsonResponse } from '../../tests/mocks/fetch';
+import { queueFetch, jsonResponse, problemResponse } from '../../tests/mocks/fetch';
 import { useSessionStore } from '../../src/auth/session-store';
 import { __reset } from '../../tests/mocks/react-native-keychain';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -24,6 +24,21 @@ jest.mock('../../src/api/households', () => ({
 }));
 jest.mock('../../src/store/pantryScope', () => ({
   usePantryScope: () => ({ scope: 'personal', householdId: null, setScope: jest.fn() }),
+}));
+// The editable-draft branch now mounts ProductPhotoEditor (Task 7 wiring) —
+// its picker adapter's own native import must not crash a Jest environment
+// with no native module registered, matching photo-picker-adapter.test.ts /
+// ProductPhotoEditor.test.tsx's own stub.
+jest.mock('react-native-image-crop-picker', () => ({
+  __esModule: true,
+  default: { openCamera: jest.fn(), openPicker: jest.fn(), cleanSingle: jest.fn() },
+}));
+// DraftSubmitPanel mints a real reCAPTCHA token via this module — mocked at
+// this level (rather than the native SDK underneath it) so each test
+// controls success/failure directly without provisioning a fake site key.
+const mockExecuteAssessment = jest.fn().mockResolvedValue({ token: 'tok-1', platform: 'android' });
+jest.mock('../../src/security/product-creation-assessment', () => ({
+  executeProductSubmitAssessment: () => mockExecuteAssessment(),
 }));
 
 function wrap(node: React.ReactNode) {
@@ -63,6 +78,8 @@ describe('<NewProductScreen />', () => {
   beforeEach(async () => {
     __reset();
     await AsyncStorage.clear();
+    mockExecuteAssessment.mockClear();
+    mockExecuteAssessment.mockResolvedValue({ token: 'tok-1', platform: 'android' });
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
     useSessionStore.setState({ user: { id: 'user-1' } as never, accessToken: 'a', refreshToken: 'r', hydrated: true, pendingAuth: null });
@@ -142,5 +159,58 @@ describe('<NewProductScreen />', () => {
       const stored = await AsyncStorage.getItem('pantry.productDraftIndex.v1.user-1');
       expect(stored).not.toContain('draft-1');
     });
+  });
+
+  it('the submit button becomes disabled once metadata text is edited but not yet saved', async () => {
+    __setRouteParams({ productId: 'draft-1', resume: 'edit' });
+    queueFetch(jsonResponse(PRODUCT));
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    // Nothing dirty yet — submit is available.
+    expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(false);
+
+    fireEvent.changeText(getByTestId('draft-name'), 'Edited name');
+    expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('submitting a no-photo draft flushes metadata, mints a fresh token, clears the local draft mapping, and continues to a personal-scope-locked pantry form', async () => {
+    __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit' });
+    queueFetch(jsonResponse(PRODUCT));
+    await AsyncStorage.setItem(
+      'pantry.productDraftIndex.v1.user-1',
+      JSON.stringify({ 'barcode:123': { productId: 'draft-1', identifier: { barcode: '123' }, updatedAt: '2026-01-01T00:00:00Z' } }),
+    );
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    queueFetch(jsonResponse({ ...PRODUCT, status: 'pending', version: 2 }));
+    fireEvent.press(getByTestId('draft-submit'));
+
+    expect(await findByTestId('new-product-submitted-message')).toBeTruthy();
+    expect(mockExecuteAssessment).toHaveBeenCalledTimes(1);
+    expect(getByTestId('add-record-save')).toBeTruthy();
+
+    await waitFor(async () => {
+      const stored = await AsyncStorage.getItem('pantry.productDraftIndex.v1.user-1');
+      expect(stored).not.toContain('draft-1');
+    });
+  });
+
+  it('an abuse-rejected submission shows the failure and preserves the draft on-screen', async () => {
+    __setRouteParams({ productId: 'draft-1', resume: 'edit' });
+    queueFetch(jsonResponse(PRODUCT));
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    queueFetch(problemResponse('abuse_check_failed', 403, "We couldn't verify this submission"));
+    fireEvent.press(getByTestId('draft-submit'));
+
+    expect(await findByTestId('draft-submit-error')).toBeTruthy();
+    // Still the editable draft screen — no continuation, nothing discarded.
+    expect(getByTestId('draft-name')).toBeTruthy();
   });
 });

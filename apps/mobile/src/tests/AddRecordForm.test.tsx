@@ -7,12 +7,22 @@ jest.mock('../api/records', () => ({
   useActiveRecords: () => [],
 }));
 
+interface HouseholdsResult {
+  data: { items: Array<{ id: string; name: string }> };
+}
+const mockMyHouseholds = jest.fn<HouseholdsResult, []>(() => ({ data: { items: [] } }));
 jest.mock('../api/households', () => ({
-  useMyHouseholds: () => ({ data: { items: [] } }),
+  useMyHouseholds: () => mockMyHouseholds(),
 }));
 
+interface PantryScopeResult {
+  scope: 'personal' | 'household';
+  householdId: string | null;
+  setScope: (...args: unknown[]) => void;
+}
+const mockPantryScope = jest.fn<PantryScopeResult, []>(() => ({ scope: 'personal', householdId: null, setScope: jest.fn() }));
 jest.mock('../store/pantryScope', () => ({
-  usePantryScope: () => ({ scope: 'personal', householdId: null, setScope: jest.fn() }),
+  usePantryScope: () => mockPantryScope(),
 }));
 
 jest.mock('../theme/useTheme', () => ({
@@ -57,5 +67,26 @@ describe('AddRecordForm', () => {
         unit: 'pcs',
       }),
     );
+  });
+
+  it('lockedPersonalScope hides the household picker and persists householdId: null even from an active household scope', async () => {
+    mockPantryScope.mockReturnValue({ scope: 'household', householdId: 'hh-1', setScope: jest.fn() });
+    mockMyHouseholds.mockReturnValue({ data: { items: [{ id: 'hh-1', name: 'Our kitchen' }] } });
+
+    const onSaved = jest.fn();
+    const { getByTestId, queryByTestId, queryByText } = render(
+      <AddRecordForm productName="Milk" productId="p-1" onSaved={onSaved} lockedPersonalScope />,
+    );
+
+    // No household picker at all — not even the "Personal" chip — while locked.
+    expect(queryByTestId('add-record-pantry-personal')).toBeNull();
+    expect(queryByTestId('add-record-pantry-hh-1')).toBeNull();
+    expect(queryByText('Pantry')).toBeNull();
+
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2099-12-31');
+    fireEvent.press(getByTestId('add-record-save'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('local-id-1'));
+    expect(createLocalRecord).toHaveBeenCalledWith(expect.objectContaining({ householdId: null }));
   });
 });

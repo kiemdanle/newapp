@@ -1,8 +1,10 @@
 import { useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import type { Product } from '@expyrico/shared';
 import { useCreateOrResumeDraft, useProduct } from '../../../src/api/products';
 import { ProductDraftForm } from '../../../src/features/products/ProductDraftForm';
+import { DraftEditor } from '../../../src/features/products/DraftEditor';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
 import { useSessionStore } from '../../../src/auth/session-store';
 import { saveDraftLocalState, removeDraftLocalState } from '../../../src/features/products/product-draft-storage';
@@ -21,11 +23,13 @@ type RouteParams = {
 
 /**
  * A creator's draft/changes_required product isn't attachable to a personal
- * record until it's been abuse-verified through submission (Phase 5 Task 7,
- * not this screen) — so a freshly created or edited draft only offers Save
- * here. `resume === 'pending'` means the draft already cleared submission,
- * so it's exactly the case plan.md allows attaching to a new personal
- * record immediately.
+ * record until it's been abuse-verified through submission (Task 7) — so a
+ * freshly created or edited draft only offers Save/Submit here, and only
+ * moves to the personal-pantry continuation once submission clears. Both the
+ * `pending` (already submitted, awaiting review) and freshly-submitted cases
+ * attach with `lockedPersonalScope`: the product is still private
+ * (non-`active`) until an admin approves it, so it can never join a shared
+ * household pantry before then.
  */
 export default function NewProductScreen() {
   const theme = useTheme();
@@ -41,6 +45,7 @@ export default function NewProductScreen() {
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+  const [submittedProduct, setSubmittedProduct] = useState<Product | null>(null);
 
   const productId = routeProductId ?? createdProductId;
   const { data: product, isLoading } = useProduct(productId ?? undefined);
@@ -101,8 +106,33 @@ export default function NewProductScreen() {
     );
   }
 
+  // A submission just cleared in this session: continue straight to the
+  // personal-pantry form, locked to personal scope since the product is
+  // still `pending` (private) until an admin approves it.
+  if (submittedProduct) {
+    return (
+      <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+        <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
+          <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '600' }}>
+            Submitted for review — you can add it to your pantry now.
+          </Text>
+        </View>
+        <AddRecordForm
+          productId={submittedProduct.id}
+          productName={submittedProduct.name}
+          lockedPersonalScope
+          onSaved={async () => {
+            await ensurePushTokenRegistered();
+            navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
+          }}
+        />
+      </ScrollView>
+    );
+  }
+
   // resume === 'pending': already-submitted draft, read-only metadata plus
   // the personal-pantry continuation the spec allows for pending products.
+  // Still private (non-`active`) until approved, so scope stays locked here too.
   if (product && resume === 'pending') {
     return (
       <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -115,6 +145,7 @@ export default function NewProductScreen() {
         <AddRecordForm
           productId={product.id}
           productName={product.name}
+          lockedPersonalScope
           onSaved={async () => {
             await ensurePushTokenRegistered();
             navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
@@ -124,7 +155,8 @@ export default function NewProductScreen() {
     );
   }
 
-  // resume === 'edit' (or a freshly created draft): editable metadata form.
+  // resume === 'edit' (or a freshly created draft): editable metadata,
+  // photos, and submit.
   if (product) {
     const discardDraft = async () => {
       if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
@@ -133,25 +165,23 @@ export default function NewProductScreen() {
       navigation.goBack();
     };
 
+    const handleSubmitted = async (submitted: Product) => {
+      if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+      dirtyRef.current = false;
+      setDirty(false);
+      setSubmittedProduct(submitted);
+    };
+
     return (
-      <Screen>
-        <ProductDraftForm
-          initialProduct={product}
+      <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <DraftEditor
+          product={product}
+          feedback={feedback}
           onDirtyChange={setDirty}
-          feedbackBanner={
-            feedback ? (
-              <View
-                testID="new-product-feedback"
-                style={{ backgroundColor: theme.colors.bgGlass, borderRadius: theme.radii.md, padding: theme.spacing.md }}
-              >
-                <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Changes requested</Text>
-                <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>{feedback}</Text>
-              </View>
-            ) : undefined
-          }
+          onDiscard={discardDraft}
+          onSubmitted={handleSubmitted}
         />
-        <Button testID="new-product-discard" label="Discard draft" variant="outline" onPress={discardDraft} />
-      </Screen>
+      </ScrollView>
     );
   }
 
