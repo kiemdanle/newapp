@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { getPrisma } from '../db.js';
 import { getRedis } from '../redis.js';
+import { getOperationalHealth } from '../services/products/product-operational-health.js';
 
 export async function healthRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({ status: 'ok' }));
@@ -17,5 +18,17 @@ export async function healthRoutes(app: FastifyInstance) {
       });
       return;
     }
+  });
+
+  // Unauthenticated liveness variant of the operational health payload —
+  // Task 7 requires "UptimeRobot/systemd checks alert non-2xx or stale
+  // timestamps", but the full payload is (correctly) admin-gated, and
+  // UptimeRobot cannot present an admin bearer token to reach it. Exposes
+  // only the bare overall status, never capacity/pending/backup/rate detail
+  // or any filesystem/connection information (reviewer-p7 IM6).
+  app.get('/health/operational', async (_req, reply) => {
+    const health = await getOperationalHealth();
+    if (health.status === 'critical') void reply.status(503);
+    return { status: health.status };
   });
 }

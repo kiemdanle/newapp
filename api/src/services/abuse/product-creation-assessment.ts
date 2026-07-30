@@ -11,6 +11,7 @@ import { AppError } from '../../errors.js';
 import { getConfig } from '../../config.js';
 import { logger } from '../../logger.js';
 import { register } from '../external/breakers.js';
+import { recordRateEvent } from '../products/product-operational-health.js';
 
 export const PRODUCT_CREATION_ASSESSMENT_ACTION = 'submit_product';
 
@@ -136,10 +137,20 @@ export function resetProductCreationAssessmentBreakerForTests(): void {
 export async function assessProductCreationSubmission(
   input: ProductCreationAssessmentInput,
 ): Promise<ProductCreationAssessmentResult> {
+  await recordRateEvent('assessment', 'total').catch(() => {});
   try {
     return (await breaker().fire(input)) as ProductCreationAssessmentResult;
   } catch (err) {
     if (err instanceof AppError) throw err;
+    // A provider timeout/error/open-circuit — the metric Task 7's
+    // "assessment provider failures >5%/15m" alert threshold means, never a
+    // conservative reject (invalid token/low score, handled by the branch
+    // above): those are an expected, frequent outcome the circuit breaker's
+    // own errorFilter already excludes from its failure statistics for the
+    // same reason, and counting them here would make real abuse traffic
+    // alone trip an alert meant to catch Google being unavailable
+    // (reviewer-p7 IM5).
+    await recordRateEvent('assessment', 'failure').catch(() => {});
     throw new AppError({
       status: 503,
       code: ERROR_CODES.TEMPORARILY_UNAVAILABLE,

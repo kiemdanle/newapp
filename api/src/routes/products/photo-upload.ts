@@ -12,6 +12,7 @@ import {
   reserveDailyByteQuota,
 } from '../../services/products/product-creation-quotas.js';
 import { processProductUpload } from '../../services/products/product-image-processor.js';
+import { recordRateEvent } from '../../services/products/product-operational-health.js';
 import {
   newQuarantineRequestId,
   quarantineDirKey,
@@ -78,6 +79,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
     // `writeQuarantineFile` (e.g. the quota/capacity reservation itself is
     // what rejects it), so nothing is charged for work that never happened.
     let attemptedBytes = 0;
+    let succeeded = false;
     try {
       const worstCaseBytes = cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes;
       // Per-user/day fair-share quota is checked *before* the global capacity
@@ -157,6 +159,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
           logger.warn({ err, actorId: actor.id }, 'failed to reconcile daily byte quota after a successful upload');
         });
       }
+      succeeded = true;
       return reply.status(201).send(productSchema.parse(product));
     } finally {
       await removeKeyPrefix(root, quarantineDirKey(requestId)).catch(() => {});
@@ -169,6 +172,14 @@ export async function photoUploadRoute(app: FastifyInstance) {
         await reconcileDailyByteQuota(quotaReservation, attemptedBytes).catch((err: unknown) => {
           logger.warn({ err, actorId: actor.id }, 'failed to reconcile daily byte quota after a failed upload');
         });
+      }
+      // Feeds the operational health payload's upload rejection rate (Task
+      // 7's "upload validation rejection rate >25%/15m" alert threshold) —
+      // previously parsed into config with no consumer anywhere
+      // (reviewer-p7 IM5).
+      await recordRateEvent('uploadRejection', 'total').catch(() => {});
+      if (!succeeded) {
+        await recordRateEvent('uploadRejection', 'failure').catch(() => {});
       }
     }
   });

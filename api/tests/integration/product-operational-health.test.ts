@@ -12,6 +12,7 @@ import {
   recordBackupSuccess,
   recordCleanupFailure,
   recordCleanupSuccess,
+  recordRateEvent,
 } from '../../src/services/products/product-operational-health.js';
 
 const baseEnv = { ...process.env };
@@ -113,6 +114,59 @@ describe('getOperationalHealth', () => {
     const health = await getOperationalHealth();
     expect(health.quarantine.oldestAgeHours).toBeNull();
   });
+
+  describe('rate thresholds (reviewer-p7 IM5)', () => {
+    it('reports null rate percentages and never exceeded when no events were recorded this window', async () => {
+      const health = await getOperationalHealth();
+      expect(health.rates.assessmentFailurePercent).toBeNull();
+      expect(health.rates.assessmentFailureExceeded).toBe(false);
+      expect(health.rates.api5xxPercent).toBeNull();
+      expect(health.rates.api5xxExceeded).toBe(false);
+      expect(health.rates.uploadRejectionPercent).toBeNull();
+      expect(health.rates.uploadRejectionExceeded).toBe(false);
+      expect(health.thresholds.assessmentFailureRatePercent).toBeGreaterThan(0);
+      expect(health.thresholds.api5xxRatePercent).toBeGreaterThan(0);
+      expect(health.thresholds.uploadRejectionRatePercent).toBeGreaterThan(0);
+    });
+
+    it('computes the assessment failure rate from recorded events and flags it once over threshold', async () => {
+      process.env.HEALTH_ASSESSMENT_FAILURE_RATE_PERCENT = '25';
+      resetConfigForTests();
+      // 1 failure out of 4 attempts = 25% — at, not over, threshold.
+      await recordRateEvent('assessment', 'total');
+      await recordRateEvent('assessment', 'total');
+      await recordRateEvent('assessment', 'total');
+      await recordRateEvent('assessment', 'total');
+      await recordRateEvent('assessment', 'failure');
+      const atThreshold = await getOperationalHealth();
+      expect(atThreshold.rates.assessmentFailurePercent).toBeCloseTo(25, 5);
+      expect(atThreshold.rates.assessmentFailureExceeded).toBe(false);
+
+      // One more attempt that also fails pushes it to 2/5 = 40%, over the
+      // 25% threshold.
+      await recordRateEvent('assessment', 'total');
+      await recordRateEvent('assessment', 'failure');
+      const overThreshold = await getOperationalHealth();
+      expect(overThreshold.rates.assessmentFailurePercent).toBeCloseTo(40, 5);
+      expect(overThreshold.rates.assessmentFailureExceeded).toBe(true);
+      expect(overThreshold.status).not.toBe('ok');
+    });
+
+    it('tracks the API 5xx and upload rejection rates independently of each other and of assessment', async () => {
+      await recordRateEvent('api5xx', 'total');
+      await recordRateEvent('api5xx', 'total');
+      await recordRateEvent('api5xx', 'failure');
+      await recordRateEvent('uploadRejection', 'total');
+      await recordRateEvent('uploadRejection', 'total');
+      await recordRateEvent('uploadRejection', 'total');
+      await recordRateEvent('uploadRejection', 'total');
+
+      const health = await getOperationalHealth();
+      expect(health.rates.api5xxPercent).toBeCloseTo(50, 5);
+      expect(health.rates.uploadRejectionPercent).toBeCloseTo(0, 5);
+      expect(health.rates.assessmentFailurePercent).toBeNull();
+    });
+  });
 });
 
 describe('GET /v1/admin/system/operational-health', () => {
@@ -145,6 +199,61 @@ describe('GET /v1/admin/system/operational-health', () => {
     const app = await buildServer();
     const res = await app.inject({ method: 'GET', url: '/v1/admin/system/operational-health' });
     expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it('returns 503 when overall status is critical, so a systemd-timer credentialed check can alert on it (reviewer-p7 IM6)', async () => {
+    process.env.MEDIA_CAPACITY_USABLE_BYTES = '1000';
+    process.env.MEDIA_CAPACITY_RESERVE_BYTES = '0';
+    process.env.HEALTH_FREE_DISK_HARD_STOP_PERCENT = '50';
+    resetConfigForTests();
+    await reserveMediaCapacity({ bytes: 900 }); // 10% free, below the 50% hard-stop -> critical
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/system/operational-health', headers });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().status).toBe('critical');
+    await app.close();
+  });
+});
+
+describe('GET /health/operational — unauthenticated liveness variant (reviewer-p7 IM6)', () => {
+  it('is reachable with no credential and exposes only the bare status, no detail', async () => {
+    const app = await buildServer();
+    const res = await app.inject({ method: 'GET', url: '/health/operational' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toEqual({ status: expect.any(String) });
+    expect(body).not.toHaveProperty('capacity');
+    expect(body).not.toHaveProperty('thresholds');
+    expect(body).not.toHaveProperty('rates');
+    await app.close();
+  });
+
+  it('returns 503 when overall status is critical, exactly like the admin-gated endpoint', async () => {
+    process.env.MEDIA_CAPACITY_USABLE_BYTES = '1000';
+    process.env.MEDIA_CAPACITY_RESERVE_BYTES = '0';
+    process.env.HEALTH_FREE_DISK_HARD_STOP_PERCENT = '50';
+    resetConfigForTests();
+    await reserveMediaCapacity({ bytes: 900 });
+    const app = await buildServer();
+    const res = await app.inject({ method: 'GET', url: '/health/operational' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toEqual({ status: 'critical' });
+    await app.close();
+  });
+
+  it('stays 200 for a warning (non-critical) status — only critical is treated as "down"', async () => {
+    process.env.HEALTH_CLEANUP_STALE_HOURS = '1000000';
+    process.env.HEALTH_BACKUP_STALE_HOURS = '1000000';
+    process.env.HEALTH_PENDING_OLDEST_WARNING_HOURS = '1';
+    resetConfigForTests();
+    const user = await makeUserForAdmin();
+    await makePendingProduct(user.id, new Date(Date.now() - 3 * 60 * 60 * 1000));
+    const app = await buildServer();
+    const res = await app.inject({ method: 'GET', url: '/health/operational' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'warning' });
     await app.close();
   });
 });

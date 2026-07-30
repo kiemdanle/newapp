@@ -10,6 +10,7 @@ import { registerRateLimit } from './plugins/rate-limit.js';
 import { registerErrorHandler } from './plugins/error-handler.js';
 import { authPlugin } from './plugins/auth.js';
 import { idempotencyPlugin } from './plugins/idempotency.js';
+import { recordRateEvent } from './services/products/product-operational-health.js';
 import { healthRoutes } from './routes/health.js';
 import { wellKnownRoutes } from './routes/well-known.js';
 import { authRoutes } from './routes/auth/index.js';
@@ -99,6 +100,19 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.addHook('onSend', async (req, reply) => {
     void reply.header('x-request-id', req.id);
+  });
+
+  // Feeds the operational health payload's API 5xx rate (Task 7's
+  // "API 5xx >2%/15m" alert threshold) — previously parsed into config with
+  // no consumer anywhere (reviewer-p7 IM5). `onResponse` fires for every
+  // completed request regardless of outcome, unlike apiErrorRecorderPlugin's
+  // hook (which only fires for >=400 and persists individual rows for
+  // inspection, a different concern from this cheap alerting counter).
+  app.addHook('onResponse', async (_req, reply) => {
+    await recordRateEvent('api5xx', 'total').catch(() => {});
+    if (reply.statusCode >= 500) {
+      await recordRateEvent('api5xx', 'failure').catch(() => {});
+    }
   });
 
   await app.register(healthRoutes);

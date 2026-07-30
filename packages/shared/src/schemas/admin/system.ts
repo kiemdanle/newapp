@@ -88,11 +88,25 @@ export const operationalHealthSchema = z.object({
     lastFailureAt: z.string().datetime().nullable(),
     stale: z.boolean(),
   }),
+  // reviewer-p7 IM5: the three rolling-15-minute rate thresholds (assessment
+  // provider failures, API 5xx, upload validation rejections) were parsed
+  // into config with no consumer or payload field anywhere.
+  rates: z.object({
+    assessmentFailurePercent: z.number().nullable(),
+    assessmentFailureExceeded: z.boolean(),
+    api5xxPercent: z.number().nullable(),
+    api5xxExceeded: z.boolean(),
+    uploadRejectionPercent: z.number().nullable(),
+    uploadRejectionExceeded: z.boolean(),
+  }),
   thresholds: z.object({
     freeDiskWarningPercent: z.number(),
     freeDiskHardStopPercent: z.number(),
     pendingOldestWarningHours: z.number(),
     cleanupStaleHours: z.number(),
     backupStaleHours: z.number(),
+    assessmentFailureRatePercent: z.number(),
+    api5xxRatePercent: z.number(),
+    uploadRejectionRatePercent: z.number(),
   }),
 });

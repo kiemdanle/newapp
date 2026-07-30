@@ -282,24 +282,55 @@ export declare const operationalHealthSchema: z.ZodObject<{
         lastSuccessAt: string | null;
         stale: boolean;
     }>;
+    rates: z.ZodObject<{
+        assessmentFailurePercent: z.ZodNullable<z.ZodNumber>;
+        assessmentFailureExceeded: z.ZodBoolean;
+        api5xxPercent: z.ZodNullable<z.ZodNumber>;
+        api5xxExceeded: z.ZodBoolean;
+        uploadRejectionPercent: z.ZodNullable<z.ZodNumber>;
+        uploadRejectionExceeded: z.ZodBoolean;
+    }, "strip", z.ZodTypeAny, {
+        assessmentFailurePercent: number | null;
+        assessmentFailureExceeded: boolean;
+        api5xxPercent: number | null;
+        api5xxExceeded: boolean;
+        uploadRejectionPercent: number | null;
+        uploadRejectionExceeded: boolean;
+    }, {
+        assessmentFailurePercent: number | null;
+        assessmentFailureExceeded: boolean;
+        api5xxPercent: number | null;
+        api5xxExceeded: boolean;
+        uploadRejectionPercent: number | null;
+        uploadRejectionExceeded: boolean;
+    }>;
     thresholds: z.ZodObject<{
         freeDiskWarningPercent: z.ZodNumber;
         freeDiskHardStopPercent: z.ZodNumber;
         pendingOldestWarningHours: z.ZodNumber;
         cleanupStaleHours: z.ZodNumber;
         backupStaleHours: z.ZodNumber;
+        assessmentFailureRatePercent: z.ZodNumber;
+        api5xxRatePercent: z.ZodNumber;
+        uploadRejectionRatePercent: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         freeDiskWarningPercent: number;
         freeDiskHardStopPercent: number;
         pendingOldestWarningHours: number;
         cleanupStaleHours: number;
         backupStaleHours: number;
+        assessmentFailureRatePercent: number;
+        api5xxRatePercent: number;
+        uploadRejectionRatePercent: number;
     }, {
         freeDiskWarningPercent: number;
         freeDiskHardStopPercent: number;
         pendingOldestWarningHours: number;
         cleanupStaleHours: number;
         backupStaleHours: number;
+        assessmentFailureRatePercent: number;
+        api5xxRatePercent: number;
+        uploadRejectionRatePercent: number;
     }>;
 }, "strip", z.ZodTypeAny, {
     status: "ok" | "warning" | "critical";
@@ -330,12 +361,23 @@ export declare const operationalHealthSchema: z.ZodObject<{
         lastSuccessAt: string | null;
         stale: boolean;
     };
+    rates: {
+        assessmentFailurePercent: number | null;
+        assessmentFailureExceeded: boolean;
+        api5xxPercent: number | null;
+        api5xxExceeded: boolean;
+        uploadRejectionPercent: number | null;
+        uploadRejectionExceeded: boolean;
+    };
     thresholds: {
         freeDiskWarningPercent: number;
         freeDiskHardStopPercent: number;
         pendingOldestWarningHours: number;
         cleanupStaleHours: number;
         backupStaleHours: number;
+        assessmentFailureRatePercent: number;
+        api5xxRatePercent: number;
+        uploadRejectionRatePercent: number;
     };
 }, {
     status: "ok" | "warning" | "critical";
@@ -366,12 +408,23 @@ export declare const operationalHealthSchema: z.ZodObject<{
         lastSuccessAt: string | null;
         stale: boolean;
     };
+    rates: {
+        assessmentFailurePercent: number | null;
+        assessmentFailureExceeded: boolean;
+        api5xxPercent: number | null;
+        api5xxExceeded: boolean;
+        uploadRejectionPercent: number | null;
+        uploadRejectionExceeded: boolean;
+    };
     thresholds: {
         freeDiskWarningPercent: number;
         freeDiskHardStopPercent: number;
         pendingOldestWarningHours: number;
         cleanupStaleHours: number;
         backupStaleHours: number;
+        assessmentFailureRatePercent: number;
+        api5xxRatePercent: number;
+        uploadRejectionRatePercent: number;
     };
 }>;
 //# sourceMappingURL=system.d.ts.map
