@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { ProductEditRow } from '@expyrico/shared';
@@ -44,27 +44,32 @@ export default function ProductEditScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product, productId]);
 
-  // Dirty-fields navigation guard, same pattern as product/new.tsx.
-  useFocusEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
-      if (!dirtyRef.current) return;
-      e.preventDefault();
-      Alert.alert("Discard unsaved changes?", "Your edits to this suggestion haven't been saved.", [
-        { text: 'Keep editing', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            dirtyRef.current = false;
-            setDirty(false);
-            // @ts-expect-error — generic NavigationProp gap, same as product/new.tsx.
-            navigation.dispatch(e.data.action);
+  // Dirty-fields navigation guard, same pattern as product/new.tsx. M8:
+  // memoized, same reason — React Navigation requires it, and an inline
+  // arrow re-registers the listener every render.
+  useFocusEffect(
+    useCallback(() => {
+      const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
+        if (!dirtyRef.current) return;
+        e.preventDefault();
+        Alert.alert("Discard unsaved changes?", "Your edits to this suggestion haven't been saved.", [
+          { text: 'Keep editing', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              dirtyRef.current = false;
+              setDirty(false);
+              // @ts-expect-error — generic NavigationProp gap, same as product/new.tsx.
+              navigation.dispatch(e.data.action);
+            },
           },
-        },
-      ]);
-    });
-    return unsubscribe;
-  });
+        ]);
+      });
+      return unsubscribe;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigation]),
+  );
 
   if (productLoading || (!edit && !createError)) {
     return (

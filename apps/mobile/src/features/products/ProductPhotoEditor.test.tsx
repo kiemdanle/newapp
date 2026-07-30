@@ -51,15 +51,16 @@ function deferred<T>() {
  * the coordinator (already exhaustively covered in
  * draft-mutation-coordinator.test.ts), so a minimal controllable double is
  * clearer than wiring the real coordinator through a second fake adapter. */
-function makeCoordinator(initial: Entity) {
+function makeCoordinator(initial: Entity, opts: { hasConflict?: boolean } = {}) {
   let state = initial;
+  let conflicted = opts.hasConflict ?? false;
   const enqueue = jest.fn();
   const coordinator: DraftMutationCoordinator<Entity> = {
     enqueue,
     flushMetadata: jest.fn().mockResolvedValue(state),
     reconcileConflict: jest.fn().mockResolvedValue(state),
     getState: () => state,
-    hasConflict: () => false,
+    hasConflict: () => conflicted,
     onConflict: jest.fn(() => () => undefined),
   };
   return {
@@ -67,6 +68,9 @@ function makeCoordinator(initial: Entity) {
     enqueue,
     setState: (next: Entity) => {
       state = next;
+    },
+    setConflicted: (next: boolean) => {
+      conflicted = next;
     },
   };
 }
@@ -202,8 +206,13 @@ describe('<ProductPhotoEditor />', () => {
 
     // One existing server photo, cap 5 → 4 remaining slots offered to the picker.
     expect(mockChoosePhotos).toHaveBeenCalledWith(4);
-    expect(await findByTestId('local-photo-local-1')).toBeTruthy();
-    expect(await findByTestId('local-photo-local-2')).toBeTruthy();
+    // Both picked photos queue and upload (M3: a confirmed-uploaded local
+    // entry is dropped from render the moment the coordinator confirms it —
+    // this mock's own `enqueue` resolves synchronously, so by the time these
+    // assertions run the local entries have already been promoted to their
+    // server tiles).
+    expect(await findByTestId('photo-new-1')).toBeTruthy();
+    expect(await findByTestId('photo-new-2')).toBeTruthy();
     await waitFor(() => expect(enqueue).toHaveBeenCalledTimes(2));
   });
 
@@ -277,6 +286,49 @@ describe('<ProductPhotoEditor />', () => {
     fireEvent.press(getByTestId('photo-photo-1-move-right'));
 
     await waitFor(() => expect(enqueue).toHaveBeenCalledWith({ kind: 'order', photoIds: ['photo-2', 'photo-1'] }));
+  });
+
+  it('I1: every photo control is disabled while the coordinator has an unresolved conflict', async () => {
+    const { coordinator } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]), { hasConflict: true });
+    queueFetch(jsonResponse('bytes'));
+
+    const { getByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
+    await waitFor(() => expect(getByTestId('photo-photo-1')).toBeTruthy());
+
+    for (const testId of ['photo-take', 'photo-choose', 'photo-photo-1-move-left', 'photo-photo-1-move-right', 'photo-photo-1-remove']) {
+      expect(getByTestId(testId).props.accessibilityState?.disabled ?? getByTestId(testId).props.disabled).toBe(true);
+    }
+  });
+
+  it('M5: a failed delete surfaces a visible error instead of silently leaving the grid unchanged', async () => {
+    const { coordinator, enqueue } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]));
+    queueFetch(jsonResponse('bytes'));
+    enqueue.mockRejectedValue(new Error('coordinator_conflict'));
+
+    const { getByTestId, findByText } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
+    await waitFor(() => expect(getByTestId('photo-photo-1')).toBeTruthy());
+
+    fireEvent.press(getByTestId('photo-photo-1-remove'));
+
+    expect(await findByText('coordinator_conflict')).toBeTruthy();
+  });
+
+  it('M5: a failed reorder surfaces a visible error instead of silently leaving the grid unchanged', async () => {
+    const { coordinator, enqueue } = makeCoordinator(
+      entity([
+        { id: 'photo-1', position: 0, thumbnailUrl: '/x' },
+        { id: 'photo-2', position: 1, thumbnailUrl: '/y' },
+      ]),
+    );
+    queueFetch(jsonResponse('bytes'), jsonResponse('bytes'));
+    enqueue.mockRejectedValue(new Error('coordinator_conflict'));
+
+    const { getByTestId, findByText } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
+    await waitFor(() => expect(getByTestId('photo-photo-1')).toBeTruthy());
+
+    fireEvent.press(getByTestId('photo-photo-1-move-right'));
+
+    expect(await findByText('coordinator_conflict')).toBeTruthy();
   });
 
   it('a retained edit photo renders its already-public thumbnailUrl directly, never through the authenticated private fetch', async () => {

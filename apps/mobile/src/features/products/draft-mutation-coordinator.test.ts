@@ -2,6 +2,7 @@ import {
   createDraftMutationCoordinator,
   type CoordinatedEntity,
   type CoordinatorAdapter,
+  type MetadataFields,
 } from './draft-mutation-coordinator';
 import { ApiError } from '../../api/errors';
 
@@ -267,5 +268,110 @@ describe('draft-mutation-coordinator', () => {
       code: 'validation',
     });
     expect(coordinator.hasConflict()).toBe(false);
+  });
+
+  // The three tests below close the exact gap reviewer-p5 found: nothing in
+  // this suite previously enqueued anything *during* an unresolved conflict
+  // window (as opposed to only checking the conflict's own initial detection
+  // and its eventual resolution).
+
+  it('I2: reconcileConflict("retry") merges the pre-conflict snapshot with fields typed during the conflict window, never overwriting the newer edit', async () => {
+    const adapter = makeAdapter();
+    adapter.patchMetadata.mockRejectedValueOnce(
+      new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),
+    );
+    const serverEntity = entity({ version: 5, name: 'Server name' });
+    adapter.refetch.mockResolvedValue(serverEntity);
+    adapter.patchMetadata.mockResolvedValueOnce(entity({ version: 6, name: 'A-newer', brand: 'Acme' }));
+
+    const coordinator = createDraftMutationCoordinator(adapter, entity());
+    const firstAttempt = coordinator.enqueue({ kind: 'metadata', fields: { name: 'A' } });
+    await new Promise((r) => setImmediate(r));
+    expect(coordinator.hasConflict()).toBe(true);
+
+    // Typed *during* the conflict window, before it's reconciled — a
+    // different field (`brand`) must survive the retry, and a same-key edit
+    // (`name`) must win over the stale pre-conflict snapshot.
+    const duringConflict = coordinator.enqueue({ kind: 'metadata', fields: { name: 'A-newer', brand: 'Acme' } });
+
+    await coordinator.reconcileConflict('retry');
+    await firstAttempt;
+    await duringConflict;
+
+    expect(adapter.patchMetadata).toHaveBeenLastCalledWith('p1', 5, { name: 'A-newer', brand: 'Acme' });
+  });
+
+  it('I2: the ConflictInfo handed to onConflict listeners is never retroactively mutated by a later successful retry', async () => {
+    const adapter = makeAdapter();
+    adapter.patchMetadata.mockRejectedValueOnce(
+      new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),
+    );
+    adapter.refetch.mockResolvedValue(entity({ version: 5 }));
+    adapter.patchMetadata.mockResolvedValueOnce(entity({ version: 6, name: 'A' }));
+
+    const coordinator = createDraftMutationCoordinator(adapter, entity());
+    const capturedPendingFields: MetadataFields[] = [];
+    coordinator.onConflict((info) => capturedPendingFields.push(info.pendingFields));
+
+    const enqueuePromise = coordinator.enqueue({ kind: 'metadata', fields: { name: 'A' } });
+    await new Promise((r) => setImmediate(r));
+    await coordinator.reconcileConflict('retry');
+    await enqueuePromise;
+
+    // The snapshot delivered to the listener while the conflict was open
+    // must still read `{ name: 'A' }` after the retry has fully succeeded —
+    // a reference-aliasing bug would let the retry's own success-path key
+    // deletion mutate this same object down to `{}`.
+    expect(capturedPendingFields).toEqual([{ name: 'A' }]);
+  });
+
+  it('M1: a metadata enqueue issued while a flush is in flight still settles once that flush conflicts and is reconciled', async () => {
+    const adapter = makeAdapter();
+    const inFlight = deferred<Entity>();
+    adapter.patchMetadata.mockReturnValueOnce(inFlight.promise);
+    const serverEntity = entity({ version: 5, name: 'Server name' });
+    adapter.refetch.mockResolvedValue(serverEntity);
+    adapter.patchMetadata.mockResolvedValueOnce(entity({ version: 6, name: 'B' }));
+
+    const coordinator = createDraftMutationCoordinator(adapter, entity());
+    const firstAttempt = coordinator.enqueue({ kind: 'metadata', fields: { name: 'A' } });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(adapter.patchMetadata).toHaveBeenCalledTimes(1); // in flight, not yet resolved
+
+    // Arrives while the first request is still awaiting its response —
+    // before the pre-fix code's `pendingWaiters = waiters;` would have
+    // discarded it.
+    const duringFlush = coordinator.enqueue({ kind: 'metadata', fields: { name: 'B' } });
+
+    inFlight.reject(new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }));
+    await new Promise((r) => setImmediate(r));
+    expect(coordinator.hasConflict()).toBe(true);
+
+    await coordinator.reconcileConflict('retry');
+
+    // Both callers must settle — neither promise may hang forever.
+    await expect(firstAttempt).resolves.toMatchObject({ version: 6 });
+    await expect(duringFlush).resolves.toMatchObject({ version: 6 });
+  });
+
+  it('I1: a non-metadata operation enqueued while a conflict is unresolved rejects and never reaches the adapter', async () => {
+    const adapter = makeAdapter();
+    adapter.patchMetadata.mockRejectedValueOnce(
+      new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),
+    );
+    adapter.refetch.mockResolvedValue(entity({ version: 5 }));
+
+    const coordinator = createDraftMutationCoordinator(adapter, entity());
+    void coordinator.enqueue({ kind: 'metadata', fields: { name: 'A' } });
+    await new Promise((r) => setImmediate(r));
+    expect(coordinator.hasConflict()).toBe(true);
+
+    await expect(
+      coordinator.enqueue({ kind: 'upload', photo: { path: '/tmp/a.jpg', mime: 'image/jpeg' } }),
+    ).rejects.toMatchObject({ code: 'coordinator_conflict' });
+
+    // Never a fake success: the adapter itself must never have been called.
+    expect(adapter.uploadPhoto).not.toHaveBeenCalled();
   });
 });

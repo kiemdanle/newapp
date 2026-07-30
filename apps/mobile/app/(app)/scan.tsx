@@ -88,6 +88,14 @@ export default function ScanScreen() {
           case 'temporarily_unavailable':
             setUi({ phase: 'unavailable' });
             return;
+          default:
+            // M7: an outcome this build doesn't know about yet must still
+            // resolve to the same never-create-from-this-state fallback
+            // every non-conclusive result already uses, not leave `ui`
+            // stuck on 'looking-up' forever with no escape but the back
+            // button.
+            setUi({ phase: 'unavailable' });
+            return;
         }
       } catch {
         // Any thrown error — network down, 5xx, timeout — is unavailable,
@@ -125,6 +133,9 @@ export default function ScanScreen() {
   }, []);
 
   const retry = useCallback(() => {
+    // L1: mirror handleScan's own in-flight guard — without it, two taps
+    // inside one React batch could issue two lookups back to back.
+    if (lookupInFlightRef.current) return;
     const scan = lastScanRef.current;
     if (!scan) {
       scanAgain();

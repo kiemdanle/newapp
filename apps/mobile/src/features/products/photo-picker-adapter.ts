@@ -44,14 +44,21 @@ function isPickerCancellation(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'E_PICKER_CANCELLED';
 }
 
-function toPickedPhoto(image: {
+async function toPickedPhoto(image: {
   path: string;
   width: number;
   height: number;
   mime: string;
   size: number;
-}): PickedPhoto {
-  if (image.size > ADVISORY_MAX_BYTES) throw new PhotoTooLargeError(image.size);
+}): Promise<PickedPhoto> {
+  if (image.size > ADVISORY_MAX_BYTES) {
+    // L3: the caller never learns this path (it throws before returning
+    // one), so nothing downstream would ever call cleanupTemp for it —
+    // clean it up here, before throwing, or it leaks for the lifetime of
+    // the OS's own temp-file eviction policy.
+    await cleanupTemp([image.path]);
+    throw new PhotoTooLargeError(image.size);
+  }
   return { path: image.path, width: image.width, height: image.height, mime: image.mime, size: image.size };
 }
 
@@ -66,6 +73,20 @@ const pickerOptions = {
   // does not actually support it despite a capability flag that says
   // otherwise (verified empirically in Phase 3). Forcing JPEG here is not
   // optional — every iOS HEIC photo would otherwise be rejected on upload.
+  //
+  // `forceJpg` is iOS-only upstream — it has no effect on Android. Android's
+  // own guarantee comes from a different mechanism, confirmed by reading the
+  // library's real Android source (v0.51.1's `Compression.java`, not
+  // inferred): `compressImage()`'s only skip-compression path requires the
+  // source mime to be in a fixed known-list (`jpeg/jpg/png/gif/tiff` — HEIC
+  // is not in it) *and* quality to be lossless (`1.0`); with
+  // `compressImageQuality: 0.82` always set below, that lossless check is
+  // always false regardless of format, so `compressImage()` always falls
+  // through to `resize()`, which unconditionally calls
+  // `bitmap.compress(Bitmap.CompressFormat.JPEG, quality, os)` — a hardcoded
+  // JPEG re-encode with no format-based branch at all. Every Android photo
+  // this app captures, HEIC or otherwise, is provably re-encoded to a real
+  // JPEG file before this module ever returns its path.
   forceJpg: true,
   includeExif: false,
 };
@@ -75,7 +96,7 @@ const pickerOptions = {
 export async function takePhoto(): Promise<PickedPhoto | null> {
   try {
     const image = await ImagePicker.openCamera(pickerOptions);
-    return toPickedPhoto(image);
+    return await toPickedPhoto(image);
   } catch (err) {
     if (isPickerCancellation(err)) return null;
     throw err;
@@ -94,7 +115,7 @@ export async function choosePhotos(maxFiles: number): Promise<PickedPhoto[]> {
       maxFiles,
     });
     const images = Array.isArray(result) ? result : [result];
-    return images.map(toPickedPhoto);
+    return await Promise.all(images.map(toPickedPhoto));
   } catch (err) {
     if (isPickerCancellation(err)) return [];
     throw err;

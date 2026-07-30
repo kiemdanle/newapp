@@ -43,6 +43,34 @@ file.
 native-dependency question is closed** — the only remaining native unknown
 in this checklist is iOS, still this container's genuine (Linux) blind spot.
 
+### Android HEIF/HEIC input — investigated during #49 remediation, provably safe
+
+`forceJpg` (used in `photo-picker-adapter.ts`'s `pickerOptions`) is
+documented upstream as iOS-only — reviewer-p5 flagged whether the Android
+JPEG guarantee actually rests on something real. Read the pinned version's
+real Android source directly (`react-native-image-crop-picker@0.51.1`'s
+`android/.../Compression.java`, fetched via `gh api` against the `v0.51.1`
+tag, not inferred or guessed at):
+
+- `compressImage()`'s only skip-compression path requires the source mime
+  to be in a fixed list (`image/jpeg`, `image/jpg`, `image/png`,
+  `image/gif`, `image/tiff`) *and* quality to be exactly `1.0`. HEIC/HEIF is
+  not in that list, and this app's `pickerOptions` always sets
+  `compressImageQuality: 0.82` (never `1.0`) — so the skip-compression
+  branch is unreachable for *any* photo this app takes, regardless of
+  source format.
+- Every other path falls through to `resize()`, which unconditionally calls
+  `bitmap.compress(Bitmap.CompressFormat.JPEG, quality, os)` — a hardcoded
+  JPEG re-encode with zero format-based branching.
+
+Conclusion: Android HEIC/HEIF input is provably always re-encoded to a real
+JPEG file before the picker adapter ever returns a path, independent of
+`forceJpg`. No client-side transcode/reject-with-guidance logic is needed —
+there was never a passthrough case to guard against. Verified via source,
+not exercised on a physical device from this container (still a Phase 8 /
+device-smoke item, same as every other on-device behavior in this
+checklist).
+
 Resource note for whoever runs this next on a similarly modest box: this
 container has 7.8 GB RAM shared across up to 6 concurrent agent processes
 with no swap — the default Gradle daemon (`-Xmx4096m`) got OOM-killed twice

@@ -19,14 +19,17 @@ export interface DraftSubmitPanelProps {
 
 /**
  * Flushes any pending metadata, mints a fresh `submit_product` reCAPTCHA
- * token, and submits the draft for moderation. A `temporarily_unavailable`
- * (503) response is the one retryable outcome that reuses the same
+ * token, and submits the draft for moderation. Any 5xx response, and any
+ * transport-level failure that never got a response at all, reuses the same
  * Idempotency-Key — the server's idempotency plugin only releases its
- * reservation on a 5xx, so replaying the same key there is safe and the
- * plugin would otherwise treat a same-key/different-body retry (a fresh
- * token every attempt, per the binding submit-retry contract) as
- * `idempotency_key_reused`. Every other outcome (success, abuse rejection,
- * validation, version conflict) mints a fresh key for any further attempt.
+ * reservation on a 5xx (never on a genuine non-response, which by
+ * definition can't have cached anything under that key either), so
+ * replaying the same key there is safe, and the plugin would otherwise
+ * treat a same-key/different-body retry (a fresh token every attempt, per
+ * the binding submit-retry contract) as `idempotency_key_reused`. Every
+ * other, *definitive* non-5xx outcome (success, abuse rejection, validation,
+ * version conflict) mints a fresh key for any further attempt, since the
+ * plugin cached that exact key+body pair.
  */
 export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSubmitPanelProps) {
   const theme = useTheme();
@@ -35,8 +38,17 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryable, setRetryable] = useState(false);
   const idempotencyKeyRef = useRef<string | null>(null);
+  // L2: `busy` alone doesn't reach `Button`'s own `disabled` prop until
+  // after a re-render — a double-tap inside one synchronous batch would
+  // otherwise queue two submits sharing one idempotency key with two
+  // different abuse tokens (the second gets a confusing
+  // `idempotency_in_progress`, not a duplicate submission, but still a
+  // needless race). Mirrors scan.tsx's own ref-based in-flight guard.
+  const submitInFlightRef = useRef(false);
 
   const submit = async () => {
+    if (submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setBusy(true);
     setErrorMessage(null);
     try {
@@ -60,9 +72,19 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
       idempotencyKeyRef.current = null;
       onSubmitted(submitted);
     } catch (err) {
-      if (isApiError(err) && err.status === 503 && err.code === 'temporarily_unavailable') {
-        // Keep the same key — the next attempt reuses it with a fresh token.
-        setErrorMessage('Submission service is temporarily unavailable. Try again in a moment.');
+      // M6: any 5xx, or a transport-level failure that isn't even an
+      // `ApiError` (fetch threw before a response arrived — e.g. the
+      // request never reached the server, or reCAPTCHA itself failed before
+      // any HTTP call was made), keeps the same key. Only a definitive
+      // non-5xx response — one the idempotency plugin actually cached —
+      // needs a fresh key on the next attempt.
+      const keepsKey = !isApiError(err) || err.status >= 500;
+      if (keepsKey) {
+        setErrorMessage(
+          isApiError(err) && err.status === 503 && err.code === 'temporarily_unavailable'
+            ? 'Submission service is temporarily unavailable. Try again in a moment.'
+            : ((err as Error).message || 'Something went wrong. Try again.'),
+        );
         setRetryable(true);
         return;
       }
@@ -74,6 +96,7 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
       }
       setErrorMessage((err as Error).message);
     } finally {
+      submitInFlightRef.current = false;
       setBusy(false);
     }
   };

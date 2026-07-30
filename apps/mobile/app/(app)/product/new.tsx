@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { Product } from '@expyrico/shared';
@@ -52,26 +52,34 @@ export default function NewProductScreen() {
 
   // Dirty-fields navigation guard: a swipe-back/hardware-back mid-edit
   // prompts rather than silently discarding unsaved text.
-  useFocusEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
-      if (!dirtyRef.current) return;
-      e.preventDefault();
-      Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
-        { text: 'Keep editing', style: 'cancel' },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: () => {
-            dirtyRef.current = false;
-            setDirty(false);
-            // @ts-expect-error — same generic-NavigationProp gap as above.
-            navigation.dispatch(e.data.action);
+  // M8: React Navigation requires a memoized callback here — an inline
+  // arrow, as this was, tears down and re-registers the `beforeRemove`
+  // listener on every render. The project's own `useFocusEffect` test mock
+  // (`tests/setup.ts`) can't catch this (it ignores callback identity and
+  // just runs the effect once), so this only ever showed up on review.
+  useFocusEffect(
+    useCallback(() => {
+      const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
+        if (!dirtyRef.current) return;
+        e.preventDefault();
+        Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
+          { text: 'Keep editing', style: 'cancel' },
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              dirtyRef.current = false;
+              setDirty(false);
+              // @ts-expect-error — same generic-NavigationProp gap as above.
+              navigation.dispatch(e.data.action);
+            },
           },
-        },
-      ]);
-    });
-    return unsubscribe;
-  });
+        ]);
+      });
+      return unsubscribe;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [navigation]),
+  );
 
   const createDraft = async () => {
     if (!name.trim()) {

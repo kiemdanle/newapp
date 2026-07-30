@@ -64,10 +64,28 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   // after every mutation completes (no external store/subscription needed
   // for a component with this narrow a lifetime).
   const serverPhotos = coordinator.getState().photos;
+  // Local entries the coordinator has already confirmed uploaded are dropped
+  // from render entirely (M3) — the server thumbnail above is now the only
+  // representation; the local entry's own file was already deleted by
+  // `cleanupTemp` in `startUpload`'s success handler, so continuing to
+  // render it via `source={{uri: entry.path}}` would point at bytes that no
+  // longer exist.
+  const visibleLocalQueue = localQueue.filter((e) => e.uploadedPhotoId === null);
   const uploadedLocalCount = localQueue.filter((e) => e.status !== 'failed' && e.uploadedPhotoId === null).length;
   const totalCount = serverPhotos.length + uploadedLocalCount;
   const remaining = Math.max(0, MAX_PHOTOS - totalCount);
   const hasUnsettled = localQueue.some((e) => e.status === 'pending' || e.status === 'uploading');
+  // I1: a photo op the coordinator rejects while a conflict is open must
+  // never be attempted in the first place — read fresh each render (same
+  // pattern as `serverPhotos` above) rather than caching in state, since the
+  // coordinator has no "resolved" event to invalidate a cached flag against;
+  // the `onConflict` subscription below only needs to force a re-render the
+  // moment a *new* conflict opens (nothing else would trigger one at that
+  // exact instant). A stale "still blocked" render after a sibling resolves
+  // the conflict elsewhere is the safe failure direction — it clears itself
+  // on this component's own next re-render (a mutation attempt, a refresh
+  // from an unrelated success, or an unrelated prop change).
+  const blockedByConflict = coordinator.hasConflict();
 
   const refresh = useCallback(() => forceRerender((n) => n + 1), []);
 
@@ -75,6 +93,8 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
     onUnsettledChange?.(hasUnsettled);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasUnsettled]);
+
+  useEffect(() => coordinator.onConflict(() => refresh()), [coordinator, refresh]);
 
   const updateEntry = useCallback((localId: string, patch: Partial<LocalPhotoEntry>) => {
     setLocalQueue((q) => q.map((e) => (e.localId === localId ? { ...e, ...patch } : e)));
@@ -163,29 +183,46 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
     [],
   );
 
+  const orderedServerPhotos = useMemo(() => [...serverPhotos].sort((a, b) => a.position - b.position), [serverPhotos]);
+
   const removeServerPhoto = useCallback(
     async (photoId: string) => {
-      await coordinator.enqueue({ kind: 'delete', photoId });
-      refresh();
+      try {
+        await coordinator.enqueue({ kind: 'delete', photoId });
+        refresh();
+      } catch (err) {
+        // M5: a failed delete (including I1's conflict rejection) must
+        // surface visibly — the grid otherwise just silently doesn't change,
+        // indistinguishable from the request never having been sent.
+        setPickerError((err as Error).message ?? 'Could not remove this photo');
+      }
     },
     [coordinator, refresh],
   );
 
   const movePhoto = useCallback(
     async (photoId: string, direction: -1 | 1) => {
-      const ids = serverPhotos.map((p) => p.id);
+      // M4: swap against the same sorted order the grid renders
+      // (`orderedServerPhotos`), not the unsorted `serverPhotos` — the API
+      // always returns photos pre-ordered today so this is latent, but the
+      // component's own defensive sort above implies it doesn't trust that,
+      // and swapping against the wrong order silently sends the wrong
+      // desired sequence to the server if that assumption ever breaks.
+      const ids = orderedServerPhotos.map((p) => p.id);
       const index = ids.indexOf(photoId);
       const swapWith = index + direction;
       if (index < 0 || swapWith < 0 || swapWith >= ids.length) return;
       const reordered = [...ids];
       [reordered[index], reordered[swapWith]] = [reordered[swapWith]!, reordered[index]!];
-      await coordinator.enqueue({ kind: 'order', photoIds: reordered });
-      refresh();
+      try {
+        await coordinator.enqueue({ kind: 'order', photoIds: reordered });
+        refresh();
+      } catch (err) {
+        setPickerError((err as Error).message ?? 'Could not reorder photos');
+      }
     },
-    [coordinator, serverPhotos, refresh],
+    [coordinator, orderedServerPhotos, refresh],
   );
-
-  const orderedServerPhotos = useMemo(() => [...serverPhotos].sort((a, b) => a.position - b.position), [serverPhotos]);
 
   return (
     <View style={{ gap: theme.spacing.md }}>
@@ -227,7 +264,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
                 testID={`photo-${photo.id}-move-left`}
                 accessibilityRole="button"
                 accessibilityLabel={`Move photo ${index + 1} earlier`}
-                disabled={index === 0 || hasUnsettled}
+                disabled={index === 0 || hasUnsettled || blockedByConflict}
                 onPress={() => movePhoto(photo.id, -1)}
                 style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
               >
@@ -237,7 +274,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
                 testID={`photo-${photo.id}-move-right`}
                 accessibilityRole="button"
                 accessibilityLabel={`Move photo ${index + 1} later`}
-                disabled={index === orderedServerPhotos.length - 1 || hasUnsettled}
+                disabled={index === orderedServerPhotos.length - 1 || hasUnsettled || blockedByConflict}
                 onPress={() => movePhoto(photo.id, 1)}
                 style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
               >
@@ -252,6 +289,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
               testID={`photo-${photo.id}-remove`}
               accessibilityRole="button"
               accessibilityLabel={`Remove photo ${index + 1}`}
+              disabled={blockedByConflict}
               onPress={() => removeServerPhoto(photo.id)}
               style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
             >
@@ -260,7 +298,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
           </View>
         ))}
 
-        {localQueue.map((entry) => (
+        {visibleLocalQueue.map((entry) => (
           <View key={entry.localId} testID={`local-photo-${entry.localId}`} style={{ width: 96, gap: 4 }}>
             <Image
               source={{ uri: entry.path }}
@@ -304,8 +342,8 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
       {pickerError ? <Text style={{ color: theme.colors.danger }}>{pickerError}</Text> : null}
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        <Button testID="photo-take" label="Take photo" icon="camera" variant="outline" disabled={remaining === 0} onPress={onTakePhoto} />
-        <Button testID="photo-choose" label="Choose photos" icon="images" variant="outline" disabled={remaining === 0} onPress={onChoosePhotos} />
+        <Button testID="photo-take" label="Take photo" icon="camera" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onTakePhoto} />
+        <Button testID="photo-choose" label="Choose photos" icon="images" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onChoosePhotos} />
       </View>
     </View>
   );

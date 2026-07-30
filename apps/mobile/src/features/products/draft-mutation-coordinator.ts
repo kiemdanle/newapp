@@ -1,5 +1,5 @@
 import type { UploadHandle, UploadablePhoto } from '../../api/product-photo-upload';
-import { isApiError } from '../../api/errors';
+import { ApiError, isApiError } from '../../api/errors';
 
 // One serialized queue per draft/edit target — metadata patches and photo
 // mutations (upload/delete/order) all funnel through the same execution
@@ -155,11 +155,20 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
   async function doMetadataFlush(): Promise<T> {
     if (conflict) {
       // A previous flush already hit a conflict that hasn't been resolved —
-      // don't send another write into it; let it resolve into this one.
-      const waiters = pendingWaiters;
-      pendingWaiters = [];
-      for (const w of waiters) w.resolve(known);
-      return known;
+      // don't send another write into it, and don't resolve these waiters
+      // with the stale pre-conflict `known` either: leave `pendingWaiters`
+      // completely untouched so reconcileConflict's own eventual flush is
+      // the thing that actually settles them (with the real outcome,
+      // whichever way the caller resolves the conflict) — draining and
+      // resolving them here, as this branch previously did, would silently
+      // hand every one of them a surprising, already-stale value the moment
+      // a *second* enqueue() arrives while the first conflict is still
+      // open, discovered by a coordinator-conflict-window test this branch
+      // had no coverage for before now. This call's own return value is
+      // only ever consumed by a direct `flushMetadata()` caller (the
+      // `enqueue()` path discards it and relies on `pendingWaiters`
+      // exclusively), so a plain best-known snapshot is correct here.
+      return applyDirty(known, pendingFields);
     }
     if (Object.keys(pendingFields).length === 0) {
       const waiters = pendingWaiters;
@@ -201,7 +210,11 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
         // local intent until they explicitly choose retry or discard.
         known = serverEntity;
         notifyConflict({ currentVersion: serverEntity.version, serverEntity, pendingFields: fields });
-        pendingWaiters = waiters;
+        // Restore this attempt's waiters ahead of anything queued while
+        // `patchMetadata` was in flight — a plain reassignment here would
+        // discard those newer waiters outright (M1: their `enqueue()`
+        // promise would never settle).
+        pendingWaiters = [...waiters, ...pendingWaiters];
         return applyDirty(serverEntity, pendingFields);
       }
       // A hard (non-conflict) failure: these specific callers are told: the
@@ -251,9 +264,16 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
       return run(async () => {
         await doMetadataFlush();
         if (conflict) {
-          // Don't run photo mutations against a product state the caller
-          // hasn't confirmed past the conflict yet.
-          return known;
+          // Never resolve as if the mutation ran — a caller (ProductPhotoEditor,
+          // in particular) treats any resolution as success and deletes the
+          // local temp file / marks a delete-or-reorder done (I1: phantom
+          // success, silent photo loss). The adapter is never called against
+          // a product state the caller hasn't confirmed past the conflict yet.
+          throw new ApiError({
+            code: 'coordinator_conflict',
+            status: 0,
+            title: 'This item changed elsewhere — resolve the conflict above before continuing.',
+          });
         }
         switch (operation.kind) {
           case 'upload': {
@@ -296,8 +316,18 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
           return known;
         }
         // retry: re-send the pending fields against the now-current version.
+        // Merge, never overwrite — anything the caller typed *during* the
+        // conflict window (after `resolved.pendingFields` was snapshotted at
+        // notifyConflict time) already lives in the current `pendingFields`
+        // and must win per key over the stale pre-conflict snapshot
+        // (I2). Spreading into a fresh object also breaks this path's
+        // reference-aliasing: `resolved.pendingFields` is the exact object
+        // already handed to every `onConflict` listener, so a bare
+        // reassignment here would let this flush's own later success-path
+        // key deletions (`doMetadataFlush`'s `delete pendingFields[key]`)
+        // retroactively mutate that already-delivered snapshot.
         known = resolved.serverEntity;
-        pendingFields = resolved.pendingFields;
+        pendingFields = { ...resolved.pendingFields, ...pendingFields };
         return doMetadataFlush();
       });
     },
