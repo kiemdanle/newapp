@@ -35,6 +35,21 @@ export const FIXTURE = {
   submitterUserId: 'ffffffff-0000-4000-8000-000000000003',
   staleEditId: 'ffffffff-0000-4000-8000-000000000004',
   staleEditStagedPhotoId: 'ffffffff-0000-4000-8000-000000000005',
+  // A product already merged into another, carrying its own distinct
+  // name/version/description — must always render as itself, never silently
+  // borrow the canonical product's data (I1 regression guard).
+  mergedLoserId: 'aaaaaaaa-0000-4000-8000-000000000004',
+  // An active product with 3 live photos, paired with a stale revision
+  // staging 3 more (6 candidates total, over the 5-photo contract cap) — I3
+  // regression guard for the rebase default/cap.
+  overflowProductId: 'bbbbbbbb-0000-4000-8000-000000000003',
+  overflowProductPhoto1: 'bbbbbbbb-0000-4000-8000-000000000004',
+  overflowProductPhoto2: 'bbbbbbbb-0000-4000-8000-000000000005',
+  overflowProductPhoto3: 'bbbbbbbb-0000-4000-8000-000000000006',
+  overflowStaleEditId: 'bbbbbbbb-0000-4000-8000-000000000007',
+  overflowStagedPhoto1: 'bbbbbbbb-0000-4000-8000-000000000008',
+  overflowStagedPhoto2: 'bbbbbbbb-0000-4000-8000-000000000009',
+  overflowStagedPhoto3: 'bbbbbbbb-0000-4000-8000-00000000000a',
 } as const;
 
 // A tiny valid 1x1 PNG — stands in for real product-photo bytes; the private
@@ -210,7 +225,11 @@ export function seed(): Store {
         id: FIXTURE.loserProductId,
         name: 'Dup Milk Duplicate',
         brand: 'Acme',
-        barcode: 'DUP-0002',
+        // Same barcode as the winner — these are duplicate listings of the
+        // same real-world product, which is the scenario the merge tool
+        // exists for. A barcode mismatch here would trip the merge route's
+        // own identifier-conflict guard and block the happy-path merge.
+        barcode: 'DUP-0001',
         reviewCount: 1,
         ratingCount: 1,
         buyAgainCount: 1,
@@ -240,6 +259,34 @@ export function seed(): Store {
         version: 1,
         photos: [{ id: FIXTURE.activeProductPhotoId, position: 0, moderationStatus: 'approved' }],
       }),
+      // Already merged into `activeProductId`, but carries its own distinct
+      // name/version/description — a regression guard for I1: this row must
+      // always render as itself, never silently the canonical product's data.
+      product({
+        id: FIXTURE.mergedLoserId,
+        name: 'Discontinued Duplicate Snacks',
+        brand: 'Acme',
+        description: "Loser's own description — never the canonical's.",
+        status: 'merged_into',
+        mergedIntoProductId: FIXTURE.activeProductId,
+        version: 4,
+      }),
+      // 3 live photos, paired with `overflowStaleEditId` below (3 staged) for
+      // a 6-candidate rebase — over the 5-photo contract cap. Version 2 so
+      // the paired edit's baseProductVersion (1) is stale without needing a
+      // runtime bump.
+      product({
+        id: FIXTURE.overflowProductId,
+        name: 'Overflow Product',
+        brand: 'Acme',
+        status: 'active',
+        version: 2,
+        photos: [
+          { id: FIXTURE.overflowProductPhoto1, position: 0, moderationStatus: 'approved' },
+          { id: FIXTURE.overflowProductPhoto2, position: 1, moderationStatus: 'approved' },
+          { id: FIXTURE.overflowProductPhoto3, position: 2, moderationStatus: 'approved' },
+        ],
+      }),
     ],
     edits: [
       edit({
@@ -264,6 +311,22 @@ export function seed(): Store {
         name: 'Active Cereal (stale revision)',
         baseProductVersion: 1,
         photos: [{ id: FIXTURE.staleEditStagedPhotoId, position: 0, retained: false }],
+      }),
+      // Stale against `overflowProductId` (baseProductVersion 1 vs its live
+      // version 2), with 3 staged photos — combined with the product's own 3
+      // live photos, 6 candidates total. I3 regression guard: rebase must
+      // default to a valid 5-photo selection, never all 6.
+      edit({
+        id: FIXTURE.overflowStaleEditId,
+        productId: FIXTURE.overflowProductId,
+        submittedBy: FIXTURE.submitterUserId,
+        name: 'Overflow Product (stale revision)',
+        baseProductVersion: 1,
+        photos: [
+          { id: FIXTURE.overflowStagedPhoto1, position: 0, retained: false },
+          { id: FIXTURE.overflowStagedPhoto2, position: 1, retained: false },
+          { id: FIXTURE.overflowStagedPhoto3, position: 2, retained: false },
+        ],
       }),
     ],
     users: [

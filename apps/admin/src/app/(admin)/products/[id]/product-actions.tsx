@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { patchProductAction, moderateProductAction } from '@/lib/actions';
-import { actionErrorMessage, type ActionResult } from '@/lib/action-result';
+import { actionErrorMessage, isConflictCode, type ActionResult } from '@/lib/action-result';
 
 /**
  * Client controls for the product-detail page: inline edit of the core fields,
@@ -61,7 +61,7 @@ export function ProductActions({
         onSuccess?.();
       } else {
         setErr(actionErrorMessage(result));
-        if (result.code === 'version_conflict') setConflict(true);
+        if (isConflictCode(result.code)) setConflict(true);
       }
     });
   }

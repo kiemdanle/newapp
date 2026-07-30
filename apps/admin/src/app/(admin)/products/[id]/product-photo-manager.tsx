@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { reorderProductPhotosAction, removeProductPhotoAction } from '@/lib/actions';
-import { actionErrorMessage } from '@/lib/action-result';
+import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
 import { resolveAdminPhotoUrl } from '@/lib/admin-media';
 
 interface Photo {
@@ -36,7 +36,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
       const result = await reorderProductPhotosAction(productId, next.map((p) => p.id));
       if (!result.ok) {
         setErr(actionErrorMessage(result));
-        if (result.code === 'version_conflict') setConflict(true);
+        if (isConflictCode(result.code)) setConflict(true);
       }
     });
   }
@@ -59,7 +59,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
         setOrder((prev) => prev.filter((p) => p.id !== photoId));
       } else {
         setErr(actionErrorMessage(result));
-        if (result.code === 'version_conflict') setConflict(true);
+        if (isConflictCode(result.code)) setConflict(true);
       }
     });
   }

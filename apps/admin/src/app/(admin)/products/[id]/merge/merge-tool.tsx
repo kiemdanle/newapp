@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mergeProductsAction } from '@/lib/actions';
-import { actionErrorMessage } from '@/lib/action-result';
+import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
 
 type Candidate = {
   id: string;
@@ -70,7 +70,7 @@ export function MergeTool({
         return;
       }
       setErr(actionErrorMessage(result));
-      if (result.code === 'version_conflict') setConflict(true);
+      if (isConflictCode(result.code)) setConflict(true);
     });
   }
 

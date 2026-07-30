@@ -38,6 +38,7 @@ import {
   fullProductDto,
   type ProductRow,
   type ProductEditRow,
+  type MockEditPhoto,
 } from './mock-store';
 
 export interface AdminResp {
@@ -249,7 +250,23 @@ export async function handleAdmin(
       e.version += 1;
       return { status: 200, body: creatorEditRow(e) };
     }
-    // rebase
+    // rebase — actually rebuild `e.photos` from the admin's reviewed mapping
+    // (never auto-computed), mirroring the real API, so a round-trip GET
+    // after rebase proves the submitted order/cap rather than just trusting
+    // the request was well-formed.
+    const desiredPhotoOrder = Array.isArray(body.desiredPhotoOrder)
+      ? (body.desiredPhotoOrder as Array<{ type: string; sourceProductPhotoId?: string; editPhotoId?: string }>)
+      : [];
+    if (desiredPhotoOrder.length > 5) {
+      return { status: 400, body: { code: 'validation_error', detail: 'desiredPhotoOrder exceeds the 5-photo cap' } };
+    }
+    e.photos = desiredPhotoOrder.map((entry, position): MockEditPhoto => {
+      if (entry.type === 'retained') {
+        const sourceProductPhotoId = entry.sourceProductPhotoId!;
+        return { id: sourceProductPhotoId, position, retained: true, sourceProductPhotoId };
+      }
+      return { id: entry.editPhotoId!, position, retained: false };
+    });
     e.baseProductVersion = product.version;
     e.status = 'pending';
     e.moderationNotes = typeof body.notes === 'string' ? body.notes : e.moderationNotes;

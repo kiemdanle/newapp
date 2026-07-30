@@ -53,6 +53,9 @@ test.describe('revision detail', () => {
     await loginAsAdmin(page);
     await page.goto(`/products/pending/${FIXTURE.pendingEditId}`);
 
+    // Approve confirms before publishing — Playwright auto-dismisses an
+    // unhandled dialog, which would silently no-op the decision.
+    page.once('dialog', (d) => d.accept());
     await page.getByRole('button', { name: 'Approve' }).click();
     await page.waitForURL(/\/products\/pending$/, { timeout: 15_000 });
   });
@@ -134,6 +137,63 @@ test.describe('direct photo correction', () => {
     page.once('dialog', (d) => d.accept());
     await page.getByRole('button', { name: 'Remove photo' }).first().click();
     await expect(page.getByText('No photos.')).toBeVisible();
+  });
+});
+
+test.describe('merged product identity', () => {
+  test('a merged_into row renders itself, never the canonical product, with a banner and link', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`/products/${FIXTURE.mergedLoserId}`);
+
+    // Its own name — not the canonical product's ("Active Cereal").
+    await expect(page.getByRole('heading', { name: 'Discontinued Duplicate Snacks' })).toBeVisible();
+    await expect(page.getByText(/merged into another product/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /view the product it was merged into/i })).toHaveAttribute(
+      'href',
+      `/products/${FIXTURE.activeProductId}`,
+    );
+
+    // Nothing left to correct on a merged row — no version-bearing mutation UI.
+    await expect(page.getByRole('button', { name: 'Save changes' })).not.toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Photos', exact: true })).not.toBeVisible();
+  });
+});
+
+test.describe('rebase order and cap', () => {
+  test('rebase submits exactly the reordered/capped selection shown, never the original 6 candidates', async ({
+    page,
+  }) => {
+    await loginAsAdmin(page);
+    await page.goto(`/products/pending/${FIXTURE.overflowStaleEditId}`);
+    await expect(page.getByRole('heading', { name: 'Stale revision recovery' })).toBeVisible();
+
+    // 3 live + 3 staged = 6 candidates, over the 5-photo contract cap — must
+    // default to a valid 5, never all 6, with "Add" disabled for the 6th.
+    await expect(page.getByText('Selected (5/5)')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add' })).toBeDisabled();
+
+    // Reorder: move the first Selected item (photo 1) down one position,
+    // swapping it with the second (photo 2).
+    await page.getByRole('button', { name: 'Move down' }).first().click();
+
+    await page.getByRole('button', { name: 'Rebase' }).click();
+    await page.waitForURL(/\/products\/pending$/, { timeout: 15_000 });
+
+    // Round-trip: the edit is no longer stale (rebase synced baseProductVersion),
+    // so it now renders the ordinary comparison view — assert the *actually
+    // stored* photo order matches what was reordered on screen, not the
+    // original unreordered 5, and never includes the capped-out 6th candidate.
+    await page.goto(`/products/pending/${FIXTURE.overflowStaleEditId}`);
+    const proposedImgs = page.locator('h3:has-text("Proposed photos") ~ div img');
+    await expect(proposedImgs).toHaveCount(5);
+    await expect(proposedImgs.nth(0)).toHaveAttribute('src', new RegExp(FIXTURE.overflowProductPhoto2));
+    await expect(proposedImgs.nth(1)).toHaveAttribute('src', new RegExp(FIXTURE.overflowProductPhoto1));
+    await expect(proposedImgs.nth(2)).toHaveAttribute('src', new RegExp(FIXTURE.overflowProductPhoto3));
+    await expect(proposedImgs.nth(3)).toHaveAttribute('src', new RegExp(FIXTURE.overflowStagedPhoto1));
+    await expect(proposedImgs.nth(4)).toHaveAttribute('src', new RegExp(FIXTURE.overflowStagedPhoto2));
+    for (const img of await proposedImgs.all()) {
+      await expect(img).not.toHaveAttribute('src', new RegExp(FIXTURE.overflowStagedPhoto3));
+    }
   });
 });
 
