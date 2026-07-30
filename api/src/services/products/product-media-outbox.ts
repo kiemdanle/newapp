@@ -263,3 +263,36 @@ export async function processMediaOutboxOnce(limit = 10): Promise<OutboxSweepRes
 
   return { claimed: rows.length, completed, failed };
 }
+
+// ---------------------------------------------------------------------------
+// Scheduler-independent poller (reviewer-p7 I7). The phase spec requires
+// "polling the durable outbox is authoritative; BullMQ delivery only
+// accelerates it", but until now `processMediaOutboxOnce` had exactly one
+// caller — the BullMQ-scheduled cleanup job. If the repeat key is ever lost
+// (a Redis flush/eviction — this box already logs an allkeys-lru warning),
+// `scheduleProductMediaCleanup` fails silently (fire-and-forget, error
+// logged only), or the queue is paused, no prepared intent or pending
+// cleanup would ever run again — orphan bytes accumulate with no signal.
+// This plain `setInterval` runs in the same worker process, calls
+// `processMediaOutboxOnce` directly, and has no dependency on BullMQ's
+// scheduler at all.
+// ---------------------------------------------------------------------------
+let independentPollerHandle: ReturnType<typeof setInterval> | undefined;
+
+/** Starts the scheduler-independent poll. Idempotent — calling this more
+ * than once (e.g. a duplicate `startWorkers()` call) is a no-op, matching
+ * `startWorkers`'s own already-started guard. */
+export function startIndependentOutboxPoller(intervalMs = 60_000, limit = 25): void {
+  if (independentPollerHandle) return;
+  independentPollerHandle = setInterval(() => {
+    processMediaOutboxOnce(limit).catch((err: unknown) => {
+      logger.warn({ err }, 'independent outbox poller: tick failed');
+    });
+  }, intervalMs);
+  independentPollerHandle.unref();
+}
+
+export function stopIndependentOutboxPoller(): void {
+  if (independentPollerHandle) clearInterval(independentPollerHandle);
+  independentPollerHandle = undefined;
+}

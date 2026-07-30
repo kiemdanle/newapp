@@ -6,6 +6,7 @@ import { startScoreRecalcWorker } from '../queues/jobs/score-recalc.js';
 import { startModerationFlagWorker } from '../queues/jobs/moderation-flag.js';
 import { startProductRatingWorker } from '../queues/jobs/product-rating-recalc.js';
 import { startProductMediaCleanupWorker, scheduleProductMediaCleanup } from '../queues/jobs/product-media-cleanup.js';
+import { startIndependentOutboxPoller, stopIndependentOutboxPoller } from '../services/products/product-media-outbox.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
 
@@ -32,12 +33,18 @@ export function startWorkers(): Worker[] {
   scheduleProductMediaCleanup().catch((err: unknown) => {
     logger.error({ err }, 'failed to schedule product-media-cleanup repeat job');
   });
+  // Scheduler-independent fallback (reviewer-p7 I7): keeps draining the
+  // durable outbox on its own timer even if BullMQ's repeat key is lost or
+  // the queue is paused — polling the outbox is the authoritative path,
+  // BullMQ delivery only accelerates it.
+  startIndependentOutboxPoller();
   logger.info({ count: _workers.length }, 'workers started');
   return _workers;
 }
 
 export async function stopWorkers(): Promise<void> {
   if (!_workers) return;
+  stopIndependentOutboxPoller();
   await Promise.all(_workers.map((w) => w.close()));
   _workers = null;
 }

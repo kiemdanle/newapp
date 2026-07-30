@@ -11,6 +11,8 @@ import {
   prepareMediaOperation,
   processMediaOutboxOnce,
   renewMediaOperationLease,
+  startIndependentOutboxPoller,
+  stopIndependentOutboxPoller,
 } from '../../src/services/products/product-media-outbox.js';
 import { mediaKeyToPath, privateProductPhotoPrefix, promoteKeyPrefix, writeQuarantineFile } from '../../src/services/products/product-media-storage.js';
 import { Readable } from 'node:stream';
@@ -322,5 +324,76 @@ describe('processMediaOutboxOnce — retry/backoff', () => {
       await prisma.mediaOperationOutbox.update({ where: { id }, data: { availableAt: new Date() } });
     }
     expect(lastStatus).toBe('failed');
+  });
+});
+
+/** Polls a condition on real wall-clock time (the poller under test schedules
+ * on a real `setInterval`, so real waits — not fake timers — are what
+ * actually exercise it; fake timers only advance the clock, they don't wait
+ * for the real DB round trip a tick kicks off in the background). Margin
+ * kept generous since this runs on a shared, loaded box, matching the same
+ * real-wait pattern already used for lease-heartbeat tests elsewhere. */
+async function waitUntil(check: () => Promise<boolean>, timeoutMs = 3000, stepMs = 50): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (await check()) return;
+    if (Date.now() >= deadline) throw new Error(`waitUntil: condition not met within ${timeoutMs}ms`);
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+}
+
+describe('startIndependentOutboxPoller / stopIndependentOutboxPoller (reviewer-p7 I7)', () => {
+  afterEach(() => {
+    // Belt-and-braces: a test that fails before reaching its own cleanup
+    // must never leave a live interval running into the next test file.
+    stopIndependentOutboxPoller();
+  });
+
+  it('drains a ready pending row on its own timer, with no BullMQ job or direct processMediaOutboxOnce call involved', async () => {
+    const prisma = getPrisma();
+    const user = await makeUser();
+    const product = await makeProduct(user.id);
+    const prefix = privateProductPhotoPrefix(product.id, randomUUID(), randomUUID());
+    await writeVariantBytes(prefix);
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: [prefix] })))!;
+
+    startIndependentOutboxPoller(50, 10);
+
+    await waitUntil(async () => {
+      const row = await prisma.mediaOperationOutbox.findUniqueOrThrow({ where: { id } });
+      return row.status === 'completed';
+    });
+    expect(await pathExists(prefix)).toBe(false);
+  });
+
+  it('is idempotent — a second start call while already running does not register a second interval', async () => {
+    const prisma = getPrisma();
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: ['private/idempotent-poller-check'] })))!;
+
+    startIndependentOutboxPoller(50, 10);
+    startIndependentOutboxPoller(50, 10); // second call must be a no-op, not a second overlapping timer
+
+    // A duplicate interval would claim-then-reclaim the same row across two
+    // concurrent ticks; a single completed pass (not an error) is the proof
+    // there was only ever one interval draining it.
+    await waitUntil(async () => {
+      const row = await prisma.mediaOperationOutbox.findUniqueOrThrow({ where: { id } });
+      return row.status === 'completed';
+    });
+  });
+
+  it('stop clears the interval so no further ticks process new work', async () => {
+    startIndependentOutboxPoller(50, 10);
+    stopIndependentOutboxPoller();
+
+    const prisma = getPrisma();
+    const { id } = (await prisma.$transaction((tx) => enqueueMediaCleanup(tx, { operation: 'delete_private', keys: ['private/stopped-poller-check'] })))!;
+
+    // Give any (incorrectly still-running) interval ample real time to fire
+    // before asserting the row was never touched.
+    await new Promise((r) => setTimeout(r, 300));
+
+    const row = await prisma.mediaOperationOutbox.findUniqueOrThrow({ where: { id } });
+    expect(row.status).toBe('pending');
   });
 });

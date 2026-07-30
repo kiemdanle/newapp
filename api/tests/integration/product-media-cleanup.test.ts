@@ -34,9 +34,12 @@ afterEach(async () => {
   await getRedis().del('product-media-cleanup:lock');
 });
 
-async function makeDraft(createdByUserId: string, createdAt: Date, status: 'draft' | 'pending' | 'active' | 'changes_required' = 'draft') {
+async function makeDraft(createdByUserId: string, updatedAt: Date, status: 'draft' | 'pending' | 'active' | 'changes_required' = 'draft') {
+  // Eligibility now keys on updatedAt (last activity), not createdAt
+  // (reviewer-p7 M11) — set both to the same value so existing fixtures
+  // that only ever cared about "how old is this draft" keep working.
   return getPrisma().product.create({
-    data: { barcode: `bc-${randomUUID()}`, name: 'T', source: 'user', createdByUserId, status, createdAt },
+    data: { barcode: `bc-${randomUUID()}`, name: 'T', source: 'user', createdByUserId, status, createdAt: updatedAt, updatedAt },
   });
 }
 
@@ -99,6 +102,20 @@ describe('sweepStaleProductDrafts', () => {
     expect(result.skippedReferenced).toBe(1);
   });
 
+  it.each(['draft', 'changes_required'] as const)(
+    'skips a stale draft that has an open (%s) product edit, not just pending (reviewer-p7 M8)',
+    async (openStatus) => {
+      const user = await makeUser({ emailVerified: true });
+      const draft = await makeDraft(user.id, THIRTY_ONE_DAYS_AGO);
+      await getPrisma().productEdit.create({
+        data: { productId: draft.id, submittedBy: user.id, proposed: {}, status: openStatus },
+      });
+      const result = await sweepStaleProductDrafts(10);
+      expect(result.deleted).toBe(0);
+      expect(result.skippedReferenced).toBe(1);
+    },
+  );
+
   it('does not skip a stale draft whose only product edit is already resolved (approved/rejected)', async () => {
     const user = await makeUser({ emailVerified: true });
     const draft = await makeDraft(user.id, THIRTY_ONE_DAYS_AGO);
@@ -135,6 +152,62 @@ describe('sweepStaleProductDrafts', () => {
     });
     expect(outboxRow).not.toBeNull();
     expect((outboxRow!.payload as { keys: string[] }).keys).toContain(privateKey);
+  });
+
+  it('enqueues a public-key photo under delete_public, not mislabelled as delete_private (reviewer-p7 M10)', async () => {
+    const user = await makeUser({ emailVerified: true });
+    const draft = await makeDraft(user.id, THIRTY_ONE_DAYS_AGO);
+    const publicKey = `public/products/${draft.id}/${randomUUID()}`;
+    await getPrisma().productPhoto.create({
+      data: {
+        productId: draft.id,
+        position: 0,
+        uploadedByUserId: user.id,
+        moderationStatus: 'approved',
+        mimeType: 'image/webp',
+        displayByteSize: 1,
+        displayWidth: 1,
+        displayHeight: 1,
+        thumbnailByteSize: 1,
+        thumbnailWidth: 1,
+        thumbnailHeight: 1,
+        publicStorageKey: publicKey,
+      },
+    });
+    await sweepStaleProductDrafts(10);
+    const privateRow = await getPrisma().mediaOperationOutbox.findFirst({ where: { operation: 'delete_private' } });
+    const publicRow = await getPrisma().mediaOperationOutbox.findFirst({ where: { operation: 'delete_public' } });
+    expect(privateRow).toBeNull();
+    expect(publicRow).not.toBeNull();
+    expect((publicRow!.payload as { keys: string[] }).keys).toContain(publicKey);
+  });
+
+  it('never deletes a product that transitions off draft status mid-sweep (reviewer-p7 C1)', async () => {
+    // Reproduces the exact proven data-loss repro: a draft crosses the
+    // sweep's staleness threshold at the same moment its creator submits it.
+    // The sweep's unlocked pre-check (`fresh`) has already read status='draft'
+    // by the time this hook fires — injecting the concurrent, submitDraft
+    // -shaped transition here, strictly *after* that read and *before* the
+    // sweep's own locked transaction opens, is exactly the proven-vulnerable
+    // window. The sweep must never delete a row a concurrent writer just
+    // legitimately claimed.
+    const user = await makeUser({ emailVerified: true });
+    const draft = await makeDraft(user.id, THIRTY_ONE_DAYS_AGO);
+
+    const prisma = getPrisma();
+    const result = await sweepStaleProductDrafts(10, false, async (productId) => {
+      // Fires right after the unlocked pre-check confirmed status='draft',
+      // strictly before the sweep opens its locked transaction — the exact
+      // window C1 proved vulnerable.
+      await prisma.product.updateMany({
+        where: { id: productId, status: { in: ['draft', 'changes_required'] } },
+        data: { status: 'pending', version: { increment: 1 } },
+      });
+    });
+
+    const after = await prisma.product.findUniqueOrThrow({ where: { id: draft.id } });
+    expect(after.status).toBe('pending'); // the concurrent submit's write survives
+    expect(result.deleted).toBe(0); // and the sweep must not have deleted it
   });
 
   it('respects the batch limit', async () => {
@@ -268,5 +341,30 @@ describe('processProductMediaCleanupOnce — overlap lock', () => {
     const second = await processProductMediaCleanupOnce();
     expect(first).not.toBeNull();
     expect(second).not.toBeNull();
+  });
+
+  it('never releases a lock a different holder legitimately re-acquired after this run\'s own token expired (reviewer-p7 I3)', async () => {
+    // Simulates the exact bug: this run's TTL expires mid-pass, a second
+    // process reclaims the now-free lock key under its own token, and this
+    // run's own finally-block release must not be able to delete it — only a
+    // release whose token still matches the stored value is allowed to
+    // succeed. Injected via the outbox step (the first thing the pass calls)
+    // so the mutation lands squarely inside this run's own critical section.
+    const outboxModule = await import('../../src/services/products/product-media-outbox.js');
+    const spy = vi.spyOn(outboxModule, 'processMediaOutboxOnce');
+    const foreignToken = 'foreign-holder-token';
+    spy.mockImplementationOnce(async () => {
+      await getRedis().set('product-media-cleanup:lock', foreignToken, 'EX', 55);
+      return { claimed: 0, completed: 0, failed: 0 };
+    });
+
+    const result = await processProductMediaCleanupOnce();
+    expect(result).not.toBeNull(); // this run still completes its own pass
+
+    const remaining = await getRedis().get('product-media-cleanup:lock');
+    expect(remaining).toBe(foreignToken); // the foreign holder's lock survives untouched
+
+    spy.mockRestore();
+    await getRedis().del('product-media-cleanup:lock');
   });
 });
