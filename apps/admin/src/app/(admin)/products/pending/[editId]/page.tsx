@@ -14,6 +14,23 @@ export default async function RevisionDetailPage({
 }) {
   const { editId } = await params;
   const revision = await serverAdminApi.products.getPendingEdit(editId);
+
+  // Lead ruling: an unsubmitted creator draft never gets moderation UI — the
+  // API-level admin read bypass stays (support/debugging), but the console
+  // treats a draft id exactly like it's not in the queue at all.
+  if (revision.status === 'draft') {
+    return (
+      <div className="space-y-6">
+        <Link href="/products/pending" className="text-sm text-neutral-mid hover:underline">
+          ← Pending queue
+        </Link>
+        <div className="rounded-lg border bg-neutral-light p-4 text-sm text-neutral-dark">
+          This revision is an unsubmitted creator draft and is not part of the moderation queue.
+        </div>
+      </div>
+    );
+  }
+
   const liveRow = await serverAdminApi.products.get(revision.productId);
   // `photos` is optional on the admin row projection (omitted from some call
   // sites); this page always needs the array form.
@@ -23,6 +40,12 @@ export default async function RevisionDetailPage({
   // revision was based on it — recovery (rebase/supersede), not an ordinary
   // approve/request-changes decision, is the only path forward from here.
   const stale = revision.liveProductVersion !== revision.baseProductVersion;
+  // reviewer-p6 I4's class applies here too: `resolveProductEdit` 409s
+  // ("Already resolved") for anything but `pending`, so `changes_required`
+  // (awaiting the creator, not the admin) and any terminal status get a
+  // read-only state instead of dead Approve/Request-Changes buttons.
+  const awaitingResubmission = !stale && revision.status === 'changes_required';
+  const alreadyResolved = !stale && (revision.status === 'approved' || revision.status === 'rejected');
 
   return (
     <div className="space-y-6">
@@ -60,6 +83,15 @@ export default async function RevisionDetailPage({
           livePhotos={live.photos}
           stagedEditPhotos={revision.photos.filter((p) => !p.retained)}
         />
+      ) : awaitingResubmission ? (
+        <div className="rounded-lg border bg-neutral-light p-4 text-sm text-neutral-dark">
+          Awaiting creator resubmission — not currently awaiting an admin decision. It will reappear
+          in the queue once resubmitted.
+        </div>
+      ) : alreadyResolved ? (
+        <div className="rounded-lg border bg-neutral-light p-4 text-sm text-neutral-dark">
+          This revision has already been resolved ({revision.status}).
+        </div>
       ) : (
         <PendingActions editId={revision.id} />
       )}

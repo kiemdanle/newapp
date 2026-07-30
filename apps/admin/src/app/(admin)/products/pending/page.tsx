@@ -1,8 +1,21 @@
 import Link from 'next/link';
+import { adminProductStatusSchema } from '@expyrico/shared';
+import { z } from 'zod';
 import { serverAdminApi } from '@/lib/admin-api';
 import { DataTable, type Column } from '@/components/data-table';
 import { StatusBadge } from '@/components/status-badge';
 import { ModerationFilters } from './moderation-filters';
+
+// reviewer-p6 M5: `sp.status` used to go straight into the upstream query
+// string unvalidated — an arbitrary `?status=bogus` produced an unhandled
+// upstream 400 that propagated out of this Server Component as a generic
+// error page. `safeParse` + a default keeps a malformed value from ever
+// reaching the API.
+const queueSearchParamsSchema = z.object({
+  type: z.enum(['new', 'revision']).optional(),
+  status: adminProductStatusSchema.optional(),
+  age: z.enum(['24h', '72h', '7d']).optional(),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -37,18 +50,19 @@ export default async function ProductsPendingPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const sp = await searchParams;
-  const type = sp.type; // 'new' | 'revision' | undefined (both)
-  const status = sp.status ?? 'pending';
-  const age = sp.age;
+  const rawSp = await searchParams;
+  const parsedSp = queueSearchParamsSchema.safeParse(rawSp);
+  // An invalid value (e.g. a hand-edited `?status=bogus`) falls back to the
+  // unfiltered defaults rather than reaching the upstream API at all.
+  const { type, status = 'pending', age } = parsedSp.success ? parsedSp.data : {};
 
   const [newProducts, revisions] = await Promise.all([
     type === 'revision'
       ? Promise.resolve({ items: [] as NewRow[], nextCursor: null as string | null })
-      : serverAdminApi.products.list({ status, cursor: sp.cursorNew }),
+      : serverAdminApi.products.list({ status, cursor: rawSp.cursorNew }),
     type === 'new'
       ? Promise.resolve({ items: [] as RevisionRow[], nextCursor: null as string | null })
-      : serverAdminApi.products.pending({ cursor: sp.cursorRevision }),
+      : serverAdminApi.products.pending({ cursor: rawSp.cursorRevision }),
   ]);
 
   let rows: QueueRow[] = [
@@ -99,12 +113,16 @@ export default async function ProductsPendingPage({
     { header: 'Age', cell: (r) => relativeAge(r.createdAt) },
   ];
 
-  const nextCursorNew = age ? null : newProducts.nextCursor;
-  const nextCursorRevision = age ? null : revisions.nextCursor;
+  // reviewer-p6 M4: the age filter is applied to each already-fetched page, not
+  // pushed to the API — so pagination stays live (never hard-disabled) rather
+  // than silently truncating a backlog larger than one page to "no more
+  // results". The UI discloses that the filter is page-scoped instead.
+  const nextCursorNew = newProducts.nextCursor;
+  const nextCursorRevision = revisions.nextCursor;
   const hasMore = Boolean(nextCursorNew || nextCursorRevision);
   const moreParams = new URLSearchParams();
   if (type) moreParams.set('type', type);
-  if (sp.status) moreParams.set('status', sp.status);
+  if (rawSp.status) moreParams.set('status', rawSp.status);
   if (age) moreParams.set('age', age);
   if (nextCursorNew) moreParams.set('cursorNew', nextCursorNew);
   if (nextCursorRevision) moreParams.set('cursorRevision', nextCursorRevision);
@@ -112,7 +130,12 @@ export default async function ProductsPendingPage({
   return (
     <div className="space-y-6">
       <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Moderation queue</h1>
-      <ModerationFilters type={type} status={sp.status} age={age} />
+      <ModerationFilters type={type} status={rawSp.status} age={age} />
+      {age && (
+        <p className="text-xs text-neutral-mid">
+          Age filter applies to this page only — load more pages to see older matches beyond it.
+        </p>
+      )}
       <DataTable data={rows} columns={columns} empty="No items match these filters." />
       {hasMore && (
         <div className="flex justify-center pt-4">

@@ -96,8 +96,9 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
 
     return adminProductRowSchema.parse({
       id: after.id, barcode: after.barcode, qrPayload: after.qrPayload, name: after.name,
-      brand: after.brand, category: after.category, imageUrl: after.imageUrl, source: after.source,
-      status: after.status, isCommunityEligible: after.isCommunityEligible,
+      description: after.description, brand: after.brand, category: after.category, imageUrl: after.imageUrl,
+      source: after.source, status: after.status, version: after.version,
+      mergedIntoProductId: after.mergedIntoProductId, isCommunityEligible: after.isCommunityEligible,
       buyAgainCount: after.buyAgainCount, buyAgainOnSaleCount: after.buyAgainOnSaleCount,
       wontBuyCount: after.wontBuyCount, ratingCount: after.ratingCount, reviewCount: after.reviewCount,
       photos: [...after.photos].sort((a, b) => a.position - b.position).map((photo) => toApiProductPhoto(photo, after.id)),

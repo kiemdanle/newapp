@@ -24,11 +24,13 @@ describe('adminProductRowSchema', () => {
     barcode: null,
     qrPayload: null,
     name: 'Milk',
+    description: null,
     brand: null,
     category: null,
     imageUrl: null,
     source: 'user' as const,
     status: 'pending' as const,
+    version: 1,
     isCommunityEligible: false,
     buyAgainCount: 0,
     buyAgainOnSaleCount: 0,
@@ -53,6 +55,13 @@ describe('adminProductRowSchema', () => {
     const parsed = adminProductRowSchema.parse(withReview);
     expect(parsed.photos).toHaveLength(1);
     expect(parsed.moderationNotes).toBe('add a clearer name');
+  });
+
+  it('carries mergedIntoProductId so a merged_into row can render its own merge state', () => {
+    const canonicalId = randomUUID();
+    const merged = { ...base, status: 'merged_into' as const, mergedIntoProductId: canonicalId };
+    expect(adminProductRowSchema.parse(merged).mergedIntoProductId).toBe(canonicalId);
+    expect(adminProductRowSchema.parse(base).mergedIntoProductId).toBeUndefined();
   });
 });
 

@@ -25,8 +25,9 @@ export async function adminProductsModerateRoute(app: FastifyInstance) {
     // admin-only fields (see `toApiProduct`'s comment on `moderationFeedback`).
     const p = await getPrisma().product.findUniqueOrThrow({ where: { id }, include: PRODUCT_INCLUDE });
     return adminProductRowSchema.parse({
-      id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, brand: p.brand,
-      category: p.category, imageUrl: p.imageUrl, source: p.source, status: p.status,
+      id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, description: p.description,
+      brand: p.brand, category: p.category, imageUrl: p.imageUrl, source: p.source, status: p.status,
+      version: p.version, mergedIntoProductId: p.mergedIntoProductId,
       isCommunityEligible: p.isCommunityEligible, buyAgainCount: p.buyAgainCount,
       buyAgainOnSaleCount: p.buyAgainOnSaleCount, wontBuyCount: p.wontBuyCount,
       ratingCount: p.ratingCount, reviewCount: p.reviewCount,

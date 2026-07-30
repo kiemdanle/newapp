@@ -21,6 +21,7 @@ export function ProductActions({
   brand,
   category,
   status,
+  priorFeedback,
 }: {
   id: string;
   version: number;
@@ -28,6 +29,7 @@ export function ProductActions({
   brand: string | null;
   category: string | null;
   status: string;
+  priorFeedback: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -37,7 +39,12 @@ export function ProductActions({
   const [form, setForm] = useState({ name, brand: brand ?? '', category: category ?? '' });
   const [requestingChanges, setRequestingChanges] = useState(false);
   const [moderationNotes, setModerationNotes] = useState('');
-  const needsModeration = status === 'pending' || status === 'changes_required';
+  // I4: `moderateProduct` rejects anything but `status === 'pending'` (409) —
+  // a `changes_required` row is not awaiting an admin decision, it's awaiting
+  // the creator's resubmission. Showing live Approve/Request-Changes buttons
+  // there was a guaranteed dead end; it gets a read-only state instead.
+  const needsModeration = status === 'pending';
+  const awaitingResubmission = status === 'changes_required';
 
   // Never auto-retries against changed content: a `version_conflict` clears any
   // in-flight intent and requires an explicit refresh (which re-fetches the
@@ -100,13 +107,37 @@ export function ProductActions({
             </div>
           ) : (
             <div className="flex gap-2">
-              <Button size="sm" disabled={pending} onClick={() => run(() => moderateProductAction(id, 'approve', version))}>
+              <Button
+                size="sm"
+                disabled={pending}
+                onClick={() =>
+                  run(
+                    () => moderateProductAction(id, 'approve', version),
+                    'Approve this submission? It publishes to the live catalog immediately.',
+                  )
+                }
+              >
                 Approve
               </Button>
               <Button variant="accent" size="sm" disabled={pending} onClick={() => setRequestingChanges(true)}>
                 Request Changes
               </Button>
             </div>
+          )}
+        </div>
+      )}
+
+      {awaitingResubmission && (
+        <div className="space-y-2 rounded-lg border bg-neutral-light p-4">
+          <h2 className="text-sm font-semibold">Awaiting creator resubmission</h2>
+          <p className="text-xs text-muted-foreground">
+            This submission was returned to its creator for changes and is not currently awaiting an
+            admin decision — it will reappear in the queue once resubmitted.
+          </p>
+          {priorFeedback && (
+            <p className="rounded-md border bg-background p-3 text-sm text-neutral-dark">
+              Feedback sent: {priorFeedback}
+            </p>
           )}
         </div>
       )}

@@ -77,9 +77,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<Record<strin
   return new NextResponse(upstream.body, {
     status: 200,
     headers: {
-      // Own headers set unconditionally, regardless of whether upstream already set
-      // them — this proxy is the last point of control before the browser.
-      'Content-Type': upstream.headers.get('content-type') ?? 'image/webp',
+      // Forced unconditionally, never passed through from upstream — this proxy
+      // is the last point of control before the browser, and both upstream
+      // routes only ever serve `image/webp` bytes. `nosniff` alone doesn't stop
+      // a browser honoring an explicit `Content-Type` the proxy didn't intend.
+      'Content-Type': 'image/webp',
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     },

@@ -4,15 +4,17 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { resolveProductEditAction } from '@/lib/actions';
-import { actionErrorMessage } from '@/lib/action-result';
+import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
 
 /**
  * Approve/request-changes decision for a pending revision (`ProductEdit`).
  * `request_changes` requires a non-empty reason — the API rejects it otherwise.
- * A `version_conflict` (someone else already resolved this edit, or the admin's
- * loaded view is otherwise stale) never auto-retries: it clears the in-flight
- * decision and requires an explicit refresh, which re-fetches the edit's current
- * state before the admin can act again.
+ * This route reads/supplies its own version token server-side, so the realistic
+ * conflicts an admin hits here are `edit_base_stale` (live product moved since
+ * this revision was based on it) and `conflict` ("already resolved") — both
+ * treated the same as `version_conflict` (reviewer-p6 M2): never auto-retry,
+ * require an explicit refresh, which re-fetches the edit's current state (and,
+ * for a stale base, swaps this panel for the recovery actions).
  */
 export function PendingActions({ editId }: { editId: string }) {
   const router = useRouter();
@@ -34,7 +36,7 @@ export function PendingActions({ editId }: { editId: string }) {
         return;
       }
       setErr(actionErrorMessage(result));
-      if (result.code === 'version_conflict') setConflict(true);
+      if (isConflictCode(result.code)) setConflict(true);
     });
   }
 
@@ -81,7 +83,15 @@ export function PendingActions({ editId }: { editId: string }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-2">
-        <Button size="sm" disabled={pending} onClick={() => decide('approve')}>
+        <Button
+          size="sm"
+          disabled={pending}
+          onClick={() => {
+            if (window.confirm('Approve this revision? It publishes to the live catalog immediately.')) {
+              decide('approve');
+            }
+          }}
+        >
           Approve
         </Button>
         <Button

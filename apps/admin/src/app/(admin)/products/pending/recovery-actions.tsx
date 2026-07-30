@@ -5,8 +5,10 @@ import type { ProductEditRecoverRequest } from '@expyrico/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { recoverProductEditAction } from '@/lib/actions';
-import { actionErrorMessage } from '@/lib/action-result';
+import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
 import { resolveAdminPhotoUrl } from '@/lib/admin-media';
+
+const MAX_PHOTOS = 5;
 
 interface LivePhoto {
   id: string;
@@ -24,17 +26,53 @@ type Candidate =
   | { kind: 'retained'; sourceProductPhotoId: string; thumbnailUrl: string; displayUrl: string }
   | { kind: 'staged'; editPhotoId: string; thumbnailUrl: string; displayUrl: string };
 
+function candidateKey(c: Candidate): string {
+  return c.kind === 'retained' ? `retained:${c.sourceProductPhotoId}` : `staged:${c.editPhotoId}`;
+}
+
+function candidateId(c: Candidate): string {
+  return c.kind === 'retained' ? c.sourceProductPhotoId : c.editPhotoId;
+}
+
+function CandidateThumb({
+  candidate,
+  productId,
+  editId,
+}: {
+  candidate: Candidate;
+  productId: string;
+  editId: string;
+}) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={resolveAdminPhotoUrl(
+        candidate.kind === 'retained' ? 'product' : 'edit',
+        candidate.kind === 'retained' ? productId : editId,
+        { id: candidateId(candidate), thumbnailUrl: candidate.thumbnailUrl, displayUrl: candidate.displayUrl },
+        'thumb',
+      )}
+      alt=""
+      className="h-10 w-10 rounded border object-cover"
+    />
+  );
+}
+
 /**
  * Stale-revision recovery: shown only when `liveProductVersion !==
  * baseProductVersion`. **Rebase** requires the admin's own reviewed mapping of
  * which photos to keep — never auto-computed from a diff — built from the two
  * pools that are actually re-referenceable: the product's *current* live photos
  * (`retained`, keyed by their real `ProductPhoto` id) and this revision's own
- * still-staged photos (`staged`, keyed by their `ProductEditPhoto` id). Up/down
- * controls (not drag-and-drop) keep photo reordering keyboard-accessible.
- * **Supersede** is destructive (Alert Red) and requires confirmation — it closes
- * the revision as historical `rejected` and frees the creator's one-open-edit
- * slot to start again.
+ * still-staged photos (`staged`, keyed by their `ProductEditPhoto` id).
+ *
+ * reviewer-p6 I2/I3: the submitted `desiredPhotoOrder` is rendered directly —
+ * a separate "Selected" list, in the exact order/positions that will be sent
+ * — rather than an immutable candidate list that visually diverges from what
+ * the ↑/↓ controls actually reorder. The contract caps `desiredPhotoOrder` at
+ * 5 entries, enforced here too (disabled "Add" past the cap, `n/5` counter,
+ * and a valid capped-at-5 default) so the default state is never a guaranteed
+ * 400.
  */
 export function RecoveryActions({
   editId,
@@ -65,18 +103,22 @@ export function RecoveryActions({
     [livePhotos, stagedEditPhotos],
   );
 
-  // Defaults to every candidate kept, in its natural (live-then-staged) order —
-  // the admin trims/reorders from there rather than starting from nothing.
-  const [order, setOrder] = useState<Candidate[]>(allCandidates);
+  // Valid-by-construction default: capped at MAX_PHOTOS, in natural (live-then
+  // -staged) order. The admin trims/reorders/adds from there — never starts
+  // from a state guaranteed to exceed the contract's cap.
+  const [order, setOrder] = useState<Candidate[]>(() => allCandidates.slice(0, MAX_PHOTOS));
 
-  function candidateKey(c: Candidate): string {
-    return c.kind === 'retained' ? `retained:${c.sourceProductPhotoId}` : `staged:${c.editPhotoId}`;
+  const orderedKeys = useMemo(() => new Set(order.map(candidateKey)), [order]);
+  const available = allCandidates.filter((c) => !orderedKeys.has(candidateKey(c)));
+  const atCap = order.length >= MAX_PHOTOS;
+
+  function add(c: Candidate) {
+    if (atCap) return;
+    setOrder((prev) => [...prev, c]);
   }
 
-  function toggle(c: Candidate, checked: boolean) {
-    setOrder((prev) =>
-      checked ? [...prev, c] : prev.filter((x) => candidateKey(x) !== candidateKey(c)),
-    );
+  function remove(index: number) {
+    setOrder((prev) => prev.filter((_, i) => i !== index));
   }
 
   function move(index: number, delta: number) {
@@ -121,7 +163,7 @@ export function RecoveryActions({
         return;
       }
       setErr(actionErrorMessage(result));
-      if (result.code === 'version_conflict') setConflict(true);
+      if (isConflictCode(result.code)) setConflict(true);
     });
   }
 
@@ -133,40 +175,60 @@ export function RecoveryActions({
         below, then rebase (returns to the queue for re-review) or supersede (closes this revision).
       </p>
 
-      <ul className="space-y-1">
-        {allCandidates.map((c) => {
-          const key = candidateKey(c);
-          const checked = order.some((x) => candidateKey(x) === key);
-          const idx = order.findIndex((x) => candidateKey(x) === key);
-          return (
-            <li key={key} className="flex items-center gap-3 rounded border p-2">
-              <input
-                type="checkbox"
-                aria-label={`Keep ${c.kind === 'retained' ? 'live' : 'staged'} photo`}
-                checked={checked}
-                onChange={(e) => toggle(c, e.target.checked)}
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={resolveAdminPhotoUrl(c.kind === 'retained' ? 'product' : 'edit', c.kind === 'retained' ? productId : editId, { id: c.kind === 'retained' ? c.sourceProductPhotoId : c.editPhotoId, thumbnailUrl: c.thumbnailUrl, displayUrl: c.displayUrl }, 'thumb')}
-                alt=""
-                className="h-10 w-10 rounded border object-cover"
-              />
-              <span className="flex-1 text-xs text-muted-foreground">{c.kind === 'retained' ? 'Currently live' : 'Staged in this revision'}</span>
-              {checked && (
-                <div className="flex gap-1">
-                  <button type="button" aria-label="Move up" disabled={idx <= 0} onClick={() => move(idx, -1)} className="disabled:opacity-30">
-                    ↑
-                  </button>
-                  <button type="button" aria-label="Move down" disabled={idx < 0 || idx >= order.length - 1} onClick={() => move(idx, 1)} className="disabled:opacity-30">
-                    ↓
-                  </button>
-                </div>
-              )}
+      <div>
+        <h3 className="mb-1 text-xs font-semibold text-neutral-mid">
+          Selected ({order.length}/{MAX_PHOTOS})
+        </h3>
+        {order.length === 0 && <p className="text-xs text-muted-foreground">No photos selected.</p>}
+        <ul className="space-y-1">
+          {order.map((c, i) => (
+            <li key={candidateKey(c)} className="flex items-center gap-3 rounded border p-2">
+              <span className="w-4 text-xs text-neutral-mid">{i + 1}</span>
+              <CandidateThumb candidate={c} productId={productId} editId={editId} />
+              <span className="flex-1 text-xs text-muted-foreground">
+                {c.kind === 'retained' ? 'Currently live' : 'Staged in this revision'}
+              </span>
+              <div className="flex gap-1">
+                <button type="button" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)} className="disabled:opacity-30">
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label="Move down"
+                  disabled={i === order.length - 1}
+                  onClick={() => move(i, 1)}
+                  className="disabled:opacity-30"
+                >
+                  ↓
+                </button>
+                <button type="button" aria-label="Remove from selection" onClick={() => remove(i)} className="text-expired">
+                  Remove
+                </button>
+              </div>
             </li>
-          );
-        })}
-      </ul>
+          ))}
+        </ul>
+      </div>
+
+      {available.length > 0 && (
+        <div>
+          <h3 className="mb-1 text-xs font-semibold text-neutral-mid">Available</h3>
+          <ul className="space-y-1">
+            {available.map((c) => (
+              <li key={candidateKey(c)} className="flex items-center gap-3 rounded border p-2">
+                <CandidateThumb candidate={c} productId={productId} editId={editId} />
+                <span className="flex-1 text-xs text-muted-foreground">
+                  {c.kind === 'retained' ? 'Currently live' : 'Staged in this revision'}
+                </span>
+                <Button size="sm" variant="outline" disabled={atCap} onClick={() => add(c)}>
+                  Add
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {atCap && <p className="mt-1 text-xs text-muted-foreground">Maximum of {MAX_PHOTOS} photos — remove one to add another.</p>}
+        </div>
+      )}
 
       <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" disabled={pending} />
 

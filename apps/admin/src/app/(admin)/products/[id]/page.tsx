@@ -15,6 +15,11 @@ export default async function ProductDetailPage({
   const { id } = await params;
   const p = await serverAdminApi.products.get(id);
 
+  // Reviewer-p6 ruling: a merged_into row always renders as itself — never
+  // silently the canonical product's data — with an explicit banner and link,
+  // detected from this row's own status/mergedIntoProductId.
+  const isMerged = p.status === 'merged_into';
+
   return (
     <div className="space-y-6">
       <Link href="/products" className="text-sm text-neutral-mid hover:underline">
@@ -40,6 +45,20 @@ export default async function ProductDetailPage({
         </div>
       </div>
 
+      {isMerged && (
+        <div className="rounded-lg border bg-neutral-light p-4 text-sm text-neutral-dark">
+          This product was merged into another product and is no longer active.
+          {p.mergedIntoProductId && (
+            <>
+              {' '}
+              <Link href={`/products/${p.mergedIntoProductId}`} className="font-medium text-primary hover:underline">
+                View the product it was merged into →
+              </Link>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <KpiCard label="Reviews" value={p.reviewCount} />
         <KpiCard label="Ratings" value={p.ratingCount} />
@@ -49,16 +68,21 @@ export default async function ProductDetailPage({
         <KpiCard label="Community" value={p.isCommunityEligible ? 'Yes' : 'No'} />
       </div>
 
-      <ProductPhotoManager productId={p.id} photos={p.photos ?? []} />
+      {!isMerged && (
+        <>
+          <ProductPhotoManager productId={p.id} photos={p.photos ?? []} />
 
-      <ProductActions
-        id={p.id}
-        version={p.version}
-        name={p.name}
-        brand={p.brand}
-        category={p.category}
-        status={p.status}
-      />
+          <ProductActions
+            id={p.id}
+            version={p.version}
+            name={p.name}
+            brand={p.brand}
+            category={p.category}
+            status={p.status}
+            priorFeedback={p.moderationNotes ?? null}
+          />
+        </>
+      )}
     </div>
   );
 }

@@ -7,9 +7,10 @@ import { toApiProductPhoto } from '../../../services/products/serializer.js';
 
 function toRow(p: ProductWithPhotos) {
   return {
-    id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, brand: p.brand,
-    category: p.category, imageUrl: p.imageUrl, source: p.source as 'off' | 'upcitemdb' | 'user',
-    status: p.status as 'active' | 'pending' | 'merged_into', isCommunityEligible: p.isCommunityEligible,
+    id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, description: p.description,
+    brand: p.brand, category: p.category, imageUrl: p.imageUrl, source: p.source as 'off' | 'upcitemdb' | 'user',
+    status: p.status as 'active' | 'pending' | 'merged_into', version: p.version,
+    mergedIntoProductId: p.mergedIntoProductId, isCommunityEligible: p.isCommunityEligible,
     buyAgainCount: p.buyAgainCount, buyAgainOnSaleCount: p.buyAgainOnSaleCount,
     wontBuyCount: p.wontBuyCount, ratingCount: p.ratingCount, reviewCount: p.reviewCount,
     // Ordered review media, admin-only — never included in the public product DTO.

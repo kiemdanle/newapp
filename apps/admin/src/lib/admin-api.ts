@@ -74,27 +74,13 @@ export const serverAdminApi = {
   products: {
     list: (q: Q = {}) =>
       apiServerFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
-    // `adminProductRowSchema` (the admin-only projection: moderation notes/timestamp)
-    // has no `version` field — but `patch`/`merge`/`moderate` all require the caller's
-    // last-known `version` as an optimistic-concurrency token. Rather than block on a
-    // projection change to a file outside this phase's ownership, this composes the
-    // admin row with a second, already-authorized read: `GET /v1/products/:id` grants
-    // an admin actor unrestricted access to any product regardless of status
-    // (`getVisibleProduct`'s explicit `actor.role === 'admin'` bypass) and its DTO
-    // already carries `version`. Single-item only — never used from `list()`, which
-    // would turn this into an N+1 over every row.
-    get: (id: string) =>
-      Promise.all([
-        apiServerFetch(`/v1/admin/products/${id}`),
-        apiServerFetch(`/v1/products/${id}`),
-      ]).then(([adminRow, general]) => {
-        const generalProduct = productSchema.parse(general);
-        return {
-          ...adminProductRowSchema.parse(adminRow),
-          version: generalProduct.version,
-          description: generalProduct.description,
-        };
-      }),
+    // `adminProductRowSchema` carries `version`/`description`/`mergedIntoProductId`
+    // directly (reviewer-p6 I1/M3: a prior two-request composition grafted a
+    // *different* product's version/description onto this row via the general
+    // product-get route, which silently broke identity on a `merged_into` row —
+    // that route resolves merge chains to the canonical product before returning).
+    // Single request, always describes exactly the row asked for.
+    get: (id: string) => apiServerFetch(`/v1/admin/products/${id}`).then((r) => adminProductRowSchema.parse(r)),
     // `version` is the admin's last-known product version — required so a direct
     // correction is optimistic-concurrency-guarded, not applied blind.
     patch: (id: string, version: number, body: object) =>

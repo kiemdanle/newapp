@@ -103,14 +103,55 @@ test.describe('revision detail', () => {
 });
 
 test.describe('direct photo correction', () => {
-  test('reorders and removes a live product photo', async ({ page }) => {
+  test('reorders photos via keyboard (↑/↓) controls, not just drag-and-drop', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`/products/${FIXTURE.pendingProductId}`);
+
+    const coverImg = page.locator('img[alt="Cover photo"]');
+    await expect(coverImg).toHaveAttribute('src', new RegExp(FIXTURE.pendingProductPhotoId));
+
+    // Move the first (cover) photo later — the second photo becomes the new
+    // cover. This is the same reordering the recovery-actions rebase UI relies
+    // on being keyboard-operable, not mouse-drag-only.
+    await page.getByRole('button', { name: 'Move photo later' }).first().click();
+    await expect(coverImg).toHaveAttribute('src', new RegExp(FIXTURE.pendingProductSecondPhotoId));
+
+    // Move it back with ↑ to confirm the control is bidirectional.
+    await page.getByRole('button', { name: 'Move photo earlier' }).nth(1).click();
+    await expect(coverImg).toHaveAttribute('src', new RegExp(FIXTURE.pendingProductPhotoId));
+  });
+
+  test('removes photos down to empty', async ({ page }) => {
     await loginAsAdmin(page);
     await page.goto(`/products/${FIXTURE.pendingProductId}`);
 
     await expect(page.getByText('Cover')).toBeVisible();
     page.once('dialog', (d) => d.accept());
-    await page.getByRole('button', { name: 'Remove photo' }).click();
+    await page.getByRole('button', { name: 'Remove photo' }).first().click();
+    await expect(page.getByText('No photos.')).not.toBeVisible();
+
+    page.once('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'Remove photo' }).first().click();
     await expect(page.getByText('No photos.')).toBeVisible();
+  });
+});
+
+test.describe('conflict handling', () => {
+  test('a stale version_conflict on direct correction shows the refresh affordance, never an auto-retry', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`/products/${FIXTURE.pendingProductId}`);
+
+    await page.getByLabel('Name').fill('New Scanned Snacks (renamed once)');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText('Saved.')).toBeVisible();
+
+    // The component still holds the version it loaded with — a second save
+    // without a page reload submits that now-stale token against the version
+    // the first save just incremented server-side.
+    await page.getByLabel('Name').fill('New Scanned Snacks (renamed twice)');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText(/refresh/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Refresh' })).toBeVisible();
   });
 });
 
@@ -129,6 +170,35 @@ test.describe('private media proxy', () => {
     // The proxy response never carries a bearer token or the upstream URL.
     expect(res.headers()['authorization']).toBeUndefined();
     expect(res.headers()['location']).toBeUndefined();
+  });
+
+  test('serves staged edit-kind bytes too, not just product-kind', async ({ page }) => {
+    // The `edit` upstream prefix (`/v1/product-edits/:id/photos/...`) is half
+    // the proxy's surface — only `product` was exercised before.
+    await loginAsAdmin(page);
+    const res = await page.request.get(
+      `/api/admin-product-media/edit/${FIXTURE.pendingEditId}/${FIXTURE.stagedEditPhotoId}/thumb`,
+    );
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toBe('image/webp');
+    const body = await res.body();
+    expect(body.length).toBeGreaterThan(0);
+  });
+
+  test('404s cleanly on an invalid variant', async ({ page }) => {
+    await loginAsAdmin(page);
+    const res = await page.request.get(
+      `/api/admin-product-media/product/${FIXTURE.pendingProductId}/${FIXTURE.pendingProductPhotoId}/huge`,
+    );
+    expect(res.status()).toBe(404);
+    expect((await res.body()).length).toBe(0);
+  });
+
+  test('404s cleanly on a non-UUID parentId/photoId', async ({ page }) => {
+    await loginAsAdmin(page);
+    const res = await page.request.get('/api/admin-product-media/product/not-a-uuid/also-not-a-uuid/thumb');
+    expect(res.status()).toBe(404);
+    expect((await res.body()).length).toBe(0);
   });
 
   test('denies an anonymous request before it ever reaches this route (redirected by the auth middleware first)', async ({
@@ -150,15 +220,16 @@ test.describe('private media proxy', () => {
     await anonContext.close();
   });
 
-  test('404s cleanly on an invalid target kind', async ({ page }) => {
+  test('404s cleanly on an invalid target kind, with no leaked body', async ({ page }) => {
     await loginAsAdmin(page);
     const res = await page.request.get(
       `/api/admin-product-media/not-a-kind/${FIXTURE.pendingProductId}/${FIXTURE.pendingProductPhotoId}/thumb`,
     );
     expect(res.status()).toBe(404);
+    expect((await res.body()).length).toBe(0);
   });
 
-  test('404s cleanly on a cross-product photoId substitution', async ({ page }) => {
+  test('404s cleanly on a cross-product photoId substitution, with no leaked body', async ({ page }) => {
     await loginAsAdmin(page);
     // `pendingProductPhotoId` belongs to `pendingProductId`, not `activeProductId` —
     // the parent-bound lookup must 404 rather than serve it under the wrong parent.
@@ -166,6 +237,7 @@ test.describe('private media proxy', () => {
       `/api/admin-product-media/product/${FIXTURE.activeProductId}/${FIXTURE.pendingProductPhotoId}/thumb`,
     );
     expect(res.status()).toBe(404);
+    expect((await res.body()).length).toBe(0);
   });
 
   test('sets its own no-store/nosniff headers even when the upstream 404s', async ({ page }) => {

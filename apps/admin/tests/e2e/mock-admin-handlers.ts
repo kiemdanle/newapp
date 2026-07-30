@@ -22,6 +22,13 @@
 
 import type { IncomingMessage } from 'node:http';
 import {
+  adminProductRowSchema,
+  adminProductEditRowSchema,
+  adminProductEditDetailSchema,
+  adminProductMergeResponseSchema,
+  productEditRowSchema,
+} from '@expyrico/shared';
+import {
   reset,
   store,
   userDetail,
@@ -46,16 +53,19 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
 }
 
 function productRow(p: ProductRow) {
-  return {
+  return adminProductRowSchema.parse({
     id: p.id,
     barcode: p.barcode,
     qrPayload: p.qrPayload,
     name: p.name,
+    description: p.description,
     brand: p.brand,
     category: p.category,
     imageUrl: p.imageUrl,
     source: p.source,
     status: p.status,
+    version: p.version,
+    mergedIntoProductId: p.mergedIntoProductId,
     isCommunityEligible: p.isCommunityEligible,
     buyAgainCount: p.buyAgainCount,
     buyAgainOnSaleCount: p.buyAgainOnSaleCount,
@@ -75,15 +85,16 @@ function productRow(p: ProductRow) {
     moderatedAt: null,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-  };
+  });
 }
 
 function editListRow(e: ProductEditRow) {
-  return {
+  return adminProductEditRowSchema.parse({
     id: e.id,
     productId: e.productId,
     submittedBy: e.submittedBy,
     proposed: { name: e.name, description: e.description, brand: e.brand, category: e.category },
+    name: e.name,
     status: e.status,
     version: e.version,
     baseProductVersion: e.baseProductVersion,
@@ -92,7 +103,7 @@ function editListRow(e: ProductEditRow) {
     resolvedBy: null,
     resolvedAt: null,
     createdAt: e.createdAt,
-  };
+  });
 }
 
 // The creator-facing `productEditRowSchema` shape (`.strict()` — no admin-only
@@ -100,7 +111,7 @@ function editListRow(e: ProductEditRow) {
 // product* (request_changes, rebase, supersede) must return exactly this shape,
 // not the queue's `editListRow` projection, or the client's schema parse throws.
 function creatorEditRow(e: ProductEditRow) {
-  return {
+  return productEditRowSchema.parse({
     id: e.id,
     productId: e.productId,
     status: e.status,
@@ -123,11 +134,11 @@ function creatorEditRow(e: ProductEditRow) {
     moderationFeedback: e.moderationNotes,
     submittedAt: e.submittedAt,
     updatedAt: e.updatedAt,
-  };
+  });
 }
 
 function editDetailRow(e: ProductEditRow, liveProductVersion: number) {
-  return { ...creatorEditRow(e), submittedBy: e.submittedBy, liveProductVersion };
+  return adminProductEditDetailSchema.parse({ ...creatorEditRow(e), submittedBy: e.submittedBy, liveProductVersion });
 }
 
 /**
@@ -300,6 +311,7 @@ export async function handleAdmin(
     let movedReviews = 0;
     for (const source of sources) {
       source.status = 'merged_into';
+      source.mergedIntoProductId = target.id;
       movedReviews += source.reviewCount;
       target.reviewCount += source.reviewCount;
       target.ratingCount += source.ratingCount;
@@ -310,7 +322,7 @@ export async function handleAdmin(
     target.version += 1;
     return {
       status: 200,
-      body: {
+      body: adminProductMergeResponseSchema.parse({
         targetId,
         movedRecords: 0,
         movedReviews,
@@ -319,7 +331,7 @@ export async function handleAdmin(
         newBuyAgainCount: target.buyAgainCount,
         newBuyAgainOnSaleCount: target.buyAgainOnSaleCount,
         newWontBuyCount: target.wontBuyCount,
-      },
+      }),
     };
   }
 

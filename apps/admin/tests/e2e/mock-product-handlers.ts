@@ -13,7 +13,7 @@
 
 import type { IncomingMessage } from 'node:http';
 import { ACCESS_TOKEN } from './mock-api-constants';
-import { store, MOCK_IMAGE_BYTES, fullProductDto } from './mock-store';
+import { store, MOCK_IMAGE_BYTES, fullProductDto, fullProductWithReviewsDto } from './mock-store';
 
 export interface BinaryResp {
   status: number;
@@ -72,7 +72,7 @@ export async function handleProducts(method: string, url: string, req: IncomingM
     if (!req.headers.authorization) return { status: 401, body: { code: 'unauthorized' } };
     const p = store.products.find((x) => x.id === productById[1]);
     if (!p) return { status: 404, body: { code: 'not_found' } };
-    return { status: 200, body: fullProductDto(p) };
+    return { status: 200, body: fullProductWithReviewsDto(p) };
   }
 
   // --- Photo reorder (admin bypasses ownership) ---

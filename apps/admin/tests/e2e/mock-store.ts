@@ -4,8 +4,15 @@
 // (see mock-api.ts) so each spec starts from a clean, known state even though
 // Playwright reuses one mock-server process across tests.
 //
-// Every shape here matches the @expyrico/shared admin Zod schemas that
-// serverAdminApi parses — keep them in sync or the admin pages 500 on parse.
+// reviewer-p6 M7: every response builder below `.parse()`s its own output
+// against the real @expyrico/shared schema the corresponding upstream route
+// actually returns, before handing it back. A hand-shaped mock response that
+// silently diverges from the real contract then fails loudly right here
+// (cheap, in the mock) instead of only surfacing as a confusing client-side
+// parse error deep in a spec, or — worse — never surfacing at all, since
+// non-strict schemas (like `productSchema`) drop unknown fields the mock
+// happens to omit without complaint.
+import { productSchema, productWithReviewsSchema } from '@expyrico/shared';
 
 const now = new Date('2026-06-01T00:00:00.000Z').toISOString();
 
@@ -20,6 +27,7 @@ export const FIXTURE = {
   // Phase 6 moderation console fixtures.
   pendingProductId: 'dddddddd-0000-4000-8000-000000000001',
   pendingProductPhotoId: 'dddddddd-0000-4000-8000-000000000002',
+  pendingProductSecondPhotoId: 'dddddddd-0000-4000-8000-000000000006',
   activeProductId: 'eeeeeeee-0000-4000-8000-000000000001',
   activeProductPhotoId: 'eeeeeeee-0000-4000-8000-000000000002',
   pendingEditId: 'ffffffff-0000-4000-8000-000000000001',
@@ -70,6 +78,7 @@ export interface ProductRow {
   source: 'off' | 'upcitemdb' | 'user';
   status: 'draft' | 'pending' | 'changes_required' | 'active' | 'report_hidden' | 'merged_into';
   version: number;
+  mergedIntoProductId: string | null;
   isCommunityEligible: boolean;
   buyAgainCount: number;
   buyAgainOnSaleCount: number;
@@ -138,6 +147,7 @@ function product(over: Partial<ProductRow> & Pick<ProductRow, 'id' | 'name'>): P
     source: 'user',
     status: 'active',
     version: 1,
+    mergedIntoProductId: null,
     isCommunityEligible: false,
     buyAgainCount: 0,
     buyAgainOnSaleCount: 0,
@@ -214,7 +224,10 @@ export function seed(): Store {
         brand: 'Acme',
         status: 'pending',
         version: 1,
-        photos: [{ id: FIXTURE.pendingProductPhotoId, position: 0, moderationStatus: 'pending' }],
+        photos: [
+          { id: FIXTURE.pendingProductPhotoId, position: 0, moderationStatus: 'pending' },
+          { id: FIXTURE.pendingProductSecondPhotoId, position: 1, moderationStatus: 'pending' },
+        ],
       }),
       // An already-active product with an open revision against it — used by the
       // revision detail/comparison and photo-manager specs.
@@ -318,13 +331,12 @@ export function editPhotoUrls(editId: string, photo: MockEditPhoto, variant: 'th
 }
 
 /**
- * Full `productSchema`-shaped DTO (the general, non-admin-prefixed `GET
- * /v1/products/:id` route) — every field an admin's `resolveEdit`/`get` call
- * needs, including `version` and `description`, which the narrower admin-only
- * row projection omits.
+ * `productSchema`-shaped DTO — what the real `/v1/products/:id/photos/order`,
+ * `/v1/products/:id/photos/:photoId` (DELETE), and revision-approve routes all
+ * return (`toApiProduct`'s shape, not the admin-only projection).
  */
 export function fullProductDto(p: ProductRow) {
-  return {
+  return productSchema.parse({
     id: p.id,
     barcode: p.barcode,
     qrPayload: p.qrPayload,
@@ -355,7 +367,17 @@ export function fullProductDto(p: ProductRow) {
       })),
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-  };
+  });
+}
+
+/**
+ * `productWithReviewsSchema`-shaped DTO — what the real, single-product
+ * `GET /v1/products/:id` route actually returns (`fullProductDto` plus
+ * `topReviews`, always `[]` for M2's not-yet-implemented top-reviews feature,
+ * matching the real route's own `topReviews: []` placeholder).
+ */
+export function fullProductWithReviewsDto(p: ProductRow) {
+  return productWithReviewsSchema.parse({ ...fullProductDto(p), topReviews: [] });
 }
 
 export function userDetail(u: UserRow) {

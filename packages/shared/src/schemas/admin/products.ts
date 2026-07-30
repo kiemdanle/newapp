@@ -12,11 +12,25 @@ export const adminProductRowSchema = z.object({
   barcode: z.string().nullable(),
   qrPayload: z.string().nullable(),
   name: z.string(),
+  description: z.string().nullable(),
   brand: z.string().nullable(),
   category: z.string().nullable(),
   imageUrl: z.string().nullable(),
   source: adminProductSourceSchema,
   status: adminProductStatusSchema,
+  // Optimistic-concurrency token: the caller's last-known version, required by
+  // patch/merge/moderate. Was previously missing from this projection entirely
+  // (reviewer-p6 I1/M3) — the admin client had to graft a *different* product's
+  // version (and description) onto this row via a second request against the
+  // general product-get route, which silently broke on a `merged_into` row
+  // (that route resolves merge chains to the canonical product before
+  // returning — a different id/version/description than this row's own).
+  // Both fields now always describe *this* row directly.
+  version: z.number().int().min(1),
+  // Set only when `status === 'merged_into'` — lets the console render an
+  // explicit "merged into X" state for this exact row rather than silently
+  // borrowing the canonical product's data.
+  mergedIntoProductId: z.string().uuid().nullable().optional(),
   isCommunityEligible: z.boolean(),
   buyAgainCount: z.number().int(),
   buyAgainOnSaleCount: z.number().int(),
