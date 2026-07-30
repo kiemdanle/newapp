@@ -342,12 +342,21 @@ describe('productDraftReorderRequestSchema', () => {
 });
 
 describe('productDraftSubmitRequestSchema', () => {
-  it('requires version and abuseToken', () => {
-    expect(productDraftSubmitRequestSchema.parse({ version: 1, abuseToken: 'tok' })).toEqual({
+  it('requires version, abuseToken, and platform', () => {
+    expect(productDraftSubmitRequestSchema.parse({ version: 1, abuseToken: 'tok', platform: 'android' })).toEqual({
       version: 1,
       abuseToken: 'tok',
+      platform: 'android',
     });
-    expect(() => productDraftSubmitRequestSchema.parse({ version: 1 })).toThrow();
-    expect(() => productDraftSubmitRequestSchema.parse({ abuseToken: 'tok' })).toThrow();
+    expect(() => productDraftSubmitRequestSchema.parse({ version: 1, abuseToken: 'tok' })).toThrow();
+    expect(() => productDraftSubmitRequestSchema.parse({ version: 1, platform: 'ios' })).toThrow();
+    expect(() => productDraftSubmitRequestSchema.parse({ abuseToken: 'tok', platform: 'ios' })).toThrow();
+  });
+
+  it('accepts android and ios only', () => {
+    expect(productDraftSubmitRequestSchema.parse({ version: 1, abuseToken: 'tok', platform: 'ios' }).platform).toBe('ios');
+    expect(() =>
+      productDraftSubmitRequestSchema.parse({ version: 1, abuseToken: 'tok', platform: 'web' }),
+    ).toThrow();
   });
 });

@@ -284,10 +284,17 @@ export const productDraftReorderRequestSchema = z
   });
 export type ProductDraftReorderRequest = z.infer<typeof productDraftReorderRequestSchema>;
 
+// `platform` selects which reCAPTCHA Enterprise site key the server assesses
+// `abuseToken` against — Android and iOS each require a distinct registered
+// key (Google does not allow one key to cover both platforms). No trust is
+// placed in this value beyond that selection: a client that lies about its
+// platform submits a token minted against the *other* key, which the
+// assessment call rejects as invalid, never accepted.
 export const productDraftSubmitRequestSchema = z
   .object({
     version: z.number().int().min(1),
     abuseToken: z.string().trim().min(1),
+    platform: z.enum(['android', 'ios']),
   })
   .strict();
 export type ProductDraftSubmitRequest = z.infer<typeof productDraftSubmitRequestSchema>;

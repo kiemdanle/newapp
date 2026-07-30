@@ -10,6 +10,7 @@ import {
   type Product as ApiProduct,
   type ProductDraftCreateRequest,
   type ProductDraftPatchRequest,
+  type ProductDraftSubmitRequest,
   type ProductDraftsQuery,
   type ProductDraftsPage,
   type ProductDraftRow,
@@ -23,6 +24,7 @@ import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js
 import { privateProductPhotoRoute } from './product-media-storage.js';
 import { assertProductCreationEligible } from './product-creation-eligibility.js';
 import { assertWithinActiveDraftQuota } from './product-creation-quotas.js';
+import { assessProductCreationSubmission } from '../abuse/product-creation-assessment.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -188,25 +190,62 @@ export async function patchDraft(
 }
 
 /**
- * Draft submission is not yet available: it requires Phase 7's server-verified
- * abuse-assessment token and `product_creation` rollout mode, neither of which
- * exist yet. This still enforces ownership/state so the endpoint behaves
- * sensibly, but every valid request ends in a typed disabled response — never a
- * silent accept that would let a draft reach `pending` without abuse
- * verification.
+ * Transitions a draft/changes_required product to `pending`. Order matters:
+ * eligibility, then the real server-verified abuse assessment, both strictly
+ * *before* any write — a provider-down retry (the route runs under the
+ * idempotency plugin, `config: { idempotent: 'required' }`) must never have
+ * already mutated the draft, so there is nothing to double-submit. The actual
+ * transition is a version-guarded conditional `updateMany`, the same
+ * optimistic-concurrency shape `patchDraft` uses: only one concurrent caller
+ * can ever win it, so a genuine concurrent double-submit (two valid requests
+ * racing, as opposed to a client retry) is also impossible, independent of
+ * the idempotency layer.
  */
-export async function submitDraft(actorId: string, productId: string): Promise<never> {
+export async function submitDraft(
+  actorId: string,
+  productId: string,
+  input: ProductDraftSubmitRequest,
+): Promise<ApiProduct> {
   const prisma = getPrisma();
   const existing = await prisma.product.findUnique({ where: { id: productId } });
   if (!existing) {
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
   assertOwnDraftLike(existing, actorId);
-  throw new AppError({
-    status: 403,
-    code: ERROR_CODES.FEATURE_DISABLED,
-    title: 'Product submission is not yet available',
+  await assertProductCreationEligible({ id: actorId, role: 'user' }, 'submit');
+
+  // Client-reported success is never trusted: this is the real, server-side
+  // verification. Throws a retryable 503 on provider timeout/error (nothing
+  // written yet, safe to retry) or a typed 403 on a conservative reject
+  // (invalid token, wrong action, low score) — never a silent accept.
+  await assessProductCreationSubmission({ token: input.abuseToken, platform: input.platform });
+
+  const result = await prisma.product.updateMany({
+    where: {
+      id: productId,
+      createdByUserId: actorId,
+      status: { in: ['draft', 'changes_required'] },
+      version: input.version,
+    },
+    data: { status: 'pending', submittedAt: new Date(), version: { increment: 1 } },
   });
+
+  if (result.count === 0) {
+    const current = await prisma.product.findUnique({ where: { id: productId } });
+    if (!current) {
+      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
+    }
+    assertOwnDraftLike(current, actorId);
+    throw new AppError({
+      status: 409,
+      code: ERROR_CODES.VERSION_CONFLICT,
+      title: 'This draft was changed since you last loaded it',
+      currentVersion: current.version,
+    });
+  }
+
+  const updated = await prisma.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
+  return toApiProduct(updated, { kind: 'privileged' });
 }
 
 function toDraftRow(product: ProductWithPhotos): ProductDraftRow {

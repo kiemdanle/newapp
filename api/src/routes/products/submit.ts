@@ -9,10 +9,11 @@ export async function draftSubmitRoute(app: FastifyInstance) {
   app.post(
     '/drafts/:id/submit',
     { onRequest: app.requireAuth, config: { idempotent: 'required' } },
-    async (req) => {
+    async (req, reply) => {
       const { id } = paramSchema.parse(req.params);
-      productDraftSubmitRequestSchema.parse(req.body);
-      await submitDraft(req.user!.id, id);
+      const input = productDraftSubmitRequestSchema.parse(req.body);
+      const product = await submitDraft(req.user!.id, id, input);
+      return reply.send(product);
     },
   );
 }

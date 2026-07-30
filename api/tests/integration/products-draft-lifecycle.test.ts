@@ -3,7 +3,21 @@ import { buildServer } from '../../src/server.js';
 import { makeUser, makeProduct } from '../helpers/factories.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { getPrisma } from '../../src/db.js';
+import { resetConfigForTests } from '../../src/config.js';
 import { randomUUID } from 'node:crypto';
+import {
+  setProductCreationAssessmentClientForTests,
+  resetProductCreationAssessmentBreakerForTests,
+} from '../../src/services/abuse/product-creation-assessment.js';
+
+function stubAssessmentClient(score = 0.9, action = 'submit_product') {
+  setProductCreationAssessmentClientForTests({
+    projectPath: (p: string) => `projects/${p}`,
+    createAssessment: async () => [
+      { tokenProperties: { valid: true, action }, riskAnalysis: { score, reasons: [] } },
+    ],
+  } as never);
+}
 
 // This file exercises draft create/patch mechanics, not the `product_creation`
 // mode gate itself (covered separately in product-creation-mode.test.ts) — set
@@ -16,6 +30,8 @@ afterEach(() => {
   vi.doUnmock('../../src/services/products/off-client.js');
   vi.doUnmock('../../src/services/products/upcitemdb-client.js');
   vi.resetModules();
+  setProductCreationAssessmentClientForTests(undefined);
+  resetProductCreationAssessmentBreakerForTests();
 });
 
 async function authedUser() {
@@ -411,7 +427,8 @@ describe('PATCH /v1/products/drafts/:id', () => {
 });
 
 describe('POST /v1/products/drafts/:id/submit', () => {
-  it('is unconditionally feature-disabled and never transitions to pending', async () => {
+  it('transitions a draft to pending on a valid abuse assessment', async () => {
+    stubAssessmentClient();
     const app = await buildServer();
     const { user, headers } = await authedUser();
     const p = await makeProduct({ createdByUserId: user.id });
@@ -420,16 +437,18 @@ describe('POST /v1/products/drafts/:id/submit', () => {
       method: 'POST',
       url: `/v1/products/drafts/${p.id}/submit`,
       headers: idemHeaders(headers),
-      payload: { version: p.version, abuseToken: 'anything' },
+      payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' },
     });
-    expect(res.statusCode).toBe(403);
-    expect(res.json().code).toBe('feature_disabled');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe('pending');
     const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
-    expect(row.status).toBe('draft');
+    expect(row.status).toBe('pending');
+    expect(row.submittedAt).not.toBeNull();
     await app.close();
   });
 
   it('non-enumerating 404 for another user\'s draft', async () => {
+    stubAssessmentClient();
     const app = await buildServer();
     const owner = await makeUser({ emailVerified: true });
     const { headers } = await authedUser();
@@ -438,9 +457,195 @@ describe('POST /v1/products/drafts/:id/submit', () => {
       method: 'POST',
       url: `/v1/products/drafts/${p.id}/submit`,
       headers: idemHeaders(headers),
-      payload: { version: p.version, abuseToken: 'x' },
+      payload: { version: p.version, abuseToken: 'x', platform: 'android' },
     });
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('refuses under product_creation mode off, even with a genuinely valid token, and never writes anything', async () => {
+    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'off' } } });
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('feature_disabled');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('draft');
+    await app.close();
+  });
+
+  it('rejects a token whose score is below threshold, and never transitions the draft', async () => {
+    stubAssessmentClient(0.1);
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'low-score', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('abuse_check_failed');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('draft');
+    await app.close();
+  });
+
+  it('a token minted for one platform submitted with the other platform is rejected, never accepted', async () => {
+    // The stub client is platform-agnostic (it doesn't know which site key was
+    // used), so this proves the request-level contract: the server always
+    // asks for the site key matching the *submitted* platform, and a token
+    // that was actually minted for the other one fails Google's own
+    // action/site-key validation — modeled here as tokenProperties.valid=false,
+    // exactly what a real cross-platform token mismatch produces.
+    setProductCreationAssessmentClientForTests({
+      projectPath: (p: string) => `projects/${p}`,
+      createAssessment: async () => [{ tokenProperties: { valid: false }, riskAnalysis: {} }],
+    } as never);
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'minted-for-android', platform: 'ios' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe('abuse_check_failed');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('draft');
+    await app.close();
+  });
+
+  it('a provider timeout/error is retryable — 503, never a silent accept, and the idempotency-key retry does not double-submit', async () => {
+    setProductCreationAssessmentClientForTests({
+      projectPath: (p: string) => `projects/${p}`,
+      createAssessment: async () => {
+        throw new Error('ECONNREFUSED');
+      },
+    } as never);
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const idemHeader = idemHeaders(headers);
+
+    const res1 = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeader,
+      payload: { version: p.version, abuseToken: 'x', platform: 'android' },
+    });
+    expect(res1.statusCode).toBe(503);
+    const afterFirst = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(afterFirst.status).toBe('draft'); // nothing written on provider failure
+
+    // A >=500 response is never cached by the idempotency plugin, so the retry
+    // with the same Idempotency-Key genuinely re-executes rather than
+    // replaying a stale response.
+    stubAssessmentClient();
+    const res2 = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeader,
+      payload: { version: p.version, abuseToken: 'x', platform: 'android' },
+    });
+    expect(res2.statusCode).toBe(200);
+    const afterSecond = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(afterSecond.status).toBe('pending');
+    await app.close();
+  });
+
+  it('a stale version is rejected with 409 version_conflict, never transitioning the draft', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version + 1, abuseToken: 'x', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('version_conflict');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('draft');
+    await app.close();
+  });
+
+  it('internal mode: an allowlisted user may submit, a non-allowlisted user may not', async () => {
+    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'internal' } } });
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    process.env.PRODUCT_CREATION_INTERNAL_ALLOWLIST = user.id;
+    resetConfigForTests();
+
+    const allowed = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: allowed.id }, data: { status: 'draft' } });
+    const allowedRes = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${allowed.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: allowed.version, abuseToken: 'x', platform: 'android' },
+    });
+    expect(allowedRes.statusCode).toBe(200);
+
+    const { headers: otherHeaders, user: otherUser } = await authedUser();
+    const blocked = await makeProduct({ createdByUserId: otherUser.id });
+    await getPrisma().product.update({ where: { id: blocked.id }, data: { status: 'draft' } });
+    const blockedRes = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${blocked.id}/submit`,
+      headers: idemHeaders(otherHeaders),
+      payload: { version: blocked.version, abuseToken: 'x', platform: 'android' },
+    });
+    expect(blockedRes.statusCode).toBe(403);
+    expect(blockedRes.json().code).toBe('feature_disabled');
+
+    delete process.env.PRODUCT_CREATION_INTERNAL_ALLOWLIST;
+    resetConfigForTests();
+    await app.close();
+  });
+
+  it('two concurrent valid submits at the same version: exactly one succeeds, the other gets a version conflict', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const [r1, r2] = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: `/v1/products/drafts/${p.id}/submit`,
+        headers: idemHeaders(headers),
+        payload: { version: p.version, abuseToken: 'x', platform: 'android' },
+      }),
+      app.inject({
+        method: 'POST',
+        url: `/v1/products/drafts/${p.id}/submit`,
+        headers: idemHeaders(headers),
+        payload: { version: p.version, abuseToken: 'x', platform: 'android' },
+      }),
+    ]);
+    expect([r1.statusCode, r2.statusCode].sort()).toEqual([200, 409]);
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('pending');
     await app.close();
   });
 });
