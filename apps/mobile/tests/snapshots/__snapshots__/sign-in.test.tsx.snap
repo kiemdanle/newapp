@@ -216,7 +216,7 @@ exports[`sign-in in expyrico snapshot 1`] = `
                     d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
                     fill={
                       {
-                        "payload": 4294288931,
+                        "payload": 4292887594,
                         "type": 0,
                       }
                     }
@@ -1019,7 +1019,7 @@ exports[`sign-in in expyrico snapshot 1`] = `
               {
                 "busy": undefined,
                 "checked": undefined,
-                "disabled": undefined,
+                "disabled": false,
                 "expanded": undefined,
                 "selected": undefined,
               }
@@ -1326,7 +1326,7 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                     d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
                     fill={
                       {
-                        "payload": 4294288931,
+                        "payload": 4292887594,
                         "type": 0,
                       }
                     }
@@ -2129,7 +2129,7 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
               {
                 "busy": undefined,
                 "checked": undefined,
-                "disabled": undefined,
+                "disabled": false,
                 "expanded": undefined,
                 "selected": undefined,
               }
