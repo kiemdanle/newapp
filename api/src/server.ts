@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import { randomUUID } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +15,7 @@ import { wellKnownRoutes } from './routes/well-known.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
 import { productRoutes } from './routes/products/index.js';
+import { editPrivateMediaRoute } from './routes/products/edit-private-media.js';
 import { recordRoutes } from './routes/records/index.js';
 import { reviewsRoutes } from './routes/reviews/index.js';
 import { reportsRoutes } from './routes/reports/index.js';
@@ -25,6 +27,7 @@ import { householdsRoutes } from './routes/households/index.js';
 import { adminRoutes } from './routes/admin/index.js';
 import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
+import { probeMediaCapabilities } from './services/products/product-image-processor.js';
 
 const REDACT_PATHS = [
   'password',
@@ -60,6 +63,15 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(helmet, { global: true });
   await registerCors(app);
+  // Separate from Fastify's global JSON `bodyLimit` above — multipart uploads are
+  // capped independently at the configured media byte ceiling. `files`/`fields`/
+  // `parts` allow a small amount of headroom above "exactly one file, no extra
+  // parts" so a hostile second part surfaces to the route's own typed rejection
+  // instead of a raw plugin-level FilesLimitError/PartsLimitError.
+  await app.register(multipart, {
+    limits: { fileSize: cfg.media.maxUploadBytes, files: 2, fields: 1, parts: 5 },
+    throwFileSizeLimit: false,
+  });
   // The auth plugin's onRequest hook must populate req.user BEFORE the rate
   // limiter runs so the limiter can pick the per-user vs per-IP budget.
   await app.register(authPlugin);
@@ -67,6 +79,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(apiErrorRecorderPlugin);
   if (cfg.rateLimit.enabled) await registerRateLimit(app);
   await registerErrorHandler(app);
+
+  // Startup HEIC capability probe: a real decode attempt against a committed
+  // fixture, not just a static libvips build flag (see product-image-processor.ts)
+  // — cached after this first call, so every upload request reuses the result.
+  await probeMediaCapabilities();
 
   app.addHook('onSend', async (req, reply) => {
     void reply.header('x-request-id', req.id);
@@ -77,6 +94,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: '/v1/auth' });
   await app.register(meRoutes, { prefix: '/v1/me' });
   await app.register(productRoutes, { prefix: '/v1/products' });
+  await app.register(editPrivateMediaRoute, { prefix: '/v1/product-edits' });
   await app.register(recordRoutes, { prefix: '/v1/records' });
   await app.register(reviewsRoutes, { prefix: '/v1' });
   await app.register(reportsRoutes, { prefix: '/v1' });

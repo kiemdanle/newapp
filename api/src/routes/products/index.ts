@@ -8,6 +8,10 @@ import { patchProductRoute } from './patch.js';
 import { draftsRoute } from './drafts.js';
 import { draftUpdateRoute } from './draft-update.js';
 import { draftSubmitRoute } from './submit.js';
+import { photoUploadRoute } from './photo-upload.js';
+import { photoDeleteRoute } from './photo-delete.js';
+import { photoOrderRoute } from './photo-order.js';
+import { privateMediaRoute } from './private-media.js';
 
 export async function productRoutes(app: FastifyInstance) {
   await app.register(lookupRoute);
@@ -19,4 +23,8 @@ export async function productRoutes(app: FastifyInstance) {
   await app.register(draftsRoute);
   await app.register(draftUpdateRoute);
   await app.register(draftSubmitRoute);
+  await app.register(photoUploadRoute);
+  await app.register(photoDeleteRoute);
+  await app.register(photoOrderRoute);
+  await app.register(privateMediaRoute);
 }

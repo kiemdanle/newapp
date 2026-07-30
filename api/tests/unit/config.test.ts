@@ -34,6 +34,8 @@ describe('config', () => {
     COUNTRY_DETECT_FALLBACK: 'http://ip-api.com',
     FIREBASE_PROJECT_ID: 'expyrico-test',
     FIREBASE_CREDENTIAL_MODE: 'workload_identity',
+    MEDIA_ROOT: '/tmp',
+    MEDIA_PUBLIC_BASE_URL: 'https://media.expyrico.test',
   };
 
   it('parses a valid env', () => {
@@ -103,5 +105,37 @@ describe('config', () => {
         WEBAUTHN_ADDITIONAL_ORIGINS: 'not-a-url',
       }),
     ).toThrow(/Invalid WEBAUTHN origin/);
+  });
+
+  it('parses media config with spec defaults', () => {
+    const cfg = parseConfig(valid);
+    expect(cfg.media.root).toBe('/tmp');
+    expect(cfg.media.publicBaseUrl).toBe('https://media.expyrico.test');
+    expect(cfg.media.maxUploadBytes).toBe(10 * 1024 * 1024);
+    expect(cfg.media.maxDecodedMegapixels).toBe(40);
+    expect(cfg.media.maxDimensionPx).toBe(12_000);
+    expect(cfg.media.maxChannels).toBe(4);
+    expect(cfg.media.maxDisplayBytes).toBe(8 * 1024 * 1024);
+    expect(cfg.media.maxThumbnailBytes).toBe(2 * 1024 * 1024);
+    expect(cfg.media.displayMaxDimensionPx).toBe(1600);
+    expect(cfg.media.thumbnailMaxDimensionPx).toBe(480);
+    expect(cfg.media.processingDeadlineMs).toBe(30_000);
+    expect(cfg.media.sharpConcurrency).toBe(2);
+  });
+
+  it('rejects a MEDIA_ROOT that does not exist', () => {
+    expect(() =>
+      parseConfig({ ...valid, MEDIA_ROOT: '/tmp/does-not-exist-media-root-xyz' }),
+    ).toThrow(/MEDIA_ROOT does not exist/);
+  });
+
+  it('rejects a MEDIA_PUBLIC_BASE_URL that is not a URL', () => {
+    expect(() => parseConfig({ ...valid, MEDIA_PUBLIC_BASE_URL: 'not-a-url' })).toThrow();
+  });
+
+  it('allows overriding media numeric limits', () => {
+    const cfg = parseConfig({ ...valid, MEDIA_SHARP_CONCURRENCY: '5', MEDIA_WEBP_QUALITY: '60' });
+    expect(cfg.media.sharpConcurrency).toBe(5);
+    expect(cfg.media.webpQuality).toBe(60);
   });
 });

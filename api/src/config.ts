@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, accessSync, constants as fsConstants } from 'node:fs';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -64,6 +64,30 @@ const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().min(1),
   FIREBASE_CREDENTIAL_MODE: z.enum(['workload_identity', 'service_account_file']).default('workload_identity'),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+
+  // Product media (Phase 3): filesystem root for private/public/quarantine trees and
+  // the public base URL nginx serves `public/` from. Both are deployment-specific and
+  // required (no default) — a missing value must fail boot rather than silently write
+  // media into a release checkout or serve un-derivable public URLs. Numeric limits all
+  // have explicit spec-mandated defaults but stay overridable for tests/ops tuning.
+  MEDIA_ROOT: z.string().min(1),
+  MEDIA_PUBLIC_BASE_URL: z.string().url(),
+  MEDIA_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
+  MEDIA_MAX_DECODED_MEGAPIXELS: z.coerce.number().int().positive().default(40),
+  MEDIA_MAX_DIMENSION_PX: z.coerce.number().int().positive().default(12_000),
+  MEDIA_MAX_CHANNELS: z.coerce.number().int().positive().default(4),
+  MEDIA_MAX_DISPLAY_BYTES: z.coerce.number().int().positive().default(8 * 1024 * 1024),
+  MEDIA_MAX_THUMBNAIL_BYTES: z.coerce.number().int().positive().default(2 * 1024 * 1024),
+  MEDIA_DISPLAY_MAX_DIMENSION_PX: z.coerce.number().int().positive().default(1600),
+  MEDIA_THUMBNAIL_MAX_DIMENSION_PX: z.coerce.number().int().positive().default(480),
+  MEDIA_PROCESSING_DEADLINE_MS: z.coerce.number().int().positive().default(30_000),
+  MEDIA_SHARP_CONCURRENCY: z.coerce.number().int().positive().default(2),
+  MEDIA_WEBP_QUALITY: z.coerce.number().int().min(1).max(100).default(82),
+  // Redis-only capacity budget (soft abuse/exhaustion protection, not a durability
+  // guarantee) — deployment-specific disk sizing, so defaults are conservative
+  // placeholders operators are expected to tune, not spec-mandated numbers.
+  MEDIA_CAPACITY_USABLE_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024 * 1024),
+  MEDIA_CAPACITY_RESERVE_BYTES: z.coerce.number().int().nonnegative().default(512 * 1024 * 1024),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -113,6 +137,23 @@ export interface Config {
     projectId: string;
     credentialMode: 'workload_identity' | 'service_account_file';
     credentialsPath?: string;
+  };
+  media: {
+    root: string;
+    publicBaseUrl: string;
+    maxUploadBytes: number;
+    maxDecodedMegapixels: number;
+    maxDimensionPx: number;
+    maxChannels: number;
+    maxDisplayBytes: number;
+    maxThumbnailBytes: number;
+    displayMaxDimensionPx: number;
+    thumbnailMaxDimensionPx: number;
+    processingDeadlineMs: number;
+    sharpConcurrency: number;
+    webpQuality: number;
+    capacityUsableBytes: number;
+    capacityReserveBytes: number;
   };
 }
 
@@ -217,6 +258,34 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
     frontend: { adminUrl: e.ADMIN_URL },
     countryDetect: { primary: e.COUNTRY_DETECT_PRIMARY, fallback: e.COUNTRY_DETECT_FALLBACK },
     firebase,
+    media: (() => {
+      const root = resolve(e.MEDIA_ROOT);
+      if (!existsSync(root)) {
+        throw new Error(`MEDIA_ROOT does not exist: ${root}`);
+      }
+      try {
+        accessSync(root, fsConstants.W_OK);
+      } catch {
+        throw new Error(`MEDIA_ROOT is not writable: ${root}`);
+      }
+      return {
+        root,
+        publicBaseUrl: e.MEDIA_PUBLIC_BASE_URL,
+        maxUploadBytes: e.MEDIA_MAX_UPLOAD_BYTES,
+        maxDecodedMegapixels: e.MEDIA_MAX_DECODED_MEGAPIXELS,
+        maxDimensionPx: e.MEDIA_MAX_DIMENSION_PX,
+        maxChannels: e.MEDIA_MAX_CHANNELS,
+        maxDisplayBytes: e.MEDIA_MAX_DISPLAY_BYTES,
+        maxThumbnailBytes: e.MEDIA_MAX_THUMBNAIL_BYTES,
+        displayMaxDimensionPx: e.MEDIA_DISPLAY_MAX_DIMENSION_PX,
+        thumbnailMaxDimensionPx: e.MEDIA_THUMBNAIL_MAX_DIMENSION_PX,
+        processingDeadlineMs: e.MEDIA_PROCESSING_DEADLINE_MS,
+        sharpConcurrency: e.MEDIA_SHARP_CONCURRENCY,
+        webpQuality: e.MEDIA_WEBP_QUALITY,
+        capacityUsableBytes: e.MEDIA_CAPACITY_USABLE_BYTES,
+        capacityReserveBytes: e.MEDIA_CAPACITY_RESERVE_BYTES,
+      };
+    })(),
   };
 }
 

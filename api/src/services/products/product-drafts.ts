@@ -20,6 +20,7 @@ import { AppError } from '../../errors.js';
 import { lookupProductV2 } from './lookup.js';
 import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
+import { privateProductPhotoRoute } from './product-media-storage.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -212,7 +213,11 @@ function toDraftRow(product: ProductWithPhotos): ProductDraftRow {
     status: product.status as 'draft' | 'pending' | 'changes_required',
     version: product.version,
     moderationFeedback: product.moderationNotes,
-    cover: cover ? { photoId: cover.id, thumbnailUrl: `/v1/products/photos/${cover.id}/thumbnail` } : null,
+    // A draft/changes_required product's cover is always private (approval only
+    // happens on the active transition), so the parent-bound private route applies
+    // unconditionally here — no public-URL branch needed, unlike the general
+    // product photo serializer.
+    cover: cover ? { photoId: cover.id, thumbnailUrl: privateProductPhotoRoute(product.id, cover.id, 'thumb') } : null,
     updatedAt: product.updatedAt.toISOString(),
   };
 }

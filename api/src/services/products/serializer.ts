@@ -1,17 +1,31 @@
 import type { Product as PrismaProduct, ProductPhoto as PrismaProductPhoto } from '@prisma/client';
 import type { Product as ApiProduct, ProductPhoto as ApiProductPhoto } from '@expyrico/shared';
+import { getConfig } from '../../config.js';
+import { privateProductPhotoRoute, publicMediaUrl } from './product-media-storage.js';
 
 type ProductWithPhotos = PrismaProduct & { photos?: PrismaProductPhoto[] };
 
-// Public photo projection: id, ordered position, and authorized route URLs only.
-// Storage keys, uploader, and moderation state/note never leave this function — Phase 3
-// owns the real route/derivation behind `thumbnailUrl`/`displayUrl`.
-export function toApiProductPhoto(photo: PrismaProductPhoto): ApiProductPhoto {
+// Public photo projection: id, ordered position, and authorized route/CDN URLs
+// only. Storage keys, uploader, and moderation state/note never leave this
+// function. An approved photo (`publicStorageKey` set) gets an absolute public CDN
+// URL; everything else gets the parent-bound authenticated private delivery route
+// (Phase 3's real route/derivation, replacing the earlier non-parent-bound
+// placeholder this comment used to describe).
+export function toApiProductPhoto(photo: PrismaProductPhoto, productId: string): ApiProductPhoto {
+  if (photo.publicStorageKey) {
+    const base = getConfig().media.publicBaseUrl;
+    return {
+      id: photo.id,
+      position: photo.position,
+      thumbnailUrl: publicMediaUrl(base, photo.publicStorageKey, 'thumb'),
+      displayUrl: publicMediaUrl(base, photo.publicStorageKey, 'display'),
+    };
+  }
   return {
     id: photo.id,
     position: photo.position,
-    thumbnailUrl: `/v1/products/photos/${photo.id}/thumbnail`,
-    displayUrl: `/v1/products/photos/${photo.id}/display`,
+    thumbnailUrl: privateProductPhotoRoute(productId, photo.id, 'thumb'),
+    displayUrl: privateProductPhotoRoute(productId, photo.id, 'display'),
   };
 }
 
@@ -38,7 +52,7 @@ export function toApiProduct(p: ProductWithPhotos): ApiProduct {
     version: p.version,
     // Deliberately omitted: `moderationFeedback` is not part of the public product
     // DTO (see productSchema). Never map `p.moderationNotes` here.
-    photos: [...(p.photos ?? [])].sort((a, b) => a.position - b.position).map(toApiProductPhoto),
+    photos: [...(p.photos ?? [])].sort((a, b) => a.position - b.position).map((photo) => toApiProductPhoto(photo, p.id)),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
   };
