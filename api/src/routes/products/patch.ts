@@ -45,14 +45,43 @@ export async function patchProductRoute(app: FastifyInstance) {
       },
     });
     if (existingOpenEdit) {
-      edit = await prisma.productEdit.update({
-        where: { id: existingOpenEdit.id },
+      // Read-then-write race guard: re-assert the row is still in an open state (and
+      // still this caller's) at write time, not just at the earlier read. Without this,
+      // two concurrent resubmissions could both "succeed" and the second write would
+      // silently drop the first proposal; worse, once Phase 4 ships rebase/supersede, a
+      // stale resubmit could resurrect an edit an admin just moved out of these states.
+      // `updateMany` lets us check `count` instead of trusting the read.
+      //
+      // Resubmission is a fresh submission, not a continuation: refresh every field a
+      // reviewer would expect a new submission to carry. `baseProductVersion` is set to
+      // `product.version` — the version this proposal was actually validated against in
+      // *this* request — because Phase 4's staleness/rebase decision keys off it; it
+      // must never silently drift to "whatever the product happens to be at now" if that
+      // ever diverges from what was checked above.
+      const result = await prisma.productEdit.updateMany({
+        where: {
+          id: existingOpenEdit.id,
+          submittedBy: req.user!.id,
+          status: { in: ['draft', 'changes_required'] },
+        },
         data: {
           proposed: input,
           status: 'pending',
           moderationNotes: null,
+          submittedAt: new Date(),
+          resolvedBy: null,
+          resolvedAt: null,
+          baseProductVersion: product.version,
         },
       });
+      if (result.count === 0) {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.CONFLICT,
+          title: 'An edit is already open for this product',
+        });
+      }
+      edit = await prisma.productEdit.findUniqueOrThrow({ where: { id: existingOpenEdit.id } });
     } else {
       try {
         edit = await prisma.productEdit.create({

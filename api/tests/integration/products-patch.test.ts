@@ -159,6 +159,96 @@ describe('PATCH /v1/products/:id', () => {
     await app.close();
   });
 
+  it('blocks a second concurrent resubmission of the same changes_required edit', async () => {
+    const app = await buildServer();
+    const { headers: adminHeaders } = await makeAdmin();
+    const { headers } = await authed();
+    const p = await makeProduct({});
+    const prisma = getPrisma();
+
+    const firstPatch = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'First' },
+    });
+    expect(firstPatch.statusCode).toBe(202);
+    const editId = firstPatch.json().editId as string;
+
+    const requestChanges = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${editId}`,
+      headers: adminHeaders,
+      payload: { decision: 'request_changes', notes: 'fix it' },
+    });
+    expect(requestChanges.statusCode).toBe(200);
+
+    // Two concurrent resubmissions of the SAME changes_required edit — the read (find
+    // the open edit) then write (updateMany with a status guard) must not let both
+    // succeed and silently drop one proposal.
+    const [first, second] = await Promise.all([
+      app.inject({ method: 'PATCH', url: `/v1/products/${p.id}`, headers, payload: { name: 'Resubmit A' } }),
+      app.inject({ method: 'PATCH', url: `/v1/products/${p.id}`, headers, payload: { name: 'Resubmit B' } }),
+    ]);
+    const statuses = [first.statusCode, second.statusCode].sort();
+    expect(statuses).toEqual([202, 409]);
+
+    const edits = await prisma.productEdit.findMany({ where: { productId: p.id } });
+    expect(edits).toHaveLength(1);
+    expect(edits[0]!.status).toBe('pending');
+    await app.close();
+  });
+
+  it('resubmission refreshes submittedAt/resolvedBy/resolvedAt/baseProductVersion as a fresh submission', async () => {
+    const app = await buildServer();
+    const { headers: adminHeaders } = await makeAdmin();
+    const { headers } = await authed();
+    const p = await makeProduct({ name: 'Original' });
+    const prisma = getPrisma();
+
+    const firstPatch = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'First' },
+    });
+    expect(firstPatch.statusCode).toBe(202);
+    const editId = firstPatch.json().editId as string;
+
+    const requestChanges = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/pending/${editId}`,
+      headers: adminHeaders,
+      payload: { decision: 'request_changes', notes: 'fix it' },
+    });
+    expect(requestChanges.statusCode).toBe(200);
+    const afterRequestChanges = await prisma.productEdit.findUniqueOrThrow({ where: { id: editId } });
+    expect(afterRequestChanges.resolvedBy).not.toBeNull();
+    expect(afterRequestChanges.resolvedAt).not.toBeNull();
+
+    // The product moved on (e.g. an admin correction) since the edit was first opened
+    // — the resubmission must record what the NEW proposal was actually validated
+    // against, not silently keep the stale baseProductVersion from the original submit.
+    await prisma.product.update({ where: { id: p.id }, data: { version: 5 } });
+
+    const beforeResubmit = new Date();
+    const secondPatch = await app.inject({
+      method: 'PATCH',
+      url: `/v1/products/${p.id}`,
+      headers,
+      payload: { name: 'Second' },
+    });
+    expect(secondPatch.statusCode).toBe(202);
+
+    const refreshed = await prisma.productEdit.findUniqueOrThrow({ where: { id: editId } });
+    expect(refreshed.resolvedBy).toBeNull();
+    expect(refreshed.resolvedAt).toBeNull();
+    expect(refreshed.submittedAt).not.toBeNull();
+    expect(refreshed.submittedAt!.getTime()).toBeGreaterThanOrEqual(beforeResubmit.getTime() - 1000);
+    expect(refreshed.baseProductVersion).toBe(5);
+    await app.close();
+  });
+
   it('404 on unknown product', async () => {
     const app = await buildServer();
     const { headers } = await authed();
