@@ -2,6 +2,7 @@
 import { test, expect } from '@playwright/test';
 import { authenticator } from 'otplib';
 import { E2E_ADMIN_ENROLLED, E2E_ADMIN_FRESH } from './mock-api-constants';
+import { ADMIN_PORT } from './admin-helpers';
 
 test('admin can sign in with password + TOTP and lands on /', async ({ page }) => {
   await page.goto('/login');
@@ -14,7 +15,7 @@ test('admin can sign in with password + TOTP and lands on /', async ({ page }) =
   await page.getByLabel('Authenticator code').fill(code);
   await page.getByRole('button', { name: 'Verify' }).click();
 
-  await page.waitForURL('http://localhost:4001/', { timeout: 10_000 });
+  await page.waitForURL(`http://localhost:${ADMIN_PORT}/`, { timeout: 10_000 });
   await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 });
 

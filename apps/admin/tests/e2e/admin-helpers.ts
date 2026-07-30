@@ -11,7 +11,7 @@ import { E2E_ADMIN_ENROLLED } from './mock-api-constants';
 // Mirrors playwright.config.ts's ADMIN_E2E_PORT/ADMIN_E2E_MOCK_PORT overrides —
 // see that file for why the 4001/4099 defaults are CI-only and unsafe to
 // assume free on a persistent dev box.
-const ADMIN_PORT = process.env.ADMIN_E2E_PORT ?? '4001';
+export const ADMIN_PORT = process.env.ADMIN_E2E_PORT ?? '4001';
 export const MOCK_API =
   process.env.MOCK_API_BASE ?? `http://localhost:${process.env.ADMIN_E2E_MOCK_PORT ?? '4099'}`;
 
