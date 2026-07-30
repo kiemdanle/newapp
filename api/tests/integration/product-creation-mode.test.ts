@@ -284,7 +284,7 @@ describe('POST /v1/products/drafts — mode gate runs before the external lookup
 describe('Admin cohort under internal mode — one converged policy (reviewer-p7 I6)', () => {
   it('an internal-mode admin can create, patch, and submit their own draft end to end', async () => {
     await setMode('internal');
-    const app = await buildServer();
+    const { app } = await buildServerWithTrackedExternalMiss();
     const { headers, admin } = await makeAdmin();
     const barcode = `9${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(0, 13);
 
@@ -307,7 +307,17 @@ describe('Admin cohort under internal mode — one converged policy (reviewer-p7
     expect(patched.statusCode).toBe(200);
     expect(patched.json().name).toBe('Admin Own Draft');
 
-    stubAssessmentClient();
+    // buildServerWithTrackedExternalMiss's own vi.resetModules() left the
+    // top-level `stubAssessmentClient` import pointed at a stale module
+    // instance decoupled from what the freshly-built app actually resolves
+    // — re-import the current instance to stub the same one the app uses.
+    const assessmentModule = await import('../../src/services/abuse/product-creation-assessment.js');
+    assessmentModule.setProductCreationAssessmentClientForTests({
+      projectPath: (p: string) => `projects/${p}`,
+      createAssessment: async () => [
+        { tokenProperties: { valid: true, action: 'submit_product' }, riskAnalysis: { score: 0.9, reasons: [] } },
+      ],
+    } as never);
     const submitted = await app.inject({
       method: 'POST',
       url: `/v1/products/drafts/${draft.product.id}/submit`,
@@ -316,6 +326,8 @@ describe('Admin cohort under internal mode — one converged policy (reviewer-p7
     });
     expect(submitted.statusCode).toBe(200);
     expect(submitted.json().status).toBe('pending');
+    assessmentModule.resetProductCreationAssessmentBreakerForTests();
+    assessmentModule.setProductCreationAssessmentClientForTests(undefined);
 
     const row = await getPrisma().product.findUniqueOrThrow({ where: { id: draft.product.id } });
     expect(row.createdByUserId).toBe(admin.id);

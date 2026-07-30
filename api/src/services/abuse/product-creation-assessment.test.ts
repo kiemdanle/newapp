@@ -7,6 +7,7 @@ import {
 } from './product-creation-assessment.js';
 import { AppError } from '../../errors.js';
 import { logger } from '../../logger.js';
+import { getConfig } from '../../config.js';
 
 interface StubAssessment {
   name?: string;
@@ -49,6 +50,43 @@ describe('assessProductCreationSubmission', () => {
     const result = await assessProductCreationSubmission(validInput);
     expect(result.score).toBe(0.9);
     expect(result.assessmentName).toBe('projects/p/assessments/a1');
+  });
+
+  it('sends the exact expected CreateAssessment request shape — parent, token, site key, action (reviewer-p7 M5)', async () => {
+    const createAssessment = vi.fn(async () => [
+      { tokenProperties: { valid: true, action: 'submit_product' }, riskAnalysis: { score: 0.9, reasons: [] } },
+    ] as [StubAssessment]);
+    setProductCreationAssessmentClientForTests(stubClient(createAssessment) as never);
+    const cfg = getConfig().recaptcha;
+
+    await assessProductCreationSubmission({ token: 'tok-android', platform: 'android' });
+    expect(createAssessment).toHaveBeenCalledWith({
+      parent: `projects/${cfg.projectId}`,
+      assessment: {
+        event: {
+          token: 'tok-android',
+          siteKey: cfg.siteKeyAndroid,
+          expectedAction: 'submit_product',
+        },
+      },
+    });
+
+    createAssessment.mockClear();
+    await assessProductCreationSubmission({ token: 'tok-ios', platform: 'ios' });
+    expect(createAssessment).toHaveBeenCalledWith({
+      parent: `projects/${cfg.projectId}`,
+      assessment: {
+        event: {
+          token: 'tok-ios',
+          siteKey: cfg.siteKeyIos,
+          expectedAction: 'submit_product',
+        },
+      },
+    });
+    // The two platforms must never resolve to the same site key — that's the
+    // entire point of a per-platform key (Android/iOS require distinct,
+    // non-interchangeable reCAPTCHA Enterprise site keys).
+    expect(cfg.siteKeyAndroid).not.toBe(cfg.siteKeyIos);
   });
 
   it('accepts a score exactly at the configured 0.5 threshold', async () => {

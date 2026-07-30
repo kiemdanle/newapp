@@ -18,6 +18,7 @@ import {
 } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
+import { logger } from '../../logger.js';
 import { hasLocalMatch, lookupProductV2 } from './lookup.js';
 import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
@@ -102,7 +103,11 @@ export async function createOrResumeDraft(
   // I5).
   if (!(await hasLocalMatch(identifierInput))) {
     await assertProductCreationEligible(actor, 'create');
-    await assertWithinActiveDraftQuota(actor.id);
+    // The active-draft-quota count itself is re-checked below, inside the
+    // same transaction and advisory lock as the create — a standalone check
+    // here would still race the same way M1 describes. This early call stays
+    // eligibility-only, matching I5's ordering requirement (a cheap local
+    // check before the external lookup), not the quota itself.
   }
 
   // Always classified as a plain creator here, never the actor's real role —
@@ -123,17 +128,27 @@ export async function createOrResumeDraft(
 
   const prisma = getPrisma();
   try {
-    const created = await prisma.product.create({
-      data: {
-        ...(input.barcode !== undefined ? { barcode: input.barcode } : { qrPayload: input.qrPayload! }),
-        // Name is required by the DB but not part of the create request — the
-        // creator fills it in via PATCH before submit is possible.
-        name: '',
-        source: 'user',
-        createdByUserId: actor.id,
-        status: 'draft',
-      },
-      include: PRODUCT_INCLUDE,
+    const created = await prisma.$transaction(async (tx) => {
+      // Serializes concurrent create attempts by this same actor — a
+      // Postgres advisory lock scoped to their own id, so unrelated actors
+      // never contend with each other or wait on this at all. Without it, a
+      // plain count-then-create under READ COMMITTED lets two concurrent
+      // requests from the same actor both read a count one under the cap
+      // and both create, overshooting it by one (reviewer-p7 M1).
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${actor.id})::bigint)`;
+      await assertWithinActiveDraftQuota(actor.id, tx);
+      return tx.product.create({
+        data: {
+          ...(input.barcode !== undefined ? { barcode: input.barcode } : { qrPayload: input.qrPayload! }),
+          // Name is required by the DB but not part of the create request — the
+          // creator fills it in via PATCH before submit is possible.
+          name: '',
+          source: 'user',
+          createdByUserId: actor.id,
+          status: 'draft',
+        },
+        include: PRODUCT_INCLUDE,
+      });
     });
     return { product: toApiProduct(created, { kind: 'privileged' }), resumed: false };
   } catch (err) {
@@ -256,11 +271,37 @@ export async function submitDraft(
     });
   }
 
+  // Cheap version pre-check before the billed external assessment call below
+  // — a client retrying a stale-version submit (or looping one) would
+  // otherwise pay for a real CreateAssessment on every attempt before ever
+  // reaching the authoritative version-guarded write further down
+  // (reviewer-p7 M12). This is advisory only: the version can still move
+  // between here and the conditional `updateMany`, which remains the actual
+  // guard against a genuine concurrent double-submit.
+  if (existing.version !== input.version) {
+    throw new AppError({
+      status: 409,
+      code: ERROR_CODES.VERSION_CONFLICT,
+      title: 'This draft was changed since you last loaded it',
+      currentVersion: existing.version,
+    });
+  }
+
   // Client-reported success is never trusted: this is the real, server-side
   // verification. Throws a retryable 503 on provider timeout/error (nothing
   // written yet, safe to retry) or a typed 403 on a conservative reject
   // (invalid token, wrong action, low score) — never a silent accept.
-  await assessProductCreationSubmission({ token: input.abuseToken, platform: input.platform });
+  const assessment = await assessProductCreationSubmission({ token: input.abuseToken, platform: input.platform });
+  // Links the assessment that admitted this submission to the product it
+  // admitted — previously the score/reasons/assessment name were discarded
+  // entirely once the assessment call returned, leaving no audit trail
+  // (reviewer-p7 M6). A structured log line (never the token itself) rather
+  // than a new DB column/migration, since persisting this on the product
+  // would be a schema change outside this phase's file ownership.
+  logger.info(
+    { productId, actorId: actor.id, score: assessment.score, reasons: assessment.reasons, assessmentName: assessment.assessmentName },
+    'product-creation: submission assessment recorded',
+  );
 
   const result = await prisma.product.updateMany({
     where: {

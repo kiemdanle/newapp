@@ -210,6 +210,57 @@ describe('POST /v1/products/drafts', () => {
     await app.close();
   });
 
+  it('never lets concurrent creates by the same actor overshoot the active-draft cap (reviewer-p7 M1)', async () => {
+    process.env.PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER = '3';
+    resetConfigForTests();
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    vi.doMock('../../src/services/products/upcitemdb-client.js', () => ({
+      lookupUpcitemdb: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    vi.resetModules();
+    const { buildServer: build2 } = await import('../../src/server.js');
+    const app = await build2();
+    const { user, headers } = await authedUser();
+    // 9 + a 9-digit timestamp tail + a 3-digit index is always exactly 13
+    // digits and unique per call within this test — `Date.now()` alone (13
+    // digits) truncated to 13 chars after prefixing/suffixing would silently
+    // drop the differentiating suffix and collide.
+    const barcodeFor = (i: number) => `9${Date.now().toString().slice(-9)}${String(i).padStart(3, '0')}`;
+    // Already at the cap minus one — a single admitted create must fill the
+    // last slot; a plain count-then-create under READ COMMITTED would have
+    // let several of these concurrent, distinctly-barcoded requests all read
+    // the same "1 under cap" count and all succeed.
+    await getPrisma().product.create({
+      data: { barcode: barcodeFor(900), name: 'Existing', source: 'user', createdByUserId: user.id, status: 'draft' },
+    });
+    await getPrisma().product.create({
+      data: { barcode: barcodeFor(901), name: 'Existing', source: 'user', createdByUserId: user.id, status: 'changes_required' },
+    });
+    const results = await Promise.all(
+      Array.from({ length: 5 }, (_, i) =>
+        app.inject({
+          method: 'POST',
+          url: '/v1/products/drafts',
+          headers: idemHeaders(headers),
+          payload: { barcode: barcodeFor(i) },
+        }),
+      ),
+    );
+    const created = results.filter((r) => r.statusCode === 201).length;
+    const rejected = results.filter((r) => r.statusCode === 409).length;
+    expect(created).toBe(1);
+    expect(created + rejected).toBe(5);
+    const activeCount = await getPrisma().product.count({
+      where: { createdByUserId: user.id, status: { in: ['draft', 'changes_required'] } },
+    });
+    expect(activeCount).toBe(3);
+    await app.close();
+    delete process.env.PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER;
+    resetConfigForTests();
+  });
+
   it('rejects a payload with neither barcode nor qrPayload', async () => {
     const app = await buildServer();
     const { headers } = await authedUser();

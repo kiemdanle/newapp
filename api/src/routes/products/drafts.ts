@@ -3,6 +3,7 @@ import {
   productDraftCreateRequestSchema,
   productDraftsQuerySchema,
   productDraftsPageSchema,
+  productSchema,
 } from '@expyrico/shared';
 import { createOrResumeDraft, listDrafts } from '../../services/products/product-drafts.js';
 
@@ -13,7 +14,9 @@ export async function draftsRoute(app: FastifyInstance) {
     async (req, reply) => {
       const input = productDraftCreateRequestSchema.parse(req.body);
       const { product, resumed } = await createOrResumeDraft({ id: req.user!.id, role: req.user!.role }, input);
-      return reply.status(resumed ? 200 : 201).send({ product, resumed });
+      // Schema-pinned response, matching every other product-mutation route
+      // (reviewer-p7 M7 fixed this same gap on the submit route).
+      return reply.status(resumed ? 200 : 201).send({ product: productSchema.parse(product), resumed });
     },
   );
 

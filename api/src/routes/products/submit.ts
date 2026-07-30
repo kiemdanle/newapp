@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { productDraftSubmitRequestSchema } from '@expyrico/shared';
+import { productDraftSubmitRequestSchema, productSchema } from '@expyrico/shared';
 import { submitDraft } from '../../services/products/product-drafts.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
@@ -13,7 +13,10 @@ export async function draftSubmitRoute(app: FastifyInstance) {
       const { id } = paramSchema.parse(req.params);
       const input = productDraftSubmitRequestSchema.parse(req.body);
       const product = await submitDraft({ id: req.user!.id, role: req.user!.role }, id, input);
-      return reply.send(product);
+      // Schema-pinned response, matching every sibling draft-mutation route
+      // (photo-delete.ts, photo-upload.ts, drafts.ts) — this was the one
+      // holdout sending the raw service return value (reviewer-p7 M7).
+      return reply.send(productSchema.parse(product));
     },
   );
 }

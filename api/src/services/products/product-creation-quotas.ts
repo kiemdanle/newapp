@@ -3,11 +3,14 @@
 // capacity bounds the whole server's budget. Never reimplements reservation or
 // lease semantics; every byte-reservation call here delegates to the existing
 // `reserveMediaCapacity`.
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { ERROR_CODES } from '@expyrico/shared';
 import { AppError } from '../../errors.js';
 import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { getRedis } from '../../redis.js';
+
+type Db = PrismaClient | Prisma.TransactionClient;
 
 const DAY_TTL_SECONDS = 2 * 24 * 60 * 60;
 
@@ -19,12 +22,23 @@ function dailyBytesKey(actorId: string, day: string): string {
   return `product-creation:quota:bytes:${actorId}:${day}`;
 }
 
-/** Throws a typed 409 when the actor already has `maxActiveDraftsPerUser`
+/**
+ * Throws a typed 409 when the actor already has `maxActiveDraftsPerUser`
  * draft/changes_required products — checked before a new draft is created,
- * never against an existing one being resumed. */
-export async function assertWithinActiveDraftQuota(actorId: string): Promise<void> {
+ * never against an existing one being resumed.
+ *
+ * Accepts an optional transaction client so the caller can run this and the
+ * subsequent `product.create` inside the same transaction, under a
+ * per-actor `pg_advisory_xact_lock`. A plain count-then-create under
+ * Postgres's default READ COMMITTED isolation lets two concurrent requests
+ * from the same actor both read a count one under the cap and both create,
+ * overshooting it by one (reviewer-p7 M1) — the advisory lock (taken by the
+ * caller, not here) serializes just that one actor's own concurrent create
+ * attempts against each other, never against unrelated actors.
+ */
+export async function assertWithinActiveDraftQuota(actorId: string, db: Db = getPrisma()): Promise<void> {
   const cfg = getConfig().productCreation;
-  const count = await getPrisma().product.count({
+  const count = await db.product.count({
     where: { createdByUserId: actorId, status: { in: ['draft', 'changes_required'] } },
   });
   if (count >= cfg.maxActiveDraftsPerUser) {
