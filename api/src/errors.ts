@@ -1,18 +1,32 @@
 import { ZodError } from 'zod';
-import type { Problem, ErrorCode } from '@expyrico/shared';
+import type { Problem, ErrorCode, Product } from '@expyrico/shared';
 
 export class AppError extends Error {
   status: number;
   code: ErrorCode | string;
   title: string;
   detail?: string | undefined;
+  // Structured, explicitly typed fields for optimistic-concurrency conflicts — never a
+  // generic arbitrary details bag. `canonicalProduct` must only be set by callers that
+  // have already decided it is visible to the caller; toProblem() serializes it as-is.
+  currentVersion?: number | undefined;
+  canonicalProduct?: Product | undefined;
 
-  constructor(opts: { status: number; code: ErrorCode | string; title: string; detail?: string }) {
+  constructor(opts: {
+    status: number;
+    code: ErrorCode | string;
+    title: string;
+    detail?: string;
+    currentVersion?: number;
+    canonicalProduct?: Product;
+  }) {
     super(opts.title);
     this.status = opts.status;
     this.code = opts.code;
     this.title = opts.title;
     this.detail = opts.detail;
+    this.currentVersion = opts.currentVersion;
+    this.canonicalProduct = opts.canonicalProduct;
   }
 }
 
@@ -47,6 +61,8 @@ export function toProblem(err: unknown): Problem {
       status: err.status,
       code: err.code,
       ...(err.detail !== undefined ? { detail: err.detail } : {}),
+      ...(err.currentVersion !== undefined ? { currentVersion: err.currentVersion } : {}),
+      ...(err.canonicalProduct !== undefined ? { canonicalProduct: err.canonicalProduct } : {}),
     };
   }
   if (err instanceof ZodError) {

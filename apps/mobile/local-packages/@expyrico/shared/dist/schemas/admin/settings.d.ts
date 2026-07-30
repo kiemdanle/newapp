@@ -25,6 +25,14 @@ export declare const moderationSettingsSchema: z.ZodObject<{
     autoHideReportThreshold: number;
     profanitySensitivity: "low" | "medium" | "high";
 }>;
+export declare const productCreationSettingsSchema: z.ZodObject<{
+    mode: z.ZodEnum<["off", "internal", "all"]>;
+}, "strip", z.ZodTypeAny, {
+    mode: "off" | "all" | "internal";
+}, {
+    mode: "off" | "all" | "internal";
+}>;
+export type ProductCreationSettings = z.infer<typeof productCreationSettingsSchema>;
 export declare const notificationTemplateSchema: z.ZodObject<{
     id: z.ZodString;
     key: z.ZodString;

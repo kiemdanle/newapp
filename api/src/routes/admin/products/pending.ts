@@ -18,7 +18,13 @@ export async function adminProductsPendingListRoute(app: FastifyInstance) {
     const items = (hasMore ? rows.slice(0, -1) : rows).map((e) => ({
       id: e.id, productId: e.productId, submittedBy: e.submittedBy,
       proposed: e.proposed as Record<string, unknown>,
-      status: e.status as 'pending' | 'approved' | 'rejected',
+      status: e.status,
+      version: e.version,
+      baseProductVersion: e.baseProductVersion,
+      moderationNotes: e.moderationNotes,
+      submittedAt: e.submittedAt ? e.submittedAt.toISOString() : null,
+      resolvedBy: e.resolvedBy,
+      resolvedAt: e.resolvedAt ? e.resolvedAt.toISOString() : null,
       createdAt: e.createdAt.toISOString(),
     }));
     const last = items.at(-1);

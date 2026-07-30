@@ -75,18 +75,58 @@ enum ProductSource {
   user
 }
 
+// `pending` predates creator submissions; the expand/classify rollout adds
+// `report_hidden|draft|changes_required` without renaming or dropping any existing
+// value. Legacy `pending` rows are report-hidden catalog products until the separately
+// gated classify migration reclassifies them once creator submission is live.
 enum ProductStatus {
   active
   pending
   merged_into
+  report_hidden
+  draft
+  changes_required
 }
 
+// `rejected` stays a terminal historical state; ordinary revision moderation only
+// reaches `draft|pending|changes_required|approved`.
 enum ProductEditStatus {
   pending
   approved
   rejected
+  draft
+  changes_required
 
   @@map("product_edit_status")
+}
+
+enum ProductPhotoModerationStatus {
+  pending
+  approved
+  rejected
+
+  @@map("product_photo_moderation_status")
+}
+
+enum MediaOperationType {
+  promote_private
+  publish_public
+  delete_private
+  delete_public
+  delete_staged
+  enqueue_cleanup
+
+  @@map("media_operation_type")
+}
+
+enum MediaOperationStatus {
+  prepared
+  pending
+  processing
+  completed
+  failed
+
+  @@map("media_operation_status")
 }
 
 enum RecordStatus {
@@ -128,40 +168,43 @@ model User {
   updatedAt               DateTime        @updatedAt
   lastSeenAt              DateTime?
 
-  credentials          AuthCredential[]
-  sessions             Session[]
-  pushTokens           PushToken[]
-  emailTokens          EmailToken[]
-  passwordResets       PasswordReset[]
-  totpChallenges       TotpChallenge[]
-  totpRecoveryCodes    TotpRecoveryCode[]
-  auditLogs            AdminAuditLog[]    @relation("AuditAdmin")
-  products             Product[]          @relation("ProductCreator")
-  records              Record[]
-  productEditsAuthored ProductEdit[]      @relation("ProductEditAuthor")
-  productEditsResolved ProductEdit[]      @relation("ProductEditResolver")
-  pushLogs             PushLog[]
-  reviews              Review[]
-  reviewVotes          ReviewVote[]
-  reportsFiled         Report[]           @relation("ReportReporter")
-  reportsResolved      Report[]           @relation("ReportResolver")
-  deals                Deal[]
-  dealVotes            DealVote[]
-  giverRatingAvg       Decimal?          @map("giver_rating_avg") @db.Decimal(3, 2)
-  recipientRatingAvg   Decimal?          @map("recipient_rating_avg") @db.Decimal(3, 2)
-  transactionCount     Int               @default(0) @map("transaction_count")
-  giveaways            Giveaway[]        @relation("GiveawayGiver")
-  giveawayClaims       GiveawayClaim[]   @relation("GiveawayClaimer")
-  ratingsGiven         TransactionRating[] @relation("RatingRater")
-  ratingsReceived      TransactionRating[] @relation("RatingRatee")
-  referralCode         String?             @unique @map("referral_code")
-  referredByUserId     String?             @map("referred_by_user_id") @db.Uuid
-  referredBy           User?               @relation("UserReferredBy", fields: [referredByUserId], references: [id])
-  referredUsers        User[]              @relation("UserReferredBy")
-  referralsMade        Referral[]          @relation("ReferralsMade")
-  referralReceived     Referral?           @relation("ReferralReceived")
-  householdsOwned      Household[]         @relation("HouseholdOwner")
-  householdMemberships HouseholdMember[]
+  credentials               AuthCredential[]
+  sessions                  Session[]
+  pushTokens                PushToken[]
+  emailTokens               EmailToken[]
+  passwordResets            PasswordReset[]
+  totpChallenges            TotpChallenge[]
+  totpRecoveryCodes         TotpRecoveryCode[]
+  auditLogs                 AdminAuditLog[]     @relation("AuditAdmin")
+  products                  Product[]           @relation("ProductCreator")
+  productsModerated         Product[]           @relation("ProductModerator")
+  records                   Record[]
+  productEditsAuthored      ProductEdit[]       @relation("ProductEditAuthor")
+  productEditsResolved      ProductEdit[]       @relation("ProductEditResolver")
+  productPhotosUploaded     ProductPhoto[]      @relation("ProductPhotoUploader")
+  productEditPhotosUploaded ProductEditPhoto[]  @relation("ProductEditPhotoUploader")
+  pushLogs                  PushLog[]
+  reviews                   Review[]
+  reviewVotes               ReviewVote[]
+  reportsFiled              Report[]            @relation("ReportReporter")
+  reportsResolved           Report[]            @relation("ReportResolver")
+  deals                     Deal[]
+  dealVotes                 DealVote[]
+  giverRatingAvg            Decimal?            @map("giver_rating_avg") @db.Decimal(3, 2)
+  recipientRatingAvg        Decimal?            @map("recipient_rating_avg") @db.Decimal(3, 2)
+  transactionCount          Int                 @default(0) @map("transaction_count")
+  giveaways                 Giveaway[]          @relation("GiveawayGiver")
+  giveawayClaims            GiveawayClaim[]     @relation("GiveawayClaimer")
+  ratingsGiven              TransactionRating[] @relation("RatingRater")
+  ratingsReceived           TransactionRating[] @relation("RatingRatee")
+  referralCode              String?             @unique @map("referral_code")
+  referredByUserId          String?             @map("referred_by_user_id") @db.Uuid
+  referredBy                User?               @relation("UserReferredBy", fields: [referredByUserId], references: [id])
+  referredUsers             User[]              @relation("UserReferredBy")
+  referralsMade             Referral[]          @relation("ReferralsMade")
+  referralReceived          Referral?           @relation("ReferralReceived")
+  householdsOwned           Household[]         @relation("HouseholdOwner")
+  householdMemberships      HouseholdMember[]
 
   @@map("users")
 }
@@ -307,6 +350,7 @@ model Product {
   barcode              String?       @unique
   qrPayload            String?       @unique @map("qr_payload")
   name                 String
+  description          String?
   brand                String?
   category             String?
   imageUrl             String?       @map("image_url")
@@ -324,38 +368,138 @@ model Product {
   mergedIntoProductId  String?       @map("merged_into_product_id") @db.Uuid
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
+  // Draft/revision lifecycle: optimistic concurrency + caller-visible moderation state.
+  version              Int           @default(1)
+  moderationNotes      String?       @map("moderation_notes")
+  submittedAt          DateTime?     @map("submitted_at")
+  moderatedAt          DateTime?     @map("moderated_at")
+  moderatedByUserId    String?       @map("moderated_by_user_id") @db.Uuid
 
-  createdBy  User?         @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  mergedInto Product?      @relation("ProductMerge", fields: [mergedIntoProductId], references: [id], onDelete: SetNull)
-  mergedFrom Product[]     @relation("ProductMerge")
-  records    Record[]
-  edits      ProductEdit[]
-  reviews    Review[]
-  deals      Deal[]
-  giveaways  Giveaway[]
+  createdBy   User?          @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  moderatedBy User?          @relation("ProductModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
+  mergedInto  Product?       @relation("ProductMerge", fields: [mergedIntoProductId], references: [id], onDelete: SetNull)
+  mergedFrom  Product[]      @relation("ProductMerge")
+  records     Record[]
+  edits       ProductEdit[]
+  photos      ProductPhoto[]
+  reviews     Review[]
+  deals       Deal[]
+  giveaways   Giveaway[]
 
   @@index([source, sourceId])
   @@map("products")
 }
 
 model ProductEdit {
-  id          String            @id @default(uuid()) @db.Uuid
-  productId   String            @map("product_id") @db.Uuid
-  submittedBy String            @map("submitted_by") @db.Uuid
-  proposed    Json
-  status      ProductEditStatus @default(pending)
-  resolvedBy  String?           @map("resolved_by") @db.Uuid
-  resolvedAt  DateTime?         @map("resolved_at")
-  notes       String?
-  createdAt   DateTime          @default(now()) @map("created_at")
+  id                 String            @id @default(uuid()) @db.Uuid
+  productId          String            @map("product_id") @db.Uuid
+  submittedBy        String            @map("submitted_by") @db.Uuid
+  proposed           Json
+  status             ProductEditStatus @default(pending)
+  resolvedBy         String?           @map("resolved_by") @db.Uuid
+  resolvedAt         DateTime?         @map("resolved_at")
+  notes              String?
+  createdAt          DateTime          @default(now()) @map("created_at")
+  // Pre-phase-1 rows default `true` and are exempt from the one-open-edit constraint
+  // below so historical pending/approved/rejected history is never invalidated.
+  isLegacy           Boolean           @default(true) @map("is_legacy")
+  version            Int               @default(1)
+  baseProductVersion Int               @default(1) @map("base_product_version")
+  moderationNotes    String?           @map("moderation_notes")
+  submittedAt        DateTime?         @map("submitted_at")
+  updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at")
 
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  submitter User    @relation("ProductEditAuthor", fields: [submittedBy], references: [id])
-  resolver  User?   @relation("ProductEditResolver", fields: [resolvedBy], references: [id])
+  product   Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  submitter User               @relation("ProductEditAuthor", fields: [submittedBy], references: [id])
+  resolver  User?              @relation("ProductEditResolver", fields: [resolvedBy], references: [id])
+  photos    ProductEditPhoto[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([productId])
+  // Partial unique index (one open lifecycle edit per creator/product) is created in
+  // migration.sql — Prisma cannot express a partial index in this schema syntax.
   @@map("product_edits")
+}
+
+/// Ordered, immutable-once-published photos on a live/draft product. Position 0 is
+/// cover. Exactly one of `privateStorageKey` (pre-publication) or `publicStorageKey`
+/// (post-publication) is set at a time, enforced by a DB check tied to
+/// `moderationStatus` (migration.sql — Prisma cannot express this check).
+model ProductPhoto {
+  id                String                       @id @default(uuid()) @db.Uuid
+  productId         String                       @map("product_id") @db.Uuid
+  position          Int
+  uploadedByUserId  String                       @map("uploaded_by_user_id") @db.Uuid
+  moderationStatus  ProductPhotoModerationStatus @default(pending) @map("moderation_status")
+  moderationNote    String?                      @map("moderation_note")
+  privateStorageKey String?                      @map("private_storage_key")
+  publicStorageKey  String?                      @map("public_storage_key")
+  mimeType          String                       @map("mime_type")
+  displayByteSize   Int                          @map("display_byte_size")
+  displayWidth      Int                          @map("display_width")
+  displayHeight     Int                          @map("display_height")
+  thumbnailByteSize Int                          @map("thumbnail_byte_size")
+  thumbnailWidth    Int                          @map("thumbnail_width")
+  thumbnailHeight   Int                          @map("thumbnail_height")
+  createdAt         DateTime                     @default(now()) @map("created_at")
+  updatedAt         DateTime                     @default(now()) @updatedAt @map("updated_at")
+
+  product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  uploadedBy      User               @relation("ProductPhotoUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+  retainedByEdits ProductEditPhoto[] @relation("ProductEditPhotoSource")
+
+  @@unique([productId, position])
+  @@map("product_photos")
+}
+
+/// One entry per desired position in an edit's proposed photo set: either a retained
+/// live photo (`sourceProductPhotoId` set, no staged fields) or newly staged media (all
+/// staged fields set, no source). The XOR is enforced by a DB check in migration.sql.
+model ProductEditPhoto {
+  id                   String   @id @default(uuid()) @db.Uuid
+  productEditId        String   @map("product_edit_id") @db.Uuid
+  position             Int
+  sourceProductPhotoId String?  @map("source_product_photo_id") @db.Uuid
+  uploadedByUserId     String?  @map("uploaded_by_user_id") @db.Uuid
+  privateStorageKey    String?  @map("private_storage_key")
+  mimeType             String?  @map("mime_type")
+  displayByteSize      Int?     @map("display_byte_size")
+  displayWidth         Int?     @map("display_width")
+  displayHeight        Int?     @map("display_height")
+  thumbnailByteSize    Int?     @map("thumbnail_byte_size")
+  thumbnailWidth       Int?     @map("thumbnail_width")
+  thumbnailHeight      Int?     @map("thumbnail_height")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at")
+
+  productEdit        ProductEdit   @relation(fields: [productEditId], references: [id], onDelete: Cascade)
+  sourceProductPhoto ProductPhoto? @relation("ProductEditPhotoSource", fields: [sourceProductPhotoId], references: [id], onDelete: Restrict)
+  uploadedBy         User?         @relation("ProductEditPhotoUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([productEditId, position])
+  @@map("product_edit_photos")
+}
+
+/// Durable DB/filesystem handoff for private-promotion and public-publish media
+/// operations. A `prepared` intent with a renewable lease is committed before any final
+/// rename/copy; the reference-changing transaction completes it atomically. Workers
+/// claim expired `prepared` or ready `pending` cleanup rows with `FOR UPDATE SKIP
+/// LOCKED` via the partial indexes below.
+model MediaOperationOutbox {
+  id             String               @id @default(uuid()) @db.Uuid
+  operation      MediaOperationType
+  /// `{ keys: string[] }` — validated by a DB check in migration.sql.
+  payload        Json
+  status         MediaOperationStatus @default(pending)
+  leaseOwner     String?              @map("lease_owner")
+  leaseExpiresAt DateTime?            @map("lease_expires_at")
+  attempts       Int                  @default(0)
+  availableAt    DateTime             @default(now()) @map("available_at")
+  lastError      String?              @map("last_error")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at")
+
+  @@map("media_operation_outbox")
 }
 
 model Record {
@@ -377,8 +521,8 @@ model Record {
   clientId     String       @unique @map("client_id") @db.Uuid
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
-  consumedAt    DateTime?    @map("consumed_at")
-  householdId   String?      @db.Uuid @map("household_id")
+  consumedAt   DateTime?    @map("consumed_at")
+  householdId  String?      @map("household_id") @db.Uuid
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -411,17 +555,17 @@ model PushLog {
 }
 
 model Review {
-  id             String       @id @default(uuid()) @db.Uuid
-  userId         String       @map("user_id") @db.Uuid
-  productId      String       @map("product_id") @db.Uuid
-  rating         ReviewRating
-  body           String?
-  helpfulCount   Int          @default(0) @map("helpful_count")
-  notHelpfulCount Int         @default(0) @map("not_helpful_count")
-  score          Decimal      @default(0) @db.Decimal(7, 6)
-  status         ReviewStatus @default(visible)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id              String       @id @default(uuid()) @db.Uuid
+  userId          String       @map("user_id") @db.Uuid
+  productId       String       @map("product_id") @db.Uuid
+  rating          ReviewRating
+  body            String?
+  helpfulCount    Int          @default(0) @map("helpful_count")
+  notHelpfulCount Int          @default(0) @map("not_helpful_count")
+  score           Decimal      @default(0) @db.Decimal(7, 6)
+  status          ReviewStatus @default(visible)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
 
   user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -436,7 +580,7 @@ model ReviewVote {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   reviewId  String   @map("review_id") @db.Uuid
-  value     String   // 'helpful' | 'not_helpful'
+  value     String // 'helpful' | 'not_helpful'
   createdAt DateTime @default(now()) @map("created_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -489,15 +633,15 @@ model NotificationTemplate {
 }
 
 model ApiError {
-  id         String   @id @default(uuid()) @db.Uuid
-  route      String
-  method     String
-  status     Int
-  code       String?
-  message    String?
-  requestId  String?  @map("request_id")
-  userId     String?  @db.Uuid @map("user_id")
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid()) @db.Uuid
+  route     String
+  method    String
+  status    Int
+  code      String?
+  message   String?
+  requestId String?  @map("request_id")
+  userId    String?  @map("user_id") @db.Uuid
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
   @@index([route, status])
@@ -514,8 +658,8 @@ enum DealStatus {
 
 model Deal {
   id            String     @id @default(uuid()) @db.Uuid
-  userId        String     @db.Uuid @map("user_id")
-  productId     String     @db.Uuid @map("product_id")
+  userId        String     @map("user_id") @db.Uuid
+  productId     String     @map("product_id") @db.Uuid
   price         Decimal    @db.Decimal(10, 2)
   currency      String     @db.Char(3)
   storeName     String     @map("store_name")
@@ -543,8 +687,8 @@ model Deal {
 
 model DealVote {
   id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @db.Uuid @map("user_id")
-  dealId    String   @db.Uuid @map("deal_id")
+  userId    String   @map("user_id") @db.Uuid
+  dealId    String   @map("deal_id") @db.Uuid
   value     Int      @db.SmallInt
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -599,9 +743,9 @@ model Giveaway {
   confirmedAt    DateTime?      @map("confirmed_at")
   completedAt    DateTime?      @map("completed_at")
 
-  giver   User              @relation("GiveawayGiver", fields: [giverUserId], references: [id], onDelete: Cascade)
-  product Product?          @relation(fields: [productId], references: [id])
-  record  Record?           @relation(fields: [recordId], references: [id])
+  giver   User                @relation("GiveawayGiver", fields: [giverUserId], references: [id], onDelete: Cascade)
+  product Product?            @relation(fields: [productId], references: [id])
+  record  Record?             @relation(fields: [recordId], references: [id])
   claims  GiveawayClaim[]
   ratings TransactionRating[]
 
@@ -691,11 +835,11 @@ enum HouseholdRole {
 }
 
 model Household {
-  id          String            @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
   name        String
-  ownerUserId String            @db.Uuid @map("owner_user_id")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
+  ownerUserId String   @map("owner_user_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   owner   User              @relation("HouseholdOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   members HouseholdMember[]
@@ -707,8 +851,8 @@ model Household {
 
 model HouseholdMember {
   id          String        @id @default(uuid()) @db.Uuid
-  householdId String        @db.Uuid @map("household_id")
-  userId      String        @db.Uuid @map("user_id")
+  householdId String        @map("household_id") @db.Uuid
+  userId      String        @map("user_id") @db.Uuid
   role        HouseholdRole @default(member)
   joinedAt    DateTime      @default(now()) @map("joined_at")
 

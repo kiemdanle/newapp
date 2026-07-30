@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { cursorQuerySchema, cursorPageSchema } from './common.js';
-export const adminProductStatusSchema = z.enum(['active', 'pending', 'merged_into']);
+import { productStatusSchema } from '../product.js';
+// Reuses the public product lifecycle so admin tooling can never drift from the states
+// products actually go through.
+export const adminProductStatusSchema = productStatusSchema;
 export const adminProductSourceSchema = z.enum(['off', 'upcitemdb', 'user']);
 export const adminProductRowSchema = z.object({
     id: z.string().uuid(),
@@ -49,17 +52,34 @@ export const adminProductMergeResponseSchema = z.object({
     newBuyAgainOnSaleCount: z.number().int(),
     newWontBuyCount: z.number().int(),
 });
+// `rejected` is preserved as a terminal historical state; ordinary moderation only ever
+// reaches `draft|pending|changes_required|approved`. The only new write to `rejected` is
+// an explicit stale-revision `supersede` (Phase 4), which is not part of this resolve
+// contract.
+export const productEditStatusSchema = z.enum(['draft', 'pending', 'changes_required', 'approved', 'rejected']);
 export const adminProductEditRowSchema = z.object({
     id: z.string().uuid(),
     productId: z.string().uuid(),
     submittedBy: z.string().uuid(),
     proposed: z.record(z.unknown()),
-    status: z.enum(['pending', 'approved', 'rejected']),
+    status: productEditStatusSchema,
+    version: z.number().int().min(1),
+    baseProductVersion: z.number().int().min(1),
+    moderationNotes: z.string().nullable(),
+    submittedAt: z.string().datetime().nullable(),
+    resolvedBy: z.string().uuid().nullable(),
+    resolvedAt: z.string().datetime().nullable(),
     createdAt: z.string().datetime(),
 });
 export const adminProductEditsListSchema = cursorPageSchema(adminProductEditRowSchema);
-export const adminProductEditResolveSchema = z.object({
-    decision: z.enum(['approve', 'reject']),
-    notes: z.string().optional(),
+// Admin action is named `request_changes` (resulting state `changes_required`), not
+// `reject` — ordinary moderation never writes the terminal `rejected` state.
+export const adminProductEditResolveSchema = z
+    .object({
+    decision: z.enum(['approve', 'request_changes']),
+    notes: z.string().trim().min(1).max(2000).optional(),
+})
+    .refine((d) => d.decision !== 'request_changes' || Boolean(d.notes), {
+    message: 'notes required when requesting changes',
 });
 //# sourceMappingURL=products.js.map

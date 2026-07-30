@@ -1,12 +1,33 @@
 import { z } from 'zod';
 export declare const productSourceSchema: z.ZodEnum<["off", "upcitemdb", "user"]>;
 export type ProductSource = z.infer<typeof productSourceSchema>;
-export declare const productStatusSchema: z.ZodEnum<["active", "pending", "merged_into"]>;
+export declare const productStatusSchema: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+export type ProductStatus = z.infer<typeof productStatusSchema>;
+export declare const productDescriptionSchema: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
+export type ProductDescription = z.infer<typeof productDescriptionSchema>;
+export declare const productPhotoSchema: z.ZodObject<{
+    id: z.ZodString;
+    position: z.ZodNumber;
+    thumbnailUrl: z.ZodString;
+    displayUrl: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    position: number;
+    thumbnailUrl: string;
+    displayUrl: string;
+}, {
+    id: string;
+    position: number;
+    thumbnailUrl: string;
+    displayUrl: string;
+}>;
+export type ProductPhoto = z.infer<typeof productPhotoSchema>;
 export declare const productSchema: z.ZodObject<{
     id: z.ZodString;
     barcode: z.ZodNullable<z.ZodString>;
     qrPayload: z.ZodNullable<z.ZodString>;
     name: z.ZodString;
+    description: z.ZodNullable<z.ZodString>;
     brand: z.ZodNullable<z.ZodString>;
     category: z.ZodNullable<z.ZodString>;
     imageUrl: z.ZodNullable<z.ZodString>;
@@ -19,17 +40,36 @@ export declare const productSchema: z.ZodObject<{
     wontBuyCount: z.ZodNumber;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
-    status: z.ZodEnum<["active", "pending", "merged_into"]>;
+    status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+    version: z.ZodNumber;
+    moderationFeedback: z.ZodNullable<z.ZodString>;
+    photos: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        position: z.ZodNumber;
+        thumbnailUrl: z.ZodString;
+        displayUrl: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }>, "many">;
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "active" | "pending" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
     createdAt: string;
     updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
+    description: string | null;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
@@ -42,14 +82,23 @@ export declare const productSchema: z.ZodObject<{
     wontBuyCount: number;
     ratingCount: number;
     reviewCount: number;
+    version: number;
+    moderationFeedback: string | null;
+    photos: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }[];
 }, {
     id: string;
-    status: "active" | "pending" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
     createdAt: string;
     updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
+    description: string | null;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
@@ -62,6 +111,14 @@ export declare const productSchema: z.ZodObject<{
     wontBuyCount: number;
     ratingCount: number;
     reviewCount: number;
+    version: number;
+    moderationFeedback: string | null;
+    photos: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }[];
 }>;
 export type Product = z.infer<typeof productSchema>;
 export declare const productWithReviewsSchema: z.ZodObject<{
@@ -69,6 +126,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     barcode: z.ZodNullable<z.ZodString>;
     qrPayload: z.ZodNullable<z.ZodString>;
     name: z.ZodString;
+    description: z.ZodNullable<z.ZodString>;
     brand: z.ZodNullable<z.ZodString>;
     category: z.ZodNullable<z.ZodString>;
     imageUrl: z.ZodNullable<z.ZodString>;
@@ -81,19 +139,38 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     wontBuyCount: z.ZodNumber;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
-    status: z.ZodEnum<["active", "pending", "merged_into"]>;
+    status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+    version: z.ZodNumber;
+    moderationFeedback: z.ZodNullable<z.ZodString>;
+    photos: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        position: z.ZodNumber;
+        thumbnailUrl: z.ZodString;
+        displayUrl: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }, {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }>, "many">;
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 } & {
     topReviews: z.ZodArray<z.ZodUnknown, "many">;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "active" | "pending" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
     createdAt: string;
     updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
+    description: string | null;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
@@ -106,15 +183,24 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     wontBuyCount: number;
     ratingCount: number;
     reviewCount: number;
+    version: number;
+    moderationFeedback: string | null;
+    photos: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }[];
     topReviews: unknown[];
 }, {
     id: string;
-    status: "active" | "pending" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
     createdAt: string;
     updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
+    description: string | null;
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
@@ -127,6 +213,14 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     wontBuyCount: number;
     ratingCount: number;
     reviewCount: number;
+    version: number;
+    moderationFeedback: string | null;
+    photos: {
+        id: string;
+        position: number;
+        thumbnailUrl: string;
+        displayUrl: string;
+    }[];
     topReviews: unknown[];
 }>;
 export type ProductWithReviews = z.infer<typeof productWithReviewsSchema>;
@@ -153,6 +247,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         barcode: z.ZodNullable<z.ZodString>;
         qrPayload: z.ZodNullable<z.ZodString>;
         name: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
         brand: z.ZodNullable<z.ZodString>;
         category: z.ZodNullable<z.ZodString>;
         imageUrl: z.ZodNullable<z.ZodString>;
@@ -165,17 +260,36 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         wontBuyCount: z.ZodNumber;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
-        status: z.ZodEnum<["active", "pending", "merged_into"]>;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        photos: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }>, "many">;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -188,14 +302,23 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }, {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -208,16 +331,25 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }>>;
 }, "strip", z.ZodTypeAny, {
     product: {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -230,16 +362,25 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     } | null;
 }, {
     product: {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -252,6 +393,14 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     } | null;
 }>;
 export type ProductLookupResponse = z.infer<typeof productLookupResponseSchema>;
@@ -261,6 +410,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         barcode: z.ZodNullable<z.ZodString>;
         qrPayload: z.ZodNullable<z.ZodString>;
         name: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
         brand: z.ZodNullable<z.ZodString>;
         category: z.ZodNullable<z.ZodString>;
         imageUrl: z.ZodNullable<z.ZodString>;
@@ -273,17 +423,36 @@ export declare const productSearchResultSchema: z.ZodObject<{
         wontBuyCount: z.ZodNumber;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
-        status: z.ZodEnum<["active", "pending", "merged_into"]>;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        photos: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }>, "many">;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -296,14 +465,23 @@ export declare const productSearchResultSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }, {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -316,16 +494,25 @@ export declare const productSearchResultSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -338,16 +525,25 @@ export declare const productSearchResultSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }[];
 }, {
     items: {
         id: string;
-        status: "active" | "pending" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
+        description: string | null;
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
@@ -360,6 +556,14 @@ export declare const productSearchResultSchema: z.ZodObject<{
         wontBuyCount: number;
         ratingCount: number;
         reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
     }[];
 }>;
 export type ProductSearchResult = z.infer<typeof productSearchResultSchema>;
@@ -409,4 +613,809 @@ export declare const productPatchRequestSchema: z.ZodObject<{
     defaultShelfLifeDays?: number | null | undefined;
 }>;
 export type ProductPatchRequest = z.infer<typeof productPatchRequestSchema>;
+export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"outcome", [z.ZodObject<{
+    outcome: z.ZodLiteral<"found">;
+    product: z.ZodObject<{
+        id: z.ZodString;
+        barcode: z.ZodNullable<z.ZodString>;
+        qrPayload: z.ZodNullable<z.ZodString>;
+        name: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        brand: z.ZodNullable<z.ZodString>;
+        category: z.ZodNullable<z.ZodString>;
+        imageUrl: z.ZodNullable<z.ZodString>;
+        defaultShelfLifeDays: z.ZodNullable<z.ZodNumber>;
+        source: z.ZodEnum<["off", "upcitemdb", "user"]>;
+        sourceId: z.ZodNullable<z.ZodString>;
+        isCommunityEligible: z.ZodBoolean;
+        buyAgainCount: z.ZodNumber;
+        buyAgainOnSaleCount: z.ZodNumber;
+        wontBuyCount: z.ZodNumber;
+        ratingCount: z.ZodNumber;
+        reviewCount: z.ZodNumber;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        photos: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }>, "many">;
+        createdAt: z.ZodString;
+        updatedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }>;
+}, "strict", z.ZodTypeAny, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "found";
+}, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "found";
+}>, z.ZodObject<{
+    outcome: z.ZodLiteral<"editable_private">;
+    product: z.ZodObject<{
+        id: z.ZodString;
+        barcode: z.ZodNullable<z.ZodString>;
+        qrPayload: z.ZodNullable<z.ZodString>;
+        name: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        brand: z.ZodNullable<z.ZodString>;
+        category: z.ZodNullable<z.ZodString>;
+        imageUrl: z.ZodNullable<z.ZodString>;
+        defaultShelfLifeDays: z.ZodNullable<z.ZodNumber>;
+        source: z.ZodEnum<["off", "upcitemdb", "user"]>;
+        sourceId: z.ZodNullable<z.ZodString>;
+        isCommunityEligible: z.ZodBoolean;
+        buyAgainCount: z.ZodNumber;
+        buyAgainOnSaleCount: z.ZodNumber;
+        wontBuyCount: z.ZodNumber;
+        ratingCount: z.ZodNumber;
+        reviewCount: z.ZodNumber;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        photos: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }>, "many">;
+        createdAt: z.ZodString;
+        updatedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }>;
+}, "strict", z.ZodTypeAny, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "editable_private";
+}, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "editable_private";
+}>, z.ZodObject<{
+    outcome: z.ZodLiteral<"creator_pending">;
+    product: z.ZodObject<{
+        id: z.ZodString;
+        barcode: z.ZodNullable<z.ZodString>;
+        qrPayload: z.ZodNullable<z.ZodString>;
+        name: z.ZodString;
+        description: z.ZodNullable<z.ZodString>;
+        brand: z.ZodNullable<z.ZodString>;
+        category: z.ZodNullable<z.ZodString>;
+        imageUrl: z.ZodNullable<z.ZodString>;
+        defaultShelfLifeDays: z.ZodNullable<z.ZodNumber>;
+        source: z.ZodEnum<["off", "upcitemdb", "user"]>;
+        sourceId: z.ZodNullable<z.ZodString>;
+        isCommunityEligible: z.ZodBoolean;
+        buyAgainCount: z.ZodNumber;
+        buyAgainOnSaleCount: z.ZodNumber;
+        wontBuyCount: z.ZodNumber;
+        ratingCount: z.ZodNumber;
+        reviewCount: z.ZodNumber;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        photos: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            position: z.ZodNumber;
+            thumbnailUrl: z.ZodString;
+            displayUrl: z.ZodString;
+        }, "strip", z.ZodTypeAny, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }, {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }>, "many">;
+        createdAt: z.ZodString;
+        updatedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }, {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    }>;
+}, "strict", z.ZodTypeAny, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "creator_pending";
+}, {
+    product: {
+        id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
+        barcode: string | null;
+        qrPayload: string | null;
+        name: string;
+        description: string | null;
+        brand: string | null;
+        category: string | null;
+        imageUrl: string | null;
+        defaultShelfLifeDays: number | null;
+        source: "user" | "off" | "upcitemdb";
+        sourceId: string | null;
+        isCommunityEligible: boolean;
+        buyAgainCount: number;
+        buyAgainOnSaleCount: number;
+        wontBuyCount: number;
+        ratingCount: number;
+        reviewCount: number;
+        version: number;
+        moderationFeedback: string | null;
+        photos: {
+            id: string;
+            position: number;
+            thumbnailUrl: string;
+            displayUrl: string;
+        }[];
+    };
+    outcome: "creator_pending";
+}>, z.ZodObject<{
+    outcome: z.ZodLiteral<"under_review">;
+}, "strict", z.ZodTypeAny, {
+    outcome: "under_review";
+}, {
+    outcome: "under_review";
+}>, z.ZodObject<{
+    outcome: z.ZodLiteral<"not_found">;
+    canCreate: z.ZodBoolean;
+}, "strict", z.ZodTypeAny, {
+    outcome: "not_found";
+    canCreate: boolean;
+}, {
+    outcome: "not_found";
+    canCreate: boolean;
+}>, z.ZodObject<{
+    outcome: z.ZodLiteral<"temporarily_unavailable">;
+    retryAfterSeconds: z.ZodOptional<z.ZodNumber>;
+}, "strict", z.ZodTypeAny, {
+    outcome: "temporarily_unavailable";
+    retryAfterSeconds?: number | undefined;
+}, {
+    outcome: "temporarily_unavailable";
+    retryAfterSeconds?: number | undefined;
+}>]>;
+export type ProductLookupV2Response = z.infer<typeof productLookupV2ResponseSchema>;
+declare const productDraftStatusSchema: z.ZodEnum<["draft", "pending", "changes_required"]>;
+export type ProductDraftStatus = z.infer<typeof productDraftStatusSchema>;
+export declare const productDraftsQuerySchema: z.ZodObject<{
+    cursor: z.ZodOptional<z.ZodString>;
+    limit: z.ZodDefault<z.ZodNumber>;
+    status: z.ZodOptional<z.ZodEnum<["draft", "pending", "changes_required"]>>;
+}, "strip", z.ZodTypeAny, {
+    limit: number;
+    status?: "draft" | "pending" | "changes_required" | undefined;
+    cursor?: string | undefined;
+}, {
+    status?: "draft" | "pending" | "changes_required" | undefined;
+    cursor?: string | undefined;
+    limit?: number | undefined;
+}>;
+export type ProductDraftsQuery = z.infer<typeof productDraftsQuerySchema>;
+declare const productDraftIdentifierSchema: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+    kind: z.ZodLiteral<"barcode">;
+    value: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    value: string;
+    kind: "barcode";
+}, {
+    value: string;
+    kind: "barcode";
+}>, z.ZodObject<{
+    kind: z.ZodLiteral<"qr">;
+    value: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    value: string;
+    kind: "qr";
+}, {
+    value: string;
+    kind: "qr";
+}>]>;
+export type ProductDraftIdentifier = z.infer<typeof productDraftIdentifierSchema>;
+export declare const productDraftRowSchema: z.ZodObject<{
+    id: z.ZodString;
+    name: z.ZodString;
+    identifier: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+        kind: z.ZodLiteral<"barcode">;
+        value: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        value: string;
+        kind: "barcode";
+    }, {
+        value: string;
+        kind: "barcode";
+    }>, z.ZodObject<{
+        kind: z.ZodLiteral<"qr">;
+        value: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        value: string;
+        kind: "qr";
+    }, {
+        value: string;
+        kind: "qr";
+    }>]>;
+    status: z.ZodEnum<["draft", "pending", "changes_required"]>;
+    version: z.ZodNumber;
+    moderationFeedback: z.ZodNullable<z.ZodString>;
+    cover: z.ZodNullable<z.ZodObject<{
+        photoId: z.ZodString;
+        thumbnailUrl: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        thumbnailUrl: string;
+        photoId: string;
+    }, {
+        thumbnailUrl: string;
+        photoId: string;
+    }>>;
+    updatedAt: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    id: string;
+    status: "draft" | "pending" | "changes_required";
+    updatedAt: string;
+    name: string;
+    version: number;
+    moderationFeedback: string | null;
+    identifier: {
+        value: string;
+        kind: "barcode";
+    } | {
+        value: string;
+        kind: "qr";
+    };
+    cover: {
+        thumbnailUrl: string;
+        photoId: string;
+    } | null;
+}, {
+    id: string;
+    status: "draft" | "pending" | "changes_required";
+    updatedAt: string;
+    name: string;
+    version: number;
+    moderationFeedback: string | null;
+    identifier: {
+        value: string;
+        kind: "barcode";
+    } | {
+        value: string;
+        kind: "qr";
+    };
+    cover: {
+        thumbnailUrl: string;
+        photoId: string;
+    } | null;
+}>;
+export type ProductDraftRow = z.infer<typeof productDraftRowSchema>;
+export declare const productDraftsPageSchema: z.ZodObject<{
+    items: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        identifier: z.ZodDiscriminatedUnion<"kind", [z.ZodObject<{
+            kind: z.ZodLiteral<"barcode">;
+            value: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            value: string;
+            kind: "barcode";
+        }, {
+            value: string;
+            kind: "barcode";
+        }>, z.ZodObject<{
+            kind: z.ZodLiteral<"qr">;
+            value: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            value: string;
+            kind: "qr";
+        }, {
+            value: string;
+            kind: "qr";
+        }>]>;
+        status: z.ZodEnum<["draft", "pending", "changes_required"]>;
+        version: z.ZodNumber;
+        moderationFeedback: z.ZodNullable<z.ZodString>;
+        cover: z.ZodNullable<z.ZodObject<{
+            photoId: z.ZodString;
+            thumbnailUrl: z.ZodString;
+        }, "strict", z.ZodTypeAny, {
+            thumbnailUrl: string;
+            photoId: string;
+        }, {
+            thumbnailUrl: string;
+            photoId: string;
+        }>>;
+        updatedAt: z.ZodString;
+    }, "strict", z.ZodTypeAny, {
+        id: string;
+        status: "draft" | "pending" | "changes_required";
+        updatedAt: string;
+        name: string;
+        version: number;
+        moderationFeedback: string | null;
+        identifier: {
+            value: string;
+            kind: "barcode";
+        } | {
+            value: string;
+            kind: "qr";
+        };
+        cover: {
+            thumbnailUrl: string;
+            photoId: string;
+        } | null;
+    }, {
+        id: string;
+        status: "draft" | "pending" | "changes_required";
+        updatedAt: string;
+        name: string;
+        version: number;
+        moderationFeedback: string | null;
+        identifier: {
+            value: string;
+            kind: "barcode";
+        } | {
+            value: string;
+            kind: "qr";
+        };
+        cover: {
+            thumbnailUrl: string;
+            photoId: string;
+        } | null;
+    }>, "many">;
+    nextCursor: z.ZodNullable<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    items: {
+        id: string;
+        status: "draft" | "pending" | "changes_required";
+        updatedAt: string;
+        name: string;
+        version: number;
+        moderationFeedback: string | null;
+        identifier: {
+            value: string;
+            kind: "barcode";
+        } | {
+            value: string;
+            kind: "qr";
+        };
+        cover: {
+            thumbnailUrl: string;
+            photoId: string;
+        } | null;
+    }[];
+    nextCursor: string | null;
+}, {
+    items: {
+        id: string;
+        status: "draft" | "pending" | "changes_required";
+        updatedAt: string;
+        name: string;
+        version: number;
+        moderationFeedback: string | null;
+        identifier: {
+            value: string;
+            kind: "barcode";
+        } | {
+            value: string;
+            kind: "qr";
+        };
+        cover: {
+            thumbnailUrl: string;
+            photoId: string;
+        } | null;
+    }[];
+    nextCursor: string | null;
+}>;
+export type ProductDraftsPage = z.infer<typeof productDraftsPageSchema>;
+export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodObject<{
+    barcode: z.ZodOptional<z.ZodString>;
+    qrPayload: z.ZodOptional<z.ZodString>;
+}, "strict", z.ZodTypeAny, {
+    barcode?: string | undefined;
+    qrPayload?: string | undefined;
+}, {
+    barcode?: string | undefined;
+    qrPayload?: string | undefined;
+}>, {
+    barcode?: string | undefined;
+    qrPayload?: string | undefined;
+}, {
+    barcode?: string | undefined;
+    qrPayload?: string | undefined;
+}>;
+export type ProductDraftCreateRequest = z.infer<typeof productDraftCreateRequestSchema>;
+export declare const productDraftPatchRequestSchema: z.ZodObject<{
+    name: z.ZodOptional<z.ZodString>;
+    description: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
+    brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    category: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, "strict", z.ZodTypeAny, {
+    description: string | null;
+    name?: string | undefined;
+    brand?: string | null | undefined;
+    category?: string | null | undefined;
+}, {
+    name?: string | undefined;
+    description?: string | null | undefined;
+    brand?: string | null | undefined;
+    category?: string | null | undefined;
+}>;
+export type ProductDraftPatchRequest = z.infer<typeof productDraftPatchRequestSchema>;
+export declare const productDraftReorderRequestSchema: z.ZodEffects<z.ZodObject<{
+    photoIds: z.ZodArray<z.ZodString, "many">;
+}, "strict", z.ZodTypeAny, {
+    photoIds: string[];
+}, {
+    photoIds: string[];
+}>, {
+    photoIds: string[];
+}, {
+    photoIds: string[];
+}>;
+export type ProductDraftReorderRequest = z.infer<typeof productDraftReorderRequestSchema>;
+export declare const productDraftSubmitRequestSchema: z.ZodObject<{
+    version: z.ZodNumber;
+    abuseToken: z.ZodString;
+}, "strict", z.ZodTypeAny, {
+    version: number;
+    abuseToken: string;
+}, {
+    version: number;
+    abuseToken: string;
+}>;
+export type ProductDraftSubmitRequest = z.infer<typeof productDraftSubmitRequestSchema>;
+export {};
 //# sourceMappingURL=product.d.ts.map

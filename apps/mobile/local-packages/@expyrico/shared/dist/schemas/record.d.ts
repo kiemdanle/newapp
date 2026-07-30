@@ -304,15 +304,15 @@ export declare const recordListQuerySchema: z.ZodObject<{
     cursor: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    scope: "personal" | "household" | "all";
     limit: number;
-    householdId?: string | undefined;
+    scope: "personal" | "household" | "all";
     cursor?: string | undefined;
-}, {
     householdId?: string | undefined;
-    scope?: "personal" | "household" | "all" | undefined;
+}, {
     cursor?: string | undefined;
     limit?: number | undefined;
+    householdId?: string | undefined;
+    scope?: "personal" | "household" | "all" | undefined;
 }>;
 export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
 export declare const recordSyncConflictSchema: z.ZodObject<{

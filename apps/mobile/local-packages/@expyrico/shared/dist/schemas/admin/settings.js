@@ -9,6 +9,12 @@ export const moderationSettingsSchema = z.object({
     autoHideReportThreshold: z.number().int().min(1).max(100),
     profanitySensitivity: z.enum(['low', 'medium', 'high']),
 });
+// Setting key `product_creation`. `internal` means existing admin users plus an
+// environment-managed user-ID allowlist. The expand migration inserts `{ mode: 'off' }`
+// idempotently before any reader starts.
+export const productCreationSettingsSchema = z.object({
+    mode: z.enum(['off', 'internal', 'all']),
+});
 export const notificationTemplateSchema = z.object({
     id: z.string().uuid(),
     key: z.string(),

@@ -72,13 +72,13 @@ export declare const pushLogsQuerySchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     limit: number;
     status?: "failed" | "sent" | undefined;
-    userId?: string | undefined;
     cursor?: string | undefined;
+    userId?: string | undefined;
 }, {
     status?: "failed" | "sent" | undefined;
-    userId?: string | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
+    userId?: string | undefined;
 }>;
 export declare const pushLogsListSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{

@@ -16,6 +16,7 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
       barcode,
       qr_payload              AS "qrPayload",
       name,
+      description,
       brand,
       category,
       image_url               AS "imageUrl",
@@ -30,6 +31,8 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
       review_count            AS "reviewCount",
       created_by_user_id      AS "createdByUserId",
       status,
+      version,
+      moderation_notes        AS "moderationNotes",
       merged_into_product_id  AS "mergedIntoProductId",
       created_at              AS "createdAt",
       updated_at              AS "updatedAt"

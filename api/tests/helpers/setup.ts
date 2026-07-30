@@ -47,6 +47,9 @@ const tables = [
   'push_tokens',
   'sessions',
   'auth_credentials',
+  'media_operation_outbox',
+  'product_edit_photos',
+  'product_photos',
   'product_edits',
   'household_members',
   'records',
@@ -83,6 +86,15 @@ beforeEach(async () => {
       role: 'user',
       status: 'active',
     },
+  });
+
+  // Re-seed the product_creation rollout gate (always present in production via the
+  // expand migration's idempotent insert) so tests observe the same default-off
+  // baseline the migration guarantees, rather than an absent row from truncation.
+  await prisma.setting.upsert({
+    where: { key: 'product_creation' },
+    update: {},
+    create: { key: 'product_creation', value: { mode: 'off' } },
   });
 });
 

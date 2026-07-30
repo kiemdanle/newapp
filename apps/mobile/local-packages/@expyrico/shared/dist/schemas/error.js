@@ -1,6 +1,12 @@
 import { z } from 'zod';
+import { productSchema } from './product.js';
 /**
  * RFC 7807 problem+json with a stable `code` for client matching.
+ *
+ * `currentVersion`/`canonicalProduct` are safe, explicitly typed structured fields for
+ * optimistic-concurrency conflicts (never a generic arbitrary details bag). Both are
+ * optional so most problems carry neither, and `canonicalProduct` is only ever present
+ * when the server has already decided it is visible to the caller.
  */
 export const problemSchema = z.object({
     type: z.string().url().optional(),
@@ -10,6 +16,12 @@ export const problemSchema = z.object({
     instance: z.string().optional(),
     code: z.string(),
     errors: z.array(z.object({ path: z.string(), message: z.string() })).optional(),
+    currentVersion: z.number().int().optional(),
+    canonicalProduct: productSchema.optional(),
+});
+export const versionConflictProblemSchema = problemSchema.extend({
+    code: z.literal('version_conflict'),
+    currentVersion: z.number().int(),
 });
 export const ERROR_CODES = {
     VALIDATION: 'validation_error',
@@ -61,6 +73,13 @@ export const ERROR_CODES = {
     HOUSEHOLD_OWNER_CANNOT_LEAVE: 'household_owner_cannot_leave',
     MEMBER_NOT_FOUND: 'member_not_found',
     RECORD_HOUSEHOLD_FORBIDDEN: 'record_household_forbidden',
+    // Products: private drafts + media
+    VERSION_CONFLICT: 'version_conflict',
+    UNSUPPORTED_MEDIA: 'unsupported_media',
+    PAYLOAD_TOO_LARGE: 'payload_too_large',
+    PIXEL_LIMIT_EXCEEDED: 'pixel_limit_exceeded',
+    PROCESSING_TIMEOUT: 'processing_timeout',
+    STORAGE_CAPACITY_UNAVAILABLE: 'storage_capacity_unavailable',
 };
 export const ITEM_LIMIT = 50;
 //# sourceMappingURL=error.js.map
