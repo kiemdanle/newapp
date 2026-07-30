@@ -42,7 +42,16 @@ export interface MetadataFields {
 
 export type CoordinatorOperation =
   | { kind: 'metadata'; fields: MetadataFields }
-  | { kind: 'upload'; photo: UploadablePhoto; onProgress?: (ratio: number) => void }
+  | {
+      kind: 'upload';
+      photo: UploadablePhoto;
+      onProgress?: (ratio: number) => void;
+      /** Called synchronously with the transport's real `cancel()` as soon
+       * as the upload starts (before the network response arrives) — the
+       * only way a caller can actually abort an in-flight upload, since
+       * `enqueue()` itself only returns the eventual `Promise<T>`. */
+      onHandle?: (handle: { cancel: () => void }) => void;
+    }
   | { kind: 'delete'; photoId: string }
   | { kind: 'order'; photoIds: string[] };
 
@@ -242,6 +251,7 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
           case 'upload': {
             const handle = adapter.uploadPhoto(operation.photo);
             if (operation.onProgress) handle.onProgress(operation.onProgress);
+            operation.onHandle?.({ cancel: handle.cancel });
             const updated = await handle.promise;
             known = updated;
             return updated;
