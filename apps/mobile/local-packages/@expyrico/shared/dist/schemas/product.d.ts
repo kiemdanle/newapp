@@ -1384,12 +1384,15 @@ export type ProductDraftReorderRequest = z.infer<typeof productDraftReorderReque
 export declare const productDraftSubmitRequestSchema: z.ZodObject<{
     version: z.ZodNumber;
     abuseToken: z.ZodString;
+    platform: z.ZodEnum<["android", "ios"]>;
 }, "strict", z.ZodTypeAny, {
     version: number;
     abuseToken: string;
+    platform: "android" | "ios";
 }, {
     version: number;
     abuseToken: string;
+    platform: "android" | "ios";
 }>;
 export type ProductDraftSubmitRequest = z.infer<typeof productDraftSubmitRequestSchema>;
 export {};

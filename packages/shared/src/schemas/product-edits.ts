@@ -67,3 +67,16 @@ export type ProductEditPhotoReorderRequest = z.infer<typeof productEditPhotoReor
 
 export const productEditSubmitRequestSchema = z.object({ version: z.number().int().min(1) }).strict();
 export type ProductEditSubmitRequest = z.infer<typeof productEditSubmitRequestSchema>;
+
+// Admin-only single-revision detail: the same creator-facing row (full desired
+// metadata + complete photo order) plus the two fields only moderation tooling
+// needs — who submitted it, and the live product's current version so the
+// console can flag a stale revision (`liveProductVersion !== baseProductVersion`)
+// proactively, before the admin even attempts to approve/request-changes and
+// hits a 409. Composed from `productEditRowSchema` rather than hand-rolled so
+// the two views can never drift on the fields they share.
+export const adminProductEditDetailSchema = productEditRowSchema.extend({
+  submittedBy: z.string().uuid(),
+  liveProductVersion: z.number().int().min(1),
+});
+export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;

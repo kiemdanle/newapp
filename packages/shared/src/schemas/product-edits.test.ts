@@ -6,6 +6,7 @@ import {
   productEditMetadataPatchRequestSchema,
   productEditPhotoReorderRequestSchema,
   productEditSubmitRequestSchema,
+  adminProductEditDetailSchema,
 } from './product-edits.js';
 
 const now = new Date().toISOString();
@@ -95,5 +96,47 @@ describe('productEditSubmitRequestSchema', () => {
     expect(() => productEditSubmitRequestSchema.parse({})).toThrow();
     expect(() => productEditSubmitRequestSchema.parse({ version: 0 })).toThrow();
     expect(productEditSubmitRequestSchema.parse({ version: 1 })).toEqual({ version: 1 });
+  });
+});
+
+describe('adminProductEditDetailSchema', () => {
+  it('parses the creator row shape plus submittedBy and liveProductVersion', () => {
+    const detail = {
+      id: randomUUID(),
+      productId: randomUUID(),
+      status: 'pending' as const,
+      version: 1,
+      baseProductVersion: 3,
+      name: 'Milk',
+      description: null,
+      brand: null,
+      category: null,
+      photos: [],
+      moderationFeedback: 'looks good',
+      submittedAt: now,
+      updatedAt: now,
+      submittedBy: randomUUID(),
+      liveProductVersion: 3,
+    };
+    expect(adminProductEditDetailSchema.parse(detail)).toEqual(detail);
+  });
+
+  it('requires submittedBy and liveProductVersion', () => {
+    const base = {
+      id: randomUUID(),
+      productId: randomUUID(),
+      status: 'pending' as const,
+      version: 1,
+      baseProductVersion: 1,
+      name: 'Milk',
+      description: null,
+      brand: null,
+      category: null,
+      photos: [],
+      moderationFeedback: null,
+      submittedAt: null,
+      updatedAt: now,
+    };
+    expect(() => adminProductEditDetailSchema.parse(base)).toThrow();
   });
 });
