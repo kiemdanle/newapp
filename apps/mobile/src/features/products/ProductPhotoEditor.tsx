@@ -65,7 +65,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   // for a component with this narrow a lifetime).
   const serverPhotos = coordinator.getState().photos;
   // Local entries the coordinator has already confirmed uploaded are dropped
-  // from render entirely (M3) — the server thumbnail above is now the only
+  // from render entirely — the server thumbnail above is now the only
   // representation; the local entry's own file was already deleted by
   // `cleanupTemp` in `startUpload`'s success handler, so continuing to
   // render it via `source={{uri: entry.path}}` would point at bytes that no
@@ -75,7 +75,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   const totalCount = serverPhotos.length + uploadedLocalCount;
   const remaining = Math.max(0, MAX_PHOTOS - totalCount);
   const hasUnsettled = localQueue.some((e) => e.status === 'pending' || e.status === 'uploading');
-  // I1: a photo op the coordinator rejects while a conflict is open must
+  // A photo op the coordinator rejects while a conflict is open must
   // never be attempted in the first place — read fresh each render (same
   // pattern as `serverPhotos` above) rather than caching in state, since the
   // coordinator has no "resolved" event to invalidate a cached flag against;
@@ -191,8 +191,8 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
         await coordinator.enqueue({ kind: 'delete', photoId });
         refresh();
       } catch (err) {
-        // M5: a failed delete (including I1's conflict rejection) must
-        // surface visibly — the grid otherwise just silently doesn't change,
+        // A failed delete (including a conflict rejection) must surface
+        // visibly — the grid otherwise just silently doesn't change,
         // indistinguishable from the request never having been sent.
         setPickerError((err as Error).message ?? 'Could not remove this photo');
       }
@@ -202,7 +202,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
 
   const movePhoto = useCallback(
     async (photoId: string, direction: -1 | 1) => {
-      // M4: swap against the same sorted order the grid renders
+      // Swap against the same sorted order the grid renders
       // (`orderedServerPhotos`), not the unsorted `serverPhotos` — the API
       // always returns photos pre-ordered today so this is latent, but the
       // component's own defensive sort above implies it doesn't trust that,

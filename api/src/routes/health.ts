@@ -25,11 +25,11 @@ export async function healthRoutes(app: FastifyInstance) {
   // timestamps", but the full payload is (correctly) admin-gated, and
   // UptimeRobot cannot present an admin bearer token to reach it. Exposes
   // only the bare overall status, never capacity/pending/backup/rate detail
-  // or any filesystem/connection information (reviewer-p7 IM6).
+  // or any filesystem/connection information.
   // `getOperationalHealthStatus` (not `getOperationalHealth`) skips the
   // quarantine directory walk — its result never affects `status`, so this
   // route was paying for a filesystem walk it then discarded on every
-  // single poll (reviewer-p7 R4).
+  // single poll.
   app.get('/health/operational', async (_req, reply) => {
     const status = await getOperationalHealthStatus();
     if (status === 'critical') void reply.status(503);

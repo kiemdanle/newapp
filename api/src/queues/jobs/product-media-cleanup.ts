@@ -4,7 +4,7 @@
 // polling loop and DB re-checks remain authoritative on their own. A Redis
 // lock enforces one in-flight run at a time across every worker process.
 //
-// The lock is token-guarded (reviewer-p7 I3): the original version acquired
+// The lock is token-guarded: the original version acquired
 // with a constant value and released with an unconditional DEL, so any run
 // exceeding the 55s TTL (entirely plausible — 25 outbox operations + 25
 // draft-delete transactions + an unbounded quarantine walk) let a second run

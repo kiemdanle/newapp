@@ -4,7 +4,7 @@
 // source rather than read from a sibling file: `tsc` copies no non-`.ts` assets
 // into `dist/`, so a file-path-relative-to-`import.meta.url` fixture silently
 // vanished from every compiled production build — the probe then always reported
-// HEIC unsupported, regardless of the host's real capability (reviewer-p3 I4).
+// HEIC unsupported, regardless of the host's real capability.
 // Embedding it directly in a `.ts` module makes that failure mode structurally
 // impossible: if this file compiles, the fixture ships with it.
 //

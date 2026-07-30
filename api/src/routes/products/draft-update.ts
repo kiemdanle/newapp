@@ -10,8 +10,7 @@ export async function draftUpdateRoute(app: FastifyInstance) {
     const { id } = paramSchema.parse(req.params);
     const input = productDraftPatchRequestSchema.parse(req.body);
     const product = await patchDraft({ id: req.user!.id, role: req.user!.role }, id, input);
-    // Schema-pinned response, matching every other product-mutation route
-    // (reviewer-p7 M7 fixed this same gap on the submit route).
+    // Schema-pinned response, matching every other product-mutation route.
     return reply.send(productSchema.parse(product));
   });
 }

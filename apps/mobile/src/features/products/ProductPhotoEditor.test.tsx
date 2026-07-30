@@ -206,9 +206,9 @@ describe('<ProductPhotoEditor />', () => {
 
     // One existing server photo, cap 5 → 4 remaining slots offered to the picker.
     expect(mockChoosePhotos).toHaveBeenCalledWith(4);
-    // Both picked photos queue and upload (M3: a confirmed-uploaded local
-    // entry is dropped from render the moment the coordinator confirms it —
-    // this mock's own `enqueue` resolves synchronously, so by the time these
+    // Both picked photos queue and upload (a confirmed-uploaded local entry
+    // is dropped from render the moment the coordinator confirms it — this
+    // mock's own `enqueue` resolves synchronously, so by the time these
     // assertions run the local entries have already been promoted to their
     // server tiles).
     expect(await findByTestId('photo-new-1')).toBeTruthy();
@@ -288,7 +288,7 @@ describe('<ProductPhotoEditor />', () => {
     await waitFor(() => expect(enqueue).toHaveBeenCalledWith({ kind: 'order', photoIds: ['photo-2', 'photo-1'] }));
   });
 
-  it('I1: every photo control is disabled while the coordinator has an unresolved conflict', async () => {
+  it('every photo control is disabled while the coordinator has an unresolved conflict', async () => {
     const { coordinator } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]), { hasConflict: true });
     queueFetch(jsonResponse('bytes'));
 
@@ -300,7 +300,7 @@ describe('<ProductPhotoEditor />', () => {
     }
   });
 
-  it('M5: a failed delete surfaces a visible error instead of silently leaving the grid unchanged', async () => {
+  it('a failed delete surfaces a visible error instead of silently leaving the grid unchanged', async () => {
     const { coordinator, enqueue } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]));
     queueFetch(jsonResponse('bytes'));
     enqueue.mockRejectedValue(new Error('coordinator_conflict'));
@@ -313,7 +313,7 @@ describe('<ProductPhotoEditor />', () => {
     expect(await findByText('coordinator_conflict')).toBeTruthy();
   });
 
-  it('M5: a failed reorder surfaces a visible error instead of silently leaving the grid unchanged', async () => {
+  it('a failed reorder surfaces a visible error instead of silently leaving the grid unchanged', async () => {
     const { coordinator, enqueue } = makeCoordinator(
       entity([
         { id: 'photo-1', position: 0, thumbnailUrl: '/x' },

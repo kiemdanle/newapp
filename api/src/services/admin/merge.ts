@@ -144,7 +144,7 @@ export async function mergeProducts(
 
     const movedRec = await tx.record.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
 
-    // I2: dedupe across the *whole* merge set, not just target-vs-source — two
+    // Dedupe across the *whole* merge set, not just target-vs-source — two
     // sources reviewed by the same user collide on `@@unique([userId, productId])`
     // the instant both get repointed to the same target, even if neither matches
     // an existing target review. Deterministic keep-one-per-user policy: the
@@ -176,7 +176,7 @@ export async function mergeProducts(
 
     await tx.deal.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
     await tx.giveaway.updateMany({ where: { productId: { in: sourceIds } }, data: { productId: resolvedTargetId } });
-    // M8: `Report.targetId` is a polymorphic (targetType, targetId) pair with no
+    // `Report.targetId` is a polymorphic (targetType, targetId) pair with no
     // real FK to `Product` — repointed explicitly here so reports filed against a
     // merged-away product stay attached to the surviving catalog row instead of
     // silently dropping out of moderation views.

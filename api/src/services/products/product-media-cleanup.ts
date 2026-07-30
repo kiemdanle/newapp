@@ -31,9 +31,9 @@ class DraftNoLongerEligibleError extends Error {}
 /**
  * Deletes draft products that are: `draft` status, whose `updatedAt` is
  * older than 30 days (last *activity*, not creation — a draft created 31
- * days ago but edited yesterday is not abandoned; reviewer-p7 M11), have no
+ * days ago but edited yesterday is not abandoned), have no
  * personal `Record` referencing them, and no open (`draft`/`pending`/
- * `changes_required`) `ProductEdit` (reviewer-p7 M8: `pending` alone missed
+ * `changes_required`) `ProductEdit` (`pending` alone missed
  * the other two open states the enum actually has).
  *
  * The delete itself is conditional — `deleteMany` re-checking `status` and
@@ -41,7 +41,7 @@ class DraftNoLongerEligibleError extends Error {}
  * UPDATE` on the row — rather than trusting the unlocked pre-check above.
  * Without this, a product that left `draft` (e.g. a concurrent submit)
  * between the pre-check and the delete was deleted anyway, taking its photo
- * bytes with it (reviewer-p7 C1, proven data loss). `FOR UPDATE` also
+ * bytes with it (proven data loss). `FOR UPDATE` also
  * serializes against another concurrent sweep candidate touching the same
  * row, though in practice each row is only ever a candidate once per pass.
  *
@@ -50,7 +50,7 @@ class DraftNoLongerEligibleError extends Error {}
  * inline — so a crash between the two can only ever leave an orphaned
  * *file* (which the outbox's own crash-recovery already handles), never an
  * orphaned DB reference to already-deleted bytes. Each namespace is
- * enqueued under its own operation (reviewer-p7 M10: the previous
+ * enqueued under its own operation (the previous
  * `private ?? public` fallback silently dropped whichever key lost, and
  * always labelled the result `delete_private` even for a public key).
  */
@@ -59,7 +59,7 @@ export async function sweepStaleProductDrafts(
   dryRun = false,
   /** Test-only: invoked once per candidate immediately after the unlocked
    * pre-check confirms eligibility, strictly before the locked transaction
-   * opens — the exact window reviewer-p7's C1 finding proved vulnerable.
+   * opens — the exact window proven vulnerable to a concurrent status change.
    * Lets a test deterministically inject a concurrent mutation there without
    * spying on Prisma's client (whose model delegates don't restore cleanly
    * after `vi.spyOn`/`mockRestore` in this Prisma version). Never used in
@@ -69,7 +69,7 @@ export async function sweepStaleProductDrafts(
   // Skips the whole pass while a backup freeze is active — this sweep
   // deletes product/photo rows a concurrent pg_dump (T1) or manifest
   // generate (T2) may still reference, which is exactly the inconsistency
-  // the freeze boundary exists to prevent (reviewer-p7 II1: a stale-draft
+  // the freeze boundary exists to prevent (a stale-draft
   // sweep firing between the dump and the manifest could delete rows the
   // dump still references, so the manifest omits keys the archived DB dump
   // still points at).
@@ -134,7 +134,7 @@ export async function sweepStaleProductDrafts(
 
         // The actual gate: re-checks status and updatedAt atomically against
         // the row this transaction now holds a lock on, never trusting the
-        // pre-check above (reviewer-p7 C1).
+        // pre-check above.
         const result = await tx.product.deleteMany({
           where: { id: fresh.id, status: 'draft', updatedAt: { lt: cutoff } },
         });
@@ -175,16 +175,16 @@ export interface StaleQuarantineSweepResult {
  * request ID with no DB row at all, so this is a pure filesystem sweep keyed
  * on directory mtime — anything older than 24h is provably abandoned (no
  * real upload takes anywhere near that long). Bounded by `limit` and
- * `dryRun`-capable, matching `sweepStaleProductDrafts`'s shape (reviewer-p7
- * M9: an unbounded `readdir`+per-entry `stat` walk with no way to preview
- * before deleting was itself a "not bounded, not dry-run-capable" gap
- * against the phase's own requirement).
+ * `dryRun`-capable, matching `sweepStaleProductDrafts`'s shape (an unbounded
+ * `readdir`+per-entry `stat` walk with no way to preview before deleting was
+ * itself a "not bounded, not dry-run-capable" gap against the phase's own
+ * requirement).
  */
 export async function sweepStaleQuarantine(limit = 1000, dryRun = false): Promise<StaleQuarantineSweepResult> {
   // Quarantine itself is never captured by a backup (backup.sh excludes it
   // deliberately — it holds no referenced media by definition), but the
   // phase names this sweep alongside the others as a path the freeze
-  // boundary must cover (reviewer-p7 II1), so it's skipped for the same
+  // boundary must cover, so it's skipped for the same
   // uniform reason rather than argued into a special case.
   if (await isMediaFreezeActive()) {
     logger.info('stale-quarantine sweep skipped — a backup freeze is active');

@@ -22,7 +22,7 @@ export async function getProductRoute(app: FastifyInstance) {
     return reply.send(
       productWithReviewsSchema.parse({
         ...toApiProduct(product, actor),
-        topReviews: [], // populated in M2
+        topReviews: [], // populated once reviews ship
       }),
     );
   });

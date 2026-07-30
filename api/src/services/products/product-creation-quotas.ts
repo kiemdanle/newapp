@@ -32,12 +32,12 @@ function dailyBytesKey(actorId: string, day: string): string {
  * per-actor `pg_advisory_xact_lock`. A plain count-then-create under
  * Postgres's default READ COMMITTED isolation lets two concurrent requests
  * from the same actor both read a count one under the cap and both create,
- * overshooting it by one (reviewer-p7 M1) — the advisory lock (taken by the
+ * overshooting it by one — the advisory lock (taken by the
  * caller, not here) serializes just that one actor's own concurrent create
  * attempts against each other, never against unrelated actors.
  *
  * Deliberately bounds only *concurrently open* drafts, not lifetime creation
- * count (reviewer-p7 M2: cycling create -> submit -> create frees a slot
+ * count (cycling create -> submit -> create frees a slot
  * immediately, so total row creation is unbounded over time). The plan
  * spec's quota surface is exactly two dimensions — this active-draft cap and
  * `maxDailyBytesPerUser` below — with no daily-creation-count limit named
@@ -72,12 +72,12 @@ export async function currentDailyBytesAccepted(actorId: string, now: Date = new
 // total stays within the cap, compensating with a DECRBY in the same script when
 // it doesn't — the check and the reserve are one Redis command, so no window
 // exists between them for a second concurrent request to read the same
-// pre-reservation total (reviewer-p7 I1: the previous GET-then-later-INCRBY
+// pre-reservation total (the previous GET-then-later-INCRBY
 // shape let 8 concurrent uploads all pass the same headroom check, landing a
 // final total 70% over the configured cap). `EXPIRE` runs unconditionally on
 // every call (a cheap no-op once already set) rather than only when the key was
 // just created, closing the leak where a crash between INCRBY and a conditional
-// EXPIRE left a permanent key (reviewer-p7 M4).
+// EXPIRE left a permanent key.
 const RESERVE_SCRIPT = `
 local key = KEYS[1]
 local estimate = tonumber(ARGV[1])
@@ -144,8 +144,8 @@ export async function reserveDailyByteQuota(
  * however many source bytes were actually streamed before it failed (`0` if
  * it failed before any byte was read) — a corrupt/oversized/rejected upload
  * still costs the actor real quota instead of nothing, closing the unbounded
- * free-abuse vector where failed attempts were metered as zero bytes
- * (reviewer-p7 I2). Never increments beyond what was reserved; safe to call
+ * free-abuse vector where failed attempts were metered as zero bytes.
+ * Never increments beyond what was reserved; safe to call
  * at most once per reservation.
  */
 export async function reconcileDailyByteQuota(reservation: DailyByteQuotaReservation, actualBytes: number): Promise<void> {

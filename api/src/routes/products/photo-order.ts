@@ -17,7 +17,7 @@ export async function photoOrderRoute(app: FastifyInstance) {
     // admin actor as eligible in every mode on its own (no separate `role !==
     // 'admin'` special-case needed here) — the same single policy now used by
     // create/patch/submit, converging what were six independently-decided
-    // admin exemptions into one (reviewer-p7 I6).
+    // admin exemptions into one.
     await assertProductCreationEligible(actor, 'photo');
     const product = await reorderProductPhotos(actor, {
       productId,

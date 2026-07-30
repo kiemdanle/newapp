@@ -99,7 +99,7 @@ async function assertPhotoMutable(actor: ProductActor, productId: string, tx: Pr
  * non-authoritative count against `MAX_PHOTOS_PER_PRODUCT` so the common abuse
  * case (repeatedly hitting an already-full product) doesn't pay for a full
  * stream + decode + WebP encode + temp write + rename before being rejected
- * (reviewer-p3 M8) — the locked, transactional count inside `addProductPhoto` is
+ * — the locked, transactional count inside `addProductPhoto` is
  * still what's actually enforced; a race that slips past this cheap check is
  * caught there.
  */
@@ -178,7 +178,7 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
 
     // Same gate `publishProductPhoto`/`publishProductEditPhoto` already apply
     // before their first byte copy — private promotion writes final bytes too,
-    // and had no capacity-liveness check of its own until now (reviewer-p3 R2).
+    // and had no capacity-liveness check of its own until now.
     await assertMediaCapacityReservationLive(input.capacityReservationId);
 
     try {
@@ -192,7 +192,7 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
     // disk, so this is the window `completeMediaOperation`'s fencing protects: if the
     // transaction below is slow (e.g. `FOR UPDATE` contention) and the lease expires
     // first, a recovery sweep could claim and delete these bytes before the reference
-    // commits. Cheap insurance for a normally-fast path (reviewer-p3 I1).
+    // commits. Cheap insurance for a normally-fast path.
     await renewMediaOperationLease(intent.id, intent.leaseOwner);
 
     try {
@@ -385,7 +385,7 @@ export interface PublishIntentContext {
   /** A live `reserveMediaCapacity` reservation covering this photo's (or the whole
    * set's) worst-case bytes. Required, not optional: asserted live immediately
    * before the first byte is copied, so "no final/public key is created without a
-   * live reservation" is enforced here, not merely documented (reviewer-p3 I2). */
+   * live reservation" is enforced here, not merely documented. */
   capacityReservationId: string;
 }
 
@@ -556,7 +556,7 @@ export async function addProductEditPhoto(actor: ProductActor, input: AddProduct
 
     // See `addProductPhoto`'s matching comment: renew right before the reference
     // transaction so a slow transaction can't outlive the lease before
-    // `completeMediaOperation`'s fencing check runs (reviewer-p3 I1).
+    // `completeMediaOperation`'s fencing check runs.
     await renewMediaOperationLease(intent.id, intent.leaseOwner);
 
     try {

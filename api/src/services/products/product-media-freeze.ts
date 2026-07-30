@@ -14,7 +14,7 @@ const FREEZE_KEY = 'media:freeze:active';
 // Self-healing ceiling: if the process that acquired a freeze crashes before
 // renewing or releasing it, the flag expires on its own rather than wedging
 // every media mutation forever. `backup.sh` renews well before this while its
-// capture runs (reviewer-p7 II3) — this is only the crash-recovery ceiling,
+// capture runs — this is only the crash-recovery ceiling,
 // not the expected freeze lifetime.
 const FREEZE_FLAG_TTL_SECONDS = 15 * 60;
 const DRAIN_POLL_INTERVAL_MS = 250;
@@ -24,7 +24,7 @@ const DRAIN_POLL_INTERVAL_MS = 250;
 // queues/jobs/product-media-cleanup.ts's cleanup lock — a holder whose
 // freeze already expired (and was possibly reclaimed by a second, unrelated
 // backup run) can never renew or release a freeze it no longer owns
-// (reviewer-p7 II3: the previous unconditional `SET`/`DEL` let a second
+// (the previous unconditional `SET`/`DEL` let a second
 // backup silently "acquire" an already-held freeze and reset its TTL, and
 // let whichever run finished first unfreeze the other).
 const RENEW_SCRIPT = `
@@ -70,7 +70,7 @@ export interface MediaFreezeResult {
 }
 
 /** Thrown by `acquireMediaFreeze` when a freeze is already held by another
- * run — mutual exclusion between concurrent backups (reviewer-p7 II3), never
+ * run — mutual exclusion between concurrent backups, never
  * silently overwriting an in-progress freeze's token/TTL. */
 export class MediaFreezeAlreadyActiveError extends Error {
   constructor() {
@@ -111,8 +111,7 @@ export async function acquireMediaFreeze(drainTimeoutMs = 30_000): Promise<Media
  * holder's freeze to renew. `backup.sh` calls this periodically while its
  * capture (pg_dump / manifest generate / tar) runs, well under
  * `FREEZE_FLAG_TTL_SECONDS`, so a capture slower than the TTL never silently
- * loses the freeze mid-capture while believing it still holds it
- * (reviewer-p7 II3). */
+ * loses the freeze mid-capture while believing it still holds it. */
 export async function renewMediaFreeze(token: string): Promise<boolean> {
   const renewed = await getRedis().eval(RENEW_SCRIPT, 1, FREEZE_KEY, token, FREEZE_FLAG_TTL_SECONDS);
   return renewed === 1;

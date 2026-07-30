@@ -20,9 +20,9 @@ export interface PrivilegedSerializerViewer {
   kind: 'privileged';
 }
 
-/** `toApiProduct`'s `viewer` argument is required (reviewer-p3 R3) — the
+/** `toApiProduct`'s `viewer` argument is required — the
  * previous optional param failed *open* (showed every photo) when a call site
- * simply forgot to pass one, resting C2's whole projection-layer guarantee on
+ * simply forgot to pass one, resting the whole projection-layer guarantee on
  * a doc comment instead of the type system. Every call site must now say
  * explicitly which one it is. */
 export type ProductSerializerViewer = SerializerViewer | PrivilegedSerializerViewer;
@@ -37,7 +37,7 @@ function isPrivileged(viewer: ProductSerializerViewer): viewer is PrivilegedSeri
  * privileged, the viewer is an admin, or the viewer is the product's own
  * creator and the photo is merely `pending` (their own not-yet-reviewed
  * upload). A `rejected` photo is visible to no one but an admin/privileged
- * viewer, even its own creator — reviewer-p3 C2's explicit ruling.
+ * viewer, even its own creator — deliberately, not an oversight.
  */
 function isPhotoVisibleTo(photo: PrismaProductPhoto, product: PrismaProduct, viewer: ProductSerializerViewer): boolean {
   if (photo.moderationStatus === 'approved') return true;

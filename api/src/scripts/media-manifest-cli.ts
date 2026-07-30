@@ -21,7 +21,7 @@
 // picking an arbitrary db.dump via `find -name db.dump -print -quit` when a
 // snapshot holds more than one) validates cleanly against the file-checksum
 // `verify` above, which only ever checks manifest -> file, never database ->
-// manifest (reviewer-p7 II2).
+// manifest.
 //
 // Exit codes: 0 = success (generate: manifest written; verify/verify-db-refs:
 // every entry matched); 1 = verify found a missing/mismatched file, or
@@ -98,10 +98,10 @@ async function collectReferencedKeys(): Promise<string[]> {
 async function generate(mediaRoot: string, outFile: string): Promise<number> {
   const keys = await collectReferencedKeys();
   const entries: ManifestEntry[] = [];
-  // Collected rather than thrown per-key: a single orphaned DB reference (the
-  // C1 sweep race, or any other cause) previously crashed the whole command
-  // with an unhandled stack trace and no manifest at all, aborting the
-  // night's backup outright (reviewer-p7 IM9). Still fails the command
+  // Collected rather than thrown per-key: a single orphaned DB reference
+  // (a photo row whose file is already gone, whatever the cause) previously
+  // crashed the whole command with an unhandled stack trace and no manifest
+  // at all, aborting the night's backup outright. Still fails the command
   // overall (matching the fail-safe direction the crash was already taking)
   // but reports exactly which keys are missing instead of just dying.
   const missing: Array<{ key: string; variant: 'display' | 'thumb'; path: string }> = [];
@@ -112,7 +112,7 @@ async function generate(mediaRoot: string, outFile: string): Promise<number> {
       // — the latter slices off the *raw, unnormalized* mediaRoot argument's
       // length, so a caller-supplied trailing slash (MEDIA_ROOT=".../media/")
       // produced relative paths off by one character, and `verify` then
-      // reported every entry missing (reviewer-p7 IM10).
+      // reported every entry missing.
       const relativePath = relative(resolve(mediaRoot), path);
       try {
         const { sha256, bytes } = await sha256File(path);
@@ -148,8 +148,8 @@ async function verify(mediaRoot: string, manifestFile: string): Promise<number> 
 /**
  * Cross-checks the manifest's key set against `collectReferencedKeys()` run
  * against whatever database this process's `DATABASE_URL` points at —
- * restore.sh always runs this against the staging database, never live
- * (reviewer-p7 II2). Reports both directions of mismatch: a key the database
+ * restore.sh always runs this against the staging database, never live.
+ * Reports both directions of mismatch: a key the database
  * references but the manifest never captured (an incomplete/foreign
  * manifest), and a key the manifest lists but no live row references (a
  * foreign/stale manifest paired with the wrong database).
@@ -179,7 +179,7 @@ async function verifyDbReferences(manifestFile: string): Promise<number> {
  * randomized, and V8's sort in particular leaves a measurable bias toward
  * the array's original order. For a 25-entry decode sample meant to be a
  * real spot-check across the whole archive, a shuffle skewed toward DB-scan
- * order defeats the point (reviewer-p7 IM13). */
+ * order defeats the point. */
 function shuffle<T>(arr: readonly T[]): T[] {
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {

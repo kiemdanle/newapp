@@ -9,7 +9,7 @@ import { toApiProductPhoto } from '../../../services/products/serializer.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
-// I5: this route must never be a moderation bypass. `active <-> report_hidden` is
+// This route must never be a moderation bypass. `active <-> report_hidden` is
 // a pure catalog-visibility toggle with no publication side effects, so it's the
 // only status transition this direct-correction endpoint may perform. Every
 // other transition (activating a `pending` submission, clearing `merged_into`,

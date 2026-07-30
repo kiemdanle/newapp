@@ -45,7 +45,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
     // check on top of that (e.g. a draft created while mode was `all`, now
     // frozen for mutation because mode flipped to `off`). `assertProductCreationEligible`
     // already treats an admin actor as eligible in every mode on its own — one
-    // converged policy across all six call sites (reviewer-p7 I6), same as
+    // converged policy across all six call sites, same as
     // create/patch/submit and the other two photo routes.
     await assertProductCreationEligible(actor, 'photo');
 
@@ -75,7 +75,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
     let quotaReservation: DailyByteQuotaReservation | undefined;
     // Real source bytes actually streamed for this attempt, whatever the
     // outcome — the amount a failed/rejected upload gets charged against the
-    // daily quota (reviewer-p7 I2). Stays 0 if the attempt never reaches
+    // daily quota. Stays 0 if the attempt never reaches
     // `writeQuarantineFile` (e.g. the quota/capacity reservation itself is
     // what rejects it), so nothing is charged for work that never happened.
     let attemptedBytes = 0;
@@ -87,8 +87,8 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // reservation, and it's an independent, complementary limit (quotas bound
       // one user's share; capacity bounds the whole server's budget). Admins
       // performing a correction are exempt, same as the mode gate above. The
-      // check itself atomically reserves the worst-case estimate (reviewer-p7
-      // I1) and must be reconciled on every terminal path below.
+      // check itself atomically reserves the worst-case estimate and must be
+      // reconciled on every terminal path below.
       if (actor.role !== 'admin') {
         quotaReservation = await reserveDailyByteQuota(actor.id, worstCaseBytes);
       }
@@ -98,7 +98,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // after `writeQuarantineFile` (as an earlier version of this route did) let
       // N concurrent uploaders put N × MEDIA_MAX_UPLOAD_BYTES on the volume while
       // the budget still read zero, exactly the disk-exhaustion mode the reserve
-      // headroom exists to prevent (reviewer-p3 I3). Reconciled down to the real
+      // headroom exists to prevent. Reconciled down to the real
       // generated size once encoding finishes.
       const reservation = await reserveMediaCapacity({ bytes: worstCaseBytes });
       reservationId = reservation.id;
@@ -124,7 +124,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // control (bounded by MEDIA_PROCESSING_DEADLINE_MS, which can itself run
       // close to the reservation's default TTL under load). Without this, a
       // slow-but-legitimate upload could have its reservation silently expire
-      // mid-decode (reviewer-p3 R2).
+      // mid-decode.
       await assertMediaCapacityReservationLive(reservation.id);
       const processed = await processProductUpload({ sourcePath: written.path });
       const reconciled = await reconcileMediaCapacityReservation(reservation.id, processed.display.bytes + processed.thumb.bytes);
@@ -151,7 +151,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // committed the reference transaction). A Redis blip here must not
       // turn a fully successful, persisted upload into a 500 — the client
       // would only retry and upload it again — so failures are logged, not
-      // thrown (reviewer-p7 M3).
+      // thrown.
       if (quotaReservation) {
         const settled = quotaReservation;
         quotaReservation = undefined;
@@ -167,7 +167,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // Any remaining reservation here means the attempt failed — reconcile
       // down to the real source bytes actually streamed (never the
       // worst-case ceiling), so a rejected/corrupt upload still costs real
-      // quota instead of nothing (reviewer-p7 I2).
+      // quota instead of nothing.
       if (quotaReservation) {
         await reconcileDailyByteQuota(quotaReservation, attemptedBytes).catch((err: unknown) => {
           logger.warn({ err, actorId: actor.id }, 'failed to reconcile daily byte quota after a failed upload');
@@ -175,8 +175,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       }
       // Feeds the operational health payload's upload rejection rate (Task
       // 7's "upload validation rejection rate >25%/15m" alert threshold) —
-      // previously parsed into config with no consumer anywhere
-      // (reviewer-p7 IM5).
+      // previously parsed into config with no consumer anywhere.
       await recordRateEvent('uploadRejection', 'total').catch(() => {});
       if (!succeeded) {
         await recordRateEvent('uploadRejection', 'failure').catch(() => {});

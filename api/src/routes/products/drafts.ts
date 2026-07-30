@@ -14,8 +14,7 @@ export async function draftsRoute(app: FastifyInstance) {
     async (req, reply) => {
       const input = productDraftCreateRequestSchema.parse(req.body);
       const { product, resumed } = await createOrResumeDraft({ id: req.user!.id, role: req.user!.role }, input);
-      // Schema-pinned response, matching every other product-mutation route
-      // (reviewer-p7 M7 fixed this same gap on the submit route).
+      // Schema-pinned response, matching every other product-mutation route.
       return reply.status(resumed ? 200 : 201).send({ product: productSchema.parse(product), resumed });
     },
   );

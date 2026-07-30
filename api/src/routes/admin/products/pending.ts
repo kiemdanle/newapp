@@ -9,7 +9,7 @@ const EDIT_LIST_INCLUDE = {
   photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
 };
 
-/** M6: bounded queue projection with ordered private/public review media (not
+/** Bounded queue projection with ordered private/public review media (not
  * just the raw `proposed` diff) so an admin can review a revision's photos
  * before opening the single-edit detail view — reuses the same
  * `toProductEditRow` projection every other edit-facing route derives its

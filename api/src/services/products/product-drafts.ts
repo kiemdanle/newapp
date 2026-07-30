@@ -71,7 +71,7 @@ function throwForNonCreatableOutcome(outcome: ProductLookupV2Response): never {
 
 /** The real, authenticated actor performing a draft mutation — threaded
  * through every call site so the mode-gate/eligibility check evaluates the
- * actor's actual role, never a hardcoded stand-in (reviewer-p7 I6: `internal`
+ * actor's actual role, never a hardcoded stand-in (`internal`
  * mode's admin grant was silently defeated because create/patch/submit each
  * hardcoded `{ role: 'user' }` regardless of who was actually calling). */
 export interface DraftActor {
@@ -99,15 +99,14 @@ export async function createOrResumeDraft(
   // external provider call), so checking that first lets an ineligible actor
   // be rejected *before* paying for lookupProductV2's off/upcitemdb round
   // trip on a genuine "not_found" — previously `off` mode still let every
-  // caller drive two full external lookups before being rejected (reviewer-p7
-  // I5).
+  // caller drive two full external lookups before being rejected.
   if (!(await hasLocalMatch(identifierInput))) {
     await assertProductCreationEligible(actor, 'create');
     // The active-draft-quota count itself is re-checked below, inside the
     // same transaction and advisory lock as the create — a standalone check
-    // here would still race the same way M1 describes. This early call stays
-    // eligibility-only, matching I5's ordering requirement (a cheap local
-    // check before the external lookup), not the quota itself.
+    // here would still let two concurrent requests race past the same count.
+    // This early call stays eligibility-only: a cheap local check before the
+    // external lookup, not the quota itself.
   }
 
   // Always classified as a plain creator here, never the actor's real role —
@@ -134,7 +133,7 @@ export async function createOrResumeDraft(
       // never contend with each other or wait on this at all. Without it, a
       // plain count-then-create under READ COMMITTED lets two concurrent
       // requests from the same actor both read a count one under the cap
-      // and both create, overshooting it by one (reviewer-p7 M1).
+      // and both create, overshooting it by one.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${actor.id})::bigint)`;
       await assertWithinActiveDraftQuota(actor.id, tx);
       return tx.product.create({
@@ -260,7 +259,7 @@ export async function submitDraft(
   // requires setting one, so nothing before this point guarantees a
   // reviewable row. Violates the plan's global "Name required: trimmed
   // 1–200 characters" constraint otherwise, pushing an empty-name draft into
-  // Phase 6's moderation queue (reviewer-p7 I8). PATCH already enforces the
+  // Phase 6's moderation queue. PATCH already enforces the
   // trim/length bounds when a name *is* provided, so only presence needs
   // checking here.
   if (existing.name.trim().length === 0) {
@@ -275,7 +274,7 @@ export async function submitDraft(
   // — a client retrying a stale-version submit (or looping one) would
   // otherwise pay for a real CreateAssessment on every attempt before ever
   // reaching the authoritative version-guarded write further down
-  // (reviewer-p7 M12). This is advisory only: the version can still move
+  //. This is advisory only: the version can still move
   // between here and the conditional `updateMany`, which remains the actual
   // guard against a genuine concurrent double-submit.
   if (existing.version !== input.version) {
@@ -295,7 +294,7 @@ export async function submitDraft(
   // Links the assessment that admitted this submission to the product it
   // admitted — previously the score/reasons/assessment name were discarded
   // entirely once the assessment call returned, leaving no audit trail
-  // (reviewer-p7 M6). A structured log line (never the token itself) rather
+  //. A structured log line (never the token itself) rather
   // than a new DB column/migration, since persisting this on the product
   // would be a schema change outside this phase's file ownership.
   logger.info(

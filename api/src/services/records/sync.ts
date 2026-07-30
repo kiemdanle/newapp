@@ -71,7 +71,7 @@ export async function syncRecords(
     const existing = await prisma.record.findUnique({ where: { clientId: u.clientId } });
     const clientUpdatedAt = new Date(u.updatedAt);
 
-    // -- Pre-check: foreign client_id owned by another user → skip (M1 rule).
+    // -- Pre-check: foreign client_id owned by another user → skip.
     if (existing && existing.userId !== userId) continue;
 
     const clientBelievesScope: string | null = u.householdId ?? null;
@@ -141,7 +141,7 @@ export async function syncRecords(
         conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
       }
     } else {
-      // --- Personal path: last-write-wins (M1 behavior verbatim) ---
+      // --- Personal path: last-write-wins ---
       if (existing && existing.updatedAt >= clientUpdatedAt) continue; // server is newer
 
       const offsets = u.notificationOffsetsDays ?? userOffsets;

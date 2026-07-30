@@ -148,8 +148,7 @@ export async function assessProductCreationSubmission(
     // above): those are an expected, frequent outcome the circuit breaker's
     // own errorFilter already excludes from its failure statistics for the
     // same reason, and counting them here would make real abuse traffic
-    // alone trip an alert meant to catch Google being unavailable
-    // (reviewer-p7 IM5).
+    // alone trip an alert meant to catch Google being unavailable.
     await recordRateEvent('assessment', 'failure').catch(() => {});
     throw new AppError({
       status: 503,

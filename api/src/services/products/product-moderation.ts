@@ -46,7 +46,7 @@ async function loadProductWithPhotos(tx: PrismaTypes.TransactionClient, productI
   return tx.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
 }
 
-/** M4: must run against the *same* transaction client as the caller's aborting
+/** Must run against the *same* transaction client as the caller's aborting
  * write, never the pooled `getPrisma()` client — reading through a second pool
  * connection while the first is held open by an in-progress `$transaction` risks
  * self-deadlocking the conflict path under pool saturation instead of cleanly
@@ -110,7 +110,7 @@ async function requestChanges(
  * outbox intent is committed under a held media lease, then every photo's bytes
  * are copied to their public key. Only once every copy has succeeded does the
  * single reference transaction run: product active, each photo's public key/
- * moderation status, cover `imageUrl` (I4 — the position-0 photo's public display
+ * moderation status, cover `imageUrl` (the position-0 photo's public display
  * URL, for legacy clients that don't yet read `photos[]`), audit row, intent
  * completion, and old private-key cleanup — all together or none of it. A failure
  * after copying but before that transaction compensates the copied keys
@@ -183,7 +183,7 @@ async function approve(
             });
           }
 
-          // I4: cover imageUrl for legacy clients — the position-0 photo's fresh
+          // Cover imageUrl for legacy clients — the position-0 photo's fresh
           // public display URL. Every photo here just got a public key (new
           // products only ever approve once, from `pending` to `active`, so there
           // is never a pre-existing mix of already-approved photos to consider).

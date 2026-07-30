@@ -124,7 +124,7 @@ describe('canDecodeAsImage', () => {
   });
 });
 
-describe('readHeicProbeFixture — build-safety (reviewer-p3 I4)', () => {
+describe('readHeicProbeFixture — build-safety', () => {
   it('has no filesystem dependency at all, so it cannot vanish when `tsc` copies no non-.ts assets into dist/', () => {
     // The bug: the previous fixture was read from a sibling `.heic` file resolved
     // relative to `import.meta.url`. `tsc` never copies non-`.ts` assets into
@@ -286,7 +286,7 @@ describe('processProductUpload — hostile input rejection', () => {
     });
   });
 
-  it('aborts processing that exceeds the configured deadline, and actually stops libvips work rather than merely abandoning the JS promise (reviewer-p3 C1)', async () => {
+  it('aborts processing that exceeds the configured deadline, and actually stops libvips work rather than merely abandoning the JS promise', async () => {
     overrideMediaEnv({
       // An exact multiple of 1000ms so sharp's own rounded-up per-operation
       // timeout (`Math.ceil(deadlineMs / 1000)` seconds) lands at the same
@@ -320,7 +320,7 @@ describe('processProductUpload — hostile input rejection', () => {
     expect(sharp.counters().queue).toBe(0);
   }, 20_000);
 
-  it('the outer whole-request deadline rejects close to the configured value, not close to sharp\'s rounded-up per-operation seconds (reviewer-p3 R1)', async () => {
+  it('the outer whole-request deadline rejects close to the configured value, not close to sharp\'s rounded-up per-operation seconds', async () => {
     overrideMediaEnv({
       // A deliberately sub-second value: sharp's own `.timeout()` only accepts
       // whole seconds and rounds this up to 1 full second internally, but the
@@ -339,15 +339,16 @@ describe('processProductUpload — hostile input rejection', () => {
     const elapsed = Date.now() - start;
     // Generous upper bound (well under sharp's ~1000ms rounded-up per-op
     // timeout) proves the caller-visible rejection tracks the configured
-    // value, not sharp's internal rounding. Widened from 700ms (reviewer-p3:
-    // CPU-proportional, held at 26.8s wall time under heavy concurrent load —
-    // budget, not behavior) while staying meaningfully below sharp's ~1000ms
-    // per-op fallback.
+    // value, not sharp's internal rounding. Widened from 700ms — this
+    // assertion is CPU-proportional and held at 26.8s wall time under heavy
+    // concurrent load in independent testing (a budget issue, not a behavior
+    // one) — while staying meaningfully below sharp's ~1000ms per-op
+    // fallback.
     expect(elapsed).toBeLessThan(900);
   }, 45_000);
 
-  it('a pipeline whose individual operations each finish under sharp\'s per-op timeout, but whose combined wall time exceeds the configured deadline, is still bounded overall (reviewer-p3 R1)', async () => {
-    // Reproduces reviewer-p3's exact proof: sharp's per-operation `.timeout()`
+  it('a pipeline whose individual operations each finish under sharp\'s per-op timeout, but whose combined wall time exceeds the configured deadline, is still bounded overall', async () => {
+    // Reproduces the exact proof that sharp's per-operation `.timeout()`
     // clock restarts for each of metadata/display-encode/thumb-encode, so a
     // pipeline whose *individual* steps each stay just under that per-op
     // window could previously run several multiples of the configured
@@ -400,12 +401,13 @@ describe('processProductUpload — concurrency bound', () => {
     for (const r of results) expect(r.display.buffer.length).toBeGreaterThan(0);
     // Each in-flight call does at most one resize/encode at a time (display then
     // thumb, sequentially), so with the semaphore capped at 2 concurrent calls the
-    // real libvips task count must never exceed 2 either — this is what C1's bug
-    // (permit-count drift + uncancelled work) would have broken.
+    // real libvips task count must never exceed 2 either — this is exactly what
+    // permit-count drift plus uncancelled work would have broken.
     expect(peakProcessing).toBeGreaterThan(0);
     expect(peakProcessing).toBeLessThanOrEqual(2);
-    // Widened from 15s (reviewer-p3: CPU-proportional, held at 26.8s wall
-    // time under heavy concurrent load — budget, not behavior).
+    // Widened from 15s — this assertion is CPU-proportional and held at 26.8s
+    // wall time under heavy concurrent load in independent testing (a budget
+    // issue, not a behavior one).
   }, 45_000);
 
   it('handles many concurrent decodes above the configured limit without dropping any', async () => {

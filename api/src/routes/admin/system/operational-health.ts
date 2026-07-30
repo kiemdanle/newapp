@@ -8,7 +8,7 @@ export async function adminSystemOperationalHealthRoute(app: FastifyInstance) {
     // Always returned 200 even when status: 'critical' — Task 7 requires
     // "systemd checks alert non-2xx or stale timestamps", which a systemd
     // timer polling this endpoint with a credential could only ever honor
-    // if the status code itself carries the signal (reviewer-p7 IM6).
+    // if the status code itself carries the signal.
     // `warning` stays 200 (advisory, not a binary "down" signal); only
     // `critical` fails the check.
     if (health.status === 'critical') void reply.status(503);

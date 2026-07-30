@@ -104,7 +104,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // Feeds the operational health payload's API 5xx rate (Task 7's
   // "API 5xx >2%/15m" alert threshold) — previously parsed into config with
-  // no consumer anywhere (reviewer-p7 IM5). `onResponse` fires for every
+  // no consumer anywhere. `onResponse` fires for every
   // completed request regardless of outcome, unlike apiErrorRecorderPlugin's
   // hook (which only fires for >=400 and persists individual rows for
   // inspection, a different concern from this cheap alerting counter).

@@ -20,7 +20,7 @@ const SIGNAL_TTL_SECONDS = 30 * 24 * 60 * 60;
 // rate, API 5xx rate, upload rejection rate) were parsed into config with no
 // consumer anywhere and omitted from the payload's `thresholds`, making the
 // config look shipped when the rates themselves were never computed
-// (reviewer-p7 IM5). Time-bucketed (not sliding-window) counters: cheap,
+//. Time-bucketed (not sliding-window) counters: cheap,
 // TTL-self-cleaning, and adequate for a 15-minute alerting window — an
 // operator doesn't need perfect precision, just "is this trending bad right
 // now". `recordRateEvent` is the primitive every producer call site (the
@@ -118,8 +118,7 @@ export interface OperationalHealthPayload {
  * `includeQuarantine` skips the quarantine directory's readdir+stat walk
  * when the caller can't use its result — quarantine age never factors into
  * `overall` status below, so the liveness route paid for a filesystem walk
- * whose entire result it then discarded on every single poll (reviewer-p7
- * R4).
+ * whose entire result it then discarded on every single poll.
  */
 async function computeOperationalHealth(includeQuarantine: boolean): Promise<OperationalHealthPayload> {
   const cfg = getConfig().health;
@@ -223,7 +222,7 @@ export async function getOperationalHealth(): Promise<OperationalHealthPayload> 
 }
 
 /** Just the overall status, for the unauthenticated `/health/operational`
- * liveness route — skips the quarantine walk entirely (reviewer-p7 R4). */
+ * liveness route — skips the quarantine walk entirely. */
 export async function getOperationalHealthStatus(): Promise<'ok' | 'warning' | 'critical'> {
   return (await computeOperationalHealth(false)).status;
 }

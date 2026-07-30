@@ -72,7 +72,7 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
       idempotencyKeyRef.current = null;
       onSubmitted(submitted);
     } catch (err) {
-      // M6: any 5xx, or a transport-level failure that isn't even an
+      // Any 5xx, or a transport-level failure that isn't even an
       // `ApiError` (fetch threw before a response arrived — e.g. the
       // request never reached the server, or reCAPTCHA itself failed before
       // any HTTP call was made), keeps the same key. Only a definitive

@@ -28,7 +28,7 @@ async function pushPending(): Promise<void> {
   for (const rec of dirty) {
     const clientId = rec.clientId || uuidv4();
     if (!rec.serverId) {
-      // CREATE — POST /v1/records (includes householdId for M8)
+      // CREATE — POST /v1/records (includes householdId for household sharing)
       const body: Record<string, unknown> = {
         clientId,
         productId: rec.productId,
@@ -128,7 +128,7 @@ async function pullSince(): Promise<void> {
 
     // 2. Apply incoming changes with split conflict policy:
     //    - Household records (householdId != null): SERVER WINS — unconditional overwrite.
-    //    - Personal records (householdId == null): keep M1 LWW merge (skip if local is newer,
+    //    - Personal records (householdId == null): keep the LWW merge (skip if local is newer,
     //      or just accept server since personal records sync via LWW on push).
     for (const ch of changes) {
       // Skip scope-change conflicts already handled above.
@@ -178,7 +178,7 @@ async function pullSince(): Promise<void> {
           });
         }
       } else {
-        // Personal record — keep M1 merge: only apply if no local newer unsynced edit.
+        // Personal record — keep the LWW merge: only apply if no local newer unsynced edit.
         if (hit) {
           // Skip if local has a newer pending edit (LWW: local will push on next cycle).
           if (hit.pendingSync) continue;

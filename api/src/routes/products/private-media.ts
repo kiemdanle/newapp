@@ -29,9 +29,9 @@ function notFound(): never {
  * by the DB check constraint — so this route structurally can't reach one).
  *
  * The route enforces `moderationStatus` itself, independent of the serializer's
- * own filtering (reviewer-p3 C2 — a trust-boundary defect fixed at both layers,
- * since redacting a URL from a response never stops a caller who already knows or
- * guesses the photo ID from requesting it directly): an admin may fetch any
+ * own filtering (a trust-boundary check belongs at both layers, since redacting
+ * a URL from a response never stops a caller who already knows or guesses the
+ * photo ID from requesting it directly): an admin may fetch any
  * pending/rejected photo; the product's own creator may fetch their own still
  * -`pending` photos (their own not-yet-reviewed upload); a `rejected` photo is
  * never served to anyone but an admin, not even its own creator; every other
@@ -55,7 +55,7 @@ export async function privateMediaRoute(app: FastifyInstance) {
 
     const cfg = getConfig().media;
     const path = mediaKeyToPath(cfg.root, variantFileKey(photo.privateStorageKey, variant as MediaVariant));
-    // Stream rather than buffer the whole file into memory (reviewer-p3 M7) —
+    // Stream rather than buffer the whole file into memory —
     // at the configured 8MiB display ceiling, concurrent fetches would otherwise
     // multiply directly into heap. `stat` first (cheap, no content read) so a
     // missing file still 404s cleanly instead of surfacing as a stream error

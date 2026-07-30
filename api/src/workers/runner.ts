@@ -33,7 +33,7 @@ export function startWorkers(): Worker[] {
   scheduleProductMediaCleanup().catch((err: unknown) => {
     logger.error({ err }, 'failed to schedule product-media-cleanup repeat job');
   });
-  // Scheduler-independent fallback (reviewer-p7 I7): keeps draining the
+  // Scheduler-independent fallback: keeps draining the
   // durable outbox on its own timer even if BullMQ's repeat key is lost or
   // the queue is paused — polling the outbox is the authoritative path,
   // BullMQ delivery only accelerates it.

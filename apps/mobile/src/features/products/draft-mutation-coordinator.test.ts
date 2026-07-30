@@ -270,12 +270,12 @@ describe('draft-mutation-coordinator', () => {
     expect(coordinator.hasConflict()).toBe(false);
   });
 
-  // The three tests below close the exact gap reviewer-p5 found: nothing in
-  // this suite previously enqueued anything *during* an unresolved conflict
-  // window (as opposed to only checking the conflict's own initial detection
-  // and its eventual resolution).
+  // The three tests below close a real coverage gap: nothing in this suite
+  // previously enqueued anything *during* an unresolved conflict window (as
+  // opposed to only checking the conflict's own initial detection and its
+  // eventual resolution).
 
-  it('I2: reconcileConflict("retry") merges the pre-conflict snapshot with fields typed during the conflict window, never overwriting the newer edit', async () => {
+  it('reconcileConflict("retry") merges the pre-conflict snapshot with fields typed during the conflict window, never overwriting the newer edit', async () => {
     const adapter = makeAdapter();
     adapter.patchMetadata.mockRejectedValueOnce(
       new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),
@@ -301,7 +301,7 @@ describe('draft-mutation-coordinator', () => {
     expect(adapter.patchMetadata).toHaveBeenLastCalledWith('p1', 5, { name: 'A-newer', brand: 'Acme' });
   });
 
-  it('I2: the ConflictInfo handed to onConflict listeners is never retroactively mutated by a later successful retry', async () => {
+  it('the ConflictInfo handed to onConflict listeners is never retroactively mutated by a later successful retry', async () => {
     const adapter = makeAdapter();
     adapter.patchMetadata.mockRejectedValueOnce(
       new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),
@@ -325,7 +325,7 @@ describe('draft-mutation-coordinator', () => {
     expect(capturedPendingFields).toEqual([{ name: 'A' }]);
   });
 
-  it('M1: a metadata enqueue issued while a flush is in flight still settles once that flush conflicts and is reconciled', async () => {
+  it('a metadata enqueue issued while a flush is in flight still settles once that flush conflicts and is reconciled', async () => {
     const adapter = makeAdapter();
     const inFlight = deferred<Entity>();
     adapter.patchMetadata.mockReturnValueOnce(inFlight.promise);
@@ -355,7 +355,7 @@ describe('draft-mutation-coordinator', () => {
     await expect(duringFlush).resolves.toMatchObject({ version: 6 });
   });
 
-  it('I1: a non-metadata operation enqueued while a conflict is unresolved rejects and never reaches the adapter', async () => {
+  it('a non-metadata operation enqueued while a conflict is unresolved rejects and never reaches the adapter', async () => {
     const adapter = makeAdapter();
     adapter.patchMetadata.mockRejectedValueOnce(
       new ApiError({ code: 'version_conflict', status: 409, title: 'stale', currentVersion: 5 }),

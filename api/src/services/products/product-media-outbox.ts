@@ -76,7 +76,7 @@ export async function renewMediaOperationLease(id: string, leaseOwner: string, l
  * whose lease expired while its reference transaction was still running (e.g. slow
  * `FOR UPDATE` contention) could "complete" an intent that `processMediaOutboxOnce`
  * had *already* claimed, found unreferenced, and deleted — committing a reference to
- * bytes that no longer exist, silently (reviewer-p3 I1). Throwing here instead rolls
+ * bytes that no longer exist, silently. Throwing here instead rolls
  * the whole reference transaction back, so the caller's own compensation path (or,
  * durably, a later outbox recovery pass) is what runs, never a dangling key.
  */
@@ -111,8 +111,8 @@ export class MediaOperationFencedError extends Error {
  */
 export async function enqueueMediaCleanup(tx: Db, input: { operation: MediaOperationType; keys: string[] }): Promise<{ id: string } | null> {
   // `null`, not a sentinel empty-string id, for "nothing to enqueue" — an empty
-  // string is indistinguishable from a real ID to a caller that forgets to check
-  // (reviewer-p3 M9); `null` forces the distinction at the type level.
+  // string is indistinguishable from a real ID to a caller that forgets to check;
+  // `null` forces the distinction at the type level.
   if (input.keys.length === 0) return null;
   const row = await tx.mediaOperationOutbox.create({
     data: {
@@ -185,7 +185,7 @@ async function claimBatch(workerId: string, limit: number): Promise<ClaimedRow[]
 // without it, a worker whose 60s processing lease expired mid-run — and whose row
 // was already reclaimed and re-processed by a second worker — would still be able
 // to overwrite `status`/`attempts`/`availableAt` on its way out, clobbering the
-// second (live) worker's outcome (reviewer-p3 M5). A count of 0 here just means
+// second (live) worker's outcome. A count of 0 here just means
 // this worker lost the row to a reclaim; that is the reclaiming worker's outcome to
 // write, not an error for this one to raise.
 
@@ -237,8 +237,7 @@ export interface OutboxSweepResult {
  * references one, or the manifest generator could still be walking the
  * filesystem tree this pass is mutating. Without this, the backup boundary
  * the phase requires ("no DB-referenced key changes between completed drain
- * and manifest capture") was not actually enforced for this pass
- * (reviewer-p7 II1).
+ * and manifest capture") was not actually enforced for this pass.
  */
 export async function processMediaOutboxOnce(limit = 10): Promise<OutboxSweepResult> {
   if (await isMediaFreezeActive()) {
@@ -279,7 +278,7 @@ export async function processMediaOutboxOnce(limit = 10): Promise<OutboxSweepRes
 }
 
 // ---------------------------------------------------------------------------
-// Scheduler-independent poller (reviewer-p7 I7). The phase spec requires
+// Scheduler-independent poller. The phase spec requires
 // "polling the durable outbox is authoritative; BullMQ delivery only
 // accelerates it", but until now `processMediaOutboxOnce` had exactly one
 // caller — the BullMQ-scheduled cleanup job. If the repeat key is ever lost

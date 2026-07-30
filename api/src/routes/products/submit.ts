@@ -15,7 +15,7 @@ export async function draftSubmitRoute(app: FastifyInstance) {
       const product = await submitDraft({ id: req.user!.id, role: req.user!.role }, id, input);
       // Schema-pinned response, matching every sibling draft-mutation route
       // (photo-delete.ts, photo-upload.ts, drafts.ts) — this was the one
-      // holdout sending the raw service return value (reviewer-p7 M7).
+      // holdout sending the raw service return value.
       return reply.send(productSchema.parse(product));
     },
   );

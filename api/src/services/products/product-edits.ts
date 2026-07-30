@@ -49,7 +49,7 @@ function notFound(): never {
 // Route placement (`adminOnlyPlugin`) is the only thing enforcing this today, but
 // these functions are exported and the admin-only branches (approve/
 // request_changes/rebase/supersede) are the moderation authority — a same-module
-// check makes the invariant local rather than positional (M7).
+// check makes the invariant local rather than positional.
 function assertAdmin(actor: ProductActor): void {
   if (actor.role !== 'admin') {
     throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Admin role required' });
@@ -395,7 +395,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       const proposed = edit.proposed as ProposedMetadata;
 
       // Cover `imageUrl` is only recomputed when the photo set genuinely changed
-      // (I4) — a pure metadata edit must never touch it (legacy compatibility).
+      // — a pure metadata edit must never touch it (legacy compatibility).
       let coverImageUrl: string | null | undefined;
       if (photoSetChanged) {
         const coverEntry = desired.find((e) => e.position === 0);
@@ -459,7 +459,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         // A *resolved* (approved/rejected) historical edit's retained-photo row
         // still points at this photo via `onDelete: Restrict` — an open edit
         // already blocked the delete above, but resolved history never should
-        // (I1). Nulling the FK alone is not an option: `ProductEditPhoto`'s
+        // block it. Nulling the FK alone is not an option: `ProductEditPhoto`'s
         // representation check constraint is a strict XOR between "retained"
         // (source id set, every staged field null) and "staged" (source id null,
         // every staged field set) — a row with neither violates the constraint.
@@ -469,7 +469,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         // this one now-meaningless photo-slot entry is gone.
         //
         // Scope explicitly aligned with `assertNoOpenEditBlocksRemoval`'s
-        // blocking predicate (R3): the blocker never blocks on a legacy edit
+        // blocking predicate: the blocker never blocks on a legacy edit
         // (pre-Phase-1 rows are exempt from the one-open-edit lifecycle
         // entirely), so an open legacy edit's row must be just as eligible for
         // cleanup here as a resolved edit's — an unscoped delete would also
@@ -503,7 +503,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         }
       }
 
-      // Guarded like every other Phase 4 terminal write (I3): a concurrent
+      // Guarded like every other Phase 4 terminal write: a concurrent
       // supersede/request_changes/resubmit that already moved this edit off
       // `pending` (or bumped its version) must make this approval lose cleanly,
       // never silently overwrite whatever that action just committed.
@@ -528,7 +528,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
               decision: 'approve',
               publishedPhotos: staged.length,
               removedPhotos: removedLivePhotos.length,
-              // R3: this approval mutated (deleted) photo-slot rows belonging to
+              // This approval mutated (deleted) photo-slot rows belonging to
               // *other* edits as a side effect of removing a live photo they
               // historically retained — recorded explicitly so the audit trail
               // shows the blast radius, not just this edit's own state change.
@@ -642,7 +642,7 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
 
   if (input.action === 'supersede') {
     const updated = await prisma.$transaction(async (tx) => {
-      // Lock the edit row before re-reading its staged photos (M3): photo staging
+      // Lock the edit row before re-reading its staged photos: photo staging
       // is permitted while the edit is `draft`, and this same lock is what
       // `assertEditPhotoMutable` takes for a concurrent upload, so re-reading here
       // under the lock (rather than trusting the pre-transaction snapshot) means an
@@ -657,7 +657,7 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
         data: {
           status: 'rejected',
           notes: SUPERSEDED_STALE_BASE_REASON,
-          // Preserve unread creator feedback (M2) when the admin doesn't supply a
+          // Preserve unread creator feedback when the admin doesn't supply a
           // new note — never blindly null it out on a state transition.
           moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,
           resolvedBy: actor.id,
@@ -745,7 +745,7 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
       data: {
         status: 'pending',
         baseProductVersion: product.version,
-        // Preserve unread creator feedback (M2) when the admin doesn't supply a
+        // Preserve unread creator feedback when the admin doesn't supply a
         // new note — a rebase with no notes must not silently wipe a previous
         // request_changes reason the creator may not have read yet.
         moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,

@@ -26,7 +26,7 @@ export interface MediaCapacityReservation {
 // exceeding the configured usable bytes. A persisted, reconciled-against-real-disk
 // -usage counter is Phase 7's operational-sweeper territory (`currentReservedMediaBytes`
 // below is the primitive it would pair with real `du`/quota data), not implemented
-// here (reviewer-p3 M3).
+// here.
 
 const RESERVE_SCRIPT = `
 local index_key = KEYS[1]
@@ -106,7 +106,7 @@ export async function heartbeatMediaCapacityReservation(id: string, ttlSeconds =
 /** Heartbeats `id` and throws a typed 507 if it was not actually live to renew.
  * The gate every final-byte-writing operation must pass before writing: a
  * capacity reservation is not optional bookkeeping, it's what makes "no
- * final/public key is created without a live reservation" true (reviewer-p3 I2). */
+ * final/public key is created without a live reservation" true. */
 export async function assertMediaCapacityReservationLive(id: string, ttlSeconds = DEFAULT_TTL_SECONDS): Promise<void> {
   const live = await heartbeatMediaCapacityReservation(id, ttlSeconds);
   if (!live) {
@@ -129,7 +129,7 @@ export async function assertMediaCapacityReservationLive(id: string, ttlSeconds 
  * key creates one, and `KEEPTTL` on a key that never had a TTL to begin with
  * means that resurrected key lives forever, invisible to `currentReservedMediaBytes`
  * (which only sums IDs still in the index) and never cleaned up — a permanent
- * Redis leak on every crash between reserve and reconcile (reviewer-p3 R2).
+ * Redis leak on every crash between reserve and reconcile.
  * Returns whether the reservation was actually still live to reconcile. */
 export async function reconcileMediaCapacityReservation(id: string, actualBytes: number): Promise<boolean> {
   const result = await getRedis().set(RES_PREFIX + id, actualBytes, 'KEEPTTL', 'XX');

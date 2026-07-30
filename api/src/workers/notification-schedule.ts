@@ -61,7 +61,7 @@ export async function processScheduleJob(data: NotificationScheduleJob): Promise
       }
     }
   } else {
-    // Personal record — single-owner schedule (M1 behavior).
+    // Personal record — single-owner schedule.
     const notifyAt = (record.notifyAt as string[]) ?? [];
     const now = Date.now();
     for (const isoTs of notifyAt) {

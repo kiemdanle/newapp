@@ -52,7 +52,7 @@ describe('assessProductCreationSubmission', () => {
     expect(result.assessmentName).toBe('projects/p/assessments/a1');
   });
 
-  it('sends the exact expected CreateAssessment request shape — parent, token, site key, action (reviewer-p7 M5)', async () => {
+  it('sends the exact expected CreateAssessment request shape — parent, token, site key, action', async () => {
     const createAssessment = vi.fn(async () => [
       { tokenProperties: { valid: true, action: 'submit_product' }, riskAnalysis: { score: 0.9, reasons: [] } },
     ] as [StubAssessment]);

@@ -26,7 +26,7 @@ export const MEDIA_VARIANTS: readonly MediaVariant[] = ['display', 'thumb'];
 
 // Extends `AppError` (not a bare `Error`) so a path-containment violation that
 // somehow reaches `toProblem` degrades to a typed 400, not a generic
-// signal-free 500 — reviewer-p3 M9. Currently unreachable from any real request
+// signal-free 500. Currently unreachable from any real request
 // (busboy truncates before the independent byte counter fires, and every path
 // segment is always either a fixed literal or a server-generated UUID), but a
 // defensive class hierarchy should never rely on "currently unreachable" alone.

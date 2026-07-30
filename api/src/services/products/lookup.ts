@@ -46,7 +46,7 @@ async function findLocalExact(input: LookupInput): Promise<ProductWithPhotos | n
  * round trip, without duplicating `classifyLocal`'s classification logic or
  * changing `lookupProductV2`'s own behaviour (which must keep running the
  * full external lookup unconditionally for its read-only capability-flag
- * response; reviewer-p7 I5).
+ * response).
  */
 export async function hasLocalMatch(input: LookupInput): Promise<boolean> {
   return (await findLocalExact(input)) !== null;

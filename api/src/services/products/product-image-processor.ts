@@ -77,7 +77,7 @@ export async function canDecodeAsImage(buffer: Buffer): Promise<boolean> {
  * specifically so it survives compilation into `dist/` — `tsc` copies no
  * non-`.ts` assets, so a file-path-relative fixture silently vanished from every
  * production build and the probe always reported HEIC unsupported regardless of
- * the host's real capability (reviewer-p3 I4). A static "does this libvips build
+ * the host's real capability. A static "does this libvips build
  * declare HEIF input support" flag alone is insufficient too: many prebuilt
  * libvips/libheif distributions include the HEIF *container* parser without the
  * HEVC decoder plugin (licensing), reporting the flag `true` while still failing
@@ -129,8 +129,8 @@ const decodeWaitQueue: Array<() => void> = [];
  * release rather than decrementing-then-letting-the-waiter-increment — the
  * previous version did the latter, which let `activeDecodes` drift above `limit`
  * when a queued `acquireDecodeSlot` call's `await` resolved as a microtask
- * interleaved between another caller's decrement and the waiter's own increment
- * (reviewer-p3 C1). Only ever decrement when there is no waiter to hand the
+ * interleaved between another caller's decrement and the waiter's own increment.
+ * Only ever decrement when there is no waiter to hand the
  * permit to.
  */
 async function acquireDecodeSlot(limit: number): Promise<() => void> {
@@ -206,7 +206,7 @@ async function encodeVariant(
  * per-dimension caps, a decode concurrency semaphore, an abortable processing
  * deadline, and output-size ceilings on the generated variants.
  *
- * Cancellation is two-layered (reviewer-p3 R1):
+ * Cancellation is two-layered:
  *
  * 1. **Per-operation, via Sharp's own `.timeout()`.** libvips aborts the
  *    in-flight worker-thread task itself, not just the outer JS promise — an
@@ -216,7 +216,7 @@ async function encodeVariant(
  *    already-dispatched libvips threadpool work is not otherwise cancellable,
  *    so the semaphore slot was being handed back while a libvips thread kept
  *    consuming CPU/memory for the input's real processing time — silently
- *    defeating `MEDIA_SHARP_CONCURRENCY` (reviewer-p3 C1). This bound is real
+ *    defeating `MEDIA_SHARP_CONCURRENCY`. This bound is real
  *    cancellation, but it applies *per libvips operation* — the metadata
  *    read, the display encode, and the thumb encode each restart their own
  *    `timeoutSeconds` clock, so a pipeline with several serial operations
@@ -321,8 +321,8 @@ async function runProcessing(
  * semaphore and the outer whole-request deadline described above. The
  * semaphore slot and the pipeline's own cleanup are only ever released once
  * `run` has genuinely settled — never eagerly when the outer race's deadline
- * branch wins — preserving the concurrency-bound invariant reviewer-p3's C1
- * fix established.
+ * branch wins — preserving the concurrency-bound invariant established
+ * above.
  */
 export async function processProductUpload(input: { sourcePath: string }): Promise<ProcessedVariants> {
   const cfg = getConfig().media;

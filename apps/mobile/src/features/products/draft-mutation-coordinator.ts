@@ -212,8 +212,8 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
         notifyConflict({ currentVersion: serverEntity.version, serverEntity, pendingFields: fields });
         // Restore this attempt's waiters ahead of anything queued while
         // `patchMetadata` was in flight — a plain reassignment here would
-        // discard those newer waiters outright (M1: their `enqueue()`
-        // promise would never settle).
+        // discard those newer waiters outright (their `enqueue()` promise
+        // would never settle).
         pendingWaiters = [...waiters, ...pendingWaiters];
         return applyDirty(serverEntity, pendingFields);
       }
@@ -266,9 +266,10 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
         if (conflict) {
           // Never resolve as if the mutation ran — a caller (ProductPhotoEditor,
           // in particular) treats any resolution as success and deletes the
-          // local temp file / marks a delete-or-reorder done (I1: phantom
-          // success, silent photo loss). The adapter is never called against
-          // a product state the caller hasn't confirmed past the conflict yet.
+          // local temp file / marks a delete-or-reorder done (a phantom
+          // success would silently lose the photo). The adapter is never
+          // called against a product state the caller hasn't confirmed past
+          // the conflict yet.
           throw new ApiError({
             code: 'coordinator_conflict',
             status: 0,
@@ -319,8 +320,8 @@ export function createDraftMutationCoordinator<T extends CoordinatedEntity>(
         // Merge, never overwrite — anything the caller typed *during* the
         // conflict window (after `resolved.pendingFields` was snapshotted at
         // notifyConflict time) already lives in the current `pendingFields`
-        // and must win per key over the stale pre-conflict snapshot
-        // (I2). Spreading into a fresh object also breaks this path's
+        // and must win per key over the stale pre-conflict snapshot.
+        // Spreading into a fresh object also breaks this path's
         // reference-aliasing: `resolved.pendingFields` is the exact object
         // already handed to every `onConflict` listener, so a bare
         // reassignment here would let this flush's own later success-path
