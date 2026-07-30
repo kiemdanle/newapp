@@ -35,6 +35,16 @@ function dailyBytesKey(actorId: string, day: string): string {
  * overshooting it by one (reviewer-p7 M1) — the advisory lock (taken by the
  * caller, not here) serializes just that one actor's own concurrent create
  * attempts against each other, never against unrelated actors.
+ *
+ * Deliberately bounds only *concurrently open* drafts, not lifetime creation
+ * count (reviewer-p7 M2: cycling create -> submit -> create frees a slot
+ * immediately, so total row creation is unbounded over time). The plan
+ * spec's quota surface is exactly two dimensions — this active-draft cap and
+ * `maxDailyBytesPerUser` below — with no daily-creation-count limit named
+ * anywhere; adding one would be a new capability beyond that surface, not a
+ * fix. Cycling create/submit/create is also the legitimate usage pattern for
+ * a prolific real contributor. Revisit only as an explicit product decision,
+ * not silently.
  */
 export async function assertWithinActiveDraftQuota(actorId: string, db: Db = getPrisma()): Promise<void> {
   const cfg = getConfig().productCreation;

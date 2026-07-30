@@ -21,6 +21,16 @@ TimeoutStopSec=30
 StandardOutput=append:/var/log/pantry/api.log
 StandardError=append:/var/log/pantry/api.log
 
+# Pinned explicitly rather than left to whatever systemd's own default
+# happens to be: display.webp/thumb.webp files this process writes at
+# runtime under public/products/ need their group-read bit set for nginx
+# (via that tree's setgid group=www-data) to serve them at all — 0022
+# yields mode 0644 on new files. A future hardening pass tightening this
+# unit's other directives could otherwise silently flip the effective umask
+# to something more restrictive and 403 CDN content with no obvious cause
+# (reviewer-p7 R5).
+UMask=0022
+
 # Hardening
 NoNewPrivileges=yes
 PrivateTmp=yes

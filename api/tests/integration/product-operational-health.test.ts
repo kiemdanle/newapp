@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPrisma } from '../../src/db.js';
 import { resetConfigForTests } from '../../src/config.js';
 import { buildServer } from '../../src/server.js';
@@ -8,6 +8,7 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { reserveMediaCapacity } from '../../src/services/products/product-media-capacity.js';
 import {
   getOperationalHealth,
+  getOperationalHealthStatus,
   recordBackupFailure,
   recordBackupSuccess,
   recordCleanupFailure,
@@ -113,6 +114,19 @@ describe('getOperationalHealth', () => {
   it('reports null quarantine age when the quarantine tree does not exist', async () => {
     const health = await getOperationalHealth();
     expect(health.quarantine.oldestAgeHours).toBeNull();
+  });
+
+  it('getOperationalHealthStatus never walks the quarantine tree, unlike the full payload (reviewer-p7 R4)', async () => {
+    const cleanup = await import('../../src/services/products/product-media-cleanup.js');
+    const spy = vi.spyOn(cleanup, 'oldestQuarantineAgeMs');
+
+    await getOperationalHealthStatus();
+    expect(spy).not.toHaveBeenCalled();
+
+    await getOperationalHealth();
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    spy.mockRestore();
   });
 
   describe('rate thresholds (reviewer-p7 IM5)', () => {

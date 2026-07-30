@@ -111,7 +111,17 @@ export interface OperationalHealthPayload {
   };
 }
 
-export async function getOperationalHealth(): Promise<OperationalHealthPayload> {
+/**
+ * Shared computation behind both `getOperationalHealth` (the full,
+ * admin-gated payload) and `getOperationalHealthStatus` (the unauthenticated
+ * liveness variant, which only ever reads the returned `.status`).
+ * `includeQuarantine` skips the quarantine directory's readdir+stat walk
+ * when the caller can't use its result — quarantine age never factors into
+ * `overall` status below, so the liveness route paid for a filesystem walk
+ * whose entire result it then discarded on every single poll (reviewer-p7
+ * R4).
+ */
+async function computeOperationalHealth(includeQuarantine: boolean): Promise<OperationalHealthPayload> {
   const cfg = getConfig().health;
   const prisma = getPrisma();
 
@@ -135,7 +145,7 @@ export async function getOperationalHealth(): Promise<OperationalHealthPayload> 
     readSignal(BACKUP_LAST_FAILURE_KEY),
     prisma.product.count({ where: { status: 'pending' } }),
     prisma.product.findFirst({ where: { status: 'pending' }, orderBy: { submittedAt: 'asc' }, select: { submittedAt: true } }),
-    oldestQuarantineAgeMs(),
+    includeQuarantine ? oldestQuarantineAgeMs() : Promise.resolve(null),
     currentRatePercent('assessment'),
     currentRatePercent('api5xx'),
     currentRatePercent('uploadRejection'),
@@ -204,4 +214,16 @@ export async function getOperationalHealth(): Promise<OperationalHealthPayload> 
       uploadRejectionRatePercent: cfg.uploadRejectionRatePercent,
     },
   };
+}
+
+/** The full, admin-gated operational health payload — unchanged behavior,
+ * includes the quarantine age walk. */
+export async function getOperationalHealth(): Promise<OperationalHealthPayload> {
+  return computeOperationalHealth(true);
+}
+
+/** Just the overall status, for the unauthenticated `/health/operational`
+ * liveness route — skips the quarantine walk entirely (reviewer-p7 R4). */
+export async function getOperationalHealthStatus(): Promise<'ok' | 'warning' | 'critical'> {
+  return (await computeOperationalHealth(false)).status;
 }
