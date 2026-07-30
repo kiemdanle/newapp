@@ -5,6 +5,7 @@ import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { addProductPhoto, assertPhotoMutablePreCheck } from '../../services/products/product-photos.js';
 import { assertProductCreationEligible } from '../../services/products/product-creation-eligibility.js';
+import { assertWithinDailyByteQuota, recordDailyBytesAccepted } from '../../services/products/product-creation-quotas.js';
 import { processProductUpload } from '../../services/products/product-image-processor.js';
 import {
   newQuarantineRequestId,
@@ -65,6 +66,16 @@ export async function photoUploadRoute(app: FastifyInstance) {
     const requestId = newQuarantineRequestId();
     let reservationId: string | undefined;
     try {
+      const worstCaseBytes = cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes;
+      // Per-user/day fair-share quota is checked *before* the global capacity
+      // reservation round trip — a quota rejection should never cost a
+      // reservation, and it's an independent, complementary limit (quotas bound
+      // one user's share; capacity bounds the whole server's budget). Admins
+      // performing a correction are exempt, same as the mode gate above.
+      if (actor.role !== 'admin') {
+        await assertWithinDailyByteQuota(actor.id, worstCaseBytes);
+      }
+
       // Reserved *before* a single byte is streamed to disk — worst-case source
       // plus both generated variants at their absolute ceilings. Reserving only
       // after `writeQuarantineFile` (as an earlier version of this route did) let
@@ -72,9 +83,7 @@ export async function photoUploadRoute(app: FastifyInstance) {
       // the budget still read zero, exactly the disk-exhaustion mode the reserve
       // headroom exists to prevent (reviewer-p3 I3). Reconciled down to the real
       // generated size once encoding finishes.
-      const reservation = await reserveMediaCapacity({
-        bytes: cfg.maxUploadBytes + cfg.maxDisplayBytes + cfg.maxThumbnailBytes,
-      });
+      const reservation = await reserveMediaCapacity({ bytes: worstCaseBytes });
       reservationId = reservation.id;
 
       const written = await writeQuarantineFile(root, requestId, filePart.file, cfg.maxUploadBytes);
@@ -102,6 +111,13 @@ export async function photoUploadRoute(app: FastifyInstance) {
         requestMeta: { requestId: (req.headers['x-request-id'] as string) ?? req.id, ip: req.ip },
       });
       reservationId = undefined; // addProductPhoto releases it on every terminal path
+      // Only real accepted bytes count toward the daily quota — never the
+      // worst-case estimate checked above, and never for a rejected/failed
+      // upload (this line only runs once `addProductPhoto` has actually
+      // committed the reference transaction).
+      if (actor.role !== 'admin') {
+        await recordDailyBytesAccepted(actor.id, processed.display.bytes + processed.thumb.bytes);
+      }
       return reply.status(201).send(productSchema.parse(product));
     } finally {
       await removeKeyPrefix(root, quarantineDirKey(requestId)).catch(() => {});

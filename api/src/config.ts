@@ -105,6 +105,11 @@ const envSchema = z.object({
   // `internal`-mode deployment with no allowlist simply has no non-admin
   // internal cohort yet.
   PRODUCT_CREATION_INTERNAL_ALLOWLIST: z.string().optional(),
+  // Per-user fair-share limits, independent of and in addition to Phase 3's
+  // global disk-capacity budget — deployment-tunable, so defaults are
+  // conservative starting points rather than spec-mandated numbers.
+  PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER: z.coerce.number().int().positive().default(20),
+  PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER: z.coerce.number().int().positive().default(200 * 1024 * 1024),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -181,6 +186,8 @@ export interface Config {
   };
   productCreation: {
     internalAllowlist: string[];
+    maxActiveDraftsPerUser: number;
+    maxDailyBytesPerUser: number;
   };
 }
 
@@ -338,6 +345,8 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
     },
     productCreation: {
       internalAllowlist: parseUuidAllowlist(e.PRODUCT_CREATION_INTERNAL_ALLOWLIST),
+      maxActiveDraftsPerUser: e.PRODUCT_CREATION_MAX_ACTIVE_DRAFTS_PER_USER,
+      maxDailyBytesPerUser: e.PRODUCT_CREATION_MAX_DAILY_BYTES_PER_USER,
     },
   };
 }

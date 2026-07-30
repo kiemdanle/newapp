@@ -138,6 +138,34 @@ export async function releaseMediaCapacityReservation(id: string): Promise<void>
   });
 }
 
+export interface MediaCapacitySnapshot {
+  usableBytes: number;
+  reserveBytes: number;
+  budgetBytes: number;
+  reservedBytes: number;
+  freeBytes: number;
+  freePercent: number;
+}
+
+/** Phase 7 health-endpoint primitive — a point-in-time read of the same
+ * self-healing summation `reserveMediaCapacity`/`currentReservedMediaBytes`
+ * already use, shaped for the operational health payload. Read-only; adds no
+ * new reservation/lease semantics. */
+export async function mediaCapacitySnapshot(): Promise<MediaCapacitySnapshot> {
+  const cfg = getConfig().media;
+  const budget = budgetBytes();
+  const reserved = await currentReservedMediaBytes();
+  const free = Math.max(0, budget - reserved);
+  return {
+    usableBytes: cfg.capacityUsableBytes,
+    reserveBytes: cfg.capacityReserveBytes,
+    budgetBytes: budget,
+    reservedBytes: reserved,
+    freeBytes: free,
+    freePercent: budget > 0 ? (free / budget) * 100 : 0,
+  };
+}
+
 /** Sum of every currently-live reservation. Read-only variant of the reserve
  * script's summation, exposed for monitoring/ops and for tests. */
 export async function currentReservedMediaBytes(): Promise<number> {

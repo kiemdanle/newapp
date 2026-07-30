@@ -22,6 +22,7 @@ import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
 import { privateProductPhotoRoute } from './product-media-storage.js';
 import { assertProductCreationEligible } from './product-creation-eligibility.js';
+import { assertWithinActiveDraftQuota } from './product-creation-quotas.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -90,6 +91,7 @@ export async function createOrResumeDraft(
   // draft above returns already-owned state and never writes, so it stays
   // available regardless of mode (existing drafts remain readable/exportable).
   await assertProductCreationEligible({ id: actorId, role: 'user' }, 'create');
+  await assertWithinActiveDraftQuota(actorId);
 
   const prisma = getPrisma();
   try {
