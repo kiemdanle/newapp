@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import type { MergeIdentifierConflict } from '@expyrico/shared';
 import { COOKIE_NAMES } from './cookies';
 import { getAdminEnv } from './env';
 
@@ -7,6 +8,12 @@ export class ApiError extends Error {
     public status: number,
     public code: string,
     public detail: string | undefined,
+    // Structured fields for the two typed conflict problems the admin console
+    // renders explicitly rather than as a generic error string: a stale
+    // optimistic-concurrency write (`version_conflict`) and a merge target/source
+    // identifier collision (`identifier_conflict`).
+    public currentVersion?: number,
+    public identifierConflict?: MergeIdentifierConflict,
   ) {
     super(`API ${status} ${code}`);
   }
@@ -48,14 +55,23 @@ export async function apiServerFetch<T>(path: string, opts: ApiOptions = {}): Pr
   if (!res.ok) {
     let code = 'unknown_error';
     let detail: string | undefined;
+    let currentVersion: number | undefined;
+    let identifierConflict: MergeIdentifierConflict | undefined;
     try {
-      const problem = (await res.json()) as { code?: string; detail?: string };
+      const problem = (await res.json()) as {
+        code?: string;
+        detail?: string;
+        currentVersion?: number;
+        identifierConflict?: MergeIdentifierConflict;
+      };
       code = problem.code ?? code;
       detail = problem.detail;
+      currentVersion = problem.currentVersion;
+      identifierConflict = problem.identifierConflict;
     } catch {
       // body wasn't problem+json
     }
-    throw new ApiError(res.status, code, detail);
+    throw new ApiError(res.status, code, detail, currentVersion, identifierConflict);
   }
 
   if (res.status === 204) return undefined as T;

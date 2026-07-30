@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mergeProductsAction } from '@/lib/actions';
+import { actionErrorMessage } from '@/lib/action-result';
 
 type Candidate = {
   id: string;
@@ -22,10 +23,12 @@ type Candidate = {
  */
 export function MergeTool({
   winnerId,
+  winnerVersion,
   candidates,
   query,
 }: {
   winnerId: string;
+  winnerVersion: number;
   candidates: Candidate[];
   query: string;
 }) {
@@ -34,6 +37,7 @@ export function MergeTool({
   const [search, setSearch] = useState(query);
   const [selected, setSelected] = useState<string[]>([]);
   const [err, setErr] = useState<string | null>(null);
+  const [conflict, setConflict] = useState(false);
 
   // The winner can never be a loser of itself.
   const rows = useMemo(() => candidates.filter((c) => c.id !== winnerId), [candidates, winnerId]);
@@ -58,13 +62,15 @@ export function MergeTool({
       return;
     }
     setErr(null);
+    setConflict(false);
     startTransition(async () => {
-      try {
-        await mergeProductsAction(winnerId, selected);
+      const result = await mergeProductsAction(winnerId, selected, winnerVersion);
+      if (result.ok) {
         router.push(`/products/${winnerId}`);
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : 'Merge failed');
+        return;
       }
+      setErr(actionErrorMessage(result));
+      if (result.code === 'version_conflict') setConflict(true);
     });
   }
 
@@ -115,6 +121,11 @@ export function MergeTool({
 
       <div className="flex items-center justify-end gap-3">
         {err && <span className="text-xs text-destructive">{err}</span>}
+        {conflict && (
+          <Button variant="outline" size="sm" onClick={() => router.refresh()}>
+            Refresh
+          </Button>
+        )}
         <Button variant="destructive" size="sm" disabled={pending || selected.length === 0} onClick={runMerge}>
           {pending ? 'Merging…' : `Merge ${selected.length} into this product`}
         </Button>

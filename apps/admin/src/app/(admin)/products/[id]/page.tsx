@@ -3,6 +3,7 @@ import { serverAdminApi } from '@/lib/admin-api';
 import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 import { ProductActions } from './product-actions';
+import { ProductPhotoManager } from './product-photo-manager';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +49,16 @@ export default async function ProductDetailPage({
         <KpiCard label="Community" value={p.isCommunityEligible ? 'Yes' : 'No'} />
       </div>
 
-      <ProductActions id={p.id} name={p.name} brand={p.brand} category={p.category} />
+      <ProductPhotoManager productId={p.id} photos={p.photos ?? []} />
+
+      <ProductActions
+        id={p.id}
+        version={p.version}
+        name={p.name}
+        brand={p.brand}
+        category={p.category}
+        status={p.status}
+      />
     </div>
   );
 }

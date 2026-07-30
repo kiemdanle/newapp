@@ -26,6 +26,7 @@ import {
 } from './mock-api-constants';
 import { store, VICTIM_PASSWORD } from './mock-store';
 import { handleAdmin } from './mock-admin-handlers';
+import { handleProducts, type BinaryResp } from './mock-product-handlers';
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 4099);
 
@@ -54,6 +55,17 @@ function send(res: ServerResponse, { status = 200, body }: JsonResp): void {
   res.statusCode = status;
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify(body ?? {}));
+}
+
+function sendBinary(res: ServerResponse, resp: BinaryResp): void {
+  res.statusCode = resp.status;
+  for (const [k, v] of Object.entries(resp.headers ?? {})) res.setHeader(k, v);
+  if (resp.binary) {
+    res.end(resp.binary);
+    return;
+  }
+  res.setHeader('content-type', 'application/json');
+  res.end(JSON.stringify(resp.body ?? {}));
 }
 
 const server = createServer(async (req, res) => {
@@ -169,6 +181,11 @@ const server = createServer(async (req, res) => {
   // --- Admin surface (exercised by moderate-report / merge-product / suspend-user specs) ---
   const adminResp = await handleAdmin(method, url, req);
   if (adminResp) return send(res, adminResp);
+
+  // --- Non-admin-prefixed product surface the admin app also calls directly
+  // (single-product admin-bypass read, direct photo correction, private media) ---
+  const productResp = await handleProducts(method, url, req);
+  if (productResp) return sendBinary(res, productResp);
 
   return send(res, { status: 404, body: { code: 'not_found', path: url } });
 });

@@ -26,7 +26,7 @@ export default async function MergePage({
         ← {winner.name}
       </Link>
       <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Merge into {winner.name}</h1>
-      <MergeTool winnerId={id} candidates={candidates} query={q ?? ''} />
+      <MergeTool winnerId={id} winnerVersion={winner.version} candidates={candidates} query={q ?? ''} />
     </div>
   );
 }

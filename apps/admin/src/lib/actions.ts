@@ -3,8 +3,43 @@
 // (cookie -> Bearer to the Fastify API, which audit-logs the mutation), then
 // `revalidatePath` so the affected list/detail re-renders with fresh data.
 import { revalidatePath } from 'next/cache';
-import type { AdminProductEditResolveDecision } from '@expyrico/shared';
+import type { z } from 'zod';
+import { adminProductMergeResponseSchema, adminProductRowSchema } from '@expyrico/shared';
+import type {
+  AdminProductEditResolveDecision,
+  AdminProductModerateDecision,
+  Product,
+  ProductEditRecoverRequest,
+  ProductEditRow,
+} from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
+import { ApiError } from './api';
+import type { ActionResult } from './action-result';
+
+type AdminProductRow = z.infer<typeof adminProductRowSchema>;
+type AdminProductMergeResponse = z.infer<typeof adminProductMergeResponseSchema>;
+
+// Runs a Phase 6 moderation mutation and always returns a plain, serializable
+// `ActionResult` rather than throwing — see `action-result.ts` for why a thrown
+// `ApiError`'s structured fields would not otherwise survive the Server Action
+// boundary back to the client.
+async function runAction<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
+  try {
+    const data = await fn();
+    return { ok: true, data };
+  } catch (e) {
+    if (e instanceof ApiError) {
+      return {
+        ok: false,
+        code: e.code,
+        detail: e.detail,
+        currentVersion: e.currentVersion,
+        identifierConflict: e.identifierConflict,
+      };
+    }
+    return { ok: false, code: 'unknown_error' };
+  }
+}
 
 // --- Users ---
 export async function patchUserAction(id: string, body: Record<string, unknown>) {
@@ -23,24 +58,86 @@ export async function impersonateUserAction(id: string): Promise<{ accessToken: 
 }
 
 // --- Products ---
-export async function patchProductAction(id: string, body: Record<string, unknown>) {
-  await serverAdminApi.products.patch(id, body);
-  revalidatePath('/products');
-  revalidatePath(`/products/${id}`);
+export async function patchProductAction(
+  id: string,
+  version: number,
+  body: Record<string, unknown>,
+): Promise<ActionResult<AdminProductRow>> {
+  const result = await runAction(() => serverAdminApi.products.patch(id, version, body));
+  if (result.ok) {
+    revalidatePath('/products');
+    revalidatePath(`/products/${id}`);
+  }
+  return result;
 }
 
-export async function mergeProductsAction(winnerId: string, loserIds: string[]) {
-  await serverAdminApi.products.merge(winnerId, loserIds);
-  revalidatePath('/products');
+export async function mergeProductsAction(
+  targetId: string,
+  sourceIds: string[],
+  version: number,
+): Promise<ActionResult<AdminProductMergeResponse>> {
+  const result = await runAction(() => serverAdminApi.products.merge(targetId, sourceIds, version));
+  if (result.ok) revalidatePath('/products');
+  return result;
+}
+
+export async function moderateProductAction(
+  id: string,
+  decision: AdminProductModerateDecision,
+  version: number,
+  notes?: string,
+): Promise<ActionResult<AdminProductRow>> {
+  const result = await runAction(() => serverAdminApi.products.moderate(id, decision, version, notes));
+  if (result.ok) {
+    revalidatePath('/products');
+    revalidatePath('/products/pending');
+    revalidatePath(`/products/${id}`);
+  }
+  return result;
 }
 
 export async function resolveProductEditAction(
   id: string,
   decision: AdminProductEditResolveDecision,
   notes?: string,
-) {
-  await serverAdminApi.products.resolveEdit(id, decision, notes);
-  revalidatePath('/products/pending');
+): Promise<ActionResult<Product | ProductEditRow>> {
+  const result = await runAction(() => serverAdminApi.products.resolveEdit(id, decision, notes));
+  if (result.ok) {
+    revalidatePath('/products/pending');
+    revalidatePath(`/products/pending/${id}`);
+  }
+  return result;
+}
+
+export async function recoverProductEditAction(
+  editId: string,
+  input: ProductEditRecoverRequest,
+): Promise<ActionResult<ProductEditRow>> {
+  const result = await runAction(() => serverAdminApi.products.recoverEdit(editId, input));
+  if (result.ok) {
+    revalidatePath('/products/pending');
+    revalidatePath(`/products/pending/${editId}`);
+  }
+  return result;
+}
+
+// --- Product photos (direct admin correction of a live product's own photo set) ---
+export async function reorderProductPhotosAction(
+  productId: string,
+  photoIds: string[],
+): Promise<ActionResult<Product>> {
+  const result = await runAction(() => serverAdminApi.products.photos.reorder(productId, photoIds));
+  if (result.ok) revalidatePath(`/products/${productId}`);
+  return result;
+}
+
+export async function removeProductPhotoAction(
+  productId: string,
+  photoId: string,
+): Promise<ActionResult<Product>> {
+  const result = await runAction(() => serverAdminApi.products.photos.remove(productId, photoId));
+  if (result.ok) revalidatePath(`/products/${productId}`);
+  return result;
 }
 
 // --- Reviews ---

@@ -1,40 +1,126 @@
+import Link from 'next/link';
 import { serverAdminApi } from '@/lib/admin-api';
 import { DataTable, type Column } from '@/components/data-table';
-import { LoadMore } from '@/components/load-more';
-import { PendingActions } from './pending-actions';
+import { StatusBadge } from '@/components/status-badge';
+import { ModerationFilters } from './moderation-filters';
 
 export const dynamic = 'force-dynamic';
 
-type Row = Awaited<ReturnType<typeof serverAdminApi.products.pending>>['items'][number];
+type NewRow = Awaited<ReturnType<typeof serverAdminApi.products.list>>['items'][number];
+type RevisionRow = Awaited<ReturnType<typeof serverAdminApi.products.pending>>['items'][number];
+type QueueRow = { kind: 'new'; createdAt: string; data: NewRow } | { kind: 'revision'; createdAt: string; data: RevisionRow };
 
+const AGE_THRESHOLDS_MS: Record<string, number> = {
+  '24h': 24 * 60 * 60 * 1000,
+  '72h': 72 * 60 * 60 * 1000,
+  '7d': 7 * 24 * 60 * 60 * 1000,
+};
+
+function relativeAge(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(ms / (60 * 60 * 1000));
+  if (hours < 1) return '<1h ago';
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+/**
+ * Unified moderation queue: brand-new creator submissions (`Product.status ===
+ * 'pending'`) and active-product revisions (`ProductEdit.status === 'pending'`)
+ * are two independent, independently-paginated upstream sources — merged and
+ * sorted client-side (server-rendered, not a browser fetch) into one queue so an
+ * admin doesn't have to work two separate screens. Two requests total, never
+ * N+1: each source is fetched once per page load regardless of row count.
+ */
 export default async function ProductsPendingPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
-  const query = { cursor: sp.cursor };
-  const { items, nextCursor } = await serverAdminApi.products.pending(query);
+  const type = sp.type; // 'new' | 'revision' | undefined (both)
+  const status = sp.status ?? 'pending';
+  const age = sp.age;
 
-  const columns: Column<Row>[] = [
-    { header: 'Product', cell: (e) => <span className="font-mono text-xs">{e.productId}</span> },
+  const [newProducts, revisions] = await Promise.all([
+    type === 'revision'
+      ? Promise.resolve({ items: [] as NewRow[], nextCursor: null as string | null })
+      : serverAdminApi.products.list({ status, cursor: sp.cursorNew }),
+    type === 'new'
+      ? Promise.resolve({ items: [] as RevisionRow[], nextCursor: null as string | null })
+      : serverAdminApi.products.pending({ cursor: sp.cursorRevision }),
+  ]);
+
+  let rows: QueueRow[] = [
+    ...newProducts.items.map((data): QueueRow => ({ kind: 'new', createdAt: data.createdAt, data })),
+    ...revisions.items.map((data): QueueRow => ({ kind: 'revision', createdAt: data.createdAt, data })),
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (age && AGE_THRESHOLDS_MS[age]) {
+    const cutoff = Date.now() - AGE_THRESHOLDS_MS[age]!;
+    rows = rows.filter((r) => new Date(r.createdAt).getTime() <= cutoff);
+  }
+
+  const columns: Column<QueueRow>[] = [
     {
-      header: 'Proposed',
-      cell: (e) => (
-        <pre className="max-w-md overflow-x-auto text-xs">
-          {JSON.stringify(e.proposed, null, 2)}
-        </pre>
+      header: 'Type',
+      cell: (r) => (
+        <span className="text-xs font-medium text-neutral-mid">{r.kind === 'new' ? 'New product' : 'Revision'}</span>
       ),
     },
-    { header: 'Submitted', cell: (e) => new Date(e.createdAt).toLocaleString() },
-    { header: '', cell: (e) => <PendingActions id={e.id} /> },
+    {
+      header: 'Item',
+      cell: (r) =>
+        r.kind === 'new' ? (
+          <Link href={`/products/${r.data.id}`} className="font-medium hover:underline">
+            {r.data.name}
+          </Link>
+        ) : (
+          <Link href={`/products/pending/${r.data.id}`} className="font-medium hover:underline">
+            Revision to product <span className="font-mono text-xs">{r.data.productId}</span>
+          </Link>
+        ),
+    },
+    {
+      header: 'Creator',
+      cell: (r) => (
+        <span className="font-mono text-xs text-neutral-mid">{r.kind === 'revision' ? r.data.submittedBy : '—'}</span>
+      ),
+    },
+    {
+      header: 'Photos',
+      // Only cheaply available for the new-product source (already included in its
+      // list row); a revision's photo count would require an extra per-row fetch
+      // (N+1), so it's shown on the revision detail page instead, where it's a
+      // single fetch either way.
+      cell: (r) => (r.kind === 'new' ? (r.data.photos?.length ?? 0) : '—'),
+    },
+    { header: 'Status', cell: (r) => <StatusBadge status={r.kind === 'new' ? r.data.status : r.data.status} /> },
+    { header: 'Age', cell: (r) => relativeAge(r.createdAt) },
   ];
+
+  const nextCursorNew = age ? null : newProducts.nextCursor;
+  const nextCursorRevision = age ? null : revisions.nextCursor;
+  const hasMore = Boolean(nextCursorNew || nextCursorRevision);
+  const moreParams = new URLSearchParams();
+  if (type) moreParams.set('type', type);
+  if (sp.status) moreParams.set('status', sp.status);
+  if (age) moreParams.set('age', age);
+  if (nextCursorNew) moreParams.set('cursorNew', nextCursorNew);
+  if (nextCursorRevision) moreParams.set('cursorRevision', nextCursorRevision);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Pending product edits</h1>
-      <DataTable data={items} columns={columns} empty="No pending edits." />
-      <LoadMore basePath="/products/pending" params={query} nextCursor={nextCursor} />
+      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Moderation queue</h1>
+      <ModerationFilters type={type} status={sp.status} age={age} />
+      <DataTable data={rows} columns={columns} empty="No items match these filters." />
+      {hasMore && (
+        <div className="flex justify-center pt-4">
+          <Link href={`/products/pending?${moreParams.toString()}`} className="text-sm text-neutral-mid hover:text-primary">
+            Load more
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

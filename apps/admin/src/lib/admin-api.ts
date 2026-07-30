@@ -16,7 +16,12 @@ import {
   adminProductRowSchema,
   adminProductMergeResponseSchema,
   adminProductEditsListSchema,
+  adminProductEditDetailSchema,
+  productSchema,
+  productEditRowSchema,
   type AdminProductEditResolveDecision,
+  type AdminProductModerateDecision,
+  type ProductEditRecoverRequest,
   adminReviewsListSchema,
   adminReviewRowSchema,
   adminReportsListSchema,
@@ -69,26 +74,88 @@ export const serverAdminApi = {
   products: {
     list: (q: Q = {}) =>
       apiServerFetch(`/v1/admin/products${qs(q)}`).then((r) => adminProductsListSchema.parse(r)),
+    // `adminProductRowSchema` (the admin-only projection: moderation notes/timestamp)
+    // has no `version` field — but `patch`/`merge`/`moderate` all require the caller's
+    // last-known `version` as an optimistic-concurrency token. Rather than block on a
+    // projection change to a file outside this phase's ownership, this composes the
+    // admin row with a second, already-authorized read: `GET /v1/products/:id` grants
+    // an admin actor unrestricted access to any product regardless of status
+    // (`getVisibleProduct`'s explicit `actor.role === 'admin'` bypass) and its DTO
+    // already carries `version`. Single-item only — never used from `list()`, which
+    // would turn this into an N+1 over every row.
     get: (id: string) =>
-      apiServerFetch(`/v1/admin/products/${id}`).then((r) => adminProductRowSchema.parse(r)),
-    patch: (id: string, body: object) =>
-      apiServerFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body }).then((r) =>
+      Promise.all([
+        apiServerFetch(`/v1/admin/products/${id}`),
+        apiServerFetch(`/v1/products/${id}`),
+      ]).then(([adminRow, general]) => {
+        const generalProduct = productSchema.parse(general);
+        return {
+          ...adminProductRowSchema.parse(adminRow),
+          version: generalProduct.version,
+          description: generalProduct.description,
+        };
+      }),
+    // `version` is the admin's last-known product version — required so a direct
+    // correction is optimistic-concurrency-guarded, not applied blind.
+    patch: (id: string, version: number, body: object) =>
+      apiServerFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body: { ...body, version } }).then((r) =>
         adminProductRowSchema.parse(r),
       ),
-    merge: (winnerId: string, loserIds: string[]) =>
-      apiServerFetch(`/v1/admin/products/${winnerId}/merge`, {
+    // `targetId`/`sourceIds` (not `winnerId`/`loserIds`) and a required `version` for the
+    // target — matches Phase 4's merge contract exactly.
+    merge: (targetId: string, sourceIds: string[], version: number) =>
+      apiServerFetch(`/v1/admin/products/${targetId}/merge`, {
         method: 'POST',
-        body: { winnerId, loserIds },
+        body: { targetId, sourceIds, version },
       }).then((r) => adminProductMergeResponseSchema.parse(r)),
+    // Admin decision on a brand-new creator submission (`Product.status === 'pending'`,
+    // no `ProductEdit` row involved). Distinct from `resolveEdit`, which is for
+    // revisions to already-active products.
+    moderate: (id: string, decision: AdminProductModerateDecision, version: number, notes?: string) =>
+      apiServerFetch(`/v1/admin/products/${id}/moderate`, {
+        method: 'POST',
+        body: { decision, version, notes },
+      }).then((r) => adminProductRowSchema.parse(r)),
     pending: (q: Q = {}) =>
       apiServerFetch(`/v1/admin/products/pending${qs(q)}`).then((r) =>
         adminProductEditsListSchema.parse(r),
       ),
+    // Single-revision detail (full desired metadata + photo order) plus the live
+    // product's current version, so the UI can flag a stale revision before the admin
+    // ever attempts approve/request-changes.
+    getPendingEdit: (editId: string) =>
+      apiServerFetch(`/v1/admin/products/pending/${editId}`).then((r) => adminProductEditDetailSchema.parse(r)),
+    // `approve` publishes the revision to the live product and returns the full
+    // product; `request_changes` returns the revision back to the creator and returns
+    // the edit row. The caller already knows which one it asked for.
     resolveEdit: (id: string, decision: AdminProductEditResolveDecision, notes?: string) =>
       apiServerFetch(`/v1/admin/products/pending/${id}`, {
         method: 'PATCH',
         body: { decision, notes },
-      }),
+      }).then((r) => (decision === 'approve' ? productSchema.parse(r) : productEditRowSchema.parse(r))),
+    // Recovery for a stale open revision (`product.version !== edit.baseProductVersion`):
+    // `rebase` (reviewed desired-photo mapping, returns to pending) or `supersede`
+    // (terminal `rejected`, frees the one-open-edit slot).
+    recoverEdit: (editId: string, input: ProductEditRecoverRequest) =>
+      apiServerFetch(`/v1/admin/products/edits/${editId}/recover`, {
+        method: 'POST',
+        body: input,
+      }).then((r) => productEditRowSchema.parse(r)),
+    // Direct correction of a live product's own photo set. These are the
+    // creator-facing routes (`/v1/products/:id/photos/...`), not `/v1/admin/...` —
+    // `checkPhotoMutablePolicy` explicitly grants the admin role a bypass of the
+    // ownership check, and audit-logs the mutation when the caller is an admin.
+    photos: {
+      reorder: (productId: string, photoIds: string[]) =>
+        apiServerFetch(`/v1/products/${productId}/photos/order`, {
+          method: 'PATCH',
+          body: { photoIds },
+        }).then((r) => productSchema.parse(r)),
+      remove: (productId: string, photoId: string) =>
+        apiServerFetch(`/v1/products/${productId}/photos/${photoId}`, { method: 'DELETE' }).then((r) =>
+          productSchema.parse(r),
+        ),
+    },
   },
   reviews: {
     list: (q: Q = {}) =>
