@@ -7,50 +7,65 @@ Phases are ordered by risk and dependency, not by calendar. Items flagged
 ## Current state (what exists)
 
 - **API**: Fastify backend with full auth (password, Google/Apple OAuth, TOTP
-  MFA, passkeys), products, records + offline sync, reviews, reports, deals,
+  MFA, passkeys), products (with draft/pending/active lifecycle, moderation, revisions),
+  creator-private photo uploads (Sharp processing, media pipeline, quota enforcement),
+  records + offline sync, reviews, reports, deals,
   giveaways with a transactional state machine, reputation, referrals,
   households, and a broad admin surface. BullMQ workers for product lookup,
-  notifications, reputation, moderation, and product-rating recalculation.
-  Circuit breakers and persisted API errors for resilience.
+  notifications, reputation, moderation, product-rating recalculation, and media cleanup.
+  Circuit breakers and persisted API errors for resilience. reCAPTCHA Enterprise server-side
+  abuse verification on product submission. Durable media-operation outbox with crash recovery.
 - **Mobile**: Expo / RN app with offline-first records (WatermelonDB), OCR
-  expiry capture, push notifications, theming, and all major community flows.
+  expiry capture, barcode/QR scanning with draft product creation, resumable draft editor,
+  reCAPTCHA Enterprise client-side token generation, push notifications, theming, and all major community flows.
   Local Gradle build path.
-- **Admin**: Next.js 15 console with cookie/TOTP auth, moderation, user
-  management, settings, and system observability.
-- **Shared/theme packages**: single-source zod contracts and design tokens with
-  the `expyrico` and `expyricoDark` themes.
-- **Infra**: Ansible provisioning, nginx, systemd units, ordered deploy script,
-  backups, CI/CD via GitHub Actions.
+- **Admin**: Next.js 15 console with cookie/TOTP auth, product moderation queue (submissions + revisions),
+  side-by-side revision comparison, approval/feedback/merge operations, user
+  management, settings (including product-creation mode), and system observability.
+- **Shared/theme packages**: single-source zod contracts (including product lifecycle, media, and abuse schemas)
+  and design tokens with the `expyrico` and `expyricoDark` themes.
+- **Infra**: Ansible provisioning, nginx (API + dedicated CDN vhost for public media),
+  systemd units, ordered deploy script, database + media backups with restore validation, CI/CD via GitHub Actions.
 
-## Phase 0 — Unblock deploys (verified bug, high priority)
+## Phase 0 — Mobile scan product creation and moderation (COMPLETED)
 
-1. **Fix the deploy script package filter.**
-   `infra/scripts/deploy-remote.sh` filters Prisma steps on `@pantry/api`, but
-   the package is `@expyrico/api`. `prisma generate` / `migrate deploy` therefore
-   do not match the application package during release. `deploy.yml` already uses
-   the correct `@expyrico/api` filter.
-2. **Resolve the deep-link scheme mismatch.** `app.config.ts` scheme is
-   `Expyrico`, the Android manifest registers `expyrico`, but
-   `parseAuthDeepLink` only accepts `pantry:` and SecureStore keys are `pantry.*`.
-   Password-reset deep links depend on the backend emitting the `pantry:` scheme.
-   Pick one scheme end to end (backend email, config, manifest, parser, storage
-   keys) and align them.
+Implemented end-to-end: creator-private drafts with optional multi-photo uploads, moderated submission,
+admin revision/approval workflow, mobile scan-v2 state machine with resumable draft editor, secure media pipeline
+with WebP variants and separate public/private namespaces, reCAPTCHA Enterprise abuse verification, per-user/day quotas,
+media cleanup worker, operational health monitoring, and CDN vhost configuration. See
+`plans/260724-1612-mobile-scan-product-creation/` for full scope and verification report.
 
-## Phase 1 — Production signing and distribution
+### Deployment prerequisites (before rollout)
+
+1. **Provision required environment keys** in `api/.env` and `/etc/pantry/secrets/api.env`:
+   - `MEDIA_ROOT` — VPS media directory (e.g., `/var/lib/expyrico/media`)
+   - `MEDIA_PUBLIC_BASE_URL` — public CDN base URL (e.g., `https://cdn.expyrico.app`)
+   - `RECAPTCHA_PROJECT_ID`, `RECAPTCHA_SITE_KEY_ANDROID`, `RECAPTCHA_SITE_KEY_IOS` — from Google Cloud console
+   - Rotate `JWT_ACCESS_SECRET` from placeholder (see verification report for details)
+2. **Run Phase 1 expand migration** (new enum values, schema additions).
+3. **Deploy API/admin with `product_creation.mode=off`** to disable creation while setup continues.
+4. **Provision infra** (media root permissions, CDN nginx vhost, systemd timer for cleanup worker).
+5. **Enable for internal users** (via allowlist), exercise moderation flow, test backup/restore.
+6. **Classify legacy pending products** via deferred migration B when confident no concurrent report-writer emits legacy `pending`.
+7. **Expand to all users** by setting `product_creation.mode=all`.
+
+## Phase 1 — Production signing and mobile distribution
 
 - **Replace the debug keystore for release builds.** `android/app/build.gradle`
   (line ~37) uses `signingConfigs.debug` for the release build type. Release APKs
   are signed with the debug key: fine for sideload testing, but blocks Play Store
   distribution. Introduce a production keystore + secure signing config before any
   store submission.
+- **iOS build on real hardware.** Verify iOS compile and runtime against known external limitation
+  (bare React Native toolchain issue unrelated to this codebase).
 
-## Phase 2 — Close security-mandate gaps
+## Phase 2 — Close remaining security-mandate gaps
 
-The project security mandate (`CLAUDE.md`) is not fully met. These are gaps, not
-regressions:
+The project security mandate (`CLAUDE.md`) is not fully met. Completed: reCAPTCHA Enterprise
+on product submission (server-verified). Gaps:
 
-- **reCAPTCHA v3** on register, login, and forgot-password (mobile and admin
-  login). Currently absent; rate limiting is the only brute-force control.
+- **reCAPTCHA Enterprise on additional flows** (register, login, forgot-password on mobile and admin).
+  Currently rate-limiting is the only brute-force control for auth.
 - **Content-Security-Policy.** No CSP is set in the API (helmet default only),
   the admin app, or nginx. Add a hand-tuned CSP at the appropriate layer.
 - Review whether the API's Bearer-header token model should be complemented by
@@ -89,6 +104,8 @@ Mitigations already in place for admin: nginx auth rate-limit + mandatory TOTP.
 - **No wallet/coin/transaction/balance feature is planned or present.** The
   security mandate's concurrency requirements around balance/topup/coin-spend map
   to no code. Giveaways are a currency-free exchange; the concurrency work that
-  does exist is records-sync advisory locking and giveaway transactional
-  transitions.
+  does exist is records-sync advisory locking, giveaway transactional
+  transitions, and media-operation atomic reservations.
 - No "Aurora" theme — the brand theme is Expyrico.
+- **Product creation is now fully operational** (draft/pending/active lifecycle with moderation).
+  Earlier roadmap entries about product creation gaps are superseded by Phase 0.

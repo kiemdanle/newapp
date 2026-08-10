@@ -1,7 +1,8 @@
 # Expyrico — Codebase Summary
 
-> Refreshed from `/opt/newapp/repomix-output.xml` on 2026-07-30; verify
-> operational details against the source before executing them.
+> Refreshed from `/opt/newapp/repomix-output.xml` on 2026-08-10; verify
+> operational details against the source before executing them. Includes
+> mobile scan product creation and moderation (completed 2026-07-30).
 
 A pnpm + Turbo monorepo. Node >= 20, pnpm@9. Workspaces: `api`, `apps/*`,
 `packages/*`. Turbo tasks: `build`, `dev` (persistent), `lint`, `typecheck`
@@ -47,52 +48,75 @@ Fastify 4.28, Node 20, TypeScript 5.4, pure ESM (`module: NodeNext`).
 
 ### Data layer
 
-PostgreSQL via Prisma 5.18. Schema at `api/prisma/schema.prisma` (716 lines),
-15 migrations (`20260528` init through `20260614` api_errors_camelcase). Seeds:
+PostgreSQL via Prisma 5.18. Schema at `api/prisma/schema.prisma`, migrations
+(`20260528` init through `20260730` product media and moderation). Seeds:
 `seed.ts` (system user with fixed UUID ending `...0001`), `seed-admin.ts`
 (argon2id).
 
 Models: `User`, `AuthCredential`, `Session`, `PushToken`, `EmailToken`,
-`PasswordReset`, `TotpChallenge`, `TotpRecoveryCode`, `AdminAuditLog`, `Product`,
-`ProductEdit`, `Record`, `PushLog`, `Review`, `ReviewVote`, `Report`, `Setting`,
+`PasswordReset`, `TotpChallenge`, `TotpRecoveryCode`, `AdminAuditLog`,
+`Product`, `ProductPhoto`, `ProductEdit`, `ProductEditPhoto`, `MediaOperationOutbox`,
+`Record`, `PushLog`, `Review`, `ReviewVote`, `Report`, `Setting`,
 `NotificationTemplate`, `ApiError`, `Deal`, `DealVote`, `Giveaway`,
 `GiveawayClaim`, `TransactionRating`, `NotificationOutbox`, `Referral`,
 `Household`, `HouseholdMember`.
 
+**Product models**: `Product` now includes `status` (draft/pending/changes_required/active/report_hidden/merged_into),
+`version`, `description`, and `moderation` fields. `ProductPhoto` stores ordered (position 0–4) display/thumbnail
+metadata, public/private storage keys, moderation state, and creator. `ProductEdit` represents proposed creator
+changes to active products with lifecycle (draft/pending/changes_required/approved/rejected/superseded), base version,
+and optional feedback. `ProductEditPhoto` represents staged/retained photos in a revision set. `MediaOperationOutbox`
+provides durable DB/filesystem handoff with lifecycle (prepared/pending/processing/completed/failed) and renewable
+producer lease for crash recovery.
+
 ### Route domains
 
-- `/health`
+- `/health`, `/health/ready`, `/health/operational` (operational metrics)
 - `/v1/auth`: register, login, logout, refresh, verify-email,
   resend-verification, forgot-password, reset-password, me, oauth-google,
   oauth-apple, passkey-register, passkey-login, totp
 - `/v1/me`
-- `/v1/products`
+- `/v1/products`: lookup-v2 (with draft/pending visibility), drafts (paginated list), draft create/get/update/submit, photos (upload/delete/reorder/private-media delivery)
+- `/v1/product-edits`: revision create/update/submit (for active products), staged-photo delivery
 - `/v1/records` (incl. sync)
 - `/v1` reviews, reports, deals, giveaways, users (reputation), referrals,
   households
-- `/v1/admin`: analytics; products (incl. merge & pending-approval); reviews;
+- `/v1/admin`: analytics; products (incl. pending-approval queue, moderation, merge, revision approve/request-changes/rebase/supersede); reviews;
   reports; users (incl. impersonate / revoke-sessions); households; deals;
-  giveaways; referrals; settings (admins, feature-flags, moderation,
+  giveaways; referrals; settings (admins, feature-flags, moderation, product-creation mode,
   notification-templates); system (api-errors, bullboard, external-apis,
   push-logs, queue-health).
 
 ### Key services / mechanisms
 
-- **Records sync** (`api/src/services/records/sync.ts`): Postgres advisory
+- **Product lifecycle** (`services/products/`): draft create/update/submit, active-product revisions (ProductEdit),
+  admin moderation (approve, request-changes, merge, rebase/supersede stale revisions). Creator visibility
+  (draft/pending/changes_required) separate from public (active/report_hidden). Optimistic versioning prevents
+  concurrent conflicts. Lookup-v2 returns outcome-typed responses (found/editable_private/creator_pending/under_review/not_found/temporarily_unavailable).
+- **Product media** (`services/products/product-media-*.ts`): streaming multipart upload (≤10 MB, one file) with
+  Sharp decode (40 MP, JPEG/PNG/HEIC), EXIF rotation, metadata strip, WebP variants (display ≤1600², thumbnail ≤480²).
+  Durable `MediaOperationOutbox` handoff with renewable leases for crash recovery. Atomic byte-quota reservations
+  cover uploads and publication sets; per-user/day quotas prevent abuse. Private media (Bearer token in Authorization
+  header) served from `/products/:id/photos/:photoId/:variant` and `/product-edits/:editId/photos/:photoId/:variant`.
+- **Abuse controls**: Google reCAPTCHA Enterprise server-side assessment (action `submit_product`, score ≥0.5).
+  Product creation mode (off/internal/all) gates lookup-v2 `canCreate` and draft mutations; existing drafts/revisions
+  remain readable/actionable. Admin/internal allowlist via `INTERNAL_USER_IDS` env.
+- **Records sync** (`services/records/sync.ts`): Postgres advisory
   transaction locks (`pg_advisory_xact_lock`) keyed on household UUID. Personal
   records are last-write-wins; household records are server-authoritative with
   `scope_changed` conflicts.
 - **Giveaway state machine** (`services/giveaways/state-machine.ts`): transitions
   wrapped in `prisma.$transaction`; mutating endpoints require an
   `Idempotency-Key`.
-- **Background jobs** (BullMQ + Redis via ioredis; 6 workers in
+- **Background jobs** (BullMQ + Redis via ioredis; 7 workers in
   `src/workers/runner.ts`, skipped in test unless `RUN_WORKERS=1`):
   `product-lookup` (OpenFoodFacts + upcitemdb), `notification-schedule`,
   `notification-send` (FCM push delivery), `score-recalc`
   (reputation), `moderation-flag` (profanity auto-flag -> reports as system
-  user), `product-rating-recalc` (Wilson score). Bull-board mounted at
-  `/v1/admin/bullboard` (admin-only). NotificationOutbox pattern: enqueue in the
-  same DB tx, `sweepOutbox` after commit.
+  user), `product-rating-recalc` (Wilson score), `product-media-cleanup` (stale quarantine, orphan media, old drafts >30d).
+  Bull-board mounted at `/v1/admin/bullboard` (admin-only). NotificationOutbox pattern: enqueue in the
+  same DB tx, `sweepOutbox` after commit. MediaOperationOutbox polling: claim with `FOR UPDATE SKIP LOCKED`,
+  retry with backoff, recheck references before cleanup.
 - **Email** (`services/auth/email.ts`): nodemailer SMTP; verification code
   (10-min) + password-reset link (`APP_DEEP_LINK` + token). In test env, emails
   are logged, not sent.
@@ -166,6 +190,16 @@ Jest + jest-expo ~52 + @testing-library/react-native. E2E via Maestro
 colocated `*.test.ts` (auth, api client, theme, linking, sync). a11y tooling:
 eslint-plugin-react-native-a11y, wcag-contrast; global font-scale cap 1.5x.
 
+### Product creation on mobile
+
+- **Scan-v2 state machine** (`src/screens/ScanScreen/lookup-v2-state-machine.ts`): handles barcode/QR lookup
+  outcomes (found/editable_private/creator_pending/under_review/not_found/temporarily_unavailable) and routes to
+  appropriate UI (attach, continue pending review, create draft, error/retry).
+- **Resumable draft editor** (`src/screens/ProductDraftEditor/`): persistent form state, local photo retry queue,
+  serialized product-mutation coordinator (one pending mutation per draft). Photos cached locally with upload retry.
+- **Abuse gate**: reCAPTCHA Enterprise Mobile SDK (Android 18.8.0+, iOS 18.9.0+) generates token for submit action;
+  server verifies on `/v1/products/{id}/submit`.
+
 ### Known mobile notes
 
 - Deep-link scheme mismatch (config `Expyrico` vs manifest `expyrico` vs parser
@@ -174,6 +208,8 @@ eslint-plugin-react-native-a11y, wcag-contrast; global font-scale cap 1.5x.
 - `app/(app)/product/[id]/review.tsx:24` TODO "wire to API when M2 backend
   lands" — review submission not yet connected.
 - `react-native-worklets` is a local stub.
+- Vendored `@expyrico/shared` and `@expyrico/theme` under `apps/mobile/local-packages/` must be
+  manually rebuilt and kept in sync with `packages/*` source.
 
 ## Admin (`apps/admin/`)
 
@@ -186,9 +222,10 @@ Next.js 15.5.19, App Router (`src/app/`), React 18.3.1, TS 5.7.
 - **Pages** (route group `src/app/(admin)/`, all Server Components,
   `force-dynamic`): dashboard; analytics (overview/scans/reviews/geography);
   users (+`[id]` patch/revoke-sessions/impersonate); products (+`[id]`,
-  `[id]/merge`, pending-approval queue); reviews; reports; deals; giveaways;
-  households; referrals; settings (admins, feature-flags, moderation,
-  notification-templates); system (queue counts, push logs, api-errors,
+  pending-approval queue, revision moderation with side-by-side diff);
+  `[id]/merge`, `[id]/edits` (view/approve/request-changes/rebase/supersede);
+  reviews; reports; deals; giveaways; households; referrals; settings (admins, feature-flags,
+  moderation, product-creation mode, notification-templates); system (queue counts, push logs, api-errors,
   external-apis). `login/` sits outside the group (multi-step: credentials ->
   TOTP -> TOTP-enroll).
 - **Auth**: cookie-based, delegating to the Fastify API. Cookies

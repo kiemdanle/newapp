@@ -110,17 +110,57 @@ the API. CSRF is enforced via a double-submit token with timing-safe comparison.
 
 ## Data model
 
-PostgreSQL via Prisma 5.18 (`api/prisma/schema.prisma`, 716 lines, 15
-migrations). Domains: identity/auth (`User`, `AuthCredential`, `Session`,
+PostgreSQL via Prisma 5.18 (`api/prisma/schema.prisma`). Domains: identity/auth (`User`, `AuthCredential`, `Session`,
 `PushToken`, `EmailToken`, `PasswordReset`, `TotpChallenge`,
-`TotpRecoveryCode`), catalog/records (`Product`, `ProductEdit`, `Record`,
+`TotpRecoveryCode`), catalog/records (`Product`, `ProductEdit`, `ProductPhoto`, `ProductEditPhoto`, `Record`,
 `PushLog`), community (`Review`, `ReviewVote`, `Report`, `Deal`, `DealVote`,
 `Giveaway`, `GiveawayClaim`, `TransactionRating`, `Referral`), households
-(`Household`, `HouseholdMember`), and operations (`Setting`,
+(`Household`, `HouseholdMember`), media/operations (`MediaOperationOutbox`, `Setting`,
 `NotificationTemplate`, `NotificationOutbox`, `ApiError`, `AdminAuditLog`).
 
 A system user with a fixed UUID (ending `...0001`) owns system-generated actions
 such as auto-flagged moderation reports.
+
+## Product lifecycle and moderation
+
+`Product` transitions through states controlled by role and submission status:
+
+| State | Meaning | Creator Can | Admin Can |
+|---|---|---|---|
+| `draft` | Private, editable | Create, edit, submit | Read, approve/reject |
+| `pending` | Submitted, awaiting approval | Read-only, resume from feedback | Approve, request changes, merge |
+| `changes_required` | Feedback given; creator may resubmit | Edit, resubmit, discard | Approve after resubmit |
+| `active` | Approved by admin | Propose revisions | Edit directly, approve/reject revisions |
+| `report_hidden` | Auto-hidden by moderation (distinct from pending) | Cannot reuse | Can unmerge or delete |
+| `merged_into` | Merged into another product | Archived | Can reverse by splitting |
+
+Drafts are **creator-private**: only the creator can see/edit. Other users see `under_review` from lookup.
+Submitted products (`pending`) are also private until approved; no other user can discover or attach them.
+Active products have public metadata; creator edits go through `ProductEdit` revisions for admin approval.
+
+## Product media pipeline
+
+**Storage**: Media stored on VPS at `/var/lib/expyrico/media/` with separate namespaces:
+- `quarantine/<request-uuid>/source` — temporary during processing
+- `private/products/<product-id>/<photo-id>/<variant-uuid>/{display,thumb}.webp` — private drafts/pending
+- `private/product-edits/<edit-id>/<photo-id>/<variant-uuid>/{display,thumb}.webp` — revision staging
+- `public/products/<product-id>/<publication-uuid>/{display,thumb}.webp` — approved public
+
+**Processing**: Multipart upload (max 10 MB, one file) streams to quarantine; Sharp decodes (40 MP max,
+JPEG/PNG/HEIC per startup capability probe), rotates by EXIF, strips metadata/GPS, generates WebP
+display (≤1600²) and thumbnail (≤480²) without enlargement. All paths use server-generated UUIDs.
+
+**Publication**: Before any final rename or copy, `MediaOperationOutbox` commits a durable `prepared` intent
+containing target keys under a renewable lease. Reference transaction atomically completes the intent.
+Expired intents recover unreferenced artifacts; process death between intent and reference uses
+outbox polling, not BullMQ alone. BullMQ is a wake-up mechanism only.
+
+**Authorization**: Mobile/admin clients request private media via `/products/:productId/photos/:photoId/:variant`
+and `/product-edits/:editId/photos/:photoId/:variant` with Bearer token (Authorization header, never URL).
+Nginx serves only approved public paths; no tokens appear in public URLs.
+
+**Photo mutations** (add, remove, reorder) are atomic per-transaction without cross-client version
+preconditions. Position constraints are `DEFERRABLE` to allow reorder collisions within a single transaction.
 
 ## Offline-first sync
 
@@ -144,7 +184,7 @@ currency involved anywhere in this flow.
 
 ## Background jobs
 
-BullMQ + Redis (ioredis). Six workers run from `src/workers/runner.ts` (skipped
+BullMQ + Redis (ioredis). Seven workers run from `src/workers/runner.ts` (skipped
 in test unless `RUN_WORKERS=1`):
 
 | Worker | Responsibility |
@@ -155,6 +195,7 @@ in test unless `RUN_WORKERS=1`):
 | score-recalc | Recompute user reputation |
 | moderation-flag | Profanity auto-flag -> reports as the system user |
 | product-rating-recalc | Recompute Wilson-score product ratings |
+| product-media-cleanup | Clean stale quarantine, orphan media, and old drafts (>30d) |
 
 Notifications use the **outbox** pattern: work is enqueued in the same DB
 transaction as the state change, and `sweepOutbox` runs after commit so a
@@ -170,11 +211,12 @@ degraded third parties are visible rather than silent.
 
 ## Edge and TLS
 
-nginx runs two vhosts (API and admin) proxying to the local ports, with shared
+nginx runs three vhosts (API, admin, CDN) proxying to the local ports, with shared
 rate-limit zones and sequence-aware TLS provisioning (HTTP-only until Let's
 Encrypt certs exist, then HTTPS). The API vhost only allows `/`, `/v1/*`,
-`/health`, `/health/ready`, and ACME paths; everything else returns 404. Both
-vhosts set HSTS, `X-Content-Type-Options: nosniff`, and
+`/health`, `/health/ready`, and ACME paths; everything else returns 404. The CDN vhost
+aliases only `/var/lib/expyrico/media/public/products/` and serves approved product media
+(no authenticated access required). Both vhosts set HSTS, `X-Content-Type-Options: nosniff`, and
 `Referrer-Policy: no-referrer`; the admin vhost adds `X-Frame-Options: DENY`.
 **No Content-Security-Policy is set at the edge or in either app** — a known gap.
 
