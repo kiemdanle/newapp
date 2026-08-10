@@ -27,7 +27,18 @@ test('admin suspends a user, who can no longer sign in', async ({ page, request 
 
   await page.goto('/users');
   await page.getByLabel('Search').fill('victim');
-  await page.getByRole('button', { name: 'Apply' }).click();
+  // `Apply` is a plain `<form method="get">` submit — a full page navigation,
+  // not a client-side transition. Clicking the victim link before that
+  // navigation lands races the two navigations: the link's own click can be
+  // swallowed by the in-flight Apply submit, leaving the page on the
+  // (fully rendered, unfiltered-URL) `/users` list forever — observed via
+  // trace as the retry loop below polling a `Suspend` button that never
+  // exists because we're on the wrong page. Wait for the filtered URL to
+  // land before clicking into the detail page.
+  await Promise.all([
+    page.waitForURL(/\/users\?/),
+    page.getByRole('button', { name: 'Apply' }).click(),
+  ]);
   await page.getByRole('link', { name: VICTIM_EMAIL }).click();
 
   // Suspend runs through a native confirm() — accept every dialog this raises.
@@ -36,11 +47,30 @@ test('admin suspends a user, who can no longer sign in', async ({ page, request 
   // Clicking Suspend drives a server action that PATCHes the API. The detail
   // page is freshly navigated, so the first click can land before the client
   // island hydrates (a no-op). Re-click until the backend status actually flips
-  // — this proves the UI → action → API path fired end-to-end. Once suspended,
-  // the control becomes Reactivate, so the guarded click stops firing.
+  // — this proves the UI → action → API path fired end-to-end.
+  //
+  // A first click's action can still be in flight (button disabled, label still
+  // "Suspend" until the server action resolves and revalidates) when a retry
+  // re-enters this callback. `suspend.click()` with no timeout auto-waits for
+  // the button to become enabled — but once the in-flight action finally
+  // resolves, the button is unmounted entirely (status flips to suspended, so
+  // "Suspend" is replaced by "Reactivate"), and the locator sits waiting for an
+  // element that will never come back, hanging past the outer `toPass` window
+  // until the whole test times out (proven via trace: the second click's own
+  // Playwright log shows "element was detached from the DOM, retrying" with no
+  // further dialog ever firing). Only click while the button is actually
+  // clickable, and bound the click itself so a mid-flight unmount can never
+  // block this callback past its own retry.
   await expect(async () => {
     const suspend = page.getByRole('button', { name: 'Suspend' });
-    if (await suspend.isVisible()) await suspend.click();
+    // `isVisible()` never waits — it reads current DOM state immediately, so it
+    // can't itself get stuck once the button is gone. `isEnabled()`/`click()`
+    // both auto-wait for the locator to resolve, which is exactly what hangs
+    // once the button is unmounted for good; bounding the click is what
+    // actually matters here.
+    if (await suspend.isVisible()) {
+      await suspend.click({ timeout: 2_000 }).catch(() => {});
+    }
     const res = await request.get(`${MOCK_API}/v1/admin/users/${FIXTURE.victimUserId}`);
     expect(res.ok()).toBeTruthy();
     expect((await res.json()).status).toBe('suspended');
