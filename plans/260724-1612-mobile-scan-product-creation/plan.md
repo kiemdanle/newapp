@@ -1,7 +1,7 @@
 ---
 title: "Mobile scan product creation and moderation"
 description: "Add conclusive scan-miss handling, creator-private product drafts, optional multi-photo upload on VPS storage, moderation, revisions, and immediate pantry continuation."
-status: pending
+status: completed
 priority: P1
 effort: XL
 branch: "main"
