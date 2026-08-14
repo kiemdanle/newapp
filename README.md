@@ -28,7 +28,7 @@ across the repo (`tsconfig.base.json`: ES2022/ESNext, `moduleResolution: Bundler
 
 ## Prerequisites
 
-- Node >= 20 and pnpm 9 (`corepack enable`)
+- Node >= 24 and pnpm 9 (`corepack enable`)
 - PostgreSQL and Redis for the API (integration tests use real instances)
 - Android Studio + JDK (bundled JBR) for local mobile builds
 - Docker is optional; the reference deployment is a single self-hosted VPS
