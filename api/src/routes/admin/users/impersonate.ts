@@ -13,9 +13,10 @@ export async function adminUsersImpersonateRoute(app: FastifyInstance) {
     const { id } = paramsSchema.parse(req.params);
     const target = await getPrisma().user.findUnique({ where: { id } });
     if (!target) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'User not found' });
-    // Issue a short-lived token using the configured TTL (not the impersonation-specific one)
-    // so the token verifies correctly; we document the 15m constraint in the audit log.
-    const accessToken = await issueAccessToken({ sub: target.id, role: target.role, tokenVersion: target.tokenVersion });
+    const accessToken = await issueAccessToken(
+      { sub: target.id, role: target.role, tokenVersion: target.tokenVersion },
+      TTL_SECONDS,
+    );
     await req.auditLog('user.impersonate', { type: 'user', id }, {
       before: null, after: { ttlSeconds: TTL_SECONDS },
     });

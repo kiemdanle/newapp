@@ -10,6 +10,9 @@ Group={{ app_group }}
 WorkingDirectory={{ app_root }}/current/api
 EnvironmentFile={{ secrets_dir }}/api.env
 Environment=NODE_ENV=production
+# The public listener is Nginx; this boundary is what makes Fastify's loopback
+# proxy trust safe. Do not move HOST into the mutable environment file.
+Environment=HOST=127.0.0.1
 ExecStart=/usr/bin/node {{ app_root }}/current/api/dist/server.js
 # Restart-only (amendment 2): no ExecReload. `systemctl restart` sends SIGTERM
 # and the process drains in-flight requests inside TimeoutStopSec=30 before

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { decodeJwt } from 'jose';
 import { buildServer } from '../../../src/server.js';
 import { getPrisma } from '../../../src/db.js';
 import { makeAdmin, makeUserForAdmin } from '../../helpers/admin.js';
@@ -95,8 +96,12 @@ describe('POST /v1/admin/users/:id/impersonate', () => {
     const u = await makeUserForAdmin();
     const res = await app.inject({ method: 'POST', url: `/v1/admin/users/${u.id}/impersonate`, headers });
     expect(res.statusCode).toBe(200);
-    expect(res.json().accessToken).toBeTruthy();
-    expect(res.json().expiresIn).toBe(15 * 60);
+    const body = res.json();
+    expect(body.accessToken).toBeTruthy();
+    expect(body.expiresIn).toBe(15 * 60);
+    const decoded = decodeJwt(body.accessToken);
+    expect(decoded.sub).toBe(u.id);
+    expect((decoded.exp as number) - (decoded.iat as number)).toBe(body.expiresIn);
     await app.close();
   });
 });

@@ -17,25 +17,49 @@ export async function selectClaimRoute(app: FastifyInstance) {
       const { id: giveawayId } = paramsSchema.parse(req.params);
       const { claimId } = selectClaimSchema.parse(req.body);
       const prisma = getPrisma();
-      const giveaway = await prisma.giveaway.findUnique({ where: { id: giveawayId }, include: { claims: true } });
-      if (!giveaway) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
-      if (giveaway.giverUserId !== req.user!.id) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Only the giver can select' });
-      if (giveaway.status !== 'open') throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
-      const selectedClaim = giveaway.claims.find((c) => c.id === claimId);
-      if (!selectedClaim) throw new AppError({ status: 404, code: ERROR_CODES.CLAIM_NOT_FOUND, title: 'Claim not found' });
+      const actorId = req.user!.id;
 
       const updated = await prisma.$transaction(async (tx) => {
-        await tx.giveawayClaim.update({ where: { id: claimId }, data: { status: 'selected' } });
-        const rejected = giveaway.claims.filter((c) => c.id !== claimId);
-        if (rejected.length) {
-          await tx.giveawayClaim.updateMany({
-            where: { id: { in: rejected.map((c) => c.id) } },
-            data: { status: 'rejected' },
-          });
+        const giveaway = await tx.giveaway.findUnique({ where: { id: giveawayId } });
+        if (!giveaway) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
+        if (giveaway.giverUserId !== actorId) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Only the giver can select' });
+        if (giveaway.status !== 'open') {
+          throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
         }
-        const result = await tx.giveaway.update({
-          where: { id: giveawayId },
+
+        const selectedClaim = await tx.giveawayClaim.findFirst({
+          where: { id: claimId, giveawayId, status: 'requested' },
+        });
+        if (!selectedClaim) {
+          throw new AppError({ status: 404, code: ERROR_CODES.CLAIM_NOT_FOUND, title: 'Claim not found' });
+        }
+
+        const claimed = await tx.giveaway.updateMany({
+          where: { id: giveawayId, giverUserId: actorId, status: 'open' },
           data: { status: 'claimed', claimExpiresAt: new Date(Date.now() + 48 * 3600 * 1000) },
+        });
+        if (claimed.count === 0) {
+          throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
+        }
+
+        const selected = await tx.giveawayClaim.updateMany({
+          where: { id: claimId, giveawayId, status: 'requested' },
+          data: { status: 'selected' },
+        });
+        if (selected.count === 0) {
+          throw new AppError({ status: 409, code: ERROR_CODES.CLAIM_NOT_FOUND, title: 'Claim is no longer available' });
+        }
+
+        const rejected = await tx.giveawayClaim.findMany({
+          where: { giveawayId, id: { not: claimId }, status: 'requested' },
+          select: { claimerUserId: true },
+        });
+        await tx.giveawayClaim.updateMany({
+          where: { giveawayId, id: { not: claimId }, status: 'requested' },
+          data: { status: 'rejected' },
+        });
+        const result = await tx.giveaway.findUniqueOrThrow({
+          where: { id: giveawayId },
           include: {
             giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },
             claims: true,
@@ -43,7 +67,7 @@ export async function selectClaimRoute(app: FastifyInstance) {
           },
         });
         await outboxSelected(tx, selectedClaim.claimerUserId, giveawayId);
-        for (const c of rejected) await outboxRejected(tx, c.claimerUserId, giveawayId);
+        for (const claim of rejected) await outboxRejected(tx, claim.claimerUserId, giveawayId);
         return result;
       });
 

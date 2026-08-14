@@ -64,7 +64,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     genReqId: () => randomUUID(),
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'requestId',
-    trustProxy: true,
+    // Nginx proxies from loopback and overwrites X-Forwarded-For with its
+    // directly connected client address. Trust only those proxy addresses, never
+    // a direct peer that could supply its own forwarding headers.
+    trustProxy: ['127.0.0.1', '::1'],
     bodyLimit: 1_000_000, // 1 MB
   });
 

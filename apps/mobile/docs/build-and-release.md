@@ -47,10 +47,27 @@ pnpm start
 pnpm android:build
 pnpm android:install
 
-# Release APK
+# Release APK — requires the release signing properties below
 pnpm android:release
 # output: android/app/build/outputs/apk/release/app-release.apk
 adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
+
+Before a release build, put these **gitignored** values in `~/.gradle/gradle.properties`
+(or inject the same Gradle properties from CI secrets):
+
+```properties
+RELEASE_STORE_FILE=/absolute/path/to/expyrico-upload.jks
+RELEASE_STORE_PASSWORD=…
+RELEASE_KEY_ALIAS=expyrico-upload
+RELEASE_KEY_PASSWORD=…
+```
+
+Any Gradle task that resolves a release variant, including aggregate tasks such as `assemble`, fails before producing an APK when a signing property is missing.
+After building, verify the signer:
+
+```bash
+apksigner verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 ```
 
 Dex sanity (no Expo runtime classes expected):

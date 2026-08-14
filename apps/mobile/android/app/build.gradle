@@ -22,6 +22,31 @@ apply from: "../../../../node_modules/react-native-config/android/dotenv.gradle"
 def enableProguardInReleaseBuilds = false
 def jscFlavor = "org.webkit:android-jsc:+"
 
+def releaseSigningPropertyNames = [
+    'RELEASE_STORE_FILE',
+    'RELEASE_STORE_PASSWORD',
+    'RELEASE_KEY_ALIAS',
+    'RELEASE_KEY_PASSWORD',
+]
+def releaseSigningProperties = releaseSigningPropertyNames.collectEntries { name ->
+    [(name): project.findProperty(name) ?: System.getenv(name)]
+}
+def hasReleaseSigningProperties = releaseSigningProperties.values().every { it }
+
+def requireReleaseSigningProperties = {
+    if (!hasReleaseSigningProperties) {
+        def missing = releaseSigningPropertyNames.findAll { !releaseSigningProperties[it] }
+        throw new GradleException("Release signing requires: ${missing.join(', ')}")
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def buildsReleaseVariant = graph.allTasks.any { task ->
+        task.project == project && task.name.toLowerCase().contains('release')
+    }
+    if (buildsReleaseVariant) requireReleaseSigningProperties()
+}
+
 android {
     namespace "com.expyrico.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -50,11 +75,22 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    signingConfigs {
+        release {
+            if (hasReleaseSigningProperties) {
+                storeFile file(releaseSigningProperties.RELEASE_STORE_FILE)
+                storePassword releaseSigningProperties.RELEASE_STORE_PASSWORD
+                keyAlias releaseSigningProperties.RELEASE_KEY_ALIAS
+                keyPassword releaseSigningProperties.RELEASE_KEY_PASSWORD
+            }
+        }
+    }
+
     buildTypes {
         debug {
         }
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

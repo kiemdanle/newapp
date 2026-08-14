@@ -65,7 +65,7 @@ server {
         limit_req zone=pantry_auth burst=5 nodelay;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://127.0.0.1:{{ api_port }};
     }
@@ -75,14 +75,14 @@ server {
     location = /health {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://127.0.0.1:{{ api_port }};
     }
     location = /health/ready {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://127.0.0.1:{{ api_port }};
     }
@@ -92,7 +92,7 @@ server {
         limit_req zone=pantry_global burst=20 nodelay;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://127.0.0.1:{{ api_port }};
     }
@@ -102,7 +102,7 @@ server {
         limit_req zone=pantry_global burst=20 nodelay;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto https;
         proxy_pass http://127.0.0.1:{{ api_port }};
     }

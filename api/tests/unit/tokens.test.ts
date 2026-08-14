@@ -34,6 +34,12 @@ describe('tokens', () => {
     );
   });
 
+  it('honors an explicit shorter access TTL', async () => {
+    const token = await issueAccessToken({ sub: 'user-1', role: 'admin', tokenVersion: 0 }, 60);
+    const decoded = decodeJwt(token);
+    expect((decoded.exp as number) - (decoded.iat as number)).toBe(60);
+  });
+
   it('issueRefreshToken returns { token, hash, expiresAt }', () => {
     const r = issueRefreshToken();
     expect(r.token).toMatch(/^[A-Za-z0-9_-]{40,}$/);

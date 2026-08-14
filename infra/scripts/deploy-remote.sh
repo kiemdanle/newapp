@@ -54,9 +54,9 @@ cd "$NEW"
 NODE_ENV=development pnpm install --frozen-lockfile
 
 # 2. Run migrations while the Prisma CLI is still present.
-log "[2/7] pnpm --filter @pantry/api exec prisma generate && migrate deploy"
-pnpm --filter @pantry/api exec prisma generate
-pnpm --filter @pantry/api exec prisma migrate deploy
+log "[2/7] pnpm --filter @expyrico/api exec prisma generate && migrate deploy"
+pnpm --filter @expyrico/api exec prisma generate
+pnpm --filter @expyrico/api exec prisma migrate deploy
 
 # 3. Prune dev dependencies now that migrations are done.
 log "[3/7] pnpm prune --prod"

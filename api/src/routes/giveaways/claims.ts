@@ -22,13 +22,24 @@ export async function claimsRoute(app: FastifyInstance) {
 
       const giveaway = await prisma.giveaway.findUnique({ where: { id: giveawayId } });
       if (!giveaway) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
-      if (giveaway.status !== 'open') throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
       if (giveaway.giverUserId === userId) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Cannot claim your own giveaway' });
 
       try {
-        const claim = await prisma.giveawayClaim.create({
-          data: { giveawayId, claimerUserId: userId, pickupNote: input.pickupNote ?? null },
-          include: { claimer: { select: { id: true, firstName: true, avatarUrl: true, recipientRatingAvg: true, transactionCount: true } } },
+        const claim = await prisma.$transaction(async (tx) => {
+          // This conditional write fences a claim against a concurrent selection.
+          // A pre-transaction status read would let a request that observed `open`
+          // insert after selection had already transitioned the giveaway to `claimed`.
+          const stillOpen = await tx.giveaway.updateMany({
+            where: { id: giveawayId, status: 'open' },
+            data: { updatedAt: new Date() },
+          });
+          if (stillOpen.count === 0) {
+            throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
+          }
+          return tx.giveawayClaim.create({
+            data: { giveawayId, claimerUserId: userId, pickupNote: input.pickupNote ?? null },
+            include: { claimer: { select: { id: true, firstName: true, avatarUrl: true, recipientRatingAvg: true, transactionCount: true } } },
+          });
         });
         await notifyNewClaim(giveaway.giverUserId, giveawayId, giveaway.title).catch(() => {});
         return reply.status(201).send(toApiClaim(claim, { revealNote: true }));

@@ -19,12 +19,13 @@ function secretKey(): Uint8Array {
 /**
  * Issue a signed JWT access token and return it as a bare string.
  *
- * The TTL is always `cfg.jwt.accessTtlSeconds`. Callers that need to report
- * `expiresIn` to a client read it from config (`getConfig().jwt.accessTtlSeconds`)
- * at the call site; this function deliberately returns only the token so every
- * call site treats the access token uniformly as a string.
+ * Callers use the configured access-token TTL by default. Short-lived scoped
+ * credentials (for example admin impersonation) may pass a lower TTL explicitly.
  */
-export async function issueAccessToken(payload: AccessTokenPayload): Promise<string> {
+export async function issueAccessToken(
+  payload: AccessTokenPayload,
+  ttlSeconds = getConfig().jwt.accessTtlSeconds,
+): Promise<string> {
   const cfg = getConfig();
   return new SignJWT({ role: payload.role, tv: payload.tokenVersion })
     .setProtectedHeader({ alg: 'HS256' })
@@ -32,7 +33,7 @@ export async function issueAccessToken(payload: AccessTokenPayload): Promise<str
     .setIssuer(cfg.jwt.issuer)
     .setAudience(cfg.jwt.audience)
     .setIssuedAt()
-    .setExpirationTime(`${cfg.jwt.accessTtlSeconds}s`)
+    .setExpirationTime(`${ttlSeconds}s`)
     .sign(secretKey());
 }
 

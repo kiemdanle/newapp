@@ -13,12 +13,17 @@ Bare React Native Android release path for Expyrico.
 - Local/debug: Android debug keystore (dev only)
 - Production: use a gitignored upload keystore (see `docs/native-secrets.md`)
 - Prefer Play App Signing so Google holds the app-signing key
+- Configure these gitignored Gradle properties locally in `~/.gradle/gradle.properties`,
+  or inject them from CI secrets: `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`,
+  `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD`. Any Gradle task resolving a
+  release variant fails if any is absent.
 
-Example release build (after configuring `android/app/build.gradle` signingConfigs):
+Example signed release build:
 
 ```bash
 cd apps/mobile
 pnpm android:release
+apksigner verify --verbose --print-certs android/app/build/outputs/apk/release/app-release.apk
 adb install -r android/app/build/outputs/apk/release/app-release.apk
 ```
 

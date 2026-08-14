@@ -158,6 +158,49 @@ describe('POST /v1/giveaways/:id/cancel', () => {
 });
 
 describe('claims + select + hand-off + confirm flow', () => {
+  it('allows exactly one concurrent claim selection and enqueues notifications for its committed transitions', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `select-giver-${Date.now()}@t.l`, emailVerified: true });
+    const firstClaimer = await makeUser({ email: `select-first-${Date.now()}@t.l`, emailVerified: true });
+    const secondClaimer = await makeUser({ email: `select-second-${Date.now()}@t.l`, emailVerified: true });
+    const giveaway = await makeGiveaway({ giverUserId: giver.id });
+    const firstClaim = await getPrisma().giveawayClaim.create({
+      data: { giveawayId: giveaway.id, claimerUserId: firstClaimer.id },
+    });
+    const secondClaim = await getPrisma().giveawayClaim.create({
+      data: { giveawayId: giveaway.id, claimerUserId: secondClaimer.id },
+    });
+
+    const [first, second] = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: `/v1/giveaways/${giveaway.id}/select`,
+        headers: await authIdem(giver.id),
+        payload: { claimId: firstClaim.id },
+      }),
+      app.inject({
+        method: 'POST',
+        url: `/v1/giveaways/${giveaway.id}/select`,
+        headers: await authIdem(giver.id),
+        payload: { claimId: secondClaim.id },
+      }),
+    ]);
+
+    expect([first.statusCode, second.statusCode].sort()).toEqual([200, 409]);
+    const claims = await getPrisma().giveawayClaim.findMany({ where: { giveawayId: giveaway.id } });
+    expect(claims.filter((claim) => claim.status === 'selected')).toHaveLength(1);
+    expect(claims.filter((claim) => claim.status === 'rejected')).toHaveLength(1);
+    expect((await getPrisma().giveaway.findUniqueOrThrow({ where: { id: giveaway.id } })).status).toBe('claimed');
+
+    const outbox = await getPrisma().notificationOutbox.findMany({
+      where: { payload: { path: ['giveawayId'], equals: giveaway.id } },
+      select: { templateKey: true },
+    });
+    expect(outbox.filter((entry) => entry.templateKey === 'giveaway_selected')).toHaveLength(1);
+    expect(outbox.filter((entry) => entry.templateKey === 'giveaway_rejected')).toHaveLength(1);
+    await app.close();
+  });
+
   it('full giveaway lifecycle', async () => {
     const app = await buildServer();
     const giver = await makeUser({ email: `fl-giver-${Date.now()}@t.l`, emailVerified: true });
