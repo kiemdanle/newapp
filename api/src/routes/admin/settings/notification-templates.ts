@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { notificationTemplateSchema, notificationTemplatePatchSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
+import { assertValidModerationTemplatePatch, MODERATION_QUEUE_TEMPLATE_KEY } from '../../../services/notifications/moderation-template.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -17,6 +18,12 @@ export async function adminSettingsNotificationTemplatesRoute(app: FastifyInstan
     const input = notificationTemplatePatchSchema.parse(req.body);
     const tmpl = await getPrisma().notificationTemplate.findUnique({ where: { id } });
     if (!tmpl) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Template not found' });
+    // Keyed moderation-only validation runs after the target lookup so the
+    // allowlisted-placeholder/plain-text rules apply to `moderation_queue` alone;
+    // every other template keeps the generic shared-schema bounds.
+    if (tmpl.key === MODERATION_QUEUE_TEMPLATE_KEY) {
+      assertValidModerationTemplatePatch({ title: input.title, body: input.body });
+    }
     const updated = await getPrisma().notificationTemplate.update({
       where: { id },
       data: {

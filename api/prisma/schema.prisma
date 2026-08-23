@@ -148,6 +148,38 @@ enum PushLogStatus {
   @@map("push_log_status")
 }
 
+enum ModerationNotificationEventKind {
+  new_product
+  product_revision
+
+  @@map("moderation_notification_event_kind")
+}
+
+enum ModerationNotificationChannel {
+  push
+  email
+
+  @@map("moderation_notification_channel")
+}
+
+enum ModerationNotificationDeliveryStatus {
+  pending
+  processing
+  sent
+  skipped
+  failed
+
+  @@map("moderation_notification_delivery_status")
+}
+
+enum ModerationNotificationPushAttemptStatus {
+  sent
+  failed
+  invalid
+
+  @@map("moderation_notification_push_attempt_status")
+}
+
 model User {
   id                      String          @id @default(uuid()) @db.Uuid
   email                   String          @unique
@@ -206,6 +238,8 @@ model User {
   householdsOwned           Household[]         @relation("HouseholdOwner")
   householdMemberships      HouseholdMember[]
 
+  moderationNotificationDeliveries ModerationNotificationDelivery[]
+
   @@map("users")
 }
 
@@ -254,6 +288,8 @@ model PushToken {
   revokedAt   DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  moderationNotificationPushAttempts ModerationNotificationPushAttempt[]
 
   @@index([userId])
   @@map("push_tokens")
@@ -507,6 +543,112 @@ model MediaOperationOutbox {
   updatedAt      DateTime             @default(now()) @updatedAt @map("updated_at")
 
   @@map("media_operation_outbox")
+}
+
+/// One successful transition occurrence of a product or edit into `pending`.
+/// `sourceId` references a product or edit by `kind` but carries no Prisma relation:
+/// the notification pipeline must outlive the source row. The post-transition
+/// `submissionVersion` makes a resubmission or rebase a new event while the same
+/// guarded transition can never double-record. `batchId` is null until a batch tick
+/// claims the event.
+model ModerationNotificationEvent {
+  id                String                          @id @default(uuid()) @db.Uuid
+  kind              ModerationNotificationEventKind
+  sourceId          String                          @map("source_id") @db.Uuid
+  submissionVersion Int                             @map("submission_version")
+  submittedAt       DateTime                        @map("submitted_at")
+  batchId           String?                         @map("batch_id") @db.Uuid
+  createdAt         DateTime                        @default(now()) @map("created_at")
+
+  batch ModerationNotificationBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
+
+  @@unique([kind, sourceId, submissionVersion])
+  // The migration owns a partial `batch_id IS NULL` claim index; Prisma schema
+  // syntax cannot express partial indexes.
+  @@map("moderation_notification_events")
+}
+
+model ModerationNotificationBatch {
+  id              String   @id @default(uuid()) @db.Uuid
+  windowStart     DateTime @map("window_start")
+  windowEnd       DateTime @map("window_end")
+  newProductCount Int      @default(0) @map("new_product_count")
+  revisionCount   Int      @default(0) @map("revision_count")
+  recipientCount  Int      @default(0) @map("recipient_count")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  events     ModerationNotificationEvent[]
+  deliveries ModerationNotificationDelivery[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("moderation_notification_batches")
+}
+
+/// Singleton durable operational state for the moderation pipeline. Counters are
+/// intentionally aggregate-only; the history tables remain the source for batch
+/// and per-channel detail.
+model ModerationNotificationHealth {
+  id                            String    @id
+  lastSuccessfulTickAt          DateTime? @map("last_successful_tick_at")
+  lastRecoveryAt                DateTime? @map("last_recovery_at")
+  lastSchedulerReconciliationAt DateTime? @map("last_scheduler_reconciliation_at")
+  lastCleanupAt                 DateTime? @map("last_cleanup_at")
+  lastZeroRecipientBatchAt      DateTime? @map("last_zero_recipient_batch_at")
+  terminalFailureCount          Int       @default(0) @map("terminal_failure_count")
+  deletedBatchCount             Int       @default(0) @map("deleted_batch_count")
+  updatedAt                     DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("moderation_notification_health")
+}
+
+/// One recipient x channel delivery for a batch. Claim/renew/finalize updates are
+/// fenced by `(id, status, leaseOwner)` so a worker that lost its lease cannot
+/// overwrite later state. `completedAt` is set on every terminal transition
+/// (`sent|skipped|failed`). No destination email or token value is stored here.
+model ModerationNotificationDelivery {
+  id                String                                @id @default(uuid()) @db.Uuid
+  batchId           String                                @map("batch_id") @db.Uuid
+  recipientUserId   String                                @map("recipient_user_id") @db.Uuid
+  channel           ModerationNotificationChannel
+  status            ModerationNotificationDeliveryStatus  @default(pending)
+  attempts          Int                                   @default(0)
+  availableAt       DateTime                              @default(now()) @map("available_at")
+  leaseOwner        String?                               @map("lease_owner")
+  leaseExpiresAt    DateTime?                             @map("lease_expires_at")
+  completedAt       DateTime?                             @map("completed_at")
+  providerMessageId String?                               @map("provider_message_id")
+  errorMessage      String?                               @map("error_message")
+  createdAt         DateTime                              @default(now()) @map("created_at")
+  updatedAt         DateTime                              @default(now()) @updatedAt @map("updated_at")
+
+  batch         ModerationNotificationBatch         @relation(fields: [batchId], references: [id], onDelete: Restrict)
+  recipient     User                                @relation(fields: [recipientUserId], references: [id], onDelete: Restrict)
+  pushAttempts  ModerationNotificationPushAttempt[]
+
+  @@unique([batchId, recipientUserId, channel])
+  // The migration owns partial due-work and batch-history indexes; Prisma schema
+  // syntax cannot express their status predicates.
+  @@map("moderation_notification_deliveries")
+}
+
+/// Durable per-token outcome for one FCM attempt of a push delivery, so a failed or
+/// invalid token never forces a retry of a sibling token that already accepted.
+model ModerationNotificationPushAttempt {
+  id                String                                     @id @default(uuid()) @db.Uuid
+  deliveryId        String                                     @map("delivery_id") @db.Uuid
+  pushTokenId       String                                     @map("push_token_id") @db.Uuid
+  attemptNumber     Int                                        @map("attempt_number")
+  status            ModerationNotificationPushAttemptStatus
+  providerMessageId String?                                    @map("provider_message_id")
+  errorMessage      String?                                    @map("error_message")
+  createdAt         DateTime                                   @default(now()) @map("created_at")
+
+  delivery  ModerationNotificationDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  pushToken PushToken                      @relation(fields: [pushTokenId], references: [id], onDelete: Restrict)
+
+  @@unique([deliveryId, pushTokenId, attemptNumber])
+  @@index([deliveryId])
+  @@map("moderation_notification_push_attempts")
 }
 
 model Record {

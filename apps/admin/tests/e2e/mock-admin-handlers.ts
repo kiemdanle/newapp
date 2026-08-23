@@ -173,6 +173,35 @@ export async function handleAdmin(
     };
   }
 
+  // --- Moderation notification observability ---
+  if (method === 'GET' && path === '/v1/admin/system/moderation-notifications/summary') {
+    const newProducts = store.products.filter((product) => product.status === 'pending').length;
+    const revisions = store.edits.filter((edit) => edit.status === 'pending').length;
+    return { body: { newProducts, revisions, total: newProducts + revisions } };
+  }
+  if (method === 'GET' && path === '/v1/admin/system/moderation-notifications') {
+    return { body: { items: [], nextCursor: null } };
+  }
+  if (method === 'GET' && path === '/v1/admin/system/moderation-notifications/health') {
+    return {
+      body: {
+        lastSuccessfulTickAt: null,
+        lastRecoveryAt: null,
+        lastSchedulerReconciliationAt: null,
+        lastCleanupAt: null,
+        lastZeroRecipientBatchAt: null,
+        oldestUnbatchedEventAt: null,
+        oldestDueDeliveryAt: null,
+        pendingDeliveries: 0,
+        terminalFailures: 0,
+        deletedBatches: 0,
+      },
+    };
+  }
+  if (method === 'GET' && /^\/v1\/admin\/system\/moderation-notifications\/[^/]+\/deliveries$/.test(path)) {
+    return { body: { items: [], nextCursor: null } };
+  }
+
   // --- Reports ---
   if (method === 'GET' && path === '/v1/admin/reports') {
     const status = query.get('status') ?? undefined;

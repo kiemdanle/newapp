@@ -57,8 +57,8 @@ export declare const dealSchema: z.ZodObject<{
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
     updatedAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     expiryDate: string | null;
     photoUrl: string | null;
     score: number;
@@ -86,8 +86,8 @@ export declare const dealSchema: z.ZodObject<{
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
     updatedAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     expiryDate: string | null;
     photoUrl: string | null;
     score: number;

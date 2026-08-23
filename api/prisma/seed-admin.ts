@@ -76,6 +76,11 @@ async function seedSettings(adminId?: string) {
     { key: 'expiry_7d', title: 'Expires in 7 days', body: '{name} expires on {date}.' },
     { key: 'expiry_1d', title: 'Expires tomorrow', body: '{name} expires tomorrow.' },
     { key: 'expiry_today', title: 'Expires today', body: '{name} expires today.' },
+    {
+      key: 'moderation_queue',
+      title: 'Moderation queue needs review',
+      body: '{total} new moderation item(s) awaiting review: {newProducts} new product(s), {revisions} revision(s).',
+    },
   ];
   for (const t of templates) {
     await prisma.notificationTemplate.upsert({

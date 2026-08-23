@@ -53,6 +53,20 @@ describe('config', () => {
     expect(cfg.rateLimit.authPerIpPerMin).toBe(10);
   });
 
+  it('normalizes a trusted admin origin and rejects unsafe production values', () => {
+    expect(parseConfig({ ...valid, ADMIN_URL: 'https://admin.example.com/' }).frontend.adminUrl).toBe('https://admin.example.com');
+    expect(() => parseConfig({ ...valid, NODE_ENV: 'production', ADMIN_URL: 'http://admin.example.com' })).toThrow(/HTTPS/);
+    expect(() => parseConfig({ ...valid, ADMIN_URL: 'https://user:pass@admin.example.com' })).toThrow(/credentials/);
+    expect(() => parseConfig({ ...valid, ADMIN_URL: 'https://admin.example.com/products/pending' })).toThrow(/origin without a path/);
+    expect(() => parseConfig({ ...valid, ADMIN_URL: 'https://admin.example.com/#fragment' })).toThrow(/fragment/);
+    expect(() => parseConfig({
+      ...valid,
+      NODE_ENV: 'production',
+      ADMIN_URL: 'https://admin.example.com',
+      MOBILE_ADMIN_URL: 'https://admin-mobile.example.com',
+    })).toThrow(/MOBILE_ADMIN_URL must exactly match ADMIN_URL/);
+  });
+
   it('rejects a JWT secret shorter than 32 bytes', () => {
     expect(() => parseConfig({ ...valid, JWT_ACCESS_SECRET: 'short' })).toThrow();
   });

@@ -53,7 +53,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Gift,
 };
 
-export function Sidebar() {
+export function Sidebar({ pendingModerationCount = 0 }: { pendingModerationCount?: number }) {
   const pathname = usePathname();
 
   function isActive(href: string): boolean {
@@ -88,7 +88,15 @@ export function Sidebar() {
                       className={active ? 'text-primary' : 'text-neutral-mid'}
                     />
                   )}
-                  {item.label}
+                  <span className="min-w-0 flex-1">{item.label}</span>
+                  {item.href === '/products/pending' && pendingModerationCount > 0 ? (
+                    <span
+                      className="rounded-full bg-accent-light px-2 py-0.5 text-xs font-semibold text-neutral-dark"
+                      aria-label={`${pendingModerationCount} moderation items pending`}
+                    >
+                      {pendingModerationCount}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}

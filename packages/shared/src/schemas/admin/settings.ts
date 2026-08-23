@@ -30,8 +30,8 @@ export const notificationTemplateSchema = z.object({
 });
 
 export const notificationTemplatePatchSchema = z.object({
-  title: z.string().min(1).optional(),
-  body: z.string().min(1).optional(),
+  title: z.string().min(1).max(120).optional(),
+  body: z.string().min(1).max(500).optional(),
   enabled: z.boolean().optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'no fields' });
 

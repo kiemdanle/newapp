@@ -47,7 +47,11 @@ const authPluginImpl: FastifyPluginAsync = async (app: FastifyInstance) => {
 
   app.decorate('requireAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
     await app.requireAuth(req, reply);
-    if (req.user?.role !== 'admin') {
+    // The JWT role claim can outlive a demotion. Privileged routes must check
+    // database-current authorization at request time rather than treating the
+    // historical token claim as the authority.
+    const user = await findUserById(req.user!.id);
+    if (!user || user.role !== 'admin') {
       throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Forbidden' });
     }
   });

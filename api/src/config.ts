@@ -55,6 +55,9 @@ const envSchema = z.object({
   SMTP_FROM: z.string().min(1),
 
   ADMIN_URL: z.string().url(),
+  // Public mobile build trust anchor. Production validates it against the API's
+  // canonical admin origin during deploy/startup to prevent silent link drift.
+  MOBILE_ADMIN_URL: z.string().url().optional(),
 
   COUNTRY_DETECT_PRIMARY: z.string().url(),
   COUNTRY_DETECT_FALLBACK: z.string().url(),
@@ -165,7 +168,7 @@ export interface Config {
     sha256CertFingerprints: string[];
   };
   smtp: { host: string; port: number; user?: string; pass?: string; from: string };
-  frontend: { adminUrl: string };
+  frontend: { adminUrl: string; mobileAdminUrl?: string };
   countryDetect: { primary: string; fallback: string };
   firebase: {
     projectId: string;
@@ -261,6 +264,25 @@ function parseUuidAllowlist(raw: string | undefined): string[] {
   return ids;
 }
 
+/**
+ * Normalizes the single trusted admin-console origin used in moderation links.
+ * The queue path is always joined server-side; credentials, fragments, query
+ * strings, or an arbitrary path cannot become part of a notification target.
+ */
+function parseAdminUrl(raw: string, env: Env['NODE_ENV']): string {
+  const url = new URL(raw);
+  if (url.username || url.password || url.hash || url.search) {
+    throw new Error('ADMIN_URL must not include credentials, query parameters, or a fragment');
+  }
+  if (url.pathname !== '/' && url.pathname !== '') {
+    throw new Error('ADMIN_URL must be an origin without a path');
+  }
+  if (env === 'production' && url.protocol !== 'https:') {
+    throw new Error('ADMIN_URL must use HTTPS in production');
+  }
+  return url.origin;
+}
+
 export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>): Config {
   const e = envSchema.parse(source);
   const smtp: Config['smtp'] = {
@@ -284,6 +306,12 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       throw new Error(`GOOGLE_APPLICATION_CREDENTIALS does not exist: ${credentialsPath}`);
     }
     firebase.credentialsPath = credentialsPath;
+  }
+
+  const adminUrl = parseAdminUrl(e.ADMIN_URL, e.NODE_ENV);
+  const mobileAdminUrl = e.MOBILE_ADMIN_URL === undefined ? undefined : parseAdminUrl(e.MOBILE_ADMIN_URL, e.NODE_ENV);
+  if (e.NODE_ENV === 'production' && mobileAdminUrl !== adminUrl) {
+    throw new Error('MOBILE_ADMIN_URL must exactly match ADMIN_URL in production');
   }
 
   return {
@@ -327,7 +355,7 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       sha256CertFingerprints: parseSha256Fingerprints(e.ANDROID_SHA256_CERT_FINGERPRINTS),
     },
     smtp,
-    frontend: { adminUrl: e.ADMIN_URL },
+    frontend: { adminUrl, ...(mobileAdminUrl === undefined ? {} : { mobileAdminUrl }) },
     countryDetect: { primary: e.COUNTRY_DETECT_PRIMARY, fallback: e.COUNTRY_DETECT_FALLBACK },
     firebase,
     media: (() => {

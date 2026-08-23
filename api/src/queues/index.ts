@@ -28,6 +28,10 @@ import {
   PRODUCT_MEDIA_CLEANUP_QUEUE,
   productMediaCleanupQueue,
 } from './jobs/product-media-cleanup.js';
+import {
+  MODERATION_NOTIFICATION_QUEUE,
+  moderationNotificationQueue,
+} from './jobs/moderation-notifications.js';
 
 export * from './product-lookup.js';
 export * from './notification-schedule.js';
@@ -36,6 +40,7 @@ export * from './jobs/score-recalc.js';
 export * from './jobs/moderation-flag.js';
 export * from './jobs/product-rating-recalc.js';
 export * from './jobs/product-media-cleanup.js';
+export * from './jobs/moderation-notifications.js';
 
 // Canonical contract: returns a RAW ConnectionOptions. Callers wrap it as
 // `{ connection: getQueueConnection() }` when constructing a Queue/Worker.
@@ -53,5 +58,6 @@ export function getAllQueues(): { name: string; queue: Queue }[] {
     { name: MODERATION_FLAG_QUEUE, queue: getModerationFlagQueue() },
     { name: PRODUCT_RATING_RECALC_QUEUE, queue: getProductRatingQueue() },
     { name: PRODUCT_MEDIA_CLEANUP_QUEUE, queue: productMediaCleanupQueue() },
+    { name: MODERATION_NOTIFICATION_QUEUE, queue: moderationNotificationQueue() },
   ];
 }

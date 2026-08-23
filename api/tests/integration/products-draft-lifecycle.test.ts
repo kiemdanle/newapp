@@ -495,6 +495,127 @@ describe('POST /v1/products/drafts/:id/submit', () => {
     const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
     expect(row.status).toBe('pending');
     expect(row.submittedAt).not.toBeNull();
+    // One durable notification event is committed in the same transaction, keyed
+    // on the post-transition version.
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: p.id } });
+    expect(events).toHaveLength(1);
+    expect(events[0]!.kind).toBe('new_product');
+    expect(events[0]!.submissionVersion).toBe(row.version);
+    expect(events[0]!.batchId).toBeNull();
+    await app.close();
+  });
+
+  it('rolls back the pending transition when the notification event insert fails', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    // Force the transaction's event insert to violate the occurrence key after
+    // the guarded product update has run. The transaction must roll both writes
+    // back rather than leave a pending product without a batchable event.
+    await getPrisma().moderationNotificationEvent.create({
+      data: {
+        kind: 'new_product',
+        sourceId: p.id,
+        submissionVersion: p.version + 1,
+        submittedAt: new Date(),
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(500);
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('draft');
+    expect(row.version).toBe(p.version);
+    await app.close();
+  });
+
+  it('records no notification event when a stale version submit is rejected', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version + 99, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(409);
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: p.id } });
+    expect(events).toHaveLength(0);
+    await app.close();
+  });
+
+  it('records no notification event when the abuse assessment rejects the submit', async () => {
+    stubAssessmentClient(0.1);
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(res.statusCode).toBe(403);
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: p.id } });
+    expect(events).toHaveLength(0);
+    await app.close();
+  });
+
+  it('two concurrent valid submits at the same version record exactly one notification event', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const [a, b] = await Promise.all([
+      app.inject({ method: 'POST', url: `/v1/products/drafts/${p.id}/submit`, headers: idemHeaders(headers), payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' } }),
+      app.inject({ method: 'POST', url: `/v1/products/drafts/${p.id}/submit`, headers: idemHeaders(headers), payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' } }),
+    ]);
+    const statuses = [a.statusCode, b.statusCode].sort();
+    expect(statuses).toEqual([200, 409]);
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: p.id } });
+    expect(events).toHaveLength(1);
+    await app.close();
+  });
+
+  it('a resubmission after changes_required records a second event at the new version', async () => {
+    stubAssessmentClient();
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const first = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: p.version, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(first.statusCode).toBe(200);
+    // Admin requests changes, then the creator resubmits at the new version.
+    const afterFirst = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'changes_required', version: { increment: 1 } } });
+    const resubmitVersion = afterFirst.version + 1;
+    const second = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${p.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: { version: resubmitVersion, abuseToken: 'valid-token', platform: 'android' },
+    });
+    expect(second.statusCode).toBe(200);
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: p.id }, orderBy: { submissionVersion: 'asc' } });
+    expect(events).toHaveLength(2);
+    expect(events.map((e) => e.submissionVersion)).toEqual([afterFirst.version, resubmitVersion + 1]);
     await app.close();
   });
 

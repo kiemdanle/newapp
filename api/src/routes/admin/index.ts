@@ -29,6 +29,7 @@ import { adminSystemOperationalHealthRoute } from './system/operational-health.j
 import { adminSystemPushLogsRoute } from './system/push-logs.js';
 import { adminSystemApiErrorsRoute } from './system/api-errors.js';
 import { adminSystemExternalApisRoute } from './system/external-apis.js';
+import { adminSystemModerationNotificationsRoute } from './system/moderation-notifications.js';
 import { adminBullBoardRoute } from './system/bullboard.js';
 import { adminDealsListRoute, adminDealsStatusRoute } from './deals.js';
 import { adminGiveawaysListRoute, adminGiveawaysCancelRoute } from './giveaways.js';
@@ -79,6 +80,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminSystemPushLogsRoute, { prefix: '/system' });
   await app.register(adminSystemApiErrorsRoute, { prefix: '/system' });
   await app.register(adminSystemExternalApisRoute, { prefix: '/system' });
+  await app.register(adminSystemModerationNotificationsRoute, { prefix: '/system' });
   await app.register(adminBullBoardRoute);
 
   await app.register(adminSettingsFeatureFlagsRoute, { prefix: '/settings' });

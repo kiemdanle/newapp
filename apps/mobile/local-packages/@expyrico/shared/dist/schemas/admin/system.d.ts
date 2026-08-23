@@ -125,6 +125,353 @@ export declare const pushLogsListSchema: z.ZodObject<{
     }[];
     nextCursor: string | null;
 }>;
+export declare const moderationNotificationSummarySchema: z.ZodObject<{
+    newProducts: z.ZodNumber;
+    revisions: z.ZodNumber;
+    total: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    newProducts: number;
+    revisions: number;
+    total: number;
+}, {
+    newProducts: number;
+    revisions: number;
+    total: number;
+}>;
+export declare const moderationNotificationBatchRowSchema: z.ZodObject<{
+    id: z.ZodString;
+    createdAt: z.ZodString;
+    windowStart: z.ZodString;
+    windowEnd: z.ZodString;
+    newProductCount: z.ZodNumber;
+    revisionCount: z.ZodNumber;
+    recipientCount: z.ZodNumber;
+    deliverySummary: z.ZodObject<{
+        pending: z.ZodNumber;
+        processing: z.ZodNumber;
+        sent: z.ZodNumber;
+        skipped: z.ZodNumber;
+        failed: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        failed: number;
+        sent: number;
+        pending: number;
+        processing: number;
+        skipped: number;
+    }, {
+        failed: number;
+        sent: number;
+        pending: number;
+        processing: number;
+        skipped: number;
+    }>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    createdAt: string;
+    windowStart: string;
+    windowEnd: string;
+    newProductCount: number;
+    revisionCount: number;
+    recipientCount: number;
+    deliverySummary: {
+        failed: number;
+        sent: number;
+        pending: number;
+        processing: number;
+        skipped: number;
+    };
+}, {
+    id: string;
+    createdAt: string;
+    windowStart: string;
+    windowEnd: string;
+    newProductCount: number;
+    revisionCount: number;
+    recipientCount: number;
+    deliverySummary: {
+        failed: number;
+        sent: number;
+        pending: number;
+        processing: number;
+        skipped: number;
+    };
+}>;
+export declare const moderationNotificationBatchesQuerySchema: z.ZodObject<{
+    cursor: z.ZodOptional<z.ZodString>;
+    limit: z.ZodDefault<z.ZodNumber>;
+} & {
+    status: z.ZodOptional<z.ZodEnum<["pending", "processing", "sent", "skipped", "failed"]>>;
+}, "strip", z.ZodTypeAny, {
+    limit: number;
+    status?: "failed" | "sent" | "pending" | "processing" | "skipped" | undefined;
+    cursor?: string | undefined;
+}, {
+    status?: "failed" | "sent" | "pending" | "processing" | "skipped" | undefined;
+    cursor?: string | undefined;
+    limit?: number | undefined;
+}>;
+export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
+    items: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        createdAt: z.ZodString;
+        windowStart: z.ZodString;
+        windowEnd: z.ZodString;
+        newProductCount: z.ZodNumber;
+        revisionCount: z.ZodNumber;
+        recipientCount: z.ZodNumber;
+        deliverySummary: z.ZodObject<{
+            pending: z.ZodNumber;
+            processing: z.ZodNumber;
+            sent: z.ZodNumber;
+            skipped: z.ZodNumber;
+            failed: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        }, {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        }>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        createdAt: string;
+        windowStart: string;
+        windowEnd: string;
+        newProductCount: number;
+        revisionCount: number;
+        recipientCount: number;
+        deliverySummary: {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        };
+    }, {
+        id: string;
+        createdAt: string;
+        windowStart: string;
+        windowEnd: string;
+        newProductCount: number;
+        revisionCount: number;
+        recipientCount: number;
+        deliverySummary: {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        };
+    }>, "many">;
+    nextCursor: z.ZodNullable<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    items: {
+        id: string;
+        createdAt: string;
+        windowStart: string;
+        windowEnd: string;
+        newProductCount: number;
+        revisionCount: number;
+        recipientCount: number;
+        deliverySummary: {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        };
+    }[];
+    nextCursor: string | null;
+}, {
+    items: {
+        id: string;
+        createdAt: string;
+        windowStart: string;
+        windowEnd: string;
+        newProductCount: number;
+        revisionCount: number;
+        recipientCount: number;
+        deliverySummary: {
+            failed: number;
+            sent: number;
+            pending: number;
+            processing: number;
+            skipped: number;
+        };
+    }[];
+    nextCursor: string | null;
+}>;
+export declare const moderationNotificationDeliveryRowSchema: z.ZodObject<{
+    id: z.ZodString;
+    batchId: z.ZodString;
+    channel: z.ZodEnum<["push", "email"]>;
+    status: z.ZodEnum<["pending", "processing", "sent", "skipped", "failed"]>;
+    attempts: z.ZodNumber;
+    errorMessage: z.ZodNullable<z.ZodString>;
+    completedAt: z.ZodNullable<z.ZodString>;
+    tokenSummary: z.ZodNullable<z.ZodObject<{
+        sent: z.ZodNumber;
+        failed: z.ZodNumber;
+        invalid: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        failed: number;
+        sent: number;
+        invalid: number;
+    }, {
+        failed: number;
+        sent: number;
+        invalid: number;
+    }>>;
+}, "strip", z.ZodTypeAny, {
+    status: "failed" | "sent" | "pending" | "processing" | "skipped";
+    id: string;
+    errorMessage: string | null;
+    batchId: string;
+    channel: "push" | "email";
+    attempts: number;
+    completedAt: string | null;
+    tokenSummary: {
+        failed: number;
+        sent: number;
+        invalid: number;
+    } | null;
+}, {
+    status: "failed" | "sent" | "pending" | "processing" | "skipped";
+    id: string;
+    errorMessage: string | null;
+    batchId: string;
+    channel: "push" | "email";
+    attempts: number;
+    completedAt: string | null;
+    tokenSummary: {
+        failed: number;
+        sent: number;
+        invalid: number;
+    } | null;
+}>;
+export declare const moderationNotificationDeliveriesListSchema: z.ZodObject<{
+    items: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        batchId: z.ZodString;
+        channel: z.ZodEnum<["push", "email"]>;
+        status: z.ZodEnum<["pending", "processing", "sent", "skipped", "failed"]>;
+        attempts: z.ZodNumber;
+        errorMessage: z.ZodNullable<z.ZodString>;
+        completedAt: z.ZodNullable<z.ZodString>;
+        tokenSummary: z.ZodNullable<z.ZodObject<{
+            sent: z.ZodNumber;
+            failed: z.ZodNumber;
+            invalid: z.ZodNumber;
+        }, "strip", z.ZodTypeAny, {
+            failed: number;
+            sent: number;
+            invalid: number;
+        }, {
+            failed: number;
+            sent: number;
+            invalid: number;
+        }>>;
+    }, "strip", z.ZodTypeAny, {
+        status: "failed" | "sent" | "pending" | "processing" | "skipped";
+        id: string;
+        errorMessage: string | null;
+        batchId: string;
+        channel: "push" | "email";
+        attempts: number;
+        completedAt: string | null;
+        tokenSummary: {
+            failed: number;
+            sent: number;
+            invalid: number;
+        } | null;
+    }, {
+        status: "failed" | "sent" | "pending" | "processing" | "skipped";
+        id: string;
+        errorMessage: string | null;
+        batchId: string;
+        channel: "push" | "email";
+        attempts: number;
+        completedAt: string | null;
+        tokenSummary: {
+            failed: number;
+            sent: number;
+            invalid: number;
+        } | null;
+    }>, "many">;
+    nextCursor: z.ZodNullable<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    items: {
+        status: "failed" | "sent" | "pending" | "processing" | "skipped";
+        id: string;
+        errorMessage: string | null;
+        batchId: string;
+        channel: "push" | "email";
+        attempts: number;
+        completedAt: string | null;
+        tokenSummary: {
+            failed: number;
+            sent: number;
+            invalid: number;
+        } | null;
+    }[];
+    nextCursor: string | null;
+}, {
+    items: {
+        status: "failed" | "sent" | "pending" | "processing" | "skipped";
+        id: string;
+        errorMessage: string | null;
+        batchId: string;
+        channel: "push" | "email";
+        attempts: number;
+        completedAt: string | null;
+        tokenSummary: {
+            failed: number;
+            sent: number;
+            invalid: number;
+        } | null;
+    }[];
+    nextCursor: string | null;
+}>;
+export declare const moderationNotificationHealthSchema: z.ZodObject<{
+    lastSuccessfulTickAt: z.ZodNullable<z.ZodString>;
+    lastRecoveryAt: z.ZodNullable<z.ZodString>;
+    lastSchedulerReconciliationAt: z.ZodNullable<z.ZodString>;
+    lastCleanupAt: z.ZodNullable<z.ZodString>;
+    lastZeroRecipientBatchAt: z.ZodNullable<z.ZodString>;
+    oldestUnbatchedEventAt: z.ZodNullable<z.ZodString>;
+    oldestDueDeliveryAt: z.ZodNullable<z.ZodString>;
+    pendingDeliveries: z.ZodNumber;
+    terminalFailures: z.ZodNumber;
+    deletedBatches: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    lastSuccessfulTickAt: string | null;
+    lastRecoveryAt: string | null;
+    lastSchedulerReconciliationAt: string | null;
+    lastCleanupAt: string | null;
+    lastZeroRecipientBatchAt: string | null;
+    oldestUnbatchedEventAt: string | null;
+    oldestDueDeliveryAt: string | null;
+    pendingDeliveries: number;
+    terminalFailures: number;
+    deletedBatches: number;
+}, {
+    lastSuccessfulTickAt: string | null;
+    lastRecoveryAt: string | null;
+    lastSchedulerReconciliationAt: string | null;
+    lastCleanupAt: string | null;
+    lastZeroRecipientBatchAt: string | null;
+    oldestUnbatchedEventAt: string | null;
+    oldestDueDeliveryAt: string | null;
+    pendingDeliveries: number;
+    terminalFailures: number;
+    deletedBatches: number;
+}>;
 export declare const apiErrorsQuerySchema: z.ZodObject<{
     range: z.ZodDefault<z.ZodEnum<["24h", "7d", "30d"]>>;
 }, "strip", z.ZodTypeAny, {
@@ -334,6 +681,11 @@ export declare const operationalHealthSchema: z.ZodObject<{
     }>;
 }, "strip", z.ZodTypeAny, {
     status: "ok" | "warning" | "critical";
+    pending: {
+        count: number;
+        stale: boolean;
+        oldestAgeHours: number | null;
+    };
     capacity: {
         status: "ok" | "warning" | "critical";
         usableBytes: number;
@@ -347,11 +699,6 @@ export declare const operationalHealthSchema: z.ZodObject<{
         lastFailureAt: string | null;
         lastSuccessAt: string | null;
         stale: boolean;
-    };
-    pending: {
-        count: number;
-        stale: boolean;
-        oldestAgeHours: number | null;
     };
     quarantine: {
         oldestAgeHours: number | null;
@@ -381,6 +728,11 @@ export declare const operationalHealthSchema: z.ZodObject<{
     };
 }, {
     status: "ok" | "warning" | "critical";
+    pending: {
+        count: number;
+        stale: boolean;
+        oldestAgeHours: number | null;
+    };
     capacity: {
         status: "ok" | "warning" | "critical";
         usableBytes: number;
@@ -394,11 +746,6 @@ export declare const operationalHealthSchema: z.ZodObject<{
         lastFailureAt: string | null;
         lastSuccessAt: string | null;
         stale: boolean;
-    };
-    pending: {
-        count: number;
-        stale: boolean;
-        oldestAgeHours: number | null;
     };
     quarantine: {
         oldestAgeHours: number | null;
