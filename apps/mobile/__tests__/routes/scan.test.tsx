@@ -125,6 +125,34 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     }
   });
 
+  it('prevents duplicate camera permission requests while the first request is pending', async () => {
+    mockInitialPermission = 'unknown';
+    mockCheckPermission.mockResolvedValue('unknown');
+    let resolveRequest: ((state: 'granted') => void) | undefined;
+    mockRequestPermission.mockImplementation(
+      () =>
+        new Promise<'granted'>((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+    const { findByTestId } = render(wrap(<ScanScreen />));
+    const allow = await findByTestId('pre-prompt-allow');
+
+    try {
+      await act(async () => {
+        fireEvent.press(allow);
+        fireEvent.press(allow);
+      });
+
+      expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(async () => {
+        resolveRequest?.('granted');
+        await Promise.resolve();
+      });
+    }
+  });
+
   it('keeps the denied Settings prompt usable when opening Settings fails', async () => {
     mockInitialPermission = 'denied';
     mockCheckPermission.mockResolvedValue('denied');

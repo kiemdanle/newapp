@@ -45,6 +45,7 @@ export default function ScanScreen() {
   // check, since state updates don't apply mid-callback.
   const lookupInFlightRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
+  const permissionRequestInFlightRef = useRef(false);
 
   useEffect(() => {
     void check().catch(() => undefined);
@@ -174,9 +175,14 @@ export default function ScanScreen() {
           navigation.goBack();
         }}
         onAllow={() => {
+          if (permissionRequestInFlightRef.current) return;
+          permissionRequestInFlightRef.current = true;
           void request()
             .then(() => setPrePrompt(false))
-            .catch(() => undefined);
+            .catch(() => undefined)
+            .finally(() => {
+              permissionRequestInFlightRef.current = false;
+            });
         }}
       />
     );
