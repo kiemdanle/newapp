@@ -224,6 +224,53 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     expect('status' in resubmitted && resubmitted.status).toBe('pending');
   });
 
+  it('records one notification event per pending transition, including a changes_required resubmit', async () => {
+    const creator = await makeUserForAdmin();
+    const { admin } = await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+
+    const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: edit.version });
+    const submittedVersion = (submitted as { version: number }).version;
+    let events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id } });
+    expect(events).toHaveLength(1);
+    expect(events[0]!.kind).toBe('product_revision');
+    expect(events[0]!.submissionVersion).toBe(submittedVersion);
+
+    // request_changes is not a queue arrival — no new event.
+    const afterRC = await resolveProductEdit(
+      adminActor(admin.id),
+      {},
+      { editId: edit.id, action: 'request_changes', version: submittedVersion, notes: 'fix the name' },
+    );
+    events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id } });
+    expect(events).toHaveLength(1);
+
+    // Resubmission is a fresh occurrence keyed at the new post-transition version.
+    const resubmitted = await resolveProductEdit(
+      actor(creator.id),
+      {},
+      { editId: edit.id, action: 'submit', version: (afterRC as { version: number }).version },
+    );
+    events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id }, orderBy: { submissionVersion: 'asc' } });
+    expect(events).toHaveLength(2);
+    expect(events[1]!.submissionVersion).toBe((resubmitted as { version: number }).version);
+    expect(events[1]!.submissionVersion).toBeGreaterThan(events[0]!.submissionVersion);
+  });
+
+  it('records no notification event for a stale-version submit that loses the guard', async () => {
+    const creator = await makeUserForAdmin();
+    await makeAdmin();
+    const product = await makeActiveProduct(creator.id);
+    const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+
+    await expect(
+      resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: edit.version + 99 }),
+    ).rejects.toMatchObject({ status: 409 });
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id } });
+    expect(events).toHaveLength(0);
+  });
+
   it('approve applies metadata + retained/staged photo order and publishes staged bytes', async () => {
     const creator = await makeUserForAdmin();
     const { admin } = await makeAdmin();
@@ -550,6 +597,47 @@ describe('recoverProductEdit — rebase and supersede', () => {
     expect(result.status).toBe('pending');
     expect(result.baseProductVersion).toBe(product.version);
     expect(result.photos).toHaveLength(1);
+  });
+
+  it('a pending-producing rebase records a fresh notification event at the new version', async () => {
+    const { admin } = await makeAdmin();
+    const { product, edit, livePhotoId } = await staleSubmittedEdit();
+
+    // The initial submit already produced one event; rebase returns the edit to
+    // `pending` as a distinct occurrence.
+    const before = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id } });
+    expect(before).toHaveLength(1);
+
+    const result = await recoverProductEdit(adminActor(admin.id), {}, {
+      action: 'rebase',
+      editId: edit.id,
+      editVersion: edit.version,
+      productVersion: product.version,
+      desiredPhotoOrder: [{ type: 'retained', sourceProductPhotoId: livePhotoId }],
+    });
+    expect(result.status).toBe('pending');
+
+    const after = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id }, orderBy: { submissionVersion: 'asc' } });
+    expect(after).toHaveLength(2);
+    expect(after[1]!.kind).toBe('product_revision');
+    expect(after[1]!.submissionVersion).toBe(result.version);
+    expect(after[1]!.submissionVersion).toBeGreaterThan(after[0]!.submissionVersion);
+  });
+
+  it('a supersede (rejected) records no new notification event', async () => {
+    const { admin } = await makeAdmin();
+    const { product, edit } = await staleSubmittedEdit();
+
+    await recoverProductEdit(adminActor(admin.id), {}, {
+      action: 'supersede',
+      editId: edit.id,
+      editVersion: edit.version,
+      productVersion: product.version,
+      notes: 'admin free text reason',
+    });
+
+    const events = await getPrisma().moderationNotificationEvent.findMany({ where: { sourceId: edit.id } });
+    expect(events).toHaveLength(1);
   });
 
   it('version-guards both editVersion and productVersion with no silent auto-pick', async () => {

@@ -6,7 +6,7 @@ import { Menu, X } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
 import { Logo } from '@/components/logo';
 
-export function SidebarDrawer() {
+export function SidebarDrawer({ pendingModerationCount = 0 }: { pendingModerationCount?: number }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -46,7 +46,7 @@ export function SidebarDrawer() {
         </div>
         <div className="overflow-y-auto h-[calc(100vh-3.5rem)]">
           <div onClick={() => setOpen(false)}>
-            <Sidebar />
+            <Sidebar pendingModerationCount={pendingModerationCount} />
           </div>
         </div>
       </div>

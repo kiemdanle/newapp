@@ -28,6 +28,67 @@ export const pushLogsQuerySchema = cursorQuerySchema.extend({
 
 export const pushLogsListSchema = cursorPageSchema(pushLogRowSchema);
 
+export const moderationNotificationSummarySchema = z.object({
+  newProducts: z.number().int().nonnegative(),
+  revisions: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+});
+
+const moderationDeliveryStatusSchema = z.enum(['pending', 'processing', 'sent', 'skipped', 'failed']);
+
+export const moderationNotificationBatchRowSchema = z.object({
+  id: z.string().uuid(),
+  createdAt: z.string().datetime(),
+  windowStart: z.string().datetime(),
+  windowEnd: z.string().datetime(),
+  newProductCount: z.number().int().nonnegative(),
+  revisionCount: z.number().int().nonnegative(),
+  recipientCount: z.number().int().nonnegative(),
+  deliverySummary: z.object({
+    pending: z.number().int().nonnegative(),
+    processing: z.number().int().nonnegative(),
+    sent: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  }),
+});
+
+export const moderationNotificationBatchesQuerySchema = cursorQuerySchema.extend({
+  status: moderationDeliveryStatusSchema.optional(),
+});
+
+export const moderationNotificationBatchesListSchema = cursorPageSchema(moderationNotificationBatchRowSchema);
+
+export const moderationNotificationDeliveryRowSchema = z.object({
+  id: z.string().uuid(),
+  batchId: z.string().uuid(),
+  channel: z.enum(['push', 'email']),
+  status: moderationDeliveryStatusSchema,
+  attempts: z.number().int().nonnegative(),
+  errorMessage: z.string().nullable(),
+  completedAt: z.string().datetime().nullable(),
+  tokenSummary: z.object({
+    sent: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    invalid: z.number().int().nonnegative(),
+  }).nullable(),
+});
+
+export const moderationNotificationDeliveriesListSchema = cursorPageSchema(moderationNotificationDeliveryRowSchema);
+
+export const moderationNotificationHealthSchema = z.object({
+  lastSuccessfulTickAt: z.string().datetime().nullable(),
+  lastRecoveryAt: z.string().datetime().nullable(),
+  lastSchedulerReconciliationAt: z.string().datetime().nullable(),
+  lastCleanupAt: z.string().datetime().nullable(),
+  lastZeroRecipientBatchAt: z.string().datetime().nullable(),
+  oldestUnbatchedEventAt: z.string().datetime().nullable(),
+  oldestDueDeliveryAt: z.string().datetime().nullable(),
+  pendingDeliveries: z.number().int().nonnegative(),
+  terminalFailures: z.number().int().nonnegative(),
+  deletedBatches: z.number().int().nonnegative(),
+});
+
 export const apiErrorsQuerySchema = z.object({
   range: z.enum(['24h', '7d', '30d']).default('24h'),
 });

@@ -1,5 +1,5 @@
 import 'react-native-get-random-values';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View, StyleSheet, TextInput } from 'react-native';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -13,6 +13,8 @@ import { hydrateSession, useSessionStore } from './auth/session-store';
 import { wireApiClient } from './auth/wire-client';
 import { startSyncTriggers, stopSyncTriggers } from './db/triggers';
 import { ensurePushTokenRegistered } from './features/push/registerPushToken';
+import { handleModerationNotificationOpen, registerModerationNotificationBatch } from './features/push/handle-notification-open';
+import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
 
 const queryClient = createQueryClient();
@@ -90,6 +92,7 @@ function RootApp() {
 
 export function AppSyncManager() {
   const accessToken = useSessionStore((s) => s.accessToken);
+  const openedModerationBatches = useRef(new Set<string>());
 
   useEffect(() => {
     if (!accessToken) return;
@@ -97,7 +100,23 @@ export function AppSyncManager() {
     void ensurePushTokenRegistered().catch((error) => {
       console.warn('Failed to register FCM token', error);
     });
-    return () => stopSyncTriggers();
+    // FCM may surface a notification tap while the app is backgrounded or as
+    // the initial launch source. The handler is type-gated and fail-closed, so
+    // existing expiry push behavior remains untouched.
+    const handleOpenedNotification = (message: { data?: Record<string, string | object> | undefined }) => {
+      const type = message.data?.type;
+      const batchId = message.data?.batchId;
+      if (type === 'moderation_queue' && !registerModerationNotificationBatch(batchId, openedModerationBatches.current)) return;
+      void handleModerationNotificationOpen(message.data);
+    };
+    const unsubscribe = messaging().onNotificationOpenedApp(handleOpenedNotification);
+    void messaging().getInitialNotification().then((message) => {
+      if (message) handleOpenedNotification(message);
+    });
+    return () => {
+      unsubscribe();
+      stopSyncTriggers();
+    };
   }, [accessToken]);
 
   return null;

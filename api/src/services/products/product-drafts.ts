@@ -26,6 +26,7 @@ import { privateProductPhotoRoute } from './product-media-storage.js';
 import { assertProductCreationEligible } from './product-creation-eligibility.js';
 import { assertWithinActiveDraftQuota } from './product-creation-quotas.js';
 import { assessProductCreationSubmission } from '../abuse/product-creation-assessment.js';
+import { recordModerationNotificationEvent } from '../notifications/moderation-notification-events.js';
 
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
@@ -302,29 +303,43 @@ export async function submitDraft(
     'product-creation: submission assessment recorded',
   );
 
-  const result = await prisma.product.updateMany({
-    where: {
-      id: productId,
-      createdByUserId: actor.id,
-      status: { in: ['draft', 'changes_required'] },
-      version: input.version,
-    },
-    data: { status: 'pending', submittedAt: new Date(), version: { increment: 1 } },
-  });
-
-  if (result.count === 0) {
-    const current = await prisma.product.findUnique({ where: { id: productId } });
-    if (!current) {
-      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
-    }
-    assertOwnDraftLike(current, actor.id);
-    throw new AppError({
-      status: 409,
-      code: ERROR_CODES.VERSION_CONFLICT,
-      title: 'This draft was changed since you last loaded it',
-      currentVersion: current.version,
+  const submittedAt = new Date();
+  await prisma.$transaction(async (tx) => {
+    const result = await tx.product.updateMany({
+      where: {
+        id: productId,
+        createdByUserId: actor.id,
+        status: { in: ['draft', 'changes_required'] },
+        version: input.version,
+      },
+      data: { status: 'pending', submittedAt, version: { increment: 1 } },
     });
-  }
+
+    if (result.count === 0) {
+      const current = await tx.product.findUnique({ where: { id: productId } });
+      if (!current) {
+        throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
+      }
+      assertOwnDraftLike(current, actor.id);
+      throw new AppError({
+        status: 409,
+        code: ERROR_CODES.VERSION_CONFLICT,
+        title: 'This draft was changed since you last loaded it',
+        currentVersion: current.version,
+      });
+    }
+
+    // The notification event shares this transaction: the guarded transition is
+    // the only path to `pending`, so keying the event on the post-transition
+    // version makes a resubmission a new occurrence while a lost-guard replay
+    // above records nothing.
+    await recordModerationNotificationEvent(tx, {
+      kind: 'new_product',
+      sourceId: productId,
+      submissionVersion: input.version + 1,
+      submittedAt,
+    });
+  });
 
   const updated = await prisma.product.findUniqueOrThrow({ where: { id: productId }, include: PRODUCT_INCLUDE });
   return toApiProduct(updated, { kind: 'privileged' });

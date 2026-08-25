@@ -18,20 +18,20 @@ export declare const reportSchema: z.ZodObject<{
     id: string;
     status: "open" | "resolved" | "dismissed";
     createdAt: string;
+    targetId: string;
     reason: "spam" | "abuse" | "incorrect" | "other";
     body: string | null;
     reporterId: string;
     targetType: "user" | "product" | "review" | "deal" | "giveaway";
-    targetId: string;
 }, {
     id: string;
     status: "open" | "resolved" | "dismissed";
     createdAt: string;
+    targetId: string;
     reason: "spam" | "abuse" | "incorrect" | "other";
     body: string | null;
     reporterId: string;
     targetType: "user" | "product" | "review" | "deal" | "giveaway";
-    targetId: string;
 }>;
 export type Report = z.infer<typeof reportSchema>;
 export declare const reportCreateSchema: z.ZodObject<{
@@ -40,14 +40,14 @@ export declare const reportCreateSchema: z.ZodObject<{
     reason: z.ZodEnum<["spam", "abuse", "incorrect", "other"]>;
     body: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    targetId: string;
     reason: "spam" | "abuse" | "incorrect" | "other";
     targetType: "user" | "product" | "review" | "deal" | "giveaway";
-    targetId: string;
     body?: string | undefined;
 }, {
+    targetId: string;
     reason: "spam" | "abuse" | "incorrect" | "other";
     targetType: "user" | "product" | "review" | "deal" | "giveaway";
-    targetId: string;
     body?: string | undefined;
 }>;
 export type ReportCreate = z.infer<typeof reportCreateSchema>;

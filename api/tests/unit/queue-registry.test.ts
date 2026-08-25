@@ -9,6 +9,7 @@ import {
   MODERATION_FLAG_QUEUE,
   PRODUCT_RATING_RECALC_QUEUE,
   PRODUCT_MEDIA_CLEANUP_QUEUE,
+  MODERATION_NOTIFICATION_QUEUE,
 } from '../../src/queues/index.js';
 
 describe('queue registry', () => {
@@ -23,6 +24,7 @@ describe('queue registry', () => {
         MODERATION_FLAG_QUEUE,
         PRODUCT_RATING_RECALC_QUEUE,
         PRODUCT_MEDIA_CLEANUP_QUEUE,
+        MODERATION_NOTIFICATION_QUEUE,
       ].sort(),
     );
   });

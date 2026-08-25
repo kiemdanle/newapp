@@ -15,8 +15,8 @@ export declare const adminReviewRowSchema: z.ZodObject<{
     id: string;
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     helpfulCount: number;
     notHelpfulCount: number;
@@ -25,8 +25,8 @@ export declare const adminReviewRowSchema: z.ZodObject<{
     id: string;
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     helpfulCount: number;
     notHelpfulCount: number;
@@ -44,15 +44,15 @@ export declare const adminReviewsQuerySchema: z.ZodObject<{
     limit: number;
     status?: "deleted" | "visible" | "hidden" | undefined;
     cursor?: string | undefined;
-    userId?: string | undefined;
     productId?: string | undefined;
+    userId?: string | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
 }, {
     status?: "deleted" | "visible" | "hidden" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
-    userId?: string | undefined;
     productId?: string | undefined;
+    userId?: string | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
 }>;
 export declare const adminReviewsListSchema: z.ZodObject<{
@@ -70,8 +70,8 @@ export declare const adminReviewsListSchema: z.ZodObject<{
         id: string;
         status: "deleted" | "visible" | "hidden";
         createdAt: string;
-        userId: string;
         productId: string;
+        userId: string;
         rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
         helpfulCount: number;
         notHelpfulCount: number;
@@ -80,8 +80,8 @@ export declare const adminReviewsListSchema: z.ZodObject<{
         id: string;
         status: "deleted" | "visible" | "hidden";
         createdAt: string;
-        userId: string;
         productId: string;
+        userId: string;
         rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
         helpfulCount: number;
         notHelpfulCount: number;
@@ -93,8 +93,8 @@ export declare const adminReviewsListSchema: z.ZodObject<{
         id: string;
         status: "deleted" | "visible" | "hidden";
         createdAt: string;
-        userId: string;
         productId: string;
+        userId: string;
         rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
         helpfulCount: number;
         notHelpfulCount: number;
@@ -106,8 +106,8 @@ export declare const adminReviewsListSchema: z.ZodObject<{
         id: string;
         status: "deleted" | "visible" | "hidden";
         createdAt: string;
-        userId: string;
         productId: string;
+        userId: string;
         rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
         helpfulCount: number;
         notHelpfulCount: number;

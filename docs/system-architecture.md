@@ -98,9 +98,10 @@ and all Prisma access.
   `RP_NAME`, `ORIGIN`).
 - **OAuth**: Google (`GOOGLE_CLIENT_ID`) and Apple (`APPLE_CLIENT_ID`/`TEAM_ID`/
   `KEY_ID`).
-- **RBAC**: two roles (`user`, `admin`). Decorators `requireAuth` /
-  `requireAdmin`, plus an admin-only plugin; admin actions logged to
-  `AdminAuditLog`.
+- **RBAC**: two roles (`user`, `admin`). `requireAuth` validates an active,
+  database-current user and token version; `requireAdmin` additionally checks the
+  database-current role so a pre-demotion JWT cannot retain privileged access.
+  Admin actions are logged to `AdminAuditLog`.
 
 The admin console does not hold its own session store: it delegates to the API
 and stores API tokens in HttpOnly cookies (`pantry_admin_access` 15min,
@@ -116,7 +117,10 @@ PostgreSQL via Prisma 5.18 (`api/prisma/schema.prisma`). Domains: identity/auth 
 `PushLog`), community (`Review`, `ReviewVote`, `Report`, `Deal`, `DealVote`,
 `Giveaway`, `GiveawayClaim`, `TransactionRating`, `Referral`), households
 (`Household`, `HouseholdMember`), media/operations (`MediaOperationOutbox`, `Setting`,
-`NotificationTemplate`, `NotificationOutbox`, `ApiError`, `AdminAuditLog`).
+`NotificationTemplate`, `NotificationOutbox`, `ModerationNotificationEvent`,
+`ModerationNotificationBatch`, `ModerationNotificationDelivery`,
+`ModerationNotificationPushAttempt`, `ModerationNotificationHealth`, `ApiError`,
+`AdminAuditLog`).
 
 A system user with a fixed UUID (ending `...0001`) owns system-generated actions
 such as auto-flagged moderation reports.
@@ -196,6 +200,9 @@ in test unless `RUN_WORKERS=1`):
 | moderation-flag | Profanity auto-flag -> reports as the system user |
 | product-rating-recalc | Recompute Wilson-score product ratings |
 | product-media-cleanup | Clean stale quarantine, orphan media, and old drafts (>30d) |
+| moderation-notifications | Batch fresh moderation arrivals and dispatch count-only FCM/email summaries |
+
+Moderation queue arrivals are persisted transactionally with `draft|changes_required -> pending` product and revision transitions. Every 15 minutes, the moderation worker claims unbatched occurrences with PostgreSQL `FOR UPDATE SKIP LOCKED`, creates one durable batch and recipient/channel deliveries, and sends count-only FCM/email summaries. A lifecycle watchdog executes the same DB-authoritative pass and re-upserts BullMQ's scheduler after Redis state loss. Delivery claims, renewals, and finalizers use opaque lease-owner tokens; provider outcomes are at-least-once at the external boundary, but a successful channel is never retried because its sibling failed. Terminal history is retained for 90 days. The trusted queue link is constructed from the canonical `ADMIN_URL` origin; mobile opens a moderation tap only when it exactly matches its independently configured `MOBILE_ADMIN_URL` origin and `/products/pending` path.
 
 Notifications use the **outbox** pattern: work is enqueued in the same DB
 transaction as the state change, and `sweepOutbox` runs after commit so a

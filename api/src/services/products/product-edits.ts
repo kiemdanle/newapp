@@ -14,6 +14,7 @@ import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { writeAuditLog } from '../audit/log.js';
+import { recordModerationNotificationEvent } from '../notifications/moderation-notification-events.js';
 import type { RequestMeta } from './product-moderation.js';
 import { getVisibleProduct, type ProductActor } from './product-visibility.js';
 import { toApiProduct } from './serializer.js';
@@ -245,16 +246,28 @@ export interface ResolveProductEditInput {
 
 async function submitProductEdit(actor: ProductActor, editId: string, version: number): Promise<ProductEditRow> {
   const prisma = getPrisma();
-  const result = await prisma.productEdit.updateMany({
-    where: { id: editId, submittedBy: actor.id, isLegacy: false, status: { in: ['draft', 'changes_required'] }, version },
-    data: { status: 'pending', submittedAt: new Date(), moderationNotes: null, resolvedBy: null, resolvedAt: null, version: { increment: 1 } },
+  const submittedAt = new Date();
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.productEdit.updateMany({
+      where: { id: editId, submittedBy: actor.id, isLegacy: false, status: { in: ['draft', 'changes_required'] }, version },
+      data: { status: 'pending', submittedAt, moderationNotes: null, resolvedBy: null, resolvedAt: null, version: { increment: 1 } },
+    });
+    if (result.count === 0) {
+      const current = await tx.productEdit.findUnique({ where: { id: editId } });
+      if (!current || current.submittedBy !== actor.id) notFound();
+      editVersionConflict(current.version);
+    }
+    // Same-transaction notification event keyed on the post-transition version:
+    // a `changes_required -> pending` resubmission is a fresh occurrence, while a
+    // stale/replayed submit fails the guard above and records nothing.
+    await recordModerationNotificationEvent(tx, {
+      kind: 'product_revision',
+      sourceId: editId,
+      submissionVersion: version + 1,
+      submittedAt,
+    });
+    return tx.productEdit.findUniqueOrThrow({ where: { id: editId }, include: EDIT_INCLUDE });
   });
-  if (result.count === 0) {
-    const current = await prisma.productEdit.findUnique({ where: { id: editId } });
-    if (!current || current.submittedBy !== actor.id) notFound();
-    editVersionConflict(current.version);
-  }
-  const updated = await prisma.productEdit.findUniqueOrThrow({ where: { id: editId }, include: EDIT_INCLUDE });
   return toProductEditRow(updated);
 }
 
@@ -740,8 +753,12 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
       await enqueueMediaCleanup(tx, { operation: 'delete_private', keys: droppedStagedKeys });
     }
 
+    const rebaseSubmittedAt = new Date();
     const rebaseResult = await tx.productEdit.updateMany({
-      where: { id: edit.id, version: input.editVersion },
+      // The pre-transaction product version check is advisory. Keep the
+      // product-base guard on the authoritative transition too, so a concurrent
+      // live-product update cannot rebase this edit onto an already stale base.
+      where: { id: edit.id, version: input.editVersion, product: { version: product.version } },
       data: {
         status: 'pending',
         baseProductVersion: product.version,
@@ -749,7 +766,7 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
         // new note — a rebase with no notes must not silently wipe a previous
         // request_changes reason the creator may not have read yet.
         moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,
-        submittedAt: new Date(),
+        submittedAt: rebaseSubmittedAt,
         resolvedBy: null,
         resolvedAt: null,
         version: { increment: 1 },
@@ -759,6 +776,14 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
       const current = await tx.productEdit.findUnique({ where: { id: edit.id }, select: { version: true } });
       editVersionConflict(current?.version ?? edit.version);
     }
+    // A rebase that returns the edit to `pending` is newly reviewable work and
+    // must alert like any other fresh queue arrival.
+    await recordModerationNotificationEvent(tx, {
+      kind: 'product_revision',
+      sourceId: edit.id,
+      submissionVersion: input.editVersion + 1,
+      submittedAt: rebaseSubmittedAt,
+    });
 
     await writeAuditLog(
       {

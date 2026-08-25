@@ -33,6 +33,10 @@ import {
   pushLogsListSchema,
   apiErrorsAggSchema,
   externalApiStateSchema,
+  moderationNotificationBatchesListSchema,
+  moderationNotificationDeliveriesListSchema,
+  moderationNotificationHealthSchema,
+  moderationNotificationSummarySchema,
   featureFlagsSchema,
   moderationSettingsSchema,
   notificationTemplateSchema,
@@ -189,6 +193,24 @@ export const serverAdminApi = {
       apiServerFetch('/v1/admin/system/external-apis').then((r) =>
         externalApiStateSchema.parse(r),
       ),
+    moderationNotifications: {
+      summary: () =>
+        apiServerFetch('/v1/admin/system/moderation-notifications/summary').then((r) =>
+          moderationNotificationSummarySchema.parse(r),
+        ),
+      list: (q: Q = {}) =>
+        apiServerFetch(`/v1/admin/system/moderation-notifications${qs(q)}`).then((r) =>
+          moderationNotificationBatchesListSchema.parse(r),
+        ),
+      deliveries: (batchId: string, q: Q = {}) =>
+        apiServerFetch(`/v1/admin/system/moderation-notifications/${batchId}/deliveries${qs(q)}`).then((r) =>
+          moderationNotificationDeliveriesListSchema.parse(r),
+        ),
+      health: () =>
+        apiServerFetch('/v1/admin/system/moderation-notifications/health').then((r) =>
+          moderationNotificationHealthSchema.parse(r),
+        ),
+    },
   },
   settings: {
     featureFlags: {

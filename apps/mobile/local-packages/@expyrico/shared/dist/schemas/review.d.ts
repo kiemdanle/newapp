@@ -38,8 +38,8 @@ export declare const reviewSchema: z.ZodObject<{
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
     updatedAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     score: number;
     rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     body: string | null;
@@ -56,8 +56,8 @@ export declare const reviewSchema: z.ZodObject<{
     status: "deleted" | "visible" | "hidden";
     createdAt: string;
     updatedAt: string;
-    userId: string;
     productId: string;
+    userId: string;
     score: number;
     rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     body: string | null;

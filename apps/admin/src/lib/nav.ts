@@ -55,6 +55,7 @@ export const NAV: NavSection[] = [
     items: [
       { label: 'Queue', href: '/system/queue', icon: 'Server' },
       { label: 'Push logs', href: '/system/push', icon: 'Smartphone' },
+      { label: 'Moderation notifications', href: '/system/moderation-notifications', icon: 'Bell' },
       { label: 'API errors', href: '/system/api-errors', icon: 'AlertTriangle' },
       { label: 'External APIs', href: '/system/external-apis', icon: 'Webhook' },
     ],

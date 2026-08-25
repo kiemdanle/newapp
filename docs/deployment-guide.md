@@ -100,18 +100,26 @@ Ordered, atomic release with rollback:
 Backup/restore: `infra/scripts/backup.sh` and `restore.sh` are present;
 `certbot` reloads via `reload-nginx.sh`.
 
-> **Verified bug (high priority)**: `deploy-remote.sh` (lines ~57-59) runs the
-> Prisma steps filtered on the wrong package name:
->
-> ```sh
-> pnpm --filter @pantry/api exec prisma generate
-> pnpm --filter @pantry/api exec prisma migrate deploy
-> ```
->
-> The actual package is `@expyrico/api`, so these filters match nothing and the
-> migrate step no-ops or fails during release. `deploy.yml` uses the correct
-> `@expyrico/api`. Fix the filter to `@expyrico/api` before relying on
-> auto-migration during deploy.
+### Moderation notification rollout and recovery
+
+Before enabling production moderation notifications, use a production-equivalent
+staging environment to prove the deployment boundary: run `prisma migrate
+deploy` and `prisma generate`, verify the moderation tables/indexes and the
+`moderation_queue` template, start workers, then flush Redis without restarting
+the process. The watchdog must re-upsert the 15-minute scheduler and drain a
+durable event. Submit one product, one revision, and one pending-producing
+rebase; verify count-only push/email, channel/token history, canonical queue
+link, and no provider call on a later empty tick.
+
+Watch `GET /v1/admin/system/moderation-notifications/health` for the last
+successful tick/recovery/reconciliation times, stranded-work timestamps,
+pending deliveries, and terminal failures. The normal rollback is
+**application-only**: quiesce/drain the scheduler, watchdog, and delivery
+claims, then deploy the previous binary. Keep the additive schema and durable
+history intact. Do not drop moderation tables as routine rollback; an
+exceptional schema reversal requires an audited Prisma migration-ledger and
+backup-restoration procedure.
+
 
 ## Environment variables (API)
 
@@ -142,7 +150,7 @@ critical var is missing or malformed.
 | `ANDROID_PACKAGE_NAME`, `ANDROID_SHA256_CERT_FINGERPRINTS` | optional; when set, API serves `/.well-known/assetlinks.json` for Android passkeys |
 | `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USER?`, `SMTP_PASS?`, `SMTP_FROM` | email |
 | `APP_DEEP_LINK` | password-reset deep link base |
-| `ADMIN_URL` | CORS allowlist + links |
+| `ADMIN_URL` | Canonical admin-console origin for CORS and moderation links; no path/query/fragment/credentials, HTTPS in production |
 | `COUNTRY_DETECT_PRIMARY`, `COUNTRY_DETECT_FALLBACK` | geo detection |
 
 ### Admin environment variables
@@ -159,7 +167,9 @@ keypair used by the backup scripts.
 
 ## Mobile build and distribution
 
-Mobile builds use local Gradle + adb.
+Mobile builds use local Gradle + adb. `MOBILE_ADMIN_URL` is a public build-time
+configuration value for moderation push taps; in production it must exactly match
+the canonical HTTPS `ADMIN_URL` origin (without path, credentials, query, or fragment).
 
 ```bash
 pnpm mobile:apk   # assembleRelease; pins JAVA_HOME to Android Studio JBR

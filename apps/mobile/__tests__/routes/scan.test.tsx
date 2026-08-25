@@ -111,6 +111,9 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
         expect.objectContaining({ productId: null, customName: 'Frozen peas' }),
       ),
     );
+    // After a successful save the form must hand off to the pantry tabs —
+    // regression coverage for the device report "item added but screen stuck".
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('Tabs'));
   });
 
   it('not_found with canCreate=true: shows Create, which routes to a fresh ProductNew without a productId', async () => {
