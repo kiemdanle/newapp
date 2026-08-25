@@ -71,8 +71,13 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     await initThemeStore();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('shows a Settings prompt when camera access is denied', async () => {
     mockInitialPermission = 'denied';
+    mockCheckPermission.mockResolvedValue('denied');
     const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
     const { findByTestId, getByText } = render(wrap(<ScanScreen />));
 
@@ -89,13 +94,14 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     mockCheckPermission.mockResolvedValueOnce('denied').mockResolvedValueOnce('granted');
     const remove = jest.fn();
     let appStateChangeListener: ((nextState: string) => void) | undefined;
-    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
+    const addEventListener = jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
       appStateChangeListener = listener as (nextState: string) => void;
       return { remove };
     });
     const { unmount } = render(wrap(<ScanScreen />));
 
     await waitFor(() => expect(mockCheckPermission).toHaveBeenCalledTimes(1));
+    expect(addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
     expect(appStateChangeListener).toEqual(expect.any(Function));
 
     await act(async () => {
