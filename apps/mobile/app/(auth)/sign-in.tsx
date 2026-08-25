@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../src/navigation/AuthNavigator';
@@ -142,8 +143,12 @@ export default function SignIn() {
   }
 
   return (
-    <Screen backFallback="/(auth)/welcome">
-      <AuthHeader title="Welcome back" description="Sign in to scan items, track expiry dates, and keep your pantry current." />
+    <Screen backFallback="/(auth)/welcome" contentContainerStyle={styles.container}>
+      <AuthHeader
+        compact
+        title="Welcome back"
+        description="Sign in to your Expyrico pantry"
+      />
 
       <View style={styles.form}>
         <TextField
@@ -154,15 +159,29 @@ export default function SignIn() {
           onChangeText={setEmail}
           error={errors.email}
         />
-        <TextField
-          label="Password"
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={password}
-          onChangeText={setPassword}
-          error={errors.password}
-        />
+        <View style={styles.passwordWrap}>
+          <TextField
+            label="Password"
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            showPasswordToggle
+            value={password}
+            onChangeText={setPassword}
+            error={errors.password}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password?"
+            hitSlop={8}
+            style={styles.forgotLink}
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text style={[styles.forgotText, { color: theme.colors.primaryDark }]}>
+              Forgot?
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <Button
@@ -172,55 +191,170 @@ export default function SignIn() {
         loading={loading}
       />
 
-      <Button
-        label="Forgot password?"
-        variant="ghost"
-        onPress={() => navigation.navigate('ForgotPassword')}
-      />
-
       {formError ? <ErrorText>{formError}</ErrorText> : null}
       {formNotice ? (
-        <Text style={{ color: theme.colors.textMuted, textAlign: 'center', fontSize: 13 }}>
+        <Text style={[styles.noticeText, { color: theme.colors.textMuted }]}>
           {formNotice}
         </Text>
       ) : null}
 
       <View style={styles.divider}>
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
-        <Text style={[styles.dividerText, { color: theme.colors.textMuted }]}>or continue with</Text>
+        <Text style={[styles.dividerText, { color: theme.colors.textMuted }]}>
+          or continue with
+        </Text>
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
       </View>
 
-      <Button
-        testID="sign-in-google"
-        label="Continue with Google"
-        variant="outline"
-        leading={<GoogleLogo />}
-        onPress={onGoogle}
-      />
-      {appleAvailable && Platform.OS === 'ios' ? (
-        <Button
-          testID="sign-in-apple"
-          label="Continue with Apple"
-          icon="logo-apple"
-          variant="outline"
-          onPress={onApple}
-        />
-      ) : null}
-      <Button
-        testID="sign-in-passkey"
-        label="Use a passkey"
-        icon="key"
-        variant="ghost"
-        onPress={onPasskey}
-        loading={loading}
-      />
+      <View style={styles.socialRow}>
+        <Pressable
+          testID="sign-in-google"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.socialBtn,
+            {
+              borderColor: theme.colors.border,
+              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+            },
+          ]}
+          onPress={onGoogle}
+          disabled={loading}
+        >
+          <GoogleLogo size={18} />
+          <Text style={[styles.socialBtnText, { color: theme.colors.text }]}>Google</Text>
+        </Pressable>
+
+        <Pressable
+          testID="sign-in-passkey"
+          accessibilityLabel="Use a passkey"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.socialBtn,
+            {
+              borderColor: theme.colors.border,
+              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+            },
+          ]}
+          onPress={onPasskey}
+          disabled={loading}
+        >
+          <Ionicons name="key" size={17} color={theme.colors.primary} />
+          <Text style={[styles.socialBtnText, { color: theme.colors.text }]}>Passkey</Text>
+        </Pressable>
+
+        {appleAvailable && Platform.OS === 'ios' ? (
+          <Pressable
+            testID="sign-in-apple"
+            accessibilityLabel="Continue with Apple"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.socialBtn,
+              {
+                borderColor: theme.colors.border,
+                backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+              },
+            ]}
+            onPress={onApple}
+            disabled={loading}
+          >
+            <Ionicons name="logo-apple" size={18} color={theme.colors.text} />
+            <Text style={[styles.socialBtnText, { color: theme.colors.text }]}>Apple</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <View style={styles.footerRow}>
+        <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
+          Don't have an account?
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign up"
+          hitSlop={8}
+          onPress={() => navigation.navigate('SignUp')}
+        >
+          <Text style={[styles.signUpText, { color: theme.colors.primaryDark }]}>
+            Sign up
+          </Text>
+        </Pressable>
+      </View>
     </Screen>
   );
 }
+
 const styles = StyleSheet.create({
-  form: { gap: 14 },
-  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 16 },
-  dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 12, fontWeight: '500' },
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  form: {
+    gap: 10,
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  forgotLink: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  noticeText: {
+    textAlign: 'center',
+    fontSize: 13,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  socialRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  socialBtn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  socialBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  footerText: {
+    fontSize: 14,
+  },
+  signUpText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
 });

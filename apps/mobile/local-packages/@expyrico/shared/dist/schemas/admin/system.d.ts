@@ -8,34 +8,34 @@ export declare const queueHealthSchema: z.ZodObject<{
         failed: z.ZodNumber;
         delayed: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
+        active: number;
         name: string;
         waiting: number;
-        active: number;
         completed: number;
         failed: number;
         delayed: number;
     }, {
+        active: number;
         name: string;
         waiting: number;
-        active: number;
         completed: number;
         failed: number;
         delayed: number;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     queues: {
+        active: number;
         name: string;
         waiting: number;
-        active: number;
         completed: number;
         failed: number;
         delayed: number;
     }[];
 }, {
     queues: {
+        active: number;
         name: string;
         waiting: number;
-        active: number;
         completed: number;
         failed: number;
         delayed: number;
@@ -49,19 +49,19 @@ export declare const pushLogRowSchema: z.ZodObject<{
     errorMessage: z.ZodNullable<z.ZodString>;
     createdAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    status: "failed" | "sent";
     id: string;
+    status: "failed" | "sent";
+    createdAt: string;
     userId: string;
     templateKey: string;
     errorMessage: string | null;
-    createdAt: string;
 }, {
-    status: "failed" | "sent";
     id: string;
+    status: "failed" | "sent";
+    createdAt: string;
     userId: string;
     templateKey: string;
     errorMessage: string | null;
-    createdAt: string;
 }>;
 export declare const pushLogsQuerySchema: z.ZodObject<{
     cursor: z.ZodOptional<z.ZodString>;
@@ -72,13 +72,13 @@ export declare const pushLogsQuerySchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     limit: number;
     status?: "failed" | "sent" | undefined;
-    userId?: string | undefined;
     cursor?: string | undefined;
+    userId?: string | undefined;
 }, {
     status?: "failed" | "sent" | undefined;
-    userId?: string | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
+    userId?: string | undefined;
 }>;
 export declare const pushLogsListSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{
@@ -89,39 +89,39 @@ export declare const pushLogsListSchema: z.ZodObject<{
         errorMessage: z.ZodNullable<z.ZodString>;
         createdAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        status: "failed" | "sent";
         id: string;
+        status: "failed" | "sent";
+        createdAt: string;
         userId: string;
         templateKey: string;
         errorMessage: string | null;
-        createdAt: string;
     }, {
-        status: "failed" | "sent";
         id: string;
+        status: "failed" | "sent";
+        createdAt: string;
         userId: string;
         templateKey: string;
         errorMessage: string | null;
-        createdAt: string;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "failed" | "sent";
         id: string;
+        status: "failed" | "sent";
+        createdAt: string;
         userId: string;
         templateKey: string;
         errorMessage: string | null;
-        createdAt: string;
     }[];
     nextCursor: string | null;
 }, {
     items: {
-        status: "failed" | "sent";
         id: string;
+        status: "failed" | "sent";
+        createdAt: string;
         userId: string;
         templateKey: string;
         errorMessage: string | null;
-        createdAt: string;
     }[];
     nextCursor: string | null;
 }>;
@@ -153,15 +153,15 @@ export declare const moderationNotificationBatchRowSchema: z.ZodObject<{
         skipped: z.ZodNumber;
         failed: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
+        pending: number;
         failed: number;
         sent: number;
-        pending: number;
         processing: number;
         skipped: number;
     }, {
+        pending: number;
         failed: number;
         sent: number;
-        pending: number;
         processing: number;
         skipped: number;
     }>;
@@ -174,9 +174,9 @@ export declare const moderationNotificationBatchRowSchema: z.ZodObject<{
     revisionCount: number;
     recipientCount: number;
     deliverySummary: {
+        pending: number;
         failed: number;
         sent: number;
-        pending: number;
         processing: number;
         skipped: number;
     };
@@ -189,9 +189,9 @@ export declare const moderationNotificationBatchRowSchema: z.ZodObject<{
     revisionCount: number;
     recipientCount: number;
     deliverySummary: {
+        pending: number;
         failed: number;
         sent: number;
-        pending: number;
         processing: number;
         skipped: number;
     };
@@ -203,10 +203,10 @@ export declare const moderationNotificationBatchesQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodEnum<["pending", "processing", "sent", "skipped", "failed"]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "failed" | "sent" | "pending" | "processing" | "skipped" | undefined;
+    status?: "pending" | "failed" | "sent" | "processing" | "skipped" | undefined;
     cursor?: string | undefined;
 }, {
-    status?: "failed" | "sent" | "pending" | "processing" | "skipped" | undefined;
+    status?: "pending" | "failed" | "sent" | "processing" | "skipped" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
 }>;
@@ -226,15 +226,15 @@ export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
             skipped: z.ZodNumber;
             failed: z.ZodNumber;
         }, "strip", z.ZodTypeAny, {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         }, {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         }>;
@@ -247,9 +247,9 @@ export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
         revisionCount: number;
         recipientCount: number;
         deliverySummary: {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         };
@@ -262,9 +262,9 @@ export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
         revisionCount: number;
         recipientCount: number;
         deliverySummary: {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         };
@@ -280,9 +280,9 @@ export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
         revisionCount: number;
         recipientCount: number;
         deliverySummary: {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         };
@@ -298,9 +298,9 @@ export declare const moderationNotificationBatchesListSchema: z.ZodObject<{
         revisionCount: number;
         recipientCount: number;
         deliverySummary: {
+            pending: number;
             failed: number;
             sent: number;
-            pending: number;
             processing: number;
             skipped: number;
         };
@@ -329,11 +329,11 @@ export declare const moderationNotificationDeliveryRowSchema: z.ZodObject<{
         invalid: number;
     }>>;
 }, "strip", z.ZodTypeAny, {
-    status: "failed" | "sent" | "pending" | "processing" | "skipped";
     id: string;
+    status: "pending" | "failed" | "sent" | "processing" | "skipped";
     errorMessage: string | null;
     batchId: string;
-    channel: "push" | "email";
+    channel: "email" | "push";
     attempts: number;
     completedAt: string | null;
     tokenSummary: {
@@ -342,11 +342,11 @@ export declare const moderationNotificationDeliveryRowSchema: z.ZodObject<{
         invalid: number;
     } | null;
 }, {
-    status: "failed" | "sent" | "pending" | "processing" | "skipped";
     id: string;
+    status: "pending" | "failed" | "sent" | "processing" | "skipped";
     errorMessage: string | null;
     batchId: string;
-    channel: "push" | "email";
+    channel: "email" | "push";
     attempts: number;
     completedAt: string | null;
     tokenSummary: {
@@ -378,11 +378,11 @@ export declare const moderationNotificationDeliveriesListSchema: z.ZodObject<{
             invalid: number;
         }>>;
     }, "strip", z.ZodTypeAny, {
-        status: "failed" | "sent" | "pending" | "processing" | "skipped";
         id: string;
+        status: "pending" | "failed" | "sent" | "processing" | "skipped";
         errorMessage: string | null;
         batchId: string;
-        channel: "push" | "email";
+        channel: "email" | "push";
         attempts: number;
         completedAt: string | null;
         tokenSummary: {
@@ -391,11 +391,11 @@ export declare const moderationNotificationDeliveriesListSchema: z.ZodObject<{
             invalid: number;
         } | null;
     }, {
-        status: "failed" | "sent" | "pending" | "processing" | "skipped";
         id: string;
+        status: "pending" | "failed" | "sent" | "processing" | "skipped";
         errorMessage: string | null;
         batchId: string;
-        channel: "push" | "email";
+        channel: "email" | "push";
         attempts: number;
         completedAt: string | null;
         tokenSummary: {
@@ -407,11 +407,11 @@ export declare const moderationNotificationDeliveriesListSchema: z.ZodObject<{
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "failed" | "sent" | "pending" | "processing" | "skipped";
         id: string;
+        status: "pending" | "failed" | "sent" | "processing" | "skipped";
         errorMessage: string | null;
         batchId: string;
-        channel: "push" | "email";
+        channel: "email" | "push";
         attempts: number;
         completedAt: string | null;
         tokenSummary: {
@@ -423,11 +423,11 @@ export declare const moderationNotificationDeliveriesListSchema: z.ZodObject<{
     nextCursor: string | null;
 }, {
     items: {
-        status: "failed" | "sent" | "pending" | "processing" | "skipped";
         id: string;
+        status: "pending" | "failed" | "sent" | "processing" | "skipped";
         errorMessage: string | null;
         batchId: string;
-        channel: "push" | "email";
+        channel: "email" | "push";
         attempts: number;
         completedAt: string | null;
         tokenSummary: {
@@ -475,9 +475,9 @@ export declare const moderationNotificationHealthSchema: z.ZodObject<{
 export declare const apiErrorsQuerySchema: z.ZodObject<{
     range: z.ZodDefault<z.ZodEnum<["24h", "7d", "30d"]>>;
 }, "strip", z.ZodTypeAny, {
-    range: "24h" | "7d" | "30d";
+    range: "7d" | "30d" | "24h";
 }, {
-    range?: "24h" | "7d" | "30d" | undefined;
+    range?: "7d" | "30d" | "24h" | undefined;
 }>;
 export declare const apiErrorsAggSchema: z.ZodObject<{
     range: z.ZodEnum<["24h", "7d", "30d"]>;
@@ -488,30 +488,30 @@ export declare const apiErrorsAggSchema: z.ZodObject<{
         count: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         status: number;
+        count: number;
         route: string;
         method: string;
-        count: number;
     }, {
         status: number;
+        count: number;
         route: string;
         method: string;
-        count: number;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
-    range: "24h" | "7d" | "30d";
+    range: "7d" | "30d" | "24h";
     rows: {
         status: number;
+        count: number;
         route: string;
         method: string;
-        count: number;
     }[];
 }, {
-    range: "24h" | "7d" | "30d";
+    range: "7d" | "30d" | "24h";
     rows: {
         status: number;
+        count: number;
         route: string;
         method: string;
-        count: number;
     }[];
 }>;
 export declare const externalApiStateSchema: z.ZodObject<{
@@ -524,14 +524,14 @@ export declare const externalApiStateSchema: z.ZodObject<{
         lastFailureAt: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         name: string;
-        state: "closed" | "open" | "halfOpen";
+        state: "open" | "closed" | "halfOpen";
         fires: number;
         failures: number;
         successes: number;
         lastFailureAt: string | null;
     }, {
         name: string;
-        state: "closed" | "open" | "halfOpen";
+        state: "open" | "closed" | "halfOpen";
         fires: number;
         failures: number;
         successes: number;
@@ -540,7 +540,7 @@ export declare const externalApiStateSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     breakers: {
         name: string;
-        state: "closed" | "open" | "halfOpen";
+        state: "open" | "closed" | "halfOpen";
         fires: number;
         failures: number;
         successes: number;
@@ -549,7 +549,7 @@ export declare const externalApiStateSchema: z.ZodObject<{
 }, {
     breakers: {
         name: string;
-        state: "closed" | "open" | "halfOpen";
+        state: "open" | "closed" | "halfOpen";
         fires: number;
         failures: number;
         successes: number;

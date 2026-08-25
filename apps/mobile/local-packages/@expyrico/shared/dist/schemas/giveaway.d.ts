@@ -64,6 +64,7 @@ export declare const giveawaySchema: z.ZodObject<{
     title: string;
     productId: string | null;
     photoUrl: string | null;
+    completedAt: string | null;
     giverUserId: string;
     recordId: string | null;
     locationText: string;
@@ -71,7 +72,6 @@ export declare const giveawaySchema: z.ZodObject<{
     claimExpiresAt: string | null;
     handedOffAt: string | null;
     confirmedAt: string | null;
-    completedAt: string | null;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
@@ -95,6 +95,7 @@ export declare const giveawaySchema: z.ZodObject<{
     title: string;
     productId: string | null;
     photoUrl: string | null;
+    completedAt: string | null;
     giverUserId: string;
     recordId: string | null;
     locationText: string;
@@ -102,7 +103,6 @@ export declare const giveawaySchema: z.ZodObject<{
     claimExpiresAt: string | null;
     handedOffAt: string | null;
     confirmedAt: string | null;
-    completedAt: string | null;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
