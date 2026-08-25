@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor, act } from '@testing-library/react-native';
+import { AppState, Linking } from 'react-native';
 import ScanScreen from '../../app/(app)/scan';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
@@ -7,6 +8,10 @@ import { navigation } from '../../tests/mocks/react-navigation';
 import { createLocalRecord } from '../../src/api/records';
 
 let triggerScan: ((r: { kind: 'barcode' | 'qr'; value: string }) => void) | null = null;
+let mockInitialPermission: 'granted' | 'denied' = 'granted';
+const mockCheckPermission = jest.fn();
+const mockRequestPermission = jest.fn();
+
 jest.mock('../../src/features/scan/ScanCamera', () => ({
   ScanCamera: ({ onScan }: { onScan: (r: { kind: 'barcode' | 'qr'; value: string }) => void }) => {
     triggerScan = onScan;
@@ -14,9 +19,20 @@ jest.mock('../../src/features/scan/ScanCamera', () => ({
   },
 }));
 
-jest.mock('../../src/features/scan/usePermission', () => ({
-  useCameraPermission: () => ({ state: 'granted', request: jest.fn(), check: jest.fn() }),
-}));
+jest.mock('../../src/features/scan/usePermission', () => {
+  const React = require('react');
+  return {
+    useCameraPermission: () => {
+      const [state, setState] = React.useState(mockInitialPermission);
+      const check = React.useCallback(async () => {
+        const next = await mockCheckPermission();
+        setState(next);
+        return next;
+      }, []);
+      return { state, request: mockRequestPermission, check };
+    },
+  };
+});
 
 jest.mock('../../src/api/records', () => ({
   createLocalRecord: jest.fn().mockResolvedValue('local-id-1'),
@@ -46,9 +62,52 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockLookup.mockReset();
+    mockInitialPermission = 'granted';
+    mockCheckPermission.mockReset();
+    mockCheckPermission.mockResolvedValue('granted');
+    mockRequestPermission.mockReset();
     triggerScan = null;
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
+  });
+
+  it('shows a Settings prompt when camera access is denied', async () => {
+    mockInitialPermission = 'denied';
+    const openSettings = jest.spyOn(Linking, 'openSettings').mockResolvedValue(undefined);
+    const { findByTestId, getByText } = render(wrap(<ScanScreen />));
+
+    expect(await findByTestId('camera-permission-denied-modal')).toBeTruthy();
+    expect(getByText('Camera access is off')).toBeTruthy();
+
+    await act(async () => fireEvent.press(await findByTestId('camera-permission-denied-open-settings')));
+
+    expect(openSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes camera permission when the app becomes active again', async () => {
+    mockInitialPermission = 'denied';
+    mockCheckPermission.mockResolvedValueOnce('denied').mockResolvedValueOnce('granted');
+    const remove = jest.fn();
+    let appStateChangeListener: ((nextState: string) => void) | undefined;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
+      appStateChangeListener = listener as (nextState: string) => void;
+      return { remove };
+    });
+    const { unmount } = render(wrap(<ScanScreen />));
+
+    await waitFor(() => expect(mockCheckPermission).toHaveBeenCalledTimes(1));
+    expect(appStateChangeListener).toEqual(expect.any(Function));
+
+    await act(async () => {
+      appStateChangeListener?.('background');
+      appStateChangeListener?.('active');
+    });
+
+    await waitFor(() => expect(mockCheckPermission).toHaveBeenCalledTimes(2));
+    expect(triggerScan).not.toBeNull();
+
+    unmount();
+    expect(remove).toHaveBeenCalledTimes(1);
   });
 
   it('found: navigates straight to the public Product screen', async () => {
