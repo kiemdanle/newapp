@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { AppState, Linking, View, Text, TextInput, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { ScanCamera, type ScanResult } from '../../src/features/scan/ScanCamera';
 import { useCameraPermission } from '../../src/features/scan/usePermission';
 import { PrePromptModal } from '../../src/features/scan/PrePromptModal';
+import { CameraPermissionDeniedModal } from '../../src/features/scan/CameraPermissionDeniedModal';
 import { useProductLookupV2 } from '../../src/api/products';
 import { AddRecordForm } from '../../src/features/records/AddRecordForm';
 import { useTheme } from '../../src/theme/useTheme';
-import { Screen } from '../../src/components/Screen';
 import { Button } from '../../src/components/Button';
 import type { AppNavigationProp } from '../../src/navigation/AppNavigator';
 
@@ -44,9 +44,22 @@ export default function ScanScreen() {
   // 'looking-up') would otherwise both pass a `ui.phase !== 'scanning'`
   // check, since state updates don't apply mid-callback.
   const lookupInFlightRef = useRef(false);
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     void check();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (
+        (appStateRef.current === 'inactive' || appStateRef.current === 'background') &&
+        nextAppState === 'active'
+      ) {
+        void check();
+      }
+      appStateRef.current = nextAppState;
+    });
+
+    return () => subscription.remove();
   }, [check]);
 
   const runLookup = useCallback(
@@ -169,13 +182,12 @@ export default function ScanScreen() {
   }
   if (permissionState === 'denied') {
     return (
-      <Screen>
-        <View style={{ alignItems: 'center', backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg, borderWidth: 1, gap: theme.spacing.md, marginTop: theme.spacing.xxl, padding: theme.spacing.xl }}>
-          <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineSmall.fontSize, fontWeight: theme.typeRamp.headlineSmall.fontWeight as never }}>Camera access is off</Text>
-          <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Allow camera access in your phone settings to scan a barcode or expiry label.</Text>
-          <Button label="Go back" variant="outline" icon="arrow-back" onPress={() => navigation.goBack()} />
-        </View>
-      </Screen>
+      <CameraPermissionDeniedModal
+        onCancel={() => navigation.goBack()}
+        onOpenSettings={() => {
+          void Linking.openSettings();
+        }}
+      />
     );
   }
 
