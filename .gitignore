@@ -80,3 +80,4 @@ infra/group_vars/*.yml
 # AI tooling (local, not project source)
 .claude/
 .codegraph/
+banks/

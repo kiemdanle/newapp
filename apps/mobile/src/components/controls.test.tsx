@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, TextInput, View, type ViewStyle } from 'react-native';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { themes } from '@expyrico/theme';
 import { Button } from './Button';
 import { EmptyState } from './EmptyState';
@@ -56,6 +56,26 @@ describe('shared Expyrico controls', () => {
     expect(style.minHeight).toBeGreaterThanOrEqual(48);
     expect(style.borderColor).toBe(theme.colors.danger);
     expect(screen.getByText('Enter an email').props.style[1].color).toBe(theme.colors.danger);
+  });
+
+  it('prevents auto-capitalization and provides show/hide password toggle on password fields', () => {
+    const screen = render(<TextField label="Password" secureTextEntry value="mySecret123" onChangeText={jest.fn()} />);
+    const input = screen.getByLabelText('Password');
+
+    expect(input.props.autoCapitalize).toBe('none');
+    expect(input.props.autoCorrect).toBe(false);
+    expect(input.props.secureTextEntry).toBe(true);
+
+    const toggle = screen.getByLabelText('Show password');
+    expect(toggle).toBeTruthy();
+
+    fireEvent.press(toggle);
+    expect(input.props.secureTextEntry).toBe(false);
+    expect(screen.getByLabelText('Hide password')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Hide password'));
+    expect(input.props.secureTextEntry).toBe(true);
+    expect(screen.getByLabelText('Show password')).toBeTruthy();
   });
 
   it('keeps native OTP autofill while using the Expyrico filled and active states', () => {

@@ -191,25 +191,32 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
         {fields.description.length}/{DESCRIPTION_MAX}
       </Text>
 
-      <Text style={{ color: theme.colors.textMuted }}>Brand (optional)</Text>
-      <TextInput
-        accessibilityLabel="Brand"
-        testID="draft-brand"
-        editable={!readOnly}
-        style={input}
-        value={fields.brand}
-        onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
-      />
+      {/* 2-Column Row for Brand & Category */}
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Brand (optional)</Text>
+          <TextInput
+            accessibilityLabel="Brand"
+            testID="draft-brand"
+            editable={!readOnly}
+            style={input}
+            value={fields.brand}
+            onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
+          />
+        </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Category (optional)</Text>
-      <TextInput
-        accessibilityLabel="Category"
-        testID="draft-category"
-        editable={!readOnly}
-        style={input}
-        value={fields.category}
-        onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
-      />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Category (optional)</Text>
+          <TextInput
+            accessibilityLabel="Category"
+            testID="draft-category"
+            editable={!readOnly}
+            style={input}
+            value={fields.category}
+            onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
+          />
+        </View>
+      </View>
 
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 

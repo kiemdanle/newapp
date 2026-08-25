@@ -7,24 +7,28 @@ import { registerPushTokenApi } from '../../api/push';
 export const PUSH_REGISTERED_FLAG_KEY = 'pantry.pushRegisteredV1';
 
 export async function ensurePushTokenRegistered(): Promise<void> {
-  const authStatus = await messaging().requestPermission();
-  const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-  if (!enabled) return;
+  try {
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    if (!enabled) return;
 
-  const fcmToken = await messaging().getToken();
-  if (!fcmToken) return;
+    const fcmToken = await messaging().getToken();
+    if (!fcmToken) return;
 
-  // Compare against the last registered token so a hard-revoked server row is
-  // re-registered on the next authenticated boot without requiring sign-out.
-  const lastRegistered = await getItem(PUSH_REGISTERED_FLAG_KEY);
-  if (lastRegistered === fcmToken) return;
+    // Compare against the last registered token so a hard-revoked server row is
+    // re-registered on the next authenticated boot without requiring sign-out.
+    const lastRegistered = await getItem(PUSH_REGISTERED_FLAG_KEY);
+    if (lastRegistered === fcmToken) return;
 
-  await registerPushTokenApi({
-    deviceToken: fcmToken,
-    platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    deviceInfo: { model: null, os: Platform.Version },
-  });
-  await setItem(PUSH_REGISTERED_FLAG_KEY, fcmToken);
+    await registerPushTokenApi({
+      deviceToken: fcmToken,
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+      deviceInfo: { model: null, os: Platform.Version },
+    });
+    await setItem(PUSH_REGISTERED_FLAG_KEY, fcmToken);
+  } catch (error) {
+    console.warn('Failed to ensure FCM push token registered', error);
+  }
 }

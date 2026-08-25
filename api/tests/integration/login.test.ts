@@ -94,6 +94,7 @@ describe('POST /v1/auth/login', () => {
         firstName: 'Admin',
         lastName: 'User',
         role: 'admin',
+        status: 'active',
         emailVerifiedAt: new Date(),
         totpSecret: 'enc.cipher.payload',
         totpEnabledAt: new Date(),
@@ -126,6 +127,7 @@ describe('POST /v1/auth/login', () => {
         firstName: 'New',
         lastName: 'Admin',
         role: 'admin',
+        status: 'active',
         emailVerifiedAt: new Date(),
       },
     });

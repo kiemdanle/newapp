@@ -103,18 +103,27 @@ export function AppSyncManager() {
     // FCM may surface a notification tap while the app is backgrounded or as
     // the initial launch source. The handler is type-gated and fail-closed, so
     // existing expiry push behavior remains untouched.
-    const handleOpenedNotification = (message: { data?: Record<string, string | object> | undefined }) => {
-      const type = message.data?.type;
-      const batchId = message.data?.batchId;
-      if (type === 'moderation_queue' && !registerModerationNotificationBatch(batchId, openedModerationBatches.current)) return;
-      void handleModerationNotificationOpen(message.data);
-    };
-    const unsubscribe = messaging().onNotificationOpenedApp(handleOpenedNotification);
-    void messaging().getInitialNotification().then((message) => {
-      if (message) handleOpenedNotification(message);
-    });
+    let unsubscribe: (() => void) | undefined;
+    try {
+      const handleOpenedNotification = (message: { data?: Record<string, string | object> | undefined }) => {
+        const type = message.data?.type;
+        const batchId = message.data?.batchId;
+        if (type === 'moderation_queue' && !registerModerationNotificationBatch(batchId, openedModerationBatches.current)) return;
+        void handleModerationNotificationOpen(message.data);
+      };
+      unsubscribe = messaging().onNotificationOpenedApp(handleOpenedNotification);
+      void messaging().getInitialNotification().then((message) => {
+        if (message) handleOpenedNotification(message);
+      }).catch((err) => {
+        console.warn('FCM getInitialNotification error', err);
+      });
+    } catch (e) {
+      console.warn('FCM listener registration failed', e);
+    }
     return () => {
-      unsubscribe();
+      try {
+        unsubscribe?.();
+      } catch {}
       stopSyncTriggers();
     };
   }, [accessToken]);

@@ -16,6 +16,8 @@ react {
             : "linux64-bin"
     hermesCommand = file("../../../../node_modules/react-native/sdks/hermesc/${hermescOsDir}/hermesc").absolutePath
 
+    debuggableVariants = []
+
     autolinkLibrariesWithApp()
 }
 
@@ -69,6 +71,9 @@ android {
         versionCode 1
         versionName "0.0.1"
         manifestPlaceholders = [ENVFILE: project.findProperty('ENVFILE') ?: '.env']
+        ndk {
+            abiFilters "arm64-v8a"
+        }
     }
 
     // Phase 5: @google-cloud/recaptcha-enterprise-react-native's AAR requires

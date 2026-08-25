@@ -519,33 +519,49 @@ exports[`sign-in in expyrico snapshot 1`] = `
               >
                 Email
               </Text>
-              <TextInput
-                accessibilityLabel="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onBlur={[Function]}
-                onChangeText={[Function]}
-                onFocus={[Function]}
-                placeholderTextColor="#8C8C85"
+              <View
                 style={
                   [
                     {
+                      "alignItems": "center",
                       "borderWidth": 1.5,
+                      "flexDirection": "row",
                       "minHeight": 52,
-                      "paddingHorizontal": 16,
-                      "paddingVertical": 13,
                     },
                     {
                       "backgroundColor": "#FAFAF8",
                       "borderColor": "#F0F0ED",
                       "borderRadius": 16,
-                      "color": "#2C2C28",
-                      "fontSize": 16,
                     },
                   ]
                 }
-                value=""
-              />
+              >
+                <TextInput
+                  accessibilityLabel="Email"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  onBlur={[Function]}
+                  onChangeText={[Function]}
+                  onFocus={[Function]}
+                  placeholderTextColor="#8C8C85"
+                  style={
+                    [
+                      {
+                        "flex": 1,
+                        "minHeight": 52,
+                        "paddingHorizontal": 16,
+                        "paddingVertical": 13,
+                      },
+                      {
+                        "borderColor": "#F0F0ED",
+                        "color": "#2C2C28",
+                        "fontSize": 16,
+                      },
+                    ]
+                  }
+                  value=""
+                />
+              </View>
             </View>
             <View
               style={
@@ -570,32 +586,96 @@ exports[`sign-in in expyrico snapshot 1`] = `
               >
                 Password
               </Text>
-              <TextInput
-                accessibilityLabel="Password"
-                onBlur={[Function]}
-                onChangeText={[Function]}
-                onFocus={[Function]}
-                placeholderTextColor="#8C8C85"
-                secureTextEntry={true}
+              <View
                 style={
                   [
                     {
+                      "alignItems": "center",
                       "borderWidth": 1.5,
+                      "flexDirection": "row",
                       "minHeight": 52,
-                      "paddingHorizontal": 16,
-                      "paddingVertical": 13,
                     },
                     {
                       "backgroundColor": "#FAFAF8",
                       "borderColor": "#F0F0ED",
                       "borderRadius": 16,
-                      "color": "#2C2C28",
-                      "fontSize": 16,
                     },
                   ]
                 }
-                value=""
-              />
+              >
+                <TextInput
+                  accessibilityLabel="Password"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onBlur={[Function]}
+                  onChangeText={[Function]}
+                  onFocus={[Function]}
+                  placeholderTextColor="#8C8C85"
+                  secureTextEntry={true}
+                  style={
+                    [
+                      {
+                        "flex": 1,
+                        "minHeight": 52,
+                        "paddingHorizontal": 16,
+                        "paddingVertical": 13,
+                      },
+                      {
+                        "borderColor": "#F0F0ED",
+                        "color": "#2C2C28",
+                        "fontSize": 16,
+                      },
+                    ]
+                  }
+                  value=""
+                />
+                <View
+                  accessibilityHint="Toggles password visibility"
+                  accessibilityLabel="Show password"
+                  accessibilityRole="button"
+                  accessibilityState={
+                    {
+                      "busy": undefined,
+                      "checked": undefined,
+                      "disabled": undefined,
+                      "expanded": undefined,
+                      "selected": undefined,
+                    }
+                  }
+                  accessibilityValue={
+                    {
+                      "max": undefined,
+                      "min": undefined,
+                      "now": undefined,
+                      "text": undefined,
+                    }
+                  }
+                  accessible={true}
+                  collapsable={false}
+                  focusable={true}
+                  hitSlop={8}
+                  onBlur={[Function]}
+                  onClick={[Function]}
+                  onFocus={[Function]}
+                  onResponderGrant={[Function]}
+                  onResponderMove={[Function]}
+                  onResponderRelease={[Function]}
+                  onResponderTerminate={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "minHeight": 48,
+                      "minWidth": 48,
+                      "paddingLeft": 8,
+                      "paddingRight": 16,
+                    }
+                  }
+                  testID="toggle-password-visibility"
+                />
+              </View>
             </View>
           </View>
           <View
@@ -1629,33 +1709,49 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
               >
                 Email
               </Text>
-              <TextInput
-                accessibilityLabel="Email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                onBlur={[Function]}
-                onChangeText={[Function]}
-                onFocus={[Function]}
-                placeholderTextColor="#B7BDB7"
+              <View
                 style={
                   [
                     {
+                      "alignItems": "center",
                       "borderWidth": 1.5,
+                      "flexDirection": "row",
                       "minHeight": 52,
-                      "paddingHorizontal": 16,
-                      "paddingVertical": 13,
                     },
                     {
                       "backgroundColor": "#191F1B",
                       "borderColor": "#2D3A34",
                       "borderRadius": 16,
-                      "color": "#FAFAF8",
-                      "fontSize": 16,
                     },
                   ]
                 }
-                value=""
-              />
+              >
+                <TextInput
+                  accessibilityLabel="Email"
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  onBlur={[Function]}
+                  onChangeText={[Function]}
+                  onFocus={[Function]}
+                  placeholderTextColor="#B7BDB7"
+                  style={
+                    [
+                      {
+                        "flex": 1,
+                        "minHeight": 52,
+                        "paddingHorizontal": 16,
+                        "paddingVertical": 13,
+                      },
+                      {
+                        "borderColor": "#2D3A34",
+                        "color": "#FAFAF8",
+                        "fontSize": 16,
+                      },
+                    ]
+                  }
+                  value=""
+                />
+              </View>
             </View>
             <View
               style={
@@ -1680,32 +1776,96 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
               >
                 Password
               </Text>
-              <TextInput
-                accessibilityLabel="Password"
-                onBlur={[Function]}
-                onChangeText={[Function]}
-                onFocus={[Function]}
-                placeholderTextColor="#B7BDB7"
-                secureTextEntry={true}
+              <View
                 style={
                   [
                     {
+                      "alignItems": "center",
                       "borderWidth": 1.5,
+                      "flexDirection": "row",
                       "minHeight": 52,
-                      "paddingHorizontal": 16,
-                      "paddingVertical": 13,
                     },
                     {
                       "backgroundColor": "#191F1B",
                       "borderColor": "#2D3A34",
                       "borderRadius": 16,
-                      "color": "#FAFAF8",
-                      "fontSize": 16,
                     },
                   ]
                 }
-                value=""
-              />
+              >
+                <TextInput
+                  accessibilityLabel="Password"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onBlur={[Function]}
+                  onChangeText={[Function]}
+                  onFocus={[Function]}
+                  placeholderTextColor="#B7BDB7"
+                  secureTextEntry={true}
+                  style={
+                    [
+                      {
+                        "flex": 1,
+                        "minHeight": 52,
+                        "paddingHorizontal": 16,
+                        "paddingVertical": 13,
+                      },
+                      {
+                        "borderColor": "#2D3A34",
+                        "color": "#FAFAF8",
+                        "fontSize": 16,
+                      },
+                    ]
+                  }
+                  value=""
+                />
+                <View
+                  accessibilityHint="Toggles password visibility"
+                  accessibilityLabel="Show password"
+                  accessibilityRole="button"
+                  accessibilityState={
+                    {
+                      "busy": undefined,
+                      "checked": undefined,
+                      "disabled": undefined,
+                      "expanded": undefined,
+                      "selected": undefined,
+                    }
+                  }
+                  accessibilityValue={
+                    {
+                      "max": undefined,
+                      "min": undefined,
+                      "now": undefined,
+                      "text": undefined,
+                    }
+                  }
+                  accessible={true}
+                  collapsable={false}
+                  focusable={true}
+                  hitSlop={8}
+                  onBlur={[Function]}
+                  onClick={[Function]}
+                  onFocus={[Function]}
+                  onResponderGrant={[Function]}
+                  onResponderMove={[Function]}
+                  onResponderRelease={[Function]}
+                  onResponderTerminate={[Function]}
+                  onResponderTerminationRequest={[Function]}
+                  onStartShouldSetResponder={[Function]}
+                  style={
+                    {
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "minHeight": 48,
+                      "minWidth": 48,
+                      "paddingLeft": 8,
+                      "paddingRight": 16,
+                    }
+                  }
+                  testID="toggle-password-visibility"
+                />
+              </View>
             </View>
           </View>
           <View

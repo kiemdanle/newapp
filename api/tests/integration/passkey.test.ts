@@ -41,8 +41,62 @@ describe('passkey routes', () => {
       headers: { authorization: `Bearer ${tok}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().challenge).toBeTruthy();
-    expect(res.json().rp.id).toBe('localhost');
+    const body = res.json();
+    expect(body.challenge).toBeTruthy();
+    expect(body.rp.id).toBe('localhost');
+    expect(body.authenticatorSelection.residentKey).toBe('required');
+    expect(body.authenticatorSelection.requireResidentKey).toBe(true);
+    expect(body.authenticatorSelection.authenticatorAttachment).toBe('platform');
+    await app.close();
+  });
+
+  it('login/options with empty body returns discoverable options with no allowCredentials', async () => {
+    const app = await buildServer();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/passkey/login/options',
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.challenge).toBeTruthy();
+    expect(body.rpId).toBe('localhost');
+    expect(body.allowCredentials).toBeUndefined();
+    await app.close();
+  });
+
+  it('login/options with email returns credentials when user has passkey', async () => {
+    const app = await buildServer();
+    const prisma = getPrisma();
+    const user = await prisma.user.create({
+      data: {
+        email: 'passkey-user@example.com',
+        emailVerifiedAt: new Date(),
+        passwordHash: 'dummy-hash-1234567890',
+        firstName: 'Passkey',
+        lastName: 'User',
+        status: 'active',
+      },
+    });
+    await prisma.authCredential.create({
+      data: {
+        userId: user.id,
+        type: 'passkey',
+        providerUserId: 'test-cred-id-base64url',
+        publicKey: Buffer.from('dummy-public-key'),
+        counter: 0n,
+      },
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/passkey/login/options',
+      payload: { email: 'passkey-user@example.com' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.challenge).toBeTruthy();
+    expect(body.allowCredentials).toEqual([{ id: 'test-cred-id-base64url', type: 'public-key' }]);
     await app.close();
   });
 
@@ -55,6 +109,19 @@ describe('passkey routes', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().challenge).toBeTruthy();
+    expect(res.json().allowCredentials).toBeUndefined();
+    await app.close();
+  });
+
+  it('login/verify rejects missing or invalid credential ID', async () => {
+    const app = await buildServer();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/passkey/login/verify',
+      payload: { assertionResponse: {} },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().title).toMatch(/missing or invalid credential id/i);
     await app.close();
   });
 });

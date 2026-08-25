@@ -1,7 +1,7 @@
+import { v4 as uuidv4 } from 'uuid';
 import Config from 'react-native-config';
 import { secureStore } from '../auth/secure-store';
 import { ApiError } from './errors';
-
 // path must NOT include /v1 prefix; client adds it
 export type ApiClientOpts = { headers?: Record<string, string>; skipAuth?: boolean };
 
@@ -22,8 +22,7 @@ interface RefreshResponse {
 // `<base>/v1<path>` URL shape as this client, instead of duplicating the
 // trailing-slash-trim/prefix logic.
 export function getBaseUrl(): string {
-  const url = Config.API_BASE_URL;
-  if (!url) throw new Error('apiBaseUrl not configured');
+  const url = Config.API_BASE_URL || 'https://api.linhkienkts.com';
   return url.replace(/\/+$/, '');
 }
 
@@ -107,6 +106,11 @@ async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
     Accept: 'application/json',
     ...(req.headers ?? {}),
   };
+  // Automatically provide Idempotency-Key for mutation requests if not explicitly set
+  const isMutation = req.method === 'POST' || req.method === 'PATCH' || req.method === 'PUT' || req.method === 'DELETE';
+  if (isMutation && !headers['Idempotency-Key'] && !headers['idempotency-key']) {
+    headers['Idempotency-Key'] = uuidv4();
+  }
   // FormData must never get a manually-set Content-Type: fetch/XHR compute
   // the multipart boundary themselves from the body, and a hand-set header
   // here would ship without that boundary and the server couldn't parse it.

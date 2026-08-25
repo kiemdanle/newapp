@@ -25,9 +25,10 @@ function sanitizeCreateOptions(options: unknown): Record<string, unknown> {
   const selection = (out.authenticatorSelection && typeof out.authenticatorSelection === 'object'
     ? { ...(out.authenticatorSelection as Record<string, unknown>) }
     : {}) as Record<string, unknown>;
-  // Leave attachment unset; force non-required resident key.
-  delete selection.authenticatorAttachment;
-  if (selection.requireResidentKey === true) selection.requireResidentKey = false;
+  // Retain platform authenticator attachment & discoverable resident key settings
+  // from server so Google Password Manager / iCloud Keychain stores discoverable keys.
+  selection.authenticatorAttachment ??= 'platform';
+  selection.residentKey ??= 'required';
   out.authenticatorSelection = selection;
 
   // Ensure displayName is never empty if name is present.
@@ -85,6 +86,22 @@ function passkeyErrorMessage(e: unknown, fallback: string): string {
   }
   if (e instanceof Error && e.message) return e.message;
   return fallback;
+}
+export function isPasskeyCancellation(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false;
+  const pe = e as PasskeyNativeError;
+  const code = (typeof pe.error === 'string' ? pe.error : typeof pe.code === 'string' ? pe.code : '').trim();
+  const msg = typeof pe.message === 'string' ? pe.message.trim() : '';
+  const combined = `${code} ${msg} ${e instanceof Error ? e.message : ''}`.toLowerCase();
+  return (
+    code === 'UserCancelled' ||
+    combined.includes('usercancelled') ||
+    combined.includes('canceled') ||
+    combined.includes('cancelled') ||
+    combined.includes('getcredentialcancellationexception') ||
+    combined.includes('createcredentialcancellationexception') ||
+    combined.includes('notallowederror')
+  );
 }
 
 function rethrowPasskeyError(e: unknown, fallback: string): never {

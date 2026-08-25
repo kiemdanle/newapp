@@ -18,6 +18,16 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+
+// Safe area context test shim
+jest.mock('react-native-safe-area-context', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const actual = jest.requireActual('react-native-safe-area-context');
+  return {
+    ...actual,
+    useSafeAreaInsets: jest.fn(() => ({ top: 0, right: 0, bottom: 0, left: 0 })),
+  };
+});
 // VisionCamera imports the native module at load time; stub it before anything
 // requires OcrCamera or ScanCamera.
 jest.mock('react-native-vision-camera', () => ({
@@ -53,6 +63,22 @@ jest.mock('react-native-reanimated', () => {
     runOnJS: <T>(fn: T) => fn,
     View: 'Animated.View',
   };
+});
+
+// React Native Gesture Handler Swipeable test shim
+jest.mock('react-native-gesture-handler/Swipeable', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { View } = require('react-native');
+  return React.forwardRef((props: { renderRightActions?: () => React.ReactNode; children?: React.ReactNode }, _ref: unknown) => {
+    return React.createElement(
+      View,
+      { testID: 'swipeable-container' },
+      props.children,
+      props.renderRightActions ? props.renderRightActions() : null,
+    );
+  });
 });
 
 // Apple authentication: iOS-only native module — stub for tests
@@ -94,6 +120,14 @@ jest.mock('@react-native-firebase/messaging', () => ({
 jest.mock('react-native-vector-icons/Ionicons', () => {
   return () => null;
 });
+
+// Image Crop Picker
+jest.mock('react-native-image-crop-picker', () => ({
+  openCamera: jest.fn(async () => null),
+  openPicker: jest.fn(async () => []),
+  clean: jest.fn(async () => undefined),
+  cleanSingle: jest.fn(async () => undefined),
+}));
 
 // This explicit jest.mock takes precedence over jest.config.js's
 // moduleNameMapper entry for the same specifier (both redirect

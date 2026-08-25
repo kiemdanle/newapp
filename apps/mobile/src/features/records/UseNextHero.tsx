@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import type { LocalRecord } from '../../api/records';
+import { useProduct } from '../../api/products';
 import { useTheme } from '../../theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { GroupedRecords } from './groupRecords';
@@ -20,19 +22,23 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const item = pickMostUrgent(groups);
+  const { data: product } = useProduct(item?.productId ?? undefined);
 
   if (!item) return null;
+
+  const displayName = item.customName || product?.name || 'Item';
+  const brand = product?.brand;
+  const imageUrl = item.photoUrl || product?.imageUrl || (product?.photos && product.photos[0]?.url) || null;
 
   const status = expiryStatus(item.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   const isUrgent = status === 'red' || status === 'amber';
   const urgentBg = status === 'red' ? theme.colors.danger + '14' : theme.colors.warning + '24';
-
   return (
     <Pressable
       testID="use-next-hero"
       accessibilityRole="button"
-      accessibilityLabel={`Use next: ${item.customName ?? 'item'}, expires ${item.expiryDate}`}
+      accessibilityLabel={`Use next: ${displayName}, expires ${item.expiryDate}`}
       onPress={() => navigation.navigate('Record', { id: item.id })}
       style={({ pressed }) => [
         styles.card,
@@ -64,15 +70,30 @@ export function UseNextHero({ groups }: { groups: GroupedRecords }) {
         </Text>
       </View>
 
-      <Text
-        style={[
-          styles.itemName,
-          { color: theme.colors.text },
-        ]}
-        numberOfLines={2}
-      >
-        {item.customName ?? 'Item'}
-      </Text>
+      {brand ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 2 }}>
+          {brand}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: 44, height: 44, borderRadius: theme.radii.sm, backgroundColor: theme.colors.neutralLight }}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+          />
+        ) : null}
+        <Text
+          style={[
+            styles.itemName,
+            { color: theme.colors.text, flex: 1 },
+          ]}
+          numberOfLines={2}
+        >
+          {displayName}
+        </Text>
+      </View>
 
       <View style={styles.footer}>
         <Text

@@ -125,7 +125,7 @@ Run before first launch, then quarterly. Every item has a command + expected out
   # Expected: empty
   ```
 
-- [ ] **Tokens stored in expo-secure-store, not AsyncStorage**
+- [ ] **Tokens stored in react-native-keychain, not AsyncStorage**
   ```bash
   grep -RIn 'AsyncStorage' apps/mobile/src/auth
   # Expected: empty

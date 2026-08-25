@@ -3,7 +3,11 @@ import { passkeyLoginOptionsSchema, passkeyLoginVerifySchema, ERROR_CODES } from
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { getPrisma } from '../../db.js';
-import { buildAuthenticationOptions, consumeAuthentication } from '../../services/auth/passkey.js';
+import {
+  buildAuthenticationOptions,
+  consumeAuthentication,
+  normalizeCredentialId,
+} from '../../services/auth/passkey.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
 import { toApiUser } from '../../services/users/repository.js';
@@ -36,15 +40,16 @@ export async function passkeyLoginRoute(app: FastifyInstance) {
     const input = passkeyLoginVerifySchema.parse(req.body);
     const prisma = getPrisma();
     const r = input.assertionResponse as { id?: string };
-    if (!r.id) {
+    const credentialId = normalizeCredentialId(r?.id);
+    if (!credentialId) {
       throw new AppError({
         status: 400,
         code: ERROR_CODES.PASSKEY_VERIFICATION_FAILED,
-        title: 'Missing credential id',
+        title: 'Missing or invalid credential id',
       });
     }
     const cred = await prisma.authCredential.findUnique({
-      where: { type_providerUserId: { type: 'passkey', providerUserId: r.id } },
+      where: { type_providerUserId: { type: 'passkey', providerUserId: credentialId } },
     });
     if (!cred || !cred.publicKey) {
       throw new AppError({
@@ -65,7 +70,7 @@ export async function passkeyLoginRoute(app: FastifyInstance) {
     let info;
     try {
       info = await consumeAuthentication(`user:${user.id}`, input.assertionResponse, {
-        credentialID: r.id,
+        credentialID: credentialId,
         credentialPublicKey: new Uint8Array(cred.publicKey),
         counter: Number(cred.counter ?? 0n),
       });

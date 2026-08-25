@@ -15,7 +15,7 @@ Phases are ordered by risk and dependency, not by calendar. Items flagged
   notifications, reputation, moderation, product-rating recalculation, and media cleanup.
   Circuit breakers and persisted API errors for resilience. reCAPTCHA Enterprise server-side
   abuse verification on product submission. Durable media-operation outbox with crash recovery.
-- **Mobile**: Expo / RN app with offline-first records (WatermelonDB), OCR
+- **Mobile**: Bare React Native app (no Expo) with offline-first records (WatermelonDB), OCR
   expiry capture, barcode/QR scanning with draft product creation, resumable draft editor,
   reCAPTCHA Enterprise client-side token generation, push notifications, theming, and all major community flows.
   Local Gradle build path.

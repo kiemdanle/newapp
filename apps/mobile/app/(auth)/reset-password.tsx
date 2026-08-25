@@ -65,6 +65,8 @@ export default function ResetPassword() {
           <TextField
             label="New password"
             secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
             value={password}
             onChangeText={setPassword}
             error={errors.password}

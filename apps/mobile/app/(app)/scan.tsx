@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, View, Text, TextInput, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScanCamera, type ScanResult } from '../../src/features/scan/ScanCamera';
 import { useCameraPermission } from '../../src/features/scan/usePermission';
 import { PrePromptModal } from '../../src/features/scan/PrePromptModal';
@@ -29,6 +30,7 @@ type ScanUiState =
 export default function ScanScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { state: permissionState, request, check } = useCameraPermission();
   const lookup = useProductLookupV2();
   const [prePrompt, setPrePrompt] = useState(true);
@@ -201,7 +203,7 @@ export default function ScanScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       {ui.phase === 'scanning' ? <ScanCamera onScan={handleScan} /> : null}
-      <View style={[styles.topBar, { backgroundColor: theme.colors.bgElevated, borderBottomColor: theme.colors.border }]}>
+      <View style={[styles.topBar, { backgroundColor: theme.colors.bgElevated, borderBottomColor: theme.colors.border, paddingTop: insets.top + 10 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: theme.colors.primaryLight }]}>
           <Ionicons name="arrow-back" size={20} color={theme.colors.primaryDark} />
         </Pressable>
@@ -230,65 +232,100 @@ export default function ScanScreen() {
 
       {ui.phase === 'under-review' ? (
         <View testID="scan-under-review" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
-          <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16 }}>This item is awaiting review</Text>
-          <Text style={{ color: theme.colors.textMuted }}>We can't show its details yet, but you can still track it in your pantry.</Text>
+          <View style={[styles.panelIconBadge, { backgroundColor: theme.colors.accentLight }]}>
+            <Ionicons name="time-outline" size={32} color={theme.colors.accent} />
+          </View>
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>This item is awaiting review</Text>
+          <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
+            We can't show its details yet, but you can still track it in your pantry.
+          </Text>
+          {lastScanRef.current ? (
+            <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>
+              <Ionicons name="barcode-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={[styles.codeText, { color: theme.colors.text }]}>{lastScanRef.current.value}</Text>
+            </View>
+          ) : null}
           <Button testID="scan-add-custom-item" label="Add as custom item" onPress={() => setUi({ phase: 'under-review-custom-item' })} />
           <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
         </View>
       ) : null}
 
       {ui.phase === 'under-review-custom-item' ? (
-        <View testID="scan-custom-item-form" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
-          {!customNameConfirmed ? (
-            <>
-              <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16 }}>Name this item</Text>
-              <TextInput
-                accessibilityLabel="Custom item name"
-                testID="scan-custom-item-name"
-                style={{ color: theme.colors.text, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.md, padding: theme.spacing.md }}
-                placeholder="e.g. Frozen peas"
-                placeholderTextColor={theme.colors.textMuted}
-                value={customName}
-                onChangeText={setCustomName}
-              />
-              <Button
-                testID="scan-custom-item-continue"
-                label="Continue"
-                disabled={customName.trim().length === 0}
-                onPress={() => {
-                  setCustomName((v) => v.trim());
-                  setCustomNameConfirmed(true);
-                }}
-              />
-            </>
-          ) : (
-            // No private ID is ever attached here: under_review never authorizes
-            // a draft, this is strictly the unlinked-custom-item fallback.
+        !customNameConfirmed ? (
+          <View testID="scan-custom-item-form" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
+            <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Name this item</Text>
+            <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>Give this item a name so you can track its expiry in your pantry.</Text>
+            <TextInput
+              accessibilityLabel="Custom item name"
+              testID="scan-custom-item-name"
+              style={[
+                styles.customNameInput,
+                { color: theme.colors.text, borderColor: theme.colors.border, backgroundColor: theme.colors.bgGlass },
+              ]}
+              placeholder="e.g. Frozen peas"
+              placeholderTextColor={theme.colors.textMuted}
+              value={customName}
+              onChangeText={setCustomName}
+              autoFocus
+            />
+            <Button
+              testID="scan-custom-item-continue"
+              label="Continue"
+              disabled={customName.trim().length === 0}
+              onPress={() => {
+                setCustomName((v) => v.trim());
+                setCustomNameConfirmed(true);
+              }}
+            />
+            <Button label="Back" variant="ghost" onPress={() => setUi({ phase: 'scanning' })} />
+          </View>
+        ) : (
+          <View style={{ flex: 1 }}>
             <AddRecordForm
               productId={null}
               customName={customName}
               onSaved={() => navigation.replace('Tabs')}
             />
-          )}
-        </View>
+          </View>
+        )
       ) : null}
 
       {ui.phase === 'not-found' ? (
         <View testID="scan-not-found" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
-          <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16 }}>We couldn't find this item</Text>
+          <View style={[styles.panelIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
+            <Ionicons name="sparkles-outline" size={28} color={theme.colors.primaryDark} />
+          </View>
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>We couldn't find this item</Text>
+          <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
+            This barcode isn't in our catalog yet. You can create a new product for the community or add it directly as a custom pantry item.
+          </Text>
+          {lastScanRef.current ? (
+            <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>
+              <Ionicons name="barcode-outline" size={16} color={theme.colors.textMuted} />
+              <Text style={[styles.codeText, { color: theme.colors.text }]}>{lastScanRef.current.value}</Text>
+            </View>
+          ) : null}
           {ui.canCreate ? (
             <Button testID="scan-create" label="Create" icon="add" onPress={openCreate} />
           ) : (
-            <Text style={{ color: theme.colors.textMuted }}>Creating new products isn't available right now.</Text>
+            <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Creating new products isn't available right now.</Text>
           )}
-          <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
+          <Button
+            testID="scan-add-custom-from-not-found"
+            label="Add as custom item"
+            variant="outline"
+            onPress={() => setUi({ phase: 'under-review-custom-item' })}
+          />
+          <Button testID="scan-again" label="Scan again" variant="ghost" onPress={scanAgain} />
         </View>
       ) : null}
-
       {ui.phase === 'unavailable' ? (
         <View testID="scan-unavailable" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
-          <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16 }}>Lookup is temporarily unavailable</Text>
-          <Text style={{ color: theme.colors.textMuted }}>This isn't a "not found" — please try again.</Text>
+          <View style={[styles.panelIconBadge, { backgroundColor: theme.colors.accentLight }]}>
+            <Ionicons name="cloud-offline-outline" size={28} color={theme.colors.accent} />
+          </View>
+          <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Lookup is temporarily unavailable</Text>
+          <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>This isn't a "not found" — please check your connection and try again.</Text>
           <Button testID="scan-retry" label="Retry" onPress={retry} />
           <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
         </View>
@@ -298,15 +335,64 @@ export default function ScanScreen() {
 }
 
 const styles = StyleSheet.create({
-  topBar: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingTop: 52, paddingBottom: 14 },
-  backButton: { alignItems: 'center', height: 48, justifyContent: 'center', width: 48, borderRadius: 24 },
+  topBar: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
+  backButton: { alignItems: 'center', height: 42, justifyContent: 'center', width: 42, borderRadius: 21 },
   heading: { flex: 1 },
   eyebrow: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  title: { fontSize: 18, fontWeight: '700', marginTop: 2 },
-  guide: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingTop: 44 },
-  frame: { borderRadius: 22, borderWidth: 3, height: 232, width: 232 },
-  instruction: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 24, paddingHorizontal: 16, paddingVertical: 12 },
+  title: { fontSize: 17, fontWeight: '700', marginTop: 1 },
+  guide: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', paddingTop: 32 },
+  frame: { borderRadius: 22, borderWidth: 3, height: 220, width: 220 },
+  instruction: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 20, paddingHorizontal: 16, paddingVertical: 10 },
   instructionText: { fontSize: 13, fontWeight: '600' },
-  loading: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 10, position: 'absolute', top: 126, alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 12 },
-  resultPanel: { borderWidth: 1, borderRadius: 16, gap: 12, margin: 20, marginTop: 100, padding: 20 },
+  loading: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 10, position: 'absolute', top: 110, alignSelf: 'center', paddingHorizontal: 16, paddingVertical: 10 },
+  resultPanel: {
+    borderWidth: 1,
+    borderRadius: 20,
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 20,
+    alignItems: 'center',
+  },
+  panelIconBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  panelTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  panelBody: {
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  codeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  codeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'monospace',
+  },
+  customNameInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,7 +18,7 @@ import { isNetworkError, NETWORK_ERROR_MESSAGE } from '../../src/api/network-err
 import { useTheme } from '../../src/theme/useTheme';
 import { signInWithGoogle, GoogleSignInCancelled } from '../../src/auth/google';
 import { isAppleSignInAvailable, signInWithApple } from '../../src/auth/apple';
-import { signInWithPasskey } from '../../src/auth/passkey';
+import { signInWithPasskey, isPasskeyCancellation } from '../../src/auth/passkey';
 
 export default function SignIn() {
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
@@ -28,7 +28,9 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [formNotice, setFormNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const inFlightRef = useRef(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   useEffect(() => {
@@ -54,7 +56,9 @@ export default function SignIn() {
   }
 
   async function onSubmit() {
+    if (loading) return;
     setFormError(null);
+    setFormNotice(null);
     const input = { email, password };
     const errs = fieldErrors(loginSchema, input);
     setErrors(errs);
@@ -76,8 +80,9 @@ export default function SignIn() {
   }
 
   async function onGoogle() {
+    if (loading) return;
     setFormError(null);
-    setLoading(true);
+    setFormNotice(null);
     try {
       const idToken = await signInWithGoogle();
       const result = await authEndpoints.oauthGoogle(idToken);
@@ -92,8 +97,9 @@ export default function SignIn() {
   }
 
   async function onApple() {
+    if (loading) return;
     setFormError(null);
-    setLoading(true);
+    setFormNotice(null);
     try {
       const cred = await signInWithApple();
       const result = await authEndpoints.oauthApple(
@@ -111,24 +117,26 @@ export default function SignIn() {
   }
 
   async function onPasskey() {
-    if (loading) return;
+    if (loading || inFlightRef.current) return;
+    inFlightRef.current = true;
     setFormError(null);
-    // Email is required so the server can return allowCredentials for this
-    // account. Device-bound (non-discoverable) passkeys will otherwise make
-    // Google Password Manager offer only "use a passkey from a different device".
+    setFormNotice(null);
     const trimmed = email.trim().toLowerCase();
-    if (!trimmed || !trimmed.includes('@')) {
-      setFormError('Enter the email for this account, then tap Use a passkey.');
-      return;
-    }
     setLoading(true);
     try {
-      const result = await signInWithPasskey(trimmed);
-      await signIn(result);
+      const result = await signInWithPasskey(trimmed && trimmed.includes('@') ? trimmed : undefined);
+      if (result) {
+        await signIn(result);
+      }
       // AuthGate will flip to App stack once accessToken is set.
     } catch (e) {
+      if (isPasskeyCancellation(e)) {
+        setFormNotice('Passkey sign-in was cancelled.');
+        return;
+      }
       handleApiError(e);
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   }
@@ -149,6 +157,8 @@ export default function SignIn() {
         <TextField
           label="Password"
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           value={password}
           onChangeText={setPassword}
           error={errors.password}
@@ -169,6 +179,11 @@ export default function SignIn() {
       />
 
       {formError ? <ErrorText>{formError}</ErrorText> : null}
+      {formNotice ? (
+        <Text style={{ color: theme.colors.textMuted, textAlign: 'center', fontSize: 13 }}>
+          {formNotice}
+        </Text>
+      ) : null}
 
       <View style={styles.divider}>
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />

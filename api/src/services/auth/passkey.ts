@@ -18,6 +18,20 @@ const CHALLENGE_TTL_SECONDS = 5 * 60;
 function challengeKey(scope: 'register' | 'login', subject: string): string {
   return `passkey:challenge:${scope}:${subject}`;
 }
+/** Normalize WebAuthn credential id to base64url string without padding for storage/lookup. */
+export function normalizeCredentialId(id: unknown): string | null {
+  if (typeof id === 'string' && id.length > 0) {
+    // Already base64url (or base64) — normalize to url-safe without padding.
+    return id.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+  if (id instanceof Uint8Array) {
+    return Buffer.from(id).toString('base64url');
+  }
+  if (Buffer.isBuffer(id)) {
+    return id.toString('base64url');
+  }
+  return null;
+}
 
 export async function buildRegistrationOptions(
   userId: string,
@@ -51,9 +65,9 @@ export async function buildRegistrationOptions(
       // after PIN and times out on MIUI.
       authenticatorAttachment: 'platform',
       userVerification: 'preferred',
-      // Prefer discoverable keys so later login can find them locally.
-      residentKey: 'preferred',
-      requireResidentKey: false,
+      // Discoverable resident keys so later login can find them with zero input.
+      residentKey: 'required',
+      requireResidentKey: true,
     },
   };
   const options = await generateRegistrationOptions(opts);
@@ -188,8 +202,11 @@ export async function consumeAuthentication(
     },
     requireUserVerification: false,
   };
-  const verification = await verifyAuthenticationResponse(opts);
-  await Promise.all(cleanupKeys.map((k) => redis.del(k)));
-  if (!verification.verified) throw new Error('verification failed');
-  return verification.authenticationInfo;
+  try {
+    const verification = await verifyAuthenticationResponse(opts);
+    if (!verification.verified) throw new Error('verification failed');
+    return verification.authenticationInfo;
+  } finally {
+    await Promise.all(cleanupKeys.map((k) => redis.del(k)));
+  }
 }

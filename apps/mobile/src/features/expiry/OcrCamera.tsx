@@ -24,14 +24,15 @@ export function OcrCamera({ onParsed, onCancel }: Props) {
     setBusy(true);
     try {
       const photo = await cameraRef.current.takePhoto({ enableShutterSound: false });
-      if (!photo) {
+      if (!photo?.path) {
         setError('Could not capture a photo. Try again.');
         return;
       }
-      const ocr = await TextRecognition.recognize(photo.path);
+      const fileUri = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
+      const ocr = await TextRecognition.recognize(fileUri);
       const iso = parseExpiryString(ocr.text);
       if (iso) onParsed(iso);
-      else setError('Could not read a date. Try again or enter manually.');
+      else setError('Could not detect a date. Try aiming closely at the expiry date.');
     } catch (err) {
       setError((err as Error).message);
     } finally {

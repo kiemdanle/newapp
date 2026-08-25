@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
+import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createLocalRecord } from '../../api/records';
 import { useMyHouseholds } from '../../api/households';
 import { usePantryScope } from '../../store/pantryScope';
 import { useTheme } from '../../theme/useTheme';
-
+import { Button } from '../../components/Button';
+import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
+import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -32,6 +35,8 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
 
   // Read the active scope so we pre-select the right household.
@@ -68,6 +73,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
+        photoUrl: photoPath || null,
         householdId: effectiveHouseholdId,
       });
       onSaved(localId);
@@ -83,99 +89,257 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     borderColor: theme.colors.border,
     borderWidth: 1,
     borderRadius: theme.radii.md,
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm + 4,
+    fontSize: 15,
+    backgroundColor: theme.colors.bgElevated,
   } as const;
+  const onTakePhoto = async () => {
+    try {
+      const picked = await takePhoto();
+      if (picked) setPhotoPath(picked.path);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const onChoosePhotos = async () => {
+    try {
+      const picked = await choosePhotos(1);
+      if (picked.length > 0 && picked[0]) setPhotoPath(picked[0].path);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
   return (
-    <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
       {productName ? (
-        <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '700' }}>
-          {productName}
-        </Text>
+        <View style={{ gap: 2, marginBottom: 2 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            PANTRY ITEM
+          </Text>
+          <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '700' }}>
+            {productName}
+          </Text>
+        </View>
       ) : null}
-      <Text style={{ color: theme.colors.textMuted }}>Expiry date</Text>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-        <TextInput accessibilityLabel="Text input field"
-          testID="add-record-expiry-input"
-          style={[input, { flex: 1 }]}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor={theme.colors.textMuted}
-          value={expiry}
-          onChangeText={setExpiry}
-          autoCapitalize="none"
-        />
-        {onOpenOcr ? (
-          <Pressable accessibilityRole="button"
-            testID="add-record-ocr"
-            onPress={onOpenOcr}
-            style={{
-              paddingHorizontal: theme.spacing.lg,
-              justifyContent: 'center',
-              borderRadius: theme.radii.md,
-              backgroundColor: theme.colors.primary,
-            }}
-          >
-            <Text style={{ color: theme.colors.primaryFg }}>Scan date</Text>
-          </Pressable>
-        ) : null}
+
+      {/* Item Photo Section */}
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item photo (optional)</Text>
+        {photoPath ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ position: 'relative', width: 68, height: 68 }}>
+              <Image
+                testID="add-record-photo-preview"
+                source={{ uri: photoPath }}
+                style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
+                accessibilityIgnoresInvertColors
+              />
+              <Pressable
+                testID="add-record-photo-remove"
+                accessibilityRole="button"
+                accessibilityLabel="Remove photo"
+                onPress={() => setPhotoPath(null)}
+                style={{
+                  position: 'absolute',
+                  top: -6,
+                  right: -6,
+                  backgroundColor: theme.colors.danger,
+                  borderRadius: 11,
+                  width: 22,
+                  height: 22,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Ionicons name="close" size={14} color="#FFFFFF" />
+              </Pressable>
+            </View>
+            <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>Photo attached</Text>
+          </View>
+        ) : (
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+            <Button
+              testID="add-record-take-photo"
+              label="Take photo"
+              icon="camera"
+              variant="outline"
+              onPress={onTakePhoto}
+            />
+            <Button
+              testID="add-record-choose-photo"
+              label="Choose photo"
+              icon="images"
+              variant="outline"
+              onPress={onChoosePhotos}
+            />
+          </View>
+        )}
       </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Quantity</Text>
-      <TextInput accessibilityLabel="Text input field"
-        testID="add-record-quantity"
-        style={input}
-        value={quantity}
-        keyboardType="numeric"
-        onChangeText={setQuantity}
+      {/* Expiry Date */}
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Expiry date</Text>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Select expiry date"
+            testID="add-record-expiry-picker-trigger"
+            onPress={() => setShowDatePicker(true)}
+            style={[
+              input,
+              {
+                flex: 1,
+                minHeight: 48,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              },
+            ]}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Ionicons name="calendar-outline" size={20} color={theme.colors.primary} />
+              <Text
+                style={{
+                  color: expiry ? theme.colors.text : theme.colors.textMuted,
+                  fontSize: 15,
+                  fontWeight: expiry ? '600' : '400',
+                }}
+              >
+                {expiry ? expiry : 'Select expiry date'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
+            <TextInput
+              accessibilityLabel="Text input field"
+              testID="add-record-expiry-input"
+              style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }}
+              value={expiry}
+              onChangeText={setExpiry}
+              autoCapitalize="none"
+            />
+          </Pressable>
+          {onOpenOcr ? (
+            <Pressable
+              accessibilityRole="button"
+              testID="add-record-ocr"
+              onPress={onOpenOcr}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: theme.spacing.md,
+                justifyContent: 'center',
+                borderRadius: theme.radii.md,
+                backgroundColor: theme.colors.primary,
+                minHeight: 48,
+              }}
+            >
+              <Ionicons name="camera-outline" size={18} color={theme.colors.primaryFg} />
+              <Text style={{ color: theme.colors.primaryFg, fontWeight: '700', fontSize: 13 }}>Scan date</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
+      <WheelDatePickerModal
+        visible={showDatePicker}
+        value={expiry}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={(iso) => setExpiry(iso)}
       />
 
-      <Text style={{ color: theme.colors.textMuted }}>Unit</Text>
-      <TextInput accessibilityLabel="Text input field" testID="add-record-unit" style={input} value={unit} onChangeText={setUnit} />
+      {/* Compact 2-Column Quantity & Unit */}
+      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Quantity</Text>
+          <TextInput
+            accessibilityLabel="Text input field"
+            testID="add-record-quantity"
+            style={[input, { minHeight: 48 }]}
+            value={quantity}
+            keyboardType="numeric"
+            onChangeText={setQuantity}
+          />
+        </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Category (optional)</Text>
-      <TextInput accessibilityLabel="Text input field"
-        testID="add-record-category"
-        style={input}
-        value={category}
-        onChangeText={setCategory}
-        placeholder="e.g. Dairy"
-        placeholderTextColor={theme.colors.textMuted}
-      />
+        <View style={{ flex: 1, gap: 6 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Unit</Text>
+          <TextInput
+            accessibilityLabel="Text input field"
+            testID="add-record-unit"
+            style={[input, { minHeight: 48 }]}
+            value={unit}
+            onChangeText={setUnit}
+          />
+        </View>
+      </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Notes (optional)</Text>
-      <TextInput accessibilityLabel="Text input field"
-        testID="add-record-notes"
-        style={input}
-        value={notes}
-        onChangeText={setNotes}
-        multiline
-      />
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Category (optional)</Text>
+        <TextInput
+          accessibilityLabel="Text input field"
+          testID="add-record-category"
+          style={[input, { minHeight: 48 }]}
+          value={category}
+          onChangeText={setCategory}
+          placeholder="e.g. Dairy, Produce"
+          placeholderTextColor={theme.colors.textMuted}
+        />
+      </View>
 
-      {/* Accordion: price + store are hidden by default (spec §2.2) */}
-      <Pressable accessibilityRole="button" testID="add-record-more-toggle" onPress={() => setShowMore((v) => !v)}>
-        <Text style={{ color: theme.colors.primary }}>
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Notes (optional)</Text>
+        <TextInput
+          accessibilityLabel="Text input field"
+          testID="add-record-notes"
+          style={[input, { minHeight: 64 }]}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          placeholder="e.g. Opened on Tuesday"
+          placeholderTextColor={theme.colors.textMuted}
+        />
+      </View>
+
+      {/* Accordion: price + store are hidden by default */}
+      <Pressable accessibilityRole="button" testID="add-record-more-toggle" onPress={() => setShowMore((v) => !v)} style={{ paddingVertical: 2 }}>
+        <Text style={{ color: theme.colors.primary, fontWeight: '600', fontSize: 13 }}>
           {showMore ? '− Less details' : '+ More details (price, store)'}
         </Text>
       </Pressable>
       {showMore ? (
-        <View style={{ gap: theme.spacing.md }}>
-          <Text style={{ color: theme.colors.textMuted }}>Price (optional)</Text>
-          <TextInput accessibilityLabel="Text input field"
-            testID="add-record-price"
-            style={input}
-            value={price}
-            keyboardType="numeric"
-            onChangeText={setPrice}
-          />
-          <Text style={{ color: theme.colors.textMuted }}>Store (optional)</Text>
-          <TextInput accessibilityLabel="Text input field"
-            testID="add-record-store"
-            style={input}
-            value={store}
-            onChangeText={setStore}
-          />
+        <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Price (optional)</Text>
+            <TextInput
+              accessibilityLabel="Text input field"
+              testID="add-record-price"
+              style={[input, { minHeight: 48 }]}
+              value={price}
+              keyboardType="numeric"
+              onChangeText={setPrice}
+              placeholder="0.00"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </View>
+          <View style={{ flex: 1, gap: 6 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Store (optional)</Text>
+            <TextInput
+              accessibilityLabel="Text input field"
+              testID="add-record-store"
+              style={[input, { minHeight: 48 }]}
+              value={store}
+              onChangeText={setStore}
+              placeholder="e.g. Trader Joe's"
+              placeholderTextColor={theme.colors.textMuted}
+            />
+          </View>
         </View>
       ) : null}
+
 
       {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
 

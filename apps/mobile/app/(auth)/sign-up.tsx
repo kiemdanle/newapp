@@ -90,6 +90,8 @@ export default function SignUp() {
       <TextField
         label="Password"
         secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
         value={password}
         onChangeText={setPassword}
         error={errors.password}

@@ -120,7 +120,7 @@ contracts/tokens. This drift is a known maintenance hazard.
   `tests/integration` run against real Postgres + Redis and truncate all tables
   before each test (`setup.ts`, loads `.env.test`). Workers are skipped in test
   unless `RUN_WORKERS=1`. Run the narrowest relevant suite first, then broaden.
-- **Mobile**: Jest + jest-expo + @testing-library/react-native; colocated
+- **Mobile**: Jest (preset `react-native`) + @testing-library/react-native; colocated
   `*.test.ts` and `__tests__/`. Maestro for E2E. Keep a11y, WCAG-contrast, and
   touch-target checks green; respect the 1.5x font-scale cap.
 - Write or update tests for new features and bug fixes. Prove a bug with a test

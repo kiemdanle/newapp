@@ -177,19 +177,19 @@ pnpm mobile:apk   # assembleRelease; pins JAVA_HOME to Android Studio JBR
 
 Output: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`.
 `applicationId com.expyrico.app`, versionCode 1, versionName 0.0.1. Kotlin is
-pinned to 2.0.21 via expo-build-properties (needed for react-native-passkey
-coroutines metadata). The app points at `https://api.linhkienkts.com`.
+pinned to 2.0.21 in `android/build.gradle` (`kotlinVersion`, needed for
+react-native-passkey coroutines metadata). The app reads its API base URL from
+`react-native-config` (`Config.API_BASE_URL`, baked from `apps/mobile/.env`).
 
 > **Verified bug**: the release build type uses `signingConfigs.debug`
 > (`android/app/build.gradle`, line ~37), so release APKs are signed with the
 > debug key. This is fine for sideload testing but blocks Play Store
 > distribution. A production keystore is required before store submission.
 
-> **Verified issue**: deep-link scheme mismatch. `app.config.ts` scheme is
-> `Expyrico`, the Android manifest registers `expyrico`, but `parseAuthDeepLink`
-> only accepts the `pantry:` protocol and SecureStore keys are `pantry.*`.
-> Password-reset deep links therefore depend on the backend emitting `pantry:`
-> links. Align these before changing the scheme.
+> **Deep links**: the Android manifest registers the `expyrico` scheme. The app
+> no longer uses `app.config.ts` (Expo config removed). Verify any auth/password
+> reset deep links target the `expyrico` scheme before changing it. Secure-store
+> keys are namespaced `pantry.*` (legacy name, kept for compatibility).
 
 ## Health checks
 

@@ -86,7 +86,7 @@ gaps.
 - FR2: Users can create products and records with expiry dates, offline, and
   have them sync when connectivity returns.
 - FR3: The system sends push notifications ahead of expiry (scheduled +
-  send workers, Expo push).
+  send workers, FCM push).
 - FR4: Users can review products; reviews receive votes and feed a Wilson-score
   product rating.
 - FR5: Users can create and claim giveaways through a defined state machine, and

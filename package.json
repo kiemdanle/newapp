@@ -34,6 +34,9 @@
   },
   "allowScripts": {},
   "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": ["expo"]
+    },
     "patchedDependencies": {
       "@google-cloud/recaptcha-enterprise-react-native@18.9.2": "patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch"
     }

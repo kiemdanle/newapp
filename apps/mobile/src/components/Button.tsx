@@ -88,8 +88,8 @@ export function Button(props: ButtonProps) {
                 styles.label,
                 {
                   color: fg,
-                  fontSize: theme.typeRamp.labelLarge.fontSize,
-                  lineHeight: theme.typeRamp.labelLarge.lineHeight,
+                  fontSize: theme.typeRamp?.labelLarge?.fontSize ?? 14,
+                  lineHeight: theme.typeRamp?.labelLarge?.lineHeight ?? 20,
                   fontWeight: '700',
                 },
               ]}

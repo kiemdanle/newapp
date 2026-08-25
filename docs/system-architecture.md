@@ -195,7 +195,7 @@ in test unless `RUN_WORKERS=1`):
 | --- | --- |
 | product-lookup | Enrich products from OpenFoodFacts + upcitemdb |
 | notification-schedule | Schedule expiry reminders |
-| notification-send | Deliver via Expo push (expo-server-sdk) |
+| notification-send | Deliver via FCM push (firebase-admin) |
 | score-recalc | Recompute user reputation |
 | moderation-flag | Profanity auto-flag -> reports as the system user |
 | product-rating-recalc | Recompute Wilson-score product ratings |

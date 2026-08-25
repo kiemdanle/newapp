@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import type * as ExpyricoThemeModule from '@expyrico/theme';
 import { AddRecordForm } from '../features/records/AddRecordForm';
 import { createLocalRecord } from '../api/records';
 
@@ -26,19 +27,7 @@ jest.mock('../store/pantryScope', () => ({
 }));
 
 jest.mock('../theme/useTheme', () => ({
-  useTheme: () => ({
-    colors: {
-      bg: '#FAFAF8',
-      text: '#2C2C28',
-      textMuted: '#8C8C85',
-      primary: '#4BAE8A',
-      primaryFg: '#FAFAF8',
-      danger: '#E0442A',
-      border: '#F0F0ED',
-    },
-    spacing: { xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 24 },
-    radii: { md: 8, lg: 12, sm: 4 },
-  }),
+  useTheme: () => jest.requireActual<typeof ExpyricoThemeModule>('@expyrico/theme').themes.expyrico,
 }));
 
 describe('AddRecordForm', () => {

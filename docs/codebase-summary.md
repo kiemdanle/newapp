@@ -140,17 +140,21 @@ Navigation uses React Navigation. Builds are local Gradle + adb.
 - **Local-first data**: @nozbe/watermelondb ^0.28 (SQLite) with offline records
   push/pull sync.
 - **Styling**: nativewind ^4 + tailwind ^3.4 + runtime `@expyrico/theme` tokens.
-- **Auth libs**: expo-secure-store, google-signin, expo-apple-authentication,
-  react-native-passkey, react-native-get-random-values (crypto polyfill imported
-  first).
-- **Device**: expo-camera, @react-native-ml-kit/text-recognition (OCR for expiry
-  dates), expo-notifications. Validation with zod ^3.23.
+- **Auth libs**: react-native-keychain, @react-native-google-signin/google-signin,
+  @invertase/react-native-apple-authentication, react-native-passkey,
+  react-native-get-random-values (crypto polyfill imported first).
+- **Device**: react-native-vision-camera, @react-native-ml-kit/text-recognition
+  (OCR for expiry dates), @react-native-firebase/messaging (FCM push).
+  Validation with zod ^3.23.
 
 ### Navigation
-
-Root `app/_layout.tsx` renders providers (GestureHandlerRootView >
-SafeAreaProvider > QueryClientProvider > ThemeProvider) plus `AuthGate`
-(redirects `(auth)/welcome` vs `(app)/(tabs)/home`) and `DeepLinkHandler`.
+Root `index.js` registers `src/App.tsx`, which renders providers
+(GestureHandlerRootView > SafeAreaProvider > QueryClientProvider >
+ThemeProvider) inside a React Navigation `NavigationContainer`. Route screens
+live under `app/(auth)/` and `app/(app)/` (directory convention only — plain
+React Navigation, no expo-router) and are wired in
+`src/navigation/{RootNavigator,AuthNavigator,AppNavigator,TabsNavigator}.tsx`.
+`RootNavigator` redirects between the auth and app stacks based on session state.
 
 - Auth flow: welcome, sign-in (email/password, Google, Apple, passkey), sign-up,
   email verification, password recovery, and reset-password deep links.
@@ -161,8 +165,8 @@ SafeAreaProvider > QueryClientProvider > ThemeProvider) plus `AuthGate`
 ### API integration
 
 Hand-rolled fetch wrapper `src/api/client.ts` (no axios); base URL from
-`Constants.expoConfig.extra.apiBaseUrl` = `https://api.linhkienkts.com`,
-auto-prefixes `/v1`. Tokens live in expo-secure-store keys
+`react-native-config` (`Config.API_BASE_URL`, baked from `apps/mobile/.env` via
+dotenv.gradle), auto-prefixes `/v1`. Tokens live in react-native-keychain keys
 `pantry.access_token` / `pantry.refresh_token`. Single-flight refresh on 401; on
 failure clears storage + `onSignOut`. React Query `staleTime` 30s, `gcTime` 5m,
 no retry on 4xx.
@@ -170,7 +174,9 @@ no retry on 4xx.
 ### Android
 
 `applicationId com.expyrico.app`, versionCode 1, versionName 0.0.1. Kotlin pinned
-2.0.21 via expo-build-properties (for react-native-passkey coroutines metadata).
+2.0.21 in `android/build.gradle` (`kotlinVersion`, for react-native-passkey
+coroutines metadata). New Architecture and Hermes enabled in
+`android/gradle.properties`. Bare React Native 0.76 — no Expo.
 Manifest permissions: INTERNET, CAMERA, POST_NOTIFICATIONS, USE_BIOMETRIC,
 USE_CREDENTIALS; deep-link intent filter scheme `expyrico`. Build:
 `pnpm mobile:apk` -> assembleRelease (pins JAVA_HOME to Android Studio JBR). APK
@@ -183,9 +189,7 @@ copies** under `apps/mobile/local-packages/@expyrico/{shared,theme}/dist`
 (`file:` deps, committed `dist` artifacts). Source of truth is `packages/*`.
 Drift risk: the copies must be manually rebuilt and kept in sync.
 
-### Testing
-
-Jest + jest-expo ~52 + @testing-library/react-native. E2E via Maestro
+Jest (preset `react-native`) + @testing-library/react-native. E2E via Maestro
 (`test:e2e`). Tests in `__tests__/` (components + routes), `src/tests/`, and
 colocated `*.test.ts` (auth, api client, theme, linking, sync). a11y tooling:
 eslint-plugin-react-native-a11y, wcag-contrast; global font-scale cap 1.5x.
