@@ -173,9 +173,10 @@ export default function ScanScreen() {
           setPrePrompt(false);
           navigation.goBack();
         }}
-        onAllow={async () => {
-          setPrePrompt(false);
-          await request();
+        onAllow={() => {
+          void request()
+            .then(() => setPrePrompt(false))
+            .catch(() => undefined);
         }}
       />
     );

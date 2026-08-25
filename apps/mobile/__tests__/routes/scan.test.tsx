@@ -8,7 +8,7 @@ import { navigation } from '../../tests/mocks/react-navigation';
 import { createLocalRecord } from '../../src/api/records';
 
 let triggerScan: ((r: { kind: 'barcode' | 'qr'; value: string }) => void) | null = null;
-let mockInitialPermission: 'granted' | 'denied' = 'granted';
+let mockInitialPermission: 'unknown' | 'granted' | 'denied' = 'granted';
 const mockCheckPermission = jest.fn();
 const mockRequestPermission = jest.fn();
 
@@ -29,7 +29,12 @@ jest.mock('../../src/features/scan/usePermission', () => {
         setState(next);
         return next;
       }, []);
-      return { state, request: mockRequestPermission, check };
+      const request = React.useCallback(async () => {
+        const next = await mockRequestPermission();
+        setState(next);
+        return next;
+      }, []);
+      return { state, request, check };
     },
   };
 });
@@ -87,6 +92,37 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     await act(async () => fireEvent.press(await findByTestId('camera-permission-denied-open-settings')));
 
     expect(openSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the first-time pre-prompt when the initial permission check is unknown', async () => {
+    mockInitialPermission = 'unknown';
+    mockCheckPermission.mockResolvedValue('unknown');
+    const { findByTestId, queryByTestId } = render(wrap(<ScanScreen />));
+
+    expect(await findByTestId('pre-prompt-allow')).toBeTruthy();
+    expect(queryByTestId('camera-permission-denied-modal')).toBeNull();
+  });
+
+  it('keeps the first-time pre-prompt visible when requesting permission fails', async () => {
+    mockInitialPermission = 'unknown';
+    mockCheckPermission.mockResolvedValue('unknown');
+    mockRequestPermission.mockRejectedValue(new Error('Permission request failed'));
+    const unhandledRejection = jest.fn();
+    process.on('unhandledRejection', unhandledRejection);
+
+    try {
+      const { findByTestId } = render(wrap(<ScanScreen />));
+
+      await act(async () => {
+        fireEvent.press(await findByTestId('pre-prompt-allow'));
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(unhandledRejection).not.toHaveBeenCalled();
+      expect(await findByTestId('pre-prompt-allow')).toBeTruthy();
+    } finally {
+      process.off('unhandledRejection', unhandledRejection);
+    }
   });
 
   it('keeps the denied Settings prompt usable when opening Settings fails', async () => {
