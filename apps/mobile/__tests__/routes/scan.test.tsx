@@ -89,6 +89,50 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(openSettings).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps the denied Settings prompt usable when opening Settings fails', async () => {
+    mockInitialPermission = 'denied';
+    mockCheckPermission.mockResolvedValue('denied');
+    const unhandledRejection = jest.fn();
+    process.on('unhandledRejection', unhandledRejection);
+    jest.spyOn(Linking, 'openSettings').mockRejectedValue(new Error('Settings unavailable'));
+
+    try {
+      const { findByTestId } = render(wrap(<ScanScreen />));
+
+      expect(await findByTestId('camera-permission-denied-modal')).toBeTruthy();
+      await act(async () => {
+        fireEvent.press(await findByTestId('camera-permission-denied-open-settings'));
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(unhandledRejection).not.toHaveBeenCalled();
+      expect(await findByTestId('camera-permission-denied-modal')).toBeTruthy();
+    } finally {
+      process.off('unhandledRejection', unhandledRejection);
+    }
+  });
+
+  it('keeps the denied Settings prompt stable when the initial permission check fails', async () => {
+    mockInitialPermission = 'denied';
+    mockCheckPermission.mockRejectedValue(new Error('Permission check failed'));
+    const unhandledRejection = jest.fn();
+    process.on('unhandledRejection', unhandledRejection);
+
+    try {
+      const { findByTestId } = render(wrap(<ScanScreen />));
+
+      expect(await findByTestId('camera-permission-denied-modal')).toBeTruthy();
+      await act(async () => {
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(unhandledRejection).not.toHaveBeenCalled();
+      expect(await findByTestId('camera-permission-denied-modal')).toBeTruthy();
+    } finally {
+      process.off('unhandledRejection', unhandledRejection);
+    }
+  });
+
   it('refreshes camera permission when the app becomes active again', async () => {
     mockInitialPermission = 'denied';
     mockCheckPermission.mockResolvedValueOnce('denied').mockResolvedValueOnce('granted');

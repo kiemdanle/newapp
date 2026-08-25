@@ -47,14 +47,14 @@ export default function ScanScreen() {
   const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
-    void check();
+    void check().catch(() => undefined);
 
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (
         (appStateRef.current === 'inactive' || appStateRef.current === 'background') &&
         nextAppState === 'active'
       ) {
-        void check();
+        void check().catch(() => undefined);
       }
       appStateRef.current = nextAppState;
     });
@@ -185,7 +185,7 @@ export default function ScanScreen() {
       <CameraPermissionDeniedModal
         onCancel={() => navigation.goBack()}
         onOpenSettings={() => {
-          void Linking.openSettings();
+          void Linking.openSettings().catch(() => undefined);
         }}
       />
     );
