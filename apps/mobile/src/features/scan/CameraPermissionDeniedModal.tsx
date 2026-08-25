@@ -10,7 +10,7 @@ export function CameraPermissionDeniedModal({ onCancel, onOpenSettings }: Props)
   const theme = useTheme();
 
   return (
-    <Modal transparent visible animationType="fade">
+    <Modal transparent visible animationType="fade" onRequestClose={onCancel}>
       <View
         style={{
           flex: 1,
@@ -47,6 +47,12 @@ export function CameraPermissionDeniedModal({ onCancel, onOpenSettings }: Props)
               accessibilityRole="button"
               onPress={onCancel}
               testID="camera-permission-denied-cancel"
+              style={{
+                minHeight: 44,
+                paddingHorizontal: theme.spacing.sm,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
             >
               <Text style={{ color: theme.colors.textMuted }}>Cancel</Text>
             </Pressable>
@@ -54,6 +60,12 @@ export function CameraPermissionDeniedModal({ onCancel, onOpenSettings }: Props)
               accessibilityRole="button"
               onPress={onOpenSettings}
               testID="camera-permission-denied-open-settings"
+              style={{
+                minHeight: 44,
+                paddingHorizontal: theme.spacing.sm,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
             >
               <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Open Settings</Text>
             </Pressable>
