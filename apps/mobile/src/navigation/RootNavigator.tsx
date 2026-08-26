@@ -16,10 +16,10 @@ const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const accessToken = useSessionStore((s) => s.accessToken);
+  const refreshToken = useSessionStore((s) => s.refreshToken);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
 
-  const isAuthenticated = Boolean(accessToken) && sessionHydrated;
-
+  const isAuthenticated = Boolean(accessToken || refreshToken) && sessionHydrated;
   return (
     <>
       <DeepLinkHandler />

@@ -1,5 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const memory: Record<string, string | null> = {};
-
 function mockValueForKey(key: string): string | null {
   if (!(key in memory)) return null;
   return memory[key] ?? null;
@@ -13,6 +13,7 @@ export function __reset() {
   for (const key of Object.keys(memory)) {
     memory[key] = null;
   }
+  void AsyncStorage.clear();
 }
 
 export const setGenericPassword = jest.fn((username: string, password: string, options?: { service?: string }) => {

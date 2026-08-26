@@ -47,11 +47,12 @@ const defaultFetch = jest.fn(
       headers: { 'content-type': 'application/json' },
     }),
 );
-beforeEach(() => {
+beforeEach(async () => {
   defaultFetch.mockClear();
-  (globalThis as any).fetch = defaultFetch;
+  (globalThis as unknown as { fetch: unknown }).fetch = defaultFetch;
+  const AsyncStorage = require('@react-native-async-storage/async-storage');
+  await AsyncStorage.clear();
 });
-
 // React Native Reanimated test shim
 jest.mock('react-native-reanimated', () => {
   return {

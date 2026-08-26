@@ -1,5 +1,5 @@
 import * as Keychain from 'react-native-keychain';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 const KEY_ACCESS = 'pantry.access_token';
 const KEY_REFRESH = 'pantry.refresh_token';
 const KEY_THEME = 'pantry.theme_preference';
@@ -16,21 +16,35 @@ export function isThemePreference(v: string): v is ThemePreference {
 async function getValue(service: string): Promise<string | null> {
   try {
     const result = await Keychain.getGenericPassword({ service });
-    if (!result) return null;
-    return result.password;
-  } catch {
-    return null;
-  }
+    if (result && result.password) return result.password;
+  } catch {}
+
+  // Fallback to persistent storage if Android Keystore keys were invalidated during APK update/reinstall
+  try {
+    const fallback = await AsyncStorage.getItem(`@secure_${service}`);
+    if (fallback) {
+      // Restore back into Keychain for future reads
+      await Keychain.setGenericPassword(service, fallback, { service }).catch(() => {});
+      return fallback;
+    }
+  } catch {}
+
+  return null;
 }
 
 async function setValue(service: string, value: string): Promise<void> {
-  await Keychain.setGenericPassword(service, value, { service });
+  await Promise.allSettled([
+    Keychain.setGenericPassword(service, value, { service }),
+    AsyncStorage.setItem(`@secure_${service}`, value),
+  ]);
 }
 
 async function deleteValue(service: string): Promise<void> {
-  await Keychain.resetGenericPassword({ service });
+  await Promise.allSettled([
+    Keychain.resetGenericPassword({ service }),
+    AsyncStorage.removeItem(`@secure_${service}`),
+  ]);
 }
-
 export const secureStore = {
   async getAccessToken(): Promise<string | null> {
     return getValue(KEY_ACCESS);

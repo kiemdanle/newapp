@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 import type { AuthResult, User } from '@expyrico/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { secureStore } from './secure-store';
 import { authEndpoints } from '../api/endpoints';
 import { purgePrivateImageCache } from '../api/product-private-image';
 import { clearDraftLocalStateForUser } from '../features/products/product-draft-storage';
+
+const KEY_CACHED_USER = '@pantry_cached_user';
 
 interface SessionState {
   user: User | null;
@@ -31,8 +34,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     // re-auth flow that never called signOut first) — a stale cache entry
     // must never survive into a different account's session.
     purgePrivateImageCache();
-    await secureStore.setAccessToken(tokens.accessToken);
-    await secureStore.setRefreshToken(tokens.refreshToken);
+    await Promise.allSettled([
+      secureStore.setAccessToken(tokens.accessToken),
+      secureStore.setRefreshToken(tokens.refreshToken),
+      AsyncStorage.setItem(KEY_CACHED_USER, JSON.stringify(user)),
+    ]);
     set({ user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, pendingAuth: null });
   },
   signOut: async () => {
@@ -41,10 +47,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     // before it's cleared below.
     const outgoingUserId = get().user?.id;
     if (outgoingUserId) await clearDraftLocalStateForUser(outgoingUserId);
-    await secureStore.clearAll();
+    await Promise.allSettled([
+      secureStore.clearAll(),
+      AsyncStorage.removeItem(KEY_CACHED_USER),
+    ]);
     set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
   },
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    void AsyncStorage.setItem(KEY_CACHED_USER, JSON.stringify(user)).catch(() => {});
+    set({ user });
+  },
   setPendingAuth: (pendingAuth) => set({ pendingAuth }),
 }));
 
@@ -54,10 +66,20 @@ export const useSessionStore = create<SessionState>((set, get) => ({
  * fetch fills the profile card (name/email/initials) which is not persisted.
  */
 export async function hydrateSession(): Promise<void> {
-  const accessToken = await secureStore.getAccessToken();
-  const refreshToken = await secureStore.getRefreshToken();
-  // Mark hydrated immediately so splash screen dismisses instantly with local tokens
-  useSessionStore.setState({ accessToken, refreshToken, hydrated: true });
+  const [accessToken, refreshToken, cachedUserStr] = await Promise.all([
+    secureStore.getAccessToken(),
+    secureStore.getRefreshToken(),
+    AsyncStorage.getItem(KEY_CACHED_USER).catch(() => null),
+  ]);
+  let cachedUser: User | null = null;
+  if (cachedUserStr) {
+    try {
+      cachedUser = JSON.parse(cachedUserStr) as User;
+    } catch {}
+  }
+
+  // Mark hydrated immediately so splash screen dismisses instantly with local tokens and cached user
+  useSessionStore.setState({ user: cachedUser, accessToken, refreshToken, hydrated: true });
 
   if (!accessToken && !refreshToken) return;
 
