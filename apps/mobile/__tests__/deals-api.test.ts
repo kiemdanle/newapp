@@ -21,8 +21,8 @@ describe('buildDealQueryString', () => {
     );
 
     expect(qs).toContain('sort=price_asc');
-    expect(qs).toContain('q=Almond+Milk');
-    expect(qs).toContain("store=Trader+Joe%27s");
+    expect(qs).toContain('q=Almond%20Milk');
+    expect(qs).toContain('store=Trader%20Joe');
     expect(qs).toContain('minPrice=2');
     expect(qs).toContain('maxPrice=8.5');
     expect(qs).toContain('country=US');

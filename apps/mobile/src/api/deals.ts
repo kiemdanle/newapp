@@ -25,25 +25,24 @@ export interface DealFeedFilters {
 }
 
 export function buildDealQueryString(filters: DealFeedFilters = {}, cursor?: string): string {
-  const params = new URLSearchParams();
-  if (filters.sort) params.set('sort', filters.sort);
-  if (filters.q && filters.q.trim()) params.set('q', filters.q.trim());
-  if (filters.store && filters.store.trim()) params.set('store', filters.store.trim());
+  const parts: string[] = [];
+  if (filters.sort) parts.push(`sort=${encodeURIComponent(filters.sort)}`);
+  if (filters.q?.trim()) parts.push(`q=${encodeURIComponent(filters.q.trim())}`);
+  if (filters.store?.trim()) parts.push(`store=${encodeURIComponent(filters.store.trim())}`);
   if (filters.minPrice !== undefined && Number.isFinite(filters.minPrice)) {
-    params.set('minPrice', String(filters.minPrice));
+    parts.push(`minPrice=${encodeURIComponent(String(filters.minPrice))}`);
   }
   if (filters.maxPrice !== undefined && Number.isFinite(filters.maxPrice)) {
-    params.set('maxPrice', String(filters.maxPrice));
+    parts.push(`maxPrice=${encodeURIComponent(String(filters.maxPrice))}`);
   }
-  if (filters.country && filters.country.trim()) params.set('country', filters.country.trim());
+  if (filters.country?.trim()) parts.push(`country=${encodeURIComponent(filters.country.trim())}`);
   if (filters.expiryStatus && filters.expiryStatus !== 'all') {
-    params.set('expiryStatus', filters.expiryStatus);
+    parts.push(`expiryStatus=${encodeURIComponent(filters.expiryStatus)}`);
   }
-  if (filters.productId) params.set('productId', filters.productId);
-  if (cursor) params.set('cursor', cursor);
+  if (filters.productId) parts.push(`productId=${encodeURIComponent(filters.productId)}`);
+  if (cursor) parts.push(`cursor=${encodeURIComponent(cursor)}`);
 
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
+  return parts.length > 0 ? `?${parts.join('&')}` : '';
 }
 
 export function useDealFeed(filters: DealFeedFilters | DealSort = 'score') {

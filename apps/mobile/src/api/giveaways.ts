@@ -26,17 +26,16 @@ export function buildGiveawayQueryString(
   filters: GiveawayFeedFilters = {},
   cursor?: string,
 ): string {
-  const params = new URLSearchParams();
-  if (filters.status) params.set('status', filters.status);
-  if (filters.sort && filters.sort !== 'new') params.set('sort', filters.sort);
-  if (filters.q?.trim()) params.set('q', filters.q.trim());
-  if (filters.location?.trim()) params.set('location', filters.location.trim());
-  if (filters.country) params.set('country', filters.country);
-  if (filters.hasPhoto) params.set('hasPhoto', 'true');
-  if (cursor) params.set('cursor', cursor);
+  const parts: string[] = [];
+  if (filters.status) parts.push(`status=${encodeURIComponent(filters.status)}`);
+  if (filters.sort && filters.sort !== 'new') parts.push(`sort=${encodeURIComponent(filters.sort)}`);
+  if (filters.q?.trim()) parts.push(`q=${encodeURIComponent(filters.q.trim())}`);
+  if (filters.location?.trim()) parts.push(`location=${encodeURIComponent(filters.location.trim())}`);
+  if (filters.country) parts.push(`country=${encodeURIComponent(filters.country)}`);
+  if (filters.hasPhoto) parts.push('hasPhoto=true');
+  if (cursor) parts.push(`cursor=${encodeURIComponent(cursor)}`);
 
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
+  return parts.length > 0 ? `?${parts.join('&')}` : '';
 }
 
 export function useGiveawayFeed(filters: GiveawayFeedFilters | GiveawayStatus = 'open') {

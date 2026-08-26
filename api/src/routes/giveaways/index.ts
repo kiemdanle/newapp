@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { listGiveawaysRoute } from './list-feed.js';
 import { createGiveawayRoute } from './create.js';
-import { uploadGiveawayPhotoRoute } from './upload-photo.js';
+import { uploadGiveawayPhotoRoute, publicGiveawayPhotoRoutes } from './upload-photo.js';
 import { getGiveawayRoute } from './get.js';
 import { updateGiveawayRoute } from './update.js';
 import { cancelGiveawayRoute } from './cancel.js';
@@ -15,6 +15,7 @@ export async function giveawaysRoutes(app: FastifyInstance) {
   await app.register(listGiveawaysRoute);
   await app.register(createGiveawayRoute);
   await app.register(uploadGiveawayPhotoRoute);
+  await app.register(publicGiveawayPhotoRoutes);
   await app.register(getGiveawayRoute);
   await app.register(updateGiveawayRoute);
   await app.register(cancelGiveawayRoute);
