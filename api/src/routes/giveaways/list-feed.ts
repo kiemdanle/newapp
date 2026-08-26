@@ -15,15 +15,66 @@ export async function listGiveawaysRoute(app: FastifyInstance) {
       viewerCountry = viewer?.country ?? null;
     }
 
+    const whereConditions: Array<Record<string, unknown>> = [];
+
+    if (query.status !== 'all') {
+      whereConditions.push({ status: query.status });
+    }
+
+    if (query.q) {
+      whereConditions.push({
+        OR: [
+          { title: { contains: query.q, mode: 'insensitive' } },
+          { description: { contains: query.q, mode: 'insensitive' } },
+          { locationText: { contains: query.q, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    if (query.location) {
+      whereConditions.push({
+        locationText: { contains: query.location, mode: 'insensitive' },
+      });
+    }
+
+    if (query.hasPhoto === true) {
+      whereConditions.push({ photoUrl: { not: null } });
+    }
+
+    if (query.country) {
+      if (query.country.toUpperCase() !== 'ALL') {
+        whereConditions.push({ country: query.country.toUpperCase() });
+      }
+    } else if (viewerCountry !== null) {
+      whereConditions.push({
+        OR: [{ country: viewerCountry }, { country: null }],
+      });
+    }
+
+    let orderBy: Array<Record<string, unknown>> = [{ createdAt: 'desc' }];
+    switch (query.sort) {
+      case 'old':
+        orderBy = [{ createdAt: 'asc' }];
+        break;
+      case 'claims_desc':
+        orderBy = [{ claims: { _count: 'desc' } }, { createdAt: 'desc' }];
+        break;
+      case 'claims_asc':
+        orderBy = [{ claims: { _count: 'asc' } }, { createdAt: 'desc' }];
+        break;
+      case 'expiry_asc':
+        orderBy = [{ claimExpiresAt: 'asc' }, { createdAt: 'desc' }];
+        break;
+      case 'new':
+      default:
+        orderBy = [{ createdAt: 'desc' }];
+        break;
+    }
+
     const cursor = query.cursor ? { id: query.cursor } : undefined;
     const items = await prisma.giveaway.findMany({
-      where: {
-        status: query.status,
-        ...(viewerCountry !== null
-          ? { OR: [{ country: viewerCountry }, { country: null }] }
-          : {}),
-      },
-      orderBy: [{ createdAt: 'desc' }],
+      where: whereConditions.length > 0 ? { AND: whereConditions } : {},
+      orderBy: orderBy as never,
       take: query.limit + 1,
       ...(cursor ? { skip: 1, cursor } : {}),
       include: {

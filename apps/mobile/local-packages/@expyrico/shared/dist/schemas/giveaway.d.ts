@@ -1,6 +1,8 @@
 import { z } from 'zod';
 export declare const giveawayStatusSchema: z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>;
 export type GiveawayStatus = z.infer<typeof giveawayStatusSchema>;
+export declare const giveawaySortSchema: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc"]>>;
+export type GiveawaySort = z.infer<typeof giveawaySortSchema>;
 export declare const claimStatusSchema: z.ZodEnum<["requested", "selected", "rejected"]>;
 export type ClaimStatus = z.infer<typeof claimStatusSchema>;
 export declare const giveawaySchema: z.ZodObject<{
@@ -252,15 +254,30 @@ export declare const selectClaimSchema: z.ZodObject<{
 }>;
 export type SelectClaim = z.infer<typeof selectClaimSchema>;
 export declare const giveawayListQuerySchema: z.ZodObject<{
-    status: z.ZodDefault<z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>>;
+    q: z.ZodOptional<z.ZodString>;
+    status: z.ZodDefault<z.ZodUnion<[z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>, z.ZodLiteral<"all">]>>;
+    sort: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc"]>>;
+    location: z.ZodOptional<z.ZodString>;
+    country: z.ZodOptional<z.ZodString>;
+    hasPhoto: z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodBoolean, z.ZodEnum<["true", "false"]>]>, boolean, boolean | "true" | "false">>;
     cursor: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    status: "open" | "claimed" | "handed_off" | "completed" | "cancelled";
+    sort: "new" | "old" | "claims_asc" | "claims_desc" | "expiry_asc";
+    status: "open" | "claimed" | "handed_off" | "completed" | "cancelled" | "all";
     limit: number;
+    country?: string | undefined;
+    q?: string | undefined;
+    location?: string | undefined;
+    hasPhoto?: boolean | undefined;
     cursor?: string | undefined;
 }, {
-    status?: "open" | "claimed" | "handed_off" | "completed" | "cancelled" | undefined;
+    sort?: "new" | "old" | "claims_asc" | "claims_desc" | "expiry_asc" | undefined;
+    status?: "open" | "claimed" | "handed_off" | "completed" | "cancelled" | "all" | undefined;
+    country?: string | undefined;
+    q?: string | undefined;
+    location?: string | undefined;
+    hasPhoto?: boolean | "true" | "false" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
 }>;

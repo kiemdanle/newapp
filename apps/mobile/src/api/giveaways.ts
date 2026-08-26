@@ -1,17 +1,55 @@
 // apps/mobile/src/api/giveaways.ts
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Giveaway, GiveawayCreate, GiveawayPatch, Claim, GiveawayStatus } from '@expyrico/shared';
+import type {
+  Giveaway,
+  GiveawayCreate,
+  GiveawayPatch,
+  Claim,
+  GiveawayStatus,
+  GiveawaySort,
+} from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
 
 type Page = { items: Giveaway[]; cursor: string | null };
 
-export function useGiveawayFeed(status: GiveawayStatus = 'open') {
+export interface GiveawayFeedFilters {
+  status?: GiveawayStatus | 'all';
+  sort?: GiveawaySort;
+  q?: string;
+  location?: string;
+  country?: string;
+  hasPhoto?: boolean;
+}
+
+export function buildGiveawayQueryString(
+  filters: GiveawayFeedFilters = {},
+  cursor?: string,
+): string {
+  const params = new URLSearchParams();
+  if (filters.status) params.set('status', filters.status);
+  if (filters.sort && filters.sort !== 'new') params.set('sort', filters.sort);
+  if (filters.q?.trim()) params.set('q', filters.q.trim());
+  if (filters.location?.trim()) params.set('location', filters.location.trim());
+  if (filters.country) params.set('country', filters.country);
+  if (filters.hasPhoto) params.set('hasPhoto', 'true');
+  if (cursor) params.set('cursor', cursor);
+
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function useGiveawayFeed(filters: GiveawayFeedFilters | GiveawayStatus = 'open') {
+  const normalizedFilters: GiveawayFeedFilters =
+    typeof filters === 'string' ? { status: filters } : filters;
+
   return useInfiniteQuery<Page>({
-    queryKey: ['giveaways', status],
+    queryKey: ['giveaways', normalizedFilters],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) =>
-      apiClient.get<Page>(`/giveaways?status=${status}${pageParam ? `&cursor=${pageParam}` : ''}`),
+      apiClient.get<Page>(
+        `/giveaways${buildGiveawayQueryString(normalizedFilters, pageParam as string | undefined)}`,
+      ),
     getNextPageParam: (last) => last.cursor ?? undefined,
     staleTime: 30_000,
   });

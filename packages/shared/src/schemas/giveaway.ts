@@ -3,9 +3,13 @@ import { z } from 'zod';
 export const giveawayStatusSchema = z.enum(['open', 'claimed', 'handed_off', 'completed', 'cancelled']);
 export type GiveawayStatus = z.infer<typeof giveawayStatusSchema>;
 
+export const giveawaySortSchema = z
+  .enum(['new', 'old', 'claims_asc', 'claims_desc', 'expiry_asc'])
+  .default('new');
+export type GiveawaySort = z.infer<typeof giveawaySortSchema>;
+
 export const claimStatusSchema = z.enum(['requested', 'selected', 'rejected']);
 export type ClaimStatus = z.infer<typeof claimStatusSchema>;
-
 const titleField = z.string().trim().min(3).max(120);
 const descField = z.string().trim().max(2000).optional();
 const locationField = z.string().trim().min(2).max(160);
@@ -94,7 +98,15 @@ export const selectClaimSchema = z.object({ claimId: z.string().uuid() });
 export type SelectClaim = z.infer<typeof selectClaimSchema>;
 
 export const giveawayListQuerySchema = z.object({
-  status: giveawayStatusSchema.default('open'),
+  q: z.string().trim().max(100).optional(),
+  status: z.union([giveawayStatusSchema, z.literal('all')]).default('open'),
+  sort: giveawaySortSchema,
+  location: z.string().trim().max(160).optional(),
+  country: z.string().trim().max(10).optional(),
+  hasPhoto: z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((v) => v === true || v === 'true')
+    .optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });

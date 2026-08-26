@@ -1,21 +1,33 @@
 // apps/mobile/src/features/giveaways/GiveawayFeed.tsx
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useGiveawayFeed } from '@/api/giveaways';
-import type { Giveaway } from '@expyrico/shared';
+import type { Giveaway, GiveawaySort } from '@expyrico/shared';
+import type { GiveawayFeedFilters } from '../../api/giveaways';
+import { useGiveawayFeed } from '../../api/giveaways';
 import { GiveawayCard } from './GiveawayCard';
+import { GiveawaySearchBar } from './GiveawaySearchBar';
+import { GiveawayFilterModal } from './GiveawayFilterModal';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/useTheme';
+
+const SORTS: { id: GiveawaySort; label: string; icon: string }[] = [
+  { id: 'new', label: 'Newest', icon: '⏱️' },
+  { id: 'expiry_asc', label: 'Expiring Soon', icon: '⏳' },
+  { id: 'claims_asc', label: 'Fewest Claims', icon: '🎁' },
+  { id: 'claims_desc', label: 'Popular', icon: '🔥' },
+  { id: 'old', label: 'Oldest', icon: '📜' },
+];
 
 interface Props {
   onOpen: (id: string) => void;
@@ -27,8 +39,58 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   const insets = useSafeAreaInsets();
   const fabBottom = 84 + Math.max(insets.bottom, 0);
 
-  const q = useGiveawayFeed('open');
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSort, setSelectedSort] = useState<GiveawaySort>('new');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filters, setFilters] = useState<GiveawayFeedFilters>({
+    status: 'open',
+    sort: 'new',
+  });
+
+  // Calculate active filter count (excluding default open status & new sort)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.status && filters.status !== 'open') count++;
+    if (filters.location) count++;
+    if (filters.hasPhoto) count++;
+    if (filters.country === 'ALL') count++;
+    return count;
+  }, [filters]);
+
+  // Combined filters for API query
+  const combinedFilters: GiveawayFeedFilters = useMemo(
+    () => ({
+      ...filters,
+      sort: selectedSort,
+      q: searchQuery.trim() || undefined,
+    }),
+    [filters, selectedSort, searchQuery],
+  );
+
+  const q = useGiveawayFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+
+  const isFiltered = Boolean(
+    searchQuery.trim() ||
+      (filters.status && filters.status !== 'open') ||
+      filters.location ||
+      filters.hasPhoto ||
+      filters.country === 'ALL',
+  );
+
+  function clearAllFilters() {
+    setSearchQuery('');
+    setFilters({ status: 'open', sort: selectedSort });
+  }
+
+  function removeFilter(key: keyof GiveawayFeedFilters) {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
@@ -36,10 +98,159 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
       <View style={styles.headerRow}>
         <Text style={[styles.heading, { color: theme.colors.text }]}>Giveaways</Text>
         <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-          Offer items you cannot use in time, or claim food nearby.
+          Offer food or groceries to neighbors before they expire.
         </Text>
       </View>
 
+      {/* Search Bar + Filter Button */}
+      <GiveawaySearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        onOpenFilter={() => setFilterModalVisible(true)}
+        activeFilterCount={activeFilterCount}
+      />
+
+      {/* Sort Pills ScrollView */}
+      <View style={styles.sortContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortList}
+        >
+          {SORTS.map((s) => {
+            const selected = s.id === selectedSort;
+            return (
+              <Pressable
+                key={s.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setSelectedSort(s.id)}
+                style={[
+                  styles.sortPill,
+                  {
+                    backgroundColor: selected ? theme.colors.primary : theme.colors.bgElevated,
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    borderRadius: theme.radii.pill,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sortText,
+                    {
+                      color: selected ? theme.colors.primaryFg : theme.colors.text,
+                      fontWeight: selected ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {s.icon} {s.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Active Filter Chips Bar */}
+      {isFiltered && (
+        <View style={styles.activeFiltersRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeChipsList}
+          >
+            {searchQuery.trim() ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setSearchQuery('')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  "{searchQuery}" ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.status && filters.status !== 'open' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('status')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  🏷️ Status: {filters.status} ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.location ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('location')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  📍 {filters.location} ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.hasPhoto ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('hasPhoto')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  📷 Has Photo ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.country === 'ALL' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('country')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  🌍 Worldwide ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={clearAllFilters}
+              style={[
+                styles.clearAllBtn,
+                { backgroundColor: theme.colors.primary + '18' },
+              ]}
+            >
+              <Text style={[styles.clearAllText, { color: theme.colors.primaryDark }]}>
+                Clear all
+              </Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Main Giveaways Feed List */}
       <FlatList
         data={items}
         keyExtractor={(d: Giveaway) => d.id}
@@ -69,12 +280,32 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
             </View>
+          ) : isFiltered ? (
+            <View style={{ marginTop: 24 }}>
+              <EmptyState
+                icon="search"
+                title="No matching giveaways"
+                body="Try adjusting your filters or search keywords."
+              />
+              <Pressable
+                accessibilityRole="button"
+                onPress={clearAllFilters}
+                style={[
+                  styles.emptyStateAction,
+                  { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+                ]}
+              >
+                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                  Clear filters
+                </Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={{ marginTop: 24 }}>
               <EmptyState
                 icon="gift"
                 title="No giveaways yet"
-                body="Share a sealed item before it expires, or check again for nearby offers."
+                body="Be the first to share food or groceries with neighbors nearby!"
               />
               <Pressable
                 accessibilityRole="button"
@@ -121,6 +352,14 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         <Ionicons name="add" size={22} color={theme.colors.primaryFg} style={{ marginRight: 4 }} />
         <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>Share Item</Text>
       </Pressable>
+
+      {/* Filter Modal Sheet */}
+      <GiveawayFilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        filters={filters}
+        onApply={(nextFilters) => setFilters(nextFilters)}
+      />
     </View>
   );
 }
@@ -132,7 +371,7 @@ const styles = StyleSheet.create({
   headerRow: {
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 10,
+    paddingBottom: 6,
   },
   heading: {
     fontSize: 26,
@@ -141,6 +380,51 @@ const styles = StyleSheet.create({
   subheading: {
     fontSize: 13,
     marginTop: 2,
+  },
+  sortContainer: {
+    paddingVertical: 6,
+  },
+  sortList: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  sortPill: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sortText: {
+    fontSize: 13,
+  },
+  activeFiltersRow: {
+    paddingVertical: 4,
+  },
+  activeChipsList: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+  },
+  activeChip: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  activeChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clearAllBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 20,

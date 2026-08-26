@@ -56,6 +56,51 @@ describe('GET /v1/giveaways', () => {
     expect(res.json().items.map((x: { id: string }) => x.id)).toContain(g.id);
     await app.close();
   });
+
+  it('filters by search query q across title and description', async () => {
+    const app = await buildServer();
+    const u = await makeUser({ email: `gq-${Date.now()}@t.l` });
+    const match = await makeGiveaway({ giverUserId: u.id, title: 'Organic Apples', locationText: 'Market' });
+    const other = await makeGiveaway({ giverUserId: u.id, title: 'Canned Beans', locationText: 'Store' });
+    const res = await app.inject({ method: 'GET', url: '/v1/giveaways?q=Apples' });
+    expect(res.statusCode).toBe(200);
+    const ids = res.json().items.map((x: { id: string }) => x.id);
+    expect(ids).toContain(match.id);
+    expect(ids).not.toContain(other.id);
+    await app.close();
+  });
+
+  it('filters by location', async () => {
+    const app = await buildServer();
+    const u = await makeUser({ email: `gl-${Date.now()}@t.l` });
+    const match = await makeGiveaway({ giverUserId: u.id, title: 'Milk', locationText: 'Uptown Park' });
+    const other = await makeGiveaway({ giverUserId: u.id, title: 'Bread', locationText: 'Downtown Station' });
+    const res = await app.inject({ method: 'GET', url: '/v1/giveaways?location=Uptown' });
+    expect(res.statusCode).toBe(200);
+    const ids = res.json().items.map((x: { id: string }) => x.id);
+    expect(ids).toContain(match.id);
+    expect(ids).not.toContain(other.id);
+    await app.close();
+  });
+
+  it('supports sorting by sort=old and sort=new', async () => {
+    const app = await buildServer();
+    const u = await makeUser({ email: `gs-${Date.now()}@t.l` });
+    const first = await makeGiveaway({ giverUserId: u.id, title: 'First Item' });
+    await new Promise((r) => setTimeout(r, 10));
+    const second = await makeGiveaway({ giverUserId: u.id, title: 'Second Item' });
+
+    const resOld = await app.inject({ method: 'GET', url: '/v1/giveaways?sort=old' });
+    expect(resOld.statusCode).toBe(200);
+    const idsOld = resOld.json().items.map((x: { id: string }) => x.id);
+    expect(idsOld.indexOf(first.id)).toBeLessThan(idsOld.indexOf(second.id));
+
+    const resNew = await app.inject({ method: 'GET', url: '/v1/giveaways?sort=new' });
+    expect(resNew.statusCode).toBe(200);
+    const idsNew = resNew.json().items.map((x: { id: string }) => x.id);
+    expect(idsNew.indexOf(second.id)).toBeLessThan(idsNew.indexOf(first.id));
+    await app.close();
+  });
 });
 
 describe('POST /v1/giveaways', () => {
