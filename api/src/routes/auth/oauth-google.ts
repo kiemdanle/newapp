@@ -15,7 +15,8 @@ export async function oauthGoogleRoute(app: FastifyInstance) {
     let identity;
     try {
       identity = await verifyGoogleIdToken(input.idToken);
-    } catch {
+    } catch (err: unknown) {
+      req.log.warn({ err }, 'Google ID token verification failed');
       throw new AppError({
         status: 401,
         code: ERROR_CODES.INVALID_TOKEN,

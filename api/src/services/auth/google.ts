@@ -14,9 +14,14 @@ export interface GoogleIdentity {
 
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdentity> {
   const cfg = getConfig();
+  const rawClientId = cfg.oauth.googleClientId;
+  const audiences = (typeof rawClientId === 'string' ? rawClientId.split(',') : [rawClientId])
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   const { payload } = await jwtVerify(idToken, JWKS, {
     issuer: ['https://accounts.google.com', 'accounts.google.com'],
-    audience: cfg.oauth.googleClientId,
+    audience: audiences.length === 1 ? audiences[0] : audiences,
   });
   const p = payload as JWTPayload & {
     email?: string;
