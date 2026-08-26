@@ -13,15 +13,10 @@ export function isThemePreference(v: string): v is ThemePreference {
   return (THEME_PREFERENCES as readonly string[]).includes(v);
 }
 
-const KEYCHAIN_OPTIONS: Keychain.Options = {
-  accessible: Keychain?.ACCESSIBLE?.AFTER_FIRST_UNLOCK,
-  securityLevel: Keychain?.SECURITY_LEVEL?.ANY,
-};
-
 async function getValue(service: string): Promise<string | null> {
   try {
-    const result = await Keychain.getGenericPassword({ service, ...KEYCHAIN_OPTIONS });
-    if (result === false) return null;
+    const result = await Keychain.getGenericPassword({ service });
+    if (!result) return null;
     return result.password;
   } catch {
     return null;
@@ -29,7 +24,7 @@ async function getValue(service: string): Promise<string | null> {
 }
 
 async function setValue(service: string, value: string): Promise<void> {
-  await Keychain.setGenericPassword(service, value, { service, ...KEYCHAIN_OPTIONS });
+  await Keychain.setGenericPassword(service, value, { service });
 }
 
 async function deleteValue(service: string): Promise<void> {
