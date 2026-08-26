@@ -70,11 +70,12 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
 
   const q = useDealFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const refetch = q.refetch;
 
   useFocusEffect(
     useCallback(() => {
-      void q.refetch();
-    }, [q]),
+      void refetch();
+    }, [refetch]),
   );
   const isFiltered = Boolean(
     searchQuery.trim() ||

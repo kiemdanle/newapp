@@ -71,12 +71,13 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
 
   const q = useGiveawayFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const refetch = q.refetch;
 
-  // Auto-refetch when user navigates back to the Giveaways tab (e.g. after posting a new giveaway)
+  // Auto-refetch when user navigates back to the Giveaways tab
   useFocusEffect(
     useCallback(() => {
-      void q.refetch();
-    }, [q]),
+      void refetch();
+    }, [refetch]),
   );
   const isFiltered = Boolean(
     searchQuery.trim() ||
