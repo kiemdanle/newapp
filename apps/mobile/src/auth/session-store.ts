@@ -5,9 +5,32 @@ import { secureStore } from './secure-store';
 import { authEndpoints } from '../api/endpoints';
 import { purgePrivateImageCache } from '../api/product-private-image';
 import { clearDraftLocalStateForUser } from '../features/products/product-draft-storage';
+import { database } from '../db/index';
+import { clearQueryClient } from '../api/query-client';
+import { usePantryScope } from '../store/pantryScope';
+import { triggerSyncSoon } from '../db/triggers';
 
 const KEY_CACHED_USER = '@pantry_cached_user';
 
+export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
+  purgePrivateImageCache();
+  clearQueryClient();
+  if (userId) {
+    await clearDraftLocalStateForUser(userId).catch(() => {});
+  }
+  usePantryScope.getState().setScope('personal', null);
+  // Reset local SQLite database to prevent any records leaking to other accounts
+  try {
+    await database.write(async () => {
+      await database.unsafeResetDatabase();
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to reset local database', e);
+  }
+  // Clear last sync timestamp so next user starts fresh
+  await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
+}
 interface SessionState {
   user: User | null;
   accessToken: string | null;
@@ -30,9 +53,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   hydrated: false,
   pendingAuth: null,
   signIn: async ({ user, tokens }) => {
-    // Covers a user switch without an intervening explicit sign-out (e.g. a
-    // re-auth flow that never called signOut first) — a stale cache entry
-    // must never survive into a different account's session.
+    const currentUserId = get().user?.id;
+    if (currentUserId && currentUserId !== user.id) {
+      await clearAllLocalUserData(currentUserId);
+    }
     purgePrivateImageCache();
     await Promise.allSettled([
       secureStore.setAccessToken(tokens.accessToken),
@@ -40,13 +64,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       AsyncStorage.setItem(KEY_CACHED_USER, JSON.stringify(user)),
     ]);
     set({ user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken, pendingAuth: null });
+    triggerSyncSoon();
   },
   signOut: async () => {
-    purgePrivateImageCache();
-    // Data-hygiene cleanup for a shared device — read the outgoing user's ID
-    // before it's cleared below.
     const outgoingUserId = get().user?.id;
-    if (outgoingUserId) await clearDraftLocalStateForUser(outgoingUserId);
+    await clearAllLocalUserData(outgoingUserId);
     await Promise.allSettled([
       secureStore.clearAll(),
       AsyncStorage.removeItem(KEY_CACHED_USER),

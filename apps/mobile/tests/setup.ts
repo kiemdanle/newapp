@@ -170,6 +170,7 @@ jest.mock('../src/db/index', () => {
     database: {
       get: () => recordsCol,
       write: (fn: () => Promise<void>) => fn(),
+      unsafeResetDatabase: jest.fn(async () => undefined),
     },
     RecordModel,
     ProductCacheModel,

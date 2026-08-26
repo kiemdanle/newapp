@@ -1,8 +1,10 @@
 import { QueryClient } from '@tanstack/react-query';
 import { ApiError } from './errors';
 
+let _queryClient: QueryClient | undefined;
+
 export function createQueryClient(): QueryClient {
-  return new QueryClient({
+  _queryClient = new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 30_000,
@@ -18,4 +20,11 @@ export function createQueryClient(): QueryClient {
       },
     },
   });
+  return _queryClient;
+}
+
+export function clearQueryClient(): void {
+  if (_queryClient) {
+    _queryClient.clear();
+  }
 }
