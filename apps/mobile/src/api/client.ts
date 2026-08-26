@@ -80,8 +80,11 @@ export async function refreshTokensOnce(): Promise<boolean> {
         body: JSON.stringify({ refreshToken: refresh }),
       });
       if (!res.ok) {
-        await secureStore.clearAll();
-        onSignOut?.();
+        // Only sign out if the server explicitly rejects with 401 or 403 (token revoked or invalid)
+        if (res.status === 401 || res.status === 403) {
+          await secureStore.clearAll();
+          onSignOut?.();
+        }
         return false;
       }
       const data = (await res.json()) as RefreshResponse;
@@ -89,8 +92,7 @@ export async function refreshTokensOnce(): Promise<boolean> {
       await secureStore.setRefreshToken(data.refreshToken);
       return true;
     } catch {
-      await secureStore.clearAll();
-      onSignOut?.();
+      // Network failure / offline / timeout: do NOT sign out! Retain credentials for retry when online.
       return false;
     } finally {
       refreshInFlight = null;

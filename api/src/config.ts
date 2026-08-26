@@ -15,7 +15,7 @@ const envSchema = z.object({
   JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   JWT_ISSUER: z.string().default('pantry-api'),
   JWT_AUDIENCE: z.string().default('pantry-app'),
-  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(365),
 
   // Rate limiting (per 1-minute window). Kept configurable so tests can tune
   // them rather than disabling the limiter outright.

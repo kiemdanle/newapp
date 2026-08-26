@@ -139,6 +139,19 @@ describe('apiClient — refresh on 401', () => {
     expect(await secureStore.getRefreshToken()).toBeNull();
   });
 
+  it('does not clear tokens on temporary network error during refresh', async () => {
+    await secureStore.setAccessToken('expired');
+    await secureStore.setRefreshToken('saved-refresh');
+    const f = jest.fn();
+    (global as { fetch?: unknown }).fetch = f;
+    f.mockResolvedValueOnce(problemResponse('token_expired', 401, 'expired'))
+      .mockRejectedValueOnce(new TypeError('Network request failed'));
+
+    await expect(apiClient.request({ method: 'GET', path: '/me' })).rejects.toThrow();
+    // Tokens must be preserved for retry when network is back
+    expect(await secureStore.getRefreshToken()).toBe('saved-refresh');
+  });
+
   it('only refreshes once even with concurrent failing requests, and both replays use the rotated token', async () => {
     await secureStore.setAccessToken('expired');
     await secureStore.setRefreshToken('refresh-1');
