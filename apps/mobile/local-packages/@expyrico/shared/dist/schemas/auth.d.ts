@@ -29,7 +29,7 @@ export declare const authResultSchema: z.ZodObject<{
         hasPassword: z.ZodDefault<z.ZodBoolean>;
         role: z.ZodEnum<["user", "admin"]>;
         status: z.ZodEnum<["active", "suspended", "deleted"]>;
-        themePreference: z.ZodEnum<["expyrico", "expyricoDark", "system", "bento", "clay", "material"]>;
+        themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
@@ -44,7 +44,7 @@ export declare const authResultSchema: z.ZodObject<{
         hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     }, {
@@ -57,7 +57,7 @@ export declare const authResultSchema: z.ZodObject<{
         avatarUrl: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
@@ -89,7 +89,7 @@ export declare const authResultSchema: z.ZodObject<{
         hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     };
@@ -109,7 +109,7 @@ export declare const authResultSchema: z.ZodObject<{
         avatarUrl: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
@@ -382,7 +382,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         hasPassword: z.ZodDefault<z.ZodBoolean>;
         role: z.ZodEnum<["user", "admin"]>;
         status: z.ZodEnum<["active", "suspended", "deleted"]>;
-        themePreference: z.ZodEnum<["expyrico", "expyricoDark", "system", "bento", "clay", "material"]>;
+        themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
@@ -397,7 +397,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     }, {
@@ -410,7 +410,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         avatarUrl: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
@@ -429,7 +429,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     };
@@ -449,7 +449,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         avatarUrl: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;

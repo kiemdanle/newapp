@@ -1,7 +1,7 @@
 import { z } from 'zod';
 export declare const userRoleSchema: z.ZodEnum<["user", "admin"]>;
 export declare const userStatusSchema: z.ZodEnum<["active", "suspended", "deleted"]>;
-export declare const themePreferenceSchema: z.ZodEnum<["expyrico", "expyricoDark", "system", "bento", "clay", "material"]>;
+export declare const themePreferenceSchema: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
 export declare const userSchema: z.ZodObject<{
     id: z.ZodString;
     email: z.ZodString;
@@ -14,7 +14,7 @@ export declare const userSchema: z.ZodObject<{
     hasPassword: z.ZodDefault<z.ZodBoolean>;
     role: z.ZodEnum<["user", "admin"]>;
     status: z.ZodEnum<["active", "suspended", "deleted"]>;
-    themePreference: z.ZodEnum<["expyrico", "expyricoDark", "system", "bento", "clay", "material"]>;
+    themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
@@ -29,7 +29,7 @@ export declare const userSchema: z.ZodObject<{
     hasPassword: boolean;
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
-    themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+    themePreference: "expyrico" | "bento" | "clay" | "material";
     createdAt: string;
     updatedAt: string;
 }, {
@@ -42,7 +42,7 @@ export declare const userSchema: z.ZodObject<{
     avatarUrl: string | null;
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
-    themePreference: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material";
+    themePreference: "expyrico" | "bento" | "clay" | "material";
     createdAt: string;
     updatedAt: string;
     address?: string | null | undefined;
@@ -55,21 +55,21 @@ export declare const updateProfileSchema: z.ZodObject<{
     address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     country: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     avatarUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    themePreference: z.ZodOptional<z.ZodEnum<["expyrico", "expyricoDark", "system", "bento", "clay", "material"]>>;
+    themePreference: z.ZodOptional<z.ZodEnum<["expyrico", "bento", "clay", "material"]>>;
 }, "strip", z.ZodTypeAny, {
     firstName?: string | undefined;
     lastName?: string | undefined;
     address?: string | null | undefined;
     country?: string | null | undefined;
     avatarUrl?: string | null | undefined;
-    themePreference?: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material" | undefined;
+    themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }, {
     firstName?: string | undefined;
     lastName?: string | undefined;
     address?: string | null | undefined;
     country?: string | null | undefined;
     avatarUrl?: string | null | undefined;
-    themePreference?: "expyrico" | "expyricoDark" | "system" | "bento" | "clay" | "material" | undefined;
+    themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }>;
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 export declare const meUsageResponseSchema: z.ZodObject<{
