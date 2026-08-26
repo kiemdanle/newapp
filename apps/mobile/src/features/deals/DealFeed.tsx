@@ -1,5 +1,5 @@
 // apps/mobile/src/features/deals/DealFeed.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
@@ -70,6 +71,11 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const q = useDealFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  useFocusEffect(
+    useCallback(() => {
+      void q.refetch();
+    }, [q]),
+  );
   const isFiltered = Boolean(
     searchQuery.trim() ||
       filters.store ||

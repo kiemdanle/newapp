@@ -1,5 +1,5 @@
 // apps/mobile/src/features/giveaways/GiveawayFeed.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
@@ -71,6 +72,12 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   const q = useGiveawayFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  // Auto-refetch when user navigates back to the Giveaways tab (e.g. after posting a new giveaway)
+  useFocusEffect(
+    useCallback(() => {
+      void q.refetch();
+    }, [q]),
+  );
   const isFiltered = Boolean(
     searchQuery.trim() ||
       (filters.status && filters.status !== 'open') ||
