@@ -7,7 +7,7 @@ vi.mock('../../src/services/auth/email.js', () => ({
   sendPasswordResetCodeEmail: vi.fn(async () => undefined),
 }));
 
-describe('email verification', () => {
+describe.sequential('email verification', () => {
   it('verifies an email with a valid 6-digit code', async () => {
     const { sendVerificationEmail } = await import('../../src/services/auth/email.js');
     const app = await buildServer();

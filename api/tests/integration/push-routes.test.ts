@@ -12,7 +12,7 @@ async function authed() {
   return { user, headers: { authorization: `Bearer ${token}` } };
 }
 
-describe('push token routes', () => {
+describe.sequential('push token routes', () => {
   it('upserts a device token', async () => {
     const app = await buildServer();
     const { user, headers } = await authed();

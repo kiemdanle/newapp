@@ -23,7 +23,7 @@ import { makeUser, makeRecord } from '../helpers/factories.js';
 const TOKEN_A = 'fcm-device-token-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const TOKEN_B = 'fcm-device-token-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 
-describe('notification-send worker', () => {
+describe.sequential('notification-send worker', () => {
   beforeEach(() => {
     sendFcmPushMock.mockReset();
     revokePushTokenByIdMock.mockReset();
