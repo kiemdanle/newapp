@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
 import type { DealFeedFilters } from '../../api/deals';
@@ -36,7 +37,8 @@ interface Props {
 
 export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const theme = useTheme();
-
+  const insets = useSafeAreaInsets();
+  const fabBottom = 84 + Math.max(insets.bottom, 0);
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<DealSort>('score');
@@ -274,7 +276,10 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
       <FlatList
         data={items}
         keyExtractor={(d: Deal) => d.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: 150 + insets.bottom },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={q.isRefetching}
@@ -353,7 +358,7 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         }
       />
 
-      {/* Floating Action Button (FAB) */}
+      {/* Floating Action Button (FAB) positioned cleanly above floating tab bar */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Post a deal"
@@ -361,6 +366,7 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         style={({ pressed }) => [
           styles.fab,
           {
+            bottom: fabBottom,
             backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
             shadowColor: '#000',
           },
@@ -472,7 +478,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
     right: 20,
     flexDirection: 'row',
     alignItems: 'center',
