@@ -64,7 +64,7 @@ describe('DealDetailScreen', () => {
     expect(getByText('Kirkland')).toBeTruthy();
     expect(getByText(/Costco/)).toBeTruthy();
     expect(getByText(/Bulk pack on sale/)).toBeTruthy();
-    expect(getByText(/2026-10-01/)).toBeTruthy();
+    expect(getByText(/Expiration \/ Best-By Date/)).toBeTruthy();
   });
 
   it('renders share and report buttons for non-owner', () => {

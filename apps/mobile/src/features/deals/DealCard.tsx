@@ -4,9 +4,9 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal } from '@expyrico/shared';
 import { useOptimisticDealVote } from './useOptimisticDealVote';
+import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
-import { formatCurrency } from '../../utils/country-format';
-
+import { formatCurrency, formatDate } from '../../utils/country-format';
 interface Props {
   deal: Deal;
   onReport: (deal: Deal) => void;
@@ -16,8 +16,8 @@ interface Props {
 
 export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const vote = useOptimisticDealVote(deal.id);
-
   function press(next: -1 | 1) {
     const prev = deal.myVote ?? null;
     vote.mutate({ next: prev === next ? 0 : next, prev });
@@ -58,7 +58,10 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
         expiryBg = '#FEEFC3';
         expiryFg = '#B45309';
       } else {
-        expiryLabel = `Best by ${m}/${d}`;
+        const dayMonthStr = formatDate(deal.expiryDate, deal.country || userCountry, {
+          style: 'dayMonth',
+        });
+        expiryLabel = `Best by ${dayMonthStr}`;
         expiryBg = '#D6F0E6'; // Mint Mist
         expiryFg = theme.colors.primaryDark; // Deep Sage #3A8F6F
       }

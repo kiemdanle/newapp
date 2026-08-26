@@ -47,6 +47,10 @@ export const giveawayCreateSchema = z.object({
     locationText: locationField,
     photoUrl: z.string().url().optional(),
     photoUrls: z.array(z.string().url()).optional(),
+    claimExpiresAt: z
+        .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+        .nullable()
+        .optional(),
     productId: z.string().uuid().optional(),
     recordId: z.string().uuid().optional(),
 });
@@ -57,6 +61,10 @@ export const giveawayPatchSchema = z
     locationText: locationField.optional(),
     photoUrl: z.string().url().nullable().optional(),
     photoUrls: z.array(z.string().url()).optional(),
+    claimExpiresAt: z
+        .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+        .nullable()
+        .optional(),
 })
     .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: 'at least one field required',

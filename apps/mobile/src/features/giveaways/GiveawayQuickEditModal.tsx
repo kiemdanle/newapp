@@ -14,11 +14,13 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway } from '@expyrico/shared';
+import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
 import { Button } from '../../components/Button';
+import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
 import { uploadGiveawayPhoto } from '../../api/giveaways';
-
 const MAX_PHOTOS = 5;
 
 interface LocalPhotoItem {
@@ -38,25 +40,28 @@ interface Props {
     description?: string;
     photoUrl?: string | null;
     photoUrls?: string[];
+    claimExpiresAt?: string | null;
   }) => Promise<void>;
 }
 
 export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: Props) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const [title, setTitle] = useState('');
   const [locationText, setLocationText] = useState('');
   const [description, setDescription] = useState('');
+  const [claimExpiresAt, setClaimExpiresAt] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
     if (visible && giveaway) {
       setTitle(giveaway.title);
       setLocationText(giveaway.locationText);
       setDescription(giveaway.description ?? '');
+      setClaimExpiresAt(giveaway.claimExpiresAt ? giveaway.claimExpiresAt.slice(0, 10) : '');
       setError(null);
-
       let existingUrls: string[] = [];
       if (giveaway.photoUrls && Array.isArray(giveaway.photoUrls) && giveaway.photoUrls.length > 0) {
         existingUrls = giveaway.photoUrls;
@@ -166,6 +171,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
         title: title.trim(),
         locationText: locationText.trim(),
         description: description.trim() || undefined,
+        claimExpiresAt: claimExpiresAt ? claimExpiresAt : null,
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : null,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
@@ -345,6 +351,65 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
               />
             </View>
 
+            {/* Expiration Date Field (Optional) */}
+            <View style={styles.fieldGroup}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.label, { color: theme.colors.text }]}>
+                  Expiration / Pickup Deadline (Optional)
+                </Text>
+                {claimExpiresAt ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear expiration date"
+                    onPress={() => setClaimExpiresAt('')}
+                    hitSlop={8}
+                  >
+                    <Text style={{ color: theme.colors.danger, fontSize: 12, fontWeight: '600' }}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select expiration date"
+                onPress={() => setShowDatePicker(true)}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.md,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="calendar-outline" size={18} color={theme.colors.primary} />
+                  <Text
+                    style={{
+                      color: claimExpiresAt ? theme.colors.text : theme.colors.textMuted,
+                      fontSize: 15,
+                      fontWeight: claimExpiresAt ? '600' : '400',
+                    }}
+                  >
+                    {claimExpiresAt
+                      ? formatDate(claimExpiresAt, userCountry)
+                      : 'Select expiration date'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <WheelDatePickerModal
+              visible={showDatePicker}
+              value={claimExpiresAt}
+              onClose={() => setShowDatePicker(false)}
+              onConfirm={(iso) => setClaimExpiresAt(iso)}
+            />
             {/* Description Field */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>Description & Notes</Text>

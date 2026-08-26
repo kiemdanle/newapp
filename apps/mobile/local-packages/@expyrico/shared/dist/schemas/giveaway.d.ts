@@ -129,6 +129,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     locationText: z.ZodString;
     photoUrl: z.ZodOptional<z.ZodString>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
     productId: z.ZodOptional<z.ZodString>;
     recordId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -139,6 +140,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     description?: string | null | undefined;
     photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    claimExpiresAt?: string | null | undefined;
 }, {
     title: string;
     locationText: string;
@@ -147,6 +149,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     description?: string | null | undefined;
     photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayCreate = z.infer<typeof giveawayCreateSchema>;
 export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
@@ -155,30 +158,35 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     locationText: z.ZodOptional<z.ZodString>;
     photoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
 }, "strip", z.ZodTypeAny, {
     title?: string | undefined;
     description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    claimExpiresAt?: string | null | undefined;
 }, {
     title?: string | undefined;
     description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    claimExpiresAt?: string | null | undefined;
 }>, {
     title?: string | undefined;
     description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    claimExpiresAt?: string | null | undefined;
 }, {
     title?: string | undefined;
     description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayPatch = z.infer<typeof giveawayPatchSchema>;
 export declare const claimSchema: z.ZodObject<{

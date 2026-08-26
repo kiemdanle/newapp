@@ -28,9 +28,10 @@ import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
+import { formatDate, formatDateTime } from '@/utils/country-format';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
-function getRelativeDateLabel(dateStr?: string | null): string {
+function getRelativeDateLabel(dateStr?: string | null, country?: string | null): string {
   if (!dateStr) return 'No expiry set';
   const target = new Date(dateStr);
   const now = new Date();
@@ -42,9 +43,8 @@ function getRelativeDateLabel(dateStr?: string | null): string {
   if (diffHours < 24) return `In ${diffHours}h`;
   if (diffDays === 1) return 'Tomorrow';
   if (diffDays <= 7) return `In ${diffDays} days`;
-  return target.toLocaleDateString();
+  return formatDate(dateStr, country, { style: 'short' });
 }
-
 export default function GiveawayDetailScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
@@ -53,12 +53,13 @@ export default function GiveawayDetailScreen() {
   const { id } = route.params as { id: string };
 
   const { data: giveaway, isLoading, refetch } = useGiveaway(id ?? '');
-  const userId = useSessionStore((s) => s.user?.id ?? null);
+  const user = useSessionStore((s) => s.user);
+  const userId = user?.id ?? null;
+  const userCountry = user?.country ?? null;
   const cancel = useCancelGiveaway();
   const handOff = useHandOffGiveaway();
   const confirm = useConfirmReceived();
   const updateGiveaway = useUpdateGiveaway();
-
   const [showEditModal, setShowEditModal] = useState(false);
 
   const isGiver = Boolean(userId && giveaway && userId === giveaway.giverUserId);
@@ -140,8 +141,8 @@ export default function GiveawayDetailScreen() {
       </View>
     );
   }
-
-  const claimExpiryLabel = getRelativeDateLabel(giveaway.claimExpiresAt);
+  const effectiveCountry = userCountry || giveaway.country;
+  const claimExpiryLabel = getRelativeDateLabel(giveaway.claimExpiresAt, effectiveCountry);
   const statusBadgeColor =
     giveaway.status === 'open'
       ? theme.colors.primary
@@ -152,7 +153,6 @@ export default function GiveawayDetailScreen() {
           : giveaway.status === 'completed'
             ? theme.colors.textMuted
             : theme.colors.danger;
-
   return (
     <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
       <ScrollView
@@ -384,7 +384,6 @@ export default function GiveawayDetailScreen() {
               </Text>
             </View>
           ) : null}
-
           {giveaway.claimExpiresAt ? (
             <View style={styles.specRow}>
               <View style={styles.specLabelWrap}>
@@ -394,7 +393,7 @@ export default function GiveawayDetailScreen() {
                 </Text>
               </View>
               <Text style={[styles.specValue, { color: theme.colors.text }]}>
-                {new Date(giveaway.claimExpiresAt).toLocaleString()}
+                {formatDateTime(giveaway.claimExpiresAt, effectiveCountry)}
               </Text>
             </View>
           ) : null}
@@ -407,7 +406,7 @@ export default function GiveawayDetailScreen() {
               </Text>
             </View>
             <Text style={[styles.specValue, { color: theme.colors.text }]}>
-              {new Date(giveaway.createdAt).toLocaleDateString()}
+              {formatDate(giveaway.createdAt, effectiveCountry)}
             </Text>
           </View>
 

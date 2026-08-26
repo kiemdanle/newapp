@@ -4,9 +4,10 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { LocalRecord } from '../../api/records';
 import { useProduct } from '../../api/products';
+import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
-
 interface Props {
   record: LocalRecord;
   onPress: () => void;
@@ -18,9 +19,9 @@ interface Props {
 
 export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit, onDelete }: Props) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const swipeableRef = useRef<Swipeable>(null);
   const { data: product } = useProduct(record.productId ?? undefined);
-
   const displayName = record.customName || product?.name || 'Item';
   const brand = product?.brand;
   const category = record.category || product?.category;
@@ -196,7 +197,7 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
               </View>
             </View>
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-              Expires {record.expiryDate}
+              Expires {formatDate(record.expiryDate, userCountry)}
             </Text>
             {addedByName ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 3 }}>

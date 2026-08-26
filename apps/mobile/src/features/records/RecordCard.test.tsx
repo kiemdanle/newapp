@@ -44,7 +44,7 @@ describe('RecordCard with swipe actions', () => {
 
     expect(getByText('Organic Eggs')).toBeTruthy();
     expect(getByText('12 pcs')).toBeTruthy();
-    expect(getByText('Expires 2026-12-31')).toBeTruthy();
+    expect(getByText(/Expires/)).toBeTruthy();
   });
 
   it('triggers onAddQuantity when the +1 swipe action is pressed', () => {

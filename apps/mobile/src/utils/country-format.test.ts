@@ -21,6 +21,17 @@ describe('country-format utilities', () => {
       expect(formatDate(sampleDate, 'CA')).toMatch(/2026\/08\/\d{2}/);
     });
 
+    it('formats date strings like YYYY-MM-DD deterministically without timezone shifts', () => {
+      expect(formatDate('2026-08-30', 'VN')).toBe('30/08/2026');
+      expect(formatDate('2026-08-30', 'US')).toBe('08/30/2026');
+      expect(formatDate('2026-08-30', 'JP')).toBe('2026/08/30');
+    });
+
+    it('formats dayMonth style for Vietnam and other countries', () => {
+      expect(formatDate('2026-08-30', 'VN', { style: 'dayMonth' })).toBe('30/08');
+      expect(formatDate('2026-08-30', 'US', { style: 'dayMonth' })).toBe('08/30');
+    });
+
     it('handles null/undefined gracefully', () => {
       expect(formatDate(null)).toBe('');
       expect(formatDate('')).toBe('');

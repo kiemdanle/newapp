@@ -7,10 +7,21 @@ import {
 
 export { getCountryMetadata, getAllCountries, DEFAULT_COUNTRY_METADATA, type CountryMetadata };
 
-export type DateFormatStyle = 'short' | 'medium' | 'relative';
+export type DateFormatStyle = 'short' | 'medium' | 'relative' | 'dayMonth';
 
 function toDate(input: string | Date | number): Date | null {
   if (input instanceof Date) return Number.isNaN(input.getTime()) ? null : input;
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+    if (dateMatch) {
+      const year = Number(dateMatch[1]);
+      const month = Number(dateMatch[2]) - 1;
+      const day = Number(dateMatch[3]);
+      const d = new Date(year, month, day, 12, 0, 0);
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+  }
   const d = new Date(input);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -60,6 +71,17 @@ export function formatDate(
   const year = d.getFullYear();
   const shortMonth = MONTH_NAMES_SHORT[d.getMonth()]!;
 
+  if (style === 'dayMonth') {
+    switch (meta.dateFormat) {
+      case 'DMY':
+        return `${day}/${month}`;
+      case 'MDY':
+        return `${month}/${day}`;
+      case 'YMD':
+        return `${month}/${day}`;
+    }
+  }
+
   if (style === 'medium') {
     switch (meta.dateFormat) {
       case 'DMY':
@@ -70,7 +92,6 @@ export function formatDate(
         return `${year} ${shortMonth} ${d.getDate()}`;
     }
   }
-
   // Short style
   switch (meta.dateFormat) {
     case 'DMY':

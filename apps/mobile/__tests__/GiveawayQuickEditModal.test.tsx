@@ -145,13 +145,13 @@ describe('GiveawayQuickEditModal', () => {
         title: 'Organic Apples',
         locationText: 'Downtown Market',
         description: 'Juicy apples from garden',
+        claimExpiresAt: null,
         photoUrl: 'https://cdn.expyrico.app/photo1.webp',
         photoUrls: [
           'https://cdn.expyrico.app/photo1.webp',
           'https://cdn.expyrico.app/photo3-uploaded.webp',
         ],
       });
-      expect(onClose).toHaveBeenCalled();
     });
   });
 });

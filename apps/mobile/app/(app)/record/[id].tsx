@@ -14,13 +14,15 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRecord, patchLocalRecord, deleteLocalRecord } from '../../../src/api/records';
 import { useProduct } from '../../../src/api/products';
+import { useSessionStore } from '../../../src/auth/session-store';
 import { useTheme } from '../../../src/theme/useTheme';
+import { formatDate } from '../../../src/utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records/expiryStatus';
 import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
 import { Button } from '../../../src/components/Button';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
-function getRelativeExpiryLabel(expiryDateStr: string): string {
+function getRelativeExpiryLabel(expiryDateStr: string, country?: string | null): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const exp = new Date(`${expiryDateStr}T00:00:00Z`);
@@ -30,18 +32,17 @@ function getRelativeExpiryLabel(expiryDateStr: string): string {
   if (diffDays === 0) return 'Expires today';
   if (diffDays === 1) return 'Tomorrow';
   if (diffDays <= 7) return `In ${diffDays} days`;
-  return expiryDateStr;
+  return formatDate(expiryDateStr, country);
 }
-
 export default function RecordDetail() {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
   const { id } = useRoute().params as { id: string };
   const record = useRecord(id);
   const { data: product } = useProduct(record?.productId ?? undefined);
   const [showEditModal, setShowEditModal] = useState(false);
-
   if (!record) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -112,7 +113,7 @@ export default function RecordDetail() {
         ? theme.colors.danger + '18'
         : theme.colors.primaryLight;
 
-  const relativeExpiry = getRelativeExpiryLabel(record.expiryDate);
+  const relativeExpiry = getRelativeExpiryLabel(record.expiryDate, userCountry);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -230,7 +231,7 @@ export default function RecordDetail() {
               {relativeExpiry}
             </Text>
             <Text style={[styles.bentoSubtext, { color: statusColor, opacity: 0.85 }]}>
-              {record.expiryDate}
+              {formatDate(record.expiryDate, userCountry)}
             </Text>
           </Pressable>
 

@@ -32,6 +32,14 @@ export async function createGiveawayRoute(app: FastifyInstance) {
       } else if (input.photoUrl) {
         storedPhotoUrl = input.photoUrl;
       }
+
+      let claimExpiresAt: Date | null = null;
+      if (input.claimExpiresAt) {
+        claimExpiresAt = new Date(
+          input.claimExpiresAt.includes('T') ? input.claimExpiresAt : `${input.claimExpiresAt}T23:59:59Z`,
+        );
+      }
+
       const created = await prisma.giveaway.create({
         data: {
           giverUserId: userId,
@@ -39,6 +47,7 @@ export async function createGiveawayRoute(app: FastifyInstance) {
           description: input.description ?? null,
           locationText: input.locationText,
           photoUrl: storedPhotoUrl,
+          claimExpiresAt,
           productId: input.productId ?? null,
           recordId: input.recordId ?? null,
           country,

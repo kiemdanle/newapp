@@ -14,9 +14,11 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
 import { choosePhotos, takePhoto } from '@/features/products/photo-picker-adapter';
+import { WheelDatePickerModal } from '@/components/WheelDatePickerModal';
+import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
+import { formatDate } from '@/utils/country-format';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
-
 const MAX_PHOTOS = 5;
 
 interface LocalPhotoItem {
@@ -30,14 +32,15 @@ interface LocalPhotoItem {
 export default function NewGiveawayScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
-
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [locationText, setLocation] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const create = useCreateGiveaway();
   const pending = create.isPending || uploadingPhotos;
 
@@ -112,10 +115,10 @@ export default function NewGiveawayScreen() {
         title: title.trim(),
         description: description.trim() || undefined,
         locationText: locationText.trim(),
+        claimExpiresAt: expiryDate || undefined,
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : undefined,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
-
       setUploadingPhotos(false);
       navigation.goBack();
     } catch (err: unknown) {
@@ -268,6 +271,64 @@ export default function NewGiveawayScreen() {
         />
       </View>
 
+      {/* Expiry Date Field (Optional) */}
+      <View style={styles.fieldGroup}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
+            Expiration / Pickup Deadline (Optional)
+          </Text>
+          {expiryDate ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Clear expiration date"
+              onPress={() => setExpiryDate('')}
+              hitSlop={8}
+            >
+              <Text style={{ color: theme.colors.danger, fontSize: 12, fontWeight: '600' }}>
+                Clear
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Select expiration date"
+          onPress={() => setShowDatePicker(true)}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            },
+          ]}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Ionicons name="calendar-outline" size={18} color={theme.colors.primary} />
+            <Text
+              style={{
+                color: expiryDate ? theme.colors.text : theme.colors.textMuted,
+                fontSize: 15,
+                fontWeight: expiryDate ? '600' : '400',
+              }}
+            >
+              {expiryDate ? formatDate(expiryDate, userCountry) : 'Select expiration date'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
+        </Pressable>
+      </View>
+
+      <WheelDatePickerModal
+        visible={showDatePicker}
+        value={expiryDate}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={(iso) => setExpiryDate(iso)}
+      />
+
       <View style={styles.fieldGroup}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description & Notes</Text>
         <TextInput
@@ -289,7 +350,6 @@ export default function NewGiveawayScreen() {
           ]}
         />
       </View>
-
       {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
       {/* Submit Button */}

@@ -34,6 +34,17 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
           : input.photoUrl !== undefined
             ? { photoUrl: input.photoUrl }
             : {}),
+        ...(input.claimExpiresAt !== undefined
+          ? {
+              claimExpiresAt: input.claimExpiresAt
+                ? new Date(
+                    input.claimExpiresAt.includes('T')
+                      ? input.claimExpiresAt
+                      : `${input.claimExpiresAt}T23:59:59Z`,
+                  )
+                : null,
+            }
+          : {}),
       },
       include: {
         giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

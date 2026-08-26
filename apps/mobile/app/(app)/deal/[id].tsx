@@ -16,7 +16,7 @@ import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
 import { Screen } from '@/components/Screen';
 import { Button } from '@/components/Button';
-import { formatCurrency } from '@/utils/country-format';
+import { formatCurrency, formatDate } from '@/utils/country-format';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 export default function DealDetailScreen() {
@@ -27,8 +27,9 @@ export default function DealDetailScreen() {
   const { data: deal, isLoading } = useDeal(id ?? '');
   const del = useDeleteDeal();
   const vote = useOptimisticDealVote(id ?? '');
-  const userId = useSessionStore((s) => s.user?.id ?? null);
-
+  const user = useSessionStore((s) => s.user);
+  const userId = user?.id ?? null;
+  const userCountry = user?.country ?? null;
   if (isLoading || !deal) {
     return (
       <View
@@ -152,7 +153,7 @@ export default function DealDetailScreen() {
           ]}
         >
           <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 14 }}>
-            ⏳ Expiration / Best-By Date: {deal.expiryDate}
+            ⏳ Expiration / Best-By Date: {formatDate(deal.expiryDate, userCountry || deal.country)}
           </Text>
         </View>
       )}
