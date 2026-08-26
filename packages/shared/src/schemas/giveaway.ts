@@ -19,6 +19,7 @@ export const giveawaySchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   photoUrl: z.string().url().nullable(),
+  photoUrls: z.array(z.string().url()).optional(),
   locationText: z.string(),
   country: z.string().length(2).nullable(),
   status: giveawayStatusSchema,
@@ -50,6 +51,7 @@ export const giveawayCreateSchema = z.object({
   description: z.string().trim().max(2000).nullable().optional(),
   locationText: locationField,
   photoUrl: z.string().url().optional(),
+  photoUrls: z.array(z.string().url()).optional(),
   productId: z.string().uuid().optional(),
   recordId: z.string().uuid().optional(),
 });
@@ -61,6 +63,7 @@ export const giveawayPatchSchema = z
     description: descField,
     locationText: locationField.optional(),
     photoUrl: z.string().url().nullable().optional(),
+    photoUrls: z.array(z.string().url()).optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: 'at least one field required',
@@ -96,3 +99,9 @@ export const giveawayListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
 export type GiveawayListQuery = z.infer<typeof giveawayListQuerySchema>;
+
+export const giveawayPhotoUploadResponseSchema = z.object({
+  photoUrl: z.string().url(),
+  thumbUrl: z.string().url(),
+});
+export type GiveawayPhotoUploadResponse = z.infer<typeof giveawayPhotoUploadResponseSchema>;

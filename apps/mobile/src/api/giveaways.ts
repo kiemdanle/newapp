@@ -37,6 +37,25 @@ export function useCreateGiveaway() {
   });
 }
 
+export async function uploadGiveawayPhoto(photo: {
+  path: string;
+  mime?: string;
+  name?: string;
+}): Promise<{ photoUrl: string; thumbUrl: string }> {
+  const form = new FormData();
+  form.append('file', {
+    uri: photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`,
+    type: photo.mime || 'image/jpeg',
+    name: photo.name || 'giveaway-photo.jpg',
+  } as unknown as Blob);
+
+  return apiClient.request<{ photoUrl: string; thumbUrl: string }>({
+    method: 'POST',
+    path: '/giveaways/upload-photo',
+    body: form,
+  });
+}
+
 export function useUpdateGiveaway() {
   const qc = useQueryClient();
   return useMutation({

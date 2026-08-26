@@ -1,5 +1,5 @@
 // apps/mobile/app/(app)/giveaway/[id].tsx
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useGiveaway, useCancelGiveaway, useConfirmReceived, useHandOffGiveaway } from '@/api/giveaways';
 import { useReputation } from '@/api/reputation';
@@ -39,6 +39,21 @@ export default function GiveawayDetailScreen() {
         </Text>
         <GiveawayStatusBadge status={giveaway.status} />
       </View>
+
+      {giveaway.photoUrl || (giveaway.photoUrls && giveaway.photoUrls.length > 0) ? (
+        <View style={{ marginTop: 12 }}>
+          <Image
+            source={{ uri: giveaway.photoUrl || giveaway.photoUrls![0] }}
+            style={{
+              width: '100%',
+              height: 220,
+              borderRadius: theme.radii.lg,
+              backgroundColor: theme.colors.bgElevated,
+            }}
+            resizeMode="cover"
+          />
+        </View>
+      ) : null}
 
       {giveaway.description ? (
         <Text style={{ color: theme.colors.text, marginTop: 8 }}>{giveaway.description}</Text>

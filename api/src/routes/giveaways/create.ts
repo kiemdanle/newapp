@@ -32,7 +32,7 @@ export async function createGiveawayRoute(app: FastifyInstance) {
           title: input.title,
           description: input.description ?? null,
           locationText: input.locationText,
-          photoUrl: input.photoUrl ?? null,
+          photoUrl: input.photoUrl ?? (input.photoUrls && input.photoUrls.length > 0 ? input.photoUrls[0] : null) ?? null,
           productId: input.productId ?? null,
           recordId: input.recordId ?? null,
           country,

@@ -1,20 +1,87 @@
 // apps/mobile/app/(app)/giveaway/new.tsx
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import { useCreateGiveaway } from '@/api/giveaways';
+import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
+import { choosePhotos, takePhoto, type PickedPhoto } from '@/features/products/photo-picker-adapter';
 import { useTheme } from '@/theme/useTheme';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
+
+const MAX_PHOTOS = 5;
+
+interface LocalPhotoItem {
+  id: string;
+  path: string;
+  mime?: string;
+  uploading?: boolean;
+  uploadedUrl?: string;
+}
 
 export default function NewGiveawayScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [locationText, setLocation] = useState('');
+  const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const create = useCreateGiveaway();
-  const pending = create.isPending;
+  const pending = create.isPending || uploadingPhotos;
+
+  async function handleTakePhoto() {
+    if (photos.length >= MAX_PHOTOS) return;
+    try {
+      const picked = await takePhoto();
+      if (picked) {
+        setPhotos((prev) => [
+          ...prev,
+          {
+            id: `photo-${Date.now()}-${Math.random()}`,
+            path: picked.path,
+            mime: picked.mime,
+          },
+        ]);
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to capture photo');
+    }
+  }
+
+  async function handleChooseGallery() {
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) return;
+    try {
+      const pickedList = await choosePhotos(remaining);
+      if (pickedList && pickedList.length > 0) {
+        const newItems: LocalPhotoItem[] = pickedList.map((p, idx) => ({
+          id: `photo-${Date.now()}-${idx}`,
+          path: p.path,
+          mime: p.mime,
+        }));
+        setPhotos((prev) => [...prev, ...newItems]);
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to select photos');
+    }
+  }
+
+  function handleRemovePhoto(id: string) {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }
 
   async function submit() {
     setError(null);
@@ -22,79 +89,365 @@ export default function NewGiveawayScreen() {
       setError('Title and location are required.');
       return;
     }
+
     try {
-      const result = await create.mutateAsync({
+      setUploadingPhotos(true);
+      const uploadedUrls: string[] = [];
+
+      // Upload all picked photos to server
+      for (const p of photos) {
+        if (p.uploadedUrl) {
+          uploadedUrls.push(p.uploadedUrl);
+        } else {
+          try {
+            const res = await uploadGiveawayPhoto({ path: p.path, mime: p.mime });
+            uploadedUrls.push(res.photoUrl);
+          } catch {
+            // If upload fails, continue with local URL or fallback
+            uploadedUrls.push(p.path);
+          }
+        }
+      }
+
+      await create.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         locationText: locationText.trim(),
+        photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : undefined,
+        photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
-      navigation.replace('Giveaway', { id: result.id });
-    } catch {
-      setError('Could not create giveaway.');
+
+      setUploadingPhotos(false);
+      navigation.goBack();
+    } catch (err: unknown) {
+      setUploadingPhotos(false);
+      setError((err as Error).message || 'Could not create giveaway.');
     }
   }
 
-  const field = {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.radii.md,
-    padding: 12,
-    color: theme.colors.text,
-    backgroundColor: theme.colors.bgElevated,
-    minHeight: 52,
-  } as const;
-
   return (
-    <ScrollView style={{ flex: 1, padding: 16, backgroundColor: theme.colors.bg }} contentContainerStyle={{ gap: 12 }}>
-      <TextInput
-        accessibilityLabel="Title"
-        placeholder="Title *"
-        placeholderTextColor={theme.colors.textMuted}
-        value={title}
-        onChangeText={setTitle}
-        maxLength={120}
-        editable={!pending}
-        style={field}
-      />
-      <TextInput
-        accessibilityLabel="Description"
-        placeholder="Description (optional)"
-        placeholderTextColor={theme.colors.textMuted}
-        value={description}
-        onChangeText={setDescription}
-        multiline
-        maxLength={2000}
-        editable={!pending}
-        style={[field, { minHeight: 104, textAlignVertical: 'top' }]}
-      />
-      <TextInput
-        accessibilityLabel="Pickup location"
-        placeholder="Pickup location *"
-        placeholderTextColor={theme.colors.textMuted}
-        value={locationText}
-        onChangeText={setLocation}
-        maxLength={160}
-        editable={!pending}
-        style={field}
-      />
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.colors.bg }]}
+      contentContainerStyle={styles.content}
+    >
+      <View style={styles.header}>
+        <Text style={[styles.heading, { color: theme.colors.text }]}>Share an Item</Text>
+        <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
+          Give food, pantry staples, or groceries to neighbors nearby.
+        </Text>
+      </View>
+
+      {/* Image Picker Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionTitleRow}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+            Photos ({photos.length}/{MAX_PHOTOS})
+          </Text>
+          {photos.length > 0 ? (
+            <Text style={[styles.sectionHint, { color: theme.colors.textMuted }]}>
+              First photo is the cover
+            </Text>
+          ) : null}
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.photoList}
+        >
+          {photos.map((item, index) => (
+            <View
+              key={item.id}
+              style={[
+                styles.photoCard,
+                {
+                  borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
+                  backgroundColor: theme.colors.bgElevated,
+                },
+              ]}
+            >
+              <Image source={{ uri: item.path }} style={styles.photoImage} resizeMode="cover" />
+              {index === 0 && (
+                <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
+                  <Text style={[styles.coverText, { color: theme.colors.primaryFg }]}>Cover</Text>
+                </View>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Remove photo ${index + 1}`}
+                onPress={() => handleRemovePhoto(item.id)}
+                style={[styles.removeBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
+              >
+                <Ionicons name="close" size={14} color="#FFF" />
+              </Pressable>
+            </View>
+          ))}
+
+          {photos.length < MAX_PHOTOS && (
+            <View style={styles.addPhotoActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Take a photo with camera"
+                onPress={handleTakePhoto}
+                style={[
+                  styles.addPhotoBtn,
+                  {
+                    backgroundColor: theme.colors.bgElevated,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.md,
+                  },
+                ]}
+              >
+                <Ionicons name="camera-outline" size={22} color={theme.colors.primary} />
+                <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Camera</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Select photo from gallery"
+                onPress={handleChooseGallery}
+                style={[
+                  styles.addPhotoBtn,
+                  {
+                    backgroundColor: theme.colors.bgElevated,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.md,
+                  },
+                ]}
+              >
+                <Ionicons name="images-outline" size={22} color={theme.colors.primary} />
+                <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Gallery</Text>
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+
+      {/* Form Fields */}
+      <View style={styles.fieldGroup}>
+        <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Item Title *</Text>
+        <TextInput
+          accessibilityLabel="Giveaway title"
+          placeholder="e.g. 2 Unopened boxes of Organic Pasta"
+          placeholderTextColor={theme.colors.textMuted}
+          value={title}
+          onChangeText={setTitle}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+              color: theme.colors.text,
+            },
+          ]}
+        />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Location / Neighborhood *</Text>
+        <TextInput
+          accessibilityLabel="Pickup location"
+          placeholder="e.g. Downtown near Central Park or Porch Pickup"
+          placeholderTextColor={theme.colors.textMuted}
+          value={locationText}
+          onChangeText={setLocation}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+              color: theme.colors.text,
+            },
+          ]}
+        />
+      </View>
+
+      <View style={styles.fieldGroup}>
+        <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description & Notes</Text>
+        <TextInput
+          accessibilityLabel="Giveaway description"
+          placeholder="Expiry date, pickup instructions, allergy details…"
+          placeholderTextColor={theme.colors.textMuted}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          numberOfLines={3}
+          style={[
+            styles.multilineInput,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+              color: theme.colors.text,
+            },
+          ]}
+        />
+      </View>
+
+      {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
+
+      {/* Submit Button */}
       <Pressable
         accessibilityRole="button"
-        disabled={pending}
+        accessibilityLabel="Post Giveaway"
         onPress={submit}
-        style={{
-          padding: 14,
-          borderRadius: theme.radii.pill,
-          backgroundColor: pending ? theme.colors.border : theme.colors.accent,
-          alignItems: 'center',
-          minHeight: 52,
-          justifyContent: 'center',
-        }}
+        disabled={pending}
+        style={({ pressed }) => [
+          styles.submitBtn,
+          {
+            backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
+            borderRadius: theme.radii.pill,
+            opacity: pending ? 0.7 : 1,
+          },
+        ]}
       >
-        <Text style={{ color: theme.colors.text, fontWeight: '700' }}>
-          {pending ? 'Creating…' : 'List giveaway'}
+        {pending ? (
+          <ActivityIndicator color={theme.colors.primaryFg} style={{ marginRight: 8 }} />
+        ) : (
+          <Ionicons name="gift-outline" size={20} color={theme.colors.primaryFg} style={{ marginRight: 6 }} />
+        )}
+        <Text style={[styles.submitBtnText, { color: theme.colors.primaryFg }]}>
+          {pending ? (uploadingPhotos ? 'Uploading Photos…' : 'Posting…') : 'Post Giveaway'}
         </Text>
       </Pressable>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 40,
+    gap: 16,
+  },
+  header: {
+    marginBottom: 4,
+  },
+  heading: {
+    fontSize: 24,
+    fontWeight: '800',
+  },
+  subheading: {
+    fontSize: 13,
+    marginTop: 4,
+  },
+  section: {
+    gap: 8,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sectionHint: {
+    fontSize: 12,
+  },
+  photoList: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  photoCard: {
+    width: 90,
+    height: 90,
+    borderRadius: 12,
+    borderWidth: 2,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 2,
+    alignItems: 'center',
+  },
+  coverText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addPhotoActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addPhotoBtn: {
+    width: 80,
+    height: 90,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addPhotoText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  input: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    minHeight: 48,
+  },
+  multilineInput: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    minHeight: 88,
+    textAlignVertical: 'top',
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  submitBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 14,
+    minHeight: 52,
+    marginTop: 8,
+    elevation: 3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  submitBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+});
