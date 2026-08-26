@@ -40,7 +40,7 @@ interface Props {
     description?: string;
     photoUrl?: string | null;
     photoUrls?: string[];
-    claimExpiresAt?: string | null;
+    expiryDate?: string | null;
   }) => Promise<void>;
 }
 
@@ -50,7 +50,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
   const [title, setTitle] = useState('');
   const [locationText, setLocationText] = useState('');
   const [description, setDescription] = useState('');
-  const [claimExpiresAt, setClaimExpiresAt] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -60,7 +60,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
       setTitle(giveaway.title);
       setLocationText(giveaway.locationText);
       setDescription(giveaway.description ?? '');
-      setClaimExpiresAt(giveaway.claimExpiresAt ? giveaway.claimExpiresAt.slice(0, 10) : '');
+      setExpiryDate(giveaway.expiryDate ? giveaway.expiryDate : '');
       setError(null);
       let existingUrls: string[] = [];
       if (giveaway.photoUrls && Array.isArray(giveaway.photoUrls) && giveaway.photoUrls.length > 0) {
@@ -171,7 +171,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
         title: title.trim(),
         locationText: locationText.trim(),
         description: description.trim() || undefined,
-        claimExpiresAt: claimExpiresAt ? claimExpiresAt : null,
+        expiryDate: expiryDate ? expiryDate : null,
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : null,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
@@ -351,17 +351,17 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
               />
             </View>
 
-            {/* Expiration Date Field (Optional) */}
+            {/* Food Expiration Date Field (Optional) */}
             <View style={styles.fieldGroup}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.label, { color: theme.colors.text }]}>
-                  Expiration / Pickup Deadline (Optional)
+                  Food Expiration / Best-By Date (Optional)
                 </Text>
-                {claimExpiresAt ? (
+                {expiryDate ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Clear expiration date"
-                    onPress={() => setClaimExpiresAt('')}
+                    onPress={() => setExpiryDate('')}
                     hitSlop={8}
                   >
                     <Text style={{ color: theme.colors.danger, fontSize: 12, fontWeight: '600' }}>
@@ -390,13 +390,13 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                   <Ionicons name="calendar-outline" size={18} color={theme.colors.primary} />
                   <Text
                     style={{
-                      color: claimExpiresAt ? theme.colors.text : theme.colors.textMuted,
+                      color: expiryDate ? theme.colors.text : theme.colors.textMuted,
                       fontSize: 15,
-                      fontWeight: claimExpiresAt ? '600' : '400',
+                      fontWeight: expiryDate ? '600' : '400',
                     }}
                   >
-                    {claimExpiresAt
-                      ? formatDate(claimExpiresAt, userCountry)
+                    {expiryDate
+                      ? formatDate(expiryDate, userCountry)
                       : 'Select expiration date'}
                   </Text>
                 </View>
@@ -406,9 +406,9 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
 
             <WheelDatePickerModal
               visible={showDatePicker}
-              value={claimExpiresAt}
+              value={expiryDate}
               onClose={() => setShowDatePicker(false)}
-              onConfirm={(iso) => setClaimExpiresAt(iso)}
+              onConfirm={(iso) => setExpiryDate(iso)}
             />
             {/* Description Field */}
             <View style={styles.fieldGroup}>

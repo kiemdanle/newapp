@@ -5,8 +5,10 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway } from '@expyrico/shared';
 import { GiveawayStatusBadge } from './GiveawayStatusBadge';
+import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../records/expiryStatus';
+import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
-
+import { formatDate } from '../../utils/country-format';
 export interface GiveawayCardProps {
   giveaway: Giveaway;
   onPress?: (giveaway: Giveaway) => void;
@@ -27,6 +29,7 @@ export function GiveawayCard({
   currentUserId,
 }: GiveawayCardProps) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const swipeableRef = useRef<Swipeable>(null);
   const loc = giveaway.locationText ?? '';
   const photoList = React.useMemo(() => {
@@ -224,8 +227,30 @@ export function GiveawayCard({
               </Text>
             ) : null}
 
+            {giveaway.expiryDate ? (
+              <View style={styles.foodExpiryRow}>
+                <Ionicons
+                  name="nutrition-outline"
+                  size={12}
+                  color={theme.colors[EXPIRY_STATUS_TOKEN[expiryStatus(giveaway.expiryDate)]]}
+                />
+                <Text
+                  style={[
+                    styles.foodExpiryText,
+                    {
+                      color:
+                        theme.colors[EXPIRY_STATUS_TOKEN[expiryStatus(giveaway.expiryDate)]],
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  Expires {formatDate(giveaway.expiryDate, giveaway.country || userCountry)}
+                </Text>
+              </View>
+            ) : null}
+
             <View style={styles.metaRow}>
-              <Text style={[styles.locationText, { color: theme.colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.locationText, { color: theme.colors.textMuted }]}>
                 📍 {loc}
               </Text>
               {giveaway.claimCount ? (
@@ -329,8 +354,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  metaRow: {
+  foodExpiryRow: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  foodExpiryText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  metaRow: {
     alignItems: 'center',
     gap: 4,
     marginTop: 2,

@@ -115,7 +115,7 @@ export default function NewGiveawayScreen() {
         title: title.trim(),
         description: description.trim() || undefined,
         locationText: locationText.trim(),
-        claimExpiresAt: expiryDate || undefined,
+        expiryDate: expiryDate || undefined,
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : undefined,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
@@ -271,11 +271,11 @@ export default function NewGiveawayScreen() {
         />
       </View>
 
-      {/* Expiry Date Field (Optional) */}
+      {/* Food Expiry Date Field (Optional) */}
       <View style={styles.fieldGroup}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Expiration / Pickup Deadline (Optional)
+            Food Expiration / Best-By Date (Optional)
           </Text>
           {expiryDate ? (
             <Pressable

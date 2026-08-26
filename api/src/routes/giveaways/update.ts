@@ -45,6 +45,7 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
                 : null,
             }
           : {}),
+        ...(input.expiryDate !== undefined ? { expiryDate: input.expiryDate } : {}),
       },
       include: {
         giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

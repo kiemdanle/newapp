@@ -145,7 +145,7 @@ describe('GiveawayQuickEditModal', () => {
         title: 'Organic Apples',
         locationText: 'Downtown Market',
         description: 'Juicy apples from garden',
-        claimExpiresAt: null,
+        expiryDate: null,
         photoUrl: 'https://cdn.expyrico.app/photo1.webp',
         photoUrls: [
           'https://cdn.expyrico.app/photo1.webp',

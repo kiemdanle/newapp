@@ -18,6 +18,7 @@ export declare const giveawaySchema: z.ZodObject<{
     country: z.ZodNullable<z.ZodString>;
     status: z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>;
     selectedRecipientId: z.ZodNullable<z.ZodString>;
+    expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     claimExpiresAt: z.ZodNullable<z.ZodString>;
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
@@ -76,6 +77,7 @@ export declare const giveawaySchema: z.ZodObject<{
     confirmedAt: string | null;
     completedAt: string | null;
     photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
@@ -108,6 +110,7 @@ export declare const giveawaySchema: z.ZodObject<{
     confirmedAt: string | null;
     completedAt: string | null;
     photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
@@ -130,6 +133,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     photoUrl: z.ZodOptional<z.ZodString>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
+    expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     productId: z.ZodOptional<z.ZodString>;
     recordId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -140,6 +144,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     description?: string | null | undefined;
     photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
     title: string;
@@ -149,6 +154,7 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     description?: string | null | undefined;
     photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayCreate = z.infer<typeof giveawayCreateSchema>;
@@ -159,12 +165,14 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
+    expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     title?: string | undefined;
     description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
     title?: string | undefined;
@@ -172,6 +180,7 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>, {
     title?: string | undefined;
@@ -179,6 +188,7 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
     title?: string | undefined;
@@ -186,6 +196,7 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayPatch = z.infer<typeof giveawayPatchSchema>;

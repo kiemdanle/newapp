@@ -28,6 +28,7 @@ export const giveawaySchema = z.object({
   country: z.string().length(2).nullable(),
   status: giveawayStatusSchema,
   selectedRecipientId: z.string().uuid().nullable(),
+  expiryDate: z.string().nullable().optional(),
   claimExpiresAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -60,6 +61,11 @@ export const giveawayCreateSchema = z.object({
     .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
     .nullable()
     .optional(),
+  expiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'expiryDate must be YYYY-MM-DD')
+    .nullable()
+    .optional(),
   productId: z.string().uuid().optional(),
   recordId: z.string().uuid().optional(),
 });
@@ -74,6 +80,11 @@ export const giveawayPatchSchema = z
     photoUrls: z.array(z.string().url()).optional(),
     claimExpiresAt: z
       .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+      .nullable()
+      .optional(),
+    expiryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'expiryDate must be YYYY-MM-DD')
       .nullable()
       .optional(),
   })

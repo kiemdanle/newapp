@@ -21,6 +21,7 @@ const mockGiveaway: Giveaway = {
     'https://cdn.expyrico.app/giveaways/strawberries-2.webp',
   ],
   claimCount: 3,
+  expiryDate: '2026-08-30',
   claimExpiresAt: '2026-08-30T12:00:00.000Z',
   createdAt: '2026-08-26T08:00:00.000Z',
   updatedAt: '2026-08-26T08:00:00.000Z',
@@ -83,9 +84,9 @@ describe('GiveawayDetailScreen', () => {
     expect(getByText('Fresh Strawberries')).toBeTruthy();
     expect(getAllByText(/South Market St/).length).toBeGreaterThanOrEqual(1);
     expect(getByText('1/2')).toBeTruthy(); // Shopee-style Gallery counter
-    expect(getByText('STATUS')).toBeTruthy();
+    expect(getByText('FOOD EXPIRY')).toBeTruthy();
+    expect(getByText('Food Expiration Date')).toBeTruthy();
     expect(getByText('REQUESTS')).toBeTruthy();
-    expect(getByText('3')).toBeTruthy();
     expect(getByText('Elena')).toBeTruthy();
     expect(getByText('Giveaway Information')).toBeTruthy();
     expect(getByText('Sweet local strawberries, unopened container')).toBeTruthy();
