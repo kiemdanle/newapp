@@ -245,12 +245,17 @@ export default function RecordDetail() {
             ]}
           >
             <View style={styles.bentoHeader}>
-              <Ionicons name="cube-outline" size={14} color={theme.colors.primary} />
+              <Ionicons name="cube-outline" size={15} color={theme.colors.primary} />
               <Text style={[styles.bentoLabel, { color: theme.colors.textMuted }]}>QUANTITY</Text>
             </View>
-            <Text style={[styles.bentoValue, { color: theme.colors.text }]} numberOfLines={1}>
-              {record.quantity} <Text style={styles.unitText}>{record.unit}</Text>
-            </Text>
+            <View style={styles.qtyMainRow}>
+              <Text style={[styles.qtyValueText, { color: theme.colors.text }]}>
+                {record.quantity}
+              </Text>
+              <Text style={[styles.qtyUnitText, { color: theme.colors.textMuted }]}>
+                {record.unit}
+              </Text>
+            </View>
             <View style={styles.stepperRow}>
               <Pressable
                 accessibilityRole="button"
@@ -258,10 +263,10 @@ export default function RecordDetail() {
                 onPress={() => void handleStepQuantity(-1)}
                 style={({ pressed }) => [
                   styles.miniStepBtn,
-                  { backgroundColor: theme.colors.bgGlass, opacity: pressed ? 0.6 : 1 },
+                  { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, opacity: pressed ? 0.6 : 1 },
                 ]}
               >
-                <Ionicons name="remove" size={14} color={theme.colors.text} />
+                <Ionicons name="remove" size={16} color={theme.colors.text} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -269,10 +274,10 @@ export default function RecordDetail() {
                 onPress={() => void handleStepQuantity(1)}
                 style={({ pressed }) => [
                   styles.miniStepBtn,
-                  { backgroundColor: theme.colors.bgGlass, opacity: pressed ? 0.6 : 1 },
+                  { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, opacity: pressed ? 0.6 : 1 },
                 ]}
               >
-                <Ionicons name="add" size={14} color={theme.colors.text} />
+                <Ionicons name="add" size={16} color={theme.colors.text} />
               </Pressable>
             </View>
           </View>
@@ -517,7 +522,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,
-    gap: 4,
+    justifyContent: 'space-between',
+    minHeight: 124,
   },
   bentoHeader: {
     flexDirection: 'row',
@@ -535,17 +541,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   bentoValue: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
     marginTop: 2,
   },
-  unitText: {
+  bentoSubtext: {
     fontSize: 13,
     fontWeight: '500',
   },
-  bentoSubtext: {
-    fontSize: 12,
-    fontWeight: '500',
+  qtyMainRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+    marginTop: 2,
+  },
+  qtyValueText: {
+    fontSize: 26,
+    fontWeight: '700',
+    lineHeight: 30,
+  },
+  qtyUnitText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   stepperRow: {
     flexDirection: 'row',
@@ -553,11 +570,12 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   miniStepBtn: {
-    width: 28,
-    height: 28,
-    minWidth: 28,
-    minHeight: 28,
-    borderRadius: 14,
+    width: 32,
+    height: 32,
+    minWidth: 32,
+    minHeight: 32,
+    borderRadius: 16,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
