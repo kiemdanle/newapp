@@ -111,10 +111,16 @@ export async function choosePhotos(maxFiles: number): Promise<PickedPhoto[]> {
   try {
     const isMultiple = maxFiles > 1;
     const result = await ImagePicker.openPicker({
-      ...pickerOptions,
+      mediaType: 'photo',
       multiple: isMultiple,
-      maxFiles,
-      cropping: !isMultiple,
+      maxFiles: maxFiles,
+      cropping: false,
+      freeStyleCropEnabled: false,
+      compressImageMaxWidth: MAX_DIMENSION,
+      compressImageMaxHeight: MAX_DIMENSION,
+      compressImageQuality: JPEG_QUALITY,
+      forceJpg: true,
+      includeExif: false,
     });
     const images = Array.isArray(result) ? result : [result];
     return await Promise.all(images.map(toPickedPhoto));

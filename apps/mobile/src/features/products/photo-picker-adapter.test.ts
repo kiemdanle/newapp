@@ -78,14 +78,14 @@ describe('choosePhotos', () => {
     );
   });
 
-  it('requests single selection with cropping enabled when only one slot remains', async () => {
+  it('requests single selection when only one slot remains', async () => {
     openPickerMock.mockResolvedValue(image() as never);
 
     const result = await choosePhotos(1);
 
     expect(result).toEqual([expect.objectContaining({ path: '/tmp/photo.jpg' })]);
     expect(openPickerMock).toHaveBeenCalledWith(
-      expect.objectContaining({ multiple: false, maxFiles: 1, cropping: true }),
+      expect.objectContaining({ multiple: false, maxFiles: 1, cropping: false }),
     );
   });
 
