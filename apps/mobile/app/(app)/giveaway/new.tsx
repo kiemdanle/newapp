@@ -32,10 +32,13 @@ interface LocalPhotoItem {
 export default function NewGiveawayScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
-  const userCountry = useSessionStore((s) => s.user?.country ?? null);
+  const user = useSessionStore((s) => s.user);
+  const userCountry = user?.country ?? null;
+  const profileLocation = user?.address?.trim() ?? '';
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [locationText, setLocation] = useState('');
+  const [locationText, setLocation] = useState(profileLocation);
   const [expiryDate, setExpiryDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
@@ -252,7 +255,27 @@ export default function NewGiveawayScreen() {
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Location / Neighborhood *</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
+            Location / Neighborhood *
+          </Text>
+          {profileLocation && locationText !== profileLocation ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Auto-fill location from profile"
+              onPress={() => setLocation(profileLocation)}
+              hitSlop={8}
+            >
+              <Text style={{ color: theme.colors.primaryDark, fontSize: 12, fontWeight: '600' }}>
+                📍 Use profile location
+              </Text>
+            </Pressable>
+          ) : profileLocation && locationText === profileLocation ? (
+            <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '600' }}>
+              ✓ Filled from profile
+            </Text>
+          ) : null}
+        </View>
         <TextInput
           accessibilityLabel="Pickup location"
           placeholder="e.g. Downtown near Central Park or Porch Pickup"
@@ -270,7 +293,6 @@ export default function NewGiveawayScreen() {
           ]}
         />
       </View>
-
       {/* Item Expiry Date Field (Optional) */}
       <View style={styles.fieldGroup}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NewGiveawayScreen from '../app/(app)/giveaway/new';
+import { useSessionStore } from '../src/auth/session-store';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { NavigationContainer } from '@react-navigation/native';
 import { takePhoto, choosePhotos } from '../src/features/products/photo-picker-adapter';
@@ -111,5 +112,31 @@ describe('NewGiveawayScreen', () => {
         }),
       );
     });
+  });
+
+  it('auto-fills location when user profile has a saved address', () => {
+    useSessionStore.setState({
+      user: {
+        id: 'u-1',
+        email: 'dan@example.com',
+        emailVerified: true,
+        firstName: 'Dan',
+        lastName: 'Le',
+        address: 'District 1, Ho Chi Minh City',
+        country: 'VN',
+        avatarUrl: null,
+        hasPassword: true,
+        role: 'user',
+        status: 'active',
+        themePreference: 'expyrico',
+        createdAt: '2026-08-26T00:00:00.000Z',
+        updatedAt: '2026-08-26T00:00:00.000Z',
+      },
+    });
+
+    const { getByDisplayValue, getByText } = render(wrap(<NewGiveawayScreen />));
+
+    expect(getByDisplayValue('District 1, Ho Chi Minh City')).toBeTruthy();
+    expect(getByText('✓ Filled from profile')).toBeTruthy();
   });
 });
