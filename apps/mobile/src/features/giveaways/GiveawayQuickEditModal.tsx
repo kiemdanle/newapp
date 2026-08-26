@@ -307,8 +307,10 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                   </View>
                 )}
               </ScrollView>
+              <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
+                💡 Tip: Long-press a photo in gallery to select multiple at once, or tap Gallery again to add more.
+              </Text>
             </View>
-
             {/* Title Field */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>Title *</Text>
@@ -524,6 +526,11 @@ const styles = StyleSheet.create({
   sectionHint: {
     fontSize: 11,
     fontWeight: '500',
+  },
+  photoTipText: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
   },
   label: {
     fontSize: 13,

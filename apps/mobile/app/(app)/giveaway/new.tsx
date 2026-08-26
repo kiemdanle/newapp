@@ -231,8 +231,10 @@ export default function NewGiveawayScreen() {
             </View>
           )}
         </ScrollView>
+        <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
+          💡 Tip: Long-press a photo in gallery to select multiple at once, or tap Gallery again to add more.
+        </Text>
       </View>
-
       {/* Form Fields */}
       <View style={styles.fieldGroup}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Item Title *</Text>
@@ -435,6 +437,11 @@ const styles = StyleSheet.create({
   },
   sectionHint: {
     fontSize: 12,
+  },
+  photoTipText: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
   },
   photoList: {
     flexDirection: 'row',
