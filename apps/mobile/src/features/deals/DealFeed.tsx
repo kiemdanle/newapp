@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
 import type { DealFeedFilters } from '../../api/deals';
 import { useDealFeed } from '../../api/deals';
@@ -96,18 +97,22 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={[styles.heading, { color: theme.colors.text }]}>Deals</Text>
           <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-            Local price drops & clearance items before they expire.
+            Local grocery markdowns & clearance
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Post a deal"
           onPress={onNew}
-          style={[
+          style={({ pressed }) => [
             styles.postBtnHeader,
-            { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+            {
+              backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
+              borderRadius: theme.radii.pill,
+            },
           ]}
         >
+          <Ionicons name="add" size={18} color={theme.colors.primaryFg} style={{ marginRight: 2 }} />
           <Text style={[styles.postBtnText, { color: theme.colors.primaryFg }]}>
             + Post Deal
           </Text>
@@ -365,22 +370,6 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         }
       />
 
-      {/* Floating Action Button (FAB) */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Post deal floating button"
-        onPress={onNew}
-        style={[
-          styles.fab,
-          {
-            backgroundColor: theme.colors.primary,
-            shadowColor: theme.colors.primaryDark,
-          },
-        ]}
-      >
-        <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>＋</Text>
-      </Pressable>
-
       {/* Filter Modal Sheet */}
       <DealFilterModal
         visible={filterModalVisible}
@@ -413,6 +402,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   postBtnHeader: {
+    flexDirection: 'row',
     paddingHorizontal: 14,
     paddingVertical: 8,
     minHeight: 38,
@@ -494,24 +484,5 @@ const styles = StyleSheet.create({
   emptyStateActionText: {
     fontWeight: '700',
     fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 28,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  fabText: {
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 32,
   },
 });

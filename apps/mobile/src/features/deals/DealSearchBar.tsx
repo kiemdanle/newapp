@@ -1,8 +1,7 @@
-// apps/mobile/src/features/deals/DealSearchBar.tsx
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme/useTheme';
-
 interface Props {
   value: string;
   onChangeText: (text: string) => void;
@@ -46,7 +45,12 @@ export function DealSearchBar({
           },
         ]}
       >
-        <Text style={[styles.searchIcon, { color: theme.colors.textMuted }]}>🔍</Text>
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={theme.colors.textMuted}
+          style={styles.searchIcon}
+        />
         <TextInput
           accessibilityLabel="Search deals"
           placeholder="Search products, stores, brands…"
@@ -67,7 +71,7 @@ export function DealSearchBar({
             hitSlop={8}
             style={styles.clearBtn}
           >
-            <Text style={{ color: theme.colors.textMuted, fontSize: 16, fontWeight: '700' }}>✕</Text>
+            <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
           </Pressable>
         )}
       </View>
@@ -84,14 +88,11 @@ export function DealSearchBar({
           },
         ]}
       >
-        <Text
-          style={[
-            styles.filterIcon,
-            { color: activeFilterCount > 0 ? theme.colors.primaryFg : theme.colors.text },
-          ]}
-        >
-          ⚙️
-        </Text>
+        <Ionicons
+          name="options-outline"
+          size={20}
+          color={activeFilterCount > 0 ? theme.colors.primaryFg : theme.colors.text}
+        />
         {activeFilterCount > 0 && (
           <View style={[styles.badge, { backgroundColor: theme.colors.accent }]}>
             <Text style={[styles.badgeText, { color: theme.colors.text }]}>

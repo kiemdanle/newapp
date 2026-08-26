@@ -1,6 +1,7 @@
 // apps/mobile/src/features/deals/DealCard.tsx
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal } from '@expyrico/shared';
 import { useOptimisticDealVote } from './useOptimisticDealVote';
 import { useTheme } from '../../theme/useTheme';
@@ -90,10 +91,10 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
           <View
             style={[
               styles.thumbnailPlaceholder,
-              { backgroundColor: theme.colors.bgElevated, borderRadius: theme.radii.md },
+              { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.md },
             ]}
           >
-            <Text style={{ fontSize: 20 }}>🏷️</Text>
+            <Ionicons name="pricetag-outline" size={24} color={theme.colors.primary} />
           </View>
         )}
 
@@ -122,14 +123,14 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
             <View
               style={[
                 styles.storePill,
-                { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.sm },
+                { backgroundColor: theme.colors.bg, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.sm },
               ]}
             >
+              <Ionicons name="storefront-outline" size={12} color={theme.colors.textMuted} style={{ marginRight: 3 }} />
               <Text style={[styles.storeText, { color: theme.colors.text }]}>
-                🏪 {deal.storeName}
+                {deal.storeName}
               </Text>
             </View>
-
             {expiryLabel ? (
               <View
                 style={[
@@ -178,6 +179,12 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                 },
               ]}
             >
+              <Ionicons
+                name="arrow-up"
+                size={13}
+                color={deal.myVote === 1 ? theme.colors.primaryDark : theme.colors.textMuted}
+                style={{ marginRight: 2 }}
+              />
               <Text
                 style={{
                   color: deal.myVote === 1 ? theme.colors.primaryDark : theme.colors.textMuted,
@@ -185,7 +192,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                   fontSize: 13,
                 }}
               >
-                ▲ {deal.upvoteCount}
+                {deal.upvoteCount}
               </Text>
             </Pressable>
             <Pressable
@@ -203,6 +210,12 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                 },
               ]}
             >
+              <Ionicons
+                name="arrow-down"
+                size={13}
+                color={deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted}
+                style={{ marginRight: 2 }}
+              />
               <Text
                 style={{
                   color: deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted,
@@ -210,7 +223,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                   fontSize: 13,
                 }}
               >
-                ▼ {deal.downvoteCount}
+                {deal.downvoteCount}
               </Text>
             </Pressable>
           </View>
