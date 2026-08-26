@@ -53,7 +53,7 @@ export function AuthBrandBar() {
   const themeId = useThemeStore((s) => s.themeId);
   const setTheme = useThemeStore((s) => s.setTheme);
 
-  const isDark = themeId === 'expyricoDark';
+  const isDark = theme.scheme === 'dark';
 
   const toggleTheme = () => {
     const next = isDark ? 'expyrico' : 'expyricoDark';

@@ -13,14 +13,14 @@ describe('secureStore', () => {
     expect(await secureStore.getRefreshToken()).toBeNull();
   });
 
-  it('clearAll wipes every known key', async () => {
+  it('clearAll wipes session credentials and preserves device theme preference', async () => {
     await secureStore.setAccessToken('a');
     await secureStore.setRefreshToken('b');
-    await secureStore.setThemePreference('expyrico');
+    await secureStore.setThemePreference('expyricoDark');
     await secureStore.clearAll();
     expect(await secureStore.getAccessToken()).toBeNull();
     expect(await secureStore.getRefreshToken()).toBeNull();
-    expect(await secureStore.getThemePreference()).toBeNull();
+    expect(await secureStore.getThemePreference()).toBe('expyricoDark');
   });
 
   it('clearAll resets the last registered FCM token for the next authenticated boot', async () => {

@@ -2,7 +2,14 @@ import { z } from 'zod';
 
 export const userRoleSchema = z.enum(['user', 'admin']);
 export const userStatusSchema = z.enum(['active', 'suspended', 'deleted']);
-export const themePreferenceSchema = z.enum(['expyrico', 'bento', 'clay', 'material']);
+export const themePreferenceSchema = z.enum([
+  'expyrico',
+  'expyricoDark',
+  'system',
+  'bento',
+  'clay',
+  'material',
+]);
 
 export const userSchema = z.object({
   id: z.string().uuid(),

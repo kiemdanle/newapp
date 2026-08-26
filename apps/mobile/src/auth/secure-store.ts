@@ -76,7 +76,6 @@ export const secureStore = {
   async clearAll(): Promise<void> {
     await deleteValue(KEY_ACCESS);
     await deleteValue(KEY_REFRESH);
-    await deleteValue(KEY_THEME);
     await deleteValue(KEY_PUSH_REGISTERED);
     await deleteValue('pantry.pushRegisteredUserIdV1');
   },
