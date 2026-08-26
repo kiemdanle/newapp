@@ -60,7 +60,7 @@ export default function RecordDetail() {
   const displayName = record.customName || product?.name || 'Pantry Item';
   const brand = product?.brand;
   const category = record.category || product?.category;
-  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && product.photos[0]?.url) || null;
+  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
   const barcode = product?.barcode;
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
@@ -347,15 +347,6 @@ export default function RecordDetail() {
             </View>
           ) : null}
 
-          {record.purchaseDate ? (
-            <View style={styles.specRow}>
-              <View style={styles.specLabelWrap}>
-                <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
-                <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>Purchased</Text>
-              </View>
-              <Text style={[styles.specValue, { color: theme.colors.text }]}>{record.purchaseDate}</Text>
-            </View>
-          ) : null}
 
           {record.notes ? (
             <View style={[styles.notesBox, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>

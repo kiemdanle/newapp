@@ -1,4 +1,5 @@
 // apps/mobile/app/(app)/(tabs)/deals.tsx
+import React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { useSessionStore } from '@/auth/session-store';
 import { DealFeed } from '@/features/deals/DealFeed';
@@ -16,6 +17,7 @@ export default function DealsTabScreen() {
       onReport={(deal: Deal) =>
         navigation.push('Report', { targetType: 'deal', targetId: deal.id })
       }
+      onNew={() => navigation.push('DealNew')}
     />
   );
 }

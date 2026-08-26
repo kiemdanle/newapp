@@ -1,68 +1,300 @@
 // apps/mobile/src/features/deals/DealFeed.tsx
-import { useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { Deal, DealSort } from '@expyrico/shared';
+import type { DealFeedFilters } from '../../api/deals';
 import { useDealFeed } from '../../api/deals';
 import { DealCard } from './DealCard';
+import { DealSearchBar } from './DealSearchBar';
+import { DealFilterModal } from './DealFilterModal';
 import { EmptyState } from '../../components/EmptyState';
 import { useTheme } from '../../theme/useTheme';
 
-const SORTS: { id: DealSort; label: string }[] = [
-  { id: 'score', label: 'Top' },
-  { id: 'new', label: 'Newest' },
+const SORTS: { id: DealSort; label: string; icon: string }[] = [
+  { id: 'score', label: 'Top', icon: '🔥' },
+  { id: 'new', label: 'Newest', icon: '⏱️' },
+  { id: 'price_asc', label: 'Lowest Price', icon: '🏷️' },
+  { id: 'expiry_asc', label: 'Expiring Soon', icon: '⏳' },
 ];
 
 interface Props {
   currentUserId: string | null;
   onOpen: (deal: Deal) => void;
   onReport: (deal: Deal) => void;
+  onNew: () => void;
 }
 
-export function DealFeed({ currentUserId, onOpen, onReport }: Props) {
+export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const theme = useTheme();
-  const [sort, setSort] = useState<DealSort>('score');
-  const q = useDealFeed(sort);
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSort, setSelectedSort] = useState<DealSort>('score');
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filters, setFilters] = useState<DealFeedFilters>({
+    sort: 'score',
+  });
+
+  // Calculate active filter count (excluding default sort)
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.store) count++;
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) count++;
+    if (filters.expiryStatus && filters.expiryStatus !== 'all') count++;
+    if (filters.country === 'ALL') count++;
+    return count;
+  }, [filters]);
+
+  // Combined filters for API query
+  const combinedFilters: DealFeedFilters = useMemo(
+    () => ({
+      ...filters,
+      sort: selectedSort,
+      q: searchQuery.trim() || undefined,
+    }),
+    [filters, selectedSort, searchQuery],
+  );
+
+  const q = useDealFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  const isFiltered = Boolean(
+    searchQuery.trim() ||
+      filters.store ||
+      filters.minPrice !== undefined ||
+      filters.maxPrice !== undefined ||
+      (filters.expiryStatus && filters.expiryStatus !== 'all') ||
+      filters.country === 'ALL',
+  );
+
+  function clearAllFilters() {
+    setSearchQuery('');
+    setFilters({ sort: selectedSort });
+  }
+
+  function removeFilter(key: keyof DealFeedFilters) {
+    setFilters((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }}>
-        <Text style={{ color: theme.colors.text, fontSize: 28, fontWeight: '700' }}>Deals</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14, marginTop: 4 }}>
-          Vote up useful local finds and save money before products expire.
-        </Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
+      {/* Top Header */}
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.heading, { color: theme.colors.text }]}>Deals</Text>
+          <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
+            Local price drops & clearance items before they expire.
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Post a deal"
+          onPress={onNew}
+          style={[
+            styles.postBtnHeader,
+            { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+          ]}
+        >
+          <Text style={[styles.postBtnText, { color: theme.colors.primaryFg }]}>
+            + Post Deal
+          </Text>
+        </Pressable>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 10 }}>
-        {SORTS.map((s) => {
-          const selected = s.id === sort;
-          return (
+
+      {/* Search Bar + Filter Button */}
+      <DealSearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        onOpenFilter={() => setFilterModalVisible(true)}
+        activeFilterCount={activeFilterCount}
+      />
+
+      {/* Sort Pills ScrollView */}
+      <View style={styles.sortContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sortList}
+        >
+          {SORTS.map((s) => {
+            const selected = s.id === selectedSort;
+            return (
+              <Pressable
+                key={s.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setSelectedSort(s.id)}
+                style={[
+                  styles.sortPill,
+                  {
+                    backgroundColor: selected ? theme.colors.primary : theme.colors.bgElevated,
+                    borderColor: selected ? theme.colors.primary : theme.colors.border,
+                    borderRadius: theme.radii.pill,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.sortText,
+                    {
+                      color: selected ? theme.colors.primaryFg : theme.colors.text,
+                      fontWeight: selected ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {s.icon} {s.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Active Filter Chips Bar */}
+      {isFiltered && (
+        <View style={styles.activeFiltersRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.activeChipsList}
+          >
+            {searchQuery.trim() ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setSearchQuery('')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  "{searchQuery}" ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.store ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('store')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  🏪 {filters.store} ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.minPrice !== undefined || filters.maxPrice !== undefined ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setFilters((prev) => ({
+                    ...prev,
+                    minPrice: undefined,
+                    maxPrice: undefined,
+                  }));
+                }}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  💲 {filters.minPrice !== undefined ? `$${filters.minPrice}` : '$0'} –{' '}
+                  {filters.maxPrice !== undefined ? `$${filters.maxPrice}` : '∞'} ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.expiryStatus === 'expiring_soon' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('expiryStatus')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  ⏳ Expiring Soon ✕
+                </Text>
+              </Pressable>
+            ) : filters.expiryStatus === 'unexpired' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('expiryStatus')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  ✅ Unexpired ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
+            {filters.country === 'ALL' ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => removeFilter('country')}
+                style={[
+                  styles.activeChip,
+                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+                ]}
+              >
+                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
+                  🌍 Worldwide ✕
+                </Text>
+              </Pressable>
+            ) : null}
+
             <Pressable
-              key={s.id}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
-              onPress={() => setSort(s.id)}
-              style={{
-                minHeight: 52,
-                justifyContent: 'center',
-                paddingVertical: 8,
-                paddingHorizontal: 14,
-                borderRadius: 999,
-                backgroundColor: selected ? theme.colors.primary : theme.colors.bgElevated,
-                borderColor: selected ? theme.colors.primary : theme.colors.border,
-                borderWidth: 1,
-              }}
+              onPress={clearAllFilters}
+              style={[
+                styles.clearAllBtn,
+                { backgroundColor: theme.colors.primary + '18' },
+              ]}
             >
-              <Text style={{ color: selected ? theme.colors.primaryFg : theme.colors.text, fontWeight: '600' }}>
-                {s.label}
+              <Text style={[styles.clearAllText, { color: theme.colors.primaryDark }]}>
+                Clear all
               </Text>
             </Pressable>
-          );
-        })}
-      </View>
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Main Deals Feed List */}
       <FlatList
         data={items}
-        keyExtractor={(d) => d.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 124 }}
+        keyExtractor={(d: Deal) => d.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={q.isRefetching}
+            onRefresh={() => q.refetch()}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
         renderItem={({ item }) => (
           <DealCard
             deal={item}
@@ -71,21 +303,215 @@ export function DealFeed({ currentUserId, onOpen, onReport }: Props) {
             isOwn={item.userId === currentUserId}
           />
         )}
-        onEndReached={() => { if (q.hasNextPage) q.fetchNextPage(); }}
+        onEndReached={() => {
+          if (q.hasNextPage && !q.isFetchingNextPage) {
+            q.fetchNextPage();
+          }
+        }}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
           q.isLoading ? (
-            <ActivityIndicator color={theme.colors.primary} />
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+          ) : isFiltered ? (
+            <View style={{ marginTop: 24 }}>
+              <EmptyState
+                icon="search"
+                title="No matching deals"
+                body="Try adjusting your filters or search terms."
+              />
+              <Pressable
+                accessibilityRole="button"
+                onPress={clearAllFilters}
+                style={[
+                  styles.emptyStateAction,
+                  { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+                ]}
+              >
+                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                  Clear filters
+                </Text>
+              </Pressable>
+            </View>
           ) : (
-            <EmptyState
-              icon="pricetag"
-              title="No deals yet"
-              body="Share a useful price drop or check back when the community posts one."
-            />
+            <View style={{ marginTop: 24 }}>
+              <EmptyState
+                icon="pricetag"
+                title="No deals posted yet"
+                body="Be the first to share a grocery price drop in your area and help neighbors save!"
+              />
+              <Pressable
+                accessibilityRole="button"
+                onPress={onNew}
+                style={[
+                  styles.emptyStateAction,
+                  { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+                ]}
+              >
+                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                  + Post the first deal
+                </Text>
+              </Pressable>
+            </View>
           )
         }
-        ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={theme.colors.primary} /> : null}
+        ListFooterComponent={
+          q.isFetchingNextPage ? (
+            <View style={styles.footerLoader}>
+              <ActivityIndicator color={theme.colors.primary} />
+            </View>
+          ) : null
+        }
+      />
+
+      {/* Floating Action Button (FAB) */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Post deal floating button"
+        onPress={onNew}
+        style={[
+          styles.fab,
+          {
+            backgroundColor: theme.colors.primary,
+            shadowColor: theme.colors.primaryDark,
+          },
+        ]}
+      >
+        <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>＋</Text>
+      </Pressable>
+
+      {/* Filter Modal Sheet */}
+      <DealFilterModal
+        visible={filterModalVisible}
+        onClose={() => setFilterModalVisible(false)}
+        filters={filters}
+        onApply={(nextFilters) => setFilters(nextFilters)}
       />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 6,
+  },
+  heading: {
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  subheading: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  postBtnHeader: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 38,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  postBtnText: {
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  sortContainer: {
+    paddingVertical: 6,
+  },
+  sortList: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  sortPill: {
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    minHeight: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sortText: {
+    fontSize: 13,
+  },
+  activeFiltersRow: {
+    paddingVertical: 4,
+  },
+  activeChipsList: {
+    paddingHorizontal: 20,
+    gap: 8,
+    alignItems: 'center',
+  },
+  activeChip: {
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  activeChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  clearAllBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  clearAllText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  listContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 130,
+    paddingTop: 6,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  emptyStateAction: {
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 16,
+    minHeight: 46,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyStateActionText: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  fabText: {
+    fontSize: 28,
+    fontWeight: '700',
+    lineHeight: 32,
+  },
+});

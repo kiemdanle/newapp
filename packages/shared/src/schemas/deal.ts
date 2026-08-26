@@ -3,8 +3,21 @@ import { z } from 'zod';
 export const dealStatusSchema = z.enum(['visible', 'hidden', 'deleted']);
 export type DealStatus = z.infer<typeof dealStatusSchema>;
 
-export const dealSortSchema = z.enum(['score', 'new']).default('score');
+export const dealSortSchema = z
+  .enum(['score', 'new', 'price_asc', 'price_desc', 'expiry_asc'])
+  .default('score');
 export type DealSort = z.infer<typeof dealSortSchema>;
+
+export const dealExpiryStatusSchema = z
+  .enum(['all', 'unexpired', 'expiring_soon'])
+  .default('all');
+export type DealExpiryStatus = z.infer<typeof dealExpiryStatusSchema>;
+
+export const dealStoreFacetSchema = z.object({
+  name: z.string(),
+  count: z.number().int().nonnegative(),
+});
+export type DealStoreFacet = z.infer<typeof dealStoreFacetSchema>;
 
 const priceField = z.number().nonnegative().max(1_000_000);
 const currencyField = z.string().length(3).regex(/^[A-Z]{3}$/);
@@ -20,8 +33,13 @@ const photoUrlField = z
   .string()
   .url()
   .refine((u) => {
-    try { return new URL(u).host === DEAL_PHOTO_CDN_HOST; } catch { return false; }
-  }, 'photoUrl must be hosted on the app CDN');
+    try {
+      const parsed = new URL(u);
+      return parsed.host === DEAL_PHOTO_CDN_HOST && parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }, 'photoUrl must be hosted securely (HTTPS) on the app CDN');
 
 export const dealSchema = z.object({
   id: z.string().uuid(),
@@ -87,5 +105,13 @@ export const dealListQuerySchema = z.object({
   sort: dealSortSchema,
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+  q: z.string().trim().max(100).optional(),
+  store: z.string().trim().max(120).optional(),
+  minPrice: z.coerce.number().nonnegative().optional(),
+  maxPrice: z.coerce.number().nonnegative().optional(),
+  country: z.string().trim().max(5).optional(),
+  expiryStatus: dealExpiryStatusSchema.optional(),
+  productId: z.string().uuid().optional(),
+  timezoneOffset: z.coerce.number().int().min(-720).max(840).optional(),
 });
 export type DealListQuery = z.infer<typeof dealListQuerySchema>;

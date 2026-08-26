@@ -4,6 +4,6 @@ export const navigationRef = createNavigationContainerRef<any>();
 
 export function navigate(name: string, params?: Record<string, unknown>) {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name as never, params as never);
+    (navigationRef.navigate as (name: string, params?: unknown) => void)(name, params);
   }
 }

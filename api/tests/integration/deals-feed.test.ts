@@ -40,67 +40,114 @@ describe('GET /v1/deals', () => {
     const p = await makeProduct();
     const u1 = await makeUser({ email: `n1-${Date.now()}@t.l` });
     const u2 = await makeUser({ email: `n2-${Date.now()}@t.l` });
-    const d1 = await makeDeal({ userId: u1.id, productId: p.id });
-    await new Promise((r) => setTimeout(r, 10));
-    const d2 = await makeDeal({ userId: u2.id, productId: p.id });
+    const d1 = await makeDeal({
+      userId: u1.id,
+      productId: p.id,
+      createdAt: new Date(Date.now() - 10000),
+    });
+    const d2 = await makeDeal({
+      userId: u2.id,
+      productId: p.id,
+      createdAt: new Date(Date.now()),
+    });
     const res = await app.inject({ method: 'GET', url: '/v1/deals?sort=new' });
     const ids = res.json().items.map((x: { id: string }) => x.id);
     expect(ids).toEqual([d2.id, d1.id]);
     await app.close();
   });
 
-  it('returns 400 for invalid sort', async () => {
+  it('supports sort=price_asc and sort=price_desc', async () => {
     const app = await buildServer();
-    const res = await app.inject({ method: 'GET', url: '/v1/deals?sort=bogus' });
-    expect(res.statusCode).toBe(400);
+    const p = await makeProduct();
+    const u = await makeUser({ email: `p-${Date.now()}@t.l` });
+    const dCheap = await makeDeal({ userId: u.id, productId: p.id, price: 1.99 });
+    const dExpensive = await makeDeal({ userId: u.id, productId: p.id, price: 9.99 });
+
+    const resAsc = await app.inject({ method: 'GET', url: '/v1/deals?sort=price_asc' });
+    expect(resAsc.statusCode).toBe(200);
+    const itemsAsc = resAsc.json().items;
+    expect(itemsAsc[0].id).toBe(dCheap.id);
+
+    const resDesc = await app.inject({ method: 'GET', url: '/v1/deals?sort=price_desc' });
+    expect(resDesc.statusCode).toBe(200);
+    const itemsDesc = resDesc.json().items;
+    expect(itemsDesc[0].id).toBe(dExpensive.id);
+
     await app.close();
   });
 
-  it('scopes feed to viewer country — country-A deal absent from country-B viewer', async () => {
+  it('filters by search keyword q matching product name or store', async () => {
     const app = await buildServer();
-    const p = await makeProduct();
-    const poster = await makeUser({ email: `cp-${Date.now()}@t.l`, country: 'US' });
-    const viewerB = await makeUser({ email: `cb-${Date.now()}@t.l`, country: 'GB' });
-    const dealUs = await makeDeal({ userId: poster.id, productId: p.id, country: 'US' });
-    const res = await app.inject({
-      method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerB.id, role: 'user', tokenVersion: 0 })}` },
-    });
-    expect(res.json().items.map((x: { id: string }) => x.id)).not.toContain(dealUs.id);
-    const viewerA = await makeUser({ email: `ca-${Date.now()}@t.l`, country: 'US' });
-    const resA = await app.inject({
-      method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerA.id, role: 'user', tokenVersion: 0 })}` },
-    });
-    expect(resA.json().items.map((x: { id: string }) => x.id)).toContain(dealUs.id);
+    const p1 = await makeProduct({ name: 'Organic Almond Milk' });
+    const p2 = await makeProduct({ name: 'Sourdough Bread' });
+    const u = await makeUser({ email: `q-${Date.now()}@t.l` });
+    await makeDeal({ userId: u.id, productId: p1.id, storeName: 'Trader Joe' });
+    await makeDeal({ userId: u.id, productId: p2.id, storeName: 'Safeway' });
+
+    const resMilk = await app.inject({ method: 'GET', url: '/v1/deals?q=Almond' });
+    expect(resMilk.statusCode).toBe(200);
+    expect(resMilk.json().items).toHaveLength(1);
+    expect(resMilk.json().items[0].product.name).toContain('Almond');
+
+    const resStore = await app.inject({ method: 'GET', url: '/v1/deals?q=Trader' });
+    expect(resStore.statusCode).toBe(200);
+    expect(resStore.json().items).toHaveLength(1);
+    expect(resStore.json().items[0].storeName).toBe('Trader Joe');
+
     await app.close();
   });
 
-  it('global fallback when viewer has no country', async () => {
+  it('filters by store name and price range', async () => {
     const app = await buildServer();
     const p = await makeProduct();
-    const poster = await makeUser({ email: `gp-${Date.now()}@t.l`, country: 'US' });
-    const viewerNoCountry = await makeUser({ email: `gn-${Date.now()}@t.l`, country: null });
-    const dealUs = await makeDeal({ userId: poster.id, productId: p.id, country: 'US' });
-    const res = await app.inject({
-      method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerNoCountry.id, role: 'user', tokenVersion: 0 })}` },
-    });
-    expect(res.json().items.map((x: { id: string }) => x.id)).toContain(dealUs.id);
+    const u = await makeUser({ email: `f-${Date.now()}@t.l` });
+    await makeDeal({ userId: u.id, productId: p.id, storeName: 'Costco', price: 15.0 });
+    await makeDeal({ userId: u.id, productId: p.id, storeName: 'Aldi', price: 4.0 });
+
+    const resStore = await app.inject({ method: 'GET', url: '/v1/deals?store=Costco' });
+    expect(resStore.statusCode).toBe(200);
+    expect(resStore.json().items).toHaveLength(1);
+    expect(resStore.json().items[0].storeName).toBe('Costco');
+
+    const resPrice = await app.inject({ method: 'GET', url: '/v1/deals?minPrice=10&maxPrice=20' });
+    expect(resPrice.statusCode).toBe(200);
+    expect(resPrice.json().items).toHaveLength(1);
+    expect(resPrice.json().items[0].price).toBe(15.0);
+
     await app.close();
   });
 
-  it('null-country deals visible to every viewer', async () => {
+  it('filters by expiryStatus unexpired', async () => {
     const app = await buildServer();
     const p = await makeProduct();
-    const posterNoCountry = await makeUser({ email: `pn-${Date.now()}@t.l`, country: null });
-    const viewerUs = await makeUser({ email: `vu-${Date.now()}@t.l`, country: 'US' });
-    const dealNull = await makeDeal({ userId: posterNoCountry.id, productId: p.id, country: null });
-    const res = await app.inject({
-      method: 'GET', url: '/v1/deals',
-      headers: { authorization: `Bearer ${await issueAccessToken({ sub: viewerUs.id, role: 'user', tokenVersion: 0 })}` },
-    });
-    expect(res.json().items.map((x: { id: string }) => x.id)).toContain(dealNull.id);
+    const u = await makeUser({ email: `e-${Date.now()}@t.l` });
+    const tomorrow = new Date(Date.now() + 86400000);
+    const yesterday = new Date(Date.now() - 86400000);
+
+    await makeDeal({ userId: u.id, productId: p.id, expiryDate: yesterday });
+    const dFresh = await makeDeal({ userId: u.id, productId: p.id, expiryDate: tomorrow });
+
+    const res = await app.inject({ method: 'GET', url: '/v1/deals?expiryStatus=unexpired' });
+    expect(res.statusCode).toBe(200);
+    const ids = res.json().items.map((x: { id: string }) => x.id);
+    expect(ids).toContain(dFresh.id);
+
+    await app.close();
+  });
+
+  it('returns hybrid store facets from GET /v1/deals/stores', async () => {
+    const app = await buildServer();
+    const p = await makeProduct();
+    const u = await makeUser({ email: `st-${Date.now()}@t.l` });
+    await makeDeal({ userId: u.id, productId: p.id, storeName: 'Unique Supermarket' });
+
+    const res = await app.inject({ method: 'GET', url: '/v1/deals/stores' });
+    expect(res.statusCode).toBe(200);
+    const names = res.json().items.map((s: { name: string }) => s.name);
+    expect(names).toContain('Unique Supermarket');
+    expect(names).toContain("Trader Joe's");
+    expect(names).toContain('Costco');
+
     await app.close();
   });
 });

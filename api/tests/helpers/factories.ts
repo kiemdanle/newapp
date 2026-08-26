@@ -136,6 +136,7 @@ export async function makeDeal(overrides: {
   upvoteCount?: number;
   downvoteCount?: number;
   score?: number;
+  createdAt?: Date;
 }) {
   const prisma = getPrisma();
   return prisma.deal.create({
@@ -153,6 +154,7 @@ export async function makeDeal(overrides: {
       upvoteCount: overrides.upvoteCount ?? 0,
       downvoteCount: overrides.downvoteCount ?? 0,
       score: overrides.score ?? 0,
+      ...(overrides.createdAt !== undefined ? { createdAt: overrides.createdAt } : {}),
     },
   });
 }

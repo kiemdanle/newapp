@@ -66,7 +66,7 @@ export async function signInWithGoogle(): Promise<string> {
     if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE || err.code === 'PLAY_SERVICES_NOT_AVAILABLE') {
       throw new Error('Google Play Services are not available on this device');
     }
-    if (err.code === statusCodes.DEVELOPER_ERROR || err.code === '10' || err.code === 'DEVELOPER_ERROR') {
+    if (err.code === (statusCodes as Record<string, string>).DEVELOPER_ERROR || err.code === '10' || err.code === 'DEVELOPER_ERROR') {
       throw new GoogleSignInDeveloperError(
         'Google Sign-In configuration error (DEVELOPER_ERROR): Please verify that your Android SHA-1 fingerprint and Web Client ID are registered in Firebase Console.',
       );

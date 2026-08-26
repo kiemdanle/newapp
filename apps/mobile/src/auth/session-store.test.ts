@@ -14,6 +14,7 @@ const USER = {
   email: 'a@b.c',
   emailVerified: true,
   firstName: 'A',
+  lastName: 'B',
   address: null,
   country: null,
   avatarUrl: null,

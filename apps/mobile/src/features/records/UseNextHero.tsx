@@ -29,7 +29,7 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
 
   const displayName = item.customName || product?.name || 'Item';
   const brand = product?.brand;
-  const imageUrl = item.photoUrl || product?.imageUrl || (product?.photos && product.photos[0]?.url) || null;
+  const imageUrl = item.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
 
   const status = expiryStatus(item.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];

@@ -18,7 +18,7 @@ describe('google auth', () => {
 
   it('maps DEVELOPER_ERROR status code to GoogleSignInDeveloperError', async () => {
     (Config as { GOOGLE_WEB_CLIENT_ID: string }).GOOGLE_WEB_CLIENT_ID = '12345.apps.googleusercontent.com';
-    (GoogleSignin.signIn as jest.Mock).mockRejectedValueOnce({ code: statusCodes.DEVELOPER_ERROR });
+    (GoogleSignin.signIn as jest.Mock).mockRejectedValueOnce({ code: 'DEVELOPER_ERROR' });
     await expect(signInWithGoogle()).rejects.toThrow(GoogleSignInDeveloperError);
   });
 

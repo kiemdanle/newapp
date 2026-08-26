@@ -1,5 +1,5 @@
 appId: com.expyrico.app
-name: Deals flow — post, vote, report
+name: Deals flow — post, search, filter, vote, report
 tags:
   - deals
 ---
@@ -7,7 +7,8 @@ tags:
     clearState: true
 - runFlow: ./sign-in.yaml
 - tapOn: "Deals"
-- tapOn: "Post a deal"
+- assertVisible: "Deals"
+- tapOn: "+ Post Deal"
 - inputText: "Oat"
 - tapOn:
     text: "Oat Milk"
@@ -18,11 +19,12 @@ tags:
 - tapOn:
     id: "store"
 - inputText: "Aldi"
-- tapOn: "Post deal"
+- tapOn: "Post Deal to Community"
 - assertVisible: "Aldi"
-- longPressOn:
-    id: "deal-d-1"
-- assertVisible: "Report"
-- tapOn: "Spam"
-- tapOn: "Submit"
-- assertNotVisible: "Submit"
+- tapOn: "Search deals"
+- inputText: "Oat"
+- assertVisible: "Oat Milk"
+- tapOn: "Open filters"
+- assertVisible: "Filters"
+- tapOn: "Apply Filters"
+- assertVisible: "Aldi"

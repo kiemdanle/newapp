@@ -24,7 +24,7 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
   const displayName = record.customName || product?.name || 'Item';
   const brand = product?.brand;
   const category = record.category || product?.category;
-  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && product.photos[0]?.url) || null;
+  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
 
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];

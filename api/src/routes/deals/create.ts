@@ -9,12 +9,18 @@ const DEFAULT_CURRENCY = 'USD';
 
 function assertCdnHost(url: string | undefined): void {
   if (!url) return;
-  let host: string;
-  try { host = new URL(url).host; } catch {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
     throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title: 'Invalid photoUrl' });
   }
-  if (host !== DEAL_PHOTO_CDN_HOST) {
-    throw new AppError({ status: 400, code: ERROR_CODES.VALIDATION, title: 'photoUrl must be on the app CDN' });
+  if (parsed.host !== DEAL_PHOTO_CDN_HOST || parsed.protocol !== 'https:') {
+    throw new AppError({
+      status: 400,
+      code: ERROR_CODES.VALIDATION,
+      title: 'photoUrl must be hosted securely (HTTPS) on the app CDN',
+    });
   }
 }
 

@@ -1,8 +1,21 @@
 import { z } from 'zod';
 export declare const dealStatusSchema: z.ZodEnum<["visible", "hidden", "deleted"]>;
 export type DealStatus = z.infer<typeof dealStatusSchema>;
-export declare const dealSortSchema: z.ZodDefault<z.ZodEnum<["score", "new"]>>;
+export declare const dealSortSchema: z.ZodDefault<z.ZodEnum<["score", "new", "price_asc", "price_desc", "expiry_asc"]>>;
 export type DealSort = z.infer<typeof dealSortSchema>;
+export declare const dealExpiryStatusSchema: z.ZodDefault<z.ZodEnum<["all", "unexpired", "expiring_soon"]>>;
+export type DealExpiryStatus = z.infer<typeof dealExpiryStatusSchema>;
+export declare const dealStoreFacetSchema: z.ZodObject<{
+    name: z.ZodString;
+    count: z.ZodNumber;
+}, "strip", z.ZodTypeAny, {
+    name: string;
+    count: number;
+}, {
+    name: string;
+    count: number;
+}>;
+export type DealStoreFacet = z.infer<typeof dealStoreFacetSchema>;
 export declare const DEAL_PHOTO_CDN_HOST = "cdn.expyrico.app";
 export declare const dealSchema: z.ZodObject<{
     id: z.ZodString;
@@ -28,13 +41,13 @@ export declare const dealSchema: z.ZodObject<{
         brand: z.ZodNullable<z.ZodString>;
         imageUrl: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         name: string;
+        id: string;
         brand: string | null;
         imageUrl: string | null;
     }, {
-        id: string;
         name: string;
+        id: string;
         brand: string | null;
         imageUrl: string | null;
     }>>;
@@ -52,58 +65,58 @@ export declare const dealSchema: z.ZodObject<{
         avatarUrl: string | null;
     }>>;
 }, "strip", z.ZodTypeAny, {
-    id: string;
-    country: string | null;
-    status: "deleted" | "visible" | "hidden";
-    createdAt: string;
-    updatedAt: string;
-    productId: string;
-    userId: string;
-    expiryDate: string | null;
-    photoUrl: string | null;
     score: number;
+    status: "visible" | "hidden" | "deleted";
+    id: string;
+    userId: string;
+    productId: string;
     price: number;
     currency: string;
     storeName: string;
+    photoUrl: string | null;
+    expiryDate: string | null;
     note: string | null;
+    country: string | null;
     upvoteCount: number;
     downvoteCount: number;
+    createdAt: string;
+    updatedAt: string;
+    myVote?: 1 | -1 | null | undefined;
     product?: {
-        id: string;
         name: string;
+        id: string;
         brand: string | null;
         imageUrl: string | null;
     } | undefined;
-    myVote?: 1 | -1 | null | undefined;
     author?: {
         id: string;
         firstName: string;
         avatarUrl: string | null;
     } | undefined;
 }, {
-    id: string;
-    country: string | null;
-    status: "deleted" | "visible" | "hidden";
-    createdAt: string;
-    updatedAt: string;
-    productId: string;
-    userId: string;
-    expiryDate: string | null;
-    photoUrl: string | null;
     score: number;
+    status: "visible" | "hidden" | "deleted";
+    id: string;
+    userId: string;
+    productId: string;
     price: number;
     currency: string;
     storeName: string;
+    photoUrl: string | null;
+    expiryDate: string | null;
     note: string | null;
+    country: string | null;
     upvoteCount: number;
     downvoteCount: number;
+    createdAt: string;
+    updatedAt: string;
+    myVote?: 1 | -1 | null | undefined;
     product?: {
-        id: string;
         name: string;
+        id: string;
         brand: string | null;
         imageUrl: string | null;
     } | undefined;
-    myVote?: 1 | -1 | null | undefined;
     author?: {
         id: string;
         firstName: string;
@@ -123,17 +136,17 @@ export declare const dealCreateSchema: z.ZodObject<{
     productId: string;
     price: number;
     storeName: string;
-    expiryDate?: string | undefined;
-    photoUrl?: string | undefined;
     currency?: string | undefined;
+    photoUrl?: string | undefined;
+    expiryDate?: string | undefined;
     note?: string | undefined;
 }, {
     productId: string;
     price: number;
     storeName: string;
-    expiryDate?: string | undefined;
-    photoUrl?: string | undefined;
     currency?: string | undefined;
+    photoUrl?: string | undefined;
+    expiryDate?: string | undefined;
     note?: string | undefined;
 }>;
 export type DealCreate = z.infer<typeof dealCreateSchema>;
@@ -144,28 +157,28 @@ export declare const dealPatchSchema: z.ZodEffects<z.ZodObject<{
     expiryDate: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodNull]>>;
     note: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodNull]>>;
 }, "strip", z.ZodTypeAny, {
-    expiryDate?: string | null | undefined;
-    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
+    photoUrl?: string | null | undefined;
+    expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }, {
-    expiryDate?: string | null | undefined;
-    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
+    photoUrl?: string | null | undefined;
+    expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }>, {
-    expiryDate?: string | null | undefined;
-    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
+    photoUrl?: string | null | undefined;
+    expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }, {
-    expiryDate?: string | null | undefined;
-    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
+    photoUrl?: string | null | undefined;
+    expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }>;
 export type DealPatch = z.infer<typeof dealPatchSchema>;
@@ -178,17 +191,41 @@ export declare const dealVoteSchema: z.ZodObject<{
 }>;
 export type DealVote = z.infer<typeof dealVoteSchema>;
 export declare const dealListQuerySchema: z.ZodObject<{
-    sort: z.ZodDefault<z.ZodEnum<["score", "new"]>>;
+    sort: z.ZodDefault<z.ZodEnum<["score", "new", "price_asc", "price_desc", "expiry_asc"]>>;
     cursor: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
+    q: z.ZodOptional<z.ZodString>;
+    store: z.ZodOptional<z.ZodString>;
+    minPrice: z.ZodOptional<z.ZodNumber>;
+    maxPrice: z.ZodOptional<z.ZodNumber>;
+    country: z.ZodOptional<z.ZodString>;
+    expiryStatus: z.ZodOptional<z.ZodDefault<z.ZodEnum<["all", "unexpired", "expiring_soon"]>>>;
+    productId: z.ZodOptional<z.ZodString>;
+    timezoneOffset: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    sort: "score" | "new";
+    sort: "score" | "new" | "price_asc" | "price_desc" | "expiry_asc";
     limit: number;
+    productId?: string | undefined;
+    country?: string | undefined;
     cursor?: string | undefined;
+    q?: string | undefined;
+    store?: string | undefined;
+    minPrice?: number | undefined;
+    maxPrice?: number | undefined;
+    expiryStatus?: "all" | "unexpired" | "expiring_soon" | undefined;
+    timezoneOffset?: number | undefined;
 }, {
-    sort?: "score" | "new" | undefined;
+    sort?: "score" | "new" | "price_asc" | "price_desc" | "expiry_asc" | undefined;
+    productId?: string | undefined;
+    country?: string | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
+    q?: string | undefined;
+    store?: string | undefined;
+    minPrice?: number | undefined;
+    maxPrice?: number | undefined;
+    expiryStatus?: "all" | "unexpired" | "expiring_soon" | undefined;
+    timezoneOffset?: number | undefined;
 }>;
 export type DealListQuery = z.infer<typeof dealListQuerySchema>;
 //# sourceMappingURL=deal.d.ts.map

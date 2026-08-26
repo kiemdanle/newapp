@@ -214,7 +214,7 @@ export default function SignIn() {
             styles.socialBtn,
             {
               borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgElevated,
             },
           ]}
           onPress={onGoogle}
@@ -232,7 +232,7 @@ export default function SignIn() {
             styles.socialBtn,
             {
               borderColor: theme.colors.border,
-              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+              backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgElevated,
             },
           ]}
           onPress={onPasskey}
@@ -251,7 +251,7 @@ export default function SignIn() {
               styles.socialBtn,
               {
                 borderColor: theme.colors.border,
-                backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.card,
+                backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgElevated,
               },
             ]}
             onPress={onApple}
