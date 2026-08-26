@@ -71,7 +71,10 @@ export function useCreateGiveaway() {
       apiClient.post<Giveaway>('/giveaways', input, {
         headers: { 'idempotency-key': newIdempotencyKey() },
       }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['giveaways'] }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['giveaways'] });
+      void qc.refetchQueries({ queryKey: ['giveaways'] });
+    },
   });
 }
 

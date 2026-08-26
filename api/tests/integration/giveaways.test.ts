@@ -42,7 +42,7 @@ describe('GET /v1/giveaways', () => {
     const giver = await makeUser({ email: `gca-${Date.now()}@t.l`, country: 'US' });
     const viewerB = await makeUser({ email: `gcb-${Date.now()}@t.l`, country: 'GB' });
     const g = await makeGiveaway({ giverUserId: giver.id, country: 'US' });
-    const res = await app.inject({ method: 'GET', url: '/v1/giveaways', headers: await auth(viewerB.id) });
+    const res = await app.inject({ method: 'GET', url: '/v1/giveaways?country=GB', headers: await auth(viewerB.id) });
     expect(res.json().items.map((x: { id: string }) => x.id)).not.toContain(g.id);
     await app.close();
   });

@@ -72,7 +72,7 @@ export async function listGiveawaysRoute(app: FastifyInstance) {
     }
 
     const cursor = query.cursor ? { id: query.cursor } : undefined;
-    const items = await prisma.giveaway.findMany({
+    let items = await prisma.giveaway.findMany({
       where: whereConditions.length > 0 ? { AND: whereConditions } : {},
       orderBy: orderBy as never,
       take: query.limit + 1,
@@ -83,6 +83,24 @@ export async function listGiveawaysRoute(app: FastifyInstance) {
         _count: { select: { claims: true } },
       },
     });
+
+    // Fallback: If 0 items found locally (when no explicit search or filter was applied),
+    // broaden to all open community giveaways so the feed is never empty.
+    if (items.length === 0 && !query.country && !query.location && !query.q && query.status === 'open' && !cursor) {
+      items = await prisma.giveaway.findMany({
+        where: {
+          status: 'open',
+          ...(query.hasPhoto === true ? { photoUrl: { not: null } } : {}),
+        },
+        orderBy: orderBy as never,
+        take: query.limit + 1,
+        include: {
+          giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },
+          claims: true,
+          _count: { select: { claims: true } },
+        },
+      });
+    }
 
     const hasMore = items.length > query.limit;
     const page = hasMore ? items.slice(0, query.limit) : items;
