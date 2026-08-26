@@ -79,6 +79,11 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
       void refetch();
     }, [refetch]),
   );
+
+  if (q.error) {
+    // eslint-disable-next-line no-console
+    console.warn('[GiveawayFeed] query error:', q.error);
+  }
   const isFiltered = Boolean(
     searchQuery.trim() ||
       (filters.status && filters.status !== 'open') ||
@@ -284,9 +289,29 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         }}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={
-          q.isLoading ? (
+          q.isLoading || q.isPending ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+          ) : q.isError ? (
+            <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+              <EmptyState
+                icon="alert-circle"
+                title="Could not load giveaways"
+                body={(q.error as Error)?.message || 'Please check your connection and try again.'}
+              />
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void refetch()}
+                style={[
+                  styles.emptyStateAction,
+                  { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
+                ]}
+              >
+                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                  Retry
+                </Text>
+              </Pressable>
             </View>
           ) : isFiltered ? (
             <View style={{ marginTop: 24 }}>
