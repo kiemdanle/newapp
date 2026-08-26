@@ -26,13 +26,19 @@ export async function createGiveawayRoute(app: FastifyInstance) {
       const giver = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });
       const country = giver?.country ?? null;
 
+      let storedPhotoUrl: string | null = null;
+      if (input.photoUrls && input.photoUrls.length > 0) {
+        storedPhotoUrl = input.photoUrls.length > 1 ? JSON.stringify(input.photoUrls) : (input.photoUrls[0] ?? null);
+      } else if (input.photoUrl) {
+        storedPhotoUrl = input.photoUrl;
+      }
       const created = await prisma.giveaway.create({
         data: {
           giverUserId: userId,
           title: input.title,
           description: input.description ?? null,
           locationText: input.locationText,
-          photoUrl: input.photoUrl ?? (input.photoUrls && input.photoUrls.length > 0 ? input.photoUrls[0] : null) ?? null,
+          photoUrl: storedPhotoUrl,
           productId: input.productId ?? null,
           recordId: input.recordId ?? null,
           country,

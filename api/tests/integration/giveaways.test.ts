@@ -169,6 +169,50 @@ describe('PATCH /v1/giveaways/:id', () => {
     expect(res.json().title).toBe('Updated title');
     await app.close();
   });
+  it('owner can update giveaway with multiple photoUrls', async () => {
+    const app = await buildServer();
+    const u = await makeUser({ emailVerified: true });
+    const g = await makeGiveaway({ giverUserId: u.id, photoUrl: 'https://cdn.expyrico.app/old.webp' });
+
+    const patchRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/giveaways/${g.id}`,
+      headers: await auth(u.id),
+      payload: {
+        title: 'Updated with Photos',
+        photoUrl: 'https://cdn.expyrico.app/photo1.webp',
+        photoUrls: [
+          'https://cdn.expyrico.app/photo1.webp',
+          'https://cdn.expyrico.app/photo2.webp',
+        ],
+      },
+    });
+
+    expect(patchRes.statusCode).toBe(200);
+    const patched = patchRes.json();
+    expect(patched.title).toBe('Updated with Photos');
+    expect(patched.photoUrl).toBe('https://cdn.expyrico.app/photo1.webp');
+    expect(patched.photoUrls).toEqual([
+      'https://cdn.expyrico.app/photo1.webp',
+      'https://cdn.expyrico.app/photo2.webp',
+    ]);
+
+    // Verify GET also returns the multiple photoUrls
+    const getRes = await app.inject({
+      method: 'GET',
+      url: `/v1/giveaways/${g.id}`,
+      headers: await auth(u.id),
+    });
+    expect(getRes.statusCode).toBe(200);
+    const fetched = getRes.json();
+    expect(fetched.photoUrl).toBe('https://cdn.expyrico.app/photo1.webp');
+    expect(fetched.photoUrls).toEqual([
+      'https://cdn.expyrico.app/photo1.webp',
+      'https://cdn.expyrico.app/photo2.webp',
+    ]);
+
+    await app.close();
+  });
 
   it('non-owner gets 403', async () => {
     const app = await buildServer();

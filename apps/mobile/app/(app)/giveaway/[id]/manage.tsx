@@ -2,17 +2,15 @@
 import React from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 import { useGiveaway, useGiveawayClaims, useSelectClaim } from '@/api/giveaways';
 import type { Claim } from '@expyrico/shared';
 import { ClaimList } from '@/features/giveaways/ClaimList';
 import { GiveawayStatusBadge } from '@/features/giveaways/GiveawayStatusBadge';
 import { useTheme } from '@/theme/useTheme';
-import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 export default function ManageGiveawayScreen() {
   const theme = useTheme();
-  const navigation = useNavigation<AppNavigationProp>();
   const { id } = useRoute().params as { id: string };
 
   const { data: giveaway, isLoading: loadingGiveaway } = useGiveaway(id ?? '');
@@ -59,6 +57,7 @@ export default function ManageGiveawayScreen() {
               source={{ uri: imageUrl }}
               style={[styles.thumbnail, { borderRadius: theme.radii.md }]}
               resizeMode="cover"
+              accessibilityIgnoresInvertColors
             />
           ) : (
             <View

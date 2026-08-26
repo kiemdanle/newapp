@@ -22,9 +22,18 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
         ...(input.title !== undefined ? { title: input.title } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
         ...(input.locationText !== undefined ? { locationText: input.locationText } : {}),
-        ...(input.photoUrl !== undefined || input.photoUrls !== undefined
-          ? { photoUrl: input.photoUrl ?? (input.photoUrls && input.photoUrls.length > 0 ? input.photoUrls[0] : null) }
-          : {}),
+        ...(input.photoUrls !== undefined
+          ? {
+              photoUrl:
+                input.photoUrls.length > 1
+                  ? JSON.stringify(input.photoUrls)
+                  : input.photoUrls.length === 1
+                    ? (input.photoUrls[0] ?? null)
+                    : null,
+            }
+          : input.photoUrl !== undefined
+            ? { photoUrl: input.photoUrl }
+            : {}),
       },
       include: {
         giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

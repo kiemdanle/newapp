@@ -30,6 +30,8 @@ const mockFeedResult = {
 
 jest.mock('../src/api/giveaways', () => ({
   useGiveawayFeed: () => mockFeedResult,
+  useUpdateGiveaway: () => ({ mutateAsync: jest.fn(), isPending: false }),
+  useCancelGiveaway: () => ({ mutateAsync: jest.fn(), isPending: false }),
 }));
 
 function wrap(node: React.ReactNode) {

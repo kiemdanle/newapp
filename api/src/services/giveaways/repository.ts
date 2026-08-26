@@ -22,6 +22,27 @@ export function toApiGiveaway(
   opts: { myClaim?: GiveawayClaim | null } = {},
 ): ApiGiveaway {
   const selectedRecipientId = getSelectedRecipientId(g.claims);
+  let photoUrl: string | null = g.photoUrl;
+  let photoUrls: string[] | undefined = undefined;
+
+  if (g.photoUrl) {
+    if (g.photoUrl.startsWith('[') && g.photoUrl.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(g.photoUrl);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          photoUrls = parsed.filter((item): item is string => typeof item === 'string' && item.length > 0);
+          photoUrl = photoUrls[0] ?? null;
+        }
+      } catch {
+        photoUrl = g.photoUrl;
+        photoUrls = [g.photoUrl];
+      }
+    } else {
+      photoUrl = g.photoUrl;
+      photoUrls = [g.photoUrl];
+    }
+  }
+
   const out: ApiGiveaway = {
     id: g.id,
     giverUserId: g.giverUserId,
@@ -29,7 +50,8 @@ export function toApiGiveaway(
     recordId: g.recordId,
     title: g.title,
     description: g.description,
-    photoUrl: g.photoUrl,
+    photoUrl,
+    photoUrls,
     locationText: g.locationText,
     country: g.country,
     status: g.status,

@@ -101,9 +101,13 @@ export function useUpdateGiveaway() {
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: GiveawayPatch }) =>
       apiClient.patch<Giveaway>(`/giveaways/${id}`, patch),
-    onSuccess: (_d, { id }) => {
+    onSuccess: (data, { id }) => {
+      if (data) {
+        qc.setQueryData(['giveaway', id], data);
+      }
       void qc.invalidateQueries({ queryKey: ['giveaways'] });
       void qc.invalidateQueries({ queryKey: ['giveaway', id] });
+      void qc.invalidateQueries({ queryKey: ['my-giveaways'] });
     },
   });
 }

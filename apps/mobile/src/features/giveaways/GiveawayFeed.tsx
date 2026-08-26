@@ -2,25 +2,30 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
 import type { GiveawayFeedFilters } from '../../api/giveaways';
-import { useGiveawayFeed } from '../../api/giveaways';
+import { useGiveawayFeed, useUpdateGiveaway, useCancelGiveaway } from '../../api/giveaways';
 import { GiveawayCard } from './GiveawayCard';
 import { GiveawaySearchBar } from './GiveawaySearchBar';
 import { GiveawayFilterModal } from './GiveawayFilterModal';
+import { GiveawayQuickEditModal } from './GiveawayQuickEditModal';
 import { EmptyState } from '@/components/EmptyState';
+import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
+import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 const SORTS: { id: GiveawaySort; label: string; icon: string }[] = [
   { id: 'new', label: 'Newest', icon: '⏱️' },
@@ -38,8 +43,13 @@ interface Props {
 export function GiveawayFeed({ onOpen, onNew }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<AppNavigationProp>();
+  const currentUserId = useSessionStore((s) => s.user?.id ?? null);
   const fabBottom = 84 + Math.max(insets.bottom, 0);
 
+  const updateGiveaway = useUpdateGiveaway();
+  const cancelGiveaway = useCancelGiveaway();
+  const [editingGiveaway, setEditingGiveaway] = useState<Giveaway | null>(null);
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<GiveawaySort>('new');
@@ -104,6 +114,61 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
       return next;
     });
   }
+
+  const handleEdit = useCallback((giveaway: Giveaway) => {
+    setEditingGiveaway(giveaway);
+  }, []);
+
+  const handleSaveEdit = useCallback(
+    async (patch: {
+      title: string;
+      locationText: string;
+      description?: string;
+      photoUrl?: string | null;
+      photoUrls?: string[];
+    }) => {
+      if (!editingGiveaway) return;
+      await updateGiveaway.mutateAsync({
+        id: editingGiveaway.id,
+        patch,
+      });
+    },
+    [editingGiveaway, updateGiveaway],
+  );
+
+  const handleDelete = useCallback(
+    (giveaway: Giveaway) => {
+      Alert.alert(
+        'Cancel Giveaway',
+        `Are you sure you want to cancel "${giveaway.title}"? It will be closed and removed from active listings.`,
+        [
+          { text: 'Keep item', style: 'cancel' },
+          {
+            text: 'Cancel Giveaway',
+            style: 'destructive',
+            onPress: () => {
+              void cancelGiveaway.mutateAsync(giveaway.id);
+            },
+          },
+        ],
+      );
+    },
+    [cancelGiveaway],
+  );
+
+  const handleManage = useCallback(
+    (giveaway: Giveaway) => {
+      navigation.push('GiveawayManage', { id: giveaway.id });
+    },
+    [navigation],
+  );
+
+  const handleShare = useCallback((giveaway: Giveaway) => {
+    void Share.share({
+      message: `Check out this giveaway on Expyrico: ${giveaway.title} in ${giveaway.locationText}`,
+      title: giveaway.title,
+    });
+  }, []);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
@@ -280,7 +345,15 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
           />
         }
         renderItem={({ item }) => (
-          <GiveawayCard giveaway={item} onPress={() => onOpen(item.id)} />
+          <GiveawayCard
+            giveaway={item}
+            currentUserId={currentUserId}
+            onPress={() => onOpen(item.id)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onManage={handleManage}
+            onShare={handleShare}
+          />
         )}
         onEndReached={() => {
           if (q.hasNextPage && !q.isFetchingNextPage) {
@@ -392,6 +465,14 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         onClose={() => setFilterModalVisible(false)}
         filters={filters}
         onApply={(nextFilters) => setFilters(nextFilters)}
+      />
+
+      {/* Quick Edit Giveaway Modal */}
+      <GiveawayQuickEditModal
+        visible={Boolean(editingGiveaway)}
+        giveaway={editingGiveaway}
+        onClose={() => setEditingGiveaway(null)}
+        onSave={handleSaveEdit}
       />
     </View>
   );

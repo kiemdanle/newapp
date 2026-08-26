@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -14,7 +13,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
-import { choosePhotos, takePhoto, type PickedPhoto } from '@/features/products/photo-picker-adapter';
+import { choosePhotos, takePhoto } from '@/features/products/photo-picker-adapter';
 import { useTheme } from '@/theme/useTheme';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
@@ -166,7 +165,12 @@ export default function NewGiveawayScreen() {
                 },
               ]}
             >
-              <Image source={{ uri: item.path }} style={styles.photoImage} resizeMode="cover" />
+              <Image
+                source={{ uri: item.path }}
+                style={styles.photoImage}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
               {index === 0 && (
                 <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
                   <Text style={[styles.coverText, { color: theme.colors.primaryFg }]}>Cover</Text>
