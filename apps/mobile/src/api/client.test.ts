@@ -99,7 +99,27 @@ describe('apiClient — happy path', () => {
 describe('apiClient — refresh on 401', () => {
   beforeEach(() => __reset());
 
-  it('refreshes once on 401, replays the request, returns the success body', async () => {
+  it('refreshes once on 401 with nested tokens object from server, replays request', async () => {
+    await secureStore.setAccessToken('expired');
+    await secureStore.setRefreshToken('refresh-1');
+
+    const f = queueFetch(
+      problemResponse('token_expired', 401, 'expired'), // first call
+      jsonResponse({
+        user: { id: 'u1', email: 'a@b.c' },
+        tokens: { accessToken: 'new-access-nested', refreshToken: 'refresh-2-nested', expiresIn: 900 },
+      }), // refresh
+      jsonResponse({ ok: true }), // replay
+    );
+
+    const result = await apiClient.request<{ ok: true }>({ method: 'GET', path: '/me' });
+    expect(result).toEqual({ ok: true });
+    expect(f).toHaveBeenCalledTimes(3);
+    expect(await secureStore.getAccessToken()).toBe('new-access-nested');
+    expect(await secureStore.getRefreshToken()).toBe('refresh-2-nested');
+  });
+
+  it('refreshes once on 401 with flat tokens, replays the request, returns the success body', async () => {
     await secureStore.setAccessToken('expired');
     await secureStore.setRefreshToken('refresh-1');
 

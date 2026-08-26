@@ -33,6 +33,9 @@ async function getValue(service: string): Promise<string | null> {
 }
 
 async function setValue(service: string, value: string): Promise<void> {
+  if (!value || typeof value !== 'string' || value === 'undefined' || value === 'null') {
+    return;
+  }
   await Promise.allSettled([
     Keychain.setGenericPassword(service, value, { service }),
     AsyncStorage.setItem(`@secure_${service}`, value),

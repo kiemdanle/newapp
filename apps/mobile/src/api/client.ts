@@ -12,9 +12,15 @@ interface ApiRequest extends ApiClientOpts {
 }
 
 interface RefreshResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
+  user?: unknown;
+  tokens?: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  };
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
 }
 
 // Exported so the XHR-based upload transport (product-photo-upload.ts) and
@@ -93,9 +99,14 @@ export async function refreshTokensOnce(): Promise<boolean> {
         return false;
       }
       const data = (await res.json()) as RefreshResponse;
-      await secureStore.setAccessToken(data.accessToken);
-      await secureStore.setRefreshToken(data.refreshToken);
-      onTokensRefreshed?.(data.accessToken, data.refreshToken);
+      const accessToken = data.tokens?.accessToken ?? data.accessToken;
+      const refreshToken = data.tokens?.refreshToken ?? data.refreshToken;
+      if (!accessToken || !refreshToken) {
+        throw new Error('Refresh response did not contain valid tokens');
+      }
+      await secureStore.setAccessToken(accessToken);
+      await secureStore.setRefreshToken(refreshToken);
+      onTokensRefreshed?.(accessToken, refreshToken);
       return true;
     } catch {
       // Network failure / offline / timeout: do NOT sign out! Retain credentials for retry when online.
