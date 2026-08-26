@@ -54,20 +54,43 @@ export const useSessionStore = create<SessionState>((set, get) => ({
  * fetch fills the profile card (name/email/initials) which is not persisted.
  */
 export async function hydrateSession(): Promise<void> {
-  const accessToken = await secureStore.getAccessToken();
+  let accessToken = await secureStore.getAccessToken();
   const refreshToken = await secureStore.getRefreshToken();
   useSessionStore.setState({ accessToken, refreshToken, hydrated: true });
+
+  // If access token is missing or expired, but a valid refresh token exists, auto-refresh:
+  if (!accessToken && refreshToken) {
+    try {
+      const newTokens = await authEndpoints.refresh(refreshToken);
+      accessToken = newTokens.accessToken;
+      await secureStore.setAccessToken(newTokens.accessToken);
+      await secureStore.setRefreshToken(newTokens.refreshToken);
+      useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
+    } catch {
+      // Refresh token expired or revoked
+    }
+  }
 
   if (!accessToken) return;
 
   try {
     const user = await authEndpoints.me();
-    // Drop the profile if sign-out raced while /me was in flight.
     if (useSessionStore.getState().accessToken) {
       useSessionStore.getState().setUser(user);
     }
-  } catch {
-    // Keep tokens; profile can retry later. A hard 401 is handled by the
-    // api client refresh/sign-out path.
+  } catch (err: unknown) {
+    // If accessToken was expired on the server, attempt refresh:
+    if (refreshToken) {
+      try {
+        const newTokens = await authEndpoints.refresh(refreshToken);
+        await secureStore.setAccessToken(newTokens.accessToken);
+        await secureStore.setRefreshToken(newTokens.refreshToken);
+        useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
+        const user = await authEndpoints.me();
+        useSessionStore.getState().setUser(user);
+      } catch {
+        // Refresh token invalid
+      }
+    }
   }
 }

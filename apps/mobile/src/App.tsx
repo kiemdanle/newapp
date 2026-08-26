@@ -17,6 +17,8 @@ import { registerPushTokenApi } from './api/push';
 import { ensurePushTokenRegistered, PUSH_REGISTERED_FLAG_KEY, PUSH_REGISTERED_USER_ID_KEY } from './features/push/registerPushToken';
 import { handleNotificationTap, registerModerationNotificationBatch } from './features/push/handle-notification-open';
 import { navigationRef } from './navigation/navigationRef';
+import { InAppNotificationBanner } from './components/InAppNotificationBanner';
+import { useInAppNotificationStore } from './store/inAppNotification';
 import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
 
@@ -49,6 +51,8 @@ function RootApp() {
   const [bootError, setBootError] = useState<string | null>(null);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
+  const activeNotification = useInAppNotificationStore((s) => s.current);
+  const dismissNotification = useInAppNotificationStore((s) => s.dismiss);
 
   useEffect(() => {
     wireApiClient();
@@ -59,6 +63,11 @@ function RootApp() {
 
   return (
     <View style={{ flex: 1 }}>
+      <InAppNotificationBanner
+        notification={activeNotification}
+        onPress={(data) => void handleNotificationTap(data)}
+        onDismiss={dismissNotification}
+      />
       <NavigationContainer ref={navigationRef}>
         <StatusBar barStyle="default" />
         <RootNavigator />
@@ -137,12 +146,20 @@ export function AppSyncManager() {
 
       // Foreground push notification listener
       unsubMessage = messaging().onMessage(async (remoteMessage) => {
-        // Invalidate record/product caches so data is fresh
         if (remoteMessage.data?.recordId) {
           queryClient.invalidateQueries({ queryKey: ['records'] });
         }
+        const title = remoteMessage.notification?.title || 'Expyrico';
+        const body = remoteMessage.notification?.body;
+        if (body) {
+          useInAppNotificationStore.getState().show({
+            id: String(Date.now()),
+            title,
+            body,
+            data: remoteMessage.data as Record<string, unknown> | undefined,
+          });
+        }
       });
-
       const handleOpenedNotification = (message: { data?: Record<string, string | object> | undefined }) => {
         const type = message.data?.type;
         const batchId = message.data?.batchId;

@@ -1,13 +1,13 @@
+import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
-import type { LocalRecord } from '../../api/records';
+import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { useProduct } from '../../api/products';
 import { useTheme } from '../../theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
-import { GroupedRecords } from './groupRecords';
-
+import { groupRecords, type GroupedRecords } from './groupRecords';
 function pickMostUrgent(groups: GroupedRecords): LocalRecord | null {
   return groups.expired[0] ?? groups.today[0] ?? groups.thisWeek[0] ?? groups.later[0] ?? null;
 }
@@ -18,12 +18,13 @@ function urgencyLabel(status: 'green' | 'amber' | 'red'): string {
   return 'Plenty of time';
 }
 
-export function UseNextHero({ groups }: { groups: GroupedRecords }) {
+export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords }) {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
+  const activeRecords = useActiveRecords();
+  const groups = useMemo(() => propGroups ?? groupRecords(activeRecords), [propGroups, activeRecords]);
   const item = pickMostUrgent(groups);
   const { data: product } = useProduct(item?.productId ?? undefined);
-
   if (!item) return null;
 
   const displayName = item.customName || product?.name || 'Item';

@@ -13,10 +13,12 @@ jest.mock('react-native-gesture-handler', () => ({
 }));
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 jest.mock('../src/theme/ThemeProvider', () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+  useTheme: () => require('@expyrico/theme').themes.expyrico,
 }));
 
 jest.mock('../src/theme/store', () => {
