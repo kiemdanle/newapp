@@ -1,9 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Logo, LogoLockup } from './Logo';
 import { useTheme } from '../theme/useTheme';
-
+import { useThemeStore } from '../theme/store';
 type AuthHeaderProps = {
   title: string;
   description: string;
@@ -50,12 +50,39 @@ export function AuthHeader({ title, description, email, icon, compact = false }:
 
 export function AuthBrandBar() {
   const theme = useTheme();
+  const themeId = useThemeStore((s) => s.themeId);
+  const setTheme = useThemeStore((s) => s.setTheme);
+
+  const isDark = themeId === 'expyricoDark';
+
+  const toggleTheme = () => {
+    const next = isDark ? 'expyrico' : 'expyricoDark';
+    void setTheme(next);
+  };
+
   return (
     <View style={styles.brandBar}>
       <Logo size={30} withWordmark />
-      <View style={[styles.freshBadge, { backgroundColor: theme.colors.primaryLight }]}>
-        <Text style={[styles.freshText, { color: theme.colors.primaryDark }]}>Fresh</Text>
-      </View>
+      <Pressable
+        testID="theme-toggle-button"
+        accessibilityRole="button"
+        accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        onPress={toggleTheme}
+        style={({ pressed }) => [
+          styles.themeToggleBtn,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderColor: theme.colors.border,
+            opacity: pressed ? 0.75 : 1,
+          },
+        ]}
+      >
+        <Ionicons
+          name={isDark ? 'sunny' : 'moon'}
+          size={19}
+          color={isDark ? theme.colors.warning : theme.colors.primaryDark}
+        />
+      </Pressable>
     </View>
   );
 }
@@ -66,7 +93,15 @@ const styles = StyleSheet.create({
   title: { textAlign: 'center' },
   description: { maxWidth: 336, fontSize: 15, lineHeight: 22, textAlign: 'center' },
   email: { maxWidth: 300, fontSize: 15, lineHeight: 21, fontWeight: '700', textAlign: 'center' },
-  brandBar: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  freshBadge: { minHeight: 32, paddingHorizontal: 12, borderRadius: 999, justifyContent: 'center' },
-  freshText: { fontSize: 13, fontWeight: '700' },
+  brandBar: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  themeToggleBtn: {
+    width: 44,
+    height: 44,
+    minWidth: 44,
+    minHeight: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
