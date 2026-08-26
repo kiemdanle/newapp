@@ -104,7 +104,7 @@ export async function avatarRoutes(app: FastifyInstance) {
       }
 
       if (currentUser.avatarUrl) {
-        await deleteAvatarFromDisk(currentUser.id, currentUser.avatarUrl).catch(() => {});
+        await deleteAvatarFromDisk(currentUser.id, currentUser.avatarUrl, { wholeUser: true }).catch(() => {});
       }
 
       const updated = await prisma.user.update({

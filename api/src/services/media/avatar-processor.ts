@@ -105,15 +105,40 @@ export async function processAvatarUpload(input: {
   };
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Removes avatar files and parent avatar directory from disk if they exist.
+ * Removes a specific avatar directory (by extracting avatarId from the URL)
+ * or the entire user avatar directory if wholeUser is true.
  */
-export async function deleteAvatarFromDisk(userId: string, avatarUrl: string): Promise<void> {
+export async function deleteAvatarFromDisk(
+  userId: string,
+  avatarUrl?: string | null,
+  options?: { wholeUser?: boolean },
+): Promise<void> {
   try {
     const cfg = getConfig().media;
-    // Derive relative directory from user id
-    const userAvatarDir = resolveMediaPath(cfg.root, 'public', 'avatars', userId);
-    await rm(userAvatarDir, { recursive: true, force: true }).catch(() => {});
+    if (options?.wholeUser) {
+      const userAvatarDir = resolveMediaPath(cfg.root, 'public', 'avatars', userId);
+      await rm(userAvatarDir, { recursive: true, force: true }).catch(() => {});
+      return;
+    }
+
+    if (avatarUrl) {
+      const match = avatarUrl.match(/\/avatars\/([0-9a-fA-F-]+)\/([0-9a-fA-F-]+)/);
+      if (match && match[2] && UUID_REGEX.test(match[2])) {
+        const oldAvatarId = match[2];
+        const oldAvatarDir = resolveMediaPath(cfg.root, 'public', 'avatars', userId, oldAvatarId);
+        await rm(oldAvatarDir, { recursive: true, force: true }).catch(() => {});
+        return;
+      }
+    }
+
+    // Fallback if no specific avatar ID could be parsed and no new upload is occurring
+    if (!avatarUrl) {
+      const userAvatarDir = resolveMediaPath(cfg.root, 'public', 'avatars', userId);
+      await rm(userAvatarDir, { recursive: true, force: true }).catch(() => {});
+    }
   } catch {
     /* best-effort cleanup */
   }
