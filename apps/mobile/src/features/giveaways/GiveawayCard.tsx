@@ -228,15 +228,15 @@ export function GiveawayCard({
             ) : null}
 
             {giveaway.expiryDate ? (
-              <View style={styles.foodExpiryRow}>
+              <View style={styles.itemExpiryRow}>
                 <Ionicons
-                  name="nutrition-outline"
+                  name="calendar-outline"
                   size={12}
                   color={theme.colors[EXPIRY_STATUS_TOKEN[expiryStatus(giveaway.expiryDate)]]}
                 />
                 <Text
                   style={[
-                    styles.foodExpiryText,
+                    styles.itemExpiryText,
                     {
                       color:
                         theme.colors[EXPIRY_STATUS_TOKEN[expiryStatus(giveaway.expiryDate)]],
@@ -354,17 +354,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  foodExpiryRow: {
+  itemExpiryRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: 2,
   },
-  foodExpiryText: {
+  itemExpiryText: {
     fontSize: 12,
     fontWeight: '700',
   },
   metaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: 2,

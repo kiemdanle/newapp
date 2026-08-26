@@ -84,8 +84,9 @@ describe('GiveawayDetailScreen', () => {
     expect(getByText('Fresh Strawberries')).toBeTruthy();
     expect(getAllByText(/South Market St/).length).toBeGreaterThanOrEqual(1);
     expect(getByText('1/2')).toBeTruthy(); // Shopee-style Gallery counter
-    expect(getByText('FOOD EXPIRY')).toBeTruthy();
-    expect(getByText('Food Expiration Date')).toBeTruthy();
+    expect(getByText('ITEM EXPIRY')).toBeTruthy();
+    expect(getByText('Item Expiration Date')).toBeTruthy();
+    expect(getByText(/Vietnam/)).toBeTruthy();
     expect(getByText('REQUESTS')).toBeTruthy();
     expect(getByText('Elena')).toBeTruthy();
     expect(getByText('Giveaway Information')).toBeTruthy();

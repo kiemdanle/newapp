@@ -271,16 +271,15 @@ export default function NewGiveawayScreen() {
         />
       </View>
 
-      {/* Food Expiry Date Field (Optional) */}
+      {/* Item Expiry Date Field (Optional) */}
       <View style={styles.fieldGroup}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Food Expiration / Best-By Date (Optional)
+            Item Expiration / Best-By Date (Optional)
           </Text>
           {expiryDate ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Clear expiration date"
               onPress={() => setExpiryDate('')}
               hitSlop={8}
             >

@@ -29,7 +29,7 @@ import { Button } from '@/components/Button';
 import { Avatar } from '@/components/Avatar';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
-import { formatDate, formatDateTime } from '@/utils/country-format';
+import { formatDate, formatDateTime, getCountryMetadata } from '@/utils/country-format';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 function getRelativeDateLabel(dateStr?: string | null, country?: string | null): string {
   if (!dateStr) return 'No expiry set';
@@ -143,8 +143,8 @@ export default function GiveawayDetailScreen() {
   }
   const effectiveCountry = userCountry || giveaway.country;
   const claimExpiryLabel = getRelativeDateLabel(giveaway.claimExpiresAt, effectiveCountry);
-  const foodExpiryStatus = giveaway.expiryDate ? expiryStatus(giveaway.expiryDate) : null;
-  const foodExpiryColor = foodExpiryStatus ? theme.colors[EXPIRY_STATUS_TOKEN[foodExpiryStatus]] : null;
+  const itemExpiryStatus = giveaway.expiryDate ? expiryStatus(giveaway.expiryDate) : null;
+  const itemExpiryColor = itemExpiryStatus ? theme.colors[EXPIRY_STATUS_TOKEN[itemExpiryStatus]] : null;
   const statusBadgeColor =
     giveaway.status === 'open'
       ? theme.colors.primary
@@ -265,18 +265,18 @@ export default function GiveawayDetailScreen() {
             {giveaway.expiryDate ? (
               <>
                 <View style={styles.bentoHeader}>
-                  <View style={[styles.statusDot, { backgroundColor: foodExpiryColor || statusBadgeColor }]} />
-                  <Text style={[styles.bentoLabel, { color: foodExpiryColor || theme.colors.textMuted }]}>
-                    FOOD EXPIRY
+                  <View style={[styles.statusDot, { backgroundColor: itemExpiryColor || statusBadgeColor }]} />
+                  <Text style={[styles.bentoLabel, { color: itemExpiryColor || theme.colors.textMuted }]}>
+                    ITEM EXPIRY
                   </Text>
                 </View>
                 <Text
-                  style={[styles.bentoValue, { color: foodExpiryColor || theme.colors.text }]}
+                  style={[styles.bentoValue, { color: itemExpiryColor || theme.colors.text }]}
                   numberOfLines={1}
                 >
                   {formatDate(giveaway.expiryDate, effectiveCountry)}
                 </Text>
-                <Text style={[styles.bentoSubtext, { color: foodExpiryColor || theme.colors.textMuted }]}>
+                <Text style={[styles.bentoSubtext, { color: itemExpiryColor || theme.colors.textMuted }]}>
                   {getRelativeDateLabel(giveaway.expiryDate, effectiveCountry)}
                 </Text>
               </>
@@ -404,19 +404,19 @@ export default function GiveawayDetailScreen() {
                 </Text>
               </View>
               <Text style={[styles.specValue, { color: theme.colors.text }]}>
-                {giveaway.country}
+                {getCountryMetadata(giveaway.country).flag} {getCountryMetadata(giveaway.country).name}
               </Text>
             </View>
           ) : null}
           {giveaway.expiryDate ? (
             <View style={styles.specRow}>
               <View style={styles.specLabelWrap}>
-                <Ionicons name="nutrition-outline" size={15} color={theme.colors.textMuted} />
+                <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
                 <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>
-                  Food Expiration Date
+                  Item Expiration Date
                 </Text>
               </View>
-              <Text style={[styles.specValue, { color: foodExpiryColor || theme.colors.text, fontWeight: '700' }]}>
+              <Text style={[styles.specValue, { color: itemExpiryColor || theme.colors.text, fontWeight: '700' }]}>
                 {formatDate(giveaway.expiryDate, effectiveCountry)}
               </Text>
             </View>
