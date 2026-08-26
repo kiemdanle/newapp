@@ -109,10 +109,12 @@ export async function takePhoto(): Promise<PickedPhoto | null> {
 export async function choosePhotos(maxFiles: number): Promise<PickedPhoto[]> {
   if (maxFiles < 1) return [];
   try {
+    const isMultiple = maxFiles > 1;
     const result = await ImagePicker.openPicker({
       ...pickerOptions,
-      multiple: maxFiles > 1,
+      multiple: isMultiple,
       maxFiles,
+      cropping: !isMultiple,
     });
     const images = Array.isArray(result) ? result : [result];
     return await Promise.all(images.map(toPickedPhoto));

@@ -67,22 +67,26 @@ describe('takePhoto', () => {
 describe('choosePhotos', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('requests multiple selection capped at the remaining slot count', async () => {
+  it('requests multiple selection capped at the remaining slot count with cropping disabled', async () => {
     openPickerMock.mockResolvedValue([image({ path: '/tmp/a.jpg' }), image({ path: '/tmp/b.jpg' })] as never);
 
     const result = await choosePhotos(3);
 
     expect(result).toHaveLength(2);
-    expect(openPickerMock).toHaveBeenCalledWith(expect.objectContaining({ multiple: true, maxFiles: 3 }));
+    expect(openPickerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ multiple: true, maxFiles: 3, cropping: false }),
+    );
   });
 
-  it('requests single selection when only one slot remains', async () => {
+  it('requests single selection with cropping enabled when only one slot remains', async () => {
     openPickerMock.mockResolvedValue(image() as never);
 
     const result = await choosePhotos(1);
 
     expect(result).toEqual([expect.objectContaining({ path: '/tmp/photo.jpg' })]);
-    expect(openPickerMock).toHaveBeenCalledWith(expect.objectContaining({ multiple: false, maxFiles: 1 }));
+    expect(openPickerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ multiple: false, maxFiles: 1, cropping: true }),
+    );
   });
 
   it('returns an empty array without calling the picker when no slots remain', async () => {
