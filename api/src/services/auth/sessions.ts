@@ -6,6 +6,7 @@ import type { Prisma, Session } from '@prisma/client';
 import prismaPkg from '@prisma/client';
 const PrismaRuntime = prismaPkg.Prisma;
 import { getPrisma } from '../../db.js';
+import { getRedis } from '../../redis.js';
 import { hashToken } from '../../utils/random.js';
 import { issueRefreshToken } from './tokens.js';
 
@@ -43,6 +44,8 @@ export async function findActiveSessionByToken(token: string): Promise<Session |
   return session;
 }
 
+const ROTATION_GRACE_PERIOD_SECONDS = 60;
+
 export async function rotateSession(
   oldToken: string,
 ): Promise<{ session: Session; refreshToken: string }> {
@@ -67,7 +70,48 @@ export async function rotateSession(
     }),
     prisma.session.create({ data }),
   ]);
+
+  // Record rotation grace mapping in Redis so concurrent / retried requests within 60s receive the active successor
+  try {
+    const redis = getRedis();
+    const oldHash = hashToken(oldToken);
+    await redis.set(
+      `auth:session:rotated:${oldHash}`,
+      JSON.stringify({
+        sessionId: session.id,
+        refreshToken: issued.token,
+      }),
+      'EX',
+      ROTATION_GRACE_PERIOD_SECONDS,
+    );
+  } catch {
+    /* best-effort redis caching */
+  }
+
   return { session, refreshToken: issued.token };
+}
+
+export async function findRotatedGraceSession(
+  oldToken: string,
+): Promise<{ session: Session; refreshToken: string } | null> {
+  try {
+    const redis = getRedis();
+    const oldHash = hashToken(oldToken);
+    const cached = await redis.get(`auth:session:rotated:${oldHash}`);
+    if (!cached) return null;
+    const { sessionId, refreshToken } = JSON.parse(cached) as {
+      sessionId: string;
+      refreshToken: string;
+    };
+    const prisma = getPrisma();
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session || session.revokedAt || session.expiresAt.getTime() < Date.now()) {
+      return null;
+    }
+    return { session, refreshToken };
+  } catch {
+    return null;
+  }
 }
 
 export async function revokeSession(sessionId: string): Promise<void> {

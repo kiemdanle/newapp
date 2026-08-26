@@ -1,5 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { GiveawayCard } from '../src/features/giveaways/GiveawayCard';
 import SettingsIndex from '../app/(app)/settings/index';
@@ -8,7 +9,14 @@ import { GiveawayStatusBadge } from '../src/features/giveaways/GiveawayStatusBad
 import { renderWithTheme } from '../tests/helpers/renderWithTheme';
 
 function wrap(node: React.ReactNode) {
-  return <ThemeProvider>{node}</ThemeProvider>;
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>{node}</ThemeProvider>
+    </QueryClientProvider>
+  );
 }
 
 const giveaway = {

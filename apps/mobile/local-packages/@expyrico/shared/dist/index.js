@@ -22,4 +22,5 @@ export * from './schemas/giveaway.js';
 export * from './schemas/reputation.js';
 export * from './schemas/referral.js';
 export * from './schemas/household.js';
+export * from './schemas/locale.js';
 //# sourceMappingURL=index.js.map

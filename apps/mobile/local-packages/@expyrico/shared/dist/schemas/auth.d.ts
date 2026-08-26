@@ -23,8 +23,10 @@ export declare const authResultSchema: z.ZodObject<{
         emailVerified: z.ZodBoolean;
         firstName: z.ZodString;
         lastName: z.ZodString;
+        address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         country: z.ZodNullable<z.ZodString>;
         avatarUrl: z.ZodNullable<z.ZodString>;
+        hasPassword: z.ZodDefault<z.ZodBoolean>;
         role: z.ZodEnum<["user", "admin"]>;
         status: z.ZodEnum<["active", "suspended", "deleted"]>;
         themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
@@ -36,8 +38,10 @@ export declare const authResultSchema: z.ZodObject<{
         emailVerified: boolean;
         firstName: string;
         lastName: string;
+        address: string | null;
         country: string | null;
         avatarUrl: string | null;
+        hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
@@ -56,6 +60,8 @@ export declare const authResultSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        address?: string | null | undefined;
+        hasPassword?: boolean | undefined;
     }>;
     tokens: z.ZodObject<{
         accessToken: z.ZodString;
@@ -77,8 +83,10 @@ export declare const authResultSchema: z.ZodObject<{
         emailVerified: boolean;
         firstName: string;
         lastName: string;
+        address: string | null;
         country: string | null;
         avatarUrl: string | null;
+        hasPassword: boolean;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
@@ -104,6 +112,8 @@ export declare const authResultSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        address?: string | null | undefined;
+        hasPassword?: boolean | undefined;
     };
     tokens: {
         accessToken: string;
@@ -324,4 +334,132 @@ export declare const totpRecoveryVerifySchema: z.ZodObject<{
     challengeToken: string;
     recoveryCode: string;
 }>;
+export declare const changePasswordSchema: z.ZodEffects<z.ZodObject<{
+    currentPassword: z.ZodOptional<z.ZodString>;
+    newPassword: z.ZodString;
+    confirmPassword: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    newPassword: string;
+    currentPassword?: string | undefined;
+    confirmPassword?: string | undefined;
+}, {
+    newPassword: string;
+    currentPassword?: string | undefined;
+    confirmPassword?: string | undefined;
+}>, {
+    newPassword: string;
+    currentPassword?: string | undefined;
+    confirmPassword?: string | undefined;
+}, {
+    newPassword: string;
+    currentPassword?: string | undefined;
+    confirmPassword?: string | undefined;
+}>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export declare const passwordMutationResponseSchema: z.ZodObject<{
+    tokens: z.ZodObject<{
+        accessToken: z.ZodString;
+        refreshToken: z.ZodString;
+        expiresIn: z.ZodNumber;
+    }, "strip", z.ZodTypeAny, {
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
+    }, {
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
+    }>;
+    user: z.ZodObject<{
+        id: z.ZodString;
+        email: z.ZodString;
+        emailVerified: z.ZodBoolean;
+        firstName: z.ZodString;
+        lastName: z.ZodString;
+        address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
+        country: z.ZodNullable<z.ZodString>;
+        avatarUrl: z.ZodNullable<z.ZodString>;
+        hasPassword: z.ZodDefault<z.ZodBoolean>;
+        role: z.ZodEnum<["user", "admin"]>;
+        status: z.ZodEnum<["active", "suspended", "deleted"]>;
+        themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
+        createdAt: z.ZodString;
+        updatedAt: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        firstName: string;
+        lastName: string;
+        address: string | null;
+        country: string | null;
+        avatarUrl: string | null;
+        hasPassword: boolean;
+        role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
+        createdAt: string;
+        updatedAt: string;
+    }, {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        firstName: string;
+        lastName: string;
+        country: string | null;
+        avatarUrl: string | null;
+        role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
+        createdAt: string;
+        updatedAt: string;
+        address?: string | null | undefined;
+        hasPassword?: boolean | undefined;
+    }>;
+}, "strip", z.ZodTypeAny, {
+    user: {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        firstName: string;
+        lastName: string;
+        address: string | null;
+        country: string | null;
+        avatarUrl: string | null;
+        hasPassword: boolean;
+        role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
+        createdAt: string;
+        updatedAt: string;
+    };
+    tokens: {
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
+    };
+}, {
+    user: {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        firstName: string;
+        lastName: string;
+        country: string | null;
+        avatarUrl: string | null;
+        role: "user" | "admin";
+        status: "active" | "suspended" | "deleted";
+        themePreference: "expyrico" | "bento" | "clay" | "material";
+        createdAt: string;
+        updatedAt: string;
+        address?: string | null | undefined;
+        hasPassword?: boolean | undefined;
+    };
+    tokens: {
+        accessToken: string;
+        refreshToken: string;
+        expiresIn: number;
+    };
+}>;
+export type PasswordMutationResponse = z.infer<typeof passwordMutationResponseSchema>;
 //# sourceMappingURL=auth.d.ts.map

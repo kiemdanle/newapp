@@ -41,21 +41,31 @@ describe('POST /v1/auth/refresh', () => {
     await app.close();
   });
 
-  it('rejects an already-rotated token (replay)', async () => {
+  it('allows concurrent/retried refresh within the 60s grace window', async () => {
     const app = await buildServer();
     const t = await loginAndGetTokens(app);
-    await app.inject({
+
+    // First refresh rotates the token
+    const firstRes = await app.inject({
       method: 'POST',
       url: '/v1/auth/refresh',
       payload: { refreshToken: t.refreshToken },
     });
-    const res = await app.inject({
+    expect(firstRes.statusCode).toBe(200);
+    const firstBody = firstRes.json();
+    const successorRefreshToken = firstBody.tokens.refreshToken;
+
+    // Second refresh with old token within grace window returns the successor token instead of failing
+    const secondRes = await app.inject({
       method: 'POST',
       url: '/v1/auth/refresh',
       payload: { refreshToken: t.refreshToken },
     });
-    expect(res.statusCode).toBe(401);
-    expect(res.json().code).toBe('invalid_token');
+    expect(secondRes.statusCode).toBe(200);
+    const secondBody = secondRes.json();
+    expect(secondBody.tokens.refreshToken).toBe(successorRefreshToken);
+    expect(secondBody.tokens.accessToken).toBeTruthy();
+
     await app.close();
   });
 
@@ -67,6 +77,7 @@ describe('POST /v1/auth/refresh', () => {
       payload: { refreshToken: 'not-real' },
     });
     expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe('invalid_token');
     await app.close();
   });
 });

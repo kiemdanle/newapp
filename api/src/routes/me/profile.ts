@@ -11,6 +11,7 @@ export async function profileRoute(app: FastifyInstance) {
       data: {
         ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
         ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+        ...(input.address !== undefined ? { address: input.address } : {}),
         ...(input.country !== undefined ? { country: input.country } : {}),
         ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl } : {}),
         ...(input.themePreference !== undefined ? { themePreference: input.themePreference } : {}),

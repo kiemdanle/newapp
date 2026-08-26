@@ -3,6 +3,7 @@ import type { AuthResult, User } from '@expyrico/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { secureStore } from './secure-store';
 import { authEndpoints } from '../api/endpoints';
+import { setOnTokensRefreshed, refreshTokensOnce } from '../api/client';
 import { purgePrivateImageCache } from '../api/product-private-image';
 import { clearDraftLocalStateForUser } from '../features/products/product-draft-storage';
 import { database } from '../db/index';
@@ -81,6 +82,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
   setPendingAuth: (pendingAuth) => set({ pendingAuth }),
 }));
+setOnTokensRefreshed((accessToken, refreshToken) => {
+  useSessionStore.setState({ accessToken, refreshToken });
+});
+
 
 /**
  * Restores tokens from the keychain, then (when an access token exists) loads
@@ -105,34 +110,19 @@ export async function hydrateSession(): Promise<void> {
 
   if (!accessToken && !refreshToken) return;
 
-  // Background profile and token refresh (non-blocking)
+  // Background profile validation and token refresh via single-flight mutex
   (async () => {
     try {
-      let token = accessToken;
-      if (!token && refreshToken) {
-        const newTokens = await authEndpoints.refresh(refreshToken);
-        token = newTokens.accessToken;
-        await secureStore.setAccessToken(newTokens.accessToken);
-        await secureStore.setRefreshToken(newTokens.refreshToken);
-        useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
+      if (!accessToken && refreshToken) {
+        const refreshed = await refreshTokensOnce();
+        if (!refreshed) return;
       }
       const user = await authEndpoints.me();
       if (useSessionStore.getState().accessToken) {
         useSessionStore.getState().setUser(user);
       }
-    } catch (err: unknown) {
-      if (refreshToken) {
-        try {
-          const newTokens = await authEndpoints.refresh(refreshToken);
-          await secureStore.setAccessToken(newTokens.accessToken);
-          await secureStore.setRefreshToken(newTokens.refreshToken);
-          useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
-          const user = await authEndpoints.me();
-          useSessionStore.getState().setUser(user);
-        } catch {
-          // Token revoked or offline
-        }
-      }
+    } catch {
+      // Network error or offline: retain cached credentials, do not logout
     }
   })().catch(() => {});
 }

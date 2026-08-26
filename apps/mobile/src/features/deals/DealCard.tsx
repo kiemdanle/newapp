@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import type { Deal } from '@expyrico/shared';
 import { useOptimisticDealVote } from './useOptimisticDealVote';
 import { useTheme } from '../../theme/useTheme';
+import { formatCurrency } from '../../utils/country-format';
 
 interface Props {
   deal: Deal;
@@ -20,7 +21,7 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
     vote.mutate({ next: prev === next ? 0 : next, prev });
   }
 
-  const priceLabel = `${deal.currency} ${deal.price.toFixed(2)}`;
+  const priceLabel = formatCurrency(deal.price, deal.currency);
 
   return (
     <Pressable

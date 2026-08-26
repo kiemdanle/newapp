@@ -187,6 +187,7 @@ model User {
   passwordHash            String?
   firstName               String
   lastName                String
+  address                 String?
   country                 String?         @db.Char(2)
   avatarUrl               String?
   role                    UserRole        @default(user)

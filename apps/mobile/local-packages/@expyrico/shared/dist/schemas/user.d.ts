@@ -8,8 +8,10 @@ export declare const userSchema: z.ZodObject<{
     emailVerified: z.ZodBoolean;
     firstName: z.ZodString;
     lastName: z.ZodString;
+    address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     country: z.ZodNullable<z.ZodString>;
     avatarUrl: z.ZodNullable<z.ZodString>;
+    hasPassword: z.ZodDefault<z.ZodBoolean>;
     role: z.ZodEnum<["user", "admin"]>;
     status: z.ZodEnum<["active", "suspended", "deleted"]>;
     themePreference: z.ZodEnum<["expyrico", "bento", "clay", "material"]>;
@@ -21,8 +23,10 @@ export declare const userSchema: z.ZodObject<{
     emailVerified: boolean;
     firstName: string;
     lastName: string;
+    address: string | null;
     country: string | null;
     avatarUrl: string | null;
+    hasPassword: boolean;
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
     themePreference: "expyrico" | "bento" | "clay" | "material";
@@ -41,24 +45,29 @@ export declare const userSchema: z.ZodObject<{
     themePreference: "expyrico" | "bento" | "clay" | "material";
     createdAt: string;
     updatedAt: string;
+    address?: string | null | undefined;
+    hasPassword?: boolean | undefined;
 }>;
 export type User = z.infer<typeof userSchema>;
 export declare const updateProfileSchema: z.ZodObject<{
     firstName: z.ZodOptional<z.ZodString>;
     lastName: z.ZodOptional<z.ZodString>;
-    country: z.ZodOptional<z.ZodString>;
+    address: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    country: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     avatarUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     themePreference: z.ZodOptional<z.ZodEnum<["expyrico", "bento", "clay", "material"]>>;
 }, "strip", z.ZodTypeAny, {
     firstName?: string | undefined;
     lastName?: string | undefined;
-    country?: string | undefined;
+    address?: string | null | undefined;
+    country?: string | null | undefined;
     avatarUrl?: string | null | undefined;
     themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }, {
     firstName?: string | undefined;
     lastName?: string | undefined;
-    country?: string | undefined;
+    address?: string | null | undefined;
+    country?: string | null | undefined;
     avatarUrl?: string | null | undefined;
     themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }>;

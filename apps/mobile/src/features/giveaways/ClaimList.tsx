@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import type { Claim } from '@expyrico/shared';
 import { useReputation } from '../../api/reputation';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
 
 interface Props {
   claims: Claim[];
@@ -50,7 +51,7 @@ export function ClaimList({ claims, isGiver, selectedRecipientId, onSelect, sele
               </Text>
             )}
             <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 4 }}>
-              {new Date(item.createdAt).toLocaleDateString()}
+              {formatDate(item.createdAt)}
             </Text>
             {isGiver && !selectedRecipientId && item.status === 'requested' && onSelect && (
               <Pressable

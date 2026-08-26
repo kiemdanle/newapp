@@ -8,8 +8,10 @@ export const userSchema = z.object({
     emailVerified: z.boolean(),
     firstName: z.string(),
     lastName: z.string(),
+    address: z.string().nullable().default(null),
     country: z.string().length(2).nullable(),
     avatarUrl: z.string().url().nullable(),
+    hasPassword: z.boolean().default(false),
     role: userRoleSchema,
     status: userStatusSchema,
     themePreference: themePreferenceSchema,
@@ -17,9 +19,10 @@ export const userSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 export const updateProfileSchema = z.object({
-    firstName: z.string().min(1).max(80).optional(),
-    lastName: z.string().min(1).max(80).optional(),
-    country: z.string().length(2).optional(),
+    firstName: z.string().trim().min(1).max(80).optional(),
+    lastName: z.string().trim().min(1).max(80).optional(),
+    address: z.string().trim().max(255).nullable().optional(),
+    country: z.string().length(2).nullable().optional(),
     avatarUrl: z.string().url().nullable().optional(),
     themePreference: themePreferenceSchema.optional(),
 });

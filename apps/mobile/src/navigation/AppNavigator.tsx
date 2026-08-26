@@ -21,6 +21,8 @@ import GiveawayRateScreen from '../../app/(app)/giveaway/[id]/rate';
 import RecordScreen from '../../app/(app)/record/[id]';
 import ReportScreen from '../../app/(app)/report/index';
 import ScanScreen from '../../app/(app)/scan';
+import EditProfileScreen from '../../app/(app)/profile/edit';
+import PasswordScreen from '../../app/(app)/profile/password';
 
 export type AppStackParamList = {
   Tabs: undefined;
@@ -58,6 +60,8 @@ export type AppStackParamList = {
   Record: { id: string };
   Report: { targetType: string; targetId: string };
   Scan: undefined;
+  ProfileEdit: undefined;
+  ProfilePassword: undefined;
 };
 
 export type AppNavigationProp = NativeStackNavigationProp<AppStackParamList>;
@@ -91,6 +95,8 @@ export function AppNavigator() {
       <Stack.Screen name="Record" component={RecordScreen} options={{ headerShown: true, title: 'Pantry item' }} />
       <Stack.Screen name="Report" component={ReportScreen} options={{ headerShown: true, title: 'Report' }} />
       <Stack.Screen name="Scan" component={ScanScreen} />
+      <Stack.Screen name="ProfileEdit" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit profile' }} />
+      <Stack.Screen name="ProfilePassword" component={PasswordScreen} options={{ headerShown: true, title: 'Password & security' }} />
     </Stack.Navigator>
   );
 }

@@ -12,6 +12,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
 import { Button } from './Button';
+import { formatDate } from '../utils/country-format';
 
 const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 5;
@@ -223,17 +224,8 @@ export function WheelDatePickerModal({
   };
 
   const formattedPreview = useMemo(() => {
-    try {
-      const d = new Date(selectedYear, selectedMonth, selectedDay);
-      return d.toLocaleDateString('en-US', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return `${selectedYear}-${pad2(selectedMonth + 1)}-${pad2(selectedDay)}`;
-    }
+    const d = new Date(selectedYear, selectedMonth, selectedDay);
+    return formatDate(d, null, { style: 'medium' }) || `${selectedYear}-${pad2(selectedMonth + 1)}-${pad2(selectedDay)}`;
   }, [selectedYear, selectedMonth, selectedDay]);
 
   return (

@@ -140,3 +140,23 @@ export const totpRecoveryVerifySchema = z.object({
   challengeToken: z.string().min(1),
   recoveryCode: z.string().min(1),
 });
+
+// --- Change / Set Password (authenticated) ---
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required').optional(),
+    newPassword: passwordField,
+    confirmPassword: z.string().min(1, 'Please confirm your password').optional(),
+  })
+  .refine((d) => !d.confirmPassword || d.newPassword === d.confirmPassword, {
+    message: 'New passwords do not match',
+    path: ['confirmPassword'],
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const passwordMutationResponseSchema = z.object({
+  tokens: tokensSchema,
+  user: userSchema,
+});
+export type PasswordMutationResponse = z.infer<typeof passwordMutationResponseSchema>;

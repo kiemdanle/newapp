@@ -6,6 +6,8 @@ import type {
   Tokens,
   User,
   UpdateProfile,
+  ChangePasswordInput,
+  PasswordMutationResponse,
 } from '@expyrico/shared';
 import { secureStore, getItem } from '../auth/secure-store';
 import { PUSH_REGISTERED_FLAG_KEY } from '../features/push/registerPushToken';
@@ -136,4 +138,18 @@ export const authEndpoints = {
 export const meEndpoints = {
   update: (input: UpdateProfile) =>
     apiClient.request<User>({ method: 'PATCH', path: '/me', body: input }),
+  changePassword: (input: ChangePasswordInput) =>
+    apiClient.request<PasswordMutationResponse>({
+      method: 'PUT',
+      path: '/me/password',
+      body: input,
+    }),
+  uploadAvatar: (formData: FormData) =>
+    apiClient.request<{ avatarUrl: string; user: User }>({
+      method: 'POST',
+      path: '/me/avatar',
+      body: formData,
+    }),
+  deleteAvatar: () =>
+    apiClient.request<User>({ method: 'DELETE', path: '/me/avatar' }),
 };

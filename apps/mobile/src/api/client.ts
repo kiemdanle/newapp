@@ -58,6 +58,11 @@ async function parseError(res: Response): Promise<ApiError> {
 
 let refreshInFlight: Promise<boolean> | null = null;
 let onSignOut: (() => void) | null = null;
+let onTokensRefreshed: ((accessToken: string, refreshToken: string) => void) | null = null;
+
+export function setOnTokensRefreshed(cb: (accessToken: string, refreshToken: string) => void) {
+  onTokensRefreshed = cb;
+}
 
 export function setOnSignOut(cb: () => void) {
   onSignOut = cb;
@@ -90,6 +95,7 @@ export async function refreshTokensOnce(): Promise<boolean> {
       const data = (await res.json()) as RefreshResponse;
       await secureStore.setAccessToken(data.accessToken);
       await secureStore.setRefreshToken(data.refreshToken);
+      onTokensRefreshed?.(data.accessToken, data.refreshToken);
       return true;
     } catch {
       // Network failure / offline / timeout: do NOT sign out! Retain credentials for retry when online.
