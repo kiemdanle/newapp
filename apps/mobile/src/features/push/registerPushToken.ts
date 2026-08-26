@@ -3,10 +3,11 @@ import messaging from '@react-native-firebase/messaging';
 import { getItem, setItem } from '../../auth/secure-store';
 import { registerPushTokenApi } from '../../api/push';
 
-/** Stores the last successfully registered FCM token (not a boolean). */
+/** Stores the last successfully registered FCM token and user ID. */
 export const PUSH_REGISTERED_FLAG_KEY = 'pantry.pushRegisteredV1';
+export const PUSH_REGISTERED_USER_ID_KEY = 'pantry.pushRegisteredUserIdV1';
 
-export async function ensurePushTokenRegistered(): Promise<void> {
+export async function ensurePushTokenRegistered(currentUserId?: string): Promise<void> {
   try {
     const authStatus = await messaging().requestPermission();
     const enabled =
@@ -17,10 +18,13 @@ export async function ensurePushTokenRegistered(): Promise<void> {
     const fcmToken = await messaging().getToken();
     if (!fcmToken) return;
 
-    // Compare against the last registered token so a hard-revoked server row is
-    // re-registered on the next authenticated boot without requiring sign-out.
-    const lastRegistered = await getItem(PUSH_REGISTERED_FLAG_KEY);
-    if (lastRegistered === fcmToken) return;
+    // Compare against the last registered token AND user so switching accounts
+    // re-registers the token for the newly authenticated user.
+    const lastRegisteredToken = await getItem(PUSH_REGISTERED_FLAG_KEY);
+    const lastRegisteredUser = await getItem(PUSH_REGISTERED_USER_ID_KEY);
+    if (lastRegisteredToken === fcmToken && (!currentUserId || lastRegisteredUser === currentUserId)) {
+      return;
+    }
 
     await registerPushTokenApi({
       deviceToken: fcmToken,
@@ -28,6 +32,9 @@ export async function ensurePushTokenRegistered(): Promise<void> {
       deviceInfo: { model: null, os: Platform.Version },
     });
     await setItem(PUSH_REGISTERED_FLAG_KEY, fcmToken);
+    if (currentUserId) {
+      await setItem(PUSH_REGISTERED_USER_ID_KEY, currentUserId);
+    }
   } catch (error) {
     console.warn('Failed to ensure FCM push token registered', error);
   }

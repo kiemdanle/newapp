@@ -7,11 +7,18 @@ const BASE = '/v1/admin/settings/notification-templates';
 
 async function seedTemplates() {
   const prisma = getPrisma();
-  const expiry = await prisma.notificationTemplate.create({
-    data: { key: 'expiry_7d', title: 'Expires in 7 days', body: '{name} expires on {date}.' },
+  const expiry = await prisma.notificationTemplate.upsert({
+    where: { key: 'expiry_7d' },
+    update: { title: 'Expires in 7 days', body: '{name} expires on {date}.' },
+    create: { key: 'expiry_7d', title: 'Expires in 7 days', body: '{name} expires on {date}.' },
   });
-  const moderation = await prisma.notificationTemplate.create({
-    data: {
+  const moderation = await prisma.notificationTemplate.upsert({
+    where: { key: 'moderation_queue' },
+    update: {
+      title: 'Moderation queue needs review',
+      body: '{total} new moderation item(s) awaiting review: {newProducts} new product(s), {revisions} revision(s).',
+    },
+    create: {
       key: 'moderation_queue',
       title: 'Moderation queue needs review',
       body: '{total} new moderation item(s) awaiting review: {newProducts} new product(s), {revisions} revision(s).',
@@ -20,7 +27,7 @@ async function seedTemplates() {
   return { expiry, moderation };
 }
 
-describe('PATCH /v1/admin/settings/notification-templates/:id', () => {
+describe.sequential('PATCH /v1/admin/settings/notification-templates/:id', () => {
   it('applies generic bounds to non-moderation templates (existing {name}/{date} placeholders untouched)', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();

@@ -21,14 +21,12 @@ export async function upsertPushToken(input: {
   const prisma = getPrisma();
   const existing = await prisma.pushToken.findUnique({ where: { deviceToken: input.deviceToken } });
 
-  if (existing && existing.userId !== input.userId) {
-    throw new PushTokenOwnershipError();
-  }
-
   if (existing) {
+    // Reassign ownership to the currently authenticated user and unrevoke the token
     return prisma.pushToken.update({
       where: { id: existing.id },
       data: {
+        userId: input.userId,
         platform: input.platform,
         deviceInfo: (input.deviceInfo ?? null) as never,
         lastUsedAt: new Date(),
@@ -47,14 +45,12 @@ export async function upsertPushToken(input: {
       },
     });
   } catch (error) {
-    // Concurrent create of the same token: re-check ownership instead of 500.
+    // Concurrent create of the same token: re-update ownership instead of 500.
     if (!isUniqueViolation(error)) throw error;
-    const raced = await prisma.pushToken.findUnique({ where: { deviceToken: input.deviceToken } });
-    if (!raced) throw error;
-    if (raced.userId !== input.userId) throw new PushTokenOwnershipError();
     return prisma.pushToken.update({
-      where: { id: raced.id },
+      where: { deviceToken: input.deviceToken },
       data: {
+        userId: input.userId,
         platform: input.platform,
         deviceInfo: (input.deviceInfo ?? null) as never,
         lastUsedAt: new Date(),
@@ -73,6 +69,14 @@ export async function revokePushToken(userId: string, id: string): Promise<boole
 
 export async function revokePushTokenById(id: string): Promise<void> {
   await getPrisma().pushToken.update({ where: { id }, data: { revokedAt: new Date() } });
+}
+
+export async function revokePushTokenByDeviceToken(userId: string, deviceToken: string): Promise<boolean> {
+  const prisma = getPrisma();
+  const found = await prisma.pushToken.findFirst({ where: { userId, deviceToken } });
+  if (!found) return false;
+  await prisma.pushToken.update({ where: { id: found.id }, data: { revokedAt: new Date() } });
+  return true;
 }
 
 export async function activeTokensForUser(userId: string): Promise<PushToken[]> {

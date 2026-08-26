@@ -11,6 +11,9 @@ function getTransport(): Transporter {
     host: cfg.smtp.host,
     port: cfg.smtp.port,
     secure: cfg.smtp.port === 465,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
     ...(cfg.smtp.user ? { auth: { user: cfg.smtp.user, pass: cfg.smtp.pass } } : {}),
   });
   return _transport;
@@ -144,4 +147,8 @@ export async function sendPasswordResetCodeEmail(to: string, code: string): Prom
       footnote: "Didn't request a password reset? You can safely ignore this email — your password won't change.",
     }),
   });
+}
+
+export function resetEmailTransportForTests(): void {
+  _transport = null;
 }

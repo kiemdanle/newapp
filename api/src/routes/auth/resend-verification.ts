@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { resendVerificationSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
+import { logger } from '../../logger.js';
 import { hashToken, randomSixDigitCode } from '../../utils/random.js';
 import { sendVerificationEmail } from '../../services/auth/email.js';
 
@@ -26,7 +27,11 @@ export async function resendVerificationRoute(app: FastifyInstance) {
           },
         }),
       ]);
-      await sendVerificationEmail(user.email, plain);
+      try {
+        await sendVerificationEmail(user.email, plain);
+      } catch (err) {
+        logger.error({ err, userId: user.id }, 'verification email resend failed');
+      }
     }
     return reply.status(204).send();
   });

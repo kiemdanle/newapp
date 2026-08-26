@@ -16,12 +16,13 @@ describe('push token routes', () => {
   it('upserts a device token', async () => {
     const app = await buildServer();
     const { user, headers } = await authed();
+    const token = `${DEVICE_TOKEN}-1`;
     const res = await app.inject({
       method: 'POST',
       url: '/v1/me/push-token',
       headers,
       payload: {
-        deviceToken: DEVICE_TOKEN,
+        deviceToken: token,
         platform: 'ios',
         deviceInfo: { model: 'iPhone15' },
       },
@@ -30,14 +31,15 @@ describe('push token routes', () => {
     const rows = await getPrisma().pushToken.findMany({ where: { userId: user.id } });
     expect(rows).toHaveLength(1);
     expect(rows[0]!.platform).toBe('ios');
-    expect(rows[0]!.deviceToken).toBe(DEVICE_TOKEN);
+    expect(rows[0]!.deviceToken).toBe(token);
     await app.close();
   });
 
   it('upsert is idempotent on token value for its owner', async () => {
     const app = await buildServer();
     const { user, headers } = await authed();
-    const payload = { deviceToken: DEVICE_TOKEN, platform: 'android' };
+    const token = `${DEVICE_TOKEN}-2`;
+    const payload = { deviceToken: token, platform: 'android' };
     await app.inject({ method: 'POST', url: '/v1/me/push-token', headers, payload });
     await app.inject({ method: 'POST', url: '/v1/me/push-token', headers, payload });
     const rows = await getPrisma().pushToken.findMany({ where: { userId: user.id } });
@@ -45,18 +47,20 @@ describe('push token routes', () => {
     await app.close();
   });
 
-  it('rejects a device token owned by another user', async () => {
+  it('reassigns a device token when registered by another user on a shared device', async () => {
     const app = await buildServer();
     const first = await authed();
     const second = await authed();
-    const payload = { deviceToken: DEVICE_TOKEN, platform: 'android' };
+    const token = `${DEVICE_TOKEN}-3`;
+    const payload = { deviceToken: token, platform: 'android' };
 
     expect((await app.inject({ method: 'POST', url: '/v1/me/push-token', headers: first.headers, payload })).statusCode).toBe(201);
     const res = await app.inject({ method: 'POST', url: '/v1/me/push-token', headers: second.headers, payload });
 
-    expect(res.statusCode).toBe(409);
-    const row = await getPrisma().pushToken.findUnique({ where: { deviceToken: DEVICE_TOKEN } });
-    expect(row?.userId).toBe(first.user.id);
+    expect(res.statusCode).toBe(201);
+    const row = await getPrisma().pushToken.findUnique({ where: { deviceToken: token } });
+    expect(row?.userId).toBe(second.user.id);
+    expect(row?.revokedAt).toBeNull();
     await app.close();
   });
 
@@ -81,6 +85,27 @@ describe('push token routes', () => {
     await app.close();
   });
 
+  it('revokes a token by device token value via /revoke-by-token', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authed();
+    await app.inject({
+      method: 'POST',
+      url: '/v1/me/push-token',
+      headers,
+      payload: { deviceToken: DEVICE_TOKEN, platform: 'android' },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/me/push-token/revoke-by-token',
+      headers,
+      payload: { deviceToken: DEVICE_TOKEN },
+    });
+    expect(res.statusCode).toBe(204);
+    const row = await getPrisma().pushToken.findUnique({ where: { deviceToken: DEVICE_TOKEN } });
+    expect(row?.revokedAt).not.toBeNull();
+    await app.close();
+  });
+
   it('rejects an invalid device token', async () => {
     const app = await buildServer();
     const { headers } = await authed();
@@ -94,14 +119,12 @@ describe('push token routes', () => {
     await app.close();
   });
 
-  it('maps concurrent unique-token races to ownership conflict when another user wins', async () => {
+  it('reassigns token ownership during concurrent unique-token race', async () => {
     const app = await buildServer();
     const first = await authed();
     const second = await authed();
     const token = `${DEVICE_TOKEN}-race`;
 
-    // Simulate the race loser path: token already exists for another user by the
-    // time create runs (unique violation handling).
     await getPrisma().pushToken.create({
       data: {
         userId: first.user.id,
@@ -117,9 +140,9 @@ describe('push token routes', () => {
       payload: { deviceToken: token, platform: 'android' },
     });
 
-    expect(res.statusCode).toBe(409);
+    expect(res.statusCode).toBe(201);
     const row = await getPrisma().pushToken.findUnique({ where: { deviceToken: token } });
-    expect(row?.userId).toBe(first.user.id);
+    expect(row?.userId).toBe(second.user.id);
     await app.close();
   });
 });

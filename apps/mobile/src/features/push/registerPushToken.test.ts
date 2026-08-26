@@ -1,4 +1,4 @@
-import { ensurePushTokenRegistered, PUSH_REGISTERED_FLAG_KEY } from './registerPushToken';
+import { ensurePushTokenRegistered, PUSH_REGISTERED_FLAG_KEY, PUSH_REGISTERED_USER_ID_KEY } from './registerPushToken';
 import { getItem, setItem } from '../../auth/secure-store';
 import { registerPushTokenApi } from '../../api/push';
 import messaging from '@react-native-firebase/messaging';
@@ -72,5 +72,25 @@ describe('ensurePushTokenRegistered', () => {
     await ensurePushTokenRegistered();
 
     expect(registerMock).not.toHaveBeenCalled();
+  });
+
+  it('re-registers when user ID changes even if token is identical', async () => {
+    getItemMock.mockImplementation(async (key: string) => {
+      if (key === PUSH_REGISTERED_FLAG_KEY) return 'fcm-token-current';
+      if (key === PUSH_REGISTERED_USER_ID_KEY) return 'user-1';
+      return null;
+    });
+    registerMock.mockResolvedValue({
+      id: '2',
+      deviceToken: 'fcm-token-current',
+      platform: 'ios',
+      createdAt: new Date().toISOString(),
+      lastUsedAt: null,
+    });
+
+    await ensurePushTokenRegistered('user-2');
+
+    expect(registerMock).toHaveBeenCalledTimes(1);
+    expect(setItemMock).toHaveBeenCalledWith(PUSH_REGISTERED_USER_ID_KEY, 'user-2');
   });
 });

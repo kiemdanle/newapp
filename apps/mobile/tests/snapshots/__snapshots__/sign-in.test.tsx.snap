@@ -49,13 +49,22 @@ exports[`sign-in in expyrico snapshot 1`] = `
               "padding": 24,
               "paddingBottom": 110,
             },
+            {
+              "gap": 12,
+              "paddingBottom": 20,
+              "paddingHorizontal": 20,
+              "paddingTop": 8,
+            },
           ]
         }
         showsVerticalScrollIndicator={false}
         style={
-          {
-            "flex": 1,
-          }
+          [
+            {
+              "flex": 1,
+            },
+            undefined,
+          ]
         }
       >
         <View>
@@ -152,10 +161,10 @@ exports[`sign-in in expyrico snapshot 1`] = `
               <RNSVGSvgView
                 accessibilityLabel="Expyrico"
                 align="xMidYMid"
-                bbHeight={140.8092485549133}
-                bbWidth={150}
+                bbHeight={123.9121387283237}
+                bbWidth={132}
                 focusable={false}
-                height={140.8092485549133}
+                height={123.9121387283237}
                 meetOrSlice={0}
                 minX={0}
                 minY={0}
@@ -167,14 +176,14 @@ exports[`sign-in in expyrico snapshot 1`] = `
                     },
                     {
                       "flex": 0,
-                      "height": 140,
-                      "width": 150,
+                      "height": 123,
+                      "width": 132,
                     },
                   ]
                 }
                 vbHeight={812}
                 vbWidth={865}
-                width={150}
+                width={132}
               >
                 <RNSVGGroup
                   fill={
@@ -462,9 +471,9 @@ exports[`sign-in in expyrico snapshot 1`] = `
                   },
                   {
                     "color": "#2C2C28",
-                    "fontSize": 24,
+                    "fontSize": 18,
                     "fontWeight": "500",
-                    "lineHeight": 32,
+                    "lineHeight": 24,
                   },
                 ]
               }
@@ -486,13 +495,13 @@ exports[`sign-in in expyrico snapshot 1`] = `
                 ]
               }
             >
-              Sign in to scan items, track expiry dates, and keep your pantry current.
+              Sign in to your Expyrico pantry
             </Text>
           </View>
           <View
             style={
               {
-                "gap": 14,
+                "gap": 10,
               }
             }
           >
@@ -566,115 +575,182 @@ exports[`sign-in in expyrico snapshot 1`] = `
             <View
               style={
                 {
-                  "gap": 7,
+                  "position": "relative",
                 }
               }
             >
-              <Text
-                style={
-                  [
-                    {
-                      "letterSpacing": 0.2,
-                    },
-                    {
-                      "color": "#8C8C85",
-                      "fontSize": 12,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Password
-              </Text>
               <View
                 style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "borderWidth": 1.5,
-                      "flexDirection": "row",
-                      "minHeight": 52,
-                    },
-                    {
-                      "backgroundColor": "#FAFAF8",
-                      "borderColor": "#F0F0ED",
-                      "borderRadius": 16,
-                    },
-                  ]
+                  {
+                    "gap": 7,
+                  }
                 }
               >
-                <TextInput
-                  accessibilityLabel="Password"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onBlur={[Function]}
-                  onChangeText={[Function]}
-                  onFocus={[Function]}
-                  placeholderTextColor="#8C8C85"
-                  secureTextEntry={true}
+                <Text
                   style={
                     [
                       {
-                        "flex": 1,
-                        "minHeight": 52,
-                        "paddingHorizontal": 16,
-                        "paddingVertical": 13,
+                        "letterSpacing": 0.2,
                       },
                       {
-                        "borderColor": "#F0F0ED",
-                        "color": "#2C2C28",
-                        "fontSize": 16,
+                        "color": "#8C8C85",
+                        "fontSize": 12,
+                        "fontWeight": "500",
                       },
                     ]
                   }
-                  value=""
-                />
+                >
+                  Password
+                </Text>
                 <View
-                  accessibilityHint="Toggles password visibility"
-                  accessibilityLabel="Show password"
-                  accessibilityRole="button"
-                  accessibilityState={
-                    {
-                      "busy": undefined,
-                      "checked": undefined,
-                      "disabled": undefined,
-                      "expanded": undefined,
-                      "selected": undefined,
-                    }
-                  }
-                  accessibilityValue={
-                    {
-                      "max": undefined,
-                      "min": undefined,
-                      "now": undefined,
-                      "text": undefined,
-                    }
-                  }
-                  accessible={true}
-                  collapsable={false}
-                  focusable={true}
-                  hitSlop={8}
-                  onBlur={[Function]}
-                  onClick={[Function]}
-                  onFocus={[Function]}
-                  onResponderGrant={[Function]}
-                  onResponderMove={[Function]}
-                  onResponderRelease={[Function]}
-                  onResponderTerminate={[Function]}
-                  onResponderTerminationRequest={[Function]}
-                  onStartShouldSetResponder={[Function]}
                   style={
-                    {
-                      "alignItems": "center",
-                      "justifyContent": "center",
-                      "minHeight": 48,
-                      "minWidth": 48,
-                      "paddingLeft": 8,
-                      "paddingRight": 16,
-                    }
+                    [
+                      {
+                        "alignItems": "center",
+                        "borderWidth": 1.5,
+                        "flexDirection": "row",
+                        "minHeight": 52,
+                      },
+                      {
+                        "backgroundColor": "#FAFAF8",
+                        "borderColor": "#F0F0ED",
+                        "borderRadius": 16,
+                      },
+                    ]
                   }
-                  testID="toggle-password-visibility"
-                />
+                >
+                  <TextInput
+                    accessibilityLabel="Password"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onBlur={[Function]}
+                    onChangeText={[Function]}
+                    onFocus={[Function]}
+                    placeholderTextColor="#8C8C85"
+                    secureTextEntry={true}
+                    style={
+                      [
+                        {
+                          "flex": 1,
+                          "minHeight": 52,
+                          "paddingHorizontal": 16,
+                          "paddingVertical": 13,
+                        },
+                        {
+                          "borderColor": "#F0F0ED",
+                          "color": "#2C2C28",
+                          "fontSize": 16,
+                        },
+                      ]
+                    }
+                    value=""
+                  />
+                  <View
+                    accessibilityHint="Toggles password visibility"
+                    accessibilityLabel="Show password"
+                    accessibilityRole="button"
+                    accessibilityState={
+                      {
+                        "busy": undefined,
+                        "checked": undefined,
+                        "disabled": undefined,
+                        "expanded": undefined,
+                        "selected": undefined,
+                      }
+                    }
+                    accessibilityValue={
+                      {
+                        "max": undefined,
+                        "min": undefined,
+                        "now": undefined,
+                        "text": undefined,
+                      }
+                    }
+                    accessible={true}
+                    collapsable={false}
+                    focusable={true}
+                    hitSlop={8}
+                    onBlur={[Function]}
+                    onClick={[Function]}
+                    onFocus={[Function]}
+                    onResponderGrant={[Function]}
+                    onResponderMove={[Function]}
+                    onResponderRelease={[Function]}
+                    onResponderTerminate={[Function]}
+                    onResponderTerminationRequest={[Function]}
+                    onStartShouldSetResponder={[Function]}
+                    style={
+                      {
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                        "minHeight": 48,
+                        "minWidth": 48,
+                        "paddingLeft": 8,
+                        "paddingRight": 16,
+                      }
+                    }
+                    testID="toggle-password-visibility"
+                  />
+                </View>
+              </View>
+              <View
+                accessibilityLabel="Forgot password?"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                hitSlop={8}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  {
+                    "paddingHorizontal": 4,
+                    "paddingVertical": 2,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "fontWeight": "600",
+                      },
+                      {
+                        "color": "#3A8F6F",
+                      },
+                    ]
+                  }
+                >
+                  Forgot?
+                </Text>
               </View>
             </View>
           </View>
@@ -766,102 +842,12 @@ exports[`sign-in in expyrico snapshot 1`] = `
             </View>
           </View>
           <View
-            accessibilityLabel="Forgot password?"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "transparent",
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-              ]
-            }
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
-                    },
-                  ]
-                }
-              >
-                Forgot password?
-              </Text>
-            </View>
-          </View>
-          <View
             style={
               {
                 "alignItems": "center",
                 "flexDirection": "row",
                 "gap": 12,
-                "marginVertical": 16,
+                "marginVertical": 4,
               }
             }
           >
@@ -908,76 +894,64 @@ exports[`sign-in in expyrico snapshot 1`] = `
             />
           </View>
           <View
-            accessibilityLabel="Continue with Google"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
             style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#4BAE8A",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 10,
+              }
             }
-            testID="sign-in-google"
           >
             <View
-              style={
+              accessibilityRole="button"
+              accessibilityState={
                 {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
                 }
               }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 14,
+                    "borderWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 8,
+                    "height": 46,
+                    "justifyContent": "center",
+                  },
+                  {
+                    "backgroundColor": undefined,
+                    "borderColor": "#F0F0ED",
+                  },
+                ]
+              }
+              testID="sign-in-google"
             >
               <RNSVGSvgView
                 accessibilityLabel="Google"
@@ -1076,110 +1050,160 @@ exports[`sign-in in expyrico snapshot 1`] = `
                 style={
                   [
                     {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
+                      "fontSize": 14,
+                      "fontWeight": "600",
                     },
                     {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
+                      "color": "#2C2C28",
                     },
                   ]
                 }
               >
-                Continue with Google
+                Google
               </Text>
             </View>
-          </View>
-          <View
-            accessibilityLabel="Use a passkey"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": false,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "transparent",
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="sign-in-passkey"
-          >
             <View
-              style={
+              accessibilityLabel="Use a passkey"
+              accessibilityRole="button"
+              accessibilityState={
                 {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
                 }
               }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 14,
+                    "borderWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 8,
+                    "height": 46,
+                    "justifyContent": "center",
+                  },
+                  {
+                    "backgroundColor": undefined,
+                    "borderColor": "#F0F0ED",
+                  },
+                ]
+              }
+              testID="sign-in-passkey"
             >
               <Text
                 style={
                   [
                     {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
+                      "fontSize": 14,
+                      "fontWeight": "600",
                     },
                     {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
+                      "color": "#2C2C28",
                     },
                   ]
                 }
               >
-                Use a passkey
+                Passkey
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 6,
+                "justifyContent": "center",
+                "marginTop": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                  },
+                  {
+                    "color": "#8C8C85",
+                  },
+                ]
+              }
+            >
+              Don't have an account?
+            </Text>
+            <View
+              accessibilityLabel="Sign up"
+              accessibilityRole="button"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": undefined,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={8}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                    },
+                    {
+                      "color": "#3A8F6F",
+                    },
+                  ]
+                }
+              >
+                Sign up
               </Text>
             </View>
           </View>
@@ -1239,13 +1263,22 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
               "padding": 24,
               "paddingBottom": 110,
             },
+            {
+              "gap": 12,
+              "paddingBottom": 20,
+              "paddingHorizontal": 20,
+              "paddingTop": 8,
+            },
           ]
         }
         showsVerticalScrollIndicator={false}
         style={
-          {
-            "flex": 1,
-          }
+          [
+            {
+              "flex": 1,
+            },
+            undefined,
+          ]
         }
       >
         <View>
@@ -1342,10 +1375,10 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
               <RNSVGSvgView
                 accessibilityLabel="Expyrico"
                 align="xMidYMid"
-                bbHeight={140.8092485549133}
-                bbWidth={150}
+                bbHeight={123.9121387283237}
+                bbWidth={132}
                 focusable={false}
-                height={140.8092485549133}
+                height={123.9121387283237}
                 meetOrSlice={0}
                 minX={0}
                 minY={0}
@@ -1357,14 +1390,14 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                     },
                     {
                       "flex": 0,
-                      "height": 140,
-                      "width": 150,
+                      "height": 123,
+                      "width": 132,
                     },
                   ]
                 }
                 vbHeight={812}
                 vbWidth={865}
-                width={150}
+                width={132}
               >
                 <RNSVGGroup
                   fill={
@@ -1652,9 +1685,9 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                   },
                   {
                     "color": "#FAFAF8",
-                    "fontSize": 24,
+                    "fontSize": 18,
                     "fontWeight": "500",
-                    "lineHeight": 32,
+                    "lineHeight": 24,
                   },
                 ]
               }
@@ -1676,13 +1709,13 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                 ]
               }
             >
-              Sign in to scan items, track expiry dates, and keep your pantry current.
+              Sign in to your Expyrico pantry
             </Text>
           </View>
           <View
             style={
               {
-                "gap": 14,
+                "gap": 10,
               }
             }
           >
@@ -1756,115 +1789,182 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
             <View
               style={
                 {
-                  "gap": 7,
+                  "position": "relative",
                 }
               }
             >
-              <Text
-                style={
-                  [
-                    {
-                      "letterSpacing": 0.2,
-                    },
-                    {
-                      "color": "#B7BDB7",
-                      "fontSize": 12,
-                      "fontWeight": "500",
-                    },
-                  ]
-                }
-              >
-                Password
-              </Text>
               <View
                 style={
-                  [
-                    {
-                      "alignItems": "center",
-                      "borderWidth": 1.5,
-                      "flexDirection": "row",
-                      "minHeight": 52,
-                    },
-                    {
-                      "backgroundColor": "#191F1B",
-                      "borderColor": "#2D3A34",
-                      "borderRadius": 16,
-                    },
-                  ]
+                  {
+                    "gap": 7,
+                  }
                 }
               >
-                <TextInput
-                  accessibilityLabel="Password"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onBlur={[Function]}
-                  onChangeText={[Function]}
-                  onFocus={[Function]}
-                  placeholderTextColor="#B7BDB7"
-                  secureTextEntry={true}
+                <Text
                   style={
                     [
                       {
-                        "flex": 1,
-                        "minHeight": 52,
-                        "paddingHorizontal": 16,
-                        "paddingVertical": 13,
+                        "letterSpacing": 0.2,
                       },
                       {
-                        "borderColor": "#2D3A34",
-                        "color": "#FAFAF8",
-                        "fontSize": 16,
+                        "color": "#B7BDB7",
+                        "fontSize": 12,
+                        "fontWeight": "500",
                       },
                     ]
                   }
-                  value=""
-                />
+                >
+                  Password
+                </Text>
                 <View
-                  accessibilityHint="Toggles password visibility"
-                  accessibilityLabel="Show password"
-                  accessibilityRole="button"
-                  accessibilityState={
-                    {
-                      "busy": undefined,
-                      "checked": undefined,
-                      "disabled": undefined,
-                      "expanded": undefined,
-                      "selected": undefined,
-                    }
-                  }
-                  accessibilityValue={
-                    {
-                      "max": undefined,
-                      "min": undefined,
-                      "now": undefined,
-                      "text": undefined,
-                    }
-                  }
-                  accessible={true}
-                  collapsable={false}
-                  focusable={true}
-                  hitSlop={8}
-                  onBlur={[Function]}
-                  onClick={[Function]}
-                  onFocus={[Function]}
-                  onResponderGrant={[Function]}
-                  onResponderMove={[Function]}
-                  onResponderRelease={[Function]}
-                  onResponderTerminate={[Function]}
-                  onResponderTerminationRequest={[Function]}
-                  onStartShouldSetResponder={[Function]}
                   style={
-                    {
-                      "alignItems": "center",
-                      "justifyContent": "center",
-                      "minHeight": 48,
-                      "minWidth": 48,
-                      "paddingLeft": 8,
-                      "paddingRight": 16,
-                    }
+                    [
+                      {
+                        "alignItems": "center",
+                        "borderWidth": 1.5,
+                        "flexDirection": "row",
+                        "minHeight": 52,
+                      },
+                      {
+                        "backgroundColor": "#191F1B",
+                        "borderColor": "#2D3A34",
+                        "borderRadius": 16,
+                      },
+                    ]
                   }
-                  testID="toggle-password-visibility"
-                />
+                >
+                  <TextInput
+                    accessibilityLabel="Password"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onBlur={[Function]}
+                    onChangeText={[Function]}
+                    onFocus={[Function]}
+                    placeholderTextColor="#B7BDB7"
+                    secureTextEntry={true}
+                    style={
+                      [
+                        {
+                          "flex": 1,
+                          "minHeight": 52,
+                          "paddingHorizontal": 16,
+                          "paddingVertical": 13,
+                        },
+                        {
+                          "borderColor": "#2D3A34",
+                          "color": "#FAFAF8",
+                          "fontSize": 16,
+                        },
+                      ]
+                    }
+                    value=""
+                  />
+                  <View
+                    accessibilityHint="Toggles password visibility"
+                    accessibilityLabel="Show password"
+                    accessibilityRole="button"
+                    accessibilityState={
+                      {
+                        "busy": undefined,
+                        "checked": undefined,
+                        "disabled": undefined,
+                        "expanded": undefined,
+                        "selected": undefined,
+                      }
+                    }
+                    accessibilityValue={
+                      {
+                        "max": undefined,
+                        "min": undefined,
+                        "now": undefined,
+                        "text": undefined,
+                      }
+                    }
+                    accessible={true}
+                    collapsable={false}
+                    focusable={true}
+                    hitSlop={8}
+                    onBlur={[Function]}
+                    onClick={[Function]}
+                    onFocus={[Function]}
+                    onResponderGrant={[Function]}
+                    onResponderMove={[Function]}
+                    onResponderRelease={[Function]}
+                    onResponderTerminate={[Function]}
+                    onResponderTerminationRequest={[Function]}
+                    onStartShouldSetResponder={[Function]}
+                    style={
+                      {
+                        "alignItems": "center",
+                        "justifyContent": "center",
+                        "minHeight": 48,
+                        "minWidth": 48,
+                        "paddingLeft": 8,
+                        "paddingRight": 16,
+                      }
+                    }
+                    testID="toggle-password-visibility"
+                  />
+                </View>
+              </View>
+              <View
+                accessibilityLabel="Forgot password?"
+                accessibilityRole="button"
+                accessibilityState={
+                  {
+                    "busy": undefined,
+                    "checked": undefined,
+                    "disabled": undefined,
+                    "expanded": undefined,
+                    "selected": undefined,
+                  }
+                }
+                accessibilityValue={
+                  {
+                    "max": undefined,
+                    "min": undefined,
+                    "now": undefined,
+                    "text": undefined,
+                  }
+                }
+                accessible={true}
+                collapsable={false}
+                focusable={true}
+                hitSlop={8}
+                onBlur={[Function]}
+                onClick={[Function]}
+                onFocus={[Function]}
+                onResponderGrant={[Function]}
+                onResponderMove={[Function]}
+                onResponderRelease={[Function]}
+                onResponderTerminate={[Function]}
+                onResponderTerminationRequest={[Function]}
+                onStartShouldSetResponder={[Function]}
+                style={
+                  {
+                    "paddingHorizontal": 4,
+                    "paddingVertical": 2,
+                    "position": "absolute",
+                    "right": 0,
+                    "top": 0,
+                  }
+                }
+              >
+                <Text
+                  style={
+                    [
+                      {
+                        "fontSize": 13,
+                        "fontWeight": "600",
+                      },
+                      {
+                        "color": "#D6F0E6",
+                      },
+                    ]
+                  }
+                >
+                  Forgot?
+                </Text>
               </View>
             </View>
           </View>
@@ -1956,102 +2056,12 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
             </View>
           </View>
           <View
-            accessibilityLabel="Forgot password?"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "transparent",
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-              ]
-            }
-          >
-            <View
-              style={
-                {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
-                }
-              }
-            >
-              <Text
-                style={
-                  [
-                    {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
-                    },
-                    {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
-                    },
-                  ]
-                }
-              >
-                Forgot password?
-              </Text>
-            </View>
-          </View>
-          <View
             style={
               {
                 "alignItems": "center",
                 "flexDirection": "row",
                 "gap": 12,
-                "marginVertical": 16,
+                "marginVertical": 4,
               }
             }
           >
@@ -2098,76 +2108,64 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
             />
           </View>
           <View
-            accessibilityLabel="Continue with Google"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": undefined,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
             style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "#4BAE8A",
-                  "borderWidth": 1.5,
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-                false,
-              ]
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 10,
+              }
             }
-            testID="sign-in-google"
           >
             <View
-              style={
+              accessibilityRole="button"
+              accessibilityState={
                 {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
                 }
               }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 14,
+                    "borderWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 8,
+                    "height": 46,
+                    "justifyContent": "center",
+                  },
+                  {
+                    "backgroundColor": undefined,
+                    "borderColor": "#2D3A34",
+                  },
+                ]
+              }
+              testID="sign-in-google"
             >
               <RNSVGSvgView
                 accessibilityLabel="Google"
@@ -2266,110 +2264,160 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                 style={
                   [
                     {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
+                      "fontSize": 14,
+                      "fontWeight": "600",
                     },
                     {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
+                      "color": "#FAFAF8",
                     },
                   ]
                 }
               >
-                Continue with Google
+                Google
               </Text>
             </View>
-          </View>
-          <View
-            accessibilityLabel="Use a passkey"
-            accessibilityRole="button"
-            accessibilityState={
-              {
-                "busy": undefined,
-                "checked": undefined,
-                "disabled": false,
-                "expanded": undefined,
-                "selected": undefined,
-              }
-            }
-            accessibilityValue={
-              {
-                "max": undefined,
-                "min": undefined,
-                "now": undefined,
-                "text": undefined,
-              }
-            }
-            accessible={true}
-            collapsable={false}
-            focusable={true}
-            onBlur={[Function]}
-            onClick={[Function]}
-            onFocus={[Function]}
-            onResponderGrant={[Function]}
-            onResponderMove={[Function]}
-            onResponderRelease={[Function]}
-            onResponderTerminate={[Function]}
-            onResponderTerminationRequest={[Function]}
-            onStartShouldSetResponder={[Function]}
-            style={
-              [
-                {
-                  "borderColor": "transparent",
-                  "borderWidth": 1,
-                  "height": 52,
-                  "justifyContent": "center",
-                  "minHeight": 52,
-                  "paddingHorizontal": 24,
-                  "paddingVertical": 0,
-                },
-                {
-                  "backgroundColor": "transparent",
-                  "borderRadius": 999,
-                  "opacity": 1,
-                },
-                false,
-                {
-                  "backgroundColor": "transparent",
-                  "borderColor": "transparent",
-                  "opacity": 1,
-                },
-                false,
-                false,
-                false,
-              ]
-            }
-            testID="sign-in-passkey"
-          >
             <View
-              style={
+              accessibilityLabel="Use a passkey"
+              accessibilityRole="button"
+              accessibilityState={
                 {
-                  "alignItems": "center",
-                  "flexDirection": "row",
-                  "gap": 8,
-                  "justifyContent": "center",
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
                 }
               }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                [
+                  {
+                    "alignItems": "center",
+                    "borderRadius": 14,
+                    "borderWidth": 1,
+                    "flex": 1,
+                    "flexDirection": "row",
+                    "gap": 8,
+                    "height": 46,
+                    "justifyContent": "center",
+                  },
+                  {
+                    "backgroundColor": undefined,
+                    "borderColor": "#2D3A34",
+                  },
+                ]
+              }
+              testID="sign-in-passkey"
             >
               <Text
                 style={
                   [
                     {
-                      "includeFontPadding": false,
-                      "textAlign": "center",
+                      "fontSize": 14,
+                      "fontWeight": "600",
                     },
                     {
-                      "color": "#4BAE8A",
-                      "fontSize": 14,
-                      "fontWeight": "700",
-                      "lineHeight": 20,
+                      "color": "#FAFAF8",
                     },
                   ]
                 }
               >
-                Use a passkey
+                Passkey
+              </Text>
+            </View>
+          </View>
+          <View
+            style={
+              {
+                "alignItems": "center",
+                "flexDirection": "row",
+                "gap": 6,
+                "justifyContent": "center",
+                "marginTop": 6,
+              }
+            }
+          >
+            <Text
+              style={
+                [
+                  {
+                    "fontSize": 14,
+                  },
+                  {
+                    "color": "#B7BDB7",
+                  },
+                ]
+              }
+            >
+              Don't have an account?
+            </Text>
+            <View
+              accessibilityLabel="Sign up"
+              accessibilityRole="button"
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": undefined,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={true}
+              collapsable={false}
+              focusable={true}
+              hitSlop={8}
+              onBlur={[Function]}
+              onClick={[Function]}
+              onFocus={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+            >
+              <Text
+                style={
+                  [
+                    {
+                      "fontSize": 14,
+                      "fontWeight": "700",
+                    },
+                    {
+                      "color": "#D6F0E6",
+                    },
+                  ]
+                }
+              >
+                Sign up
               </Text>
             </View>
           </View>

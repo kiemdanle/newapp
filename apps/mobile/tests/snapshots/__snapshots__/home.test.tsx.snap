@@ -53,13 +53,17 @@ exports[`home in expyrico snapshot 1`] = `
                 "flexGrow": 1,
               },
               false,
+              undefined,
             ]
           }
           showsVerticalScrollIndicator={false}
           style={
-            {
-              "flex": 1,
-            }
+            [
+              {
+                "flex": 1,
+              },
+              undefined,
+            ]
           }
         >
           <View
@@ -696,13 +700,17 @@ exports[`home in expyricoDark snapshot 1`] = `
                 "flexGrow": 1,
               },
               false,
+              undefined,
             ]
           }
           showsVerticalScrollIndicator={false}
           style={
-            {
-              "flex": 1,
-            }
+            [
+              {
+                "flex": 1,
+              },
+              undefined,
+            ]
           }
         >
           <View

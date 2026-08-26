@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View, StyleSheet, TextInput } from 'react-native';
+import { ActivityIndicator, Text, View, StyleSheet, TextInput, AppState, Platform, type AppStateStatus } from 'react-native';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -12,8 +12,11 @@ import { initThemeStore, useThemeStore } from './theme/store';
 import { hydrateSession, useSessionStore } from './auth/session-store';
 import { wireApiClient } from './auth/wire-client';
 import { startSyncTriggers, stopSyncTriggers } from './db/triggers';
-import { ensurePushTokenRegistered } from './features/push/registerPushToken';
-import { handleModerationNotificationOpen, registerModerationNotificationBatch } from './features/push/handle-notification-open';
+import { setItem } from './auth/secure-store';
+import { registerPushTokenApi } from './api/push';
+import { ensurePushTokenRegistered, PUSH_REGISTERED_FLAG_KEY, PUSH_REGISTERED_USER_ID_KEY } from './features/push/registerPushToken';
+import { handleNotificationTap, registerModerationNotificationBatch } from './features/push/handle-notification-open';
+import { navigationRef } from './navigation/navigationRef';
 import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
 
@@ -56,7 +59,7 @@ function RootApp() {
 
   return (
     <View style={{ flex: 1 }}>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <StatusBar barStyle="default" />
         <RootNavigator />
       </NavigationContainer>
@@ -92,41 +95,83 @@ function RootApp() {
 
 export function AppSyncManager() {
   const accessToken = useSessionStore((s) => s.accessToken);
+  const user = useSessionStore((s) => s.user);
   const openedModerationBatches = useRef(new Set<string>());
 
   useEffect(() => {
     if (!accessToken) return;
     startSyncTriggers();
-    void ensurePushTokenRegistered().catch((error) => {
+    void ensurePushTokenRegistered(user?.id).catch((error) => {
       console.warn('Failed to register FCM token', error);
     });
-    // FCM may surface a notification tap while the app is backgrounded or as
-    // the initial launch source. The handler is type-gated and fail-closed, so
-    // existing expiry push behavior remains untouched.
-    let unsubscribe: (() => void) | undefined;
+
+    // Re-check permissions when app transitions to active foreground
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        void ensurePushTokenRegistered(user?.id);
+      }
+    };
+    const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
+    // Listen for FCM token rotation and re-register
+    let unsubRefresh: (() => void) | undefined;
+    let unsubMessage: (() => void) | undefined;
+    let unsubOpened: (() => void) | undefined;
+
     try {
+      unsubRefresh = messaging().onTokenRefresh(async (newToken) => {
+        try {
+          await registerPushTokenApi({
+            deviceToken: newToken,
+            platform: Platform.OS === 'ios' ? 'ios' : 'android',
+            deviceInfo: { model: null, os: Platform.Version },
+          });
+          await setItem(PUSH_REGISTERED_FLAG_KEY, newToken);
+          if (user?.id) {
+            await setItem(PUSH_REGISTERED_USER_ID_KEY, user.id);
+          }
+        } catch (e) {
+          console.warn('Failed to sync rotated FCM token', e);
+        }
+      });
+
+      // Foreground push notification listener
+      unsubMessage = messaging().onMessage(async (remoteMessage) => {
+        // Invalidate record/product caches so data is fresh
+        if (remoteMessage.data?.recordId) {
+          queryClient.invalidateQueries({ queryKey: ['records'] });
+        }
+      });
+
       const handleOpenedNotification = (message: { data?: Record<string, string | object> | undefined }) => {
         const type = message.data?.type;
         const batchId = message.data?.batchId;
         if (type === 'moderation_queue' && !registerModerationNotificationBatch(batchId, openedModerationBatches.current)) return;
-        void handleModerationNotificationOpen(message.data);
+        void handleNotificationTap(message.data as Record<string, unknown> | undefined);
       };
-      unsubscribe = messaging().onNotificationOpenedApp(handleOpenedNotification);
+
+      unsubOpened = messaging().onNotificationOpenedApp(handleOpenedNotification);
       void messaging().getInitialNotification().then((message) => {
-        if (message) handleOpenedNotification(message);
+        if (message) {
+          queueMicrotask(() => handleOpenedNotification(message));
+        }
       }).catch((err) => {
         console.warn('FCM getInitialNotification error', err);
       });
     } catch (e) {
       console.warn('FCM listener registration failed', e);
     }
+
     return () => {
+      appStateSub.remove();
       try {
-        unsubscribe?.();
+        unsubRefresh?.();
+        unsubMessage?.();
+        unsubOpened?.();
       } catch {}
       stopSyncTriggers();
     };
-  }, [accessToken]);
+  }, [accessToken, user?.id]);
 
   return null;
 }

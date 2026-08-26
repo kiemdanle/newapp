@@ -116,4 +116,73 @@ describe('notification-send worker', () => {
 
     expect(revokePushTokenByIdMock).not.toHaveBeenCalledWith(token.id);
   });
+
+  it('renders and sends a giveaway notification successfully', async () => {
+    sendFcmPushMock.mockResolvedValue([
+      { providerMessageId: 'fcm-message-gw', errorCode: null, errorMessage: null },
+    ]);
+    const giver = await makeUser({});
+    const claimer = await makeUser({});
+    const giveaway = await getPrisma().giveaway.create({
+      data: {
+        giverUserId: giver.id,
+        title: 'Fresh Apples',
+        locationText: 'Downtown',
+        status: 'claimed',
+      },
+    });
+    await getPrisma().pushToken.create({
+      data: { userId: claimer.id, deviceToken: TOKEN_A, platform: 'android' },
+    });
+
+    await processSendJob({
+      recordId: giveaway.id,
+      userId: claimer.id,
+      fireAt: '2099-12-31T09:00:00.000Z',
+      offsetDays: 0,
+      templateKey: 'giveaway_selected',
+    });
+
+    expect(sendFcmPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokens: [TOKEN_A],
+        body: expect.stringContaining('Fresh Apples'),
+        data: expect.objectContaining({ giveawayId: giveaway.id, type: 'giveaway_selected' }),
+      }),
+    );
+    const logs = await getPrisma().pushLog.findMany({ where: { userId: claimer.id } });
+    expect(logs).toHaveLength(1);
+    expect(logs[0]!.recordId).toBeNull();
+    expect(logs[0]!.templateKey).toBe('giveaway_selected');
+  });
+
+  it('hides item names when user has hideItemNames enabled in preferences', async () => {
+    sendFcmPushMock.mockResolvedValue([
+      { providerMessageId: 'fcm-message-priv', errorCode: null, errorMessage: null },
+    ]);
+    const user = await makeUser({});
+    await getPrisma().user.update({
+      where: { id: user.id },
+      data: { notificationPreferences: { hideItemNames: true } },
+    });
+    const record = await makeRecord(user.id, { customName: 'Secret Medicine' });
+    await getPrisma().pushToken.create({
+      data: { userId: user.id, deviceToken: TOKEN_A, platform: 'ios' },
+    });
+
+    await processSendJob({
+      recordId: record.id,
+      userId: user.id,
+      fireAt: '2099-12-31T09:00:00.000Z',
+      offsetDays: 0,
+      templateKey: 'expiry.today',
+    });
+
+    expect(sendFcmPushMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tokens: [TOKEN_A],
+        body: expect.stringContaining('An item expires today'),
+      }),
+    );
+  });
 });

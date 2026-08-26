@@ -7,9 +7,9 @@ import type {
   User,
   UpdateProfile,
 } from '@expyrico/shared';
-import { secureStore } from '../auth/secure-store';
+import { secureStore, getItem } from '../auth/secure-store';
+import { PUSH_REGISTERED_FLAG_KEY } from '../features/push/registerPushToken';
 import { apiClient } from './client';
-
 /**
  * Server response shape when an account requires a TOTP step. Mobile users
  * rarely hit this (admins use the admin web app), but the type must be correct.
@@ -42,9 +42,15 @@ export const authEndpoints = {
       skipAuth: true,
     }),
   logout: async () => {
-    // API revokes the refresh session when provided; empty body is accepted as
-    // best-effort local sign-out (see logout route).
     const refreshToken = await secureStore.getRefreshToken();
+    const pushToken = await getItem(PUSH_REGISTERED_FLAG_KEY);
+    if (pushToken) {
+      await apiClient.request<void>({
+        method: 'POST',
+        path: '/me/push-token/revoke-by-token',
+        body: { deviceToken: pushToken },
+      }).catch(() => {});
+    }
     return apiClient.request<void>({
       method: 'POST',
       path: '/auth/logout',

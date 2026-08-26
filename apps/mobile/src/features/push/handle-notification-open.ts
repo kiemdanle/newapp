@@ -1,6 +1,6 @@
 import { Linking } from 'react-native';
 import Config from 'react-native-config';
-
+import { navigate } from '../../navigation/navigationRef';
 type ModerationNotificationData = {
   type?: unknown;
   url?: unknown;
@@ -65,4 +65,24 @@ export async function handleModerationNotificationOpen(data: ModerationNotificat
   const target = `${origin}/products/pending`;
   await Linking.openURL(target);
   return true;
+}
+
+export async function handleNotificationTap(data: Record<string, unknown> | undefined): Promise<boolean> {
+  if (!data) return false;
+  if (data.type === 'moderation_queue') {
+    return handleModerationNotificationOpen(data as ModerationNotificationData);
+  }
+  if (data.type === 'expiry' && typeof data.recordId === 'string' && data.recordId.length > 0) {
+    navigate('Record', { id: data.recordId });
+    return true;
+  }
+  if (typeof data.type === 'string' && data.type.startsWith('giveaway_') && typeof data.giveawayId === 'string') {
+    if (data.type === 'giveaway_new_claim') {
+      navigate('GiveawayManage', { id: data.giveawayId });
+    } else {
+      navigate('Giveaway', { id: data.giveawayId });
+    }
+    return true;
+  }
+  return false;
 }

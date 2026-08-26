@@ -27,11 +27,23 @@ export async function dispatchOutbox(limit = 50): Promise<number> {
   });
   let dispatched = 0;
   for (const row of rows) {
+    // Atomic claim so concurrent workers/pollers do not duplicate delivery
+    const claimed = await prisma.notificationOutbox.updateMany({
+      where: { id: row.id, dispatchedAt: null },
+      data: { dispatchedAt: new Date() },
+    });
+    if (claimed.count === 0) continue;
+
     try {
+      let giveawayId = '';
+      if (row.payload && typeof row.payload === 'object' && 'giveawayId' in row.payload) {
+        const rawId = (row.payload as { giveawayId?: unknown }).giveawayId;
+        if (typeof rawId === 'string') giveawayId = rawId;
+      }
       await notificationSendQueue().add(
         'send',
         {
-          recordId: (row.payload as Record<string, unknown>).giveawayId as string ?? '',
+          recordId: giveawayId,
           userId: row.userId,
           fireAt: new Date().toISOString(),
           offsetDays: 0,
@@ -39,10 +51,6 @@ export async function dispatchOutbox(limit = 50): Promise<number> {
         },
         { jobId: `outbox-${row.id}`, removeOnComplete: 1000, removeOnFail: 100 },
       );
-      await prisma.notificationOutbox.update({
-        where: { id: row.id },
-        data: { dispatchedAt: new Date() },
-      });
       dispatched++;
     } catch (err) {
       logger.warn({ err, outboxId: row.id }, 'outbox dispatch failed');

@@ -13,11 +13,12 @@ import {
   startModerationNotificationWorker,
   stopModerationNotificationWatchdog,
 } from '../queues/jobs/moderation-notifications.js';
+import { sweepOutbox } from '../services/notifications/outbox.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
 
 let _workers: Worker[] | null = null;
-
+let _outboxInterval: NodeJS.Timeout | null = null;
 export function startWorkers(): Worker[] {
   if (_workers) return _workers;
   // Skip in test env unless explicitly requested
@@ -49,12 +50,22 @@ export function startWorkers(): Worker[] {
   // BullMQ delivery only accelerates it.
   startIndependentOutboxPoller();
   startModerationNotificationWatchdog();
+  if (!_outboxInterval) {
+    _outboxInterval = setInterval(() => {
+      void sweepOutbox();
+    }, 60_000);
+    _outboxInterval.unref();
+  }
   logger.info({ count: _workers.length }, 'workers started');
   return _workers;
 }
 
 export async function stopWorkers(): Promise<void> {
   if (!_workers) return;
+  if (_outboxInterval) {
+    clearInterval(_outboxInterval);
+    _outboxInterval = null;
+  }
   stopIndependentOutboxPoller();
   stopModerationNotificationWatchdog();
   await Promise.all(_workers.map((w) => w.close()));

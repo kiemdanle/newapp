@@ -6,6 +6,7 @@ import {
   PushTokenOwnershipError,
   upsertPushToken,
   revokePushToken,
+  revokePushTokenByDeviceToken,
 } from '../../services/push/repository.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
@@ -52,6 +53,12 @@ export async function pushTokenRoutes(app: FastifyInstance) {
         title: 'Push token not found',
       });
     }
+    return reply.status(204).send();
+  });
+
+  app.post('/push-token/revoke-by-token', { onRequest: app.requireAuth }, async (req, reply) => {
+    const { deviceToken } = z.object({ deviceToken: z.string().min(1) }).parse(req.body);
+    await revokePushTokenByDeviceToken(req.user!.id, deviceToken);
     return reply.status(204).send();
   });
 }

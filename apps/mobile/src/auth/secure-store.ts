@@ -57,6 +57,7 @@ export const secureStore = {
     await deleteValue(KEY_REFRESH);
     await deleteValue(KEY_THEME);
     await deleteValue(KEY_PUSH_REGISTERED);
+    await deleteValue('pantry.pushRegisteredUserIdV1');
   },
 };
 

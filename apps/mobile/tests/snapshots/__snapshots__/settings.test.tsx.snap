@@ -49,13 +49,17 @@ exports[`settings in expyrico snapshot 1`] = `
               "padding": 24,
               "paddingBottom": 110,
             },
+            undefined,
           ]
         }
         showsVerticalScrollIndicator={false}
         style={
-          {
-            "flex": 1,
-          }
+          [
+            {
+              "flex": 1,
+            },
+            undefined,
+          ]
         }
       >
         <View>
@@ -641,13 +645,17 @@ exports[`settings in expyricoDark snapshot 1`] = `
               "padding": 24,
               "paddingBottom": 110,
             },
+            undefined,
           ]
         }
         showsVerticalScrollIndicator={false}
         style={
-          {
-            "flex": 1,
-          }
+          [
+            {
+              "flex": 1,
+            },
+            undefined,
+          ]
         }
       >
         <View>

@@ -3,6 +3,7 @@ import { registerSchema, authResultSchema, ERROR_CODES } from '@expyrico/shared'
 import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
+import { logger } from '../../logger.js';
 import { hashPassword } from '../../services/auth/passwords.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
@@ -83,7 +84,11 @@ export async function registerRoute(app: FastifyInstance) {
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
-    await sendVerificationEmail(user.email, verificationCode);
+    try {
+      await sendVerificationEmail(user.email, verificationCode);
+    } catch (err) {
+      logger.error({ err, userId: user.id }, 'verification email dispatch failed on registration');
+    }
 
     const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });

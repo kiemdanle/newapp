@@ -12,7 +12,6 @@ plugins {
 }
 
 includeBuild("../../../node_modules/@react-native/gradle-plugin")
-
 extensions.configure(com.facebook.react.ReactSettingsExtension) { extension ->
     extension.autolinkLibrariesFromCommand(
         ["node", new File(rootDir, "../../../node_modules/react-native/cli.js").absolutePath, "config"],
@@ -20,7 +19,6 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { extension ->
         files("../package.json", "../react-native.config.js", "../../../pnpm-lock.yaml")
     )
 }
-
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
     repositories {

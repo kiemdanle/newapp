@@ -1,6 +1,7 @@
 import type { Record as PrismaRecord } from '@prisma/client';
 import type { RecordSyncBatch, RecordSyncConflict } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
+import { notificationScheduleQueue } from '../../queues/index.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 import { maybeActivateReferral } from '../referrals/referral-service.js';
 import { myHouseholdIds } from '../households/permissions.js';
@@ -32,6 +33,7 @@ export async function syncRecords(
   const serverTime = new Date();
   const deletedIds: string[] = [];
   const conflicts: RecordSyncConflict[] = [];
+  const scheduledRecordIds: string[] = [];
 
   // Resolve the user's CURRENT household memberships ONCE at request time.
   // This set is used for both upsert authorization AND delta re-filtering.
@@ -115,7 +117,7 @@ export async function syncRecords(
 
           const offsets = u.notificationOffsetsDays ?? userOffsets;
           const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
-          await tx.record.create({
+          const created = await tx.record.create({
             data: {
               userId,
               clientId: u.clientId,
@@ -132,6 +134,7 @@ export async function syncRecords(
               notifyAt,
             },
           });
+          scheduledRecordIds.push(created.id);
         });
       } catch (err) {
         if (!(err instanceof ProductUseRejectionError)) throw err;
@@ -161,7 +164,7 @@ export async function syncRecords(
               tx,
             );
           }
-          return tx.record.upsert({
+          const upserted = await tx.record.upsert({
             where: { clientId: u.clientId },
             create: {
               userId,
@@ -190,6 +193,7 @@ export async function syncRecords(
               notifyAt,
             },
           });
+          scheduledRecordIds.push(upserted.id);
         });
       } catch (err) {
         if (!(err instanceof ProductUseRejectionError)) throw err;
@@ -200,6 +204,17 @@ export async function syncRecords(
 
   // After upserting, check referral activation.
   await maybeActivateReferral(userId).catch(() => {});
+
+  // Enqueue notification schedule jobs for all synchronized records in one Redis transaction
+  if (scheduledRecordIds.length > 0) {
+    const scheduleQ = notificationScheduleQueue();
+    const bulkJobs = scheduledRecordIds.map((recId) => ({
+      name: 'schedule',
+      data: { recordId: recId },
+      opts: { jobId: `schedule__${recId}`, removeOnComplete: true, removeOnFail: 100 },
+    }));
+    await scheduleQ.addBulk(bulkJobs).catch(() => {});
+  }
 
   // 3. Delta pull: return ALL records the caller can currently see, re-filtered
   //    by CURRENT visibility (resolved at request time), so a record that left a
