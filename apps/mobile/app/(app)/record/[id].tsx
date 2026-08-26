@@ -405,22 +405,13 @@ export default function RecordDetail() {
         ]}
       >
         <View style={styles.actionRow}>
-          <View style={{ flex: 1.3 }}>
+          <View style={{ flex: 1.8 }}>
             <Button
               testID="record-mark-consumed"
-              label="Mark used"
+              label="Mark as used"
               icon="checkmark-circle-outline"
               variant="primary"
               onPress={() => void mark('consumed')}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              testID="record-edit-button"
-              label="Edit"
-              icon="create-outline"
-              variant="secondary"
-              onPress={() => setShowEditModal(true)}
             />
           </View>
           <View style={{ flex: 1 }}>
