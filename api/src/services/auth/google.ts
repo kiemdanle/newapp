@@ -19,9 +19,10 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleIdenti
     .map((s) => s.trim())
     .filter(Boolean);
 
+  const audience = (audiences.length === 1 ? audiences[0] : audiences) as string | string[];
   const { payload } = await jwtVerify(idToken, JWKS, {
     issuer: ['https://accounts.google.com', 'accounts.google.com'],
-    audience: audiences.length === 1 ? audiences[0] : audiences,
+    audience,
   });
   const p = payload as JWTPayload & {
     email?: string;

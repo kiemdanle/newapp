@@ -236,4 +236,46 @@ describe('Me Profile & Security Routes', () => {
 
     await app.close();
   });
+  it('POST /v1/me/avatar handles smartphone portrait photos with EXIF orientation', async () => {
+    const app = await buildServer();
+    const { tokens } = await createAuthenticatedUser(app, 'avatar-exif@example.com', 'password123456');
+
+    // Create 400x300 JPEG with EXIF orientation 6 (portrait photo taken on mobile camera)
+    const imageBuffer = await sharp({
+      create: {
+        width: 400,
+        height: 300,
+        channels: 3,
+        background: 'green',
+      },
+    })
+      .withMetadata({ orientation: 6 })
+      .jpeg()
+      .toBuffer();
+
+    const body = multipartBody([
+      {
+        name: 'file',
+        filename: 'camera-photo.jpg',
+        contentType: 'image/jpeg',
+        content: imageBuffer,
+      },
+    ]);
+
+    const uploadRes = await app.inject({
+      method: 'POST',
+      url: '/v1/me/avatar',
+      headers: {
+        authorization: `Bearer ${tokens.accessToken}`,
+        'content-type': `multipart/form-data; boundary=${BOUNDARY}`,
+      },
+      payload: body,
+    });
+
+    expect(uploadRes.statusCode).toBe(200);
+    const uploadBody = uploadRes.json();
+    expect(uploadBody.avatarUrl).toContain('/display.webp');
+
+    await app.close();
+  });
 });

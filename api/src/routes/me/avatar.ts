@@ -17,7 +17,7 @@ export async function avatarRoutes(app: FastifyInstance) {
       if (!req.isMultipart()) {
         throw new AppError({
           status: 400,
-          code: ERROR_CODES.VALIDATION_ERROR,
+          code: ERROR_CODES.VALIDATION,
           title: 'Expected multipart/form-data with an avatar image file',
         });
       }
@@ -27,7 +27,7 @@ export async function avatarRoutes(app: FastifyInstance) {
       if (first.done || first.value.type !== 'file') {
         throw new AppError({
           status: 400,
-          code: ERROR_CODES.VALIDATION_ERROR,
+          code: ERROR_CODES.VALIDATION,
           title: 'A valid avatar image file is required',
         });
       }

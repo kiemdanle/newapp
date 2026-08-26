@@ -50,7 +50,7 @@ export async function passwordRoute(app: FastifyInstance) {
         if (!input.currentPassword) {
           throw new AppError({
             status: 400,
-            code: ERROR_CODES.VALIDATION_ERROR,
+            code: ERROR_CODES.VALIDATION,
             title: 'Current password is required to change your password',
           });
         }

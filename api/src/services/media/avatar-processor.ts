@@ -36,7 +36,7 @@ export async function processAvatarUpload(input: {
   if (input.mimeType && !ALLOWED_MIME_TYPES.has(input.mimeType.toLowerCase())) {
     throw new AppError({
       status: 415,
-      code: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE,
+      code: ERROR_CODES.UNSUPPORTED_MEDIA,
       title: 'Only JPEG, PNG, HEIC, and WebP avatar images are supported',
     });
   }
@@ -46,21 +46,22 @@ export async function processAvatarUpload(input: {
   const displayDiskPath = resolveMediaPath(cfg.root, 'public', 'avatars', input.userId, avatarId, 'display.webp');
   const thumbDiskPath = resolveMediaPath(cfg.root, 'public', 'avatars', input.userId, avatarId, 'thumb.webp');
 
-  let pipeline = sharp(input.sourceBuffer, { failOnError: true }).rotate();
-  const meta = await pipeline.metadata().catch((err: unknown) => {
-    throw new AppError({
-      status: 415,
-      code: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE,
-      title: 'Image decoding failed or corrupted image payload',
+  const meta = await sharp(input.sourceBuffer)
+    .metadata()
+    .catch(() => {
+      throw new AppError({
+        status: 415,
+        code: ERROR_CODES.UNSUPPORTED_MEDIA,
+        title: 'Image decoding failed or corrupted image payload',
+      });
     });
-  });
 
   const width = meta.width ?? 0;
   const height = meta.height ?? 0;
   if (!width || !height) {
     throw new AppError({
       status: 415,
-      code: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE,
+      code: ERROR_CODES.UNSUPPORTED_MEDIA,
       title: 'Image has invalid dimensions',
     });
   }
@@ -74,17 +75,18 @@ export async function processAvatarUpload(input: {
     });
   }
 
-  // Calculate square center crop
-  const squareSize = Math.min(width, height);
-  const left = Math.floor((width - squareSize) / 2);
-  const top = Math.floor((height - squareSize) / 2);
-
-  const cropped = pipeline.extract({ left, top, width: squareSize, height: squareSize });
-
-  // Generate 512x512 display and 128x128 thumbnail
+  // Generate 512x512 display and 128x128 thumbnail with automatic orientation & square center-cover cropping
   const [displayBuffer, thumbBuffer] = await Promise.all([
-    cropped.clone().resize(512, 512, { fit: 'cover' }).webp({ quality: 90 }).toBuffer(),
-    cropped.clone().resize(128, 128, { fit: 'cover' }).webp({ quality: 90 }).toBuffer(),
+    sharp(input.sourceBuffer)
+      .rotate()
+      .resize(512, 512, { fit: 'cover', position: 'center' })
+      .webp({ quality: 90 })
+      .toBuffer(),
+    sharp(input.sourceBuffer)
+      .rotate()
+      .resize(128, 128, { fit: 'cover', position: 'center' })
+      .webp({ quality: 90 })
+      .toBuffer(),
   ]);
 
   await mkdir(dirname(displayDiskPath), { recursive: true });
