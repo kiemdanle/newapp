@@ -1,11 +1,22 @@
 import type { FastifyInstance } from 'fastify';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { z } from 'zod';
 import { getPrisma } from '../../db.js';
+import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
 import { ERROR_CODES } from '@expyrico/shared';
 import { toApiUser } from '../../services/users/repository.js';
 import { processAvatarUpload, deleteAvatarFromDisk } from '../../services/media/avatar-processor.js';
+import { resolveMediaPath } from '../../services/products/product-media-storage.js';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+
+const publicAvatarParamsSchema = z.object({
+  userId: z.string().uuid(),
+  avatarId: z.string().uuid(),
+  variant: z.string().min(1),
+});
 
 export async function avatarRoutes(app: FastifyInstance) {
   app.post(
@@ -104,4 +115,40 @@ export async function avatarRoutes(app: FastifyInstance) {
       return reply.status(200).send(toApiUser(updated));
     },
   );
+}
+
+/**
+ * Public, unauthenticated avatar delivery route (defense-in-depth fallback
+ * when requested directly through the API origin).
+ */
+export async function publicAvatarRoutes(app: FastifyInstance) {
+  app.get('/avatars/:userId/:avatarId/:variant', async (req, reply) => {
+    const { userId, avatarId, variant } = publicAvatarParamsSchema.parse(req.params);
+    const cleanVariant = variant.replace(/\.webp$/, '');
+    if (cleanVariant !== 'display' && cleanVariant !== 'thumb') {
+      throw new AppError({
+        status: 404,
+        code: ERROR_CODES.NOT_FOUND,
+        title: 'Avatar variant not found',
+      });
+    }
+
+    const cfg = getConfig().media;
+    const diskPath = resolveMediaPath(cfg.root, 'public', 'avatars', userId, avatarId, `${cleanVariant}.webp`);
+
+    const fileExists = await stat(diskPath).catch(() => null);
+    if (!fileExists || !fileExists.isFile()) {
+      throw new AppError({
+        status: 404,
+        code: ERROR_CODES.NOT_FOUND,
+        title: 'Avatar not found',
+      });
+    }
+
+    const stream = createReadStream(diskPath);
+    return reply
+      .type('image/webp')
+      .header('Cache-Control', 'public, max-age=31536000, immutable')
+      .send(stream);
+  });
 }

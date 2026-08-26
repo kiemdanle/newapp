@@ -68,7 +68,7 @@ server {
     # the alias a second time and 404s every request, even an existing file
     # (verified empirically while writing this template). `alias` alone
     # already 404s correctly for a missing file.
-    location ~ ^/products/.+\.webp$ {
+    location ~ ^/(products|avatars)/.+\.webp$ {
         # A symlink inside public/products/ (nothing server-generated ever
         # creates one, but the filesystem doesn't enforce that) would
         # otherwise let `alias` follow it straight out of the public

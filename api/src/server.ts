@@ -15,6 +15,7 @@ import { healthRoutes } from './routes/health.js';
 import { wellKnownRoutes } from './routes/well-known.js';
 import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
+import { publicAvatarRoutes } from './routes/me/avatar.js';
 import { productRoutes } from './routes/products/index.js';
 import { editPrivateMediaRoute } from './routes/products/edit-private-media.js';
 import { editMetadataRoute } from './routes/products/edit-metadata.js';
@@ -122,6 +123,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(wellKnownRoutes);
   await app.register(authRoutes, { prefix: '/v1/auth' });
   await app.register(meRoutes, { prefix: '/v1/me' });
+  await app.register(publicAvatarRoutes, { prefix: '/v1' });
+  await app.register(publicAvatarRoutes);
   await app.register(productRoutes, { prefix: '/v1/products' });
   await app.register(editPrivateMediaRoute, { prefix: '/v1/product-edits' });
   await app.register(editMetadataRoute, { prefix: '/v1/product-edits' });
