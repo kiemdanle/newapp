@@ -75,10 +75,10 @@ describe('DealFeed', () => {
     expect(getByText('🔥 Top')).toBeTruthy();
   });
 
-  it('triggers onNew when "+ Post Deal" button is pressed', () => {
+  it('triggers onNew when Post Deal button is pressed', () => {
     const onNew = jest.fn();
 
-    const { getByText } = render(
+    const { getByLabelText } = render(
       wrap(
         <DealFeed
           currentUserId="user-2"
@@ -89,7 +89,7 @@ describe('DealFeed', () => {
       ),
     );
 
-    fireEvent.press(getByText('+ Post Deal'));
+    fireEvent.press(getByLabelText('Post a deal'));
     expect(onNew).toHaveBeenCalledTimes(1);
   });
 });

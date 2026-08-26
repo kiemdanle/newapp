@@ -100,23 +100,6 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
             Local grocery markdowns & clearance
           </Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Post a deal"
-          onPress={onNew}
-          style={({ pressed }) => [
-            styles.postBtnHeader,
-            {
-              backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-              borderRadius: theme.radii.pill,
-            },
-          ]}
-        >
-          <Ionicons name="add" size={18} color={theme.colors.primaryFg} style={{ marginRight: 2 }} />
-          <Text style={[styles.postBtnText, { color: theme.colors.primaryFg }]}>
-            + Post Deal
-          </Text>
-        </Pressable>
       </View>
 
       {/* Search Bar + Filter Button */}
@@ -370,6 +353,23 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         }
       />
 
+      {/* Floating Action Button (FAB) */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Post a deal"
+        onPress={onNew}
+        style={({ pressed }) => [
+          styles.fab,
+          {
+            backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
+            shadowColor: '#000',
+          },
+        ]}
+      >
+        <Ionicons name="add" size={22} color={theme.colors.primaryFg} style={{ marginRight: 4 }} />
+        <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>Post Deal</Text>
+      </Pressable>
+
       {/* Filter Modal Sheet */}
       <DealFilterModal
         visible={filterModalVisible}
@@ -386,9 +386,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 18,
     paddingBottom: 6,
@@ -400,18 +397,6 @@ const styles = StyleSheet.create({
   subheading: {
     fontSize: 13,
     marginTop: 2,
-  },
-  postBtnHeader: {
-    flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    minHeight: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  postBtnText: {
-    fontWeight: '700',
-    fontSize: 13,
   },
   sortContainer: {
     paddingVertical: 6,
@@ -484,5 +469,25 @@ const styles = StyleSheet.create({
   emptyStateActionText: {
     fontWeight: '700',
     fontSize: 14,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 28,
+    minHeight: 50,
+    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+  },
+  fabText: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
