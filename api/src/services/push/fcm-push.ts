@@ -56,8 +56,17 @@ async function sendBatch(batch: FcmPushBatch): Promise<FcmPushResult[]> {
     tokens: batch.tokens,
     notification: { title: batch.title, body: batch.body },
     data: batch.data,
-    android: { priority: 'high', notification: { sound: 'default' } },
-    apns: { payload: { aps: { sound: 'default' } } },
+    android: {
+      priority: 'high',
+      notification: {
+        channelId: 'expyrico_default',
+        sound: 'default',
+        priority: 'high',
+        defaultSound: true,
+        defaultVibrateTimings: true,
+      },
+    },
+    apns: { payload: { aps: { sound: 'default', badge: 1 } } },
   });
 
   if (response.responses.length !== batch.tokens.length) {
