@@ -54,43 +54,41 @@ export const useSessionStore = create<SessionState>((set, get) => ({
  * fetch fills the profile card (name/email/initials) which is not persisted.
  */
 export async function hydrateSession(): Promise<void> {
-  let accessToken = await secureStore.getAccessToken();
+  const accessToken = await secureStore.getAccessToken();
   const refreshToken = await secureStore.getRefreshToken();
+  // Mark hydrated immediately so splash screen dismisses instantly with local tokens
   useSessionStore.setState({ accessToken, refreshToken, hydrated: true });
 
-  // If access token is missing or expired, but a valid refresh token exists, auto-refresh:
-  if (!accessToken && refreshToken) {
+  if (!accessToken && !refreshToken) return;
+
+  // Background profile and token refresh (non-blocking)
+  (async () => {
     try {
-      const newTokens = await authEndpoints.refresh(refreshToken);
-      accessToken = newTokens.accessToken;
-      await secureStore.setAccessToken(newTokens.accessToken);
-      await secureStore.setRefreshToken(newTokens.refreshToken);
-      useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
-    } catch {
-      // Refresh token expired or revoked
-    }
-  }
-
-  if (!accessToken) return;
-
-  try {
-    const user = await authEndpoints.me();
-    if (useSessionStore.getState().accessToken) {
-      useSessionStore.getState().setUser(user);
-    }
-  } catch (err: unknown) {
-    // If accessToken was expired on the server, attempt refresh:
-    if (refreshToken) {
-      try {
+      let token = accessToken;
+      if (!token && refreshToken) {
         const newTokens = await authEndpoints.refresh(refreshToken);
+        token = newTokens.accessToken;
         await secureStore.setAccessToken(newTokens.accessToken);
         await secureStore.setRefreshToken(newTokens.refreshToken);
         useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
-        const user = await authEndpoints.me();
+      }
+      const user = await authEndpoints.me();
+      if (useSessionStore.getState().accessToken) {
         useSessionStore.getState().setUser(user);
-      } catch {
-        // Refresh token invalid
+      }
+    } catch (err: unknown) {
+      if (refreshToken) {
+        try {
+          const newTokens = await authEndpoints.refresh(refreshToken);
+          await secureStore.setAccessToken(newTokens.accessToken);
+          await secureStore.setRefreshToken(newTokens.refreshToken);
+          useSessionStore.setState({ accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken });
+          const user = await authEndpoints.me();
+          useSessionStore.getState().setUser(user);
+        } catch {
+          // Token revoked or offline
+        }
       }
     }
-  }
+  })().catch(() => {});
 }

@@ -29,18 +29,25 @@ export function ThemeProvider({ children, initial }: ThemeProviderProps) {
   const theme = themes[resolvedThemeId];
   const fade = useRef(new Animated.Value(1)).current;
   const prevId = useRef(resolvedThemeId);
+  const isHydrated = useThemeStore((s) => s.hydrated);
+  const initialMounted = useRef(false);
 
   useEffect(() => {
+    if (!initialMounted.current) {
+      if (isHydrated) initialMounted.current = true;
+      prevId.current = resolvedThemeId;
+      fade.setValue(1);
+      return;
+    }
     if (prevId.current === resolvedThemeId) return;
     prevId.current = resolvedThemeId;
     fade.setValue(0);
     Animated.timing(fade, {
       toValue: 1,
-      duration: theme.animation.themeSwitch, // 200ms per spec §2.10
+      duration: theme.animation.themeSwitch,
       useNativeDriver: true,
     }).start();
-  }, [resolvedThemeId, fade, theme.animation.themeSwitch]);
-
+  }, [resolvedThemeId, fade, isHydrated, theme.animation.themeSwitch]);
   const value = useMemo(() => theme, [theme]);
 
   return (
