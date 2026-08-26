@@ -118,11 +118,13 @@ export function useCancelGiveaway() {
     },
   });
 }
-
 export function useGiveawayClaims(giveawayId: string) {
   return useQuery({
     queryKey: ['claims', giveawayId],
-    queryFn: () => apiClient.get<Claim[]>(`/giveaways/${giveawayId}/claims`),
+    queryFn: async () => {
+      const res = await apiClient.get<{ items: Claim[] } | Claim[]>(`/giveaways/${giveawayId}/claims`);
+      return Array.isArray(res) ? res : res.items ?? [];
+    },
     enabled: !!giveawayId,
   });
 }
