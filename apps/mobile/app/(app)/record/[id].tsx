@@ -167,19 +167,21 @@ export default function RecordDetail() {
           {/* Quick Edit & Delete Header Controls */}
           <View style={styles.headerIcons}>
             <Pressable
+              testID="record-edit-header-btn"
               accessibilityRole="button"
               accessibilityLabel="Edit item details"
               onPress={() => setShowEditModal(true)}
               style={({ pressed }) => [
-                styles.iconBtn,
+                styles.editPillBtn,
                 {
-                  backgroundColor: theme.colors.bgElevated,
-                  borderColor: theme.colors.border,
-                  opacity: pressed ? 0.7 : 1,
+                  backgroundColor: theme.colors.primaryLight,
+                  borderColor: theme.colors.primary,
+                  opacity: pressed ? 0.75 : 1,
                 },
               ]}
             >
-              <Ionicons name="pencil-outline" size={18} color={theme.colors.primary} />
+              <Ionicons name="pencil" size={14} color={theme.colors.primaryDark} />
+              <Text style={[styles.editPillText, { color: theme.colors.primaryDark }]}>Edit</Text>
             </Pressable>
             <Pressable
               testID="record-delete"
@@ -403,13 +405,22 @@ export default function RecordDetail() {
         ]}
       >
         <View style={styles.actionRow}>
-          <View style={{ flex: 2 }}>
+          <View style={{ flex: 1.3 }}>
             <Button
               testID="record-mark-consumed"
-              label="Mark as used"
+              label="Mark used"
               icon="checkmark-circle-outline"
               variant="primary"
               onPress={() => void mark('consumed')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              testID="record-edit-button"
+              label="Edit"
+              icon="create-outline"
+              variant="secondary"
+              onPress={() => setShowEditModal(true)}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -423,7 +434,6 @@ export default function RecordDetail() {
           </View>
         </View>
       </View>
-
       {/* Quick Edit Modal */}
       <QuickEditModal
         visible={showEditModal}
@@ -481,6 +491,21 @@ const styles = StyleSheet.create({
   headerIcons: {
     flexDirection: 'row',
     gap: 8,
+  },
+  editPillBtn: {
+    minHeight: 38,
+    minWidth: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    borderRadius: 19,
+    borderWidth: 1,
+  },
+  editPillText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   iconBtn: {
     width: 38,
