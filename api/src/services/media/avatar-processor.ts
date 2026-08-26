@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { getConfig } from '../../config.js';
 import { AppError } from '../../errors.js';
@@ -89,10 +89,24 @@ export async function processAvatarUpload(input: {
       .toBuffer(),
   ]);
 
-  await mkdir(dirname(displayDiskPath), { recursive: true });
+  const avatarDir = dirname(displayDiskPath);
+  const userDir = dirname(avatarDir);
+  const publicAvatarsDir = dirname(userDir);
+
+  await mkdir(avatarDir, { recursive: true });
   await Promise.all([
-    writeFile(displayDiskPath, displayBuffer),
-    writeFile(thumbDiskPath, thumbBuffer),
+    chmod(avatarDir, 0o755).catch(() => {}),
+    chmod(userDir, 0o755).catch(() => {}),
+    chmod(publicAvatarsDir, 0o755).catch(() => {}),
+  ]);
+
+  await Promise.all([
+    writeFile(displayDiskPath, displayBuffer, { mode: 0o644 }),
+    writeFile(thumbDiskPath, thumbBuffer, { mode: 0o644 }),
+  ]);
+  await Promise.all([
+    chmod(displayDiskPath, 0o644).catch(() => {}),
+    chmod(thumbDiskPath, 0o644).catch(() => {}),
   ]);
 
   const avatarUrl = publicMediaUrl(cfg.publicBaseUrl, storageKeyPrefix, 'display');
