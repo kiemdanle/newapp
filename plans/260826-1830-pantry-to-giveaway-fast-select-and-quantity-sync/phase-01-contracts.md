@@ -45,7 +45,7 @@ export const giveawaySchema = z.object({
   country: z.string().length(2).nullable(),
   status: giveawayStatusSchema,
   selectedRecipientId: z.string().uuid().nullable(),
-  quantity: z.number().int().positive().default(1),
+  quantity: z.number().positive().default(1),
   unit: z.string().max(16).default('pcs'),
   expiryDate: z.string().nullable().optional(),
   claimExpiresAt: z.string().datetime().nullable(),
@@ -75,7 +75,7 @@ export const giveawayCreateSchema = z.object({
   locationText: locationField,
   photoUrl: z.string().url().optional(),
   photoUrls: z.array(z.string().url()).optional(),
-  quantity: z.coerce.number().int().min(1).max(100000).default(1),
+  quantity: z.coerce.number().positive().max(100000).default(1),
   unit: z.string().trim().max(16).default('pcs'),
   claimExpiresAt: z
     .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
@@ -97,7 +97,7 @@ export const giveawayPatchSchema = z
     locationText: locationField.optional(),
     photoUrl: z.string().url().nullable().optional(),
     photoUrls: z.array(z.string().url()).optional(),
-    quantity: z.coerce.number().int().min(1).max(100000).optional(),
+    quantity: z.coerce.number().positive().max(100000).optional(),
     unit: z.string().trim().max(16).optional(),
     claimExpiresAt: z
       .union([z.string().datetime(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])

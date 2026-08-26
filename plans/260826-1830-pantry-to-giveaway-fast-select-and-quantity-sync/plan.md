@@ -79,8 +79,29 @@ sequenceDiagram
 
 ## Critical Invariants & Security Mandates
 
-1. **Authorization Guard**: When `input.recordId` is supplied during giveaway creation, the backend MUST verify that `record.userId === req.user.id` (or user is a member of the record's household), throwing a 403 Forbidden otherwise.
-2. **Quantity Bounds**: `giveaway.quantity` must be a positive integer (`min(1)`), and when created from a record, cannot exceed the current available `record.quantity`.
-3. **Concurrency & Race Condition Safety**: Claim selection (`POST /giveaways/:id/select`) MUST execute the giveaway status change and record quantity deduction inside a single `prisma.$transaction` using row-level locking (`SELECT ... FOR UPDATE` or optimistic atomic decrement) to prevent balance race exploits.
-4. **Idempotency & Rollback Safety**: If a claimed giveaway is subsequently cancelled or rejected before handoff, quantity restoration or status transitions must adhere to deterministic state rules.
-5. **Zero-Friction Offline/Local Sync**: Mobile client must leverage existing WatermelonDB local record stores so selecting a pantry item works instantly even with poor connectivity.
+1. **Authorization Guard**: When `input.recordId` is supplied during giveaway creation, the backend MUST call `assertCanWriteRecord(record, req.user.id)` to verify personal ownership or active household membership, throwing 404/403 without leaking existence.
+2. **Quantity Bounds & Decimal Support**: `giveaway.quantity` supports positive numbers (`z.coerce.number().positive().max(100_000)`), compatible with decimal units (`0.5 kg`, `1.5 l`), and cannot exceed the available `record.quantity`.
+3. **Concurrency & Race Condition Safety**: Claim selection (`POST /giveaways/:id/select`) MUST execute the giveaway status change and record quantity deduction inside a single `prisma.$transaction` using row-level locking or optimistic atomic constraints to prevent negative quantity race conditions.
+4. **Resilient Lifecycle & Rollback Safety**: If a claimed giveaway is cancelled before handoff, quantity is safely restored to the record if present. If the record was deleted prior to claim/cancellation, operations proceed gracefully.
+5. **Zero-Friction Offline/Local Sync**: Mobile client queries local WatermelonDB records so selecting a pantry item works instantly even offline.
+
+---
+
+## Red Team Review
+
+### Session — 2026-08-26
+**Findings:** 5 (5 accepted, 0 rejected)  
+**Severity breakdown:** 1 Critical, 3 High, 1 Medium  
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Household Record Authorization Guard Bypass | High | Accept | Phase 2 (`create.ts`, `assertCanWriteRecord`) |
+| 2 | Decimal Quantity Incompatibility (`kg`, `l`) | Critical | Accept | Phase 1 & Phase 2 (`z.coerce.number().positive()`, `DOUBLE PRECISION`) |
+| 3 | Pre-Claim Consumption/Deletion Edge Case | High | Accept | Phase 2 (`select.ts`) |
+| 4 | Cancellation Quantity Restoration on Deleted Record | Medium | Accept | Phase 2 (`cancel.ts`) |
+| 5 | Atomic Quantity Decrement & Concurrency Guard | High | Accept | Phase 2 (`select.ts`) |
+
+### Whole-Plan Consistency Sweep
+- Reconciled decimal quantities across Phase 1 (`packages/shared`), Phase 2 (`api`), and Phase 3 (`apps/mobile`).
+- Updated `create.ts` authorization guard to use `assertCanWriteRecord`.
+- Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents.

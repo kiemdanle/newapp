@@ -11,10 +11,10 @@ dependencies: [1]
 ## Overview
 Add database support for giveaway quantity, enforce record ownership on creation, and atomically deduct or remove linked pantry items inside PostgreSQL transactions when a giveaway is claimed or completed.
 ### Functional Requirements
-- **Database Schema**: Add `quantity INT NOT NULL DEFAULT 1` and `unit VARCHAR(16) NOT NULL DEFAULT 'pcs'` to PostgreSQL `giveaways` table and Prisma schema.
+- **Database Schema**: Add `quantity DOUBLE PRECISION NOT NULL DEFAULT 1` and `unit VARCHAR(16) NOT NULL DEFAULT 'pcs'` to PostgreSQL `giveaways` table and Prisma schema (`quantity Float @default(1)`).
 - **Creation Guard & Scope (`create.ts`)**:
   - When `input.recordId` is present:
-    - Verify record exists and belongs either directly to `req.user.id` OR to a household where `req.user.id` is an active member.
+    - Call `await assertCanWriteRecord(record, req.user.id)` from `services/households/permissions.js` to ensure the caller has verified access (personal owner or active household member), throwing 404/403 properly without leaking existence.
     - Validate that `input.quantity <= record.quantity` (cannot give away more than available in pantry).
     - If `input.productId` is not explicitly provided, auto-link `productId = record.productId`.
     - If `input.expiryDate` is not explicitly provided, auto-populate `expiryDate = record.expiryDate`.
@@ -22,14 +22,18 @@ Add database support for giveaway quantity, enforce record ownership on creation
   - Inside `prisma.$transaction`:
     - When giver selects a claimer (`status = 'claimed'`), if `giveaway.recordId` is set:
       - Acquire row lock on `Record` with `findUnique`.
-      - Calculate `newQuantity = record.quantity - giveaway.quantity`.
-      - If `newQuantity > 0`: Update `record.quantity = newQuantity`.
-      - If `newQuantity <= 0`: Set `record.quantity = 0`, `record.status = 'consumed'`, and `record.consumedAt = new Date()`.
+      - If record exists and is `active`:
+        - Calculate `newQuantity = record.quantity - giveaway.quantity`.
+        - If `newQuantity > 0`: Update `record.quantity = newQuantity`.
+        - If `newQuantity <= 0`: Set `record.quantity = 0`, `record.status = 'consumed'`, and `record.consumedAt = new Date()`.
+      - If record is already `consumed` or deleted: proceed gracefully without failing the claim transaction (logs warning).
 - **Cancellation Quantity Restoration (`cancel.ts`)**:
   - If a claimed giveaway is cancelled before completion, inside `prisma.$transaction`:
     - Check if `giveaway.recordId` is linked and was previously deducted during claim selection (`status === 'claimed'`).
-    - If record is `consumed` with `quantity === 0`: restore `quantity = giveaway.quantity`, `status = 'active'`, and `consumedAt = null`.
-    - If record is `active`: restore `quantity = record.quantity + giveaway.quantity`.
+    - If record is found:
+      - If record is `consumed` with `quantity === 0`: restore `quantity = giveaway.quantity`, `status = 'active'`, and `consumedAt = null`.
+      - If record is `active`: restore `quantity = record.quantity + giveaway.quantity`.
+    - If record was deleted: skip quantity restoration without failing the cancellation.
 - **Repository Output (`repository.ts`)**:
   - `toApiGiveaway` outputs `quantity` and `unit` on all giveaway endpoints.
 ## Implementation Details
@@ -37,7 +41,7 @@ Add database support for giveaway quantity, enforce record ownership on creation
 ### 1. Prisma & Migration
 ```sql
 -- api/prisma/migrations/20260826190000_add_giveaway_quantity/migration.sql
-ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS quantity INT NOT NULL DEFAULT 1;
+ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS quantity DOUBLE PRECISION NOT NULL DEFAULT 1;
 ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS unit VARCHAR(16) NOT NULL DEFAULT 'pcs';
 ```
 
