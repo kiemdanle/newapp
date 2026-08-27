@@ -72,7 +72,7 @@ async function makePrivatePhoto(
 }
 
 describe('GET /v1/products/:productId/photos/:photoId/:variant', () => {
-  it('allows the owning creator to fetch their own private photo bytes with no-store headers', async () => {
+  it('allows the owning creator to fetch their own private photo bytes with caching headers and 304 support', async () => {
     const app = await buildServer();
     const { user, headers } = await authHeaders();
     const product = await makeProduct(user.id);
@@ -84,8 +84,17 @@ describe('GET /v1/products/:productId/photos/:photoId/:variant', () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toBe('image/webp');
     expect(res.headers['x-content-type-options']).toBe('nosniff');
-    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(res.headers['cache-control']).toBe('private, max-age=86400, stale-while-revalidate=604800');
+    expect(res.headers['etag']).toBeDefined();
     expect(res.rawPayload.toString()).toBe('hello-display');
+
+    // Conditional request with ETag -> 304 Not Modified
+    const notModified = await app.inject({
+      method: 'GET',
+      url: `/v1/products/${product.id}/photos/${photo.id}/display`,
+      headers: { ...headers, 'if-none-match': res.headers['etag'] as string },
+    });
+    expect(notModified.statusCode).toBe(304);
     await app.close();
   });
 
@@ -290,7 +299,8 @@ describe('GET /v1/product-edits/:editId/photos/:photoId/:variant', () => {
     const res = await app.inject({ method: 'GET', url: `/v1/product-edits/${edit.id}/photos/${editPhoto.id}/display`, headers });
     expect(res.statusCode).toBe(200);
     expect(res.rawPayload.toString()).toBe('staged-bytes');
-    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(res.headers['cache-control']).toBe('private, max-age=86400, stale-while-revalidate=604800');
+    expect(res.headers['etag']).toBeDefined();
     await app.close();
   });
 
@@ -331,9 +341,10 @@ describe('GET /v1/product-edits/:editId/photos/:photoId/:variant', () => {
   it('rejects a photo ID requested through the wrong edit ID (mismatched parent)', async () => {
     const app = await buildServer();
     const { user, headers } = await authHeaders();
-    const product = await makeProduct(user.id, 'active');
-    const editA = await makeProductEdit(user.id, product.id);
-    const editB = await getPrisma().productEdit.create({ data: { productId: product.id, submittedBy: user.id, proposed: {}, isLegacy: true } });
+    const productA = await makeProduct(user.id, 'active');
+    const productB = await makeProduct(user.id, 'active');
+    const editA = await makeProductEdit(user.id, productA.id);
+    const editB = await makeProductEdit(user.id, productB.id);
     const prefix = privateProductEditPhotoPrefix(editA.id, randomUUID(), randomUUID());
     await writeVariantBytes(prefix, 'edit-a-only');
     const editPhoto = await getPrisma().productEditPhoto.create({

@@ -60,11 +60,19 @@ export async function privateMediaRoute(app: FastifyInstance) {
     // multiply directly into heap. `stat` first (cheap, no content read) so a
     // missing file still 404s cleanly instead of surfacing as a stream error
     // after headers may already be committed.
-    await stat(path).catch(() => notFound());
+    const fileStat = await stat(path).catch(() => notFound());
+    const etag = `"${photo.id}-${variant}-${fileStat.size}-${Math.floor(fileStat.mtimeMs)}"`;
+
+    if (req.headers['if-none-match'] === etag) {
+      void reply.status(304);
+      return reply.send();
+    }
 
     void reply.header('Content-Type', 'image/webp');
     void reply.header('X-Content-Type-Options', 'nosniff');
-    void reply.header('Cache-Control', 'private, no-store');
+    void reply.header('ETag', etag);
+    void reply.header('Last-Modified', fileStat.mtime.toUTCString());
+    void reply.header('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800');
     return reply.send(createReadStream(path));
   });
 }

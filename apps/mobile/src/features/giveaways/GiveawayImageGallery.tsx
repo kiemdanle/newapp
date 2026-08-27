@@ -124,9 +124,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
               style={{ width: containerWidth, height: heroHeight }}
             >
               <Image
-                source={{ uri: url }}
+                source={{ uri: url, cache: 'force-cache' }}
                 style={styles.heroImage}
                 resizeMode="cover"
+                fadeDuration={100}
                 accessibilityIgnoresInvertColors
               />
             </Pressable>
@@ -169,9 +170,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
                 ]}
               >
                 <Image
-                  source={{ uri: url }}
+                  source={{ uri: url, cache: 'force-cache' }}
                   style={styles.thumbImage}
                   resizeMode="cover"
+                  fadeDuration={100}
                   accessibilityIgnoresInvertColors
                 />
                 {idx === 0 && (
@@ -224,9 +226,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
           {/* Center Main Photo Viewer */}
           <View style={styles.modalViewerWrap}>
             <Image
-              source={{ uri: photos[modalIndex] }}
+              source={{ uri: photos[modalIndex], cache: 'force-cache' }}
               style={styles.modalMainImage}
               resizeMode="contain"
+              fadeDuration={100}
               accessibilityIgnoresInvertColors
             />
           </View>
@@ -263,9 +266,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
                     ]}
                   >
                     <Image
-                      source={{ uri: url }}
+                      source={{ uri: url, cache: 'force-cache' }}
                       style={styles.modalThumbImage}
                       resizeMode="cover"
+                      fadeDuration={100}
                       accessibilityIgnoresInvertColors
                     />
                   </Pressable>

@@ -185,9 +185,10 @@ export function GiveawayCard({
           <View style={styles.thumbnailWrap}>
             {imageUrl ? (
               <Image
-                source={{ uri: imageUrl }}
+                source={{ uri: imageUrl, cache: 'force-cache' }}
                 style={[styles.thumbnail, { borderRadius: theme.radii.md }]}
                 resizeMode="cover"
+                fadeDuration={100}
                 accessibilityIgnoresInvertColors
               />
             ) : (

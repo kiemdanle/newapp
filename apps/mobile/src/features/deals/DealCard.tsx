@@ -86,9 +86,10 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
         {/* Product Thumbnail */}
         {imageUrl ? (
           <Image
-            source={{ uri: imageUrl }}
+            source={{ uri: imageUrl, cache: 'force-cache' }}
             style={[styles.thumbnail, { borderRadius: theme.radii.md }]}
             resizeMode="cover"
+            fadeDuration={100}
           />
         ) : (
           <View

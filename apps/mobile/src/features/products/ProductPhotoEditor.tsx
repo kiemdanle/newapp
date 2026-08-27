@@ -262,9 +262,10 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
             {photo.retained ? (
               <Image
                 testID={`photo-${photo.id}-image`}
-                source={{ uri: photo.thumbnailUrl }}
+                source={{ uri: photo.thumbnailUrl, cache: 'force-cache' }}
                 accessibilityIgnoresInvertColors
                 style={styles.photoImage}
+                fadeDuration={100}
               />
             ) : (
               <PrivateProductImage

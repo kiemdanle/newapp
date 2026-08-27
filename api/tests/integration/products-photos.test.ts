@@ -261,3 +261,36 @@ describe('reorderProductPhotos', () => {
     ).rejects.toMatchObject({ status: 404 });
   });
 });
+describe('publicProductMediaRoutes', () => {
+  it('serves approved public photos with 1-year immutable cache and 304 conditional support', async () => {
+    const { buildServer } = await import('../../src/server.js');
+    const { mkdir, writeFile } = await import('node:fs/promises');
+    const { resolveMediaPath } = await import('../../src/services/products/product-media-storage.js');
+    const app = await buildServer();
+
+    const productId = randomUUID();
+    const publicationId = randomUUID();
+    const diskPath = resolveMediaPath(root, 'public', 'products', productId, publicationId, 'display.webp');
+    await mkdir(resolveMediaPath(root, 'public', 'products', productId, publicationId), { recursive: true });
+    await writeFile(diskPath, 'public-image-content');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/v1/products/${productId}/${publicationId}/display.webp`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toBe('image/webp');
+    expect(res.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expect(res.headers['etag']).toBeDefined();
+    expect(res.rawPayload.toString()).toBe('public-image-content');
+
+    // 304 Not Modified on matching ETag
+    const conditional = await app.inject({
+      method: 'GET',
+      url: `/v1/products/${productId}/${publicationId}/display.webp`,
+      headers: { 'if-none-match': res.headers['etag'] as string },
+    });
+    expect(conditional.statusCode).toBe(304);
+    await app.close();
+  });
+});

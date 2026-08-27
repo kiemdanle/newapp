@@ -40,7 +40,7 @@ function errorResponse(status: number): NextResponse {
  * opens an upstream connection in that case). Bytes are streamed through, never
  * buffered, and served through `next/image`'s optimizer or a bearer-bearing URL.
  */
-export async function GET(_req: NextRequest, ctx: { params: Promise<Record<string, string>> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<Record<string, string>> }) {
   const parsed = paramsSchema.safeParse(await ctx.params);
   if (!parsed.success) return errorResponse(404);
   const { targetKind, parentId, photoId, variant } = parsed.data;
@@ -52,19 +52,29 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<Record<strin
   const env = getAdminEnv();
   const upstreamUrl = `${env.apiBaseUrl}${UPSTREAM_PREFIX[targetKind]}/${parentId}/photos/${photoId}/${variant}`;
 
+  const ifNoneMatch = req.headers.get('if-none-match');
+  const requestHeaders: Record<string, string> = { authorization: `Bearer ${access}` };
+  if (ifNoneMatch) requestHeaders['if-none-match'] = ifNoneMatch;
+
   let upstream: Response;
   try {
     upstream = await fetch(upstreamUrl, {
-      headers: { authorization: `Bearer ${access}` },
+      headers: requestHeaders,
       cache: 'no-store',
-      // A private media route should never redirect. `manual` turns any upstream
-      // redirect into an opaque response instead of transparently following it —
-      // never forward a Location header that could carry the bearer-bearing
-      // upstream URL back toward the browser.
       redirect: 'manual',
     });
   } catch {
     return errorResponse(502);
+  }
+
+  if (upstream.status === 304) {
+    return new NextResponse(null, {
+      status: 304,
+      headers: {
+        'Cache-Control': 'private, max-age=86400, stale-while-revalidate=604800',
+        ...(upstream.headers.get('etag') ? { ETag: upstream.headers.get('etag')! } : {}),
+      },
+    });
   }
 
   if (upstream.type === 'opaqueredirect' || (upstream.status >= 300 && upstream.status < 400)) {
@@ -74,16 +84,17 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<Record<strin
     return errorResponse(upstream.status);
   }
 
+  const etag = upstream.headers.get('etag') ?? `"${photoId}-${variant}"`;
+  const lastModified = upstream.headers.get('last-modified');
+
   return new NextResponse(upstream.body, {
     status: 200,
     headers: {
-      // Forced unconditionally, never passed through from upstream — this proxy
-      // is the last point of control before the browser, and both upstream
-      // routes only ever serve `image/webp` bytes. `nosniff` alone doesn't stop
-      // a browser honoring an explicit `Content-Type` the proxy didn't intend.
       'Content-Type': 'image/webp',
-      'Cache-Control': 'private, no-store',
+      'Cache-Control': 'private, max-age=86400, stale-while-revalidate=604800',
       'X-Content-Type-Options': 'nosniff',
+      ETag: etag,
+      ...(lastModified ? { 'Last-Modified': lastModified } : {}),
     },
   });
 }

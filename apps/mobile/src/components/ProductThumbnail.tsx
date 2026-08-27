@@ -76,9 +76,13 @@ export function ProductThumbnail({
     return (
       <Image
         key={activeCandidate}
-        source={{ uri: activeCandidate }}
+        source={{
+          uri: activeCandidate,
+          cache: 'force-cache',
+        }}
         style={style}
         resizeMode="cover"
+        fadeDuration={150}
         accessibilityIgnoresInvertColors
         onError={() => {
           setFailedSources((prev) => new Set([...prev, activeCandidate]));

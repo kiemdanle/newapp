@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { z } from 'zod';
 import { ERROR_CODES } from '@expyrico/shared';
 import { getConfig } from '../../config.js';
@@ -41,11 +41,20 @@ export async function editPrivateMediaRoute(app: FastifyInstance) {
 
     const cfg = getConfig().media;
     const path = mediaKeyToPath(cfg.root, variantFileKey(editPhoto.privateStorageKey, variant as MediaVariant));
+    const fileStat = await stat(path).catch(() => notFound());
+    const etag = `"${editPhoto.id}-${variant}-${fileStat.size}-${Math.floor(fileStat.mtimeMs)}"`;
+    if (req.headers['if-none-match'] === etag) {
+      void reply.status(304);
+      return reply.send();
+    }
+
     const buffer = await readFile(path).catch(() => notFound());
 
     void reply.header('Content-Type', 'image/webp');
     void reply.header('X-Content-Type-Options', 'nosniff');
-    void reply.header('Cache-Control', 'private, no-store');
+    void reply.header('ETag', etag);
+    void reply.header('Last-Modified', fileStat.mtime.toUTCString());
+    void reply.header('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800');
     return reply.send(buffer);
   });
 }

@@ -99,12 +99,13 @@ export function Avatar({
       {showImage ? (
         <Image
           testID={`${testID}-image`}
-          source={{ uri: url! }}
+          source={{ uri: url!, cache: 'force-cache' }}
           style={{
             width: dimension,
             height: dimension,
             borderRadius: dimension / 2,
           }}
+          fadeDuration={100}
           onError={() => setImageError(true)}
           resizeMode="cover"
         />
