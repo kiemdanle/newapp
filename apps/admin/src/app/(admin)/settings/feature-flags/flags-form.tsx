@@ -2,8 +2,8 @@
 import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { saveFeatureFlagsAction } from '@/lib/actions';
-
+import { saveFeatureFlagsAction, saveProductCreationAction } from '@/lib/actions';
+import type { ProductCreationSettings } from '@expyrico/shared';
 type Flags = {
   reviewsEnabled: boolean;
   passkeysEnabled: boolean;
@@ -16,12 +16,18 @@ type Flags = {
  * banner string, then persists via the save server action (audit-logged
  * API-side). Empty banner is sent as null.
  */
-export function FlagsForm({ initial }: { initial: Flags }) {
+export function FlagsForm({
+  initial,
+  initialProductCreation,
+}: {
+  initial: Flags;
+  initialProductCreation?: ProductCreationSettings;
+}) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [flags, setFlags] = useState<Flags>(initial);
-
+  const [mode, setMode] = useState<'off' | 'internal' | 'all'>(initialProductCreation?.mode ?? 'all');
   const toggle = (k: keyof Flags) => () =>
     setFlags((f) => ({ ...f, [k]: !f[k as 'reviewsEnabled'] }));
 
@@ -30,19 +36,21 @@ export function FlagsForm({ initial }: { initial: Flags }) {
     setMsg(null);
     startTransition(async () => {
       try {
-        await saveFeatureFlagsAction({
-          reviewsEnabled: flags.reviewsEnabled,
-          passkeysEnabled: flags.passkeysEnabled,
-          ocrEnabled: flags.ocrEnabled,
-          maintenanceBanner: flags.maintenanceBanner?.trim() ? flags.maintenanceBanner.trim() : null,
-        });
+        await Promise.all([
+          saveFeatureFlagsAction({
+            reviewsEnabled: flags.reviewsEnabled,
+            passkeysEnabled: flags.passkeysEnabled,
+            ocrEnabled: flags.ocrEnabled,
+            maintenanceBanner: flags.maintenanceBanner?.trim() ? flags.maintenanceBanner.trim() : null,
+          }),
+          saveProductCreationAction({ mode }),
+        ]);
         setMsg('Saved.');
       } catch (e) {
         setErr(e instanceof Error ? e.message : 'Save failed');
       }
     });
   }
-
   const rows: { key: keyof Flags; label: string }[] = [
     { key: 'reviewsEnabled', label: 'Reviews enabled' },
     { key: 'passkeysEnabled', label: 'Passkeys enabled' },
@@ -72,6 +80,60 @@ export function FlagsForm({ initial }: { initial: Flags }) {
             className="mt-1"
           />
         </label>
+      </div>
+
+      {/* Product Creation Gate Mode */}
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Community Product Creation Mode</h3>
+          <p className="text-xs text-muted-foreground">
+            Controls whether users scanning uncatalogued barcodes can create new products for the catalog.
+          </p>
+        </div>
+        <div className="space-y-2 pt-1">
+          <label className="flex items-center gap-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="product_creation_mode"
+              value="all"
+              checked={mode === 'all'}
+              onChange={() => setMode('all')}
+              className="h-4 w-4 text-primary"
+            />
+            <div>
+              <span className="font-medium">All users (Enabled - Recommended)</span>
+              <p className="text-xs text-muted-foreground">Any user can create new products when scanning an uncatalogued item.</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="product_creation_mode"
+              value="internal"
+              checked={mode === 'internal'}
+              onChange={() => setMode('internal')}
+              className="h-4 w-4 text-primary"
+            />
+            <div>
+              <span className="font-medium">Internal / Admins only</span>
+              <p className="text-xs text-muted-foreground">Only admin users and internal allowlist can submit new products.</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="product_creation_mode"
+              value="off"
+              checked={mode === 'off'}
+              onChange={() => setMode('off')}
+              className="h-4 w-4 text-primary"
+            />
+            <div>
+              <span className="font-medium">Disabled (Off)</span>
+              <p className="text-xs text-muted-foreground">No one can create new products; users can only save custom pantry items.</p>
+            </div>
+          </label>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <Button size="sm" disabled={pending} onClick={save}>

@@ -44,6 +44,14 @@ async function main() {
   }
   // eslint-disable-next-line no-console
   console.log('Seeded default notification templates');
+
+  await prisma.setting.upsert({
+    where: { key: 'product_creation' },
+    update: { value: { mode: 'all' } },
+    create: { key: 'product_creation', value: { mode: 'all' } },
+  });
+  // eslint-disable-next-line no-console
+  console.log('Seeded product_creation setting to mode: all');
 }
 
 main()

@@ -181,6 +181,11 @@ export async function saveFeatureFlagsAction(body: {
   revalidatePath('/settings/feature-flags');
 }
 
+export async function saveProductCreationAction(body: { mode: 'off' | 'internal' | 'all' }) {
+  await serverAdminApi.settings.productCreation.patch(body);
+  revalidatePath('/settings/feature-flags');
+}
+
 export async function saveModerationAction(body: {
   autoHideReportThreshold: number;
   profanitySensitivity: 'low' | 'medium' | 'high';

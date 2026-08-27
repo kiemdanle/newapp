@@ -4,7 +4,12 @@ import { featureFlagsSchema, moderationSettingsSchema, productCreationSettingsSc
 
 export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T): Promise<z.infer<T>> {
   const row = await getPrisma().setting.findUnique({ where: { key } });
-  if (!row) throw new Error(`Setting ${key} missing — run seed-admin`);
+  if (!row) {
+    if (key === SETTING_KEYS.PRODUCT_CREATION) {
+      return schema.parse({ mode: 'all' });
+    }
+    throw new Error(`Setting ${key} missing — run seed-admin`);
+  }
   return schema.parse(row.value);
 }
 

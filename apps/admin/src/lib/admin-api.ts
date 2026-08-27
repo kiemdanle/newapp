@@ -39,6 +39,7 @@ import {
   moderationNotificationSummarySchema,
   featureFlagsSchema,
   moderationSettingsSchema,
+  productCreationSettingsSchema,
   notificationTemplateSchema,
   adminRowSchema,
   adminDealsListSchema,
@@ -230,6 +231,17 @@ export const serverAdminApi = {
         apiServerFetch('/v1/admin/settings/moderation', { method: 'PATCH', body }).then((r) =>
           moderationSettingsSchema.parse(r),
         ),
+    },
+    productCreation: {
+      get: () =>
+        apiServerFetch('/v1/admin/settings/product-creation').then((r) =>
+          productCreationSettingsSchema.parse(r),
+        ),
+      patch: (body: { mode: 'off' | 'internal' | 'all' }) =>
+        apiServerFetch('/v1/admin/settings/product-creation', {
+          method: 'PATCH',
+          body,
+        }).then((r) => productCreationSettingsSchema.parse(r)),
     },
     notificationTemplates: {
       list: () =>
