@@ -10,6 +10,7 @@ const VARIANTS: Record<string, 'good' | 'expiring' | 'expired' | 'neutral'> = {
   hidden: 'neutral',
   open: 'expiring',
   halfOpen: 'expiring',
+  changes_required: 'expiring',
   suspended: 'expired',
   deleted: 'expired',
   failed: 'expired',
@@ -20,18 +21,24 @@ const VARIANTS: Record<string, 'good' | 'expiring' | 'expired' | 'neutral'> = {
 };
 
 const DOT_COLORS: Record<string, string> = {
-  good: 'bg-primary',
-  expiring: 'bg-accent',
-  expired: 'bg-expired',
-  neutral: 'bg-neutral-mid',
+  good: 'bg-emerald-500',
+  expiring: 'bg-amber-500',
+  expired: 'bg-red-500',
+  neutral: 'bg-neutral-400',
 };
 
 export function StatusBadge({ status }: { status: string }) {
   const variant = VARIANTS[status] ?? 'neutral';
+  const isExpiring = variant === 'expiring';
+
   return (
-    <Badge variant={variant} className="gap-1.5">
-      <span className={`inline-block h-1.5 w-1.5 rounded-full ${DOT_COLORS[variant]}`} />
-      {status}
+    <Badge variant={variant} className="gap-1.5 capitalize">
+      <span
+        className={`inline-block h-1.5 w-1.5 rounded-full ${DOT_COLORS[variant]} ${
+          isExpiring ? 'animate-pulse' : ''
+        }`}
+      />
+      {status.replace(/_/g, ' ')}
     </Badge>
   );
 }

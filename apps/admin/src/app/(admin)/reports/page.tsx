@@ -4,6 +4,7 @@ import { DataTable, type Column } from '@/components/data-table';
 import { LoadMore } from '@/components/load-more';
 import { StatusBadge } from '@/components/status-badge';
 import { FilterBar, SelectFilter } from '@/components/filter-bar';
+import { Flag, ArrowRight, Tag } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,29 +25,70 @@ export default async function ReportsPage({
 
   const columns: Column<Row>[] = [
     {
-      header: 'Target',
+      header: 'Reported Target',
       cell: (r) => (
-        <Link href={`/reports/${r.id}`} className="font-medium hover:underline">
-          {r.targetType}
-        </Link>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded-md bg-neutral-light px-2 py-0.5 text-xs font-semibold text-neutral-dark uppercase">
+            {r.targetType}
+          </span>
+          <Link
+            href={`/reports/${r.id}`}
+            className="inline-flex items-center gap-1 font-semibold text-neutral-dark hover:text-primary transition-colors text-xs"
+          >
+            <span>Inspect report</span>
+            <ArrowRight size={12} />
+          </Link>
+        </div>
       ),
     },
-    { header: 'Reason', cell: (r) => r.reason },
     {
-      header: 'Detail',
-      cell: (r) => <span className="text-neutral-mid">{r.body ?? '—'}</span>,
+      header: 'Report Reason',
+      cell: (r) => (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200/80 px-2.5 py-0.5 text-xs font-semibold">
+          <Tag size={11} className="text-amber-600" />
+          <span className="capitalize">{r.reason}</span>
+        </span>
+      ),
+    },
+    {
+      header: 'Report Details',
+      cell: (r) => (
+        <div className="max-w-md truncate text-xs text-neutral-dark">
+          {r.body || <span className="italic text-neutral-mid">—</span>}
+        </div>
+      ),
     },
     { header: 'Status', cell: (r) => <StatusBadge status={r.status} /> },
-    { header: 'Reported', cell: (r) => new Date(r.createdAt).toLocaleDateString() },
+    {
+      header: 'Reported At',
+      cell: (r) => (
+        <span className="text-xs text-neutral-mid font-mono">
+          {new Date(r.createdAt).toLocaleDateString()}
+        </span>
+      ),
+    },
   ];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-[28px] font-semibold text-neutral-dark font-display">Reports</h1>
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
+          <Flag size={14} />
+          <span>Trust & Safety</span>
+        </div>
+        <h1 className="text-3xl font-bold text-neutral-dark font-display tracking-tight mt-1">
+          User Reports
+        </h1>
+        <p className="text-sm text-neutral-mid mt-0.5">
+          Triage and resolve abuse, spam, and incorrect content reports submitted by community members.
+        </p>
+      </div>
+
       <FilterBar action="/reports">
         <SelectFilter
           name="status"
-          label="Status"
+          label="Report Status"
           value={query.status}
           options={[
             { value: 'open', label: 'Open' },
@@ -56,7 +98,7 @@ export default async function ReportsPage({
         />
         <SelectFilter
           name="targetType"
-          label="Target type"
+          label="Target Type"
           value={sp.targetType}
           options={[
             { value: 'review', label: 'Review' },
@@ -66,7 +108,8 @@ export default async function ReportsPage({
           ]}
         />
       </FilterBar>
-      <DataTable data={items} columns={columns} empty="No reports match these filters." />
+
+      <DataTable data={items} columns={columns} empty="No user reports match these criteria." />
       <LoadMore basePath="/reports" params={query} nextCursor={nextCursor} />
     </div>
   );

@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     serverAdminApi.system.moderationNotifications.summary(),
   ]);
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header email={me.email} menuTrigger={<SidebarDrawer pendingModerationCount={moderationSummary.total} />} />
       <div className="flex flex-1">
         {/* Desktop sidebar — hidden on mobile */}
@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Sidebar pendingModerationCount={moderationSummary.total} />
         </div>
         {/* Main content */}
-        <main className="flex-1 overflow-auto px-4 py-6 sm:px-6 lg:px-8 max-w-[1400px]">
+        <main className="flex-1 overflow-auto px-4 py-8 sm:px-6 lg:px-8 max-w-[1440px] mx-auto w-full">
           {children}
         </main>
       </div>

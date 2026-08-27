@@ -4,23 +4,22 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold ring-offset-background transition-all outline-none focus-visible:ring-4 focus-visible:ring-primary/20 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.99] select-none',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary-dark',
-        // Non-destructive emphasis (e.g. "request changes", "needs attention").
-        // Alert Red (`destructive`) stays reserved for actually destructive actions
-        // per docs/design-guidelines.md — never use it for emphasis alone.
-        accent: 'bg-accent text-accent-foreground hover:bg-accent/90',
-        destructive: 'text-expired hover:bg-red-50',
-        outline: 'border bg-background text-neutral-dark hover:bg-neutral-light',
-        ghost: 'text-neutral-mid hover:bg-neutral-light hover:text-neutral-dark',
+        default: 'bg-primary text-white shadow-sm hover:bg-primary-dark shadow-xs',
+        accent: 'bg-accent text-accent-foreground shadow-sm hover:bg-accent/90',
+        destructive: 'bg-red-50 text-red-700 border border-red-200/80 hover:bg-red-100',
+        outline: 'border border-neutral-300 bg-white text-neutral-dark hover:bg-neutral-light hover:border-neutral-400 shadow-xs',
+        ghost: 'text-neutral-mid hover:bg-neutral-light/70 hover:text-neutral-dark',
+        secondary: 'bg-neutral-light text-neutral-dark hover:bg-neutral-200/70',
       },
       size: {
         default: 'h-10 px-4 py-2',
-        sm: 'h-9 px-3',
-        lg: 'h-11 px-8',
+        sm: 'h-8 px-3 text-xs rounded-lg',
+        lg: 'h-12 px-6 text-base rounded-xl',
+        icon: 'h-9 w-9 p-0',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

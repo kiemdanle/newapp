@@ -1,4 +1,5 @@
 import { resolveAdminPhotoUrl } from '@/lib/admin-media';
+import { Sparkles, Layers, Image as ImageIcon } from 'lucide-react';
 
 interface LiveProductView {
   id: string;
@@ -34,72 +35,98 @@ function formatShelfLife(days: number | null | undefined): string {
 function FieldRow({ label, live, proposed }: { label: string; live: string; proposed: string }) {
   const changed = live !== proposed;
   return (
-    <tr className={changed ? 'bg-accent-light/40' : undefined}>
-      <td className="py-1 pr-3 text-xs font-medium text-neutral-mid">{label}</td>
-      <td className="py-1 pr-3 text-sm">{live}</td>
-      <td className="py-1 text-sm font-medium">{proposed}</td>
+    <tr className={`border-b border-neutral-100 transition-colors ${changed ? 'bg-amber-50/50' : 'hover:bg-neutral-50/50'}`}>
+      <td className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-neutral-mid font-body">
+        {label}
+      </td>
+      <td className="py-3 px-4 text-sm text-neutral-dark font-medium">
+        {live}
+      </td>
+      <td className="py-3 px-4 text-sm text-neutral-dark font-medium">
+        <div className="flex items-center gap-2">
+          <span>{proposed}</span>
+          {changed && (
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+              Changed
+            </span>
+          )}
+        </div>
+      </td>
     </tr>
   );
 }
 
-/**
- * Before/after comparison for a single revision: live metadata vs proposed, and
- * the complete desired photo order side by side. Every photo renders through the
- * same-origin proxy resolver — an approved/retained photo's URL is already an
- * absolute public CDN URL and passes through unchanged; anything else (a staged
- * or not-yet-approved live photo) is routed through `/api/admin-product-media/...`.
- */
 export function RevisionComparison({ live, revision }: { live: LiveProductView; revision: RevisionView }) {
   return (
-    <div className="space-y-4">
+    <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card space-y-6">
+      <div className="flex items-center gap-2">
+        <Layers className="h-5 w-5 text-primary" />
+        <h2 className="text-lg font-bold text-neutral-dark font-display">
+          Metadata & Photos Comparison
+        </h2>
+      </div>
+
       {revision.notes && (
-        <div className="rounded-lg border border-accent/30 bg-accent-light/20 p-3.5">
-          <div className="flex items-center gap-2 text-xs font-semibold text-neutral-dark">
-            <span>💡 Submitter Reason / Notes</span>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-800">
+            <Sparkles size={14} className="text-amber-600" />
+            <span>Submitter Revision Notes</span>
           </div>
-          <p className="mt-1 text-sm text-neutral-dark whitespace-pre-wrap break-words">{revision.notes}</p>
+          <p className="mt-1 text-sm text-neutral-dark whitespace-pre-wrap break-words leading-relaxed">
+            {revision.notes}
+          </p>
         </div>
       )}
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="text-left text-xs text-neutral-mid">
-            <th className="py-1 pr-3 font-medium">Field</th>
-            <th className="py-1 pr-3 font-medium">Live</th>
-            <th className="py-1 font-medium">Proposed</th>
-          </tr>
-        </thead>
-        <tbody>
-          <FieldRow label="Name" live={live.name} proposed={revision.name} />
-          <FieldRow label="Brand" live={live.brand ?? '—'} proposed={revision.brand ?? '—'} />
-          <FieldRow label="Category" live={live.category ?? '—'} proposed={revision.category ?? '—'} />
-          <FieldRow label="Description" live={live.description ?? '—'} proposed={revision.description ?? '—'} />
-          <FieldRow
-            label="Default shelf life"
-            live={formatShelfLife(live.defaultShelfLifeDays)}
-            proposed={formatShelfLife(revision.defaultShelfLifeDays)}
-          />
-        </tbody>
-      </table>
+      {/* Comparison Table */}
+      <div className="rounded-2xl border border-border overflow-hidden bg-white shadow-2xs">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-border bg-neutral-light/50 text-left text-[11px] font-bold uppercase tracking-wider text-neutral-mid select-none">
+              <th className="py-3 px-4 w-1/4">Field</th>
+              <th className="py-3 px-4 w-3/8">Live Catalog State</th>
+              <th className="py-3 px-4 w-3/8">Proposed Revision State</th>
+            </tr>
+          </thead>
+          <tbody>
+            <FieldRow label="Name" live={live.name} proposed={revision.name} />
+            <FieldRow label="Brand" live={live.brand ?? '—'} proposed={revision.brand ?? '—'} />
+            <FieldRow label="Category" live={live.category ?? '—'} proposed={revision.category ?? '—'} />
+            <FieldRow label="Description" live={live.description ?? '—'} proposed={revision.description ?? '—'} />
+            <FieldRow
+              label="Shelf Life"
+              live={formatShelfLife(live.defaultShelfLifeDays)}
+              proposed={formatShelfLife(revision.defaultShelfLifeDays)}
+            />
+          </tbody>
+        </table>
+      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <h3 className="mb-2 text-xs font-semibold text-neutral-mid">Live photos ({live.photos.length})</h3>
-          <div className="flex flex-wrap gap-2">
-            {live.photos.length === 0 && <p className="text-xs text-muted-foreground">No photos.</p>}
+      {/* Photos Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        {/* Live Photos */}
+        <div className="rounded-2xl border border-border bg-neutral-light/30 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-mid flex items-center gap-1.5">
+              <ImageIcon size={14} />
+              <span>Live Photos ({live.photos.length})</span>
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {live.photos.length === 0 && <p className="text-xs text-neutral-mid">No photos in live catalog.</p>}
             {live.photos.map((p) => {
               const isRetained = revision.photos.some((rp) => rp.retained && (rp.sourceProductPhotoId === p.id || rp.id === p.id));
               return (
-                <div key={p.id} className="relative h-16 w-16">
+                <div key={p.id} className="relative h-20 w-20 rounded-xl overflow-hidden border border-neutral-200 shadow-2xs">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={resolveAdminPhotoUrl('product', live.id, p, 'thumb')}
                     alt=""
-                    className={`h-16 w-16 rounded border object-cover ${!isRetained && revision.photos.length > 0 ? 'opacity-60' : ''}`}
+                    className={`h-full w-full object-cover transition-opacity ${!isRetained && revision.photos.length > 0 ? 'opacity-40 grayscale' : ''}`}
                   />
                   <span
-                    className={`absolute bottom-0.5 left-0.5 rounded px-1 py-0.2 text-[9px] font-semibold text-white ${
-                      isRetained ? 'bg-neutral-dark/80' : 'bg-destructive/90'
+                    className={`absolute bottom-1 left-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs ${
+                      isRetained ? 'bg-neutral-dark/90' : 'bg-destructive'
                     }`}
                   >
                     {isRetained ? 'Retained' : 'Removed'}
@@ -109,22 +136,29 @@ export function RevisionComparison({ live, revision }: { live: LiveProductView; 
             })}
           </div>
         </div>
-        <div>
-          <h3 className="mb-2 text-xs font-semibold text-neutral-mid">Proposed photos ({revision.photos.length})</h3>
-          <div className="flex flex-wrap gap-2">
-            {revision.photos.length === 0 && <p className="text-xs text-muted-foreground">No photos.</p>}
+
+        {/* Proposed Photos */}
+        <div className="rounded-2xl border border-primary/30 bg-primary-light/10 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-primary-dark flex items-center gap-1.5">
+              <Sparkles size={14} />
+              <span>Proposed Photo Set ({revision.photos.length})</span>
+            </h3>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {revision.photos.length === 0 && <p className="text-xs text-neutral-mid">No photos submitted in revision.</p>}
             {revision.photos.map((p, idx) => (
-              <div key={p.id} className="relative h-16 w-16">
+              <div key={p.id} className="relative h-20 w-20 rounded-xl overflow-hidden border-2 border-primary/40 shadow-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={resolveAdminPhotoUrl(p.retained ? 'product' : 'edit', p.retained ? live.id : revision.id, p, 'thumb')}
                   alt={p.retained ? 'Retained live photo' : 'Newly staged photo'}
                   title={p.retained ? 'Retained live photo' : 'Newly staged photo'}
-                  className="h-16 w-16 rounded border object-cover"
+                  className="h-full w-full object-cover"
                 />
                 <span
-                  className={`absolute bottom-0.5 left-0.5 rounded px-1 py-0.2 text-[9px] font-semibold text-white ${
-                    p.retained ? 'bg-neutral-dark/80' : 'bg-primary-dark'
+                  className={`absolute bottom-1 left-1 rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs ${
+                    p.retained ? 'bg-neutral-dark/90' : 'bg-primary-dark'
                   }`}
                 >
                   {idx === 0 ? (p.retained ? 'Cover (Retained)' : 'Cover (New)') : p.retained ? 'Retained' : 'New'}
