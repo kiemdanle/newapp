@@ -41,6 +41,10 @@ export async function resetPasswordRoute(app: FastifyInstance) {
         where: { userId: winner.userId, revokedAt: null },
         data: { revokedAt: new Date() },
       });
+      await tx.adminTrustedDevice.updateMany({
+        where: { userId: winner.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
       return winner.userId;
     });
 

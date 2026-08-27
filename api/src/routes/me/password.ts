@@ -93,6 +93,11 @@ export async function passwordRoute(app: FastifyInstance) {
             data: { userId, type: 'password' },
           });
         }
+        // Invalidate any active remembered devices on password change
+        await tx.adminTrustedDevice.updateMany({
+          where: { userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
 
         return u;
       });

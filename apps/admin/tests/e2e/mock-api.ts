@@ -73,11 +73,27 @@ const server = createServer(async (req, res) => {
   const method = req.method ?? 'GET';
 
   if (method === 'POST' && url === '/v1/auth/login') {
-    const body = (await readJson(req)) as { email?: string; password?: string };
+    const body = (await readJson(req)) as {
+      email?: string;
+      password?: string;
+      trustedDeviceToken?: string;
+    };
     if (
       body.email === E2E_ADMIN_ENROLLED.email &&
       body.password === E2E_ADMIN_ENROLLED.password
     ) {
+      if (body.trustedDeviceToken === 'mock-trusted-device-token') {
+        return send(res, {
+          body: {
+            user: ENROLLED_USER,
+            tokens: {
+              accessToken: ACCESS_TOKEN,
+              refreshToken: 'mock-refresh-token-enrolled',
+              expiresIn: 900,
+            },
+          },
+        });
+      }
       return send(res, { body: { requiresTotp: true, challengeToken: CHALLENGE_TOKEN } });
     }
     if (body.email === E2E_ADMIN_FRESH.email && body.password === E2E_ADMIN_FRESH.password) {
@@ -110,7 +126,11 @@ const server = createServer(async (req, res) => {
   }
 
   if (method === 'POST' && url === '/v1/auth/totp/challenge-verify') {
-    const body = (await readJson(req)) as { challengeToken?: string; code?: string };
+    const body = (await readJson(req)) as {
+      challengeToken?: string;
+      code?: string;
+      trustDevice?: boolean;
+    };
     if (body.challengeToken !== CHALLENGE_TOKEN) {
       return send(res, { status: 401, body: { code: 'invalid_challenge' } });
     }
@@ -126,6 +146,7 @@ const server = createServer(async (req, res) => {
           refreshToken: 'mock-refresh-token-enrolled',
           expiresIn: 900,
         },
+        ...(body.trustDevice ? { trustedDeviceToken: 'mock-trusted-device-token' } : {}),
       },
     });
   }

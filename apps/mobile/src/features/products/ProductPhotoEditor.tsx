@@ -6,6 +6,7 @@ import { takePhoto, choosePhotos, cleanupTemp, PhotoTooLargeError, type PickedPh
 import { PrivateProductImage, type PrivateMediaTarget } from '../../api/product-private-image';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
+import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 
 const MAX_PHOTOS = 5;
 
@@ -58,6 +59,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   const [, forceRerender] = useState(0);
   const [localQueue, setLocalQueue] = useState<LocalPhotoEntry[]>([]);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [cameraModalVisible, setCameraModalVisible] = useState(false);
 
   // The coordinator owns the authoritative server photo list; this
   // component re-renders whenever it changes by re-reading getState()
@@ -147,11 +149,18 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
     [startUpload],
   );
 
+  const onCameraCapture = useCallback((photos: PickedPhoto[]) => {
+    for (const p of photos) {
+      addPhoto(p);
+    }
+  }, [addPhoto]);
+
   const onTakePhoto = useCallback(async () => {
     setPickerError(null);
+    setCameraModalVisible(true);
     try {
       const picked = await takePhoto();
-      if (picked) addPhoto(picked); // null = user cancelled, silent per spec
+      if (picked) addPhoto(picked);
     } catch (err) {
       setPickerError(err instanceof PhotoTooLargeError ? err.message : (err as Error).message);
     }
@@ -390,6 +399,13 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
         <Button testID="photo-take" label="Take photo" icon="camera" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onTakePhoto} />
         <Button testID="photo-choose" label="Choose photos" icon="images" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onChoosePhotos} />
       </View>
+      <MultiPhotoCameraModal
+        visible={cameraModalVisible}
+        maxPhotos={remaining}
+        title="Product Photos"
+        onCapture={onCameraCapture}
+        onClose={() => setCameraModalVisible(false)}
+      />
     </View>
   );
 }

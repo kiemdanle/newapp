@@ -117,7 +117,6 @@ describe('<ProductPhotoEditor />', () => {
 
     const { getByTestId, findByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
-
     const localEntry = await findByTestId('local-photo-local-1');
     expect(localEntry).toBeTruthy();
     const progressNode = await findByTestId('local-photo-local-1-progress');
@@ -150,7 +149,6 @@ describe('<ProductPhotoEditor />', () => {
 
     const { getByTestId, findByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
-
     const retryButton = await findByTestId('local-photo-local-1-retry');
     expect(retryButton).toBeTruthy();
 
@@ -216,23 +214,22 @@ describe('<ProductPhotoEditor />', () => {
     await waitFor(() => expect(enqueue).toHaveBeenCalledTimes(2));
   });
 
-  it('a cancelled picker (null result) is silent — no queue entry, no error shown', async () => {
+  it('a cancelled camera modal is silent — no queue entry, no error shown', async () => {
     const { coordinator } = makeCoordinator(entity());
-    mockTakePhoto.mockResolvedValue(null);
 
     const { getByTestId, queryByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('multi-camera-close'));
 
-    await waitFor(() => expect(mockTakePhoto).toHaveBeenCalledTimes(1));
     expect(queryByTestId(/local-photo-/)).toBeNull();
   });
 
   it('surfaces a PhotoTooLargeError from the picker as a visible message', async () => {
     const { coordinator } = makeCoordinator(entity());
-    mockTakePhoto.mockRejectedValue(new PhotoTooLargeError(12 * 1024 * 1024));
+    mockChoosePhotos.mockRejectedValue(new PhotoTooLargeError(12 * 1024 * 1024));
 
     const { getByTestId, findByText } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
-    fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('photo-choose'));
 
     expect(await findByText(/12\.0 MB/)).toBeTruthy();
   });
@@ -377,5 +374,40 @@ describe('<ProductPhotoEditor />', () => {
       const flatStyle = Array.isArray(node.props.style) ? Object.assign({}, ...node.props.style) : node.props.style;
       expect(flatStyle.minHeight).toBeGreaterThanOrEqual(48);
     }
+  });
+
+  it('allows snapping multiple photos at once in the camera modal and adds all to the upload queue', async () => {
+    const { coordinator, enqueue, setState } = makeCoordinator(entity());
+    mockTakePhoto.mockResolvedValue(null); // native single picker resolves null
+    let uploadedCount = 0;
+    enqueue.mockImplementation(async (op: { kind: string }) => {
+      if (op.kind === 'upload') {
+        uploadedCount += 1;
+        const next = entity([...coordinator.getState().photos, { id: `multi-${uploadedCount}`, position: uploadedCount, thumbnailUrl: '/url' }]);
+        setState(next);
+        return next;
+      }
+      return coordinator.getState();
+    });
+
+    const { getByTestId, getByText, findByTestId } = render(
+      wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />),
+    );
+
+    fireEvent.press(getByTestId('photo-take'));
+    expect(await findByTestId('multi-photo-camera-modal')).toBeTruthy();
+
+    // Snap 3 photos sequentially in the camera modal
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+
+    expect(getByText('3/5')).toBeTruthy();
+    expect(getByText('Done (3)')).toBeTruthy();
+
+    // Tap Done
+    fireEvent.press(getByTestId('multi-camera-done'));
+
+    await waitFor(() => expect(enqueue).toHaveBeenCalledTimes(3));
   });
 });

@@ -18,6 +18,7 @@ export type Tokens = z.infer<typeof tokensSchema>;
 export const authResultSchema = z.object({
   user: userSchema,
   tokens: tokensSchema,
+  trustedDeviceToken: z.string().optional(),
 });
 export type AuthResult = z.infer<typeof authResultSchema>;
 
@@ -49,6 +50,7 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export const loginSchema = z.object({
   email: emailField,
   password: passwordField,
+  trustedDeviceToken: z.string().min(1).optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
@@ -134,13 +136,14 @@ export const totpVerifyEnrollmentSchema = z.object({
 export const totpChallengeVerifySchema = z.object({
   challengeToken: z.string().min(1),
   code: z.string().regex(/^\d{6}$/),
+  trustDevice: z.boolean().optional(),
 });
 /** Redeem a one-time recovery code in place of a TOTP code during login. */
 export const totpRecoveryVerifySchema = z.object({
   challengeToken: z.string().min(1),
   recoveryCode: z.string().min(1),
+  trustDevice: z.boolean().optional(),
 });
-
 // --- Change / Set Password (authenticated) ---
 
 export const changePasswordSchema = z

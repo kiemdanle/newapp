@@ -2,7 +2,12 @@ export const COOKIE_NAMES = {
   access: 'pantry_admin_access',
   refresh: 'pantry_admin_refresh',
   csrf: 'pantry_admin_csrf',
+  trustedDevice: 'pantry_admin_trusted_device',
 } as const;
+
+export const ACCESS_MAX_AGE_SEC = 60 * 15; // 15 minutes
+export const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 365; // 365 days (sliding window)
+export const TRUSTED_DEVICE_MAX_AGE_SEC = 60 * 60 * 24 * 60; // 60 days
 
 export interface SetCookieOptions {
   name: string;

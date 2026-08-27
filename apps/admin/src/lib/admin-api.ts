@@ -45,6 +45,8 @@ import {
   adminDealsListSchema,
   adminDealRowSchema,
   adminReferralOverviewSchema,
+  adminTrustedDevicesListSchema,
+  adminTrustedDeviceRevokeResponseSchema,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -306,5 +308,15 @@ export const serverAdminApi = {
       ),
     dissolve: (id: string) =>
       apiServerFetch(`/v1/admin/households/${id}`, { method: 'DELETE' }),
+  },
+  trustedDevices: {
+    list: () =>
+      apiServerFetch('/v1/admin/trusted-devices').then((r) =>
+        adminTrustedDevicesListSchema.parse(r),
+      ),
+    revoke: (id: string) =>
+      apiServerFetch(`/v1/admin/trusted-devices/${id}`, { method: 'DELETE' }).then((r) =>
+        adminTrustedDeviceRevokeResponseSchema.parse(r),
+      ),
   },
 };

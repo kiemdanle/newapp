@@ -19,7 +19,8 @@ import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
 import { Button } from '../../components/Button';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
-import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
+import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
+import { takePhoto, choosePhotos, type PickedPhoto } from '../products/photo-picker-adapter';
 import { uploadGiveawayPhoto } from '../../api/giveaways';
 const MAX_PHOTOS = 5;
 
@@ -57,6 +58,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
   const [unit, setUnit] = useState<string>('pcs');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -99,8 +101,21 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
 
   if (!giveaway) return null;
 
+  function handleCameraCapture(pickedList: PickedPhoto[]) {
+    if (pickedList && pickedList.length > 0) {
+      const newItems: LocalPhotoItem[] = pickedList.map((p, idx) => ({
+        id: `photo-${Date.now()}-${idx}-${Math.random()}`,
+        path: p.path,
+        mime: p.mime,
+      }));
+      setPhotos((prev) => [...prev, ...newItems]);
+    }
+  }
+
   async function handleTakePhoto() {
     if (photos.length >= MAX_PHOTOS) return;
+    setError(null);
+    setShowCameraModal(true);
     try {
       const picked = await takePhoto();
       if (picked) {
@@ -477,6 +492,13 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
               value={expiryDate}
               onClose={() => setShowDatePicker(false)}
               onConfirm={(iso) => setExpiryDate(iso)}
+            />
+            <MultiPhotoCameraModal
+              visible={showCameraModal}
+              maxPhotos={Math.max(0, MAX_PHOTOS - photos.length)}
+              title="Giveaway Photos"
+              onCapture={handleCameraCapture}
+              onClose={() => setShowCameraModal(false)}
             />
             {/* Description Field */}
             <View style={styles.fieldGroup}>

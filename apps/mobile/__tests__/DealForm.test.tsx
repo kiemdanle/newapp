@@ -152,4 +152,30 @@ describe('DealForm', () => {
     });
     expect(onDone).toHaveBeenCalled();
   });
+
+  it('captures proof photo via in-app camera modal and submits deal', async () => {
+    mockTakePhoto.mockResolvedValueOnce(null);
+
+    const onDone = jest.fn();
+    const { getByText, getByLabelText, getByTestId, findByTestId } = render(
+      wrap(<DealForm product={{ id: 'p-1', name: 'Oat Milk' }} onDone={onDone} />),
+    );
+
+    fireEvent.changeText(getByLabelText('price'), '3.50');
+    fireEvent.changeText(getByLabelText('store'), 'Trader Joe');
+
+    // Open camera modal
+    fireEvent.press(getByTestId('deal-photo-camera-btn'));
+    expect(await findByTestId('multi-photo-camera-modal')).toBeTruthy();
+
+    // Snap photo in modal
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    await waitFor(() => expect(getByText('Done (1)')).toBeTruthy());
+
+    // Tap Done
+    fireEvent.press(getByTestId('multi-camera-done'));
+
+    // Photo preview is shown in DealForm
+    await waitFor(() => expect(getByText('Proof Photo')).toBeTruthy());
+  });
 });

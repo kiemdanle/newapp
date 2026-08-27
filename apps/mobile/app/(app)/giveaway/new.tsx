@@ -13,8 +13,9 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
-import { choosePhotos, takePhoto } from '@/features/products/photo-picker-adapter';
+import { choosePhotos, takePhoto, type PickedPhoto } from '@/features/products/photo-picker-adapter';
 import { WheelDatePickerModal } from '@/components/WheelDatePickerModal';
+import { MultiPhotoCameraModal } from '@/components/MultiPhotoCameraModal';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
 import { formatDate } from '@/utils/country-format';
@@ -44,6 +45,7 @@ export default function NewGiveawayScreen() {
   const [expiryDate, setExpiryDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPantryModal, setShowPantryModal] = useState(false);
@@ -56,8 +58,21 @@ export default function NewGiveawayScreen() {
   const create = useCreateGiveaway();
   const pending = create.isPending || uploadingPhotos;
 
+  function handleCameraCapture(pickedList: PickedPhoto[]) {
+    if (pickedList && pickedList.length > 0) {
+      const newItems: LocalPhotoItem[] = pickedList.map((p, idx) => ({
+        id: `photo-${Date.now()}-${idx}-${Math.random()}`,
+        path: p.path,
+        mime: p.mime,
+      }));
+      setPhotos((prev) => [...prev, ...newItems]);
+    }
+  }
+
   async function handleTakePhoto() {
     if (photos.length >= MAX_PHOTOS) return;
+    setError(null);
+    setShowCameraModal(true);
     try {
       const picked = await takePhoto();
       if (picked) {
@@ -553,6 +568,13 @@ export default function NewGiveawayScreen() {
         value={expiryDate}
         onClose={() => setShowDatePicker(false)}
         onConfirm={(iso) => setExpiryDate(iso)}
+      />
+      <MultiPhotoCameraModal
+        visible={showCameraModal}
+        maxPhotos={Math.max(0, MAX_PHOTOS - photos.length)}
+        title="Giveaway Photos"
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCameraModal(false)}
       />
 
       <View style={styles.fieldGroup}>

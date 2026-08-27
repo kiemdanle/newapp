@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
 
 describe('cookies', () => {
-  it('exposes stable cookie names', () => {
+  it('exposes stable cookie names and durations', () => {
     expect(COOKIE_NAMES.access).toBe('pantry_admin_access');
     expect(COOKIE_NAMES.refresh).toBe('pantry_admin_refresh');
     expect(COOKIE_NAMES.csrf).toBe('pantry_admin_csrf');
+    expect(COOKIE_NAMES.trustedDevice).toBe('pantry_admin_trusted_device');
   });
-
   it('builds an HTTP-only access cookie with a TTL', () => {
     const c = buildSetCookie({
       name: COOKIE_NAMES.access,

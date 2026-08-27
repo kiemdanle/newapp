@@ -10,6 +10,7 @@ import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 import { takePhoto, choosePhotos, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
+import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -33,6 +34,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
   const [price, setPrice] = useState('');
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [store, setStore] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +129,15 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     fontSize: 15,
     backgroundColor: theme.colors.bgElevated,
   } as const;
+  const onCameraCapture = (pickedList: PickedPhoto[]) => {
+    if (pickedList && pickedList.length > 0 && pickedList[0]) {
+      setPhoto(pickedList[0]);
+    }
+  };
+
   const onTakePhoto = async () => {
+    setError(null);
+    setShowCameraModal(true);
     try {
       const picked = await takePhoto();
       if (picked) setPhoto(picked);
@@ -438,6 +448,13 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
           {busy ? 'Saving…' : 'Save'}
         </Text>
       </Pressable>
+      <MultiPhotoCameraModal
+        visible={showCameraModal}
+        maxPhotos={1}
+        title="Item Photo"
+        onCapture={onCameraCapture}
+        onClose={() => setShowCameraModal(false)}
+      />
     </View>
   );
 }

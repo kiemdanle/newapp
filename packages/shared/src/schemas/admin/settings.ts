@@ -43,7 +43,7 @@ export const adminRowSchema = z.object({
   totpEnabledAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
 });
-
+export type AdminRow = z.infer<typeof adminRowSchema>;
 export const adminInviteSchema = z.object({
   email: z.string().email(),
   firstName: z.string().min(1),

@@ -12,6 +12,7 @@ import { getPrisma } from '../../db.js';
 import { buildEnrollment, verifyTotp, diagnoseTotp } from '../../services/auth/totp.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
+import { issueTrustedDeviceToken } from '../../services/auth/trusted-devices.js';
 import { toApiUser } from '../../services/users/repository.js';
 import { hashToken } from '../../utils/random.js';
 
@@ -183,6 +184,17 @@ export async function totpRoutes(app: FastifyInstance) {
     });
     const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
+
+    let trustedDeviceToken: string | undefined;
+    if (input.trustDevice === true) {
+      const issued = await issueTrustedDeviceToken(user.id, {
+        ip: req.ip,
+        ...(typeof req.headers['user-agent'] === 'string'
+          ? { userAgent: req.headers['user-agent'] }
+          : {}),
+      });
+      trustedDeviceToken = issued.token;
+    }
     return reply.send({
       user: toApiUser(user),
       tokens: {
@@ -190,9 +202,9 @@ export async function totpRoutes(app: FastifyInstance) {
         refreshToken,
         expiresIn: getConfig().jwt.accessTtlSeconds,
       },
+      ...(trustedDeviceToken ? { trustedDeviceToken } : {}),
     });
   });
-
   // POST /v1/auth/totp/recovery-verify  — redeem a one-time recovery code
   app.post('/totp/recovery-verify', async (req, reply) => {
     const input = totpRecoveryVerifySchema.parse(req.body);
@@ -220,6 +232,17 @@ export async function totpRoutes(app: FastifyInstance) {
     ]);
     const accessToken = await issueAccessToken({ sub: user.id, role: user.role, tokenVersion: user.tokenVersion });
     const { refreshToken } = await createSession(user.id, { ip: req.ip });
+
+    let trustedDeviceToken: string | undefined;
+    if (input.trustDevice === true) {
+      const issued = await issueTrustedDeviceToken(user.id, {
+        ip: req.ip,
+        ...(typeof req.headers['user-agent'] === 'string'
+          ? { userAgent: req.headers['user-agent'] }
+          : {}),
+      });
+      trustedDeviceToken = issued.token;
+    }
     return reply.send({
       user: toApiUser(user),
       tokens: {
@@ -227,6 +250,7 @@ export async function totpRoutes(app: FastifyInstance) {
         refreshToken,
         expiresIn: getConfig().jwt.accessTtlSeconds,
       },
+      ...(trustedDeviceToken ? { trustedDeviceToken } : {}),
     });
   });
 }

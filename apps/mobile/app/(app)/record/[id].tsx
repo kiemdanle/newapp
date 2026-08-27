@@ -1,14 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  type TextStyle,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -23,7 +21,8 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records
 import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
 import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 import { Button } from '../../../src/components/Button';
-import { takePhoto, choosePhotos, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
+import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
+import { choosePhotos, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 function getRelativeExpiryLabel(expiryDateStr: string, country?: string | null): string {
   const today = new Date();
@@ -44,6 +43,7 @@ export default function RecordDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useRoute().params as { id: string };
   const record = useRecord(id);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const { data: product } = useProduct(record?.productId ?? undefined);
   const [showEditModal, setShowEditModal] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
@@ -147,15 +147,18 @@ export default function RecordDetail() {
     }
   };
 
+  const handleCameraCapture = async (photos: PickedPhoto[]) => {
+    if (photos.length > 0 && photos[0]) {
+      await savePhotoToRecord(photos[0]);
+    }
+  };
+
   const handlePickPhoto = () => {
     Alert.alert('Item Photo', 'Choose how you want to add a photo', [
       {
         text: 'Take Photo',
-        onPress: async () => {
-          try {
-            const picked = await takePhoto();
-            if (picked) await savePhotoToRecord(picked);
-          } catch {}
+        onPress: () => {
+          setShowCameraModal(true);
         },
       },
       {
@@ -607,6 +610,13 @@ export default function RecordDetail() {
         productName={displayName}
         onClose={() => setShowEditModal(false)}
         onSave={handleSaveQuickEdit}
+      />
+      <MultiPhotoCameraModal
+        visible={showCameraModal}
+        maxPhotos={1}
+        title="Item Photo"
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCameraModal(false)}
       />
     </View>
   );

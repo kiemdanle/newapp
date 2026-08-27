@@ -15,6 +15,7 @@ import type { Deal } from '@expyrico/shared';
 import { useCreateDeal, useDealStores, useUpdateDeal, uploadDealPhoto } from '../../api/deals';
 import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
+import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { getCountryMetadata } from '../../utils/country-format';
@@ -40,6 +41,7 @@ export function DealForm({ product, existing, onDone }: Props) {
   );
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const create = useCreateDeal();
@@ -48,7 +50,15 @@ export function DealForm({ product, existing, onDone }: Props) {
   const availableStores = storesQuery.data?.items ?? [];
 
 
+  function handleCameraCapture(pickedList: { path: string; mime?: string }[]) {
+    if (pickedList && pickedList.length > 0 && pickedList[0]) {
+      setLocalPhoto({ path: pickedList[0].path, mime: pickedList[0].mime });
+    }
+  }
+
   async function handleTakePhoto() {
+    setError(null);
+    setShowCameraModal(true);
     try {
       const picked = await takePhoto();
       if (picked) {
@@ -432,6 +442,13 @@ export function DealForm({ product, existing, onDone }: Props) {
         onClose={() => setShowDatePicker(false)}
         onConfirm={(isoDate) => setExpiryDate(isoDate)}
         title="Select Deal Expiry Date"
+      />
+      <MultiPhotoCameraModal
+        visible={showCameraModal}
+        maxPhotos={1}
+        title="Deal Photo"
+        onCapture={handleCameraCapture}
+        onClose={() => setShowCameraModal(false)}
       />
     </ScrollView>
   );

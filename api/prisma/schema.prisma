@@ -208,6 +208,7 @@ model User {
   passwordResets            PasswordReset[]
   totpChallenges            TotpChallenge[]
   totpRecoveryCodes         TotpRecoveryCode[]
+  trustedDevices            AdminTrustedDevice[]
   auditLogs                 AdminAuditLog[]     @relation("AuditAdmin")
   products                  Product[]           @relation("ProductCreator")
   productsModerated         Product[]           @relation("ProductModerator")
@@ -362,6 +363,25 @@ model TotpRecoveryCode {
 
   @@index([userId])
   @@map("totp_recovery_codes")
+}
+
+/// 60-day remembered device registration for an admin. Stored as a SHA-256 hash.
+/// A valid, non-revoked row lets an admin bypass OTP challenges on password login.
+model AdminTrustedDevice {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  deviceInfo Json?
+  ip         String?
+  expiresAt  DateTime
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("admin_trusted_devices")
 }
 
 model AdminAuditLog {

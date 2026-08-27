@@ -18,6 +18,7 @@ import { Avatar } from '../../../src/components/Avatar';
 import { TextField } from '../../../src/components/TextField';
 import { Button } from '../../../src/components/Button';
 import { CountryPickerModal } from '../../../src/components/CountryPickerModal';
+import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
 import {
   getCountryMetadata,
   type CountryMetadata,
@@ -39,6 +40,7 @@ export default function EditProfileScreen() {
   const [address, setAddress] = useState(user?.address ?? '');
   const [country, setCountry] = useState(user?.country ?? 'US');
 
+  const [isCameraModalVisible, setIsCameraModalVisible] = useState(false);
   const [isCountryModalVisible, setIsCountryModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
@@ -82,7 +84,7 @@ export default function EditProfileScreen() {
     }, [navigation]),
   );
 
-  const handleAvatarUpload = async (photoPath: string, mimeType: string) => {
+  const handleAvatarUpload = async (photoPath: string, mimeType: string = 'image/jpeg') => {
     setIsAvatarUploading(true);
     setErrorMessage(null);
     try {
@@ -138,8 +140,7 @@ export default function EditProfileScreen() {
         },
         async (buttonIndex) => {
           if (buttonIndex === 0) {
-            const photo = await takePhoto().catch(() => null);
-            if (photo) await handleAvatarUpload(photo.path, photo.mime);
+            setIsCameraModalVisible(true);
           } else if (buttonIndex === 1) {
             const photos = await choosePhotos(1).catch(() => []);
             if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
@@ -152,9 +153,8 @@ export default function EditProfileScreen() {
       Alert.alert('Profile Photo', 'Select an option', [
         {
           text: 'Take Photo',
-          onPress: async () => {
-            const photo = await takePhoto().catch(() => null);
-            if (photo) await handleAvatarUpload(photo.path, photo.mime);
+          onPress: () => {
+            setIsCameraModalVisible(true);
           },
         },
         {
@@ -175,6 +175,12 @@ export default function EditProfileScreen() {
           : []),
         { text: 'Cancel', style: 'cancel' },
       ]);
+    }
+  };
+
+  const handleCameraCapture = async (photos: { path: string; mime?: string }[]) => {
+    if (photos.length > 0 && photos[0]?.path) {
+      await handleAvatarUpload(photos[0].path, photos[0].mime ?? 'image/jpeg');
     }
   };
 
@@ -396,6 +402,13 @@ export default function EditProfileScreen() {
         selectedCountry={country}
         onSelect={handleCountrySelect}
         onClose={() => setIsCountryModalVisible(false)}
+      />
+      <MultiPhotoCameraModal
+        visible={isCameraModalVisible}
+        maxPhotos={1}
+        title="Profile Photo"
+        onCapture={handleCameraCapture}
+        onClose={() => setIsCameraModalVisible(false)}
       />
     </ScrollView>
   );

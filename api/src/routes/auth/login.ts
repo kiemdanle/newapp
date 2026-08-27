@@ -7,6 +7,7 @@ import { verifyPassword } from '../../services/auth/passwords.js';
 import { issueAccessToken } from '../../services/auth/tokens.js';
 import { createSession } from '../../services/auth/sessions.js';
 import { toApiUser } from '../../services/users/repository.js';
+import { verifyTrustedDeviceToken } from '../../services/auth/trusted-devices.js';
 import { hashToken, randomToken } from '../../utils/random.js';
 
 const INVALID = new AppError({
@@ -35,10 +36,39 @@ export async function loginRoute(app: FastifyInstance) {
       });
     }
 
-    // Admins always require TOTP.
+    // Admins require TOTP unless authenticating from a valid 60-day trusted device.
     if (user.role === 'admin') {
       if (user.totpSecret && user.totpEnabledAt) {
-        // TOTP already enabled → second-factor challenge.
+        const isTrusted = await verifyTrustedDeviceToken(
+          user.id,
+          input.trustedDeviceToken,
+          {
+            ip: req.ip,
+            ...(typeof req.headers['user-agent'] === 'string'
+              ? { userAgent: req.headers['user-agent'] }
+              : {}),
+          },
+        );
+
+        if (isTrusted) {
+          // Trusted device verified -> bypass TOTP challenge!
+          const accessToken = await issueAccessToken({
+            sub: user.id,
+            role: user.role,
+            tokenVersion: user.tokenVersion,
+          });
+          const { refreshToken } = await createSession(user.id, { ip: req.ip });
+          return reply.send({
+            user: toApiUser(user),
+            tokens: {
+              accessToken,
+              refreshToken,
+              expiresIn: getConfig().jwt.accessTtlSeconds,
+            },
+          });
+        }
+
+        // TOTP already enabled & device not trusted → second-factor challenge.
         const challengeToken = randomToken(24);
         await prisma.totpChallenge.create({
           data: {

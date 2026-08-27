@@ -63,8 +63,8 @@ async function toPickedPhoto(image: {
 }
 
 const pickerOptions = {
-  cropping: true,
-  freeStyleCropEnabled: true,
+  cropping: false,
+  freeStyleCropEnabled: false,
   mediaType: 'photo' as const,
   compressImageMaxWidth: MAX_DIMENSION,
   compressImageMaxHeight: MAX_DIMENSION,
@@ -101,6 +101,14 @@ export async function takePhoto(): Promise<PickedPhoto | null> {
     if (isPickerCancellation(err)) return null;
     throw err;
   }
+}
+
+/** Opens the camera for capturing photos (up to `maxFiles`). Resolves `[]` on
+ * user cancellation. Used across multi-shot photo forms. */
+export async function takePhotos(maxFiles: number = 1): Promise<PickedPhoto[]> {
+  if (maxFiles < 1) return [];
+  const single = await takePhoto();
+  return single ? [single] : [];
 }
 
 /** Opens the gallery for up to `maxFiles` photos (single-select falls back to

@@ -215,3 +215,8 @@ export async function revokeAdminAction(id: string) {
   await serverAdminApi.settings.admins.revoke(id);
   revalidatePath('/settings/admins');
 }
+
+export async function revokeTrustedDeviceAction(id: string) {
+  await serverAdminApi.trustedDevices.revoke(id);
+  revalidatePath('/settings/admins');
+}

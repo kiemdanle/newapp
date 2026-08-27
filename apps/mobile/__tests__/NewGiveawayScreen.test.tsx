@@ -241,4 +241,28 @@ describe('NewGiveawayScreen', () => {
     fireEvent.press(getByTestId('unlink-pantry-btn'));
     expect(queryByTestId('linked-pantry-badge')).toBeNull();
   });
+
+  it('allows snapping multiple photos at once in the camera modal and adding all to giveaway', async () => {
+    const { getByText, getByTestId, findByTestId } = render(wrap(<NewGiveawayScreen />));
+
+    // Open camera modal
+    fireEvent.press(getByText('Camera'));
+
+    // Modal is open
+    expect(await findByTestId('multi-photo-camera-modal')).toBeTruthy();
+    expect(getByTestId('multi-camera-shutter')).toBeTruthy();
+
+    // Snap 3 photos sequentially
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+
+    expect(getByText('3/5')).toBeTruthy();
+    expect(getByText('Done (3)')).toBeTruthy();
+
+    // Tap Done: all 3 photos are added to the giveaway form
+    fireEvent.press(getByTestId('multi-camera-done'));
+
+    expect(getByText('Photos (3/5)')).toBeTruthy();
+  });
 });

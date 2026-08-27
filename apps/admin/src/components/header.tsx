@@ -1,7 +1,7 @@
 // apps/admin/src/components/header.tsx
 import type { ReactNode } from 'react';
 import { Logo } from '@/components/logo';
-
+import { LogoutButton } from '@/components/logout-button';
 export function Header({
   email,
   menuTrigger,
@@ -26,14 +26,15 @@ export function Header({
         <Logo size={32} withWordmark suffix="Admin" />
       </div>
 
-      {/* User */}
-      <div className="flex items-center gap-3">
+      {/* User & Logout */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <span className="hidden text-sm text-neutral-mid sm:inline">
           {email}
         </span>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
           {initials}
         </div>
+        <LogoutButton />
       </div>
     </header>
   );

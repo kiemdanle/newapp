@@ -23,16 +23,29 @@ export function middleware(req: NextRequest) {
   }
 
   const hasAccess = req.cookies.has(COOKIE_NAMES.access);
+  const hasRefresh = req.cookies.has(COOKIE_NAMES.refresh);
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
 
-  if (!hasAccess && !isPublicPage) {
-    const url = buildPublicUrl(req.headers, '/login');
-    url.searchParams.set('next', pathname + search);
+  // Case 1: Active access token present
+  if (hasAccess) {
+    if (isPublicPage) {
+      const url = buildPublicUrl(req.headers, '/');
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  // Case 2: Access token missing/expired, but refresh token present -> seamless refresh!
+  if (hasRefresh) {
+    const url = buildPublicUrl(req.headers, '/api/auth/refresh-redirect');
+    url.searchParams.set('next', isPublicPage ? '/' : pathname + search);
     return NextResponse.redirect(url);
   }
 
-  if (hasAccess && isPublicPage) {
-    const url = buildPublicUrl(req.headers, '/');
+  // Case 3: Neither access nor refresh token present
+  if (!isPublicPage) {
+    const url = buildPublicUrl(req.headers, '/login');
+    url.searchParams.set('next', pathname + search);
     return NextResponse.redirect(url);
   }
 

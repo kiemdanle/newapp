@@ -1,5 +1,5 @@
 import ImagePicker from 'react-native-image-crop-picker';
-import { takePhoto, choosePhotos, cleanupTemp, PhotoTooLargeError } from './photo-picker-adapter';
+import { takePhoto, takePhotos, choosePhotos, cleanupTemp, PhotoTooLargeError } from './photo-picker-adapter';
 
 jest.mock('react-native-image-crop-picker', () => ({
   __esModule: true,
@@ -61,6 +61,31 @@ describe('takePhoto', () => {
     const result = await takePhoto();
 
     expect(result).toEqual(expect.objectContaining({ width: 400, height: 300 }));
+  });
+});
+
+describe('takePhotos', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('returns an array with the picked photo when camera succeeds', async () => {
+    openCameraMock.mockResolvedValue(image() as never);
+
+    const result = await takePhotos(3);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(expect.objectContaining({ path: '/tmp/photo.jpg' }));
+  });
+
+  it('returns empty array when maxFiles is less than 1', async () => {
+    const result = await takePhotos(0);
+    expect(result).toEqual([]);
+    expect(openCameraMock).not.toHaveBeenCalled();
+  });
+
+  it('returns empty array on cancellation', async () => {
+    openCameraMock.mockRejectedValue({ code: 'E_PICKER_CANCELLED' });
+    const result = await takePhotos(1);
+    expect(result).toEqual([]);
   });
 });
 

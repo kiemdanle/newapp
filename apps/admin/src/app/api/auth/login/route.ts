@@ -1,13 +1,17 @@
 // apps/admin/src/app/api/auth/login/route.ts
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { adminLoginRequestSchema } from '@expyrico/shared';
 import { getAdminEnv } from '@/lib/env';
-import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
+import {
+  buildSetCookie,
+  COOKIE_NAMES,
+  ACCESS_MAX_AGE_SEC,
+  REFRESH_MAX_AGE_SEC,
+  TRUSTED_DEVICE_MAX_AGE_SEC,
+} from '@/lib/cookies';
 import { generateCsrfToken } from '@/lib/csrf';
-
-const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
-const ACCESS_MAX_AGE_SEC = 60 * 15;
 
 export async function POST(req: Request) {
   let env: ReturnType<typeof getAdminEnv>;
@@ -33,10 +37,17 @@ export async function POST(req: Request) {
     );
   }
 
+  const cookieStore = await cookies();
+  const trustedDeviceToken =
+    parsed.trustedDeviceToken ?? cookieStore.get(COOKIE_NAMES.trustedDevice)?.value;
+
   const upstream = await fetch(`${env.apiBaseUrl}/v1/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(parsed),
+    body: JSON.stringify({
+      ...parsed,
+      ...(trustedDeviceToken ? { trustedDeviceToken } : {}),
+    }),
   });
   const body = (await upstream.json().catch(() => ({}))) as Record<string, unknown>;
 
@@ -122,5 +133,19 @@ export function finalizeSession(
       domain: env.cookieDomain,
     }),
   );
+  if (body.trustedDeviceToken && typeof body.trustedDeviceToken === 'string') {
+    res.headers.append(
+      'Set-Cookie',
+      buildSetCookie({
+        name: COOKIE_NAMES.trustedDevice,
+        value: body.trustedDeviceToken,
+        maxAgeSec: TRUSTED_DEVICE_MAX_AGE_SEC,
+        httpOnly: true,
+        secure: env.cookieSecure,
+        sameSite: 'lax',
+        domain: env.cookieDomain,
+      }),
+    );
+  }
   return res;
 }

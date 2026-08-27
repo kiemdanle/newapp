@@ -156,4 +156,40 @@ describe('GiveawayQuickEditModal', () => {
       });
     });
   });
+
+  it('allows snapping multiple photos at once via camera modal in quick edit', async () => {
+    const onClose = jest.fn();
+    const onSave = jest.fn();
+
+    const { getByLabelText, getByText, getByTestId, findByTestId } = render(
+      wrap(
+        <GiveawayQuickEditModal
+          visible={true}
+          giveaway={mockGiveaway}
+          onClose={onClose}
+          onSave={onSave}
+        />,
+      ),
+    );
+
+    // Open camera modal
+    mockTakePhoto.mockResolvedValue(null);
+    const cameraBtn = getByLabelText('Take a photo with camera');
+    fireEvent.press(cameraBtn);
+
+    expect(await findByTestId('multi-photo-camera-modal')).toBeTruthy();
+
+    // Snap 2 photos
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+
+    await waitFor(() => expect(getByText('2/4')).toBeTruthy());
+    expect(getByText('Done (2)')).toBeTruthy();
+
+    // Tap Done
+    fireEvent.press(getByTestId('multi-camera-done'));
+
+    // 1 existing + 2 new = 3 photos total
+    await waitFor(() => expect(getByText('Photos (3/5)')).toBeTruthy());
+  });
 });

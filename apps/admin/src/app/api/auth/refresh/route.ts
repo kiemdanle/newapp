@@ -2,12 +2,13 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { getAdminEnv } from '@/lib/env';
-import { buildSetCookie, COOKIE_NAMES } from '@/lib/cookies';
+import {
+  buildSetCookie,
+  COOKIE_NAMES,
+  ACCESS_MAX_AGE_SEC,
+  REFRESH_MAX_AGE_SEC,
+} from '@/lib/cookies';
 import { CSRF_HEADER, isCsrfValid } from '@/lib/csrf';
-
-const ACCESS_MAX_AGE_SEC = 60 * 15;
-const REFRESH_MAX_AGE_SEC = 60 * 60 * 24 * 30;
-
 export async function POST(req: Request) {
   const env = getAdminEnv();
   const cookieStore = await cookies();

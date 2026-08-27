@@ -22,6 +22,16 @@ export async function adminUsersPatchRoute(app: FastifyInstance) {
         ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
       },
     });
+    if ((input.status && input.status !== 'active') || (input.role && input.role !== 'admin')) {
+      await prisma.adminTrustedDevice.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      await prisma.session.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
     const beforeDiff: Record<string, unknown> = {};
     const afterDiff: Record<string, unknown> = {};
     for (const k of Object.keys(input) as (keyof typeof input)[]) {
