@@ -158,7 +158,7 @@ export async function createLocalRecord(input: {
 export async function patchLocalRecord(
   id: string,
   patch: Partial<
-    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status'>
+    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId'>
   >,
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
@@ -171,7 +171,9 @@ export async function patchLocalRecord(
       if (patch.unit !== undefined) r.unit = patch.unit;
       if (patch.notes !== undefined) r.notes = patch.notes;
       if (patch.status !== undefined) r.status = patch.status;
-      r.pendingSync = true;
+      if (patch.photoUrl !== undefined) r.photoUrl = patch.photoUrl;
+      if (patch.category !== undefined) r.category = patch.category;
+      if (patch.productId !== undefined) r.productId = patch.productId;
     });
   });
   triggerSyncSoon();

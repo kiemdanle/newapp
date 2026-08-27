@@ -62,6 +62,8 @@ apps/mobile/android/.gradle/
 apps/mobile/android/.kotlin/
 apps/mobile/android/local.properties
 apps/mobile/android/app/.cxx/
+apps/mobile/android/app/src/main/assets/index.android.bundle*
+apps/mobile/android/app/src/main/res/drawable-*/
 
 # Misc
 *.pem

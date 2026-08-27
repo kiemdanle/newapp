@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createLocalRecord } from '../../api/records';
+import { useCreateOrResumeDraft, usePatchDraft } from '../../api/products';
+import { uploadProductPhoto } from '../../api/product-photo-upload';
 import { useMyHouseholds } from '../../api/households';
 import { usePantryScope } from '../../store/pantryScope';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
-import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
+import { takePhoto, choosePhotos, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 interface Props {
   productId?: string | null;
@@ -35,9 +37,11 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [photoPath, setPhotoPath] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
+  const createOrResumeDraft = useCreateOrResumeDraft();
+  const patchDraft = usePatchDraft();
 
   // Read the active scope so we pre-select the right household.
   const { scope: activeScope, householdId: scopeHhId } = usePantryScope();
@@ -63,9 +67,38 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     setBusy(true);
     setError(null);
     try {
+      let finalProductId = productId ?? null;
+
+      // If this is a custom item (no catalog product yet) and the user attached a photo,
+      // create a private product draft and upload the photo so it is permanently stored in cloud media storage
+      if (!finalProductId && photo) {
+        try {
+          const draftRes = await createOrResumeDraft.mutateAsync({
+            barcode: null,
+            qrPayload: null,
+          });
+          finalProductId = draftRes.product.id;
+
+          await patchDraft.mutateAsync({
+            id: finalProductId,
+            version: draftRes.product.version,
+            name: customName ?? productName ?? 'Custom Item',
+            category: category || null,
+          });
+
+          const uploadHandle = uploadProductPhoto(
+            { kind: 'draft', productId: finalProductId },
+            { path: photo.path, mime: photo.mime },
+          );
+          await uploadHandle.promise;
+        } catch (uploadErr) {
+          // Non-fatal: if offline, continue with local creation
+        }
+      }
+
       const localId = await createLocalRecord({
-        productId: productId ?? null,
-        customName: productId ? null : (customName ?? productName ?? 'Item'),
+        productId: finalProductId,
+        customName: finalProductId ? null : (customName ?? productName ?? 'Item'),
         category: category || null,
         expiryDate: expiry,
         quantity: qty,
@@ -73,7 +106,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
-        photoUrl: photoPath || null,
+        photoUrl: photo ? photo.path : null,
         householdId: effectiveHouseholdId,
       });
       onSaved(localId);
@@ -97,7 +130,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const onTakePhoto = async () => {
     try {
       const picked = await takePhoto();
-      if (picked) setPhotoPath(picked.path);
+      if (picked) setPhoto(picked);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -106,7 +139,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const onChoosePhotos = async () => {
     try {
       const picked = await choosePhotos(1);
-      if (picked.length > 0 && picked[0]) setPhotoPath(picked[0].path);
+      if (picked.length > 0 && picked[0]) setPhoto(picked[0]);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -128,12 +161,12 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
       {/* Item Photo Section */}
       <View style={{ gap: 6 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item photo (optional)</Text>
-        {photoPath ? (
+        {photo ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ position: 'relative', width: 68, height: 68 }}>
               <Image
                 testID="add-record-photo-preview"
-                source={{ uri: photoPath }}
+                source={{ uri: photo.path.startsWith('/') ? `file://${photo.path}` : photo.path }}
                 style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
                 accessibilityIgnoresInvertColors
               />
@@ -141,7 +174,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
                 testID="add-record-photo-remove"
                 accessibilityRole="button"
                 accessibilityLabel="Remove photo"
-                onPress={() => setPhotoPath(null)}
+                onPress={() => setPhoto(null)}
                 style={{
                   position: 'absolute',
                   top: -6,

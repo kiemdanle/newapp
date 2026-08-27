@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, View, type ImageStyle, type StyleProp } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
@@ -11,6 +11,26 @@ export interface ProductThumbnailProps {
   style?: StyleProp<ImageStyle>;
   fallbackIcon?: string;
   size?: number;
+}
+
+function normalizePhotoUri(uri: string | null | undefined): string | null {
+  if (!uri || typeof uri !== 'string') return null;
+  const trimmed = uri.trim();
+  if (!trimmed) return null;
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('file://') ||
+    trimmed.startsWith('content://') ||
+    trimmed.startsWith('ph://')
+  ) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/')) {
+    return `file://${trimmed}`;
+  }
+  return trimmed;
 }
 
 /**
@@ -28,9 +48,10 @@ export function ProductThumbnail({
   size = 52,
 }: ProductThumbnailProps) {
   const theme = useTheme();
+  const [imageError, setImageError] = useState(false);
   const firstPhoto = product?.photos && product.photos.length > 0 ? product.photos[0] : null;
 
-  const publicCandidate =
+  const rawCandidate =
     photoUrl ||
     product?.imageUrl ||
     (firstPhoto?.thumbnailUrl?.startsWith('http')
@@ -39,13 +60,16 @@ export function ProductThumbnail({
         ? firstPhoto.displayUrl
         : null);
 
-  if (publicCandidate) {
+  const publicCandidate = normalizePhotoUri(rawCandidate);
+
+  if (publicCandidate && !imageError) {
     return (
       <Image
         source={{ uri: publicCandidate }}
         style={style}
         resizeMode="cover"
         accessibilityIgnoresInvertColors
+        onError={() => setImageError(true)}
       />
     );
   }

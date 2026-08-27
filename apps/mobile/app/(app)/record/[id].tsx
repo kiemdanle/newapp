@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   Alert,
+  BackHandler,
   Image,
   Pressable,
   ScrollView,
@@ -13,7 +14,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRecord, patchLocalRecord, deleteLocalRecord } from '../../../src/api/records';
-import { useProduct } from '../../../src/api/products';
+import { useProduct, useCreateOrResumeDraft, usePatchDraft } from '../../../src/api/products';
+import { uploadProductPhoto } from '../../../src/api/product-photo-upload';
 import { useSessionStore } from '../../../src/auth/session-store';
 import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
@@ -21,8 +23,8 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records
 import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
 import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 import { Button } from '../../../src/components/Button';
+import { takePhoto, choosePhotos, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
-
 function getRelativeExpiryLabel(expiryDateStr: string, country?: string | null): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -44,6 +46,21 @@ export default function RecordDetail() {
   const record = useRecord(id);
   const { data: product } = useProduct(record?.productId ?? undefined);
   const [showEditModal, setShowEditModal] = useState(false);
+  const createOrResumeDraft = useCreateOrResumeDraft();
+  const patchDraft = usePatchDraft();
+
+  React.useEffect(() => {
+    const onBackPress = () => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Tabs');
+      }
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [navigation]);
   if (!record) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -66,7 +83,7 @@ export default function RecordDetail() {
   const barcode = product?.barcode;
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
-
+  const catalogProductId = record.productId || product?.id;
   const mark = async (status: 'consumed' | 'discarded') => {
     await patchLocalRecord(record.id, { status });
     navigation.goBack();
@@ -94,7 +111,67 @@ export default function RecordDetail() {
     const newQty = Math.max(1, record.quantity + delta);
     await patchLocalRecord(record.id, { quantity: newQty });
   };
+  const savePhotoToRecord = async (photo: PickedPhoto) => {
+    // 1. Immediately update local record for instant UI feedback
+    await patchLocalRecord(record.id, { photoUrl: photo.path });
 
+    // 2. If record is linked to a draft/pending product, upload photo directly
+    if (product && (product.status === 'draft' || product.status === 'changes_required')) {
+      try {
+        const uploadHandle = uploadProductPhoto(
+          { kind: 'draft', productId: product.id },
+          { path: photo.path, mime: photo.mime },
+        );
+        await uploadHandle.promise;
+      } catch {}
+    } else if (!product && !record.productId) {
+      // 3. If record is a custom item without product ID, create a private draft and upload photo to server
+      try {
+        const draftRes = await createOrResumeDraft.mutateAsync({
+          barcode: barcode || null,
+          qrPayload: null,
+        });
+        await patchDraft.mutateAsync({
+          id: draftRes.product.id,
+          version: draftRes.product.version,
+          name: displayName,
+          category: record.category || null,
+        });
+        const uploadHandle = uploadProductPhoto(
+          { kind: 'draft', productId: draftRes.product.id },
+          { path: photo.path, mime: photo.mime },
+        );
+        await uploadHandle.promise;
+        await patchLocalRecord(record.id, { productId: draftRes.product.id });
+      } catch {}
+    }
+  };
+
+  const handlePickPhoto = () => {
+    Alert.alert('Item Photo', 'Choose how you want to add a photo', [
+      {
+        text: 'Take Photo',
+        onPress: async () => {
+          try {
+            const picked = await takePhoto();
+            if (picked) await savePhotoToRecord(picked);
+          } catch {}
+        },
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: async () => {
+          try {
+            const picked = await choosePhotos(1);
+            if (picked.length > 0 && picked[0]) {
+              await savePhotoToRecord(picked[0]);
+            }
+          } catch {}
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
   const handleSaveQuickEdit = async (patch: {
     customName?: string | null;
     quantity: number;
@@ -126,7 +203,7 @@ export default function RecordDetail() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Photo / Brand Card */}
+        {/* Hero Photo / Add Photo Card */}
         {imageUrl || (product?.photos && product.photos.length > 0) ? (
           <View style={[styles.photoHeroWrap, { borderColor: theme.colors.border }]}>
             <ProductThumbnail
@@ -134,8 +211,39 @@ export default function RecordDetail() {
               photoUrl={record.photoUrl}
               style={styles.photoHero}
             />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Change photo"
+              onPress={handlePickPhoto}
+              style={[styles.changePhotoFloatingBtn, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}
+            >
+              <Ionicons name="camera-outline" size={15} color={theme.colors.text} />
+              <Text style={[styles.changePhotoBtnText, { color: theme.colors.text }]}>Change</Text>
+            </Pressable>
           </View>
-        ) : null}
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add photo"
+            onPress={handlePickPhoto}
+            style={({ pressed }) => [
+              styles.addPhotoDashedBox,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.addPhotoIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
+              <Ionicons name="camera-outline" size={22} color={theme.colors.primaryDark} />
+            </View>
+            <Text style={[styles.addPhotoPromptText, { color: theme.colors.text }]}>Add item photo</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 1 }}>
+              Take a photo or choose from library
+            </Text>
+          </Pressable>
+        )}
 
         {/* Title & Quick Actions Row */}
         <View style={styles.titleCard}>
@@ -363,30 +471,100 @@ export default function RecordDetail() {
             </View>
           ) : null}
 
-          {/* Catalog Link Row */}
-          {record.productId ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="View in product catalog"
-              onPress={() => navigation.navigate('Product', { id: record.productId! })}
-              style={({ pressed }) => [
-                styles.catalogRow,
-                {
-                  backgroundColor: theme.colors.bgGlass,
-                  borderColor: theme.colors.border,
-                  opacity: pressed ? 0.75 : 1,
-                },
-              ]}
-            >
-              <View style={[styles.catalogIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
-                <Ionicons name="library-outline" size={16} color={theme.colors.primaryDark} />
-              </View>
-              <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
-                View product catalog entry
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
-            </Pressable>
-          ) : null}
+          {/* Catalog Link & Suggest Edit Rows */}
+          {catalogProductId ? (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add another to pantry"
+                onPress={() => navigation.navigate('Product', { id: catalogProductId })}
+                style={({ pressed }) => [
+                  styles.catalogRow,
+                  {
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.catalogIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
+                  <Ionicons name="add-circle-outline" size={16} color={theme.colors.primaryDark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
+                    Add another to pantry
+                  </Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>
+                    Log another item with a different expiry date
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Suggest edit for this product"
+                testID="record-suggest-product-edit"
+                onPress={() => navigation.navigate('ProductEdit', { id: catalogProductId })}
+                style={({ pressed }) => [
+                  styles.catalogRow,
+                  {
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.catalogIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
+                  <Ionicons name="create-outline" size={16} color={theme.colors.primaryDark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
+                    Suggest edit for this product
+                  </Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>
+                    Edit name, brand, category, shelf life or photos
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add to product catalog"
+                testID="record-create-catalog-product"
+                onPress={() =>
+                  navigation.navigate('ProductNew', {
+                    barcode: barcode || undefined,
+                    target: 'pantry',
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.catalogRow,
+                  {
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+              >
+                <View style={[styles.catalogIconBadge, { backgroundColor: theme.colors.primaryLight }]}>
+                  <Ionicons name="cloud-upload-outline" size={16} color={theme.colors.primaryDark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
+                    Add to Global Product Catalog
+                  </Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>
+                    Publish details & photos for the community
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -634,6 +812,43 @@ const styles = StyleSheet.create({
   catalogLinkText: {
     flex: 1,
     fontSize: 13,
+    fontWeight: '600',
+  },
+  changePhotoFloatingBtn: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  changePhotoBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  addPhotoDashedBox: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  addPhotoIconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  addPhotoPromptText: {
+    fontSize: 14,
     fontWeight: '600',
   },
   actionToolbar: {

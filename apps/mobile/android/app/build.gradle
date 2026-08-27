@@ -17,7 +17,7 @@ react {
             : "linux64-bin"
     hermesCommand = file("../../../../node_modules/react-native/sdks/hermesc/${hermescOsDir}/hermesc").absolutePath
 
-    debuggableVariants = []
+    debuggableVariants.set([])
 
     autolinkLibrariesWithApp()
 }

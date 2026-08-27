@@ -1,4 +1,6 @@
 import React from 'react';
+import { Pressable } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TabsNavigator } from './TabsNavigator';
 import SettingsIndexScreen from '../../app/(app)/settings/index';
@@ -78,8 +80,7 @@ export function AppNavigator() {
       <Stack.Screen name="SettingsAddPasskey" component={SettingsAddPasskeyScreen} options={{ headerShown: true, title: 'Add a passkey' }} />
       <Stack.Screen name="Invite" component={InviteScreen} />
       {/* Body has no back control; native header provides Navigate up. */}
-      <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
-      <Stack.Screen name="Product" component={ProductScreen} />
+      <Stack.Screen name="Product" component={ProductScreen} options={{ headerShown: true, title: 'Product Details' }} />
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />
       <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'My drafts' }} />
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
