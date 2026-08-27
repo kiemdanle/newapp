@@ -8,12 +8,15 @@ import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 const NAME_MAX = 200;
 const DESCRIPTION_MAX = 2000;
+const NOTES_MAX = 1000;
 
 interface Fields {
   name: string;
   description: string;
   brand: string;
   category: string;
+  defaultShelfLifeDays: string;
+  notes: string;
 }
 
 function fieldsFrom(edit: ProductEditRow): Fields {
@@ -22,11 +25,20 @@ function fieldsFrom(edit: ProductEditRow): Fields {
     description: edit.description ?? '',
     brand: edit.brand ?? '',
     category: edit.category ?? '',
+    defaultShelfLifeDays: edit.defaultShelfLifeDays != null ? String(edit.defaultShelfLifeDays) : '',
+    notes: edit.notes ?? '',
   };
 }
 
 function fieldsEqual(a: Fields, b: Fields): boolean {
-  return a.name === b.name && a.description === b.description && a.brand === b.brand && a.category === b.category;
+  return (
+    a.name === b.name &&
+    a.description === b.description &&
+    a.brand === b.brand &&
+    a.category === b.category &&
+    a.defaultShelfLifeDays === b.defaultShelfLifeDays &&
+    a.notes === b.notes
+  );
 }
 
 export interface ProductEditFormProps {
@@ -35,7 +47,9 @@ export interface ProductEditFormProps {
    * "Live: …" caption under any field the proposal actually changes, so the
    * creator can see the live-vs-proposed boundary plan.md requires without a
    * full diff view. */
-  liveProduct: Pick<Product, 'name' | 'description' | 'brand' | 'category'>;
+  liveProduct: Pick<Product, 'name' | 'description' | 'brand' | 'category'> & {
+    defaultShelfLifeDays?: number | null;
+  };
   /** Omitted (with `readOnly`) for a `pending` revision — there is nothing
    * to save until an admin resolves it, so no coordinator is created for
    * that view. */
@@ -84,6 +98,21 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
       setError('Name is required');
       return;
     }
+    const trimmedShelf = fields.defaultShelfLifeDays.trim();
+    let parsedShelf: number | null = null;
+    if (trimmedShelf) {
+      const num = parseInt(trimmedShelf, 10);
+      if (isNaN(num) || !/^\d+$/.test(trimmedShelf) || num < 1 || num > 3650) {
+        setError('Default shelf life must be a whole number between 1 and 3650 days');
+        return;
+      }
+      parsedShelf = num;
+    }
+    const trimmedNotes = fields.notes.trim();
+    if (trimmedNotes.length > NOTES_MAX) {
+      setError(`Reason / note to moderators must be ${NOTES_MAX} characters or fewer`);
+      return;
+    }
     setError(null);
     setConflict(null);
     setSaving(true);
@@ -95,6 +124,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
           description: fields.description.trim() || null,
           brand: fields.brand.trim() || null,
           category: fields.category.trim() || null,
+          defaultShelfLifeDays: parsedShelf,
+          notes: trimmedNotes || null,
         },
       });
       setKnown(updated);
@@ -275,6 +306,78 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
           </View>
         </View>
 
+        {/* Default Shelf Life Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="time-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Default Shelf Life (Days)</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              {
+                backgroundColor: focusedField === 'defaultShelfLifeDays' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'defaultShelfLifeDays' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Default Shelf Life"
+              testID="edit-shelf-life"
+              editable={!readOnly}
+              keyboardType="numeric"
+              placeholder="e.g. 30"
+              placeholderTextColor={theme.colors.textMuted}
+              style={[styles.textInput, { color: theme.colors.text }]}
+              value={fields.defaultShelfLifeDays}
+              onFocus={() => setFocusedField('defaultShelfLifeDays')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, defaultShelfLifeDays: v.replace(/[^0-9]/g, '') }))}
+            />
+          </View>
+          <LiveCaption
+            live={liveProduct.defaultShelfLifeDays ? `${liveProduct.defaultShelfLifeDays} days` : null}
+            proposed={fields.defaultShelfLifeDays ? `${fields.defaultShelfLifeDays} days` : ''}
+          />
+        </View>
+
+        {/* Submitter Notes / Reason for Suggestion Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="chatbox-ellipses-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Reason for Suggestion / Note to Moderators</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              styles.multilineBox,
+              {
+                backgroundColor: focusedField === 'notes' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'notes' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Reason for edit"
+              testID="edit-notes"
+              editable={!readOnly}
+              placeholder="e.g. The shelf life on the packaging label states 14 days, not 30 days"
+              placeholderTextColor={theme.colors.textMuted}
+              style={[styles.textInput, styles.multilineInput, { color: theme.colors.text }]}
+              value={fields.notes}
+              maxLength={NOTES_MAX}
+              multiline
+              onFocus={() => setFocusedField('notes')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, notes: v }))}
+            />
+            <Text testID="edit-notes-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
+              {fields.notes.length}/{NOTES_MAX}
+            </Text>
+          </View>
+        </View>
         {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
         {conflict ? (

@@ -130,6 +130,8 @@ describe('createOrResumeProductEdit', () => {
     expect(edit.name).toBe(product.name);
     expect(edit.photos).toHaveLength(1);
     expect(edit.photos[0]!.retained).toBe(true);
+    expect(edit.photos[0]!.sourceProductPhotoId).toBeTruthy();
+    expect(edit.photos[0]!.id).not.toBe(edit.photos[0]!.sourceProductPhotoId);
   });
 
   it('resumes the caller\'s own open edit instead of creating a second one (one-open-edit race)', async () => {
@@ -149,13 +151,30 @@ describe('createOrResumeProductEdit', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('rejects a resume attempt while the caller\'s edit is pending under review', async () => {
+  it('returns open pending suggestion with resumed: true allowing read-only review, but mutation remains blocked', async () => {
     const creator = await makeUserForAdmin();
     const product = await makeActiveProduct(creator.id);
-    await getPrisma().productEdit.create({
-      data: { productId: product.id, submittedBy: creator.id, proposed: {}, status: 'pending', isLegacy: false },
+    const pendingEdit = await getPrisma().productEdit.create({
+      data: {
+        productId: product.id,
+        submittedBy: creator.id,
+        proposed: { name: product.name, defaultShelfLifeDays: 14, notes: 'Original note' },
+        notes: 'Original note',
+        status: 'pending',
+        isLegacy: false,
+      },
+      include: { photos: { include: { sourceProductPhoto: true } } },
     });
-    await expect(createOrResumeProductEdit(actor(creator.id), product.id)).rejects.toMatchObject({ status: 409 });
+    const res = await createOrResumeProductEdit(actor(creator.id), product.id);
+    expect(res.resumed).toBe(true);
+    expect(res.edit.status).toBe('pending');
+    expect(res.edit.defaultShelfLifeDays).toBe(14);
+    expect(res.edit.notes).toBe('Original note');
+
+    // Mutating a pending edit remains strictly locked with 409
+    await expect(
+      patchProductEditMetadata(actor(creator.id), pendingEdit.id, { version: pendingEdit.version, name: 'Should Fail' }),
+    ).rejects.toMatchObject({ status: 409 });
   });
 
   it('allows any authenticated user to open a suggestion on someone else\'s active product (open-editing, same policy as the legacy PATCH route), but 404s a non-active product', async () => {
@@ -215,6 +234,11 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     expect('status' in afterRC && afterRC.status).toBe('changes_required');
     expect((afterRC as { moderationFeedback: string | null }).moderationFeedback).toBe('fix the name');
 
+    const rcOutbox = await getPrisma().notificationOutbox.findFirstOrThrow({
+      where: { userId: creator.id, templateKey: 'product_edit_changes_required' },
+    });
+    expect(rcOutbox.payload).toMatchObject({ editId: edit.id, notes: 'fix the name' });
+
     // Creator can resubmit after changes_required.
     const resubmitted = await resolveProductEdit(
       actor(creator.id),
@@ -271,13 +295,25 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
     expect(events).toHaveLength(0);
   });
 
-  it('approve applies metadata + retained/staged photo order and publishes staged bytes', async () => {
+  it('approve applies metadata (including defaultShelfLifeDays) + retained/staged photo order and writes audit diff', async () => {
     const creator = await makeUserForAdmin();
     const { admin } = await makeAdmin();
     const product = await makeActiveProduct(creator.id, { withPhoto: true });
+    // Set initial product defaultShelfLifeDays
+    await getPrisma().product.update({ where: { id: product.id }, data: { defaultShelfLifeDays: 30 } });
     const { edit } = await createOrResumeProductEdit(actor(creator.id), product.id);
+    expect(edit.defaultShelfLifeDays).toBe(30);
+    expect(edit.notes).toBeNull();
 
-    const patched = await patchProductEditMetadata(actor(creator.id), edit.id, { version: edit.version, name: 'Revised Name' });
+    const patched = await patchProductEditMetadata(actor(creator.id), edit.id, {
+      version: edit.version,
+      name: 'Revised Name',
+      defaultShelfLifeDays: 45,
+      notes: 'Packaging label says 45 days shelf life',
+    });
+    expect(patched.defaultShelfLifeDays).toBe(45);
+    expect(patched.notes).toBe('Packaging label says 45 days shelf life');
+
     const submitted = await resolveProductEdit(actor(creator.id), {}, { editId: edit.id, action: 'submit', version: patched.version });
     const submittedVersion = (submitted as { version: number }).version;
 
@@ -287,9 +323,17 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
 
     const dbEdit = await getPrisma().productEdit.findUniqueOrThrow({ where: { id: edit.id } });
     expect(dbEdit.status).toBe('approved');
+    expect(dbEdit.notes).toBe('Packaging label says 45 days shelf life');
+
     const dbProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
     expect(dbProduct.name).toBe('Revised Name');
+    expect(dbProduct.defaultShelfLifeDays).toBe(45);
     expect(dbProduct.version).toBe(product.version + 1);
+
+    const appOutbox = await getPrisma().notificationOutbox.findFirstOrThrow({
+      where: { userId: creator.id, templateKey: 'product_edit_approved' },
+    });
+    expect(appOutbox.payload).toMatchObject({ editId: edit.id, productId: product.id });
   });
 
   it('I7: leaves no orphaned public bytes and no reference when approveEdit\'s reference transaction fails AFTER the staged photo was already published', async () => {
@@ -597,8 +641,16 @@ describe('recoverProductEdit — rebase and supersede', () => {
     expect(result.status).toBe('pending');
     expect(result.baseProductVersion).toBe(product.version);
     expect(result.photos).toHaveLength(1);
-  });
 
+    const audit = await getPrisma().adminAuditLog.findFirstOrThrow({
+      where: { action: 'product_edit.rebase', targetId: edit.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(audit.diff).toMatchObject({
+      before: { baseProductVersion: expect.any(Number) },
+      after: { baseProductVersion: product.version },
+    });
+  });
   it('a pending-producing rebase records a fresh notification event at the new version', async () => {
     const { admin } = await makeAdmin();
     const { product, edit, livePhotoId } = await staleSubmittedEdit();

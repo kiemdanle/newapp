@@ -111,7 +111,13 @@ export default function ProductEditScreen() {
     );
   }
 
-  const liveProduct = { name: product.name, description: product.description, brand: product.brand, category: product.category };
+  const liveProduct = {
+    name: product.name,
+    description: product.description,
+    brand: product.brand,
+    category: product.category,
+    defaultShelfLifeDays: product.defaultShelfLifeDays,
+  };
 
   if (edit!.status === 'pending') {
     return (
@@ -142,9 +148,26 @@ export default function ProductEditScreen() {
         </View>
         <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
           <View style={{ gap: theme.spacing.md }}>
-            <Text testID="edit-pending-message" style={{ color: theme.colors.textMuted }}>
-              Your suggested edit is awaiting review.
-            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                padding: 12,
+                borderRadius: theme.radii.md,
+                backgroundColor: '#FEEFC3',
+                borderWidth: 1,
+                borderColor: '#F5A623',
+              }}
+            >
+              <Ionicons name="time-outline" size={20} color="#D97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 13 }}>Under Moderation Review</Text>
+                <Text testID="edit-pending-message" style={{ color: '#B45309', fontSize: 12, marginTop: 2 }}>
+                  Your suggested edit has been submitted and is awaiting review by our moderators.
+                </Text>
+              </View>
+            </View>
             <ProductEditForm initialEdit={edit!} liveProduct={liveProduct} readOnly />
           </View>
         </ScrollView>
@@ -188,7 +211,9 @@ export default function ProductEditScreen() {
           onSubmitted={() => {
             dirtyRef.current = false;
             setDirty(false);
-            navigation.goBack();
+            Alert.alert('Suggestion Submitted', 'Thank you! Your edits have been sent to our moderators for review.', [
+              { text: 'OK', onPress: () => navigation.goBack() },
+            ]);
           }}
         />
       </ScrollView>

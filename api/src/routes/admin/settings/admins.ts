@@ -44,7 +44,7 @@ export async function adminSettingsAdminsRoute(app: FastifyInstance) {
     if (id === req.user!.id) throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'Cannot revoke yourself' });
     const user = await getPrisma().user.findUnique({ where: { id } });
     if (!user || user.role !== 'admin') throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Admin not found' });
-    await getPrisma().user.update({ where: { id }, data: { role: 'user' } });
+    await getPrisma().user.update({ where: { id }, data: { role: 'user', tokenVersion: { increment: 1 } } });
     await req.auditLog('admin.revoke', { type: 'user', id }, { before: { role: 'admin' }, after: { role: 'user' } });
     return reply.status(204).send();
   });

@@ -16,6 +16,7 @@ export const adminProductRowSchema = z.object({
   brand: z.string().nullable(),
   category: z.string().nullable(),
   imageUrl: z.string().nullable(),
+  defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
   source: adminProductSourceSchema,
   status: adminProductStatusSchema,
   // Optimistic-concurrency token: the caller's last-known version, required by
@@ -75,7 +76,7 @@ export const adminProductPatchSchema = z.object({
   brand: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
-  defaultShelfLifeDays: z.number().int().min(0).nullable().optional(),
+  defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
   status: adminProductDirectStatusSchema.optional(),
 }).refine((d) => Object.keys(d).filter((k) => k !== 'version').length > 0, { message: 'no fields to update' });
 

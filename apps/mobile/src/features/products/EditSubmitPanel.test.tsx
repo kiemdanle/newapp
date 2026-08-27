@@ -26,6 +26,8 @@ function edit(overrides: Partial<ProductEditRow> = {}): ProductEditRow {
     description: null,
     brand: null,
     category: null,
+    defaultShelfLifeDays: null,
+    notes: null,
     photos: [],
     moderationFeedback: null,
     submittedAt: null,

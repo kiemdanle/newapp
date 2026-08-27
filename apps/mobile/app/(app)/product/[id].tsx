@@ -77,7 +77,8 @@ export default function ProductDetail() {
           <Button
             testID="product-suggest-edit"
             label="Suggest an edit"
-            variant="ghost"
+            variant="outline"
+            icon="create-outline"
             onPress={() => navigation.navigate('ProductEdit', { id: data.id })}
           />
         ) : null}

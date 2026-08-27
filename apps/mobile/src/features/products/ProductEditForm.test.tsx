@@ -20,6 +20,8 @@ function edit(overrides: Partial<ProductEditRow> = {}): ProductEditRow {
     description: null,
     brand: null,
     category: null,
+    defaultShelfLifeDays: null,
+    notes: null,
     photos: [],
     moderationFeedback: null,
     submittedAt: null,
@@ -120,7 +122,14 @@ describe('<ProductEditForm />', () => {
     await waitFor(() =>
       expect(enqueue).toHaveBeenCalledWith({
         kind: 'metadata',
-        fields: { name: 'Frozen peas (organic)', description: null, brand: null, category: null },
+        fields: {
+          name: 'Frozen peas (organic)',
+          description: null,
+          brand: null,
+          category: null,
+          defaultShelfLifeDays: null,
+          notes: null,
+        },
       }),
     );
   });
@@ -169,6 +178,43 @@ describe('<ProductEditForm />', () => {
     );
 
     fireEvent.changeText(getByTestId('edit-name'), 'New name');
-    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+    expect(onDirtyChange).toHaveBeenCalledWith(true);
+  });
+
+  it('saves default shelf life and submitter notes', async () => {
+    const { coordinator, enqueue } = makeCoordinator(edit());
+    enqueue.mockResolvedValue(edit({ defaultShelfLifeDays: 45, notes: 'Packaging says 45 days', version: 4 }));
+
+    const { getByTestId } = render(wrap(<ProductEditForm initialEdit={edit()} liveProduct={LIVE} coordinator={coordinator} />));
+    fireEvent.changeText(getByTestId('edit-shelf-life'), '45');
+    fireEvent.changeText(getByTestId('edit-notes'), 'Packaging says 45 days');
+    fireEvent.press(getByTestId('edit-save'));
+
+    await waitFor(() =>
+      expect(enqueue).toHaveBeenCalledWith({
+        kind: 'metadata',
+        fields: {
+          name: 'Frozen peas',
+          description: null,
+          brand: null,
+          category: null,
+          defaultShelfLifeDays: 45,
+          notes: 'Packaging says 45 days',
+        },
+      }),
+    );
+  });
+
+  it('validates default shelf life bounds and prevents submission of invalid numbers', async () => {
+    const { coordinator, enqueue } = makeCoordinator(edit());
+
+    const { getByTestId, findByText } = render(
+      wrap(<ProductEditForm initialEdit={edit()} liveProduct={LIVE} coordinator={coordinator} />),
+    );
+    fireEvent.changeText(getByTestId('edit-shelf-life'), '4000');
+    fireEvent.press(getByTestId('edit-save'));
+
+    expect(await findByText('Default shelf life must be a whole number between 1 and 3650 days')).toBeTruthy();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });

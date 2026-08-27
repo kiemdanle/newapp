@@ -38,6 +38,8 @@ export interface CoordinatedEntity {
   description: string | null;
   brand: string | null;
   category: string | null;
+  defaultShelfLifeDays?: number | null;
+  notes?: string | null;
   photos: readonly CoordinatedEntityPhoto[];
 }
 
@@ -46,6 +48,8 @@ export interface MetadataFields {
   description?: string | null;
   brand?: string | null;
   category?: string | null;
+  defaultShelfLifeDays?: number | null;
+  notes?: string | null;
 }
 
 export type CoordinatorOperation =
@@ -113,6 +117,8 @@ function applyDirty<T extends CoordinatedEntity>(entity: T, fields: MetadataFiel
     ...(fields.description !== undefined ? { description: fields.description } : {}),
     ...(fields.brand !== undefined ? { brand: fields.brand } : {}),
     ...(fields.category !== undefined ? { category: fields.category } : {}),
+    ...(fields.defaultShelfLifeDays !== undefined ? { defaultShelfLifeDays: fields.defaultShelfLifeDays } : {}),
+    ...(fields.notes !== undefined ? { notes: fields.notes } : {}),
   };
 }
 

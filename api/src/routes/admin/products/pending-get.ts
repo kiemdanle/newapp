@@ -12,6 +12,7 @@ const paramsSchema = z.object({ editId: z.string().uuid() });
 // specific type export, so this stays a thin route file with no service change.
 const EDIT_DETAIL_INCLUDE = {
   photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
+  product: { select: { defaultShelfLifeDays: true } },
 };
 
 /**

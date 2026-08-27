@@ -9,6 +9,7 @@ import { productEditStatusSchema } from './admin/products.js';
 // projection so the editor UI never needs to branch on which kind a photo is.
 export const productEditPhotoSchema = z.object({
     id: z.string().uuid(),
+    sourceProductPhotoId: z.string().uuid().nullable().optional(),
     position: z.number().int().min(0).max(4),
     retained: z.boolean(),
     thumbnailUrl: z.string().min(1),
@@ -29,6 +30,8 @@ export const productEditRowSchema = z
     description: z.string().nullable(),
     brand: z.string().nullable(),
     category: z.string().nullable(),
+    defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
+    notes: z.string().nullable().optional(),
     photos: z.array(productEditPhotoSchema),
     // Creator-visible admin feedback (`request_changes` notes). Never the internal
     // machine-safe supersede reason, which is a distinct, admin/history-only field.
@@ -46,6 +49,8 @@ export const productEditMetadataPatchRequestSchema = z
     description: productDescriptionValueSchema.optional(),
     brand: z.string().trim().max(120).nullable().optional(),
     category: z.string().trim().max(120).nullable().optional(),
+    defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
+    notes: z.string().trim().min(1).max(1000).nullable().optional(),
 })
     .strict();
 export const productEditPhotoReorderRequestSchema = z

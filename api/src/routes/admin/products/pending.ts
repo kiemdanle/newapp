@@ -7,6 +7,7 @@ import { toProductEditRow } from '../../../services/products/product-edits.js';
 // `toProductEditRow` only depends on the shape structurally.
 const EDIT_LIST_INCLUDE = {
   photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
+  product: { select: { defaultShelfLifeDays: true } },
 };
 
 /** Bounded queue projection with ordered private/public review media (not

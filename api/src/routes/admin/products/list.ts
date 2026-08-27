@@ -8,7 +8,7 @@ import { toApiProductPhoto } from '../../../services/products/serializer.js';
 function toRow(p: ProductWithPhotos) {
   return {
     id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, description: p.description,
-    brand: p.brand, category: p.category, imageUrl: p.imageUrl, source: p.source as 'off' | 'upcitemdb' | 'user',
+    brand: p.brand, category: p.category, imageUrl: p.imageUrl, defaultShelfLifeDays: p.defaultShelfLifeDays, source: p.source as 'off' | 'upcitemdb' | 'user',
     status: p.status as 'active' | 'pending' | 'merged_into', version: p.version,
     mergedIntoProductId: p.mergedIntoProductId, isCommunityEligible: p.isCommunityEligible,
     buyAgainCount: p.buyAgainCount, buyAgainOnSaleCount: p.buyAgainOnSaleCount,

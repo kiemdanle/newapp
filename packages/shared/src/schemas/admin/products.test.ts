@@ -278,6 +278,17 @@ describe('adminProductPatchSchema — I5: status restricted at the schema bounda
     expect(adminProductDirectStatusSchema.parse('active')).toBe('active');
     expect(adminProductDirectStatusSchema.parse('report_hidden')).toBe('report_hidden');
     expect(adminProductPatchSchema.parse({ version: 1, status: 'active' })).toEqual({ version: 1, status: 'active' });
+    expect(adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: 30 })).toEqual({
+      version: 1,
+      defaultShelfLifeDays: 30,
+    });
+    expect(adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: null })).toEqual({
+      version: 1,
+      defaultShelfLifeDays: null,
+    });
+    expect(() => adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: 0 })).toThrow();
+    expect(() => adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: 3651 })).toThrow();
+    expect(adminProductPatchSchema.parse({ version: 1, status: 'active' })).toEqual({ version: 1, status: 'active' });
   });
 
   it('rejects every lifecycle status that has real publication/merge invariants before the request ever reaches the service layer', () => {

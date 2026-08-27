@@ -62,6 +62,8 @@ const EDIT_DRAFT = {
   description: null,
   brand: null,
   category: null,
+  defaultShelfLifeDays: null,
+  notes: null,
   photos: [],
   moderationFeedback: null,
   submittedAt: null,
@@ -123,15 +125,37 @@ describe('<ProductEditScreen />', () => {
     );
   });
 
-  it('submitting flushes and returns to the product detail screen', async () => {
+  it('submitting shows confirmation alert and navigates back', async () => {
     queueFetch(jsonResponse(PRODUCT), jsonResponse(EDIT_DRAFT));
+    const alertSpy = jest.spyOn(Alert, 'alert');
     const { findByTestId, getByTestId } = render(wrap(<ProductEditScreen />));
     await findByTestId('edit-submit');
 
     queueFetch(jsonResponse({ ...EDIT_DRAFT, status: 'pending', version: 2 }));
     await act(async () => fireEvent.press(getByTestId('edit-submit')));
 
-    await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Suggestion Submitted',
+        expect.stringContaining('moderators for review'),
+        expect.any(Array),
+      );
+    });
+  });
+
+  it('allows editing default shelf life and submitter notes', async () => {
+    queueFetch(jsonResponse(PRODUCT), jsonResponse(EDIT_DRAFT));
+    const { findByTestId } = render(wrap(<ProductEditScreen />));
+
+    const shelfInput = await findByTestId('edit-shelf-life');
+    const notesInput = await findByTestId('edit-notes');
+
+    fireEvent.changeText(shelfInput, '60');
+    fireEvent.changeText(notesInput, 'Fresh peas have 60 days frozen shelf life');
+
+    expect(shelfInput.props.value).toBe('60');
+    expect(notesInput.props.value).toBe('Fresh peas have 60 days frozen shelf life');
+    expect(await findByTestId('edit-notes-counter')).toBeTruthy();
   });
 
   it('a 409 edit_base_stale on submit is terminal — no retry button', async () => {

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 export declare const productEditPhotoSchema: z.ZodObject<{
     id: z.ZodString;
+    sourceProductPhotoId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     position: z.ZodNumber;
     retained: z.ZodBoolean;
     thumbnailUrl: z.ZodString;
@@ -8,15 +9,17 @@ export declare const productEditPhotoSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     position: number;
+    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
-    retained: boolean;
+    sourceProductPhotoId?: string | null | undefined;
 }, {
     id: string;
     position: number;
+    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
-    retained: boolean;
+    sourceProductPhotoId?: string | null | undefined;
 }>;
 export type ProductEditPhoto = z.infer<typeof productEditPhotoSchema>;
 export declare const productEditRowSchema: z.ZodObject<{
@@ -29,8 +32,11 @@ export declare const productEditRowSchema: z.ZodObject<{
     description: z.ZodNullable<z.ZodString>;
     brand: z.ZodNullable<z.ZodString>;
     category: z.ZodNullable<z.ZodString>;
+    defaultShelfLifeDays: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photos: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
+        sourceProductPhotoId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         position: z.ZodNumber;
         retained: z.ZodBoolean;
         thumbnailUrl: z.ZodString;
@@ -38,15 +44,17 @@ export declare const productEditRowSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }, {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
     submittedAt: z.ZodNullable<z.ZodString>;
@@ -54,43 +62,49 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    productId: string;
+    version: number;
+    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
-    version: number;
     photos: {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
-    productId: string;
-    baseProductVersion: number;
     submittedAt: string | null;
+    updatedAt: string;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    productId: string;
+    version: number;
+    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
-    version: number;
     photos: {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
-    productId: string;
-    baseProductVersion: number;
     submittedAt: string | null;
+    updatedAt: string;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }>;
 export type ProductEditRow = z.infer<typeof productEditRowSchema>;
 export declare const productEditMetadataPatchRequestSchema: z.ZodObject<{
@@ -99,18 +113,24 @@ export declare const productEditMetadataPatchRequestSchema: z.ZodObject<{
     description: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodNullable<z.ZodString>, string | null, string | null>, string | null, string | null>, string | null, string | null>>;
     brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     category: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    defaultShelfLifeDays: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
     version: number;
     name?: string | undefined;
     description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }, {
     version: number;
     name?: string | undefined;
     description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }>;
 export type ProductEditMetadataPatchRequest = z.infer<typeof productEditMetadataPatchRequestSchema>;
 export declare const productEditPhotoReorderRequestSchema: z.ZodEffects<z.ZodObject<{
@@ -143,8 +163,11 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     description: z.ZodNullable<z.ZodString>;
     brand: z.ZodNullable<z.ZodString>;
     category: z.ZodNullable<z.ZodString>;
+    defaultShelfLifeDays: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photos: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
+        sourceProductPhotoId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         position: z.ZodNumber;
         retained: z.ZodBoolean;
         thumbnailUrl: z.ZodString;
@@ -152,15 +175,17 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }, {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
     submittedAt: z.ZodNullable<z.ZodString>;
@@ -171,47 +196,53 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    productId: string;
+    version: number;
+    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
-    version: number;
     photos: {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
-    productId: string;
-    submittedBy: string;
-    baseProductVersion: number;
     submittedAt: string | null;
+    updatedAt: string;
+    submittedBy: string;
     liveProductVersion: number;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    productId: string;
+    version: number;
+    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
-    version: number;
     photos: {
         id: string;
         position: number;
+        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
-        retained: boolean;
+        sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
-    productId: string;
-    submittedBy: string;
-    baseProductVersion: number;
     submittedAt: string | null;
+    updatedAt: string;
+    submittedBy: string;
     liveProductVersion: number;
+    defaultShelfLifeDays?: number | null | undefined;
+    notes?: string | null | undefined;
 }>;
 export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;
 //# sourceMappingURL=product-edits.d.ts.map

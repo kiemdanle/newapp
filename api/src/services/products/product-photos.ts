@@ -521,7 +521,10 @@ export async function assertEditPhotoMutablePreCheck(actor: ProductActor, editId
 async function loadEditWithPhotos(tx: PrismaTypes.TransactionClient, editId: string) {
   return tx.productEdit.findUniqueOrThrow({
     where: { id: editId },
-    include: { photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' } } },
+    include: {
+      photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' } },
+      product: { select: { defaultShelfLifeDays: true } },
+    },
   });
 }
 

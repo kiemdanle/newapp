@@ -15,6 +15,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { writeAuditLog } from '../audit/log.js';
 import { recordModerationNotificationEvent } from '../notifications/moderation-notification-events.js';
+import { enqueueOutbox } from '../notifications/outbox.js';
 import type { RequestMeta } from './product-moderation.js';
 import { getVisibleProduct, type ProductActor } from './product-visibility.js';
 import { toApiProduct } from './serializer.js';
@@ -39,9 +40,23 @@ import {
   removeKeyPrefix,
 } from './product-media-storage.js';
 
-const EDIT_INCLUDE = { photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } } };
-type EditWithPhotos = PrismaTypes.ProductEditGetPayload<{ include: typeof EDIT_INCLUDE }>;
-type ProposedMetadata = { name?: string; description?: string | null; brand?: string | null; category?: string | null };
+export const EDIT_INCLUDE = {
+  photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
+  product: { select: { defaultShelfLifeDays: true } },
+};
+type EditWithPhotos = PrismaTypes.ProductEditGetPayload<{
+  include: { photos: { include: { sourceProductPhoto: true } } };
+}> & {
+  product?: { defaultShelfLifeDays: number | null } | null;
+};
+type ProposedMetadata = {
+  name?: string;
+  description?: string | null;
+  brand?: string | null;
+  category?: string | null;
+  defaultShelfLifeDays?: number | null;
+  notes?: string | null;
+};
 
 function notFound(): never {
   throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Revision not found' });
@@ -82,6 +97,7 @@ function toApiEditPhoto(photo: PrismaProductEditPhoto & { sourceProductPhoto: { 
       const base = getConfig().media.publicBaseUrl;
       return {
         id: photo.id,
+        sourceProductPhotoId: photo.sourceProductPhotoId,
         position: photo.position,
         retained: true,
         thumbnailUrl: publicMediaUrl(base, src.publicStorageKey, 'thumb'),
@@ -92,6 +108,7 @@ function toApiEditPhoto(photo: PrismaProductEditPhoto & { sourceProductPhoto: { 
     // product's photo by construction, so this branch should never execute.
     return {
       id: photo.id,
+      sourceProductPhotoId: photo.sourceProductPhotoId,
       position: photo.position,
       retained: true,
       thumbnailUrl: privateProductPhotoRoute(src.productId, photo.sourceProductPhotoId, 'thumb'),
@@ -100,6 +117,7 @@ function toApiEditPhoto(photo: PrismaProductEditPhoto & { sourceProductPhoto: { 
   }
   return {
     id: photo.id,
+    sourceProductPhotoId: null,
     position: photo.position,
     retained: false,
     thumbnailUrl: privateProductEditPhotoRoute(editId, photo.id, 'thumb'),
@@ -113,6 +131,14 @@ function toApiEditPhoto(photo: PrismaProductEditPhoto & { sourceProductPhoto: { 
  * the one place that owns turning that row into the public `ProductEditRow` DTO. */
 export function toProductEditRow(edit: EditWithPhotos): ProductEditRow {
   const proposed = edit.proposed as ProposedMetadata;
+  const shelfLife =
+    proposed.defaultShelfLifeDays !== undefined
+      ? (proposed.defaultShelfLifeDays ?? null)
+      : (edit.product?.defaultShelfLifeDays ?? null);
+  const notes =
+    edit.status === 'rejected' && edit.notes === SUPERSEDED_STALE_BASE_REASON
+      ? (proposed.notes ?? null)
+      : (proposed.notes ?? edit.notes ?? null);
   return productEditRowSchema.parse({
     id: edit.id,
     productId: edit.productId,
@@ -123,6 +149,8 @@ export function toProductEditRow(edit: EditWithPhotos): ProductEditRow {
     description: proposed.description ?? null,
     brand: proposed.brand ?? null,
     category: proposed.category ?? null,
+    defaultShelfLifeDays: shelfLife,
+    notes: notes,
     photos: [...edit.photos].sort((a, b) => a.position - b.position).map((p) => toApiEditPhoto(p, edit.id)),
     moderationFeedback: edit.moderationNotes,
     submittedAt: edit.submittedAt ? edit.submittedAt.toISOString() : null,
@@ -135,8 +163,8 @@ export function toProductEditRow(edit: EditWithPhotos): ProductEditRow {
  * existing draft/changes_required revision for it. The desired photo set is
  * initialized from the product's current live photos (all `retained`) only on
  * create — resuming never re-seeds it, so in-progress staging/removal survives a
- * repeated resume call. A `pending` revision (already submitted, under review) is
- * not resumable — the creator must wait for it to resolve.
+ * repeated resume call. A `pending` revision (already submitted, under review)
+ * returns the existing suggestion with `resumed: true` for read-only inspection.
  */
 export async function createOrResumeProductEdit(
   actor: ProductActor,
@@ -151,9 +179,6 @@ export async function createOrResumeProductEdit(
     include: EDIT_INCLUDE,
   });
   if (existing) {
-    if (existing.status === 'pending') {
-      throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'A revision is already open for this product' });
-    }
     return { edit: toProductEditRow(existing), resumed: true };
   }
 
@@ -168,6 +193,8 @@ export async function createOrResumeProductEdit(
             description: product.description,
             brand: product.brand,
             category: product.category,
+            defaultShelfLifeDays: product.defaultShelfLifeDays ?? null,
+            notes: null,
           },
           status: 'draft',
           isLegacy: false,
@@ -188,9 +215,6 @@ export async function createOrResumeProductEdit(
         include: EDIT_INCLUDE,
       });
       if (raced) {
-        if (raced.status === 'pending') {
-          throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'A revision is already open for this product' });
-        }
         return { edit: toProductEditRow(raced), resumed: true };
       }
     }
@@ -222,11 +246,20 @@ export async function patchProductEditMetadata(
   if (input.description !== undefined) proposed.description = input.description;
   if (input.brand !== undefined) proposed.brand = input.brand;
   if (input.category !== undefined) proposed.category = input.category;
+  if (input.defaultShelfLifeDays !== undefined) proposed.defaultShelfLifeDays = input.defaultShelfLifeDays;
+  if (input.notes !== undefined) proposed.notes = input.notes;
 
   const prisma = getPrisma();
+  const dataToUpdate: PrismaTypes.ProductEditUpdateManyMutationInput = {
+    proposed,
+    version: { increment: 1 },
+  };
+  if (input.notes !== undefined) {
+    dataToUpdate.notes = input.notes;
+  }
   const result = await prisma.productEdit.updateMany({
     where: { id: editId, submittedBy: actor.id, status: { in: ['draft', 'changes_required'] }, version: input.version },
-    data: { proposed, version: { increment: 1 } },
+    data: dataToUpdate,
   });
   if (result.count === 0) {
     const current = await prisma.productEdit.findUnique({ where: { id: editId } });
@@ -302,6 +335,11 @@ async function requestChangesOnEdit(
       },
       tx,
     );
+    await enqueueOutbox(tx, {
+      userId: (await tx.productEdit.findUniqueOrThrow({ where: { id: editId }, select: { submittedBy: true } })).submittedBy,
+      templateKey: 'product_edit_changes_required',
+      payload: { editId, notes: notes ?? null },
+    });
     return tx.productEdit.findUniqueOrThrow({ where: { id: editId }, include: EDIT_INCLUDE });
   });
   return toProductEditRow(updated);
@@ -428,6 +466,10 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
           description: 'description' in proposed ? (proposed.description ?? null) : product.description,
           brand: 'brand' in proposed ? (proposed.brand ?? null) : product.brand,
           category: 'category' in proposed ? (proposed.category ?? null) : product.category,
+          defaultShelfLifeDays:
+            'defaultShelfLifeDays' in proposed
+              ? (proposed.defaultShelfLifeDays ?? null)
+              : product.defaultShelfLifeDays,
           ...(coverImageUrl !== undefined ? { imageUrl: coverImageUrl } : {}),
           version: { increment: 1 },
         },
@@ -536,9 +578,26 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
           targetType: 'product_edit',
           targetId: edit.id,
           diff: {
-            before: { status: 'pending' },
+            before: {
+              status: 'pending',
+              name: product.name,
+              description: product.description,
+              brand: product.brand,
+              category: product.category,
+              defaultShelfLifeDays: product.defaultShelfLifeDays,
+              notes: (edit.proposed as ProposedMetadata).notes ?? edit.notes ?? null,
+            },
             after: {
               decision: 'approve',
+              name: 'name' in proposed ? proposed.name : product.name,
+              description: 'description' in proposed ? (proposed.description ?? null) : product.description,
+              brand: 'brand' in proposed ? (proposed.brand ?? null) : product.brand,
+              category: 'category' in proposed ? (proposed.category ?? null) : product.category,
+              defaultShelfLifeDays:
+                'defaultShelfLifeDays' in proposed
+                  ? (proposed.defaultShelfLifeDays ?? null)
+                  : product.defaultShelfLifeDays,
+              notes: (edit.proposed as ProposedMetadata).notes ?? edit.notes ?? null,
               publishedPhotos: staged.length,
               removedPhotos: removedLivePhotos.length,
               // This approval mutated (deleted) photo-slot rows belonging to
@@ -553,8 +612,12 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
         },
         tx,
       );
+      await enqueueOutbox(tx, {
+        userId: edit.submittedBy,
+        templateKey: 'product_edit_approved',
+        payload: { editId: edit.id, productId: edit.productId },
+      });
       if (intent) await completeMediaOperation(tx, intent.id, intent.leaseOwner);
-
       return toApiProduct(await tx.product.findUniqueOrThrow({ where: { id: product.id }, include: { photos: { orderBy: { position: 'asc' } } } }), { kind: 'privileged' });
     });
   }
@@ -666,7 +729,7 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
       const stagedKeys = currentPhotos.filter((p) => !p.sourceProductPhotoId && p.privateStorageKey).map((p) => p.privateStorageKey!);
 
       const result = await tx.productEdit.updateMany({
-        where: { id: edit.id, version: input.editVersion },
+        where: { id: edit.id, version: input.editVersion, product: { version: product.version } },
         data: {
           status: 'rejected',
           notes: SUPERSEDED_STALE_BASE_REASON,
@@ -691,7 +754,14 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
           action: 'product_edit.supersede',
           targetType: 'product_edit',
           targetId: edit.id,
-          diff: { before: { status: edit.status }, after: { status: 'rejected', reason: SUPERSEDED_STALE_BASE_REASON } },
+          diff: {
+            before: { status: edit.status, moderationNotes: edit.moderationNotes },
+            after: {
+              status: 'rejected',
+              reason: SUPERSEDED_STALE_BASE_REASON,
+              moderationNotes: input.notes !== undefined ? input.notes : edit.moderationNotes,
+            },
+          },
           requestId: requestMeta.requestId,
           ip: requestMeta.ip,
         },
@@ -791,7 +861,25 @@ export async function recoverProductEdit(actor: ProductActor, requestMeta: Reque
         action: 'product_edit.rebase',
         targetType: 'product_edit',
         targetId: edit.id,
-        diff: { before: { baseProductVersion: edit.baseProductVersion }, after: { baseProductVersion: product.version } },
+        diff: {
+          before: {
+            baseProductVersion: edit.baseProductVersion,
+            defaultShelfLifeDays:
+              (edit.proposed as ProposedMetadata).defaultShelfLifeDays !== undefined
+                ? ((edit.proposed as ProposedMetadata).defaultShelfLifeDays ?? null)
+                : (edit.product?.defaultShelfLifeDays ?? null),
+            notes: (edit.proposed as ProposedMetadata).notes ?? edit.notes ?? null,
+          },
+          after: {
+            baseProductVersion: product.version,
+            defaultShelfLifeDays:
+              (edit.proposed as ProposedMetadata).defaultShelfLifeDays !== undefined
+                ? ((edit.proposed as ProposedMetadata).defaultShelfLifeDays ?? null)
+                : (product.defaultShelfLifeDays ?? null),
+            notes: (edit.proposed as ProposedMetadata).notes ?? edit.notes ?? null,
+            desiredPhotoOrder: input.desiredPhotoOrder,
+          },
+        },
         requestId: requestMeta.requestId,
         ip: requestMeta.ip,
       },

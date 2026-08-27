@@ -10,7 +10,9 @@ import { useTheme } from '../../theme/useTheme';
 
 export interface EditEditorProps {
   productId: string;
-  liveProduct: Pick<Product, 'name' | 'description' | 'brand' | 'category'>;
+  liveProduct: Pick<Product, 'name' | 'description' | 'brand' | 'category'> & {
+    defaultShelfLifeDays?: number | null;
+  };
   edit: ProductEditRow;
   onDirtyChange: (dirty: boolean) => void;
   onSubmitted: (edit: ProductEditRow) => void;
