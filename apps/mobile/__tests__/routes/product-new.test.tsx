@@ -161,18 +161,18 @@ describe('<NewProductScreen />', () => {
     });
   });
 
-  it('the submit button becomes disabled once metadata text is edited but not yet saved', async () => {
+  it('the submit button remains enabled when metadata text is edited, allowing 1-tap post', async () => {
     __setRouteParams({ productId: 'draft-1', resume: 'edit' });
     queueFetch(jsonResponse(PRODUCT));
 
     const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
     await findByTestId('draft-name');
 
-    // Nothing dirty yet — submit is available.
     expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(false);
 
     fireEvent.changeText(getByTestId('draft-name'), 'Edited name');
-    expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(true);
+    // 1-tap post: submit button remains available to flush and submit directly
+    expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(false);
   });
 
   it('submitting a no-photo draft flushes metadata, mints a fresh token, clears the local draft mapping, and continues to a personal-scope-locked pantry form', async () => {

@@ -37,6 +37,7 @@ export interface ProductDraftFormProps {
   onSaved?: (product: Product) => void;
   onDirtyChange?: (dirty: boolean) => void;
   readOnly?: boolean;
+  hideSaveButton?: boolean;
   /** Rendered above the fields — used by the drafts screen to surface
    * `moderationFeedback` for a `changes_required` row. */
   feedbackBanner?: React.ReactNode;
@@ -51,7 +52,7 @@ export interface ProductDraftFormProps {
 /** The identifier (barcode/QR) is immutable and shown read-only — it's the
  * one field this form never lets the creator change, since it's the key the
  * whole draft/resume flow is keyed by. */
-export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readOnly, feedbackBanner, coordinator }: ProductDraftFormProps) {
+export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readOnly, hideSaveButton, feedbackBanner, coordinator }: ProductDraftFormProps) {
   const theme = useTheme();
   const patchDraft = usePatchDraft();
   const [known, setKnown] = useState(initialProduct);
@@ -68,6 +69,19 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
     onDirtyChange?.(dirty);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty]);
+
+  const enqueuePatch = (updatedFields: Fields) => {
+    if (!coordinator || readOnly) return;
+    const patch = {
+      name: updatedFields.name.trim(),
+      description: updatedFields.description.trim() || null,
+      brand: updatedFields.brand.trim() || null,
+      category: updatedFields.category.trim() || null,
+    };
+    void coordinator.enqueue({ kind: 'metadata', fields: patch }).then((upd) => {
+      setKnown(upd);
+    }).catch(() => {});
+  };
 
   // Coordinator conflicts arrive asynchronously (a photo mutation can also
   // trigger one) — subscribe rather than only checking after this form's own
@@ -231,7 +245,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               maxLength={NAME_MAX}
               onFocus={() => setFocusedField('name')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
+              onChangeText={(v) => {
+                const next = { ...fields, name: v };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
           </View>
         </View>
@@ -265,7 +283,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               multiline
               onFocus={() => setFocusedField('description')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
+              onChangeText={(v) => {
+                const next = { ...fields, description: v };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
             <Text testID="draft-description-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
               {fields.description.length}/{DESCRIPTION_MAX}
@@ -300,7 +322,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 value={fields.brand}
                 onFocus={() => setFocusedField('brand')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
+                onChangeText={(v) => {
+                  const next = { ...fields, brand: v };
+                  setFields(next);
+                  enqueuePatch(next);
+                }}
               />
             </View>
           </View>
@@ -330,12 +356,15 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 value={fields.category}
                 onFocus={() => setFocusedField('category')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
+                onChangeText={(v) => {
+                  const next = { ...fields, category: v };
+                  setFields(next);
+                  enqueuePatch(next);
+                }}
               />
             </View>
           </View>
         </View>
-
         {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
         {conflict ? (
@@ -348,7 +377,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
           />
         ) : null}
 
-        {!readOnly ? (
+        {!readOnly && !hideSaveButton ? (
           <Button
             testID="draft-save"
             label={isSaving ? 'Saving Changes…' : 'Save Details'}

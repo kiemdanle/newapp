@@ -71,6 +71,7 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
         initialProduct={product}
         coordinator={coordinator}
         onDirtyChange={setFormDirty}
+        hideSaveButton
         feedbackBanner={
           feedback ? (
             <View
@@ -88,7 +89,7 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
         coordinator={coordinator}
         onUnsettledChange={setPhotoUnsettled}
       />
-      <DraftSubmitPanel coordinator={coordinator} disabled={formDirty || photoUnsettled} onSubmitted={onSubmitted} />
+      <DraftSubmitPanel coordinator={coordinator} disabled={photoUnsettled} onSubmitted={onSubmitted} />
       <Button testID="new-product-discard" label="Discard draft" variant="outline" onPress={onDiscard} />
     </View>
   );
