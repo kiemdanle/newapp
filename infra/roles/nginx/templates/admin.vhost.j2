@@ -37,6 +37,10 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
 
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer" always;
@@ -70,6 +74,13 @@ server {
     # admin_allowlist is empty — TLS-only access. See infra/README.md
     # ("Locking down the admin vhost") to add CIDRs.
 {% endif %}
+
+    # Next.js static assets — immutable long-term caching
+    location /_next/static/ {
+        proxy_pass http://127.0.0.1:{{ admin_port }};
+        proxy_set_header Host $host;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    }
 
     # Next.js standalone server: passes through /, /_next/*, /api/*, etc.
     # Upgrade headers + long read timeout enable Next dev HMR (wss /_next/webpack-hmr)

@@ -38,6 +38,10 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
 
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer" always;

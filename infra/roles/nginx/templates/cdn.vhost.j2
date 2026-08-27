@@ -36,15 +36,23 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
 
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    etag on;
+
+    # In-memory kernel file descriptor cache for high-frequency media lookups
+    open_file_cache max=20000 inactive=24h;
+    open_file_cache_valid 30m;
+    open_file_cache_min_uses 1;
+    open_file_cache_errors on;
+
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "no-referrer" always;
 
     # No client uploads land here — this vhost only ever serves already
-    # -generated WebP variants. `0` means UNLIMITED (the opposite of the
-    # comment's intent, reviewer-p7 IM4) — a small explicit cap actually
-    # rejects a body instead of silently accepting and reading one before the
-    # request 404s/405s anyway.
+    # -generated WebP variants.
     client_max_body_size 1k;
 
     # Denies any dotfile/dot-segment path before the products location below
