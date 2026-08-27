@@ -1,5 +1,5 @@
 import { COOKIE_NAMES } from './cookies';
-import { CSRF_HEADER } from './csrf';
+import { CSRF_HEADER } from './csrf-constants';
 
 function readCookie(name: string): string | undefined {
   if (typeof document === 'undefined') return undefined;

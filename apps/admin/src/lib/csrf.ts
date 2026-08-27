@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 
-export const CSRF_HEADER = 'x-csrf-token';
+export { CSRF_HEADER } from './csrf-constants';
 
 export function generateCsrfToken(): string {
   return randomBytes(32).toString('base64url');
