@@ -105,9 +105,8 @@ describe('<ProductEditScreen />', () => {
   });
 
   it('prompts before discarding unsaved edits on back navigation', async () => {
-    queueFetch(jsonResponse(PRODUCT), jsonResponse(EDIT_DRAFT));
+    queueFetch(jsonResponse(PRODUCT), jsonResponse(EDIT_DRAFT), jsonResponse(EDIT_DRAFT));
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
-
     const { findByTestId, getByTestId } = render(wrap(<ProductEditScreen />));
     await findByTestId('edit-name');
     fireEvent.changeText(getByTestId('edit-name'), 'Edited name');
@@ -144,9 +143,13 @@ describe('<ProductEditScreen />', () => {
   });
 
   it('allows editing default shelf life and submitter notes', async () => {
-    queueFetch(jsonResponse(PRODUCT), jsonResponse(EDIT_DRAFT));
+    queueFetch(
+      jsonResponse(PRODUCT),
+      jsonResponse(EDIT_DRAFT),
+      jsonResponse(EDIT_DRAFT),
+      jsonResponse(EDIT_DRAFT),
+    );
     const { findByTestId } = render(wrap(<ProductEditScreen />));
-
     const shelfInput = await findByTestId('edit-shelf-life');
     const notesInput = await findByTestId('edit-notes');
 

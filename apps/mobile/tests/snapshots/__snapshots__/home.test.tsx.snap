@@ -232,6 +232,7 @@ exports[`home in expyrico snapshot 1`] = `
                   <ScopeToggle />
                 </View>
               }
+              alwaysBounceVertical={true}
               contentContainerStyle={
                 {
                   "flexGrow": 1,
@@ -251,12 +252,27 @@ exports[`home in expyrico snapshot 1`] = `
               onScroll={[Function]}
               onScrollBeginDrag={[Function]}
               onScrollEndDrag={[Function]}
+              refreshControl={
+                <RefreshControlMock
+                  colors={
+                    [
+                      "#4BAE8A",
+                    ]
+                  }
+                  onRefresh={[Function]}
+                  progressBackgroundColor="#FAFAF8"
+                  refreshing={false}
+                  testID="pantry-refresh-control"
+                  tintColor="#4BAE8A"
+                />
+              }
               renderItem={[Function]}
               scrollEnabled={true}
               scrollEventThrottle={0.0001}
               stickyHeaderIndices={[]}
               testID="pantry-record-list"
             >
+              <RCTRefreshControl />
               <View>
                 <View
                   collapsable={false}
@@ -879,6 +895,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                   <ScopeToggle />
                 </View>
               }
+              alwaysBounceVertical={true}
               contentContainerStyle={
                 {
                   "flexGrow": 1,
@@ -898,12 +915,27 @@ exports[`home in expyricoDark snapshot 1`] = `
               onScroll={[Function]}
               onScrollBeginDrag={[Function]}
               onScrollEndDrag={[Function]}
+              refreshControl={
+                <RefreshControlMock
+                  colors={
+                    [
+                      "#4BAE8A",
+                    ]
+                  }
+                  onRefresh={[Function]}
+                  progressBackgroundColor="#191F1B"
+                  refreshing={false}
+                  testID="pantry-refresh-control"
+                  tintColor="#4BAE8A"
+                />
+              }
               renderItem={[Function]}
               scrollEnabled={true}
               scrollEventThrottle={0.0001}
               stickyHeaderIndices={[]}
               testID="pantry-record-list"
             >
+              <RCTRefreshControl />
               <View>
                 <View
                   collapsable={false}

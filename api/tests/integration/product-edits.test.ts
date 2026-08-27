@@ -20,7 +20,7 @@ import {
   recoverProductEdit,
 } from '../../src/services/products/product-edits.js';
 import * as auditLog from '../../src/services/audit/log.js';
-
+import { processSendJob } from '../../src/workers/notification-send.js';
 // I7: same fault-injection shape as admin-product-moderation.test.ts's — forces a
 // failure after `publishProductEditPhoto` has already copied bytes but before the
 // reference transaction (whose last statement is `writeAuditLog`) commits.
@@ -334,8 +334,27 @@ describe('resolveProductEdit — submit / request_changes / approve', () => {
       where: { userId: creator.id, templateKey: 'product_edit_approved' },
     });
     expect(appOutbox.payload).toMatchObject({ editId: edit.id, productId: product.id });
-  });
 
+    // Verify outbox dispatch and notification worker process the job properly
+    await getPrisma().pushToken.create({
+      data: {
+        userId: creator.id,
+        deviceToken: 'dummy-device-token-12345',
+        platform: 'android',
+      },
+    });
+
+    await expect(
+      processSendJob({
+        recordId: product.id,
+        userId: creator.id,
+        fireAt: new Date().toISOString(),
+        offsetDays: 0,
+        templateKey: 'product_edit_approved',
+        payload: { editId: edit.id, productId: product.id },
+      }),
+    ).resolves.toBeUndefined();
+  });
   it('I7: leaves no orphaned public bytes and no reference when approveEdit\'s reference transaction fails AFTER the staged photo was already published', async () => {
     const creator = await makeUserForAdmin();
     const { admin } = await makeAdmin();

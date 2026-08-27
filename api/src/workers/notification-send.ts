@@ -43,7 +43,83 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
     payloadData = { giveawayId: giveaway.id, type: data.templateKey };
     associatedRecordId = null;
   }
-  // 2. Pantry record expiry notifications
+  // 2. Product edit suggestion notifications
+  else if (data.templateKey.startsWith('product_edit_')) {
+    const editId = (data.payload?.editId as string) || '';
+    const productId = (data.payload?.productId as string) || '';
+    const edit = editId
+      ? await prisma.productEdit.findUnique({
+          where: { id: editId },
+          include: { product: true },
+        })
+      : null;
+    const product = (productId ? await prisma.product.findUnique({ where: { id: productId } }) : null) || edit?.product;
+    const productName = product?.name || 'Product';
+
+    const template = await prisma.notificationTemplate.findUnique({
+      where: { key: data.templateKey },
+    });
+
+    if (data.templateKey === 'product_edit_approved') {
+      title = template?.title ?? 'Product Edit Approved';
+      const rawBody = template?.body ?? 'Your edit suggestions for {name} have been approved!';
+      body = rawBody.replace(/\{name\}/g, () => productName);
+      payloadData = {
+        type: 'product_edit_approved',
+        editId: editId || '',
+        productId: product?.id || productId || '',
+      };
+    } else if (data.templateKey === 'product_edit_changes_required') {
+      title = template?.title ?? 'Product Edit Update';
+      const rawBody = template?.body ?? 'Changes were requested for your edit on {name}';
+      body = rawBody.replace(/\{name\}/g, () => productName);
+      payloadData = {
+        type: 'product_edit_changes_required',
+        editId: editId || '',
+        productId: product?.id || productId || '',
+        notes: (data.payload?.notes as string) || '',
+      };
+    } else {
+      title = template?.title ?? 'Product Edit Update';
+      body = (template?.body ?? 'Update on your edit for {name}').replace(/\{name\}/g, () => productName);
+      payloadData = {
+        type: data.templateKey,
+        editId: editId || '',
+        productId: product?.id || productId || '',
+      };
+    }
+    associatedRecordId = null;
+  }
+  // 3. New product moderation notifications
+  else if (data.templateKey.startsWith('product_')) {
+    const productId = (data.payload?.productId as string) || data.recordId;
+    const product = productId ? await prisma.product.findUnique({ where: { id: productId } }) : null;
+    const productName = product?.name || 'Product';
+
+    const template = await prisma.notificationTemplate.findUnique({
+      where: { key: data.templateKey },
+    });
+
+    if (data.templateKey === 'product_approved') {
+      title = template?.title ?? 'Product Approved';
+      body = (template?.body ?? 'Your product {name} has been approved!').replace(/\{name\}/g, () => productName);
+      payloadData = { type: 'product_approved', productId: product?.id || productId };
+    } else if (data.templateKey === 'product_changes_required') {
+      title = template?.title ?? 'Product Moderation Update';
+      body = (template?.body ?? 'Changes were requested for {name}').replace(/\{name\}/g, () => productName);
+      payloadData = {
+        type: 'product_changes_required',
+        productId: product?.id || productId,
+        notes: (data.payload?.notes as string) || '',
+      };
+    } else {
+      title = template?.title ?? 'Product Update';
+      body = (template?.body ?? 'Update on product {name}').replace(/\{name\}/g, () => productName);
+      payloadData = { type: data.templateKey, productId: product?.id || productId };
+    }
+    associatedRecordId = null;
+  }
+  // 4. Pantry record expiry notifications
   else {
     const record = await prisma.record.findUnique({
       where: { id: data.recordId },

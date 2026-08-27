@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Image, ScrollView } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useProduct } from '../../../src/api/products';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
@@ -8,7 +8,7 @@ import { useTheme } from '../../../src/theme/useTheme';
 import { ensurePushTokenRegistered } from '../../../src/features/push/registerPushToken';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { Button } from '../../../src/components/Button';
-
+import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 export default function ProductDetail() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
@@ -47,11 +47,10 @@ export default function ProductDetail() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      {data.imageUrl ? (
-        <Image source={{ uri: data.imageUrl }} style={{ width: '100%', height: 220 }} accessibilityIgnoresInvertColors />
+      {data.imageUrl || (data.photos && data.photos.length > 0) ? (
+        <ProductThumbnail product={data} style={{ width: '100%', height: 220 }} />
       ) : null}
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
-        <Text style={{ color: theme.colors.primaryDark, fontSize: theme.typeRamp.labelMedium.fontSize, fontWeight: theme.typeRamp.labelMedium.fontWeight as any, letterSpacing: 1 }}>PRODUCT</Text>
         <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any }}>
           {data.name}
         </Text>

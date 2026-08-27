@@ -80,6 +80,25 @@ describe('handleNotificationTap', () => {
     expect(handled).toBe(true);
     expect(navigateMock).toHaveBeenCalledWith('Giveaway', { id: 'gw-456' });
   });
+  it('routes product_edit_approved and product_approved to Product detail screen', async () => {
+    const editApproved = await handleNotificationTap({ type: 'product_edit_approved', productId: 'prod-123' });
+    expect(editApproved).toBe(true);
+    expect(navigateMock).toHaveBeenCalledWith('Product', { id: 'prod-123' });
+
+    const prodApproved = await handleNotificationTap({ type: 'product_approved', productId: 'prod-456' });
+    expect(prodApproved).toBe(true);
+    expect(navigateMock).toHaveBeenCalledWith('Product', { id: 'prod-456' });
+  });
+
+  it('routes product_edit_changes_required and product_changes_required to ProductDrafts screen', async () => {
+    const editChanges = await handleNotificationTap({ type: 'product_edit_changes_required', editId: 'edit-123' });
+    expect(editChanges).toBe(true);
+    expect(navigateMock).toHaveBeenCalledWith('ProductDrafts', undefined);
+
+    const prodChanges = await handleNotificationTap({ type: 'product_changes_required', productId: 'prod-789' });
+    expect(prodChanges).toBe(true);
+    expect(navigateMock).toHaveBeenCalledWith('ProductDrafts', undefined);
+  });
 
   it('returns false for unknown payload', async () => {
     const handled = await handleNotificationTap({ type: 'unknown_type' });

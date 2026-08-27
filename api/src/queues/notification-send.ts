@@ -7,6 +7,7 @@ export interface NotificationSendJob {
   fireAt: string; // ISO timestamp, for tracking
   offsetDays: number; // 3, 1, 0 etc.
   templateKey: string; // written to push_logs.templateKey (NOT NULL)
+  payload?: Record<string, unknown>;
 }
 
 export const NOTIFICATION_SEND_QUEUE = 'notification-send';

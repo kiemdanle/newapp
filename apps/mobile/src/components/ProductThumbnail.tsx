@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, View, type ImageStyle, type StyleProp } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
+import { getBaseUrl } from '../api/client';
 import { PrivateProductImage } from '../api/product-private-image';
 import { useTheme } from '../theme/useTheme';
 
@@ -12,8 +13,7 @@ export interface ProductThumbnailProps {
   fallbackIcon?: string;
   size?: number;
 }
-
-function normalizePhotoUri(uri: string | null | undefined): string | null {
+export function normalizePhotoUri(uri: string | null | undefined): string | null {
   if (!uri || typeof uri !== 'string') return null;
   const trimmed = uri.trim();
   if (!trimmed) return null;
@@ -27,12 +27,14 @@ function normalizePhotoUri(uri: string | null | undefined): string | null {
   ) {
     return trimmed;
   }
+  if (trimmed.startsWith('/v1/') || trimmed.startsWith('/public-media/')) {
+    return `${getBaseUrl()}${trimmed}`;
+  }
   if (trimmed.startsWith('/')) {
     return `file://${trimmed}`;
   }
   return trimmed;
 }
-
 /**
  * Universal product image thumbnail component that seamlessly resolves:
  * 1. Local or public photo URLs (from record.photoUrl or product.imageUrl).
@@ -48,33 +50,45 @@ export function ProductThumbnail({
   size = 52,
 }: ProductThumbnailProps) {
   const theme = useTheme();
-  const [imageError, setImageError] = useState(false);
+  const [failedSources, setFailedSources] = useState<Set<string>>(new Set());
   const firstPhoto = product?.photos && product.photos.length > 0 ? product.photos[0] : null;
 
-  const rawCandidate =
-    photoUrl ||
-    product?.imageUrl ||
-    (firstPhoto?.thumbnailUrl?.startsWith('http')
-      ? firstPhoto.thumbnailUrl
-      : firstPhoto?.displayUrl?.startsWith('http')
-        ? firstPhoto.displayUrl
-        : null);
+  // Candidate sources in order of preference
+  const rawCandidates: Array<string | null | undefined> = [
+    photoUrl,
+    firstPhoto?.displayUrl,
+    firstPhoto?.thumbnailUrl,
+    product?.imageUrl,
+  ];
 
-  const publicCandidate = normalizePhotoUri(rawCandidate);
+  const candidates: string[] = [];
+  for (const raw of rawCandidates) {
+    const norm = normalizePhotoUri(raw);
+    if (norm && !candidates.includes(norm)) {
+      candidates.push(norm);
+    }
+  }
 
-  if (publicCandidate && !imageError) {
+  // Find first candidate that has not failed
+  const activeCandidate = candidates.find((c) => !failedSources.has(c));
+
+  if (activeCandidate) {
     return (
       <Image
-        source={{ uri: publicCandidate }}
+        key={activeCandidate}
+        source={{ uri: activeCandidate }}
         style={style}
         resizeMode="cover"
         accessibilityIgnoresInvertColors
-        onError={() => setImageError(true)}
+        onError={() => {
+          setFailedSources((prev) => new Set([...prev, activeCandidate]));
+        }}
       />
     );
   }
 
-  if (product?.id && firstPhoto?.id) {
+  // If product is a draft/pending creation and has private photos
+  if (product?.id && firstPhoto?.id && product.status !== 'active') {
     return (
       <PrivateProductImage
         target={{ kind: 'draft', productId: product.id }}

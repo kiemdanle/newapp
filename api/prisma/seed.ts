@@ -33,6 +33,10 @@ async function main() {
     { key: 'giveaway_handed_off', title: 'Giveaway Handed Off', body: '{name} has been handed off' },
     { key: 'giveaway_completed', title: 'Giveaway Completed', body: '{name} is complete. Please rate your experience!' },
     { key: 'giveaway_rate_prompt', title: 'Rate Transaction', body: 'Please leave a rating for {name}' },
+    { key: 'product_edit_approved', title: 'Product Edit Approved', body: 'Your edit suggestions for {name} have been approved!' },
+    { key: 'product_edit_changes_required', title: 'Product Edit Update', body: 'Changes were requested for your edit on {name}' },
+    { key: 'product_approved', title: 'Product Approved', body: 'Your product {name} has been approved!' },
+    { key: 'product_changes_required', title: 'Product Moderation Update', body: 'Changes were requested for {name}' },
   ];
 
   for (const t of defaultTemplates) {

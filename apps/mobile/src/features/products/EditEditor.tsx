@@ -48,13 +48,28 @@ export function EditEditor({ productId, liveProduct, edit, onDirtyChange, onSubm
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
-      <ProductEditForm initialEdit={edit} liveProduct={liveProduct} coordinator={coordinator} onDirtyChange={setFormDirty} />
+      {/* 1. Photos Section */}
       <ProductPhotoEditor
         target={{ kind: 'product_edit', editId: edit.id }}
         coordinator={coordinator}
         onUnsettledChange={setPhotoUnsettled}
       />
-      <EditSubmitPanel coordinator={coordinator} disabled={formDirty || photoUnsettled} onSubmitted={onSubmitted} />
+
+      {/* 2. Product Details Section (Unified into one form without intermediate save button) */}
+      <ProductEditForm
+        initialEdit={edit}
+        liveProduct={liveProduct}
+        coordinator={coordinator}
+        onDirtyChange={setFormDirty}
+        hideSaveButton
+      />
+
+      {/* 3. Single Submit Action */}
+      <EditSubmitPanel
+        coordinator={coordinator}
+        disabled={photoUnsettled}
+        onSubmitted={onSubmitted}
+      />
     </View>
   );
 }

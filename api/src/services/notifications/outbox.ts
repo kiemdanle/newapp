@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { notificationSendQueue } from '../../queues/index.js';
 import { getPrisma } from '../../db.js';
 import { logger } from '../../logger.js';
-
+import { processSendJob } from '../../workers/notification-send.js';
 type Tx = Prisma.TransactionClient;
 
 export async function enqueueOutbox(
@@ -35,22 +35,36 @@ export async function dispatchOutbox(limit = 50): Promise<number> {
     if (claimed.count === 0) continue;
 
     try {
-      let giveawayId = '';
-      if (row.payload && typeof row.payload === 'object' && 'giveawayId' in row.payload) {
-        const rawId = (row.payload as { giveawayId?: unknown }).giveawayId;
-        if (typeof rawId === 'string') giveawayId = rawId;
-      }
-      await notificationSendQueue().add(
-        'send',
-        {
-          recordId: giveawayId,
-          userId: row.userId,
-          fireAt: new Date().toISOString(),
-          offsetDays: 0,
-          templateKey: row.templateKey,
+      const payload = (row.payload && typeof row.payload === 'object') ? (row.payload as Record<string, unknown>) : {};
+      const giveawayId = typeof payload.giveawayId === 'string' ? payload.giveawayId : '';
+      const recordId = typeof payload.recordId === 'string' ? payload.recordId : giveawayId;
+      const productId = typeof payload.productId === 'string' ? payload.productId : '';
+      const editId = typeof payload.editId === 'string' ? payload.editId : '';
+
+      const jobData = {
+        recordId,
+        userId: row.userId,
+        fireAt: new Date().toISOString(),
+        offsetDays: 0,
+        templateKey: row.templateKey,
+        payload: {
+          ...payload,
+          giveawayId,
+          productId,
+          editId,
         },
-        { jobId: `outbox-${row.id}`, removeOnComplete: 1000, removeOnFail: 100 },
-      );
+      };
+
+      try {
+        await notificationSendQueue().add('send', jobData, {
+          jobId: `outbox-${row.id}`,
+          removeOnComplete: 1000,
+          removeOnFail: 100,
+        });
+      } catch (queueErr) {
+        logger.warn({ queueErr, outboxId: row.id }, 'queue add failed, attempting direct send');
+        await processSendJob(jobData);
+      }
       dispatched++;
     } catch (err) {
       logger.warn({ err, outboxId: row.id }, 'outbox dispatch failed');

@@ -2,15 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ProductEditRow } from '@expyrico/shared';
 import { useProduct } from '../../../../src/api/products';
 import { useCreateOrResumeEdit } from '../../../../src/api/product-edits';
+import { ensurePushTokenRegistered } from '../../../../src/features/push/registerPushToken';
 import { EditEditor } from '../../../../src/features/products/EditEditor';
 import { ProductEditForm } from '../../../../src/features/products/ProductEditForm';
 import { useTheme } from '../../../../src/theme/useTheme';
 import { Screen } from '../../../../src/components/Screen';
-
 /**
  * Creator-facing "Suggest an edit" flow for an already-active product. Not
  * gated by `product_creation` mode (plan.md) — any authenticated user may
@@ -24,9 +25,9 @@ import { Screen } from '../../../../src/components/Screen';
 export default function ProductEditScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
+  const queryClient = useQueryClient();
   const route = useRoute();
   const { id: productId } = route.params as { id: string };
-
   const { data: product, isLoading: productLoading } = useProduct(productId);
   const createOrResumeEdit = useCreateOrResumeEdit();
   const [edit, setEdit] = useState<ProductEditRow | null>(null);
@@ -211,6 +212,10 @@ export default function ProductEditScreen() {
           onSubmitted={() => {
             dirtyRef.current = false;
             setDirty(false);
+            void ensurePushTokenRegistered();
+            queryClient.invalidateQueries({ queryKey: ['products', productId] });
+            queryClient.invalidateQueries({ queryKey: ['products'] });
+            queryClient.invalidateQueries({ queryKey: ['product-drafts'] });
             Alert.alert('Suggestion Submitted', 'Thank you! Your edits have been sent to our moderators for review.', [
               { text: 'OK', onPress: () => navigation.goBack() },
             ]);
@@ -220,7 +225,6 @@ export default function ProductEditScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,

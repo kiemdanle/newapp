@@ -15,7 +15,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { writeAuditLog } from '../audit/log.js';
 import { recordModerationNotificationEvent } from '../notifications/moderation-notification-events.js';
-import { enqueueOutbox } from '../notifications/outbox.js';
+import { enqueueOutbox, sweepOutbox } from '../notifications/outbox.js';
 import type { RequestMeta } from './product-moderation.js';
 import { getVisibleProduct, type ProductActor } from './product-visibility.js';
 import { toApiProduct } from './serializer.js';
@@ -342,9 +342,9 @@ async function requestChangesOnEdit(
     });
     return tx.productEdit.findUniqueOrThrow({ where: { id: editId }, include: EDIT_INCLUDE });
   });
+  sweepOutbox().catch(() => {});
   return toProductEditRow(updated);
 }
-
 interface DesiredEntry {
   id: string;
   position: number;
@@ -621,11 +621,11 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       return toApiProduct(await tx.product.findUniqueOrThrow({ where: { id: product.id }, include: { photos: { orderBy: { position: 'asc' } } } }), { kind: 'privileged' });
     });
   }
-
   if (staged.length === 0) {
-    return applyReference(new Map(), null);
+    const result = await applyReference(new Map(), null);
+    sweepOutbox().catch(() => {});
+    return result;
   }
-
   try {
     const result = await withMediaMutationLease('publish_public', async () => {
       const publicationIds = staged.map(() => randomUUID());
@@ -657,6 +657,7 @@ async function approveEdit(actor: ProductActor, requestMeta: RequestMeta, editId
       }
     });
     await reconcileMediaCapacityReservation(reservation!.id, totalBytes);
+    sweepOutbox().catch(() => {});
     return result;
   } finally {
     if (reservation) await releaseMediaCapacityReservation(reservation.id);

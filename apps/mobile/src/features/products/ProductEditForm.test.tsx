@@ -42,7 +42,7 @@ const LIVE: Pick<Product, 'name' | 'description' | 'brand' | 'category'> = {
  * save/conflict logic, not the coordinator itself. */
 function makeCoordinator(initial: ProductEditRow) {
   let state = initial;
-  const enqueue = jest.fn();
+  const enqueue = jest.fn().mockImplementation(async () => state);
   const reconcileConflict = jest.fn();
   let conflictListener: ((info: ConflictInfo<ProductEditRow>) => void) | null = null;
   const coordinator: DraftMutationCoordinator<ProductEditRow> = {

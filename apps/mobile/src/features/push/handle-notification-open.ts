@@ -84,5 +84,13 @@ export async function handleNotificationTap(data: Record<string, unknown> | unde
     }
     return true;
   }
+  if ((data.type === 'product_edit_approved' || data.type === 'product_approved') && typeof data.productId === 'string' && data.productId.length > 0) {
+    navigate('Product', { id: data.productId });
+    return true;
+  }
+  if (data.type === 'product_edit_changes_required' || data.type === 'product_changes_required') {
+    navigate('ProductDrafts', undefined);
+    return true;
+  }
   return false;
 }

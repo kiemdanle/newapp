@@ -8,6 +8,10 @@ jest.mock('../api/records', () => ({
   useActiveRecords: () => [],
 }));
 
+jest.mock('../api/products', () => ({
+  useCreateOrResumeDraft: () => ({ mutateAsync: jest.fn() }),
+  usePatchDraft: () => ({ mutateAsync: jest.fn() }),
+}));
 interface HouseholdsResult {
   data: { items: Array<{ id: string; name: string }> };
 }

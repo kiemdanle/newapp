@@ -5,6 +5,7 @@ import { getConfig } from '../../config.js';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { writeAuditLog } from '../audit/log.js';
+import { enqueueOutbox, sweepOutbox } from '../notifications/outbox.js';
 import { toApiProduct } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductActor } from './product-visibility.js';
 import { withMediaMutationLease } from './product-media-coordinator.js';
@@ -98,8 +99,17 @@ async function requestChanges(
       },
       tx,
     );
+    const product = await tx.product.findUnique({ where: { id: productId } });
+    if (product?.createdByUserId) {
+      await enqueueOutbox(tx, {
+        userId: product.createdByUserId,
+        templateKey: 'product_changes_required',
+        payload: { productId, notes: notes ?? null },
+      });
+    }
     return loadProductWithPhotos(tx, productId);
   });
+  sweepOutbox().catch(() => {});
   return toApiProduct(updated, { kind: 'privileged' });
 }
 
@@ -120,14 +130,14 @@ async function requestChanges(
 async function approve(
   actor: ProductActor,
   requestMeta: RequestMeta,
-  product: { id: string; version: number; photos: { id: string; position: number; moderationStatus: string; privateStorageKey: string | null; displayByteSize: number; thumbnailByteSize: number }[] },
+  product: { id: string; version: number; createdByUserId?: string | null; photos: { id: string; position: number; moderationStatus: string; privateStorageKey: string | null; displayByteSize: number; thumbnailByteSize: number }[] },
   version: number,
 ): Promise<ApiProduct> {
   const prisma = getPrisma();
   const pendingPhotos = product.photos.filter((p) => p.moderationStatus === 'pending' && p.privateStorageKey);
 
   if (pendingPhotos.length === 0) {
-    return prisma.$transaction(async (tx) => {
+    const res = await prisma.$transaction(async (tx) => {
       const result = await tx.product.updateMany({
         where: { id: product.id, status: 'pending', version },
         data: { status: 'active', moderationNotes: null, moderatedByUserId: actor.id, moderatedAt: new Date(), version: { increment: 1 } },
@@ -145,8 +155,17 @@ async function approve(
         },
         tx,
       );
+      if (product.createdByUserId) {
+        await enqueueOutbox(tx, {
+          userId: product.createdByUserId,
+          templateKey: 'product_approved',
+          payload: { productId: product.id },
+        });
+      }
       return toApiProduct(await loadProductWithPhotos(tx, product.id), { kind: 'privileged' });
     });
+    sweepOutbox().catch(() => {});
+    return res;
   }
 
   const totalBytes = pendingPhotos.reduce((sum, p) => sum + p.displayByteSize + p.thumbnailByteSize, 0);
@@ -169,12 +188,11 @@ async function approve(
       );
 
       try {
-        return await prisma.$transaction(async (tx) => {
+        const res: ApiProduct = await prisma.$transaction(async (tx) => {
           const updateResult = await tx.product.updateMany({
             where: { id: product.id, status: 'pending', version },
             data: { status: 'active', moderationNotes: null, moderatedByUserId: actor.id, moderatedAt: new Date(), version: { increment: 1 } },
           });
-          if (updateResult.count === 0) versionConflict(await currentVersionOf(tx, product.id));
 
           for (let i = 0; i < pendingPhotos.length; i++) {
             await tx.productPhoto.update({
@@ -205,6 +223,13 @@ async function approve(
             },
             tx,
           );
+          if (product.createdByUserId) {
+            await enqueueOutbox(tx, {
+              userId: product.createdByUserId,
+              templateKey: 'product_approved',
+              payload: { productId: product.id },
+            });
+          }
           await completeMediaOperation(tx, intent.id, intent.leaseOwner);
           await enqueueMediaCleanup(tx, {
             operation: 'delete_private',
@@ -213,6 +238,8 @@ async function approve(
 
           return toApiProduct(await loadProductWithPhotos(tx, product.id), { kind: 'privileged' });
         });
+        sweepOutbox().catch(() => {});
+        return res;
       } catch (err) {
         // The reference transaction never committed: nothing refers to the freshly
         // copied public bytes yet. Compensate immediately; if this itself fails, the

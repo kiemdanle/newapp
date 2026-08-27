@@ -149,6 +149,16 @@ export function AppSyncManager() {
         if (remoteMessage.data?.recordId) {
           queryClient.invalidateQueries({ queryKey: ['records'] });
         }
+        if (remoteMessage.data?.productId) {
+          const pid = String(remoteMessage.data.productId);
+          queryClient.invalidateQueries({ queryKey: ['products', pid] });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['records'] });
+        }
+        if (remoteMessage.data?.editId) {
+          queryClient.invalidateQueries({ queryKey: ['product-drafts'] });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+        }
         const title = remoteMessage.notification?.title || 'Expyrico';
         const body = remoteMessage.notification?.body;
         if (body) {

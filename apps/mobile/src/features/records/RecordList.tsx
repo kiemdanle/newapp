@@ -1,13 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, SectionList, Text, View } from 'react-native';
+import { Alert, RefreshControl, SectionList, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import { useActiveRecords, patchLocalRecord, deleteLocalRecord, type LocalRecord } from '../../api/records';
+import { runSync } from '../../db/sync';
 import { groupRecords, type GroupedRecords } from './groupRecords';
 import { RecordCard } from './RecordCard';
 import { QuickEditModal } from './QuickEditModal';
 import { useTheme } from '../../theme/useTheme';
-
 const SECTION_TITLES: Record<keyof GroupedRecords, string> = {
   expired: 'Expired',
   today: 'Expires today',
@@ -35,11 +36,20 @@ const RecordRow = React.memo(function RecordRow({ record, onPress, onAddQuantity
   );
 });
 
-export function RecordList({ header, empty }: { header?: React.ReactElement; empty?: React.ReactElement }) {
+export interface RecordListProps {
+  header?: React.ReactElement;
+  empty?: React.ReactElement;
+  refreshing?: boolean;
+  onRefresh?: () => void | Promise<void>;
+}
+
+export function RecordList({ header, empty, refreshing, onRefresh }: RecordListProps) {
   const records = useActiveRecords();
   const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
+  const queryClient = useQueryClient();
   const [editingRecord, setEditingRecord] = useState<LocalRecord | null>(null);
+  const [internalRefreshing, setInternalRefreshing] = useState(false);
 
   const groups = useMemo(() => groupRecords(records), [records]);
   const sections = useMemo(
@@ -51,6 +61,21 @@ export function RecordList({ header, empty }: { header?: React.ReactElement; emp
 
   const openRecord = useCallback((id: string) => navigation.navigate('Record', { id }), [navigation]);
 
+  const handleDefaultRefresh = useCallback(async () => {
+    setInternalRefreshing(true);
+    try {
+      await Promise.allSettled([
+        runSync(),
+        queryClient.invalidateQueries({ queryKey: ['households'] }),
+        queryClient.invalidateQueries({ queryKey: ['records'] }),
+        queryClient.invalidateQueries({ queryKey: ['products'] }),
+      ]);
+    } finally {
+      setInternalRefreshing(false);
+    }
+  }, [queryClient]);
+  const isRefreshing = refreshing !== undefined ? refreshing : internalRefreshing;
+  const handleRefresh = onRefresh ?? handleDefaultRefresh;
   const handleAddQuantity = useCallback(async (record: LocalRecord) => {
     await patchLocalRecord(record.id, { quantity: record.quantity + 1 });
   }, []);
@@ -113,11 +138,22 @@ export function RecordList({ header, empty }: { header?: React.ReactElement; emp
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
+        refreshControl={
+          <RefreshControl
+            testID="pantry-refresh-control"
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.bgElevated}
+          />
+        }
+        alwaysBounceVertical={true}
         contentContainerStyle={{
           gap: theme.spacing.md,
           padding: theme.spacing.xl,
           paddingBottom: 116,
-          flexGrow: sections.length === 0 ? 1 : undefined,
+          flexGrow: 1,
         }}
         renderSectionHeader={({ section }) => (
           <View style={{ marginTop: theme.spacing.sm }}>

@@ -55,8 +55,9 @@ jest.mock('../../src/store/pantryScope', () => ({
 const mockLookup = jest.fn();
 jest.mock('../../src/api/products', () => ({
   useProductLookupV2: () => ({ mutateAsync: mockLookup }),
+  useCreateOrResumeDraft: () => ({ mutateAsync: jest.fn() }),
+  usePatchDraft: () => ({ mutateAsync: jest.fn() }),
 }));
-
 function wrap(node: React.ReactNode) {
   return <ThemeProvider>{node}</ThemeProvider>;
 }

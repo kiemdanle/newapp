@@ -56,6 +56,7 @@ export interface ProductEditFormProps {
   coordinator?: DraftMutationCoordinator<ProductEditRow>;
   onDirtyChange?: (dirty: boolean) => void;
   readOnly?: boolean;
+  hideSaveButton?: boolean;
 }
 
 function LiveCaption({ live, proposed }: { live: string | null; proposed: string }) {
@@ -65,7 +66,7 @@ function LiveCaption({ live, proposed }: { live: string | null; proposed: string
   return <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Live: {liveText}</Text>;
 }
 
-export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirtyChange, readOnly }: ProductEditFormProps) {
+export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirtyChange, readOnly, hideSaveButton }: ProductEditFormProps) {
   const theme = useTheme();
   const [known, setKnown] = useState(initialEdit);
   const [fields, setFields] = useState<Fields>(() => fieldsFrom(initialEdit));
@@ -82,6 +83,29 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty]);
 
+  const enqueuePatch = (updatedFields: Fields) => {
+    if (!coordinator || readOnly) return;
+    if (!updatedFields.name.trim()) return;
+    const trimmedShelf = updatedFields.defaultShelfLifeDays.trim();
+    let parsedShelf: number | null = null;
+    if (trimmedShelf) {
+      if (!/^\d+$/.test(trimmedShelf)) return;
+      const num = parseInt(trimmedShelf, 10);
+      if (isNaN(num) || num < 1 || num > 3650) return;
+      parsedShelf = num;
+    }
+    const patch = {
+      name: updatedFields.name.trim(),
+      description: updatedFields.description.trim() || null,
+      brand: updatedFields.brand.trim() || null,
+      category: updatedFields.category.trim() || null,
+      defaultShelfLifeDays: parsedShelf,
+      notes: updatedFields.notes.trim() || null,
+    };
+    try {
+      void coordinator.enqueue({ kind: 'metadata', fields: patch });
+    } catch {}
+  };
   useEffect(() => {
     if (!coordinator) return;
     if (coordinator.hasConflict()) setConflict({ currentVersion: known.version });
@@ -203,7 +227,11 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               maxLength={NAME_MAX}
               onFocus={() => setFocusedField('name')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
+              onChangeText={(v) => {
+                const next = { ...fields, name: v };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
           </View>
           <LiveCaption live={liveProduct.name} proposed={fields.name} />
@@ -236,7 +264,11 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               multiline
               onFocus={() => setFocusedField('description')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
+              onChangeText={(v) => {
+                const next = { ...fields, description: v };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
             <Text testID="edit-description-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
               {fields.description.length}/{DESCRIPTION_MAX}
@@ -244,7 +276,6 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
           </View>
           <LiveCaption live={liveProduct.description} proposed={fields.description} />
         </View>
-
         {/* 2-Column Row for Brand & Category */}
         <View style={styles.twoColRow}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
@@ -270,7 +301,11 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
                 value={fields.brand}
                 onFocus={() => setFocusedField('brand')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
+                onChangeText={(v) => {
+                  const next = { ...fields, brand: v };
+                  setFields(next);
+                  enqueuePatch(next);
+                }}
               />
             </View>
             <LiveCaption live={liveProduct.brand} proposed={fields.brand} />
@@ -299,14 +334,16 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
                 value={fields.category}
                 onFocus={() => setFocusedField('category')}
                 onBlur={() => setFocusedField(null)}
-                onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
+                onChangeText={(v) => {
+                  const next = { ...fields, category: v };
+                  setFields(next);
+                  enqueuePatch(next);
+                }}
               />
             </View>
             <LiveCaption live={liveProduct.category} proposed={fields.category} />
           </View>
         </View>
-
-        {/* Default Shelf Life Field */}
         <View style={styles.fieldGroup}>
           <View style={styles.labelRow}>
             <Ionicons name="time-outline" size={15} color={theme.colors.primary} />
@@ -333,7 +370,12 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               value={fields.defaultShelfLifeDays}
               onFocus={() => setFocusedField('defaultShelfLifeDays')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, defaultShelfLifeDays: v.replace(/[^0-9]/g, '') }))}
+              onChangeText={(v) => {
+                const sanitized = v.replace(/[^0-9]/g, '');
+                const next = { ...fields, defaultShelfLifeDays: sanitized };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
           </View>
           <LiveCaption
@@ -371,14 +413,18 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               multiline
               onFocus={() => setFocusedField('notes')}
               onBlur={() => setFocusedField(null)}
-              onChangeText={(v) => setFields((f) => ({ ...f, notes: v }))}
+              onChangeText={(v) => {
+                const next = { ...fields, notes: v };
+                setFields(next);
+                enqueuePatch(next);
+              }}
             />
             <Text testID="edit-notes-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
               {fields.notes.length}/{NOTES_MAX}
             </Text>
           </View>
         </View>
-        {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
+        {error ? <Text testID="edit-form-error" style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
         {conflict ? (
           <DraftConflictBanner
@@ -390,7 +436,7 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
           />
         ) : null}
 
-        {!readOnly ? (
+        {!readOnly && !hideSaveButton ? (
           <Button
             testID="edit-save"
             label={saving ? 'Saving Changes…' : 'Save Proposal'}
