@@ -17,6 +17,17 @@ export declare const dealStoreFacetSchema: z.ZodObject<{
 }>;
 export type DealStoreFacet = z.infer<typeof dealStoreFacetSchema>;
 export declare const DEAL_PHOTO_CDN_HOST = "cdn.expyrico.app";
+export declare const dealPhotoUploadResponseSchema: z.ZodObject<{
+    photoUrl: z.ZodString;
+    thumbUrl: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    photoUrl: string;
+    thumbUrl: string;
+}, {
+    photoUrl: string;
+    thumbUrl: string;
+}>;
+export type DealPhotoUploadResponse = z.infer<typeof dealPhotoUploadResponseSchema>;
 export declare const dealSchema: z.ZodObject<{
     id: z.ZodString;
     userId: z.ZodString;
@@ -67,13 +78,13 @@ export declare const dealSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     score: number;
     status: "visible" | "hidden" | "deleted";
+    photoUrl: string | null;
     id: string;
     userId: string;
     productId: string;
     price: number;
     currency: string;
     storeName: string;
-    photoUrl: string | null;
     expiryDate: string | null;
     note: string | null;
     country: string | null;
@@ -96,13 +107,13 @@ export declare const dealSchema: z.ZodObject<{
 }, {
     score: number;
     status: "visible" | "hidden" | "deleted";
+    photoUrl: string | null;
     id: string;
     userId: string;
     productId: string;
     price: number;
     currency: string;
     storeName: string;
-    photoUrl: string | null;
     expiryDate: string | null;
     note: string | null;
     country: string | null;
@@ -136,16 +147,16 @@ export declare const dealCreateSchema: z.ZodObject<{
     productId: string;
     price: number;
     storeName: string;
-    currency?: string | undefined;
     photoUrl?: string | undefined;
+    currency?: string | undefined;
     expiryDate?: string | undefined;
     note?: string | undefined;
 }, {
     productId: string;
     price: number;
     storeName: string;
-    currency?: string | undefined;
     photoUrl?: string | undefined;
+    currency?: string | undefined;
     expiryDate?: string | undefined;
     note?: string | undefined;
 }>;
@@ -157,27 +168,27 @@ export declare const dealPatchSchema: z.ZodEffects<z.ZodObject<{
     expiryDate: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodNull]>>;
     note: z.ZodOptional<z.ZodUnion<[z.ZodOptional<z.ZodString>, z.ZodNull]>>;
 }, "strip", z.ZodTypeAny, {
+    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
-    photoUrl?: string | null | undefined;
     expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }, {
+    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
-    photoUrl?: string | null | undefined;
     expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }>, {
+    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
-    photoUrl?: string | null | undefined;
     expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }, {
+    photoUrl?: string | null | undefined;
     price?: number | undefined;
     storeName?: string | undefined;
-    photoUrl?: string | null | undefined;
     expiryDate?: string | null | undefined;
     note?: string | null | undefined;
 }>;

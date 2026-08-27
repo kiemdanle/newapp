@@ -6,6 +6,7 @@ import { getDealRoute } from './get.js';
 import { updateDealRoute } from './update.js';
 import { deleteDealRoute } from './delete.js';
 import { dealVoteRoutes } from './vote.js';
+import { uploadDealPhotoRoute, publicDealPhotoRoutes } from './upload-photo.js';
 
 export async function dealsRoutes(app: FastifyInstance) {
   await app.register(listFeedRoute);
@@ -15,4 +16,6 @@ export async function dealsRoutes(app: FastifyInstance) {
   await app.register(updateDealRoute);
   await app.register(deleteDealRoute);
   await app.register(dealVoteRoutes);
+  await app.register(uploadDealPhotoRoute);
+  await app.register(publicDealPhotoRoutes);
 }

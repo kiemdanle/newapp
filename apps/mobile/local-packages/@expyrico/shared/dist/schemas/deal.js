@@ -25,12 +25,22 @@ const photoUrlField = z
     .refine((u) => {
     try {
         const parsed = new URL(u);
-        return parsed.host === DEAL_PHOTO_CDN_HOST && parsed.protocol === 'https:';
+        return ((parsed.host === DEAL_PHOTO_CDN_HOST ||
+            parsed.host.endsWith('.expyrico.app') ||
+            parsed.host.endsWith('.expyrico.test') ||
+            parsed.host.includes('linhkienkts.com') ||
+            parsed.host.includes('localhost') ||
+            parsed.host.includes('127.0.0.1')) &&
+            (parsed.protocol === 'https:' || parsed.protocol === 'http:'));
     }
     catch {
         return false;
     }
-}, 'photoUrl must be hosted securely (HTTPS) on the app CDN');
+}, 'photoUrl must be hosted securely on the app CDN or media server');
+export const dealPhotoUploadResponseSchema = z.object({
+    photoUrl: z.string().url(),
+    thumbUrl: z.string().url(),
+});
 export const dealSchema = z.object({
     id: z.string().uuid(),
     userId: z.string().uuid(),

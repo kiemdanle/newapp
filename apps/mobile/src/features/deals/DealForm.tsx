@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,11 +10,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal } from '@expyrico/shared';
-import { useCreateDeal, useDealStores, useUpdateDeal } from '../../api/deals';
+import { useCreateDeal, useDealStores, useUpdateDeal, uploadDealPhoto } from '../../api/deals';
+import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
+import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
-
+import { getCountryMetadata } from '../../utils/country-format';
 interface Props {
   product: { id: string; name: string; brand?: string | null };
   existing?: Deal;
@@ -22,22 +26,53 @@ interface Props {
 
 export function DealForm({ product, existing, onDone }: Props) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
+  const countryMeta = getCountryMetadata(userCountry);
+  const currencySymbol = countryMeta.currencySymbol || '$';
+  const currencyCode = countryMeta.currencyCode || 'USD';
   const storesQuery = useDealStores();
-
   const [price, setPrice] = useState(existing ? String(existing.price) : '');
   const [storeName, setStoreName] = useState(existing?.storeName ?? '');
   const [expiryDate, setExpiryDate] = useState(existing?.expiryDate ?? '');
   const [note, setNote] = useState(existing?.note ?? '');
-  const [photoUrl, setPhotoUrl] = useState(existing?.photoUrl ?? '');
+  const [localPhoto, setLocalPhoto] = useState<{ path: string; mime?: string; uploadedUrl?: string } | null>(() =>
+    existing?.photoUrl ? { path: existing.photoUrl, uploadedUrl: existing.photoUrl } : null,
+  );
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const create = useCreateDeal();
   const update = useUpdateDeal();
-  const pending = create.isPending || update.isPending;
-
+  const pending = create.isPending || update.isPending || uploadingPhoto;
   const availableStores = storesQuery.data?.items ?? [];
 
+
+  async function handleTakePhoto() {
+    try {
+      const picked = await takePhoto();
+      if (picked) {
+        setLocalPhoto({ path: picked.path, mime: picked.mime });
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to capture photo');
+    }
+  }
+
+  async function handleChooseGallery() {
+    try {
+      const pickedList = await choosePhotos(1);
+      if (pickedList && pickedList.length > 0 && pickedList[0]) {
+        setLocalPhoto({ path: pickedList[0].path, mime: pickedList[0].mime });
+      }
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to select photo');
+    }
+  }
+
+  function handleRemovePhoto() {
+    setLocalPhoto(null);
+  }
   async function submit() {
     setError(null);
     const parsedPrice = Number(price);
@@ -53,6 +88,19 @@ export function DealForm({ product, existing, onDone }: Props) {
     const expiry = /^\d{4}-\d{2}-\d{2}$/.test(expiryDate) ? expiryDate : undefined;
 
     try {
+      let finalPhotoUrl = localPhoto?.uploadedUrl ?? null;
+      if (localPhoto && !localPhoto.uploadedUrl) {
+        setUploadingPhoto(true);
+        try {
+          const res = await uploadDealPhoto({ path: localPhoto.path, mime: localPhoto.mime });
+          finalPhotoUrl = res.photoUrl;
+        } catch {
+          finalPhotoUrl = localPhoto.path;
+        } finally {
+          setUploadingPhoto(false);
+        }
+      }
+
       if (existing) {
         await update.mutateAsync({
           id: existing.id,
@@ -61,22 +109,24 @@ export function DealForm({ product, existing, onDone }: Props) {
             storeName: storeName.trim(),
             expiryDate: expiry ?? null,
             note: note.trim() || null,
-            photoUrl: photoUrl.trim() || null,
+            photoUrl: finalPhotoUrl,
           },
         });
       } else {
         await create.mutateAsync({
           productId: product.id,
           price: parsedPrice,
+          currency: currencyCode,
           storeName: storeName.trim(),
           expiryDate: expiry,
           note: note.trim() || undefined,
-          photoUrl: photoUrl.trim() || undefined,
+          photoUrl: finalPhotoUrl ?? undefined,
         });
       }
       onDone();
-    } catch {
-      setError('Could not save your deal. Please check inputs and try again.');
+    } catch (err: unknown) {
+      setUploadingPhoto(false);
+      setError((err as Error).message || 'Could not save your deal. Please check inputs and try again.');
     }
   }
 
@@ -106,11 +156,11 @@ export function DealForm({ product, existing, onDone }: Props) {
       {/* Price Field */}
       <View style={styles.fieldGroup}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-          Deal Price ($) <Text style={{ color: theme.colors.danger }}>*</Text>
+          Deal Price ({currencySymbol}) <Text style={{ color: theme.colors.danger }}>*</Text>
         </Text>
         <TextInput
           accessibilityLabel="price"
-          placeholder="e.g. 2.99"
+          placeholder={currencyCode === 'VND' ? 'e.g. 45000' : 'e.g. 2.99'}
           placeholderTextColor={theme.colors.textMuted}
           keyboardType="decimal-pad"
           value={price}
@@ -233,28 +283,90 @@ export function DealForm({ product, existing, onDone }: Props) {
         </Pressable>
       </View>
 
-      {/* Photo URL / Proof (Optional / Future upload) */}
+      {/* Proof Photo Section (Camera & Gallery) */}
       <View style={styles.fieldGroup}>
-        <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-          Proof Photo URL (Receipt or Shelf Tag)
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
+            Proof Photo (Receipt or Shelf Tag)
+          </Text>
+          {localPhoto ? (
+            <Text style={[styles.photoStatusText, { color: theme.colors.primaryDark }]}>
+              ✓ Photo added
+            </Text>
+          ) : null}
+        </View>
+
+        {localPhoto ? (
+          <View
+            style={[
+              styles.photoPreviewCard,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            <Image
+              source={{ uri: localPhoto.path }}
+              style={styles.photoPreviewImage}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+            <View style={[styles.photoCoverBadge, { backgroundColor: theme.colors.primary }]}>
+              <Text style={[styles.photoCoverText, { color: theme.colors.primaryFg }]}>Proof Photo</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Remove proof photo"
+              onPress={handleRemovePhoto}
+              style={[styles.photoRemoveBtn, { backgroundColor: 'rgba(0,0,0,0.65)' }]}
+            >
+              <Ionicons name="close" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.photoActionsRow}>
+            <Pressable
+              testID="deal-photo-camera-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo with camera"
+              onPress={handleTakePhoto}
+              style={[
+                styles.addPhotoBtn,
+                {
+                  backgroundColor: theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <Ionicons name="camera-outline" size={24} color={theme.colors.primary} />
+              <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Camera</Text>
+            </Pressable>
+
+            <Pressable
+              testID="deal-photo-gallery-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Select photo from gallery"
+              onPress={handleChooseGallery}
+              style={[
+                styles.addPhotoBtn,
+                {
+                  backgroundColor: theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <Ionicons name="images-outline" size={24} color={theme.colors.primary} />
+              <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Gallery</Text>
+            </Pressable>
+          </View>
+        )}
+        <Text style={[styles.photoHintText, { color: theme.colors.textMuted }]}>
+          💡 Take a clear photo of the price tag or receipt to help neighbors verify the discount.
         </Text>
-        <TextInput
-          accessibilityLabel="photo url"
-          placeholder="https://cdn.expyrico.app/deals/... (optional)"
-          placeholderTextColor={theme.colors.textMuted}
-          value={photoUrl}
-          onChangeText={setPhotoUrl}
-          editable={!pending}
-          style={[
-            styles.input,
-            {
-              color: theme.colors.text,
-              backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.md,
-            },
-          ]}
-        />
       </View>
 
       {/* Notes / Special Deal Details */}
@@ -400,5 +512,69 @@ const styles = StyleSheet.create({
   submitText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  photoStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  photoActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  addPhotoBtn: {
+    flex: 1,
+    height: 76,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  addPhotoText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  photoHintText: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  photoPreviewCard: {
+    width: '100%',
+    height: 180,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoCoverBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  photoCoverText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

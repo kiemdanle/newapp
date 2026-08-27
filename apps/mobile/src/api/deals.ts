@@ -78,6 +78,25 @@ export function useDeal(id: string) {
   });
 }
 
+export async function uploadDealPhoto(photo: {
+  path: string;
+  mime?: string;
+  name?: string;
+}): Promise<{ photoUrl: string; thumbUrl: string }> {
+  const form = new FormData();
+  form.append('file', {
+    uri: photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`,
+    type: photo.mime || 'image/jpeg',
+    name: photo.name || 'deal-photo.jpg',
+  } as unknown as Blob);
+
+  return apiClient.request<{ photoUrl: string; thumbUrl: string }>({
+    method: 'POST',
+    path: '/deals/upload-photo',
+    body: form,
+  });
+}
+
 export function useCreateDeal() {
   const qc = useQueryClient();
   return useMutation({
