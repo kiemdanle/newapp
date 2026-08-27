@@ -2,27 +2,20 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
+import { apiBrowserFetch } from '@/lib/api-client';
 export function LogoutButton() {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function onLogout() {
     setBusy(true);
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-      });
-      router.replace('/login');
-      router.refresh();
+      await apiBrowserFetch('/api/auth/logout', { method: 'POST' });
     } catch {
-      router.replace('/login');
+      // ignore error, always redirect to login
     } finally {
-      setBusy(false);
+      window.location.href = '/login';
     }
   }
 

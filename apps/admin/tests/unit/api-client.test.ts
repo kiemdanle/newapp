@@ -58,4 +58,18 @@ describe('apiBrowserFetch', () => {
     expect(endpoint1Calls).toBe(2);
     expect(endpoint2Calls).toBe(2);
   });
+  it('attaches CSRF token on POST requests when csrf cookie exists', async () => {
+    (globalThis as unknown as { document: { cookie: string } }).document = {
+      cookie: 'pantry_admin_csrf=test-csrf-token',
+    };
+
+    let sentHeaders: HeadersInit | undefined;
+    global.fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      sentHeaders = init?.headers;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await apiBrowserFetch('/api/auth/logout', { method: 'POST' });
+    expect(sentHeaders).toHaveProperty('x-csrf-token', 'test-csrf-token');
+  });
 });

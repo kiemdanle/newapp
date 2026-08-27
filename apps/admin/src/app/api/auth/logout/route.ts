@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const cookieStore = await cookies();
   const csrfCookie = cookieStore.get(COOKIE_NAMES.csrf)?.value;
   const csrfHeader = req.headers.get(CSRF_HEADER) ?? undefined;
-  if (!isCsrfValid(csrfCookie, csrfHeader)) {
+  if (csrfCookie && !isCsrfValid(csrfCookie, csrfHeader)) {
     return NextResponse.json({ code: 'forbidden' }, { status: 403 });
   }
 
