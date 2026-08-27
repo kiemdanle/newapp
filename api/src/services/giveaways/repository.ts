@@ -56,6 +56,8 @@ export function toApiGiveaway(
     country: g.country,
     status: g.status,
     selectedRecipientId,
+    quantity: g.quantity ?? 1,
+    unit: g.unit ?? 'pcs',
     expiryDate: (g as { expiryDate?: string | null }).expiryDate ?? (g as { record?: { expiryDate?: string } | null }).record?.expiryDate ?? null,
     claimExpiresAt: g.claimExpiresAt?.toISOString() ?? null,
     createdAt: g.createdAt.toISOString(),

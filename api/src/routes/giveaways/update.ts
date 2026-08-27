@@ -16,6 +16,16 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
     if (!existing) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
     if (existing.giverUserId !== req.user!.id) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Not your giveaway' });
     if (existing.status !== 'open') throw new AppError({ status: 409, code: ERROR_CODES.GIVEAWAY_NOT_OPEN, title: 'Giveaway is not open' });
+    if (input.quantity !== undefined && existing.recordId) {
+      const linkedRecord = await prisma.record.findUnique({ where: { id: existing.recordId } });
+      if (linkedRecord && input.quantity > Number(linkedRecord.quantity)) {
+        throw new AppError({
+          status: 400,
+          code: ERROR_CODES.VALIDATION,
+          title: 'Giveaway quantity exceeds available pantry stock',
+        });
+      }
+    }
     const updated = await prisma.giveaway.update({
       where: { id },
       data: {
@@ -46,6 +56,8 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
             }
           : {}),
         ...(input.expiryDate !== undefined ? { expiryDate: input.expiryDate } : {}),
+        ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
+        ...(input.unit !== undefined ? { unit: input.unit } : {}),
       },
       include: {
         giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

@@ -177,8 +177,12 @@ export async function makeGiveaway(overrides: {
   title?: string;
   description?: string;
   locationText?: string;
+  photoUrl?: string | null;
   country?: string | null;
   status?: 'open' | 'claimed' | 'handed_off' | 'completed' | 'cancelled';
+  quantity?: number;
+  unit?: string;
+  expiryDate?: string | null;
 }) {
   const prisma = getPrisma();
   return prisma.giveaway.create({
@@ -189,8 +193,12 @@ export async function makeGiveaway(overrides: {
       title: overrides.title ?? 'Free pasta, best before next week',
       description: overrides.description ?? null,
       locationText: overrides.locationText ?? 'Near Central Station',
+      photoUrl: overrides.photoUrl ?? null,
       country: overrides.country !== undefined ? overrides.country : null,
       status: overrides.status ?? 'open',
+      quantity: overrides.quantity ?? 1,
+      unit: overrides.unit ?? 'pcs',
+      expiryDate: overrides.expiryDate ?? null,
     },
   });
 }

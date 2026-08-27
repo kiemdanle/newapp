@@ -50,6 +50,34 @@ export async function selectClaimRoute(app: FastifyInstance) {
           throw new AppError({ status: 409, code: ERROR_CODES.CLAIM_NOT_FOUND, title: 'Claim is no longer available' });
         }
 
+        if (giveaway.recordId) {
+          const [lockedRecord] = await tx.$queryRaw<Array<{ id: string; quantity: number; status: string }>>`
+            SELECT id, quantity::float, status FROM records WHERE id = ${giveaway.recordId}::uuid FOR UPDATE
+          `;
+
+          if (lockedRecord && lockedRecord.status === 'active') {
+            const currentQty = lockedRecord.quantity;
+            const deductQty = giveaway.quantity || 1;
+            const remaining = currentQty - deductQty;
+
+            if (remaining > 0) {
+              await tx.record.update({
+                where: { id: lockedRecord.id },
+                data: { quantity: remaining },
+              });
+            } else {
+              await tx.record.update({
+                where: { id: lockedRecord.id },
+                data: {
+                  quantity: 0,
+                  status: 'consumed',
+                  consumedAt: new Date(),
+                },
+              });
+            }
+          }
+        }
+
         const rejected = await tx.giveawayClaim.findMany({
           where: { giveawayId, id: { not: claimId }, status: 'requested' },
           select: { claimerUserId: true },

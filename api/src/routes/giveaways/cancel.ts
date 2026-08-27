@@ -12,18 +12,48 @@ export async function cancelGiveawayRoute(app: FastifyInstance) {
   app.post('/giveaways/:id/cancel', { onRequest: [app.requireAuth] }, async (req) => {
     const { id } = paramsSchema.parse(req.params);
     const prisma = getPrisma();
-    const existing = await prisma.giveaway.findUnique({ where: { id }, include: { claims: true } });
-    if (!existing) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
-    if (existing.giverUserId !== req.user!.id) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Not your giveaway' });
-    assertTransition(existing.status, 'cancelled');
-    const updated = await prisma.giveaway.update({
-      where: { id },
-      data: { status: 'cancelled' },
-      include: {
-        giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },
-        claims: true,
-        _count: { select: { claims: true } },
-      },
+    const actorId = req.user!.id;
+    const updated = await prisma.$transaction(async (tx) => {
+      const existing = await tx.giveaway.findUnique({ where: { id }, include: { claims: true } });
+      if (!existing) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Giveaway not found' });
+      if (existing.giverUserId !== actorId) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Not your giveaway' });
+      assertTransition(existing.status, 'cancelled');
+
+      if (existing.status === 'claimed' && existing.recordId) {
+        const [linkedRecord] = await tx.$queryRaw<Array<{ id: string; quantity: number; status: string }>>`
+          SELECT id, quantity::float, status FROM records WHERE id = ${existing.recordId}::uuid FOR UPDATE
+        `;
+        if (linkedRecord) {
+          const restoreQty = existing.quantity || 1;
+          if (linkedRecord.status === 'consumed' && linkedRecord.quantity === 0) {
+            await tx.record.update({
+              where: { id: linkedRecord.id },
+              data: {
+                quantity: restoreQty,
+                status: 'active',
+                consumedAt: null,
+              },
+            });
+          } else if (linkedRecord.status === 'active') {
+            await tx.record.update({
+              where: { id: linkedRecord.id },
+              data: {
+                quantity: linkedRecord.quantity + restoreQty,
+              },
+            });
+          }
+        }
+      }
+
+      return tx.giveaway.update({
+        where: { id },
+        data: { status: 'cancelled' },
+        include: {
+          giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },
+          claims: true,
+          _count: { select: { claims: true } },
+        },
+      });
     });
     return toApiGiveaway(updated, { myClaim: null });
   });

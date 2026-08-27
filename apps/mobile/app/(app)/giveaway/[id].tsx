@@ -121,6 +121,9 @@ export default function GiveawayDetailScreen() {
       description?: string;
       photoUrl?: string | null;
       photoUrls?: string[];
+      expiryDate?: string | null;
+      quantity?: number;
+      unit?: string;
     }) => {
       if (!giveaway) return;
       await updateGiveaway.mutateAsync({
@@ -185,7 +188,7 @@ export default function GiveawayDetailScreen() {
               {giveaway.title}
             </Text>
             <Text style={[styles.locationSubtext, { color: theme.colors.textMuted }]}>
-              📍 {giveaway.locationText}
+              📍 {giveaway.locationText} · 📦 {giveaway.quantity ?? 1} {giveaway.unit || 'pcs'}
             </Text>
           </View>
 

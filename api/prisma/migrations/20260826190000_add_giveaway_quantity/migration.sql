@@ -1,0 +1,3 @@
+-- Add quantity and unit to giveaways table
+ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS quantity DOUBLE PRECISION NOT NULL DEFAULT 1;
+ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS unit VARCHAR(16) NOT NULL DEFAULT 'pcs';

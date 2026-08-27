@@ -19,8 +19,10 @@ import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
 import { formatDate } from '@/utils/country-format';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
+import type { LocalRecord } from '@/api/records';
+import type { Product } from '@expyrico/shared';
+import { PantrySelectModal } from '@/features/giveaways/PantrySelectModal';
 const MAX_PHOTOS = 5;
-
 interface LocalPhotoItem {
   id: string;
   path: string;
@@ -44,6 +46,13 @@ export default function NewGiveawayScreen() {
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPantryModal, setShowPantryModal] = useState(false);
+  const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [unit, setUnit] = useState<string>('pcs');
+  const [maxAvailableQty, setMaxAvailableQty] = useState<number | null>(null);
+  const [linkedPantryName, setLinkedPantryName] = useState<string | null>(null);
   const create = useCreateGiveaway();
   const pending = create.isPending || uploadingPhotos;
 
@@ -88,6 +97,55 @@ export default function NewGiveawayScreen() {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   }
 
+  function handleSelectPantryItem(record: LocalRecord, product?: Product | null) {
+    const name = record.customName || product?.name || '';
+    const brand = product?.brand ? `${product.brand} ` : '';
+    const fullTitle = `${brand}${name}`.trim();
+    if (fullTitle) setTitle(fullTitle);
+    if (record.notes) {
+      setDescription(record.notes);
+    } else if (product?.description) {
+      setDescription(product.description);
+    } else {
+      setDescription('');
+    }
+    if (record.expiryDate) {
+      setExpiryDate(record.expiryDate);
+    } else {
+      setExpiryDate('');
+    }
+
+    const validRecordId =
+      record.serverId || (record.id && record.id.length === 36 ? record.id : null);
+    setSelectedRecordId(validRecordId);
+    setSelectedProductId(record.productId ?? null);
+    setMaxAvailableQty(record.quantity);
+    setQuantity(Math.min(1, record.quantity));
+    setUnit(record.unit || 'pcs');
+    setLinkedPantryName(fullTitle || 'Pantry item');
+
+    const existingImg =
+      record.photoUrl ||
+      product?.imageUrl ||
+      (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl));
+    if (existingImg) {
+      setPhotos([
+        {
+          id: `pantry-photo-${Date.now()}`,
+          path: existingImg,
+          uploadedUrl: existingImg,
+        },
+      ]);
+    }
+  }
+
+  function handleUnlinkPantryItem() {
+    setSelectedRecordId(null);
+    setSelectedProductId(null);
+    setMaxAvailableQty(null);
+    setLinkedPantryName(null);
+  }
+
   async function submit() {
     setError(null);
     if (!title.trim() || !locationText.trim()) {
@@ -119,6 +177,10 @@ export default function NewGiveawayScreen() {
         description: description.trim() || undefined,
         locationText: locationText.trim(),
         expiryDate: expiryDate || undefined,
+        quantity,
+        unit: unit.trim() || 'pcs',
+        recordId: selectedRecordId || undefined,
+        productId: selectedProductId || undefined,
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : undefined,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
@@ -141,6 +203,69 @@ export default function NewGiveawayScreen() {
           Give food, pantry staples, or groceries to neighbors nearby.
         </Text>
       </View>
+
+      {/* Pantry Fast-Select Button */}
+      <Pressable
+        testID="select-from-pantry-btn"
+        accessibilityRole="button"
+        accessibilityLabel="Select item from pantry"
+        onPress={() => setShowPantryModal(true)}
+        style={({ pressed }) => [
+          styles.pantrySelectBtn,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderColor: theme.colors.primary,
+            borderRadius: theme.radii.md,
+            opacity: pressed ? 0.8 : 1,
+          },
+        ]}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="cube-outline" size={20} color={theme.colors.primary} />
+          <Text style={[styles.pantrySelectBtnText, { color: theme.colors.primaryDark }]}>
+            📦 Select from Pantry
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+      </Pressable>
+
+      {/* Linked Pantry Item Indicator */}
+      {selectedRecordId && linkedPantryName ? (
+        <View
+          testID="linked-pantry-badge"
+          style={[
+            styles.linkedPantryCard,
+            {
+              backgroundColor: theme.colors.primaryLight,
+              borderColor: theme.colors.primary,
+              borderRadius: theme.radii.md,
+            },
+          ]}
+        >
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="link-outline" size={16} color={theme.colors.primaryDark} />
+            <Text style={[styles.linkedPantryText, { color: theme.colors.primaryDark }]} numberOfLines={1}>
+              Linked: <Text style={{ fontWeight: '700' }}>{linkedPantryName}</Text>
+              {maxAvailableQty !== null ? ` (${maxAvailableQty} ${unit} in pantry)` : ''}
+            </Text>
+          </View>
+          <Pressable
+            testID="unlink-pantry-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Unlink pantry item"
+            onPress={handleUnlinkPantryItem}
+            hitSlop={8}
+          >
+            <Ionicons name="close-circle" size={18} color={theme.colors.primaryDark} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      <PantrySelectModal
+        visible={showPantryModal}
+        onClose={() => setShowPantryModal(false)}
+        onSelectRecord={handleSelectPantryItem}
+      />
 
       {/* Image Picker Section */}
       <View style={styles.section}>
@@ -256,6 +381,84 @@ export default function NewGiveawayScreen() {
         />
       </View>
 
+
+      {/* Quantity and Unit Controls */}
+      <View style={styles.fieldGroup}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
+            Quantity to Give Away *
+          </Text>
+          {maxAvailableQty !== null ? (
+            <Text style={[styles.stockHint, { color: theme.colors.textMuted }]}>
+              In pantry: {maxAvailableQty} {unit}
+            </Text>
+          ) : null}
+        </View>
+        <View style={styles.quantityRow}>
+          <View
+            style={[
+              styles.stepperWrap,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <Pressable
+              testID="qty-decrement-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Decrease quantity"
+              disabled={quantity <= 1}
+              onPress={() => setQuantity((prev) => Math.max(1, prev - 1))}
+              style={[styles.stepperBtn, { opacity: quantity <= 1 ? 0.35 : 1 }]}
+            >
+              <Ionicons name="remove" size={18} color={theme.colors.text} />
+            </Pressable>
+            <Text testID="giveaway-qty-value" style={[styles.stepperValue, { color: theme.colors.text }]}>
+              {quantity}
+            </Text>
+            <Pressable
+              testID="qty-increment-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Increase quantity"
+              disabled={maxAvailableQty !== null && quantity >= maxAvailableQty}
+              onPress={() =>
+                setQuantity((prev) =>
+                  maxAvailableQty !== null ? Math.min(maxAvailableQty, prev + 1) : prev + 1,
+                )
+              }
+              style={[
+                styles.stepperBtn,
+                {
+                  opacity:
+                    maxAvailableQty !== null && quantity >= maxAvailableQty ? 0.35 : 1,
+                },
+              ]}
+            >
+              <Ionicons name="add" size={18} color={theme.colors.text} />
+            </Pressable>
+          </View>
+
+          <TextInput
+            testID="giveaway-unit-input"
+            accessibilityLabel="Quantity unit"
+            placeholder="Unit (e.g. pcs, cans, kg)"
+            placeholderTextColor={theme.colors.textMuted}
+            value={unit}
+            onChangeText={setUnit}
+            style={[
+              styles.unitInput,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.md,
+                color: theme.colors.text,
+              },
+            ]}
+          />
+        </View>
+      </View>
       <View style={styles.fieldGroup}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
@@ -541,5 +744,65 @@ const styles = StyleSheet.create({
   submitBtnText: {
     fontSize: 16,
     fontWeight: '700',
+  },
+  pantrySelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  pantrySelectBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  linkedPantryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  linkedPantryText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  stockHint: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepperWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    height: 48,
+    width: 130,
+  },
+  stepperBtn: {
+    flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    minWidth: 32,
+    textAlign: 'center',
+  },
+  unitInput: {
+    flex: 1,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    height: 48,
   },
 });

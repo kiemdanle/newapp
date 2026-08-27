@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { buildServer } from '../../src/server.js';
 import { issueAccessToken } from '../../src/services/auth/tokens.js';
-import { makeGiveaway, makeUser } from '../helpers/factories.js';
+import { makeGiveaway, makeUser, makeRecord } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
 async function auth(uid: string) {
@@ -354,6 +354,197 @@ describe('claims + select + hand-off + confirm flow', () => {
     expect(repClaimer.statusCode).toBe(200);
     expect(repClaimer.json().transactionCount).toBe(1);
 
+    await app.close();
+  });
+});
+
+describe('Pantry linked giveaways & quantity deduction lifecycle', () => {
+  it('rejects giveaway creation when record belongs to another user (404/403 without leaking)', async () => {
+    const app = await buildServer();
+    const userA = await makeUser({ email: `user-a-${Date.now()}@t.l`, emailVerified: true });
+    const userB = await makeUser({ email: `user-b-${Date.now()}@t.l`, emailVerified: true });
+    const recordB = await makeRecord(userB.id, { customName: 'Secret Pasta', quantity: 2 });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/giveaways',
+      headers: await authIdem(userA.id),
+      payload: {
+        title: 'Organic Pasta',
+        locationText: 'District 1',
+        recordId: recordB.id,
+        quantity: 1,
+      },
+    });
+
+    expect([403, 404]).toContain(res.statusCode);
+    await app.close();
+  });
+
+  it('rejects giveaway creation when requested quantity exceeds pantry stock', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `qty-overflow-${Date.now()}@t.l`, emailVerified: true });
+    const record = await makeRecord(giver.id, { customName: 'Milk Carton', quantity: 2 });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/giveaways',
+      headers: await authIdem(giver.id),
+      payload: {
+        title: 'Fresh Milk',
+        locationText: 'Downtown',
+        recordId: record.id,
+        quantity: 5,
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('creates giveaway linked to pantry record, auto-inheriting expiryDate and persisting quantity/unit', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `pantry-giver-${Date.now()}@t.l`, emailVerified: true });
+    const expiry = new Date('2026-10-15T00:00:00.000Z');
+    const record = await makeRecord(giver.id, {
+      customName: 'Canned Corn',
+      quantity: 4,
+      unit: 'cans',
+      expiryDate: expiry,
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/giveaways',
+      headers: await authIdem(giver.id),
+      payload: {
+        title: 'Sweet Corn Cans',
+        locationText: 'District 7',
+        recordId: record.id,
+        quantity: 2,
+        unit: 'cans',
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.recordId).toBe(record.id);
+    expect(body.quantity).toBe(2);
+    expect(body.unit).toBe('cans');
+    expect(body.expiryDate).toBe('2026-10-15');
+    await app.close();
+  });
+
+  it('partially deducts record quantity when claimed giveaway is selected', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `deduct-giver-${Date.now()}@t.l`, emailVerified: true });
+    const claimer = await makeUser({ email: `deduct-claimer-${Date.now()}@t.l`, emailVerified: true });
+    const record = await makeRecord(giver.id, { customName: 'Apples', quantity: 3, unit: 'pcs' });
+
+    const giveaway = await makeGiveaway({
+      giverUserId: giver.id,
+      recordId: record.id,
+      quantity: 1,
+      unit: 'pcs',
+    });
+
+    const claim = await getPrisma().giveawayClaim.create({
+      data: { giveawayId: giveaway.id, claimerUserId: claimer.id },
+    });
+
+    const selectRes = await app.inject({
+      method: 'POST',
+      url: `/v1/giveaways/${giveaway.id}/select`,
+      headers: await authIdem(giver.id),
+      payload: { claimId: claim.id },
+    });
+
+    expect(selectRes.statusCode).toBe(200);
+    expect(selectRes.json().status).toBe('claimed');
+
+    const updatedRecord = await getPrisma().record.findUniqueOrThrow({ where: { id: record.id } });
+    expect(Number(updatedRecord.quantity)).toBe(2);
+    expect(updatedRecord.status).toBe('active');
+    await app.close();
+  });
+
+  it('fully deducts and marks record as consumed when remaining quantity reaches 0', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `consume-giver-${Date.now()}@t.l`, emailVerified: true });
+    const claimer = await makeUser({ email: `consume-claimer-${Date.now()}@t.l`, emailVerified: true });
+    const record = await makeRecord(giver.id, { customName: 'Olive Oil', quantity: 2, unit: 'bottles' });
+
+    const giveaway = await makeGiveaway({
+      giverUserId: giver.id,
+      recordId: record.id,
+      quantity: 2,
+      unit: 'bottles',
+    });
+
+    const claim = await getPrisma().giveawayClaim.create({
+      data: { giveawayId: giveaway.id, claimerUserId: claimer.id },
+    });
+
+    const selectRes = await app.inject({
+      method: 'POST',
+      url: `/v1/giveaways/${giveaway.id}/select`,
+      headers: await authIdem(giver.id),
+      payload: { claimId: claim.id },
+    });
+
+    expect(selectRes.statusCode).toBe(200);
+    expect(selectRes.json().status).toBe('claimed');
+
+    const updatedRecord = await getPrisma().record.findUniqueOrThrow({ where: { id: record.id } });
+    expect(Number(updatedRecord.quantity)).toBe(0);
+    expect(updatedRecord.status).toBe('consumed');
+    expect(updatedRecord.consumedAt).not.toBeNull();
+    await app.close();
+  });
+
+  it('restores pantry quantity if a claimed giveaway is cancelled', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `cancel-giver-${Date.now()}@t.l`, emailVerified: true });
+    const claimer = await makeUser({ email: `cancel-claimer-${Date.now()}@t.l`, emailVerified: true });
+    const record = await makeRecord(giver.id, { customName: 'Juice Packs', quantity: 2, unit: 'packs' });
+
+    const giveaway = await makeGiveaway({
+      giverUserId: giver.id,
+      recordId: record.id,
+      quantity: 2,
+      unit: 'packs',
+    });
+
+    const claim = await getPrisma().giveawayClaim.create({
+      data: { giveawayId: giveaway.id, claimerUserId: claimer.id },
+    });
+
+    // Select claim -> record becomes consumed, qty 0
+    await app.inject({
+      method: 'POST',
+      url: `/v1/giveaways/${giveaway.id}/select`,
+      headers: await authIdem(giver.id),
+      payload: { claimId: claim.id },
+    });
+
+    const consumedRecord = await getPrisma().record.findUniqueOrThrow({ where: { id: record.id } });
+    expect(Number(consumedRecord.quantity)).toBe(0);
+    expect(consumedRecord.status).toBe('consumed');
+
+    // Cancel claimed giveaway -> record quantity is restored, status returns to active
+    const cancelRes = await app.inject({
+      method: 'POST',
+      url: `/v1/giveaways/${giveaway.id}/cancel`,
+      headers: await auth(giver.id),
+    });
+
+    expect(cancelRes.statusCode).toBe(200);
+    expect(cancelRes.json().status).toBe('cancelled');
+
+    const restoredRecord = await getPrisma().record.findUniqueOrThrow({ where: { id: record.id } });
+    expect(Number(restoredRecord.quantity)).toBe(2);
+    expect(restoredRecord.status).toBe('active');
+    expect(restoredRecord.consumedAt).toBeNull();
     await app.close();
   });
 });

@@ -226,6 +226,24 @@ export function GiveawayCard({
                 {giveaway.description}
               </Text>
             ) : null}
+            {giveaway.quantity ? (
+              <View style={styles.qtyBadgeRow}>
+                <View
+                  style={[
+                    styles.qtyBadge,
+                    {
+                      backgroundColor: theme.colors.bgGlass,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radii.sm,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.qtyBadgeText, { color: theme.colors.text }]}>
+                    📦 {giveaway.quantity} {giveaway.unit || 'pcs'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             {giveaway.expiryDate ? (
               <View style={styles.itemExpiryRow}>
@@ -353,6 +371,20 @@ const styles = StyleSheet.create({
   descText: {
     fontSize: 13,
     lineHeight: 18,
+  },
+  qtyBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  qtyBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+  },
+  qtyBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   itemExpiryRow: {
     flexDirection: 'row',

@@ -49,8 +49,9 @@ const tables = [
 ];
 
 beforeAll(async () => {
-  // Migrations are applied manually to pantry_test (pantry user lacks _prisma_migrations write access).
-  // The test DB schema is kept in sync via manual DDL scripts run before the test suite.
+  const prisma = getPrisma();
+  await prisma.$executeRawUnsafe('ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS quantity DOUBLE PRECISION NOT NULL DEFAULT 1;');
+  await prisma.$executeRawUnsafe("ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS unit VARCHAR(16) NOT NULL DEFAULT 'pcs';");
 });
 
 beforeEach(async () => {

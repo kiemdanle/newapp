@@ -4,7 +4,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiGiveaway } from '../../services/giveaways/repository.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
-
+import { assertCanWriteRecord } from '../../services/households/permissions.js';
 export async function createGiveawayRoute(app: FastifyInstance) {
   app.post(
     '/giveaways',
@@ -14,15 +14,35 @@ export async function createGiveawayRoute(app: FastifyInstance) {
       const prisma = getPrisma();
       const userId = req.user!.id;
 
+      let inheritedProductId: string | null = input.productId ?? null;
+      let inheritedExpiryDate: string | null = input.expiryDate ?? null;
+
       if (input.recordId) {
         const record = await prisma.record.findUnique({ where: { id: input.recordId } });
         if (!record) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
-        if (record.userId !== userId) throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Not your record' });
-      }
-      if (input.productId) {
-        await assertProductUse(userId, input.productId, { purpose: 'giveaway' });
-      }
+        await assertCanWriteRecord(record, userId);
 
+        if (input.quantity > Number(record.quantity)) {
+          throw new AppError({
+            status: 400,
+            code: ERROR_CODES.VALIDATION,
+            title: 'Giveaway quantity exceeds available pantry stock',
+          });
+        }
+
+        if (!inheritedProductId && record.productId) {
+          inheritedProductId = record.productId;
+        }
+        if (!inheritedExpiryDate && record.expiryDate) {
+          inheritedExpiryDate =
+            record.expiryDate instanceof Date
+              ? record.expiryDate.toISOString().slice(0, 10)
+              : String(record.expiryDate).slice(0, 10);
+        }
+      }
+      if (inheritedProductId) {
+        await assertProductUse(userId, inheritedProductId, { purpose: 'giveaway' });
+      }
       const giver = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });
       const country = giver?.country ?? null;
 
@@ -47,9 +67,11 @@ export async function createGiveawayRoute(app: FastifyInstance) {
           description: input.description ?? null,
           locationText: input.locationText,
           photoUrl: storedPhotoUrl,
-          expiryDate: input.expiryDate ?? null,
+          quantity: input.quantity ?? 1,
+          unit: input.unit ?? 'pcs',
+          expiryDate: inheritedExpiryDate,
           claimExpiresAt,
-          productId: input.productId ?? null,
+          productId: inheritedProductId,
           recordId: input.recordId ?? null,
           country,
         },

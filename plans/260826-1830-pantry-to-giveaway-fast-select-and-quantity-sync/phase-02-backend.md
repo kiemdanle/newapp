@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Backend Data Model & Claim-Time Deduction Lifecycle"
-status: pending
+status: complete
 priority: P1
 dependencies: [1]
 ---
@@ -100,8 +100,8 @@ if (giveaway.recordId) {
 ---
 
 ## Success Criteria
-- [ ] Database migration applies cleanly.
-- [ ] `POST /v1/giveaways` rejects giveaway creation if `recordId` belongs to a different user.
-- [ ] `POST /v1/giveaways/:id/select` decreases linked record quantity in PostgreSQL.
-- [ ] When quantity reaches `0`, record status becomes `consumed`.
-- [ ] All integration tests pass in `api/tests/integration/giveaways.test.ts`.
+- [x] Database migration applies cleanly.
+- [x] `POST /v1/giveaways` rejects giveaway creation if `recordId` belongs to a different user.
+- [x] `POST /v1/giveaways/:id/select` decreases linked record quantity in PostgreSQL.
+- [x] When quantity reaches `0`, record status becomes `consumed`.
+- [x] All integration tests pass in `api/tests/integration/giveaways.test.ts`.

@@ -41,6 +41,8 @@ interface Props {
     photoUrl?: string | null;
     photoUrls?: string[];
     expiryDate?: string | null;
+    quantity?: number;
+    unit?: string;
   }) => Promise<void>;
 }
 
@@ -51,6 +53,8 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
   const [locationText, setLocationText] = useState('');
   const [description, setDescription] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [quantity, setQuantity] = useState<number>(1);
+  const [unit, setUnit] = useState<string>('pcs');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
   const [saving, setSaving] = useState(false);
@@ -62,6 +66,8 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
       setDescription(giveaway.description ?? '');
       setExpiryDate(giveaway.expiryDate ? giveaway.expiryDate : '');
       setError(null);
+      setQuantity(giveaway.quantity ?? 1);
+      setUnit(giveaway.unit || 'pcs');
       let existingUrls: string[] = [];
       if (giveaway.photoUrls && Array.isArray(giveaway.photoUrls) && giveaway.photoUrls.length > 0) {
         existingUrls = giveaway.photoUrls;
@@ -172,6 +178,8 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
         locationText: locationText.trim(),
         description: description.trim() || undefined,
         expiryDate: expiryDate ? expiryDate : null,
+        quantity,
+        unit: unit.trim() || 'pcs',
         photoUrl: uploadedUrls.length > 0 ? uploadedUrls[0] : null,
         photoUrls: uploadedUrls.length > 0 ? uploadedUrls : undefined,
       });
@@ -311,6 +319,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                 💡 Tip: Long-press a photo in gallery to select multiple at once, or tap Gallery again to add more.
               </Text>
             </View>
+
             {/* Title Field */}
             <View style={styles.fieldGroup}>
               <Text style={[styles.label, { color: theme.colors.text }]}>Title *</Text>
@@ -330,6 +339,64 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                   },
                 ]}
               />
+            </View>
+
+            {/* Quantity and Unit Section */}
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: theme.colors.text }]}>Quantity *</Text>
+              <View style={styles.quantityRow}>
+                <View
+                  style={[
+                    styles.stepperWrap,
+                    {
+                      backgroundColor: theme.colors.bgGlass,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radii.md,
+                    },
+                  ]}
+                >
+                  <Pressable
+                    testID="quick-edit-qty-decrement"
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease quantity"
+                    disabled={quantity <= 1}
+                    onPress={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                    style={[styles.stepperBtn, { opacity: quantity <= 1 ? 0.35 : 1 }]}
+                  >
+                    <Ionicons name="remove" size={18} color={theme.colors.text} />
+                  </Pressable>
+                  <Text style={[styles.stepperValue, { color: theme.colors.text }]}>
+                    {quantity}
+                  </Text>
+                  <Pressable
+                    testID="quick-edit-qty-increment"
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase quantity"
+                    onPress={() => setQuantity((prev) => prev + 1)}
+                    style={styles.stepperBtn}
+                  >
+                    <Ionicons name="add" size={18} color={theme.colors.text} />
+                  </Pressable>
+                </View>
+
+                <TextInput
+                  testID="quick-edit-unit-input"
+                  accessibilityLabel="Quantity unit"
+                  placeholder="Unit (e.g. pcs, cans)"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={unit}
+                  onChangeText={setUnit}
+                  style={[
+                    styles.unitInput,
+                    {
+                      backgroundColor: theme.colors.bgGlass,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radii.md,
+                      color: theme.colors.text,
+                    },
+                  ]}
+                />
+              </View>
             </View>
 
             {/* Location Field */}
@@ -618,5 +685,36 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     borderTopWidth: 1,
     marginTop: 8,
+  },
+  quantityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepperWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    height: 48,
+    width: 130,
+  },
+  stepperBtn: {
+    flex: 1,
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    minWidth: 32,
+    textAlign: 'center',
+  },
+  unitInput: {
+    flex: 1,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    height: 48,
   },
 });

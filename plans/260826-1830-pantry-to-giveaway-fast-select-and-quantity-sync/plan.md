@@ -1,7 +1,7 @@
 ---
 title: "Pantry to Giveaway Fast-Select and Quantity Sync"
 description: "Enable fast-selecting pantry items when creating giveaways, auto-populating photos, titles, descriptions, and expiration dates, while atomically deducting or removing the linked pantry item upon giveaway claim."
-status: pending
+status: complete
 priority: P1
 branch: "main"
 tags: [giveaways, pantry, records, synchronization, mobile]
@@ -70,11 +70,10 @@ sequenceDiagram
 
 | Phase | Name | Scope | Key Deliverables | Status |
 |---|---|---|---|---|
-| 1 | [Contracts](./phase-01-contracts.md) | `@expyrico/shared` | `giveawayCreateSchema`, `giveawayPatchSchema`, `giveawaySchema` quantity fields and record link contracts | Pending |
-| 2 | [Backend](./phase-02-backend.md) | `api` | PostgreSQL schema migration for `quantity`, transaction-safe claim deduction logic, and test factories | Pending |
-| 3 | [MobileUI](./phase-03-mobileui.md) | `apps/mobile` | `PantrySelectModal`, fast auto-fill in `new.tsx`, quantity controls, and WatermelonDB sync integration | Pending |
-| 4 | [Verification](./phase-04-verification.md) | Monorepo | Integration tests, mobile unit tests, end-to-end claim deduction verification, and typechecks | Pending |
-
+| 1 | [Contracts](./phase-01-contracts.md) | `@expyrico/shared` | `giveawayCreateSchema`, `giveawayPatchSchema`, `giveawaySchema` quantity fields and record link contracts | Complete |
+| 2 | [Backend](./phase-02-backend.md) | `api` | PostgreSQL schema migration for `quantity`, transaction-safe claim deduction logic, and test factories | Complete |
+| 3 | [MobileUI](./phase-03-mobileui.md) | `apps/mobile` | `PantrySelectModal`, fast auto-fill in `new.tsx`, quantity controls, and WatermelonDB sync integration | Complete |
+| 4 | [Verification](./phase-04-verification.md) | Monorepo | Integration tests, mobile unit tests, end-to-end claim deduction verification, and typechecks | Complete |
 ---
 
 ## Critical Invariants & Security Mandates

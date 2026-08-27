@@ -146,6 +146,8 @@ describe('GiveawayQuickEditModal', () => {
         locationText: 'Downtown Market',
         description: 'Juicy apples from garden',
         expiryDate: null,
+        quantity: 1,
+        unit: 'pcs',
         photoUrl: 'https://cdn.expyrico.app/photo1.webp',
         photoUrls: [
           'https://cdn.expyrico.app/photo1.webp',

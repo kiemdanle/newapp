@@ -13,7 +13,8 @@ const mockGiveaway: Giveaway = {
   locationText: 'District 1, Central',
   country: 'VN',
   status: 'open',
-  photoUrl: 'https://cdn.expyrico.app/giveaways/photo1.webp',
+  quantity: 2,
+  unit: 'boxes',
   photoUrls: [
     'https://cdn.expyrico.app/giveaways/photo1.webp',
     'https://cdn.expyrico.app/giveaways/photo2.webp',
@@ -44,6 +45,7 @@ describe('GiveawayCard', () => {
 
     expect(getByText('Organic Apple Box')).toBeTruthy();
     expect(getByText(/District 1, Central/)).toBeTruthy();
+    expect(getByText('📦 2 boxes')).toBeTruthy();
     expect(getByText('3')).toBeTruthy(); // photo count badge
     expect(getByText('Sarah')).toBeTruthy();
     expect(getByText('★ 4.9')).toBeTruthy();

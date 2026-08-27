@@ -886,6 +886,8 @@ model Giveaway {
   locationText   String         @map("location_text")
   country        String?        @db.Char(2)
   status         GiveawayStatus @default(open)
+  quantity       Float          @default(1)
+  unit           String         @default("pcs") @db.VarChar(16)
   expiryDate     String?        @map("expiry_date")
   claimExpiresAt DateTime?      @map("claim_expires_at")
   createdAt      DateTime       @default(now()) @map("created_at")

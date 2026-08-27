@@ -18,6 +18,8 @@ export declare const giveawaySchema: z.ZodObject<{
     country: z.ZodNullable<z.ZodString>;
     status: z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>;
     selectedRecipientId: z.ZodNullable<z.ZodString>;
+    quantity: z.ZodDefault<z.ZodNumber>;
+    unit: z.ZodDefault<z.ZodString>;
     expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     claimExpiresAt: z.ZodNullable<z.ZodString>;
     createdAt: z.ZodString;
@@ -70,6 +72,8 @@ export declare const giveawaySchema: z.ZodObject<{
     locationText: string;
     country: string | null;
     selectedRecipientId: string | null;
+    quantity: number;
+    unit: string;
     claimExpiresAt: string | null;
     createdAt: string;
     updatedAt: string;
@@ -110,6 +114,8 @@ export declare const giveawaySchema: z.ZodObject<{
     confirmedAt: string | null;
     completedAt: string | null;
     photoUrls?: string[] | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimCount?: number | undefined;
     myClaim?: {
@@ -132,6 +138,8 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     locationText: z.ZodString;
     photoUrl: z.ZodOptional<z.ZodString>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    quantity: z.ZodDefault<z.ZodNumber>;
+    unit: z.ZodDefault<z.ZodString>;
     claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
     expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     productId: z.ZodOptional<z.ZodString>;
@@ -139,6 +147,8 @@ export declare const giveawayCreateSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     title: string;
     locationText: string;
+    quantity: number;
+    unit: string;
     productId?: string | undefined;
     recordId?: string | undefined;
     description?: string | null | undefined;
@@ -154,6 +164,8 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     description?: string | null | undefined;
     photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;
@@ -164,6 +176,8 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     locationText: z.ZodOptional<z.ZodString>;
     photoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
+    quantity: z.ZodOptional<z.ZodNumber>;
+    unit: z.ZodOptional<z.ZodString>;
     claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
     expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
@@ -172,6 +186,8 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
@@ -180,6 +196,8 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>, {
@@ -188,6 +206,8 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
@@ -196,6 +216,8 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
     expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;

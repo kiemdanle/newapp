@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Contracts & Shared Schemas"
-status: pending
+status: complete
 priority: P1
 dependencies: []
 ---
@@ -131,5 +131,5 @@ export const giveawayPatchSchema = z
 ---
 
 ## Success Criteria
-- [ ] `@expyrico/shared` builds cleanly (`tsc -p tsconfig.build.json`) with zero type errors.
-- [ ] Schema unit tests pass with 100% coverage on `quantity` and `unit`.
+- [x] `@expyrico/shared` builds cleanly (`tsc -p tsconfig.build.json`) with zero type errors.
+- [x] Schema unit tests pass with 100% coverage on `quantity` and `unit`.

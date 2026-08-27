@@ -23,6 +23,36 @@ jest.mock('../src/features/products/photo-picker-adapter', () => ({
   choosePhotos: jest.fn(),
 }));
 
+const mockPantryRecords = [
+  {
+    id: 'pantry-rec-1',
+    serverId: 'server-rec-1',
+    clientId: 'client-rec-1',
+    productId: 'product-1',
+    customName: 'Organic Brown Rice',
+    category: 'Grains',
+    expiryDate: '2026-11-30',
+    quantity: 3,
+    unit: 'bags',
+    price: 4.5,
+    store: 'Trader Joe',
+    notes: 'Stored in sealed container',
+    photoUrl: 'https://cdn.expyrico.app/records/rice.webp',
+    status: 'active',
+    notifyAt: [],
+    householdId: null,
+  },
+];
+
+jest.mock('../src/api/records', () => ({
+  useActiveRecords: () => mockPantryRecords,
+  useAllActiveRecords: () => mockPantryRecords,
+}));
+
+jest.mock('../src/api/products', () => ({
+  useProduct: () => ({ data: { id: 'product-1', name: 'Brown Rice', brand: 'Lundberg' } }),
+}));
+
 const mockTakePhoto = takePhoto as jest.MockedFunction<typeof takePhoto>;
 const mockChoosePhotos = choosePhotos as jest.MockedFunction<typeof choosePhotos>;
 
@@ -138,5 +168,77 @@ describe('NewGiveawayScreen', () => {
 
     expect(getByDisplayValue('District 1, Ho Chi Minh City')).toBeTruthy();
     expect(getByText('✓ Filled from profile')).toBeTruthy();
+  });
+
+  it('auto-fills details when selecting an item from pantry and caps quantity stepper at stock', async () => {
+    const { getByTestId, getByText, getByDisplayValue, getByLabelText } = render(wrap(<NewGiveawayScreen />));
+    // Open pantry modal
+    fireEvent.press(getByTestId('select-from-pantry-btn'));
+
+    // Select pantry item
+    await waitFor(() => expect(getByTestId('pantry-select-item-pantry-rec-1')).toBeTruthy());
+    fireEvent.press(getByTestId('pantry-select-item-pantry-rec-1'));
+
+    // Title, notes, expiry, and quantity should be auto-filled
+    expect(getByDisplayValue('Lundberg Organic Brown Rice')).toBeTruthy();
+    expect(getByDisplayValue('Stored in sealed container')).toBeTruthy();
+    expect(getByTestId('giveaway-qty-value')).toBeTruthy();
+    expect(getByTestId('linked-pantry-badge')).toBeTruthy();
+    expect(getByText('Lundberg Organic Brown Rice')).toBeTruthy();
+    // Test quantity stepper
+    const incBtn = getByTestId('qty-increment-btn');
+    const decBtn = getByTestId('qty-decrement-btn');
+
+    // Initial quantity is 1
+    expect(getByText('1')).toBeTruthy();
+
+    // Increment to 2
+    fireEvent.press(incBtn);
+    expect(getByText('2')).toBeTruthy();
+
+    // Increment to 3 (max stock)
+    fireEvent.press(incBtn);
+    expect(getByText('3')).toBeTruthy();
+
+    // Cannot exceed 3
+    fireEvent.press(incBtn);
+    expect(getByText('3')).toBeTruthy();
+
+    // Decrement back to 2
+    fireEvent.press(decBtn);
+    expect(getByText('2')).toBeTruthy();
+
+    // Submit giveaway with pantry link
+    fireEvent.changeText(getByTestId('giveaway-unit-input'), 'bags');
+    fireEvent.changeText(getByLabelText('Pickup location'), 'Downtown Hub');
+    fireEvent.press(getByText('Post Giveaway'));
+
+    await waitFor(() => {
+      expect(mockCreateGiveaway).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Lundberg Organic Brown Rice',
+          description: 'Stored in sealed container',
+          locationText: 'Downtown Hub',
+          expiryDate: '2026-11-30',
+          quantity: 2,
+          unit: 'bags',
+          recordId: 'server-rec-1',
+          productId: 'product-1',
+        }),
+      );
+    });
+  });
+
+  it('allows unlinking a selected pantry item', async () => {
+    const { getByTestId, queryByTestId } = render(wrap(<NewGiveawayScreen />));
+
+    fireEvent.press(getByTestId('select-from-pantry-btn'));
+    await waitFor(() => expect(getByTestId('pantry-select-item-pantry-rec-1')).toBeTruthy());
+    fireEvent.press(getByTestId('pantry-select-item-pantry-rec-1'));
+
+    expect(getByTestId('linked-pantry-badge')).toBeTruthy();
+
+    fireEvent.press(getByTestId('unlink-pantry-btn'));
+    expect(queryByTestId('linked-pantry-badge')).toBeNull();
   });
 });

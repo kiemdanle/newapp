@@ -76,6 +76,24 @@ export function useActiveRecords(): LocalRecord[] {
   return rows;
 }
 
+export function useAllActiveRecords(): LocalRecord[] {
+  const [rows, setRows] = useState<LocalRecord[]>([]);
+
+  useEffect(() => {
+    const col = database.get<RecordModel>('records');
+    const conditions = [
+      Q.where('status', 'active'),
+      Q.where('pending_delete', false),
+    ];
+    const sub = col
+      .query(...conditions)
+      .observe()
+      .subscribe((res) => setRows(res.map(toLocal)));
+    return () => sub.unsubscribe();
+  }, []);
+  return rows;
+}
+
 export function useRecord(id: string | undefined): LocalRecord | null {
   const [row, setRow] = useState<LocalRecord | null>(null);
   useEffect(() => {

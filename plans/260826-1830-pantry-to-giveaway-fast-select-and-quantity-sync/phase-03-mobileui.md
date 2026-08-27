@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Mobile UI Pantry Fast-Select & Quantity Flow"
-status: pending
+status: complete
 priority: P1
 dependencies: [1, 2]
 ---
@@ -91,7 +91,7 @@ const handleSelectPantryItem = (record: LocalRecord, product?: Product | null) =
 ---
 
 ## Success Criteria
-- [ ] Tapping "Select from Pantry" opens the item selection modal.
-- [ ] Selecting a pantry item instantly populates the giveaway fields without manual typing.
-- [ ] Giveaway quantity stepper prevents selecting more than available in the pantry.
-- [ ] Giveaway cards and details show the item quantity.
+- [x] Tapping "Select from Pantry" opens the item selection modal.
+- [x] Selecting a pantry item instantly populates the giveaway fields without manual typing.
+- [x] Giveaway quantity stepper prevents selecting more than available in the pantry.
+- [x] Giveaway cards and details show the item quantity.
