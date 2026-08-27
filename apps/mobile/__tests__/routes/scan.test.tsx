@@ -4,7 +4,7 @@ import { AppState, Linking } from 'react-native';
 import ScanScreen from '../../app/(app)/scan';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
-import { navigation } from '../../tests/mocks/react-navigation';
+import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
 import { createLocalRecord } from '../../src/api/records';
 
 let triggerScan: ((r: { kind: 'barcode' | 'qr'; value: string }) => void) | null = null;
@@ -233,6 +233,16 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(navigation.replace).toHaveBeenCalledWith('Product', { id: 'prod-1' });
   });
 
+  it('target=deal found: navigates straight to DealNew with productId', async () => {
+    __setRouteParams({ target: 'deal' });
+    mockLookup.mockResolvedValue({ outcome: 'found', product: { id: 'prod-deal-1' } });
+    render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '123' }));
+
+    expect(navigation.replace).toHaveBeenCalledWith('DealNew', { productId: 'prod-deal-1' });
+  });
+
   it('editable_private: routes to the draft editor entry point with productId + resume=edit', async () => {
     mockLookup.mockResolvedValue({ outcome: 'editable_private', product: { id: 'draft-1' } });
     render(wrap(<ScanScreen />));
@@ -298,6 +308,18 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(await findByTestId('scan-not-found')).toBeTruthy();
     fireEvent.press(getByTestId('scan-create'));
     expect(navigation.replace).toHaveBeenCalledWith('ProductNew', { barcode: '999', qr: '' });
+  });
+
+  it('target=deal not_found with canCreate=true: routes to ProductNew with target=deal', async () => {
+    __setRouteParams({ target: 'deal' });
+    mockLookup.mockResolvedValue({ outcome: 'not_found', canCreate: true });
+    const { getByTestId, findByTestId } = render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '999' }));
+
+    expect(await findByTestId('scan-not-found')).toBeTruthy();
+    fireEvent.press(getByTestId('scan-create'));
+    expect(navigation.replace).toHaveBeenCalledWith('ProductNew', { barcode: '999', qr: '', target: 'deal' });
   });
 
   it('not_found with canCreate=false: does not offer Create at all', async () => {

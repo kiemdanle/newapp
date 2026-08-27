@@ -199,6 +199,21 @@ describe('<NewProductScreen />', () => {
     });
   });
 
+  it('target=deal: submitting a draft navigates directly to DealNew with the submitted productId', async () => {
+    __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit', target: 'deal' });
+    queueFetch(jsonResponse(PRODUCT));
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    queueFetch(jsonResponse({ ...PRODUCT, status: 'pending', version: 2 }));
+    fireEvent.press(getByTestId('draft-submit'));
+
+    await waitFor(() => {
+      expect(navigation.navigate).toHaveBeenCalledWith('DealNew', { productId: 'draft-1' });
+    });
+  });
+
   it('an abuse-rejected submission shows the failure and preserves the draft on-screen', async () => {
     __setRouteParams({ productId: 'draft-1', resume: 'edit' });
     queueFetch(jsonResponse(PRODUCT));

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Linking, View, Text, TextInput, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScanCamera, type ScanResult } from '../../src/features/scan/ScanCamera';
 import { useCameraPermission } from '../../src/features/scan/usePermission';
@@ -30,6 +30,8 @@ type ScanUiState =
 export default function ScanScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
+  const route = useRoute();
+  const { target } = (route.params ?? {}) as { target?: 'pantry' | 'deal' };
   const insets = useSafeAreaInsets();
   const { state: permissionState, request, check } = useCameraPermission();
   const lookup = useProductLookupV2();
@@ -75,7 +77,11 @@ export default function ScanScreen() {
         );
         switch (result.outcome) {
           case 'found':
-            navigation.replace('Product', { id: result.product.id });
+            if (target === 'deal') {
+              navigation.replace('DealNew', { productId: result.product.id });
+            } else {
+              navigation.replace('Product', { id: result.product.id });
+            }
             return;
           case 'editable_private':
             navigation.replace('ProductNew', {
@@ -83,6 +89,7 @@ export default function ScanScreen() {
               qr: scan.kind === 'qr' ? scan.value : '',
               productId: result.product.id,
               resume: 'edit',
+              target,
             });
             return;
           case 'creator_pending':
@@ -91,6 +98,7 @@ export default function ScanScreen() {
               qr: scan.kind === 'qr' ? scan.value : '',
               productId: result.product.id,
               resume: 'pending',
+              target,
             });
             return;
           case 'under_review':
@@ -122,7 +130,7 @@ export default function ScanScreen() {
         lookupInFlightRef.current = false;
       }
     },
-    [lookup, navigation],
+    [lookup, navigation, target],
   );
 
   const handleScan = useCallback(
@@ -165,9 +173,9 @@ export default function ScanScreen() {
     navigation.replace('ProductNew', {
       barcode: scan?.kind === 'barcode' ? scan.value : '',
       qr: scan?.kind === 'qr' ? scan.value : '',
+      target,
     });
-  }, [navigation]);
-
+  }, [navigation, target]);
   if (permissionState === 'unknown') {
     return (
       <PrePromptModal

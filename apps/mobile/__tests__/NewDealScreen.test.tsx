@@ -6,8 +6,10 @@ import { ThemeProvider } from '../src/theme/ThemeProvider';
 import { NavigationContainer } from '@react-navigation/native';
 
 const mockUseDeal = jest.fn();
+const mockUseProduct = jest.fn();
 const mockUseProductSearch = jest.fn();
-
+const mockPush = jest.fn();
+let mockRouteParams: { editId?: string; productId?: string } = {};
 jest.mock('../src/api/deals', () => ({
   useDeal: (...args: unknown[]) => mockUseDeal(...args),
   useCreateDeal: () => ({ mutateAsync: jest.fn(), isPending: false }),
@@ -16,6 +18,7 @@ jest.mock('../src/api/deals', () => ({
 }));
 
 jest.mock('../src/api/products', () => ({
+  useProduct: (...args: unknown[]) => mockUseProduct(...args),
   useProductSearch: (...args: unknown[]) => mockUseProductSearch(...args),
 }));
 
@@ -26,10 +29,10 @@ jest.mock('@react-navigation/native', () => {
     useNavigation: () => ({
       goBack: jest.fn(),
       navigate: jest.fn(),
-      push: jest.fn(),
+      push: mockPush,
     }),
     useRoute: () => ({
-      params: {},
+      params: mockRouteParams,
     }),
   };
 });
@@ -47,10 +50,12 @@ function wrap(node: React.ReactNode) {
 
 describe('NewDealScreen', () => {
   beforeEach(() => {
+    mockPush.mockReset();
+    mockRouteParams = {};
     mockUseDeal.mockReturnValue({ data: null, isLoading: false });
+    mockUseProduct.mockReturnValue({ data: null, isLoading: false });
     mockUseProductSearch.mockReturnValue({ data: [], isLoading: false });
   });
-
   it('renders product search picker initially', () => {
     const { getByPlaceholderText, getByText } = render(wrap(<NewDealScreen />));
 
@@ -89,5 +94,30 @@ describe('NewDealScreen', () => {
     expect(getByText('SELECTED PRODUCT')).toBeTruthy();
     expect(getByText('Post Deal to Community')).toBeTruthy();
     expect(queryByPlaceholderText('Type product name or brand…')).toBeNull();
+  });
+
+  it('navigates to Scan with target: deal when scan button is pressed', () => {
+    const { getByText } = render(wrap(<NewDealScreen />));
+    fireEvent.press(getByText(/Scan barcode on package/));
+    expect(mockPush).toHaveBeenCalledWith('Scan', { target: 'deal' });
+  });
+
+  it('navigates to ProductNew with target: deal when create product CTA is pressed', () => {
+    const { getByTestId } = render(wrap(<NewDealScreen />));
+    fireEvent.press(getByTestId('deal-create-new-product-btn'));
+    expect(mockPush).toHaveBeenCalledWith('ProductNew', { target: 'deal' });
+  });
+
+  it('loads and selects product automatically when productId is passed in route params', () => {
+    mockRouteParams = { productId: 'p-100' };
+    mockUseProduct.mockReturnValue({
+      data: { id: 'p-100', name: 'Greek Yogurt', brand: 'Chobani' },
+      isLoading: false,
+    });
+
+    const { getByText } = render(wrap(<NewDealScreen />));
+
+    expect(getByText('SELECTED PRODUCT')).toBeTruthy();
+    expect(getByText('Greek Yogurt')).toBeTruthy();
   });
 });

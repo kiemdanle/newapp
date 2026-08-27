@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDeal } from '@/api/deals';
-import { useProductSearch } from '@/api/products';
+import { useProduct, useProductSearch } from '@/api/products';
 import { DealForm } from '@/features/deals/DealForm';
 import { useTheme } from '@/theme/useTheme';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
@@ -28,12 +28,25 @@ export default function NewDealScreen() {
 
   // New deal mode state
   const [q, setQ] = useState('');
+  const initialProductId = routeParams?.productId;
+  const { data: initialProduct, isLoading: loadingInitialProduct } = useProduct(
+    initialProductId ?? undefined,
+  );
   const [selectedProduct, setSelectedProduct] = useState<{
     id: string;
     name: string;
     brand?: string | null;
   } | null>(null);
 
+  React.useEffect(() => {
+    if (initialProduct) {
+      setSelectedProduct({
+        id: initialProduct.id,
+        name: initialProduct.name,
+        brand: initialProduct.brand,
+      });
+    }
+  }, [initialProduct]);
   const { data: searchResults, isLoading: searching } = useProductSearch(
     q,
     q.trim().length > 0,
@@ -122,7 +135,7 @@ export default function NewDealScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Scan barcode to find product"
-        onPress={() => navigation.push('Scan')}
+        onPress={() => navigation.push('Scan', { target: 'deal' })}
         style={[
           styles.scanBtn,
           {
@@ -225,6 +238,32 @@ export default function NewDealScreen() {
           ) : null
         }
       />
+
+      {/* Create New Product CTA */}
+      <View style={[styles.createProductFooter, { borderTopColor: theme.colors.border }]}>
+        <Text style={[styles.createProductPrompt, { color: theme.colors.textMuted }]}>
+          Can't find what you're looking for?
+        </Text>
+        <Pressable
+          testID="deal-create-new-product-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Add a new product for this deal"
+          onPress={() => navigation.push('ProductNew', { target: 'deal' })}
+          style={[
+            styles.createProductBtn,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.primary,
+              borderRadius: theme.radii.pill,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 14, marginRight: 6 }}>✨</Text>
+          <Text style={[styles.createProductBtnText, { color: theme.colors.primaryDark }]}>
+            Create New Product for Deal
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -308,5 +347,26 @@ const styles = StyleSheet.create({
   changeBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
+  },
+  createProductFooter: {
+    paddingTop: 16,
+    borderTopWidth: 1,
+    alignItems: 'center',
+    gap: 8,
+  },
+  createProductPrompt: {
+    fontSize: 12,
+  },
+  createProductBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  createProductBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

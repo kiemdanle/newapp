@@ -21,6 +21,7 @@ type RouteParams = {
   productId?: string;
   resume?: 'edit' | 'pending';
   feedback?: string;
+  target?: 'pantry' | 'deal';
 };
 
 /**
@@ -37,7 +38,7 @@ export default function NewProductScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
-  const { barcode, qr, productId: routeProductId, resume, feedback } = (route.params ?? {}) as RouteParams;
+  const { barcode, qr, productId: routeProductId, resume, feedback, target } = (route.params ?? {}) as RouteParams;
   const userId = useSessionStore((s) => s.user?.id);
 
   const createOrResumeDraft = useCreateOrResumeDraft();
@@ -157,19 +158,32 @@ export default function NewProductScreen() {
       <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
           <Text style={{ color: theme.colors.textMuted }}>
-            This product is awaiting review. You can still add it to your pantry now.
+            This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your pantry now.'}
           </Text>
           <ProductDraftForm initialProduct={product} readOnly />
+          {target === 'deal' ? (
+            <Button
+              testID="use-pending-product-for-deal"
+              label="Use for Deal"
+              icon="arrow-forward"
+              onPress={() => {
+                // @ts-expect-error navigation to DealNew
+                navigation.navigate('DealNew', { productId: product.id });
+              }}
+            />
+          ) : null}
         </View>
-        <AddRecordForm
-          productId={product.id}
-          productName={product.name}
-          lockedPersonalScope
-          onSaved={async () => {
-            await ensurePushTokenRegistered();
-            navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
-          }}
-        />
+        {target !== 'deal' ? (
+          <AddRecordForm
+            productId={product.id}
+            productName={product.name}
+            lockedPersonalScope
+            onSaved={async () => {
+              await ensurePushTokenRegistered();
+              navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
+            }}
+          />
+        ) : null}
       </ScrollView>
     );
   }
@@ -188,6 +202,11 @@ export default function NewProductScreen() {
       if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
       dirtyRef.current = false;
       setDirty(false);
+      if (target === 'deal') {
+        // @ts-expect-error navigation to DealNew
+        navigation.navigate('DealNew', { productId: submitted.id });
+        return;
+      }
       setSubmittedProduct(submitted);
     };
 
