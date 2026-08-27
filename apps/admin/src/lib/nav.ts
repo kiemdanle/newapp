@@ -21,13 +21,14 @@ export const NAV: NavSection[] = [
       { label: 'Reports', href: '/reports', icon: 'Flag' },
       { label: 'Reviews', href: '/reviews', icon: 'MessageSquare' },
       { label: 'Deals', href: '/deals', icon: 'Tags' },
+      { label: 'Giveaways', href: '/giveaways', icon: 'Gift' },
     ],
   },
   {
     title: 'Catalog',
     items: [
       { label: 'Products', href: '/products', icon: 'Package' },
-      { label: 'Pending edits', href: '/products/pending', icon: 'Clock' },
+      { label: 'Pending approval', href: '/products/pending', icon: 'Clock' },
     ],
   },
   {
