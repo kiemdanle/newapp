@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { getConfig } from '../../config.js';
 import { getRedis } from '../../redis.js';
@@ -28,6 +28,13 @@ export async function authRoutes(app: FastifyInstance) {
       redis: getRedis(),
       nameSpace: 'rl:auth:',
       keyGenerator: (req) => `ip:${req.ip}`,
+      allowList: (req) => {
+        // Authenticated calls (e.g. /v1/auth/me) and session endpoints do not belong
+        // to the 10/min brute-force limit. They are protected by the global rate limiter.
+        if ((req as FastifyRequest & { user?: { id: string } }).user?.id) return true;
+        const url = typeof req.url === 'string' ? req.url : '';
+        return url.endsWith('/me') || url.includes('/me?') || url.endsWith('/logout');
+      },
     });
   }
   await app.register(registerRoute);

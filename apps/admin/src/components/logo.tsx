@@ -30,6 +30,7 @@ export function BrandMark({ size = 32, className }: { size?: number; className?:
         width={size}
         height={size}
         alt="Expyrico"
+        unoptimized
         className={`dark:hidden ${className ?? ''}`}
         style={{ width: size, height: size, objectFit: 'contain' }}
       />
@@ -38,6 +39,7 @@ export function BrandMark({ size = 32, className }: { size?: number; className?:
         width={size}
         height={size}
         alt="Expyrico"
+        unoptimized
         className={`hidden dark:inline-block ${className ?? ''}`}
         style={{ width: size, height: size, objectFit: 'contain' }}
       />
@@ -53,6 +55,7 @@ function BrandFull({ size = 32 }: { size?: number }) {
         width={Math.round(size * 2.8125)}
         height={size}
         alt="Expyrico"
+        unoptimized
         className="dark:hidden"
         style={{ width: size * 2.8125, height: size, objectFit: 'contain' }}
       />
@@ -61,6 +64,7 @@ function BrandFull({ size = 32 }: { size?: number }) {
         width={Math.round(size * 2.8125)}
         height={size}
         alt="Expyrico"
+        unoptimized
         className="hidden dark:inline-block"
         style={{ width: size * 2.8125, height: size, objectFit: 'contain' }}
       />

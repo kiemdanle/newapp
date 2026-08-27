@@ -4,6 +4,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   typedRoutes: true,
+  images: {
+    unoptimized: true,
+  },
   transpilePackages: ['@expyrico/shared'],
   webpack(config) {
     // Allow Node ESM-style .js specifiers in TS sources of @expyrico/shared

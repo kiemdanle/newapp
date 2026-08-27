@@ -13,8 +13,11 @@ export async function registerRateLimit(app: FastifyInstance) {
     global: true,
     // Authenticated callers get the higher per-user budget; anonymous traffic
     // is held to the stricter per-IP budget.
-    max: (req) =>
-      (req as WithUser).user?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin,
+    max: (req) => {
+      const u = (req as WithUser).user;
+      if (u?.role === 'admin') return Math.max(cfg.rateLimit.perUserPerMin * 5, 300);
+      return u?.id ? cfg.rateLimit.perUserPerMin : cfg.rateLimit.perIpPerMin;
+    },
     timeWindow: '1 minute',
     redis: getRedis(),
     // Digital Asset Links / AASA are polled by Google and must never 429.

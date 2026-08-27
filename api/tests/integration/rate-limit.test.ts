@@ -40,4 +40,25 @@ describe('auth rate limiting', () => {
     expect(last).toBe(429);
     await app.close();
   });
+
+  it('does not throttle authenticated /v1/auth/me requests with the 10/min authPerIp budget', async () => {
+    const app = await buildServer();
+    const { makeUser } = await import('../helpers/factories.js');
+    const { issueAccessToken } = await import('../../src/services/auth/tokens.js');
+    const user = await makeUser();
+    const token = await issueAccessToken({ sub: user.id, role: 'user', tokenVersion: 0 });
+    const authHeaders = { authorization: `Bearer ${token}`, 'x-forwarded-for': '203.0.113.9' };
+
+    const limit = getConfig().rateLimit.authPerIpPerMin;
+    // Make more requests than the authPerIpPerMin budget (10) from the same IP
+    for (let i = 0; i < limit + 5; i++) {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/v1/auth/me',
+        headers: authHeaders,
+      });
+      expect(res.statusCode).toBe(200);
+    }
+    await app.close();
+  });
 });
