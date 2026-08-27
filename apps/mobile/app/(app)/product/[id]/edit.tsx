@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ProductEditRow } from '@expyrico/shared';
 import { useProduct } from '../../../../src/api/products';
 import { useCreateOrResumeEdit } from '../../../../src/api/product-edits';
@@ -33,6 +35,26 @@ export default function ProductEditScreen() {
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
   const requestedRef = useRef(false);
+  const insets = useSafeAreaInsets();
+
+  const handleClose = () => {
+    if (dirtyRef.current) {
+      Alert.alert('Discard unsaved changes?', "Your suggested edits haven't been saved.", [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            dirtyRef.current = false;
+            setDirty(false);
+            navigation.goBack();
+          },
+        },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
 
   useEffect(() => {
     if (requestedRef.current || !product) return;
@@ -93,30 +115,113 @@ export default function ProductEditScreen() {
 
   if (edit!.status === 'pending') {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-        <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-          <Text testID="edit-pending-message" style={{ color: theme.colors.textMuted }}>
-            Your suggested edit is awaiting review.
-          </Text>
-          <ProductEditForm initialEdit={edit!} liveProduct={liveProduct} readOnly />
+      <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderBottomColor: theme.colors.border,
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <Pressable
+            testID="product-edit-close-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Close suggested edit"
+            onPress={handleClose}
+            style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+          >
+            <Ionicons name="close" size={20} color={theme.colors.text} />
+          </Pressable>
+          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Suggested Edit</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Done" onPress={handleClose} hitSlop={8}>
+            <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
+          </Pressable>
         </View>
-      </ScrollView>
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+          <View style={{ gap: theme.spacing.md }}>
+            <Text testID="edit-pending-message" style={{ color: theme.colors.textMuted }}>
+              Your suggested edit is awaiting review.
+            </Text>
+            <ProductEditForm initialEdit={edit!} liveProduct={liveProduct} readOnly />
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
-      <EditEditor
-        productId={productId}
-        liveProduct={liveProduct}
-        edit={edit!}
-        onDirtyChange={setDirty}
-        onSubmitted={() => {
-          dirtyRef.current = false;
-          setDirty(false);
-          navigation.goBack();
-        }}
-      />
-    </ScrollView>
+    <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderBottomColor: theme.colors.border,
+            paddingTop: insets.top + 8,
+          },
+        ]}
+      >
+        <Pressable
+          testID="product-edit-close-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Close suggested edit"
+          onPress={handleClose}
+          style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+        >
+          <Ionicons name="close" size={20} color={theme.colors.text} />
+        </Pressable>
+        <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Suggest an Edit</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cancel" onPress={handleClose} hitSlop={8}>
+          <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Cancel</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <EditEditor
+          productId={productId}
+          liveProduct={liveProduct}
+          edit={edit!}
+          onDirtyChange={setDirty}
+          onSubmitted={() => {
+            dirtyRef.current = false;
+            setDirty(false);
+            navigation.goBack();
+          }}
+        />
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  doneBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 4,
+  },
+});

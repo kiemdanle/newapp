@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, StyleSheet } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product, ProductEditRow } from '@expyrico/shared';
 import type { DraftMutationCoordinator } from './draft-mutation-coordinator';
 import { DraftConflictBanner } from './DraftConflictBanner';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
-
 const NAME_MAX = 200;
 const DESCRIPTION_MAX = 2000;
 
@@ -60,6 +60,7 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
   const [saving, setSaving] = useState(false);
   const [reconciling, setReconciling] = useState(false);
 
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const dirty = !fieldsEqual(fields, fieldsFrom(known));
 
   useEffect(() => {
@@ -120,97 +121,247 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
     }
   };
 
-  const input = {
-    color: theme.colors.text,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.md,
-  } as const;
-
   return (
-    <View style={{ gap: theme.spacing.md }}>
+    <View style={styles.formContainer}>
       {known.status === 'changes_required' && known.moderationFeedback ? (
         <View
           testID="edit-feedback"
-          style={{ backgroundColor: theme.colors.bgGlass, borderRadius: theme.radii.md, padding: theme.spacing.md }}
+          style={[
+            styles.feedbackCard,
+            { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.md },
+          ]}
         >
           <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Changes requested</Text>
           <Text style={{ color: theme.colors.textMuted, marginTop: 4 }}>{known.moderationFeedback}</Text>
         </View>
       ) : null}
 
-      <Text style={{ color: theme.colors.textMuted }}>Name</Text>
-      <TextInput
-        accessibilityLabel="Name"
-        testID="edit-name"
-        editable={!readOnly}
-        style={input}
-        value={fields.name}
-        maxLength={NAME_MAX}
-        onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
-      />
-      <LiveCaption live={liveProduct.name} proposed={fields.name} />
+      {/* Form Fields Card */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: '#FFFFFF',
+            borderColor: '#E2E2DE',
+            borderRadius: theme.radii.lg,
+          },
+        ]}
+      >
+        {/* Name Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="pricetag-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Product Name *</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              {
+                backgroundColor: focusedField === 'name' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'name' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Name"
+              testID="edit-name"
+              editable={!readOnly}
+              style={[styles.textInput, { color: theme.colors.text }]}
+              value={fields.name}
+              maxLength={NAME_MAX}
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
+            />
+          </View>
+          <LiveCaption live={liveProduct.name} proposed={fields.name} />
+        </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Description (optional)</Text>
-      <TextInput
-        accessibilityLabel="Description"
-        testID="edit-description"
-        editable={!readOnly}
-        style={[input, { minHeight: 80 }]}
-        value={fields.description}
-        maxLength={DESCRIPTION_MAX}
-        multiline
-        onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
-      />
-      <Text testID="edit-description-counter" style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-        {fields.description.length}/{DESCRIPTION_MAX}
-      </Text>
-      <LiveCaption live={liveProduct.description} proposed={fields.description} />
+        {/* Description Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="document-text-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description (optional)</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              styles.multilineBox,
+              {
+                backgroundColor: focusedField === 'description' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'description' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Description"
+              testID="edit-description"
+              editable={!readOnly}
+              style={[styles.textInput, styles.multilineInput, { color: theme.colors.text }]}
+              value={fields.description}
+              maxLength={DESCRIPTION_MAX}
+              multiline
+              onFocus={() => setFocusedField('description')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
+            />
+            <Text testID="edit-description-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
+              {fields.description.length}/{DESCRIPTION_MAX}
+            </Text>
+          </View>
+          <LiveCaption live={liveProduct.description} proposed={fields.description} />
+        </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Brand (optional)</Text>
-      <TextInput
-        accessibilityLabel="Brand"
-        testID="edit-brand"
-        editable={!readOnly}
-        style={input}
-        value={fields.brand}
-        onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
-      />
-      <LiveCaption live={liveProduct.brand} proposed={fields.brand} />
+        {/* 2-Column Row for Brand & Category */}
+        <View style={styles.twoColRow}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <View style={styles.labelRow}>
+              <Ionicons name="business-outline" size={14} color={theme.colors.primary} />
+              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Brand</Text>
+            </View>
+            <View
+              style={[
+                styles.inputBox,
+                {
+                  backgroundColor: focusedField === 'brand' ? '#FFFFFF' : '#F9FAF9',
+                  borderColor: focusedField === 'brand' ? theme.colors.primary : '#DCDED9',
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <TextInput
+                accessibilityLabel="Brand"
+                testID="edit-brand"
+                editable={!readOnly}
+                style={[styles.textInput, { color: theme.colors.text }]}
+                value={fields.brand}
+                onFocus={() => setFocusedField('brand')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
+              />
+            </View>
+            <LiveCaption live={liveProduct.brand} proposed={fields.brand} />
+          </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>Category (optional)</Text>
-      <TextInput
-        accessibilityLabel="Category"
-        testID="edit-category"
-        editable={!readOnly}
-        style={input}
-        value={fields.category}
-        onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
-      />
-      <LiveCaption live={liveProduct.category} proposed={fields.category} />
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <View style={styles.labelRow}>
+              <Ionicons name="grid-outline" size={14} color={theme.colors.primary} />
+              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Category</Text>
+            </View>
+            <View
+              style={[
+                styles.inputBox,
+                {
+                  backgroundColor: focusedField === 'category' ? '#FFFFFF' : '#F9FAF9',
+                  borderColor: focusedField === 'category' ? theme.colors.primary : '#DCDED9',
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <TextInput
+                accessibilityLabel="Category"
+                testID="edit-category"
+                editable={!readOnly}
+                style={[styles.textInput, { color: theme.colors.text }]}
+                value={fields.category}
+                onFocus={() => setFocusedField('category')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
+              />
+            </View>
+            <LiveCaption live={liveProduct.category} proposed={fields.category} />
+          </View>
+        </View>
 
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+        {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
-      {conflict ? (
-        <DraftConflictBanner
-          currentVersion={conflict.currentVersion}
-          mode="coordinator"
-          busy={reconciling}
-          onRetry={() => reconcile('retry')}
-          onDiscard={() => reconcile('discard-local')}
-        />
-      ) : null}
+        {conflict ? (
+          <DraftConflictBanner
+            currentVersion={conflict.currentVersion}
+            mode="coordinator"
+            busy={reconciling}
+            onRetry={() => reconcile('retry')}
+            onDiscard={() => reconcile('discard-local')}
+          />
+        ) : null}
 
-      {!readOnly ? (
-        <Button
-          testID="edit-save"
-          label={saving ? 'Saving…' : 'Save'}
-          loading={saving}
-          disabled={!dirty || Boolean(conflict)}
-          onPress={save}
-        />
-      ) : null}
+        {!readOnly ? (
+          <Button
+            testID="edit-save"
+            label={saving ? 'Saving Changes…' : 'Save Proposal'}
+            loading={saving}
+            disabled={!dirty || Boolean(conflict)}
+            onPress={save}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  formContainer: {
+    gap: 14,
+  },
+  feedbackCard: {
+    borderWidth: 1,
+    padding: 14,
+  },
+  card: {
+    borderWidth: 1.5,
+    padding: 18,
+    gap: 16,
+    shadowColor: '#2C2C28',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  inputBox: {
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  textInput: {
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  multilineBox: {
+    minHeight: 100,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+  },
+  multilineInput: {
+    minHeight: 68,
+    textAlignVertical: 'top',
+    paddingVertical: 0,
+  },
+  charCounter: {
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
