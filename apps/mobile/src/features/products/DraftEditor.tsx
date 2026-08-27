@@ -51,6 +51,22 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
 
   return (
     <View style={{ gap: theme.spacing.lg }}>
+      {/* Step 2 Header */}
+      <View style={{ gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary }} />
+          <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '700', letterSpacing: 0.8 }}>
+            STEP 2 OF 2 · DETAILS & PHOTOS
+          </Text>
+        </View>
+        <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '800' }}>
+          Product Details & Photos
+        </Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+          Upload photos and adjust metadata before submitting for community catalog review.
+        </Text>
+      </View>
+
       <ProductDraftForm
         initialProduct={product}
         coordinator={coordinator}

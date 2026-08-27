@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
 import { isApiError } from '../../api/errors';
 import { usePatchDraft } from '../../api/products';
@@ -8,7 +9,6 @@ import type { DraftMutationCoordinator } from './draft-mutation-coordinator';
 import { DraftConflictBanner } from './DraftConflictBanner';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
-
 const NAME_MAX = 200;
 const DESCRIPTION_MAX = 2000;
 
@@ -60,6 +60,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
   const [conflict, setConflict] = useState<{ currentVersion: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
 
   const dirty = !fieldsEqual(fields, fieldsFrom(known));
 
@@ -148,97 +149,316 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
 
   const isSaving = coordinator ? saving : patchDraft.isPending;
 
-  const input = {
-    color: theme.colors.text,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.md,
-  } as const;
+  const isIdentifierQr = Boolean(known.qrPayload);
+  const identifierValue = known.barcode ?? known.qrPayload ?? '—';
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
+    <View style={styles.formContainer}>
       {feedbackBanner}
 
-      <Text style={{ color: theme.colors.textMuted }}>Identifier</Text>
-      <Text testID="draft-identifier" style={{ color: theme.colors.text }}>
-        {known.barcode ?? known.qrPayload ?? '—'}
-      </Text>
-
-      <Text style={{ color: theme.colors.textMuted }}>Name</Text>
-      <TextInput
-        accessibilityLabel="Name"
-        testID="draft-name"
-        editable={!readOnly}
-        style={input}
-        value={fields.name}
-        maxLength={NAME_MAX}
-        onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
-      />
-
-      <Text style={{ color: theme.colors.textMuted }}>Description (optional)</Text>
-      <TextInput
-        accessibilityLabel="Description"
-        testID="draft-description"
-        editable={!readOnly}
-        style={[input, { minHeight: 80 }]}
-        value={fields.description}
-        maxLength={DESCRIPTION_MAX}
-        multiline
-        onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
-      />
-      <Text testID="draft-description-counter" style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-        {fields.description.length}/{DESCRIPTION_MAX}
-      </Text>
-
-      {/* 2-Column Row for Brand & Category */}
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Brand (optional)</Text>
-          <TextInput
-            accessibilityLabel="Brand"
-            testID="draft-brand"
-            editable={!readOnly}
-            style={input}
-            value={fields.brand}
-            onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
-          />
+      {/* Read-Only Identifier Card */}
+      <View
+        style={[
+          styles.identifierCard,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderColor: '#DCDED9',
+            borderRadius: theme.radii.lg,
+          },
+        ]}
+      >
+        <View style={styles.identifierLeft}>
+          <View style={[styles.identifierIconWrap, { backgroundColor: theme.colors.primaryLight }]}>
+            <Ionicons
+              name={isIdentifierQr ? 'qr-code-outline' : 'barcode-outline'}
+              size={22}
+              color={theme.colors.primaryDark}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.fieldLabelMicro, { color: theme.colors.textMuted }]}>
+              {isIdentifierQr ? 'SCANNED QR CODE' : 'SCANNED BARCODE'}
+            </Text>
+            <Text
+              testID="draft-identifier"
+              style={[styles.identifierText, { color: theme.colors.text }]}
+              numberOfLines={1}
+            >
+              {identifierValue}
+            </Text>
+          </View>
         </View>
-
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Category (optional)</Text>
-          <TextInput
-            accessibilityLabel="Category"
-            testID="draft-category"
-            editable={!readOnly}
-            style={input}
-            value={fields.category}
-            onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
-          />
+        <View style={[styles.verifiedPill, { backgroundColor: theme.colors.primaryLight }]}>
+          <Text style={[styles.verifiedPillText, { color: theme.colors.primaryDark }]}>Verified</Text>
         </View>
       </View>
 
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+      {/* Form Fields Card */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: '#FFFFFF',
+            borderColor: '#E2E2DE',
+            borderRadius: theme.radii.lg,
+          },
+        ]}
+      >
+        {/* Product Name Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="pricetag-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Product Name *</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              {
+                backgroundColor: focusedField === 'name' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'name' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Name"
+              testID="draft-name"
+              editable={!readOnly}
+              placeholder="e.g. Organic Almond Milk"
+              placeholderTextColor={theme.colors.textMuted}
+              style={[styles.textInput, { color: theme.colors.text }]}
+              value={fields.name}
+              maxLength={NAME_MAX}
+              onFocus={() => setFocusedField('name')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, name: v }))}
+            />
+          </View>
+        </View>
 
-      {conflict ? (
-        <DraftConflictBanner
-          currentVersion={conflict.currentVersion}
-          mode={coordinator ? 'coordinator' : 'refresh-only'}
-          busy={refreshing}
-          onRetry={coordinator ? () => reconcile('retry') : refreshFromServer}
-          onDiscard={coordinator ? () => reconcile('discard-local') : undefined}
-        />
-      ) : null}
+        {/* Description Field */}
+        <View style={styles.fieldGroup}>
+          <View style={styles.labelRow}>
+            <Ionicons name="document-text-outline" size={15} color={theme.colors.primary} />
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description (optional)</Text>
+          </View>
+          <View
+            style={[
+              styles.inputBox,
+              styles.multilineBox,
+              {
+                backgroundColor: focusedField === 'description' ? '#FFFFFF' : '#F9FAF9',
+                borderColor: focusedField === 'description' ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+              },
+            ]}
+          >
+            <TextInput
+              accessibilityLabel="Description"
+              testID="draft-description"
+              editable={!readOnly}
+              placeholder="Ingredients, taste profile, or key packaging notes…"
+              placeholderTextColor={theme.colors.textMuted}
+              style={[styles.textInput, styles.multilineInput, { color: theme.colors.text }]}
+              value={fields.description}
+              maxLength={DESCRIPTION_MAX}
+              multiline
+              onFocus={() => setFocusedField('description')}
+              onBlur={() => setFocusedField(null)}
+              onChangeText={(v) => setFields((f) => ({ ...f, description: v }))}
+            />
+            <Text testID="draft-description-counter" style={[styles.charCounter, { color: theme.colors.textMuted }]}>
+              {fields.description.length}/{DESCRIPTION_MAX}
+            </Text>
+          </View>
+        </View>
 
-      {!readOnly ? (
-        <Button
-          testID="draft-save"
-          label={isSaving ? 'Saving…' : 'Save'}
-          loading={isSaving}
-          disabled={!dirty || Boolean(conflict)}
-          onPress={save}
-        />
-      ) : null}
+        {/* 2-Column Row for Brand & Category */}
+        <View style={styles.twoColRow}>
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <View style={styles.labelRow}>
+              <Ionicons name="business-outline" size={14} color={theme.colors.primary} />
+              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Brand</Text>
+            </View>
+            <View
+              style={[
+                styles.inputBox,
+                {
+                  backgroundColor: focusedField === 'brand' ? '#FFFFFF' : '#F9FAF9',
+                  borderColor: focusedField === 'brand' ? theme.colors.primary : '#DCDED9',
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <TextInput
+                accessibilityLabel="Brand"
+                testID="draft-brand"
+                editable={!readOnly}
+                placeholder="e.g. Silk"
+                placeholderTextColor={theme.colors.textMuted}
+                style={[styles.textInput, { color: theme.colors.text }]}
+                value={fields.brand}
+                onFocus={() => setFocusedField('brand')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(v) => setFields((f) => ({ ...f, brand: v }))}
+              />
+            </View>
+          </View>
+
+          <View style={[styles.fieldGroup, { flex: 1 }]}>
+            <View style={styles.labelRow}>
+              <Ionicons name="grid-outline" size={14} color={theme.colors.primary} />
+              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Category</Text>
+            </View>
+            <View
+              style={[
+                styles.inputBox,
+                {
+                  backgroundColor: focusedField === 'category' ? '#FFFFFF' : '#F9FAF9',
+                  borderColor: focusedField === 'category' ? theme.colors.primary : '#DCDED9',
+                  borderRadius: theme.radii.md,
+                },
+              ]}
+            >
+              <TextInput
+                accessibilityLabel="Category"
+                testID="draft-category"
+                editable={!readOnly}
+                placeholder="e.g. Dairy"
+                placeholderTextColor={theme.colors.textMuted}
+                style={[styles.textInput, { color: theme.colors.text }]}
+                value={fields.category}
+                onFocus={() => setFocusedField('category')}
+                onBlur={() => setFocusedField(null)}
+                onChangeText={(v) => setFields((f) => ({ ...f, category: v }))}
+              />
+            </View>
+          </View>
+        </View>
+
+        {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
+
+        {conflict ? (
+          <DraftConflictBanner
+            currentVersion={conflict.currentVersion}
+            mode={coordinator ? 'coordinator' : 'refresh-only'}
+            busy={refreshing}
+            onRetry={coordinator ? () => reconcile('retry') : refreshFromServer}
+            onDiscard={coordinator ? () => reconcile('discard-local') : undefined}
+          />
+        ) : null}
+
+        {!readOnly ? (
+          <Button
+            testID="draft-save"
+            label={isSaving ? 'Saving Changes…' : 'Save Details'}
+            loading={isSaving}
+            disabled={!dirty || Boolean(conflict)}
+            onPress={save}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  formContainer: {
+    gap: 14,
+  },
+  identifierCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    padding: 14,
+  },
+  identifierLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  identifierIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fieldLabelMicro: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  identifierText: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: 'monospace',
+    marginTop: 2,
+  },
+  verifiedPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  verifiedPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  card: {
+    borderWidth: 1.5,
+    padding: 18,
+    gap: 16,
+    shadowColor: '#2C2C28',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  inputBox: {
+    borderWidth: 1.5,
+    paddingHorizontal: 14,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  textInput: {
+    fontSize: 16,
+    paddingVertical: 10,
+  },
+  multilineBox: {
+    minHeight: 100,
+    paddingVertical: 10,
+    justifyContent: 'space-between',
+  },
+  multilineInput: {
+    minHeight: 68,
+    textAlignVertical: 'top',
+    paddingVertical: 0,
+  },
+  charCounter: {
+    fontSize: 11,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  twoColRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});

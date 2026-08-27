@@ -45,6 +45,7 @@ export default function NewProductScreen() {
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
+  const [nameFocused, setNameFocused] = useState(false);
   const [dirty, setDirty] = useState(false);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
@@ -251,33 +252,38 @@ export default function NewProductScreen() {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 12,
+            justifyContent: 'space-between',
             backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
-            borderWidth: 1,
-            borderRadius: theme.radii.md,
-            padding: theme.spacing.md,
+            borderColor: '#DCDED9',
+            borderWidth: 1.5,
+            borderRadius: theme.radii.lg,
+            padding: 14,
           }}
         >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: theme.colors.primaryLight,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Ionicons name={barcode ? 'barcode-outline' : 'qr-code-outline'} size={22} color={theme.colors.primaryDark} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: theme.colors.primaryLight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name={barcode ? 'barcode-outline' : 'qr-code-outline'} size={22} color={theme.colors.primaryDark} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 }}>
+                {barcode ? 'SCANNED BARCODE' : 'SCANNED QR CODE'}
+              </Text>
+              <Text style={{ color: theme.colors.text, fontSize: 16, fontWeight: '700', fontFamily: 'monospace', marginTop: 2 }}>
+                {barcode || qr}
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }}>
-              {barcode ? 'SCANNED BARCODE' : 'SCANNED QR CODE'}
-            </Text>
-            <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: '600', fontFamily: 'monospace', marginTop: 2 }}>
-              {barcode || qr}
-            </Text>
+          <View style={{ backgroundColor: theme.colors.primaryLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+            <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '700' }}>Verified</Text>
           </View>
         </View>
       ) : null}
@@ -285,36 +291,53 @@ export default function NewProductScreen() {
       {/* Name Input Card */}
       <View
         style={{
-          backgroundColor: theme.colors.bgElevated,
-          borderColor: theme.colors.border,
-          borderWidth: 1,
+          backgroundColor: '#FFFFFF',
+          borderColor: '#E2E2DE',
+          borderWidth: 1.5,
           borderRadius: theme.radii.lg,
-          padding: theme.spacing.lg,
+          padding: 18,
           gap: 12,
+          shadowColor: '#2C2C28',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 6,
+          elevation: 2,
         }}
       >
-        <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700' }}>Product Name</Text>
-        <TextInput
-          accessibilityLabel="Text input field"
-          testID="new-product-name"
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="pricetag-outline" size={16} color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700' }}>Product Name *</Text>
+        </View>
+        <View
           style={{
-            color: theme.colors.text,
-            borderColor: theme.colors.border,
-            borderWidth: 1,
+            backgroundColor: nameFocused ? '#FFFFFF' : '#F9FAF9',
+            borderColor: nameFocused ? theme.colors.primary : '#DCDED9',
+            borderWidth: 1.5,
             borderRadius: theme.radii.md,
-            padding: theme.spacing.md,
-            fontSize: 16,
-            backgroundColor: theme.colors.bgGlass,
+            minHeight: 52,
+            justifyContent: 'center',
+            paddingHorizontal: 14,
           }}
-          placeholder="e.g. Organic Almond Milk"
-          placeholderTextColor={theme.colors.textMuted}
-          value={name}
-          onChangeText={setName}
-          autoFocus
-        />
+        >
+          <TextInput
+            accessibilityLabel="Text input field"
+            testID="new-product-name"
+            style={{
+              color: theme.colors.text,
+              fontSize: 16,
+              paddingVertical: 10,
+            }}
+            placeholder="e.g. Organic Almond Milk"
+            placeholderTextColor={theme.colors.textMuted}
+            value={name}
+            onChangeText={setName}
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
+            autoFocus
+          />
+        </View>
         {createError ? <Text style={{ color: theme.colors.danger, fontSize: 13 }}>{createError}</Text> : null}
       </View>
-
       {/* Continue CTA */}
       <Button
         testID="new-product-create"

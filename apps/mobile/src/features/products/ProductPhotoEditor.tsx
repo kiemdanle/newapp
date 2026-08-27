@@ -225,12 +225,30 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   );
 
   return (
-    <View style={{ gap: theme.spacing.md }}>
-      <Text style={{ color: theme.colors.text, fontWeight: '700' }}>Photos</Text>
-      <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-        {totalCount}/{MAX_PHOTOS} photos{remaining === 0 ? ' — limit reached' : ''}
-      </Text>
-
+    <View
+      style={{
+        backgroundColor: '#FFFFFF',
+        borderColor: '#E2E2DE',
+        borderWidth: 1.5,
+        borderRadius: theme.radii.lg,
+        padding: 18,
+        gap: 14,
+        shadowColor: '#2C2C28',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        elevation: 2,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Ionicons name="images-outline" size={16} color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700' }}>Product Photos</Text>
+        </View>
+        <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '600' }}>
+          {totalCount}/{MAX_PHOTOS} photos{remaining === 0 ? ' (Max)' : ''}
+        </Text>
+      </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
         {orderedServerPhotos.map((photo, index) => (
           <View key={photo.id} testID={`photo-${photo.id}`} style={{ width: 96, gap: 4 }}>
