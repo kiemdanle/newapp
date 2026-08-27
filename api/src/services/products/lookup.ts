@@ -26,7 +26,17 @@ export interface LookupActor {
 async function findLocalExact(input: LookupInput): Promise<ProductWithPhotos | null> {
   const prisma = getPrisma();
   if (input.barcode) {
-    const row = await prisma.product.findUnique({ where: { barcode: input.barcode }, include: PRODUCT_INCLUDE });
+    const raw = input.barcode.trim();
+    const candidates = [raw];
+    if (raw.length === 12) {
+      candidates.push(`0${raw}`);
+    } else if (raw.length === 13 && raw.startsWith('0')) {
+      candidates.push(raw.slice(1));
+    }
+    const row = await prisma.product.findFirst({
+      where: { barcode: { in: candidates } },
+      include: PRODUCT_INCLUDE,
+    });
     if (row) return row;
   }
   if (input.qr) {

@@ -10,9 +10,12 @@ import {
   View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { Product } from '@expyrico/shared';
 import { useDeal } from '@/api/deals';
 import { useProduct, useProductSearch } from '@/api/products';
+import type { LocalRecord } from '@/api/records';
 import { DealForm } from '@/features/deals/DealForm';
+import { PantrySelectModal } from '@/features/giveaways/PantrySelectModal';
 import { useTheme } from '@/theme/useTheme';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
@@ -28,6 +31,7 @@ export default function NewDealScreen() {
 
   // New deal mode state
   const [q, setQ] = useState('');
+  const [showPantryModal, setShowPantryModal] = useState(false);
   const initialProductId = routeParams?.productId;
   const { data: initialProduct, isLoading: loadingInitialProduct } = useProduct(
     initialProductId ?? undefined,
@@ -47,6 +51,19 @@ export default function NewDealScreen() {
       });
     }
   }, [initialProduct]);
+
+  const handleSelectPantryRecord = (record: LocalRecord, product?: Product | null) => {
+    if (record.productId) {
+      setSelectedProduct({
+        id: record.productId,
+        name: record.customName || product?.name || 'Product',
+        brand: product?.brand,
+      });
+    } else {
+      const name = record.customName || 'Item';
+      setQ(name);
+    }
+  };
   const { data: searchResults, isLoading: searching } = useProductSearch(
     q,
     q.trim().length > 0,
@@ -131,31 +148,66 @@ export default function NewDealScreen() {
         </Text>
       </View>
 
-      {/* Barcode scanner button */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Scan barcode to find product"
-        onPress={() => navigation.push('Scan', { target: 'deal' })}
-        style={[
-          styles.scanBtn,
-          {
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.primary,
-            borderRadius: theme.radii.lg,
-          },
-        ]}
-      >
-        <Text style={{ fontSize: 22, marginRight: 10 }}>📷</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 15 }}>
-            Scan barcode on package
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            Instant product lookup with camera
-          </Text>
-        </View>
-        <Text style={{ color: theme.colors.primaryDark, fontWeight: '700' }}>Scan →</Text>
-      </Pressable>
+      {/* Top Action Buttons: Pantry Select & Barcode Scanner */}
+      <View style={styles.topActionsGroup}>
+        <Pressable
+          testID="deal-select-from-pantry-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Select from pantry"
+          onPress={() => setShowPantryModal(true)}
+          style={[
+            styles.actionCardBtn,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.primary,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 22, marginRight: 10 }}>📦</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 15 }}>
+              Select from Pantry
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              Choose item from your pantry
+            </Text>
+          </View>
+          <Text style={{ color: theme.colors.primaryDark, fontWeight: '700' }}>Pick →</Text>
+        </Pressable>
+
+        <Pressable
+          testID="deal-scan-barcode-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Scan barcode to find product"
+          onPress={() => navigation.push('Scan', { target: 'deal' })}
+          style={[
+            styles.actionCardBtn,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.primary,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 22, marginRight: 10 }}>📷</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 15 }}>
+              Scan barcode on package
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              Instant product lookup with camera
+            </Text>
+          </View>
+          <Text style={{ color: theme.colors.primaryDark, fontWeight: '700' }}>Scan →</Text>
+        </Pressable>
+      </View>
+
+      <PantrySelectModal
+        visible={showPantryModal}
+        onClose={() => setShowPantryModal(false)}
+        onSelectRecord={handleSelectPantryRecord}
+      />
 
       <View style={styles.dividerRow}>
         <View style={[styles.dividerLine, { backgroundColor: theme.colors.border }]} />
@@ -285,6 +337,16 @@ const styles = StyleSheet.create({
   topHeader: {
     marginBottom: 16,
     gap: 4,
+  },
+  topActionsGroup: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  actionCardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderWidth: 1.5,
   },
   mainTitle: {
     fontSize: 22,

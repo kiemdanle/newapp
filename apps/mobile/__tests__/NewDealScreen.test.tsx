@@ -22,6 +22,32 @@ jest.mock('../src/api/products', () => ({
   useProductSearch: (...args: unknown[]) => mockUseProductSearch(...args),
 }));
 
+const mockPantryRecords = [
+  {
+    id: 'pantry-rec-1',
+    serverId: 'srv-1',
+    clientId: 'cli-1',
+    productId: 'p-pantry-1',
+    customName: 'Organic Whole Milk',
+    category: 'Dairy',
+    expiryDate: '2026-10-10',
+    quantity: 2,
+    unit: 'bottles',
+    price: 3.99,
+    store: 'Costco',
+    notes: 'In fridge',
+    photoUrl: null,
+    status: 'active',
+    notifyAt: [],
+    householdId: null,
+  },
+];
+
+jest.mock('../src/api/records', () => ({
+  useActiveRecords: () => mockPantryRecords,
+  useAllActiveRecords: () => mockPantryRecords,
+}));
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
@@ -119,5 +145,17 @@ describe('NewDealScreen', () => {
 
     expect(getByText('SELECTED PRODUCT')).toBeTruthy();
     expect(getByText('Greek Yogurt')).toBeTruthy();
+  });
+
+  it('selects product from pantry modal and transitions to deal form', async () => {
+    const { getByTestId, getByText } = render(wrap(<NewDealScreen />));
+
+    fireEvent.press(getByTestId('deal-select-from-pantry-btn'));
+    expect(getByTestId('pantry-select-modal')).toBeTruthy();
+
+    fireEvent.press(getByTestId('pantry-select-item-pantry-rec-1'));
+
+    expect(getByText('SELECTED PRODUCT')).toBeTruthy();
+    expect(getByText('Organic Whole Milk')).toBeTruthy();
   });
 });

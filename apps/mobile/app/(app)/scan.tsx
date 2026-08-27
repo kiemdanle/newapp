@@ -84,22 +84,30 @@ export default function ScanScreen() {
             }
             return;
           case 'editable_private':
-            navigation.replace('ProductNew', {
-              barcode: scan.kind === 'barcode' ? scan.value : '',
-              qr: scan.kind === 'qr' ? scan.value : '',
-              productId: result.product.id,
-              resume: 'edit',
-              target,
-            });
+            if (target === 'deal') {
+              navigation.replace('DealNew', { productId: result.product.id });
+            } else {
+              navigation.replace('ProductNew', {
+                barcode: scan.kind === 'barcode' ? scan.value : '',
+                qr: scan.kind === 'qr' ? scan.value : '',
+                productId: result.product.id,
+                resume: 'edit',
+                target,
+              });
+            }
             return;
           case 'creator_pending':
-            navigation.replace('ProductNew', {
-              barcode: scan.kind === 'barcode' ? scan.value : '',
-              qr: scan.kind === 'qr' ? scan.value : '',
-              productId: result.product.id,
-              resume: 'pending',
-              target,
-            });
+            if (target === 'deal') {
+              navigation.replace('DealNew', { productId: result.product.id });
+            } else {
+              navigation.replace('ProductNew', {
+                barcode: scan.kind === 'barcode' ? scan.value : '',
+                qr: scan.kind === 'qr' ? scan.value : '',
+                productId: result.product.id,
+                resume: 'pending',
+                target,
+              });
+            }
             return;
           case 'under_review':
             setUi({ phase: 'under-review' });
@@ -305,7 +313,9 @@ export default function ScanScreen() {
           </View>
           <Text style={[styles.panelTitle, { color: theme.colors.text }]}>We couldn't find this item</Text>
           <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
-            This barcode isn't in our catalog yet. You can create a new product for the community or add it directly as a custom pantry item.
+            {target === 'deal'
+              ? "This barcode isn't in our catalog yet. You can create a new product to post this deal."
+              : "This barcode isn't in our catalog yet. You can create a new product for the community or add it directly as a custom pantry item."}
           </Text>
           {lastScanRef.current ? (
             <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>
@@ -314,16 +324,23 @@ export default function ScanScreen() {
             </View>
           ) : null}
           {ui.canCreate ? (
-            <Button testID="scan-create" label="Create" icon="add" onPress={openCreate} />
+            <Button
+              testID="scan-create"
+              label={target === 'deal' ? 'Create Product for Deal' : 'Create'}
+              icon="add"
+              onPress={openCreate}
+            />
           ) : (
             <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>Creating new products isn't available right now.</Text>
           )}
-          <Button
-            testID="scan-add-custom-from-not-found"
-            label="Add as custom item"
-            variant="outline"
-            onPress={() => setUi({ phase: 'under-review-custom-item' })}
-          />
+          {target !== 'deal' ? (
+            <Button
+              testID="scan-add-custom-from-not-found"
+              label="Add as custom item"
+              variant="outline"
+              onPress={() => setUi({ phase: 'under-review-custom-item' })}
+            />
+          ) : null}
           <Button testID="scan-again" label="Scan again" variant="ghost" onPress={scanAgain} />
         </View>
       ) : null}
