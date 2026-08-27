@@ -54,7 +54,6 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -67,6 +66,7 @@ export declare const productEditRowSchema: z.ZodObject<{
         displayUrl: string;
         retained: boolean;
     }[];
+    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
@@ -74,7 +74,6 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -87,6 +86,7 @@ export declare const productEditRowSchema: z.ZodObject<{
         displayUrl: string;
         retained: boolean;
     }[];
+    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
@@ -171,7 +171,6 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -184,6 +183,7 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         displayUrl: string;
         retained: boolean;
     }[];
+    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
@@ -193,7 +193,6 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -206,6 +205,7 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         displayUrl: string;
         retained: boolean;
     }[];
+    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     submittedBy: string;

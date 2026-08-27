@@ -42,9 +42,7 @@ export declare const adminProductRowSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-    createdAt: string;
-    updatedAt: string;
+    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -52,7 +50,7 @@ export declare const adminProductRowSchema: z.ZodObject<{
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
-    source: "user" | "off" | "upcitemdb";
+    source: "off" | "upcitemdb" | "user";
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
@@ -60,6 +58,8 @@ export declare const adminProductRowSchema: z.ZodObject<{
     ratingCount: number;
     reviewCount: number;
     version: number;
+    createdAt: string;
+    updatedAt: string;
     photos?: {
         id: string;
         position: number;
@@ -71,9 +71,7 @@ export declare const adminProductRowSchema: z.ZodObject<{
     moderatedAt?: string | null | undefined;
 }, {
     id: string;
-    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-    createdAt: string;
-    updatedAt: string;
+    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -81,7 +79,7 @@ export declare const adminProductRowSchema: z.ZodObject<{
     brand: string | null;
     category: string | null;
     imageUrl: string | null;
-    source: "user" | "off" | "upcitemdb";
+    source: "off" | "upcitemdb" | "user";
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
@@ -89,6 +87,8 @@ export declare const adminProductRowSchema: z.ZodObject<{
     ratingCount: number;
     reviewCount: number;
     version: number;
+    createdAt: string;
+    updatedAt: string;
     photos?: {
         id: string;
         position: number;
@@ -108,13 +108,13 @@ export declare const adminProductsQuerySchema: z.ZodObject<{
     q: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into" | undefined;
-    source?: "user" | "off" | "upcitemdb" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
+    source?: "off" | "upcitemdb" | "user" | undefined;
     cursor?: string | undefined;
     q?: string | undefined;
 }, {
-    status?: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into" | undefined;
-    source?: "user" | "off" | "upcitemdb" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into" | undefined;
+    source?: "off" | "upcitemdb" | "user" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
     q?: string | undefined;
@@ -161,9 +161,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -171,7 +169,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -179,6 +177,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
+        createdAt: string;
+        updatedAt: string;
         photos?: {
             id: string;
             position: number;
@@ -190,9 +190,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderatedAt?: string | null | undefined;
     }, {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -200,7 +198,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -208,6 +206,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
+        createdAt: string;
+        updatedAt: string;
         photos?: {
             id: string;
             position: number;
@@ -222,9 +222,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -232,7 +230,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -240,6 +238,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
+        createdAt: string;
+        updatedAt: string;
         photos?: {
             id: string;
             position: number;
@@ -254,9 +254,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
-        createdAt: string;
-        updatedAt: string;
+        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -264,7 +262,7 @@ export declare const adminProductsListSchema: z.ZodObject<{
         brand: string | null;
         category: string | null;
         imageUrl: string | null;
-        source: "user" | "off" | "upcitemdb";
+        source: "off" | "upcitemdb" | "user";
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
@@ -272,6 +270,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         ratingCount: number;
         reviewCount: number;
         version: number;
+        createdAt: string;
+        updatedAt: string;
         photos?: {
             id: string;
             position: number;
@@ -421,8 +421,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    createdAt: string;
     version: number;
+    createdAt: string;
     moderationNotes: string | null;
     productId: string;
     submittedBy: string;
@@ -442,8 +442,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    createdAt: string;
     version: number;
+    createdAt: string;
     moderationNotes: string | null;
     productId: string;
     submittedBy: string;
@@ -498,8 +498,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-        createdAt: string;
         version: number;
+        createdAt: string;
         moderationNotes: string | null;
         productId: string;
         submittedBy: string;
@@ -519,8 +519,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
     }, {
         id: string;
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-        createdAt: string;
         version: number;
+        createdAt: string;
         moderationNotes: string | null;
         productId: string;
         submittedBy: string;
@@ -543,8 +543,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
     items: {
         id: string;
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-        createdAt: string;
         version: number;
+        createdAt: string;
         moderationNotes: string | null;
         productId: string;
         submittedBy: string;
@@ -567,8 +567,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
     items: {
         id: string;
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-        createdAt: string;
         version: number;
+        createdAt: string;
         moderationNotes: string | null;
         productId: string;
         submittedBy: string;

@@ -91,10 +91,12 @@ export default function NewProductScreen() {
     }
     setCreateError(null);
     try {
-      const { product: created } = await createOrResumeDraft.mutateAsync({
-        barcode: barcode || null,
-        qrPayload: qr || null,
-      });
+      const payload = barcode
+        ? { barcode: barcode.trim() }
+        : qr
+          ? { qrPayload: qr.trim() }
+          : { barcode: undefined };
+      const { product: created } = await createOrResumeDraft.mutateAsync(payload);
       // Patch the initial name entered by the user
       try {
         await apiClient.patch<Product>(`/products/drafts/${created.id}`, {
@@ -108,7 +110,7 @@ export default function NewProductScreen() {
       if (userId) {
         await saveDraftLocalState(userId, {
           productId: created.id,
-          identifier: { barcode: barcode || null, qr: qr || null },
+          identifier: { barcode: barcode ? barcode.trim() : null, qr: qr ? qr.trim() : null },
           dirty: { name: name.trim() },
           updatedAt: new Date().toISOString(),
         });

@@ -285,7 +285,14 @@ describe('productDraftCreateRequestSchema', () => {
     expect(productDraftCreateRequestSchema.parse({ qrPayload: 'qr-data' })).toEqual({
       qrPayload: 'qr-data',
     });
+    expect(productDraftCreateRequestSchema.parse({ barcode: '5449000000996', qrPayload: null })).toEqual({
+      barcode: '5449000000996',
+    });
+    expect(productDraftCreateRequestSchema.parse({ barcode: null, qrPayload: 'qr-data' })).toEqual({
+      qrPayload: 'qr-data',
+    });
     expect(() => productDraftCreateRequestSchema.parse({})).toThrow();
+    expect(() => productDraftCreateRequestSchema.parse({ barcode: null, qrPayload: null })).toThrow();
     expect(() =>
       productDraftCreateRequestSchema.parse({ barcode: '5449000000996', qrPayload: 'qr-data' }),
     ).toThrow();
