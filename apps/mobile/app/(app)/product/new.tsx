@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, TextInput, View, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Product } from '@expyrico/shared';
 import { apiClient } from '../../../src/api/client';
 import { useCreateOrResumeDraft, useProduct } from '../../../src/api/products';
@@ -38,6 +39,7 @@ export default function NewProductScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
   const { barcode, qr, productId: routeProductId, resume, feedback, target } = (route.params ?? {}) as RouteParams;
   const userId = useSessionStore((s) => s.user?.id);
 
@@ -84,6 +86,24 @@ export default function NewProductScreen() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigation]),
   );
+  const handleClose = () => {
+    if (dirtyRef.current) {
+      Alert.alert('Discard unsaved changes?', "Your edits to this product haven't been saved.", [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            dirtyRef.current = false;
+            setDirty(false);
+            navigation.goBack();
+          },
+        },
+      ]);
+    } else {
+      navigation.goBack();
+    }
+  };
 
   const createDraft = async () => {
     if (!name.trim()) {
@@ -214,22 +234,87 @@ export default function NewProductScreen() {
     };
 
     return (
-      <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
-        <DraftEditor
-          product={product}
-          feedback={feedback}
-          onDirtyChange={setDirty}
-          onDiscard={discardDraft}
-          onSubmitted={handleSubmitted}
-        />
-      </ScrollView>
+      <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+        {/* Persistent Top Navigation Bar */}
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderBottomColor: theme.colors.border,
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <Pressable
+            testID="product-new-close-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Close product editor"
+            onPress={handleClose}
+            style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+          >
+            <Ionicons name="close" size={20} color={theme.colors.text} />
+          </Pressable>
+          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Product Details</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Done"
+            onPress={handleClose}
+            hitSlop={8}
+          >
+            <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
+          </Pressable>
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+          <DraftEditor
+            product={product}
+            feedback={feedback}
+            onDirtyChange={setDirty}
+            onDiscard={discardDraft}
+            onSubmitted={handleSubmitted}
+          />
+        </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg, backgroundColor: theme.colors.bg }}
-    >
+    <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+      {/* Persistent Top Navigation Bar */}
+      <View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderBottomColor: theme.colors.border,
+            paddingTop: insets.top + 8,
+          },
+        ]}
+      >
+        <Pressable
+          testID="product-new-close-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Close new product"
+          onPress={handleClose}
+          style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+        >
+          <Ionicons name="close" size={20} color={theme.colors.text} />
+        </Pressable>
+        <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>New Product</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Done"
+          onPress={handleClose}
+          hitSlop={8}
+        >
+          <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Cancel</Text>
+        </Pressable>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+      >
       {/* Step Indicator Header */}
       <View style={{ gap: 6 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -346,6 +431,37 @@ export default function NewProductScreen() {
         onPress={createDraft}
         loading={createOrResumeDraft.isPending}
       />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+  },
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  doneBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    paddingHorizontal: 4,
+  },
+});
