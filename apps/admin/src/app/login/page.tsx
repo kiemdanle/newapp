@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted p-6">
-      <div className="w-full max-w-sm rounded-lg border bg-card p-8 shadow-sm">
+    <main className="flex min-h-screen items-center justify-center bg-muted p-4 sm:p-6">
+      <div className="w-full max-w-[420px] rounded-2xl border border-neutral-200/80 bg-white p-6 sm:p-8 shadow-sm">
         <div className="mb-6 flex flex-col items-center gap-3">
           <Logo size={56} />
           <h1 className="text-[24px] font-semibold text-neutral-dark font-display leading-none">

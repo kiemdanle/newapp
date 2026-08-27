@@ -4,10 +4,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert } from '@/components/ui/alert';
-
+import { OtpInput } from '@/components/ui/otp-input';
 interface EnrollPayload {
   secret: string;
   qrCodeDataUrl: string;
@@ -125,22 +123,26 @@ export function TotpEnrollForm({
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <p className="text-sm font-medium">3. Enter the 6-digit code to confirm</p>
         <div className="space-y-2">
-          <Label htmlFor="enroll-code">Authenticator code</Label>
-          <Input
-            id="enroll-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="\d{6}"
-            maxLength={6}
-            required
+          <p className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
+            3. Enter the 6-digit code to confirm
+          </p>
+          <OtpInput
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+            onChange={(val) => {
+              setCode(val);
+              if (error) setError(null);
+            }}
+            disabled={busy}
+            hasError={Boolean(error)}
           />
         </div>
-        {error && <Alert variant="destructive">{error}</Alert>}
-        <Button type="submit" disabled={busy || code.length !== 6} className="w-full">
+        {error && <Alert variant="destructive" className="text-xs">{error}</Alert>}
+        <Button
+          type="submit"
+          disabled={busy || code.length !== 6}
+          className="h-11 w-full rounded-xl bg-primary text-base font-semibold text-white shadow-sm hover:bg-primary-dark transition-all active:scale-[0.99] disabled:opacity-50"
+        >
           {busy ? 'Confirming…' : 'Confirm enrollment'}
         </Button>
       </form>

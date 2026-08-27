@@ -83,7 +83,16 @@ export function LoginForm() {
   }
 
   if (step === 'totp' && challengeToken) {
-    return <TotpForm challengeToken={challengeToken} />;
+    return (
+      <TotpForm
+        challengeToken={challengeToken}
+        onCancel={() => {
+          setStep('credentials');
+          setChallengeToken(null);
+          setError(null);
+        }}
+      />
+    );
   }
 
   return (
