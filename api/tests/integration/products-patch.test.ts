@@ -97,7 +97,7 @@ describe('PATCH /v1/products/:id', () => {
   it('resubmits an existing changes_required edit in place instead of dead-ending the creator', async () => {
     const app = await buildServer();
     const { headers: adminHeaders } = await makeAdmin();
-    const { headers } = await authed();
+    const { user, headers } = await authed();
     const p = await makeProduct({ name: 'Original' });
     const prisma = getPrisma();
 
@@ -145,7 +145,13 @@ describe('PATCH /v1/products/:id', () => {
     // 4. Admin sees it in the pending queue again and can resolve it.
     const pendingList = await app.inject({ method: 'GET', url: '/v1/admin/products/pending', headers: adminHeaders });
     expect(pendingList.statusCode).toBe(200);
-    expect(pendingList.json().items.some((i: { id: string }) => i.id === editId)).toBe(true);
+    const item = pendingList.json().items.find((i: { id: string }) => i.id === editId);
+    expect(item).toBeDefined();
+    expect(item.name).toBe('Revised proposal');
+    expect(item.productName).toBe(p.name);
+    expect(item.creator).toBeDefined();
+    expect(item.creator.id).toBe(user.id);
+    expect(item.creator.email).toBe(user.email);
 
     const approve = await app.inject({
       method: 'PATCH',

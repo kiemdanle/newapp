@@ -60,7 +60,15 @@ export default async function RevisionDetailPage({
             Revision to {live.name}
           </h1>
           <p className="text-xs text-neutral-mid">
-            Submitted by <span className="font-mono">{revision.submittedBy}</span>
+            Submitted by{' '}
+            {revision.creator ? (
+              <span className="font-medium text-neutral-dark">
+                {`${revision.creator.firstName} ${revision.creator.lastName}`.trim() || revision.creator.email}{' '}
+                <span className="font-normal text-neutral-mid">({revision.creator.email})</span>
+              </span>
+            ) : (
+              <span className="font-mono">{revision.submittedBy}</span>
+            )}
             {revision.submittedAt && ` · ${new Date(revision.submittedAt).toLocaleString()}`}
           </p>
         </div>

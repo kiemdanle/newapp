@@ -9,16 +9,16 @@ export declare const productEditPhotoSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     position: number;
-    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
+    retained: boolean;
     sourceProductPhotoId?: string | null | undefined;
 }, {
     id: string;
     position: number;
-    retained: boolean;
     thumbnailUrl: string;
     displayUrl: string;
+    retained: boolean;
     sourceProductPhotoId?: string | null | undefined;
 }>;
 export type ProductEditPhoto = z.infer<typeof productEditPhotoSchema>;
@@ -44,16 +44,16 @@ export declare const productEditRowSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
@@ -62,47 +62,47 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    version: number;
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    productId: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    version: number;
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    productId: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }>;
@@ -175,16 +175,16 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     }, "strip", z.ZodTypeAny, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }, {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }>, "many">;
     moderationFeedback: z.ZodNullable<z.ZodString>;
@@ -193,55 +193,86 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
 } & {
     submittedBy: z.ZodString;
     liveProductVersion: z.ZodNumber;
+    productName: z.ZodOptional<z.ZodString>;
+    creator: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        id: z.ZodString;
+        email: z.ZodString;
+        firstName: z.ZodString;
+        lastName: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+    }, {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+    }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    version: number;
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    productId: string;
     submittedBy: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
+    creator?: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+    } | null | undefined;
+    productName?: string | undefined;
     notes?: string | null | undefined;
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    productId: string;
-    version: number;
-    baseProductVersion: number;
     name: string;
     description: string | null;
     brand: string | null;
     category: string | null;
+    version: number;
     photos: {
         id: string;
         position: number;
-        retained: boolean;
         thumbnailUrl: string;
         displayUrl: string;
+        retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
-    submittedAt: string | null;
     updatedAt: string;
+    productId: string;
     submittedBy: string;
+    baseProductVersion: number;
+    submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
+    creator?: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+    } | null | undefined;
+    productName?: string | undefined;
     notes?: string | null | undefined;
 }>;
 export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;

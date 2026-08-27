@@ -28,9 +28,9 @@ export declare const moderationSettingsSchema: z.ZodObject<{
 export declare const productCreationSettingsSchema: z.ZodObject<{
     mode: z.ZodEnum<["off", "internal", "all"]>;
 }, "strip", z.ZodTypeAny, {
-    mode: "off" | "all" | "internal";
+    mode: "off" | "internal" | "all";
 }, {
-    mode: "off" | "all" | "internal";
+    mode: "off" | "internal" | "all";
 }>;
 export type ProductCreationSettings = z.infer<typeof productCreationSettingsSchema>;
 export declare const notificationTemplateSchema: z.ZodObject<{
@@ -42,18 +42,18 @@ export declare const notificationTemplateSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    updatedAt: string;
+    key: string;
     title: string;
     body: string;
-    key: string;
     enabled: boolean;
+    updatedAt: string;
 }, {
     id: string;
-    updatedAt: string;
+    key: string;
     title: string;
     body: string;
-    key: string;
     enabled: boolean;
+    updatedAt: string;
 }>;
 export declare const notificationTemplatePatchSchema: z.ZodEffects<z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
@@ -88,16 +88,17 @@ export declare const adminRowSchema: z.ZodObject<{
     email: string;
     firstName: string;
     lastName: string;
-    createdAt: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }, {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-    createdAt: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }>;
+export type AdminRow = z.infer<typeof adminRowSchema>;
 export declare const adminInviteSchema: z.ZodObject<{
     email: z.ZodString;
     firstName: z.ZodString;

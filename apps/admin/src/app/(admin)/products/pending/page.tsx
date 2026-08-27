@@ -95,15 +95,23 @@ export default async function ProductsPendingPage({
           </Link>
         ) : (
           <Link href={`/products/pending/${r.data.id}`} className="font-medium hover:underline">
-            Revision to product <span className="font-mono text-xs">{r.data.productId}</span>
+            {r.data.name || r.data.productName || 'Untitled product'}
           </Link>
         ),
     },
     {
       header: 'Creator',
-      cell: (r) => (
-        <span className="font-mono text-xs text-neutral-mid">{r.kind === 'revision' ? r.data.submittedBy : '—'}</span>
-      ),
+      cell: (r) => {
+        const creator = r.data.creator;
+        if (!creator) return <span className="text-xs text-neutral-mid">—</span>;
+        const fullName = `${creator.firstName} ${creator.lastName}`.trim();
+        return (
+          <span className="text-xs">
+            {fullName ? <span className="font-medium text-neutral-dark">{fullName} </span> : null}
+            <span className="text-neutral-mid">{creator.email}</span>
+          </span>
+        );
+      },
     },
     {
       header: 'Photos',

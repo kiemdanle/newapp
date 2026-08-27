@@ -38,6 +38,11 @@ export default async function ProductDetailPage({
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-neutral-mid">
               <StatusBadge status={p.status} />
               <span>source: {p.source}</span>
+              {p.creator && (
+                <span>
+                  creator: {`${p.creator.firstName} ${p.creator.lastName}`.trim() || p.creator.email}
+                </span>
+              )}
               {p.barcode && <span>barcode: {p.barcode}</span>}
               {p.category && <span>{p.category}</span>}
             </div>

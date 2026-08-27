@@ -5,7 +5,15 @@ import { getPrisma } from '../../../db.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from '../../../services/products/product-visibility.js';
 import { toApiProductPhoto } from '../../../services/products/serializer.js';
 
-function toRow(p: ProductWithPhotos) {
+const ADMIN_PRODUCT_INCLUDE = {
+  ...PRODUCT_INCLUDE,
+  createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+};
+type AdminProductWithPhotos = ProductWithPhotos & {
+  createdBy?: { id: string; email: string; firstName: string; lastName: string } | null;
+};
+
+function toRow(p: AdminProductWithPhotos) {
   return {
     id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, description: p.description,
     brand: p.brand, category: p.category, imageUrl: p.imageUrl, defaultShelfLifeDays: p.defaultShelfLifeDays, source: p.source as 'off' | 'upcitemdb' | 'user',
@@ -17,6 +25,14 @@ function toRow(p: ProductWithPhotos) {
     photos: [...p.photos].sort((a, b) => a.position - b.position).map((photo) => toApiProductPhoto(photo, p.id)),
     moderationNotes: p.moderationNotes,
     moderatedAt: p.moderatedAt ? p.moderatedAt.toISOString() : null,
+    creator: p.createdBy
+      ? {
+          id: p.createdBy.id,
+          email: p.createdBy.email,
+          firstName: p.createdBy.firstName,
+          lastName: p.createdBy.lastName,
+        }
+      : null,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(),
   };
 }
@@ -36,7 +52,7 @@ export async function adminProductsListRoute(app: FastifyInstance) {
     if (cur) where.AND = [{ OR: [{ createdAt: { lt: cur.t } }, { AND: [{ createdAt: cur.t }, { id: { lt: cur.i } }] }] }];
     const rows = await getPrisma().product.findMany({
       where,
-      include: PRODUCT_INCLUDE,
+      include: ADMIN_PRODUCT_INCLUDE,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: q.limit + 1,
     });

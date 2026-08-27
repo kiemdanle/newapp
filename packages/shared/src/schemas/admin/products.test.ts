@@ -103,6 +103,33 @@ describe('adminProductEditRowSchema', () => {
     };
     expect(adminProductEditRowSchema.parse(row)).toEqual(row);
   });
+  it('parses a revision row with productName and creator details', () => {
+    const creatorId = randomUUID();
+    const row = {
+      id: randomUUID(),
+      productId: randomUUID(),
+      productName: 'Original Product Name',
+      submittedBy: creatorId,
+      creator: {
+        id: creatorId,
+        email: 'creator@example.com',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+      proposed: { name: 'Revised Product Name' },
+      name: 'Revised Product Name',
+      status: 'pending',
+      version: 1,
+      baseProductVersion: 1,
+      moderationNotes: null,
+      submittedAt: now,
+      resolvedBy: null,
+      resolvedAt: null,
+      createdAt: now,
+    };
+    expect(adminProductEditRowSchema.parse(row)).toEqual(row);
+  });
+
 
   it('accepts the draft and changes_required states', () => {
     const base = {

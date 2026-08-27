@@ -14,6 +14,7 @@ export const tokensSchema = z.object({
 export const authResultSchema = z.object({
     user: userSchema,
     tokens: tokensSchema,
+    trustedDeviceToken: z.string().optional(),
 });
 export const totpChallengeSchema = z.object({
     requiresTotp: z.literal(true),
@@ -36,6 +37,7 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
     email: emailField,
     password: passwordField,
+    trustedDeviceToken: z.string().min(1).optional(),
 });
 export const refreshSchema = z.object({
     refreshToken: z.string().min(1),
@@ -99,11 +101,13 @@ export const totpVerifyEnrollmentSchema = z.object({
 export const totpChallengeVerifySchema = z.object({
     challengeToken: z.string().min(1),
     code: z.string().regex(/^\d{6}$/),
+    trustDevice: z.boolean().optional(),
 });
 /** Redeem a one-time recovery code in place of a TOTP code during login. */
 export const totpRecoveryVerifySchema = z.object({
     challengeToken: z.string().min(1),
     recoveryCode: z.string().min(1),
+    trustDevice: z.boolean().optional(),
 });
 // --- Change / Set Password (authenticated) ---
 export const changePasswordSchema = z

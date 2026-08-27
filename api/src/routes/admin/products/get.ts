@@ -11,7 +11,13 @@ const paramsSchema = z.object({ id: z.string().uuid() });
 export async function adminProductsGetRoute(app: FastifyInstance) {
   app.get('/:id', async (req) => {
     const { id } = paramsSchema.parse(req.params);
-    const p = await getPrisma().product.findUnique({ where: { id }, include: PRODUCT_INCLUDE });
+    const p = await getPrisma().product.findUnique({
+      where: { id },
+      include: {
+        ...PRODUCT_INCLUDE,
+        createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+      },
+    });
     if (!p) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
     return adminProductRowSchema.parse({
       id: p.id,
@@ -36,6 +42,14 @@ export async function adminProductsGetRoute(app: FastifyInstance) {
       photos: [...p.photos].sort((a, b) => a.position - b.position).map((photo) => toApiProductPhoto(photo, p.id)),
       moderationNotes: p.moderationNotes,
       moderatedAt: p.moderatedAt ? p.moderatedAt.toISOString() : null,
+      creator: p.createdBy
+        ? {
+            id: p.createdBy.id,
+            email: p.createdBy.email,
+            firstName: p.createdBy.firstName,
+            lastName: p.createdBy.lastName,
+          }
+        : null,
       createdAt: p.createdAt.toISOString(),
       updatedAt: p.updatedAt.toISOString(),
     });

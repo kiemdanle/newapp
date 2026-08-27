@@ -7,7 +7,8 @@ import { toProductEditRow } from '../../../services/products/product-edits.js';
 // `toProductEditRow` only depends on the shape structurally.
 const EDIT_LIST_INCLUDE = {
   photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
-  product: { select: { defaultShelfLifeDays: true } },
+  product: { select: { name: true, defaultShelfLifeDays: true } },
+  submitter: { select: { id: true, email: true, firstName: true, lastName: true } },
 };
 
 /** Bounded queue projection with ordered private/public review media (not
@@ -32,9 +33,20 @@ export async function adminProductsPendingListRoute(app: FastifyInstance) {
     const items = (hasMore ? rows.slice(0, -1) : rows).map((e) => {
       const row = toProductEditRow(e);
       return {
-        id: e.id, productId: e.productId, submittedBy: e.submittedBy,
+        id: e.id,
+        productId: e.productId,
+        productName: e.product?.name,
+        submittedBy: e.submittedBy,
+        creator: e.submitter
+          ? {
+              id: e.submitter.id,
+              email: e.submitter.email,
+              firstName: e.submitter.firstName,
+              lastName: e.submitter.lastName,
+            }
+          : null,
         proposed: e.proposed as Record<string, unknown>,
-        name: row.name,
+        name: row.name || e.product?.name,
         coverPhoto: row.photos[0] ?? null,
         status: e.status,
         version: e.version,

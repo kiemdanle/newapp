@@ -33,6 +33,7 @@ export declare const authResultSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -43,11 +44,11 @@ export declare const authResultSchema: z.ZodObject<{
         avatarUrl: string | null;
         hasPassword: boolean;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     }, {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -56,7 +57,6 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -76,8 +76,10 @@ export declare const authResultSchema: z.ZodObject<{
         refreshToken: string;
         expiresIn: number;
     }>;
+    trustedDeviceToken: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     user: {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -88,7 +90,6 @@ export declare const authResultSchema: z.ZodObject<{
         avatarUrl: string | null;
         hasPassword: boolean;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -98,8 +99,10 @@ export declare const authResultSchema: z.ZodObject<{
         refreshToken: string;
         expiresIn: number;
     };
+    trustedDeviceToken?: string | undefined;
 }, {
     user: {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -108,7 +111,6 @@ export declare const authResultSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -120,6 +122,7 @@ export declare const authResultSchema: z.ZodObject<{
         refreshToken: string;
         expiresIn: number;
     };
+    trustedDeviceToken?: string | undefined;
 }>;
 export type AuthResult = z.infer<typeof authResultSchema>;
 export declare const totpChallengeSchema: z.ZodObject<{
@@ -168,12 +171,15 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export declare const loginSchema: z.ZodObject<{
     email: z.ZodString;
     password: z.ZodString;
+    trustedDeviceToken: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     email: string;
     password: string;
+    trustedDeviceToken?: string | undefined;
 }, {
     email: string;
     password: string;
+    trustedDeviceToken?: string | undefined;
 }>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export declare const refreshSchema: z.ZodObject<{
@@ -188,11 +194,11 @@ export declare const verifyEmailSchema: z.ZodObject<{
     email: z.ZodString;
     code: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    email: string;
     code: string;
+    email: string;
 }, {
-    email: string;
     code: string;
+    email: string;
 }>;
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
 export declare const resendVerificationSchema: z.ZodObject<{
@@ -214,11 +220,11 @@ export declare const verifyResetCodeSchema: z.ZodObject<{
     email: z.ZodString;
     code: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    email: string;
     code: string;
+    email: string;
 }, {
-    email: string;
     code: string;
+    email: string;
 }>;
 export type VerifyResetCodeInput = z.infer<typeof verifyResetCodeSchema>;
 export declare const verifyResetCodeResponseSchema: z.ZodObject<{
@@ -316,23 +322,29 @@ export declare const totpVerifyEnrollmentSchema: z.ZodObject<{
 export declare const totpChallengeVerifySchema: z.ZodObject<{
     challengeToken: z.ZodString;
     code: z.ZodString;
+    trustDevice: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     code: string;
     challengeToken: string;
+    trustDevice?: boolean | undefined;
 }, {
     code: string;
     challengeToken: string;
+    trustDevice?: boolean | undefined;
 }>;
 /** Redeem a one-time recovery code in place of a TOTP code during login. */
 export declare const totpRecoveryVerifySchema: z.ZodObject<{
     challengeToken: z.ZodString;
     recoveryCode: z.ZodString;
+    trustDevice: z.ZodOptional<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     challengeToken: string;
     recoveryCode: string;
+    trustDevice?: boolean | undefined;
 }, {
     challengeToken: string;
     recoveryCode: string;
+    trustDevice?: boolean | undefined;
 }>;
 export declare const changePasswordSchema: z.ZodEffects<z.ZodObject<{
     currentPassword: z.ZodOptional<z.ZodString>;
@@ -386,6 +398,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -396,11 +409,11 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         avatarUrl: string | null;
         hasPassword: boolean;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
     }, {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -409,7 +422,6 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -418,6 +430,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
     }>;
 }, "strip", z.ZodTypeAny, {
     user: {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -428,7 +441,6 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         avatarUrl: string | null;
         hasPassword: boolean;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
@@ -440,6 +452,7 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
     };
 }, {
     user: {
+        status: "active" | "suspended" | "deleted";
         id: string;
         email: string;
         emailVerified: boolean;
@@ -448,7 +461,6 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         country: string | null;
         avatarUrl: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;

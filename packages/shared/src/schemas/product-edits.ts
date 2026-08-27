@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { productDescriptionValueSchema } from './product.js';
-import { productEditStatusSchema } from './admin/products.js';
+import { productEditStatusSchema, adminUserSummarySchema } from './admin/products.js';
 
 // A single entry in a creator's edit-scoped desired photo set: `retained` sources an
 // already-live, already-public photo from the product being revised (its bytes never
@@ -83,5 +83,7 @@ export type ProductEditSubmitRequest = z.infer<typeof productEditSubmitRequestSc
 export const adminProductEditDetailSchema = productEditRowSchema.extend({
   submittedBy: z.string().uuid(),
   liveProductVersion: z.number().int().min(1),
+  productName: z.string().optional(),
+  creator: adminUserSummarySchema.nullable().optional(),
 });
 export type AdminProductEditDetail = z.infer<typeof adminProductEditDetailSchema>;

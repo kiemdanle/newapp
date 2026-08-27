@@ -6,6 +6,14 @@ import { productStatusSchema, productPhotoSchema } from '../product.js';
 // products actually go through.
 export const adminProductStatusSchema = productStatusSchema;
 export const adminProductSourceSchema = z.enum(['off', 'upcitemdb', 'user']);
+export const adminUserSummarySchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  firstName: z.string(),
+  lastName: z.string(),
+});
+export type AdminUserSummary = z.infer<typeof adminUserSummarySchema>;
+
 
 export const adminProductRowSchema = z.object({
   id: z.string().uuid(),
@@ -44,6 +52,7 @@ export const adminProductRowSchema = z.object({
   photos: z.array(productPhotoSchema).optional(),
   moderationNotes: z.string().nullable().optional(),
   moderatedAt: z.string().datetime().nullable().optional(),
+  creator: adminUserSummarySchema.nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -124,7 +133,9 @@ const adminProductEditCoverPhotoSchema = z.object({
 export const adminProductEditRowSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
+  productName: z.string().optional(),
   submittedBy: z.string().uuid(),
+  creator: adminUserSummarySchema.nullable().optional(),
   proposed: z.record(z.unknown()),
   // M6: the queue needs enough to review at a glance without a second per-row
   // fetch — the proposed name and an ordered cover photo (retained or staged,

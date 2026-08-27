@@ -12,7 +12,8 @@ const paramsSchema = z.object({ editId: z.string().uuid() });
 // specific type export, so this stays a thin route file with no service change.
 const EDIT_DETAIL_INCLUDE = {
   photos: { include: { sourceProductPhoto: true }, orderBy: { position: 'asc' as const } },
-  product: { select: { defaultShelfLifeDays: true } },
+  product: { select: { name: true, defaultShelfLifeDays: true, version: true } },
+  submitter: { select: { id: true, email: true, firstName: true, lastName: true } },
 };
 
 /**
@@ -29,14 +30,23 @@ export async function adminProductsPendingGetRoute(app: FastifyInstance) {
     const prisma = getPrisma();
     const edit = await prisma.productEdit.findUnique({ where: { id: editId }, include: EDIT_DETAIL_INCLUDE });
     if (!edit) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Revision not found' });
-    const product = await prisma.product.findUnique({ where: { id: edit.productId }, select: { version: true } });
-    if (!product) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+    const liveProductVersion = edit.product?.version ?? (await prisma.product.findUnique({ where: { id: edit.productId }, select: { version: true } }))?.version;
+    if (liveProductVersion === undefined) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
 
     const row = toProductEditRow(edit);
     return adminProductEditDetailSchema.parse({
       ...row,
       submittedBy: edit.submittedBy,
-      liveProductVersion: product.version,
+      productName: edit.product?.name,
+      creator: edit.submitter
+        ? {
+            id: edit.submitter.id,
+            email: edit.submitter.email,
+            firstName: edit.submitter.firstName,
+            lastName: edit.submitter.lastName,
+          }
+        : null,
+      liveProductVersion,
     });
   });
 }
