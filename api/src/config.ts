@@ -67,7 +67,7 @@ const envSchema = z.object({
   FIREBASE_PROJECT_ID: z.string().min(1),
   FIREBASE_CREDENTIAL_MODE: z.enum(['workload_identity', 'service_account_file']).default('workload_identity'),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
-
+  RECAPTCHA_APPLICATION_CREDENTIALS: z.string().optional(),
   // Product media (Phase 3): filesystem root for private/public/quarantine trees and
   // the public base URL nginx serves `public/` from. Both are deployment-specific and
   // required (no default) — a missing value must fail boot rather than silently write
@@ -196,6 +196,7 @@ export interface Config {
     projectId: string;
     siteKeyAndroid: string;
     siteKeyIos: string;
+    credentialsPath?: string | undefined;
     minScore: number;
     assessmentTimeoutMs: number;
   };
@@ -392,6 +393,7 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       siteKeyIos: e.RECAPTCHA_SITE_KEY_IOS,
       minScore: e.RECAPTCHA_MIN_SCORE,
       assessmentTimeoutMs: e.RECAPTCHA_ASSESSMENT_TIMEOUT_MS,
+      credentialsPath: e.RECAPTCHA_APPLICATION_CREDENTIALS ?? e.GOOGLE_APPLICATION_CREDENTIALS,
     },
     productCreation: {
       internalAllowlist: parseUuidAllowlist(e.PRODUCT_CREATION_INTERNAL_ALLOWLIST),

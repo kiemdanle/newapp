@@ -43,7 +43,11 @@ export class ProductCreationAssessmentRejectedError extends AppError {
 
 let _client: RecaptchaEnterpriseServiceClient | undefined;
 function client(): RecaptchaEnterpriseServiceClient {
-  if (!_client) _client = new RecaptchaEnterpriseServiceClient();
+  if (!_client) {
+    const cfg = getConfig().recaptcha;
+    const options = cfg.credentialsPath ? { keyFilename: cfg.credentialsPath } : undefined;
+    _client = new RecaptchaEnterpriseServiceClient(options);
+  }
   return _client;
 }
 
