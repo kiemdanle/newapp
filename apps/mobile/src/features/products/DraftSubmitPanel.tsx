@@ -110,7 +110,7 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
       ) : null}
       <Button
         testID="draft-submit"
-        label={busy ? 'Posting Product…' : retryable ? 'Retry Post' : 'Post New Product'}
+        label={busy ? 'Posting Product…' : retryable ? 'Retry submit' : 'Post New Product'}
         loading={busy}
         disabled={busy || disabled}
         onPress={submit}

@@ -8,6 +8,7 @@ import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
@@ -122,34 +123,17 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
 
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: theme.spacing.md }}>
           {/* Product Image Thumbnail */}
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: theme.radii.sm,
-                marginRight: theme.spacing.md,
-                backgroundColor: theme.colors.neutralLight,
-              }}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
-            />
-          ) : (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: theme.radii.sm,
-                marginRight: theme.spacing.md,
-                backgroundColor: theme.colors.neutralLight,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="nutrition-outline" size={24} color={theme.colors.textMuted} />
-            </View>
-          )}
+          <ProductThumbnail
+            product={product}
+            photoUrl={record.photoUrl}
+            size={52}
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: theme.radii.sm,
+              marginRight: theme.spacing.md,
+            }}
+          />
 
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>

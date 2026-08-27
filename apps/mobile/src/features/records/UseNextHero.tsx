@@ -7,6 +7,7 @@ import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { useProduct } from '../../api/products';
 import { useTheme } from '../../theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { groupRecords, type GroupedRecords } from './groupRecords';
 function pickMostUrgent(groups: GroupedRecords): LocalRecord | null {
   return groups.expired[0] ?? groups.today[0] ?? groups.thisWeek[0] ?? groups.later[0] ?? null;
@@ -77,14 +78,12 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={{ width: 44, height: 44, borderRadius: theme.radii.sm, backgroundColor: theme.colors.neutralLight }}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-        ) : null}
+        <ProductThumbnail
+          product={product}
+          photoUrl={item.photoUrl}
+          size={44}
+          style={{ width: 44, height: 44, borderRadius: theme.radii.sm }}
+        />
         <Text
           style={[
             styles.itemName,

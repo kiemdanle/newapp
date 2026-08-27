@@ -19,6 +19,7 @@ import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records/expiryStatus';
 import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
+import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 import { Button } from '../../../src/components/Button';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
@@ -126,13 +127,12 @@ export default function RecordDetail() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Photo / Brand Card */}
-        {imageUrl ? (
+        {imageUrl || (product?.photos && product.photos.length > 0) ? (
           <View style={[styles.photoHeroWrap, { borderColor: theme.colors.border }]}>
-            <Image
-              source={{ uri: imageUrl }}
+            <ProductThumbnail
+              product={product}
+              photoUrl={record.photoUrl}
               style={styles.photoHero}
-              resizeMode="cover"
-              accessibilityIgnoresInvertColors
             />
           </View>
         ) : null}

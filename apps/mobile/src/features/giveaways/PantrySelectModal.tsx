@@ -19,6 +19,7 @@ import { useProduct } from '../../api/products';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../records/expiryStatus';
 
 export interface PantrySelectModalProps {
@@ -73,27 +74,13 @@ function PantryItemRow({
       ]}
     >
       <View style={styles.thumbnailWrap}>
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={[styles.thumbnail, { borderRadius: theme.radii.sm }]}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <View
-            style={[
-              styles.thumbnailPlaceholder,
-              {
-                backgroundColor: theme.colors.bgGlass,
-                borderColor: theme.colors.border,
-                borderRadius: theme.radii.sm,
-              },
-            ]}
-          >
-            <Ionicons name="cube-outline" size={22} color={theme.colors.primary} />
-          </View>
-        )}
+        <ProductThumbnail
+          product={product}
+          photoUrl={record.photoUrl}
+          size={48}
+          fallbackIcon="cube-outline"
+          style={[styles.thumbnail, { borderRadius: theme.radii.sm }]}
+        />
       </View>
 
       <View style={styles.itemInfo}>
