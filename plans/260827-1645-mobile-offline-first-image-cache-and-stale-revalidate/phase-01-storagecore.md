@@ -9,20 +9,26 @@ dependencies: []
 # Phase 1: StorageCore
 
 ## Overview
-Implement the core on-device persistent image caching layer (`ImageDiskCache`) in `apps/mobile/src/cache/image-disk-cache.ts`. Provides a tiered L1 in-memory + L2 persistent storage engine with user-scoped isolation, automatic cache serialization, and size-bounded Least Recently Used (LRU) pruning (100 MB budget).
+Implement the core on-device persistent image caching layer (`ImageDiskCache`) in `apps/mobile/src/cache/image-disk-cache.ts`. Provides a decoupled architecture separating lightweight AsyncStorage metadata indexing from sandboxed binary file storage on disk, preventing Android SQLite `CursorWindowAllocationException` while enforcing a 100 MB LRU storage budget and strict multi-account privacy isolation.
 
-<!-- Updated: Validation Session 2026-08-27 - 100 MB LRU Budget & Native/AsyncStorage Storage Core -->
+<!-- Updated: Red Team Review 2026-08-27 - Decoupled AsyncStorage Metadata Index + Sandboxed Disk File Storage & Privacy Isolation -->
 
 ## Requirements
 - **Functional**:
-  - Store and retrieve image payloads and metadata (`dataUri`, `etag`, `lastModified`, `timestamp`, `byteSize`) persistently on device.
-  - Tiered architecture: Fast L1 in-memory Map for microsecond synchronous hits + L2 persistent store for cold start instant persistence.
-  - Multi-account isolation: User-scoped keys for private images (`${userId}::...`) and shared keys for public catalog photos.
-  - Purge API: `purgeAll()`, `purgeUserPrivate(userId)`, and `purgeTarget(target)`.
-  - LRU Eviction: Automatically track access timestamps and evict oldest items when total cache size exceeds 100 MB.
+  - Decoupled Storage Architecture:
+    - **Metadata Ledger (AsyncStorage)**: Keyed by `@img_meta:<hash>`, stores JSON `{ uri, localPath, etag, lastModified, timestamp, byteSize, isPrivate, userId }` (<200 bytes per record).
+    - **Binary File Storage (Device Cache Dir)**: Stored as `file://${cacheDir}/img_<hash>.webp`.
+  - Multi-Account Isolation:
+    - Private images are stored under `${cacheDir}/user_${userId}/` and indexed with `userId`.
+    - Public images are stored under `${cacheDir}/public/`.
+  - Purge API:
+    - `purgeAll()`: Clears both public and private cache files and indexes.
+    - `purgeUserPrivate(userId: string)`: Clears only the specified user's private cache folder and index entries on `signOut()`.
+  - 100 MB LRU Eviction:
+    - Tracks total byte size and last accessed timestamps. Automatically prunes the oldest unaccessed files and metadata rows when total size exceeds 100 MB.
 - **Non-functional**:
   - Memory consumption per cached item minimized.
-  - Zero native build dependencies (uses `@react-native-async-storage/async-storage` already in `package.json`).
+  - Zero Android CursorWindow crashes (no large Base64 blobs stored in SQLite/AsyncStorage).
 
 ## Architecture
 
@@ -31,16 +37,22 @@ Implement the core on-device persistent image caching layer (`ImageDiskCache`) i
 |                     ImageDiskCache                          |
 |                                                             |
 |  +-------------------------------------------------------+  |
-|  | L1 Memory Cache (Map<string, CacheEntry>)             |  |
+|  | L1 In-Memory Index (Map<string, CacheMetadata>)       |  |
 |  |   - Instant synchronous lookup (<1ms)                 |  |
 |  +-------------------------------------------------------+  |
 |                            |                                |
 |                            v (miss / cold start)            |
 |  +-------------------------------------------------------+  |
-|  | L2 Persistent Storage (@image_cache:* in AsyncStorage)|  |
-|  |   - Survives app restarts                             |  |
-|  |   - Key: @img_c:<hash>                                |  |
-|  |   - Value: { dataUri, etag, lastModified, size, at }  |  |
+|  | AsyncStorage Metadata Index (@img_meta:<hash>)        |  |
+|  |   - Key: @img_meta:<hash>                             |  |
+|  |   - Value: { localPath, etag, lastModified, at, size }|  |
+|  +-------------------------------------------------------+  |
+|                            |                                |
+|                            v (file payload on disk)         |
+|  +-------------------------------------------------------+  |
+|  | Sandboxed File System (file://${cacheDir}/...)        |  |
+|  |   - Public: ${cacheDir}/public/<hash>.webp            |  |
+|  |   - Private: ${cacheDir}/user_<id>/<hash>.webp        |  |
 |  +-------------------------------------------------------+  |
 |                            |                                |
 |                            v (eviction)                     |
@@ -56,24 +68,25 @@ Implement the core on-device persistent image caching layer (`ImageDiskCache`) i
 - Modify: `apps/mobile/src/auth/session-store.ts` (hook `purgeUserPrivate` on sign-out)
 
 ## Implementation Steps
-1. Create `image-cache-types.ts` defining `CacheEntryMetadata`, `CacheOptions`, and `CacheKeyInput`.
+1. Create `image-cache-types.ts` defining `CacheMetadata`, `CacheOptions`, and `CacheKeyInput`.
 2. Create `ImageDiskCache` singleton in `image-disk-cache.ts`:
-   - `get(key: string): Promise<CacheEntry | null>`
-   - `getSync(key: string): CacheEntry | null` (from L1 memory)
-   - `set(key: string, entry: CacheEntry): Promise<void>`
+   - `get(key: string): Promise<{ uri: string; metadata: CacheMetadata } | null>`
+   - `getSync(key: string): { uri: string; metadata: CacheMetadata } | null` (L1 memory check)
+   - `saveFile(key: string, bytes: ArrayBuffer | string, metadata: Partial<CacheMetadata>): Promise<string>`
    - `remove(key: string): Promise<void>`
    - `purgeUserPrivate(userId: string): Promise<void>`
-   - `pruneLru(maxBytes?: number): Promise<void>` (defaults to 100 MB)
-3. Wire cache initialization on mobile app bootstrap so metadata index is hydrated into L1 memory for zero-latency lookups.
+   - `pruneLru(maxBytes?: number): Promise<void>` (caps at 100 MB)
+3. Hydrate L1 index from AsyncStorage during mobile app bootstrap for zero-latency lookups.
 4. Hook `session-store.ts` to call `purgeUserPrivate(userId)` on `signOut()` and `signIn()`.
 
 ## Success Criteria
-- [ ] Cached images persist across app restart and are readable within <5ms.
+- [ ] Cached images persist across app restart and are readable as `file://...` within <5ms.
+- [ ] AsyncStorage rows remain <1KB each, preventing Android CursorWindow allocation exceptions.
 - [ ] Private images are isolated per user and cleared when logging out.
 - [ ] LRU prunes old entries when cache exceeds 100 MB capacity limit.
 
 ## Risk Assessment
-- **Storage Quota Overflow**: If many high-resolution photos are cached, storage could grow.
-  - *Mitigation*: Thumbnails and display WebP images are typically <50KB each; 100 MB budget stores >2,000 images. Hard cap at 100 MB with automatic LRU eviction.
-- **Corrupted Cache Entry**: Bad JSON string in storage could throw during parse.
+- **Android CursorWindow Overflow**: Storing large blobs in AsyncStorage throws SQLite exceptions.
+  - *Mitigation*: Raw image binary bytes are stored on the filesystem as `.webp` files; AsyncStorage only stores lightweight index entries.
+- **Corrupted Cache Index**: Malformed storage data could throw during parse.
   - *Mitigation*: Wrap all reads in safe `try/catch` with automatic corrupted key removal.
