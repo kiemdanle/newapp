@@ -71,7 +71,7 @@ export function EditSubmitPanel({ coordinator, disabled, onSubmitted }: EditSubm
       {!stale ? (
         <Button
           testID="edit-submit"
-          label={busy ? 'Submitting…' : 'Submit for review'}
+          label={busy ? 'Submitting…' : 'Submit Changes'}
           loading={busy}
           disabled={busy || disabled}
           onPress={submit}
