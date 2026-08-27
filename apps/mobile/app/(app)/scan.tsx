@@ -253,7 +253,7 @@ export default function ScanScreen() {
           </View>
           <Text style={[styles.panelTitle, { color: theme.colors.text }]}>This item is awaiting review</Text>
           <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
-            We can't show its details yet, but you can still track it in your pantry.
+            This product was recently submitted and is awaiting community review. You can still track it privately in your pantry.
           </Text>
           {lastScanRef.current ? (
             <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>
@@ -261,7 +261,7 @@ export default function ScanScreen() {
               <Text style={[styles.codeText, { color: theme.colors.text }]}>{lastScanRef.current.value}</Text>
             </View>
           ) : null}
-          <Button testID="scan-add-custom-item" label="Add as custom item" onPress={() => setUi({ phase: 'under-review-custom-item' })} />
+          <Button testID="scan-add-custom-item" label="Add as Private Item for My Pantry" onPress={() => setUi({ phase: 'under-review-custom-item' })} />
           <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
         </View>
       ) : null}
@@ -269,8 +269,10 @@ export default function ScanScreen() {
       {ui.phase === 'under-review-custom-item' ? (
         !customNameConfirmed ? (
           <View testID="scan-custom-item-form" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
-            <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Name this item</Text>
-            <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>Give this item a name so you can track its expiry in your pantry.</Text>
+            <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Name this private item</Text>
+            <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
+              Give this item a name to track its expiration date privately in your pantry.
+            </Text>
             <TextInput
               accessibilityLabel="Custom item name"
               testID="scan-custom-item-name"
@@ -314,8 +316,8 @@ export default function ScanScreen() {
           <Text style={[styles.panelTitle, { color: theme.colors.text }]}>We couldn't find this item</Text>
           <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
             {target === 'deal'
-              ? "This barcode isn't in our catalog yet. You can create a new product to post this deal."
-              : "This barcode isn't in our catalog yet. You can create a new product for the community or add it directly as a custom pantry item."}
+              ? "This barcode isn't in our catalog yet. Add it as a new product to attach it to your deal."
+              : "This barcode isn't in our catalog yet. You can add it as a new product with full details, or save it as a private item in your pantry."}
           </Text>
           {lastScanRef.current ? (
             <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>
@@ -326,7 +328,7 @@ export default function ScanScreen() {
           {ui.canCreate ? (
             <Button
               testID="scan-create"
-              label={target === 'deal' ? 'Create Product for Deal' : 'Create'}
+              label={target === 'deal' ? 'Add Product & Continue Deal' : 'Add New Product'}
               icon="add"
               onPress={openCreate}
             />
@@ -336,7 +338,7 @@ export default function ScanScreen() {
           {target !== 'deal' ? (
             <Button
               testID="scan-add-custom-from-not-found"
-              label="Add as custom item"
+              label="Add as Private Item for My Pantry"
               variant="outline"
               onPress={() => setUi({ phase: 'under-review-custom-item' })}
             />
