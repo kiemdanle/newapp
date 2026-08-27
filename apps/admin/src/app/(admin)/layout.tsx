@@ -1,8 +1,6 @@
 // apps/admin/src/app/(admin)/layout.tsx
 import type { ReactNode } from 'react';
-import { Header } from '@/components/header';
-import { Sidebar } from '@/components/sidebar';
-import { SidebarDrawer } from '@/components/sidebar-drawer';
+import { AdminShell } from '@/components/admin-shell';
 import { requireAdminSession } from '@/lib/session';
 import { serverAdminApi } from '@/lib/admin-api';
 
@@ -11,19 +9,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     requireAdminSession(),
     serverAdminApi.system.moderationNotifications.summary(),
   ]);
+
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header email={me.email} menuTrigger={<SidebarDrawer pendingModerationCount={moderationSummary.total} />} />
-      <div className="flex flex-1">
-        {/* Desktop sidebar — hidden on mobile */}
-        <div className="hidden lg:block">
-          <Sidebar pendingModerationCount={moderationSummary.total} />
-        </div>
-        {/* Main content */}
-        <main className="flex-1 overflow-auto px-4 py-8 sm:px-6 lg:px-8 max-w-[1440px] mx-auto w-full">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AdminShell
+      email={me.email}
+      pendingModerationCount={moderationSummary.total}
+    >
+      {children}
+    </AdminShell>
   );
 }

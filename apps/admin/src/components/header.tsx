@@ -1,7 +1,11 @@
 // apps/admin/src/components/header.tsx
+'use client';
+
 import type { ReactNode } from 'react';
 import { Logo } from '@/components/logo';
 import { LogoutButton } from '@/components/logout-button';
+import { useSidebar } from '@/components/sidebar-context';
+import { Menu, PanelLeftClose, PanelLeft } from 'lucide-react';
 
 export function Header({
   email,
@@ -10,6 +14,7 @@ export function Header({
   email: string;
   menuTrigger?: ReactNode;
 }) {
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const initials = email
     .split('@')[0]!
     .split(/[.\-_]/)
@@ -19,9 +24,24 @@ export function Header({
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-card/90 backdrop-blur-md px-4 lg:px-7 shadow-xs">
-      <div className="flex items-center gap-3.5">
-        {/* Hamburger — visible only on mobile (<lg) */}
+      <div className="flex items-center gap-3">
+        {/* Mobile Hamburger (<lg) */}
         <div className="lg:hidden">{menuTrigger}</div>
+
+        {/* Desktop Hamburger / Sidebar Collapse Toggle (>=lg) */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="hidden lg:flex h-9 w-9 items-center justify-center rounded-xl text-neutral-mid hover:text-neutral-dark hover:bg-neutral-light/80 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer"
+          title={isCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? (
+            <PanelLeft size={20} className="text-neutral-dark" />
+          ) : (
+            <PanelLeftClose size={20} className="text-neutral-dark" />
+          )}
+        </button>
 
         {/* Brand logo + wordmark */}
         <Logo size={34} withWordmark suffix="Admin" />

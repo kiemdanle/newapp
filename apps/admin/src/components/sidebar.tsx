@@ -4,6 +4,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NAV } from '@/lib/nav';
+import { useSidebar } from '@/components/sidebar-context';
 import {
   LayoutDashboard,
   Package,
@@ -53,8 +54,16 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Gift,
 };
 
-export function Sidebar({ pendingModerationCount = 0 }: { pendingModerationCount?: number }) {
+export function Sidebar({
+  pendingModerationCount = 0,
+  forceExpanded = false,
+}: {
+  pendingModerationCount?: number;
+  forceExpanded?: boolean;
+}) {
   const pathname = usePathname();
+  const { isCollapsed } = useSidebar();
+  const collapsed = forceExpanded ? false : isCollapsed;
 
   function isActive(href: string): boolean {
     if (href === '/') return pathname === '/';
@@ -62,13 +71,23 @@ export function Sidebar({ pendingModerationCount = 0 }: { pendingModerationCount
   }
 
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-card h-full overflow-y-auto">
-      <nav className="flex flex-col gap-4 p-3.5 pt-5">
-        {NAV.map((section) => (
+    <aside
+      className={`shrink-0 border-r border-border bg-card h-full overflow-y-auto transition-[width] duration-300 ease-in-out select-none ${
+        collapsed ? 'w-20' : 'w-64'
+      }`}
+    >
+      <nav className={`flex flex-col gap-4 ${collapsed ? 'p-2.5 pt-5' : 'p-3.5 pt-5'}`}>
+        {NAV.map((section, sIndex) => (
           <div key={section.title} className="space-y-1">
-            <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-neutral-mid/80">
-              {section.title}
-            </div>
+            {collapsed ? (
+              sIndex > 0 ? (
+                <div className="my-2.5 mx-auto w-8 border-t border-neutral-200/80" />
+              ) : null
+            ) : (
+              <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-wider text-neutral-mid/80 truncate">
+                {section.title}
+              </div>
+            )}
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = ICON_MAP[item.icon];
@@ -79,33 +98,49 @@ export function Sidebar({ pendingModerationCount = 0 }: { pendingModerationCount
                   <Link
                     key={item.href}
                     href={item.href as never}
-                    className={`group flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
+                    title={collapsed ? `${section.title}: ${item.label}` : undefined}
+                    className={`group relative flex items-center gap-3 rounded-xl transition-all ${
+                      collapsed
+                        ? 'justify-center px-2 py-2.5'
+                        : 'justify-between px-3 py-2.5 text-sm font-medium'
+                    } ${
                       active
                         ? 'bg-primary-light/40 text-primary-dark font-semibold border border-primary/20 shadow-xs'
                         : 'text-neutral-dark/80 hover:bg-neutral-light/70 hover:text-neutral-dark'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : 'min-w-0'}`}>
                       {Icon && (
-                        <Icon
-                          size={18}
-                          className={`shrink-0 transition-colors ${
-                            active
-                              ? 'text-primary'
-                              : 'text-neutral-mid group-hover:text-neutral-dark'
-                          }`}
-                        />
+                        <div className="relative">
+                          <Icon
+                            size={19}
+                            className={`shrink-0 transition-colors ${
+                              active
+                                ? 'text-primary'
+                                : 'text-neutral-mid group-hover:text-neutral-dark'
+                            }`}
+                          />
+                          {collapsed && isPendingQueue && pendingModerationCount > 0 && (
+                            <span
+                              className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-neutral-dark shadow-xs animate-pulse"
+                              aria-label={`${pendingModerationCount} moderation items pending`}
+                            >
+                              {pendingModerationCount}
+                            </span>
+                          )}
+                        </div>
                       )}
-                      <span className="truncate">{item.label}</span>
+                      {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
-                    {isPendingQueue && pendingModerationCount > 0 ? (
+
+                    {!collapsed && isPendingQueue && pendingModerationCount > 0 && (
                       <span
                         className="inline-flex items-center justify-center rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-neutral-dark shadow-xs"
                         aria-label={`${pendingModerationCount} moderation items pending`}
                       >
                         {pendingModerationCount}
                       </span>
-                    ) : null}
+                    )}
                   </Link>
                 );
               })}
