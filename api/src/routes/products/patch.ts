@@ -6,6 +6,7 @@ import { productPatchRequestSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { getVisibleProduct } from '../../services/products/product-visibility.js';
+import { recordModerationNotificationEvent } from '../../services/notifications/moderation-notification-events.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -51,6 +52,7 @@ export async function patchProductRoute(app: FastifyInstance) {
         status: { in: ['draft', 'changes_required'] },
       },
     });
+    const submittedAt = new Date();
     if (existingOpenEdit) {
       // Read-then-write race guard: re-assert the row is still in an open state (and
       // still this caller's) at write time, not just at the earlier read. Without this,
@@ -65,44 +67,64 @@ export async function patchProductRoute(app: FastifyInstance) {
       // *this* request — because Phase 4's staleness/rebase decision keys off it; it
       // must never silently drift to "whatever the product happens to be at now" if that
       // ever diverges from what was checked above.
-      const result = await prisma.productEdit.updateMany({
-        where: {
-          id: existingOpenEdit.id,
-          submittedBy: req.user!.id,
-          status: { in: ['draft', 'changes_required'] },
-        },
-        data: {
-          proposed: input,
-          status: 'pending',
-          moderationNotes: null,
-          submittedAt: new Date(),
-          resolvedBy: null,
-          resolvedAt: null,
-          baseProductVersion: product.version,
-        },
-      });
-      if (result.count === 0) {
-        throw new AppError({
-          status: 409,
-          code: ERROR_CODES.CONFLICT,
-          title: 'An edit is already open for this product',
+      edit = await prisma.$transaction(async (tx) => {
+        const result = await tx.productEdit.updateMany({
+          where: {
+            id: existingOpenEdit.id,
+            submittedBy: req.user!.id,
+            status: { in: ['draft', 'changes_required'] },
+          },
+          data: {
+            proposed: input,
+            status: 'pending',
+            moderationNotes: null,
+            submittedAt,
+            resolvedBy: null,
+            resolvedAt: null,
+            baseProductVersion: product.version,
+            version: { increment: 1 },
+          },
         });
-      }
-      edit = await prisma.productEdit.findUniqueOrThrow({ where: { id: existingOpenEdit.id } });
+        if (result.count === 0) {
+          throw new AppError({
+            status: 409,
+            code: ERROR_CODES.CONFLICT,
+            title: 'An edit is already open for this product',
+          });
+        }
+        await recordModerationNotificationEvent(tx, {
+          kind: 'product_revision',
+          sourceId: existingOpenEdit.id,
+          submissionVersion: existingOpenEdit.version + 1,
+          submittedAt,
+        });
+        return tx.productEdit.findUniqueOrThrow({ where: { id: existingOpenEdit.id } });
+      });
     } else {
       try {
-        edit = await prisma.productEdit.create({
-          data: {
-            productId: product.id,
-            submittedBy: req.user!.id,
-            proposed: input,
-            // Every edit created through current application code is subject to the
-            // one-open-edit-per-creator/product constraint; `isLegacy` (default `true`
-            // at the DB level) exists only to exempt pre-Phase-1 historical rows, never
-            // new writes. Omitting this explicit `false` would silently exempt the row
-            // from that constraint.
-            isLegacy: false,
-          },
+        edit = await prisma.$transaction(async (tx) => {
+          const created = await tx.productEdit.create({
+            data: {
+              productId: product.id,
+              submittedBy: req.user!.id,
+              proposed: input,
+              // Every edit created through current application code is subject to the
+              // one-open-edit-per-creator/product constraint; `isLegacy` (default `true`
+              // at the DB level) exists only to exempt pre-Phase-1 historical rows, never
+              // new writes. Omitting this explicit `false` would silently exempt the row
+              // from that constraint.
+              isLegacy: false,
+              status: 'pending',
+              submittedAt,
+            },
+          });
+          await recordModerationNotificationEvent(tx, {
+            kind: 'product_revision',
+            sourceId: created.id,
+            submissionVersion: created.version,
+            submittedAt,
+          });
+          return created;
         });
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {

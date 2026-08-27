@@ -106,10 +106,11 @@ export function startModerationNotificationWorker(): Worker {
 export function startModerationNotificationWatchdog(): void {
   if (watchdog) return;
   const run = () => {
-    // Reconcile the BullMQ scheduler after Redis loss. Recovery scans existing
-    // delivery rows but never claims fresh events, preserving the 15-minute
-    // batching cadence while still reclaiming expired provider work.
-    Promise.all([scheduleModerationNotifications(), processDueModerationDeliveries()]).catch((error: unknown) => {
+    // Reconcile the BullMQ scheduler and process unbatched events & due deliveries.
+    Promise.all([
+      scheduleModerationNotifications(),
+      processModerationNotificationTickWithLock(),
+    ]).catch((error: unknown) => {
       logger.warn({ error }, 'moderation notification watchdog reconciliation failed');
     });
   };

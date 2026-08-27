@@ -33,6 +33,9 @@ describe('PATCH /v1/products/:id', () => {
     expect(edits[0]!.submittedBy).toBe(user.id);
     expect(edits[0]!.status).toBe('pending');
     expect((edits[0]!.proposed as { name?: string }).name).toBe('New Name');
+    const event = await getPrisma().moderationNotificationEvent.findFirst({ where: { sourceId: edits[0]!.id } });
+    expect(event).not.toBeNull();
+    expect(event!.kind).toBe('product_revision');
     await app.close();
   });
 

@@ -209,22 +209,30 @@ async function retryOrFail(delivery: DueDelivery, errorMessage: string): Promise
   return finalized === 1 ? 'retried' : 'failed';
 }
 
+const DEFAULT_MODERATION_TITLE = 'Moderation queue needs review';
+const DEFAULT_MODERATION_BODY = '{total} new moderation item(s) awaiting review: {newProducts} new product(s), {revisions} revision(s).';
+
 async function loadTemplateAndCounts(batchId: string): Promise<{ counts: ModerationQueueCounts; title: string; body: string } | null> {
   const prisma = getPrisma();
   const [batch, template] = await Promise.all([
     prisma.moderationNotificationBatch.findUnique({ where: { id: batchId } }),
     prisma.notificationTemplate.findUnique({ where: { key: MODERATION_QUEUE_TEMPLATE_KEY } }),
   ]);
-  if (!batch || !template || !template.enabled) return null;
+  if (!batch) return null;
+  if (template && !template.enabled) return null;
+
+  let title = template?.title ?? DEFAULT_MODERATION_TITLE;
+  let body = template?.body ?? DEFAULT_MODERATION_BODY;
   try {
-    assertValidModerationTemplatePatch({ title: template.title, body: template.body });
+    assertValidModerationTemplatePatch({ title, body });
   } catch {
-    return null;
+    title = DEFAULT_MODERATION_TITLE;
+    body = DEFAULT_MODERATION_BODY;
   }
   return {
     counts: { newProducts: batch.newProductCount, revisions: batch.revisionCount },
-    title: template.title,
-    body: template.body,
+    title,
+    body,
   };
 }
 

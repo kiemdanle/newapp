@@ -129,10 +129,91 @@ export function renderModerationTemplateHtml(
   const safeBody = escapeHtml(body);
   const safeUrl = escapeHtml(queueUrl);
   const text = `${title}\n\n${body}\n\nReview the moderation queue: ${queueUrl}`;
-  const html = [
-    `<h1 style="margin:0 0 16px;font-size:20px;line-height:1.3;">${safeTitle}</h1>`,
-    `<p style="margin:0 0 24px;font-size:15px;line-height:1.5;">${safeBody}</p>`,
-    `<p style="margin:0;"><a href="${safeUrl}" style="display:inline-block;padding:12px 20px;background-color:#4BAE8A;color:#FAFAF8;text-decoration:none;border-radius:6px;font-weight:600;">Review moderation queue</a></p>`,
-  ].join('');
+
+  const html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${safeTitle}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#FAFAF8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2C2C28;-webkit-font-smoothing:antialiased;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF8;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;background-color:#FFFFFF;border:1px solid #E5E5E0;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(44,44,40,0.04);">
+            <!-- Brand Header -->
+            <tr>
+              <td style="padding:24px 32px;border-bottom:1px solid #F0F0ED;background-color:#FFFFFF;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td>
+                      <span style="font-size:18px;font-weight:700;color:#2C2C28;letter-spacing:-0.02em;">expyrico <span style="font-weight:500;color:#8C8C85;">Admin</span></span>
+                    </td>
+                    <td align="right">
+                      <span style="display:inline-block;padding:4px 10px;background-color:#D6F0E6;color:#3A8F6F;font-size:11px;font-weight:700;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;">Moderation Alert</span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Content Area -->
+            <tr>
+              <td style="padding:32px;">
+                <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;line-height:1.3;color:#2C2C28;">
+                  ${safeTitle}
+                </h1>
+                <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#555550;">
+                  ${safeBody}
+                </p>
+
+                <!-- Counts Breakdown Card -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#FAFAF8;border:1px solid #F0F0ED;border-radius:12px;margin-bottom:28px;">
+                  <tr>
+                    <td style="padding:16px;text-align:center;border-right:1px solid #F0F0ED;width:33%;">
+                      <div style="font-size:11px;font-weight:700;color:#8C8C85;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">New Products</div>
+                      <div style="font-size:20px;font-weight:700;color:#2C2C28;">${counts.newProducts}</div>
+                    </td>
+                    <td style="padding:16px;text-align:center;border-right:1px solid #F0F0ED;width:33%;">
+                      <div style="font-size:11px;font-weight:700;color:#8C8C85;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Revisions</div>
+                      <div style="font-size:20px;font-weight:700;color:#2C2C28;">${counts.revisions}</div>
+                    </td>
+                    <td style="padding:16px;text-align:center;width:34%;">
+                      <div style="font-size:11px;font-weight:700;color:#8C8C85;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Total Items</div>
+                      <div style="font-size:20px;font-weight:700;color:#4BAE8A;">${counts.newProducts + counts.revisions}</div>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- Action Button -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td align="center">
+                      <a href="${safeUrl}" style="display:inline-block;padding:14px 28px;background-color:#4BAE8A;color:#FFFFFF;text-decoration:none;border-radius:10px;font-size:15px;font-weight:600;box-shadow:0 1px 3px rgba(75,174,138,0.3);">
+                        Review Moderation Queue &rarr;
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Footer Note -->
+            <tr>
+              <td style="padding:20px 32px;background-color:#FAFAF8;border-top:1px solid #F0F0ED;text-align:center;">
+                <p style="margin:0;font-size:12px;color:#8C8C85;line-height:1.5;">
+                  You received this email because your account has administrator privileges on Expyrico.<br />
+                  <a href="${safeUrl}" style="color:#4BAE8A;text-decoration:none;font-weight:500;">Go to Admin Console</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
   return { subject: title, html, text };
 }
