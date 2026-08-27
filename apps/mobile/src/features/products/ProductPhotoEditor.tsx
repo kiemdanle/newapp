@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { CoordinatedEntity, DraftMutationCoordinator } from './draft-mutation-coordinator';
 import { takePhoto, choosePhotos, cleanupTemp, PhotoTooLargeError, type PickedPhoto } from './photo-picker-adapter';
@@ -225,43 +225,37 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   );
 
   return (
-    <View
-      style={{
-        backgroundColor: '#FFFFFF',
-        borderColor: '#E2E2DE',
-        borderWidth: 1.5,
-        borderRadius: theme.radii.lg,
-        padding: 18,
-        gap: 14,
-        shadowColor: '#2C2C28',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-        elevation: 2,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+    <View style={styles.card}>
+      <View style={styles.headerRow}>
+        <View style={styles.titleGroup}>
           <Ionicons name="images-outline" size={16} color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700' }}>Product Photos</Text>
+          <Text style={[styles.titleText, { color: theme.colors.text }]}>Product Photos</Text>
         </View>
-        <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: '600' }}>
-          {totalCount}/{MAX_PHOTOS} photos{remaining === 0 ? ' (Max)' : ''}
+        <Text accessibilityLiveRegion="polite" style={[styles.countText, { color: theme.colors.textMuted }]}>
+          {totalCount}/{MAX_PHOTOS} photos{remaining === 0 ? ' — limit reached' : ''}
         </Text>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+
+      <View style={styles.gridRow}>
         {orderedServerPhotos.map((photo, index) => (
-          <View key={photo.id} testID={`photo-${photo.id}`} style={{ width: 96, gap: 4 }}>
+          <View
+            key={photo.id}
+            testID={`photo-${photo.id}`}
+            style={[
+              styles.photoCard,
+              {
+                borderColor: index === 0 ? theme.colors.primary : '#DCDED9',
+                borderRadius: theme.radii.md,
+                backgroundColor: theme.colors.bgElevated,
+              },
+            ]}
+          >
             {photo.retained ? (
-              // A retained edit photo's bytes are already public (its
-              // `thumbnailUrl` is a real absolute URL) — the edit's private
-              // media route 404s for retained entries by server design, so
-              // this must never go through PrivateProductImage.
               <Image
                 testID={`photo-${photo.id}-image`}
                 source={{ uri: photo.thumbnailUrl }}
                 accessibilityIgnoresInvertColors
-                style={{ width: 96, height: 96, borderRadius: theme.radii.md }}
+                style={styles.photoImage}
               />
             ) : (
               <PrivateProductImage
@@ -269,100 +263,285 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
                 target={target}
                 photoId={photo.id}
                 variant="thumb"
-                style={{ width: 96, height: 96, borderRadius: theme.radii.md }}
+                style={styles.photoImage}
               />
             )}
-            {index === 0 ? (
-              <Text testID={`photo-${photo.id}-cover`} style={{ color: theme.colors.primary, fontSize: 11, fontWeight: '700' }}>
-                Cover
-              </Text>
-            ) : null}
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Pressable
-                testID={`photo-${photo.id}-move-left`}
-                accessibilityRole="button"
-                accessibilityLabel={`Move photo ${index + 1} earlier`}
-                disabled={index === 0 || hasUnsettled || blockedByConflict}
-                onPress={() => movePhoto(photo.id, -1)}
-                style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Ionicons name="chevron-back" size={18} color={index === 0 ? theme.colors.border : theme.colors.primary} />
-              </Pressable>
-              <Pressable
-                testID={`photo-${photo.id}-move-right`}
-                accessibilityRole="button"
-                accessibilityLabel={`Move photo ${index + 1} later`}
-                disabled={index === orderedServerPhotos.length - 1 || hasUnsettled || blockedByConflict}
-                onPress={() => movePhoto(photo.id, 1)}
-                style={{ minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={index === orderedServerPhotos.length - 1 ? theme.colors.border : theme.colors.primary}
-                />
-              </Pressable>
-            </View>
+
+            {/* Floating Top-Right Remove Button with 48px Touch Target */}
             <Pressable
               testID={`photo-${photo.id}-remove`}
               accessibilityRole="button"
               accessibilityLabel={`Remove photo ${index + 1}`}
               disabled={blockedByConflict}
               onPress={() => removeServerPhoto(photo.id)}
-              style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
+              style={styles.removeBtn}
             >
-              <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Remove</Text>
+              <View style={styles.removeBadge}>
+                <Ionicons name="close" size={14} color="#FFFFFF" />
+              </View>
             </Pressable>
+
+            {/* Floating Bottom Overlay: Cover Badge & Reorder Controls */}
+            <View style={styles.bottomOverlay}>
+              {index === 0 ? (
+                <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
+                  <Text testID={`photo-${photo.id}-cover`} style={styles.coverText}>
+                    Cover
+                  </Text>
+                </View>
+              ) : (
+                <View />
+              )}
+
+              <View style={styles.reorderGroup}>
+                <Pressable
+                  testID={`photo-${photo.id}-move-left`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Move photo ${index + 1} earlier`}
+                  disabled={index === 0 || hasUnsettled || blockedByConflict}
+                  onPress={() => movePhoto(photo.id, -1)}
+                  style={[styles.reorderBtn, { opacity: index === 0 ? 0.3 : 1 }]}
+                >
+                  <View style={styles.reorderBadge}>
+                    <Ionicons name="chevron-back" size={12} color="#FFFFFF" />
+                  </View>
+                </Pressable>
+                <Pressable
+                  testID={`photo-${photo.id}-move-right`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Move photo ${index + 1} later`}
+                  disabled={index === orderedServerPhotos.length - 1 || hasUnsettled || blockedByConflict}
+                  onPress={() => movePhoto(photo.id, 1)}
+                  style={[
+                    styles.reorderBtn,
+                    { opacity: index === orderedServerPhotos.length - 1 ? 0.3 : 1 },
+                  ]}
+                >
+                  <View style={styles.reorderBadge}>
+                    <Ionicons name="chevron-forward" size={12} color="#FFFFFF" />
+                  </View>
+                </Pressable>
+              </View>
+            </View>
           </View>
         ))}
-
         {visibleLocalQueue.map((entry) => (
-          <View key={entry.localId} testID={`local-photo-${entry.localId}`} style={{ width: 96, gap: 4 }}>
+          <View
+            key={entry.localId}
+            testID={`local-photo-${entry.localId}`}
+            style={[
+              styles.photoCard,
+              {
+                borderColor: theme.colors.primary,
+                borderRadius: theme.radii.md,
+                backgroundColor: theme.colors.bgElevated,
+              },
+            ]}
+          >
             <Image
               source={{ uri: entry.path }}
               accessibilityIgnoresInvertColors
-              style={{ width: 96, height: 96, borderRadius: theme.radii.md, opacity: entry.status === 'uploaded' ? 1 : 0.6 }}
+              style={[styles.photoImage, { opacity: entry.status === 'uploaded' ? 1 : 0.6 }]}
             />
-            {entry.status === 'uploading' ? (
-              <Text testID={`local-photo-${entry.localId}-progress`} style={{ color: theme.colors.textMuted, fontSize: 11 }}>
-                {Math.round(entry.progress * 100)}%
-              </Text>
-            ) : null}
-            {entry.status === 'failed' ? (
-              <>
-                <Text style={{ color: theme.colors.danger, fontSize: 11 }}>{entry.error}</Text>
-                <Pressable
-                  testID={`local-photo-${entry.localId}-retry`}
-                  accessibilityRole="button"
-                  accessibilityLabel="Retry upload"
-                  onPress={() => retryUpload(entry)}
-                  style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
-                >
-                  <Text style={{ color: theme.colors.primary, fontSize: 12 }}>Retry</Text>
-                </Pressable>
-              </>
-            ) : null}
+
             {entry.status !== 'uploaded' ? (
               <Pressable
                 testID={`local-photo-${entry.localId}-cancel`}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel upload"
                 onPress={() => removeLocalEntry(entry)}
-                style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}
+                style={styles.removeBtn}
               >
-                <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Cancel</Text>
+                <Ionicons name="close" size={14} color="#FFFFFF" />
               </Pressable>
+            ) : null}
+
+            {entry.status === 'uploading' ? (
+              <View style={styles.uploadingOverlay}>
+                <Text testID={`local-photo-${entry.localId}-progress`} style={styles.uploadingProgressText}>
+                  {Math.round(entry.progress * 100)}%
+                </Text>
+              </View>
+            ) : null}
+
+            {entry.status === 'failed' ? (
+              <View style={styles.failedOverlay}>
+                <Text style={styles.failedErrorText} numberOfLines={1}>
+                  {entry.error}
+                </Text>
+                <Pressable
+                  testID={`local-photo-${entry.localId}-retry`}
+                  accessibilityRole="button"
+                  accessibilityLabel="Retry upload"
+                  onPress={() => retryUpload(entry)}
+                  style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]}
+                >
+                  <Text style={styles.retryBtnText}>Retry</Text>
+                </Pressable>
+              </View>
             ) : null}
           </View>
         ))}
       </View>
 
-      {pickerError ? <Text style={{ color: theme.colors.danger }}>{pickerError}</Text> : null}
+      {pickerError ? <Text style={[styles.pickerErrorText, { color: theme.colors.danger }]}>{pickerError}</Text> : null}
 
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <View style={styles.actionBtnsRow}>
         <Button testID="photo-take" label="Take photo" icon="camera" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onTakePhoto} />
         <Button testID="photo-choose" label="Choose photos" icon="images" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onChoosePhotos} />
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E2DE',
+    borderWidth: 1.5,
+    borderRadius: 22,
+    padding: 18,
+    gap: 14,
+    shadowColor: '#2C2C28',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  titleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  titleText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  gridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  photoCard: {
+    width: 98,
+    height: 98,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  removeBtn: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  removeBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(44, 44, 40, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reorderBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(44, 44, 40, 0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  coverText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  reorderGroup: {
+    flexDirection: 'row',
+    gap: 3,
+  },
+  reorderBtn: {
+    minWidth: 48,
+    minHeight: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  uploadingProgressText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  failedOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    right: 4,
+    alignItems: 'center',
+    gap: 2,
+  },
+  failedErrorText: {
+    color: '#E0442A',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  retryBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pickerErrorText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  actionBtnsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+});
