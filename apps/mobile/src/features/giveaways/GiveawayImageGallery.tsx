@@ -32,12 +32,13 @@ export function GiveawayImageGallery({ photos, title }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const heroScrollRef = useRef<ScrollView>(null);
+  const modalScrollRef = useRef<ScrollView>(null);
 
   const [containerWidth, setContainerWidth] = useState(INITIAL_HERO_WIDTH);
+  const [modalViewerWidth, setModalViewerWidth] = useState(Dimensions.get('window').width);
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalIndex, setModalIndex] = useState(0);
-
   const heroHeight = Math.round(containerWidth * 0.75); // 4:3 standard e-commerce ratio
 
   // Clamp activeIndex if photos array shrinks or changes
@@ -47,6 +48,18 @@ export function GiveawayImageGallery({ photos, title }: Props) {
     }
   }, [photos.length, activeIndex]);
 
+  // Synchronize modal scroll offset when modal opens
+  useEffect(() => {
+    if (modalVisible) {
+      const timer = setTimeout(() => {
+        modalScrollRef.current?.scrollTo({
+          x: modalIndex * modalViewerWidth,
+          animated: false,
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [modalVisible, modalViewerWidth]);
   if (!photos || photos.length === 0) {
     return (
       <View
@@ -93,6 +106,30 @@ export function GiveawayImageGallery({ photos, title }: Props) {
   const handleOpenFullscreen = (index: number) => {
     setModalIndex(index);
     setModalVisible(true);
+  };
+  const handleModalLayout = (e: LayoutChangeEvent) => {
+    const measuredWidth = Math.round(e.nativeEvent.layout.width);
+    if (measuredWidth > 0 && Math.abs(measuredWidth - modalViewerWidth) > 1) {
+      setModalViewerWidth(measuredWidth);
+    }
+  };
+
+  const handleModalScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = e.nativeEvent.contentOffset.x;
+    if (modalViewerWidth > 0) {
+      const index = Math.round(offsetX / modalViewerWidth);
+      if (index >= 0 && index < photos.length && index !== modalIndex) {
+        setModalIndex(index);
+      }
+    }
+  };
+
+  const handleSelectModalThumbnail = (index: number) => {
+    setModalIndex(index);
+    modalScrollRef.current?.scrollTo({
+      x: index * modalViewerWidth,
+      animated: true,
+    });
   };
 
   return (
@@ -222,13 +259,32 @@ export function GiveawayImageGallery({ photos, title }: Props) {
             </Pressable>
           </View>
 
-          {/* Center Main Photo Viewer */}
-          <View style={styles.modalViewerWrap}>
-            <GalleryImageItem
-              url={photos[modalIndex]!}
-              style={styles.modalMainImage}
-              resizeMode="contain"
-            />
+          {/* Center Main Photo Viewer - Fully Swipeable / Slideable */}
+          <View onLayout={handleModalLayout} style={styles.modalViewerWrap}>
+            <ScrollView
+              testID="modal-fullscreen-carousel"
+              ref={modalScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleModalScroll}
+              onMomentumScrollEnd={handleModalScroll}
+              scrollEventThrottle={16}
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              {photos.map((url, idx) => (
+                <View
+                  key={`modal-slide-${idx}-${url}`}
+                  style={[styles.modalSlide, { width: modalViewerWidth }]}
+                >
+                  <GalleryImageItem
+                    url={url}
+                    style={styles.modalMainImage}
+                    resizeMode="contain"
+                  />
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Bottom Thumbnail Strip & Navigation */}
@@ -252,7 +308,7 @@ export function GiveawayImageGallery({ photos, title }: Props) {
                     key={`modal-thumb-${idx}-${url}`}
                     accessibilityRole="button"
                     accessibilityLabel={`Go to photo ${idx + 1}`}
-                    onPress={() => setModalIndex(idx)}
+                    onPress={() => handleSelectModalThumbnail(idx)}
                     style={[
                       styles.modalThumbCard,
                       {
@@ -403,6 +459,14 @@ const styles = StyleSheet.create({
   },
   modalViewerWrap: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScrollContent: {
+    alignItems: 'center',
+  },
+  modalSlide: {
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 12,
