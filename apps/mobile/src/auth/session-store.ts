@@ -10,14 +10,23 @@ import { database } from '../db/index';
 import { clearQueryClient } from '../api/query-client';
 import { usePantryScope } from '../store/pantryScope';
 import { triggerSyncSoon } from '../db/triggers';
+import { imageDiskCache } from '../cache/image-disk-cache';
+import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-revalidator';
 
 const KEY_CACHED_USER = '@pantry_cached_user';
 
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
-  purgePrivateImageCache();
+  if (userId) {
+    invalidateUserSession(userId);
+  }
+  clearAllInFlightRequests();
+  await purgePrivateImageCache(userId);
   clearQueryClient();
   if (userId) {
-    await clearDraftLocalStateForUser(userId).catch(() => {});
+    await Promise.allSettled([
+      clearDraftLocalStateForUser(userId),
+      imageDiskCache.purgeUserPrivate(userId),
+    ]);
   }
   usePantryScope.getState().setScope('personal', null);
   // Reset local SQLite database to prevent any records leaking to other accounts
@@ -58,7 +67,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (currentUserId && currentUserId !== user.id) {
       await clearAllLocalUserData(currentUserId);
     }
-    purgePrivateImageCache();
+    await purgePrivateImageCache(currentUserId);
     await Promise.allSettled([
       secureStore.setAccessToken(tokens.accessToken),
       secureStore.setRefreshToken(tokens.refreshToken),
@@ -77,6 +86,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
   },
   setUser: (user) => {
+    const prevUserId = get().user?.id;
+    if (prevUserId && prevUserId !== user.id) {
+      void clearAllLocalUserData(prevUserId);
+    }
     void AsyncStorage.setItem(KEY_CACHED_USER, JSON.stringify(user)).catch(() => {});
     set({ user });
   },

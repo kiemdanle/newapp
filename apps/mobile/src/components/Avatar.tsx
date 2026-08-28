@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
+import { useCachedImage } from '../cache/useCachedImage';
 
 export type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
 
@@ -56,7 +57,8 @@ export function Avatar({
 }: AvatarProps) {
   const theme = useTheme();
   const [imageError, setImageError] = useState(false);
-
+  const { uri: cachedUri } = useCachedImage(url);
+  const activeUrl = cachedUri || url;
   const dimension = typeof size === 'number' ? size : SIZE_MAP[size] ?? 44;
   const fontSize =
     typeof size === 'number'
@@ -80,8 +82,7 @@ export function Avatar({
   const badgeSize = Math.max(22, Math.round(dimension * 0.32));
   const badgeIconSize = Math.max(12, Math.round(badgeSize * 0.55));
 
-  const showImage = Boolean(url) && !imageError;
-
+  const showImage = Boolean(activeUrl) && !imageError;
   return (
     <View
       testID={testID}
@@ -99,13 +100,12 @@ export function Avatar({
       {showImage ? (
         <Image
           testID={`${testID}-image`}
-          source={{ uri: url!, cache: 'force-cache' }}
+          source={{ uri: activeUrl!, cache: 'force-cache' }}
           style={{
             width: dimension,
             height: dimension,
             borderRadius: dimension / 2,
           }}
-          fadeDuration={100}
           onError={() => setImageError(true)}
           resizeMode="cover"
         />

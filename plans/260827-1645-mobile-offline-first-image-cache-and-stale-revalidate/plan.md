@@ -1,7 +1,7 @@
 ---
 title: "Mobile Offline-First Image Disk Cache and Stale-While-Revalidate"
 description: "Implement an on-device persistent image disk cache with Stale-While-Revalidate (SWR) for React Native mobile app, eliminating empty image placeholders on app launch and enabling instant 0ms cached rendering with background server sync."
-status: pending
+status: complete
 priority: P1
 branch: "main"
 tags: [mobile, caching, offline-first, performance, react-native, images, swr]
@@ -72,10 +72,10 @@ sequenceDiagram
 
 | Phase | Name | Scope | Key Deliverables | Status |
 |---|---|---|---|---|
-| 1 | [StorageCore](./phase-01-storagecore.md) | `apps/mobile` | `ImageDiskCache` service, decoupled AsyncStorage metadata index + native file cache directory, user-scoped privacy isolation, and 100 MB LRU pruning | Pending |
-| 2 | [RevalidationEngine](./phase-02-revalidationengine.md) | `apps/mobile` | Stale-While-Revalidate hook/engine, in-flight Promise deduplication, atomic temp-file commit, background conditional ETag/Last-Modified fetcher (24h public / 15m private TTL), and 304 handler | Pending |
-| 3 | [ComponentIntegration](./phase-03-componentintegration.md) | `apps/mobile` | Integrate `ProductThumbnail`, `PrivateProductImage`, `Avatar`, `DealCard`, `GiveawayCard`, and `GiveawayImageGallery` with instant frame-0 rendering and sign-out cache purge | Pending |
-| 4 | [Verification](./phase-04-verification.md) | Monorepo | Cold start performance benchmarks, SWR lifecycle tests, offline fallback tests, concurrent write race tests, CursorWindow boundary tests, and typechecks | Pending |
+| 1 | [StorageCore](./phase-01-storagecore.md) | `apps/mobile` | `ImageDiskCache` service, decoupled AsyncStorage metadata index + native file cache directory, user-scoped privacy isolation, and 100 MB LRU pruning | Complete |
+| 2 | [RevalidationEngine](./phase-02-revalidationengine.md) | `apps/mobile` | Stale-While-Revalidate hook/engine, in-flight Promise deduplication, atomic temp-file commit, background conditional ETag/Last-Modified fetcher (24h public / 15m private TTL), and 304 handler | Complete |
+| 3 | [ComponentIntegration](./phase-03-componentintegration.md) | `apps/mobile` | Integrate `ProductThumbnail`, `PrivateProductImage`, `Avatar`, `DealCard`, `GiveawayCard`, and `GiveawayImageGallery` with instant frame-0 rendering and sign-out cache purge | Complete |
+| 4 | [Verification](./phase-04-verification.md) | Monorepo | Cold start performance benchmarks, SWR lifecycle tests, offline fallback tests, concurrent write race tests, CursorWindow boundary tests, and typechecks | Complete |
 
 ---
 

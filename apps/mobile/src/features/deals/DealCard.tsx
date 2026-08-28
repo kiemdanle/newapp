@@ -7,6 +7,7 @@ import { useOptimisticDealVote } from './useOptimisticDealVote';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatCurrency, formatDate } from '../../utils/country-format';
+import { useCachedImage } from '../../cache/useCachedImage';
 interface Props {
   deal: Deal;
   onReport: (deal: Deal) => void;
@@ -25,7 +26,8 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
 
   const priceLabel = formatCurrency(deal.price, deal.currency);
   const imageUrl = deal.photoUrl || deal.product?.imageUrl;
-
+  const { uri: cachedImageUrl } = useCachedImage(imageUrl);
+  const activeImageUrl = cachedImageUrl || imageUrl;
   // Expiry calculation
   let expiryLabel: string | null = null;
   let expiryBg = theme.colors.bgElevated;
@@ -84,9 +86,9 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
     >
       <View style={styles.topRow}>
         {/* Product Thumbnail */}
-        {imageUrl ? (
+        {activeImageUrl ? (
           <Image
-            source={{ uri: imageUrl, cache: 'force-cache' }}
+            source={{ uri: activeImageUrl, cache: 'force-cache' }}
             style={[styles.thumbnail, { borderRadius: theme.radii.md }]}
             resizeMode="cover"
             fadeDuration={100}

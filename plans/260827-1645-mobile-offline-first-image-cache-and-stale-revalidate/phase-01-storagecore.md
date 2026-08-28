@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "StorageCore"
-status: pending
+status: complete
 priority: P1
 dependencies: []
 ---

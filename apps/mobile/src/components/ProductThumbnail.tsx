@@ -5,7 +5,7 @@ import type { Product } from '@expyrico/shared';
 import { getBaseUrl } from '../api/client';
 import { PrivateProductImage } from '../api/product-private-image';
 import { useTheme } from '../theme/useTheme';
-
+import { useCachedImage } from '../cache/useCachedImage';
 export interface ProductThumbnailProps {
   product?: Product | null;
   photoUrl?: string | null;
@@ -74,16 +74,9 @@ export function ProductThumbnail({
 
   if (activeCandidate) {
     return (
-      <Image
-        key={activeCandidate}
-        source={{
-          uri: activeCandidate,
-          cache: 'force-cache',
-        }}
+      <CachedThumbnailImage
+        candidate={activeCandidate}
         style={style}
-        resizeMode="cover"
-        fadeDuration={150}
-        accessibilityIgnoresInvertColors
         onError={() => {
           setFailedSources((prev) => new Set([...prev, activeCandidate]));
         }}
@@ -116,5 +109,33 @@ export function ProductThumbnail({
     >
       <Ionicons name={fallbackIcon as never} size={size * 0.46} color={theme.colors.textMuted} />
     </View>
+  );
+}
+
+function CachedThumbnailImage({
+  candidate,
+  style,
+  onError,
+}: {
+  candidate: string;
+  style?: StyleProp<ImageStyle>;
+  onError: () => void;
+}) {
+  const { uri } = useCachedImage(candidate);
+  const renderUri = uri || candidate;
+
+  return (
+    <Image
+      key={renderUri}
+      source={{
+        uri: renderUri,
+        cache: 'force-cache',
+      }}
+      style={style}
+      resizeMode="cover"
+      fadeDuration={150}
+      accessibilityIgnoresInvertColors
+      onError={onError}
+    />
   );
 }

@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "RevalidationEngine"
-status: pending
+status: complete
 priority: P1
 dependencies: ["phase-01-storagecore"]
 ---

@@ -10,6 +10,7 @@ import { createQueryClient } from './api/query-client';
 import { ThemeProvider } from './theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from './theme/store';
 import { hydrateSession, useSessionStore } from './auth/session-store';
+import { imageDiskCache } from './cache/image-disk-cache';
 import { wireApiClient } from './auth/wire-client';
 import { startSyncTriggers, stopSyncTriggers } from './db/triggers';
 import { setItem } from './auth/secure-store';
@@ -56,7 +57,11 @@ function RootApp() {
 
   useEffect(() => {
     wireApiClient();
-    Promise.all([initThemeStore(), hydrateSession()]).catch((e) => setBootError(String(e)));
+    Promise.all([
+      initThemeStore(),
+      hydrateSession(),
+      imageDiskCache.hydrate().catch(() => {}),
+    ]).catch((e) => setBootError(String(e)));
   }, []);
 
   const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);

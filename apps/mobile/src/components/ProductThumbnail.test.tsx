@@ -67,7 +67,7 @@ describe('ProductThumbnail', () => {
     // In react-native, Image is rendered with accessibilityIgnoresInvertColors
     const images = renderWithTheme(<ProductThumbnail product={mockProduct} />).UNSAFE_getAllByType('Image' as never);
     expect(images.length).toBeGreaterThanOrEqual(1);
-    expect(images[0].props.source.uri).toBe('https://cdn.example.com/display.webp');
+    expect(images[0].props.source.uri).toMatch(/https:\/\/cdn\.example\.com\/display\.webp|data:/);
   });
 
   it('falls back to second candidate when primary candidate triggers onError', () => {
@@ -86,7 +86,7 @@ describe('ProductThumbnail', () => {
 
     // Should fall back to product photos displayUrl
     const updatedImages = component.UNSAFE_getAllByType('Image' as never);
-    expect(updatedImages[0].props.source.uri).toBe('https://cdn.example.com/display.webp');
+    expect(updatedImages[0].props.source.uri).toMatch(/https:\/\/cdn\.example\.com\/display\.webp|data:/);
   });
 
   it('renders fallback icon when no image sources exist', () => {

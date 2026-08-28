@@ -338,7 +338,10 @@ describe('<ProductPhotoEditor />', () => {
     const { getByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'product_edit', editId: 'edit-1' }} coordinator={coordinator} />));
 
     const image = await waitFor(() => getByTestId('photo-photo-1-image'));
-    expect(image.props.source).toEqual({ uri: 'https://cdn.example.com/pub/photo-1-thumb.webp' });
+    expect(image.props.source).toEqual({
+      uri: 'https://cdn.example.com/pub/photo-1-thumb.webp',
+      cache: 'force-cache',
+    });
   });
 
   it('reports unsettled state while an upload is pending/uploading and clears it once settled', async () => {

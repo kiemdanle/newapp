@@ -9,6 +9,7 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../records/expiryStatus';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
+import { useCachedImage } from '../../cache/useCachedImage';
 export interface GiveawayCardProps {
   giveaway: Giveaway;
   onPress?: (giveaway: Giveaway) => void;
@@ -53,6 +54,8 @@ export function GiveawayCard({
     return [];
   }, [giveaway.photoUrls, giveaway.photoUrl]);
   const imageUrl = photoList[0] || null;
+  const { uri: cachedImageUrl } = useCachedImage(imageUrl);
+  const activeImageUrl = cachedImageUrl || imageUrl;
   const photoCount = photoList.length;
 
   const isOwner = Boolean(currentUserId && currentUserId === giveaway.giverUserId);
@@ -183,9 +186,9 @@ export function GiveawayCard({
         <View style={styles.topRow}>
           {/* Thumbnail with optional multi-image indicator */}
           <View style={styles.thumbnailWrap}>
-            {imageUrl ? (
+            {activeImageUrl ? (
               <Image
-                source={{ uri: imageUrl, cache: 'force-cache' }}
+                source={{ uri: activeImageUrl, cache: 'force-cache' }}
                 style={[styles.thumbnail, { borderRadius: theme.radii.md }]}
                 resizeMode="cover"
                 fadeDuration={100}

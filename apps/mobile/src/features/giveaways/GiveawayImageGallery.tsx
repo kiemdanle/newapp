@@ -13,10 +13,13 @@ import {
   StyleSheet,
   Text,
   View,
+  type ImageStyle,
+  type StyleProp,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme/useTheme';
+import { useCachedImage } from '../../cache/useCachedImage';
 
 interface Props {
   photos: string[];
@@ -123,12 +126,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
               onPress={() => handleOpenFullscreen(idx)}
               style={{ width: containerWidth, height: heroHeight }}
             >
-              <Image
-                source={{ uri: url, cache: 'force-cache' }}
+              <GalleryImageItem
+                url={url}
                 style={styles.heroImage}
                 resizeMode="cover"
-                fadeDuration={100}
-                accessibilityIgnoresInvertColors
               />
             </Pressable>
           ))}
@@ -169,12 +170,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
                   },
                 ]}
               >
-                <Image
-                  source={{ uri: url, cache: 'force-cache' }}
+                <GalleryImageItem
+                  url={url}
                   style={styles.thumbImage}
                   resizeMode="cover"
-                  fadeDuration={100}
-                  accessibilityIgnoresInvertColors
                 />
                 {idx === 0 && (
                   <View style={[styles.coverTag, { backgroundColor: theme.colors.primary }]}>
@@ -225,12 +224,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
 
           {/* Center Main Photo Viewer */}
           <View style={styles.modalViewerWrap}>
-            <Image
-              source={{ uri: photos[modalIndex], cache: 'force-cache' }}
+            <GalleryImageItem
+              url={photos[modalIndex]!}
               style={styles.modalMainImage}
               resizeMode="contain"
-              fadeDuration={100}
-              accessibilityIgnoresInvertColors
             />
           </View>
 
@@ -265,12 +262,10 @@ export function GiveawayImageGallery({ photos, title }: Props) {
                       },
                     ]}
                   >
-                    <Image
-                      source={{ uri: url, cache: 'force-cache' }}
+                    <GalleryImageItem
+                      url={url}
                       style={styles.modalThumbImage}
                       resizeMode="cover"
-                      fadeDuration={100}
-                      accessibilityIgnoresInvertColors
                     />
                   </Pressable>
                 );
@@ -280,6 +275,29 @@ export function GiveawayImageGallery({ photos, title }: Props) {
         </View>
       </Modal>
     </View>
+  );
+}
+
+function GalleryImageItem({
+  url,
+  style,
+  resizeMode = 'cover',
+}: {
+  url: string;
+  style?: StyleProp<ImageStyle>;
+  resizeMode?: 'cover' | 'contain';
+}) {
+  const { uri } = useCachedImage(url);
+  const activeUrl = uri || url;
+
+  return (
+    <Image
+      source={{ uri: activeUrl, cache: 'force-cache' }}
+      style={style}
+      resizeMode={resizeMode}
+      fadeDuration={100}
+      accessibilityIgnoresInvertColors
+    />
   );
 }
 
