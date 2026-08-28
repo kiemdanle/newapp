@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverAdminApi } from '@/lib/admin-api';
+import { requireAdminSession } from '@/lib/session';
 import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 import { DataTable, type Column } from '@/components/data-table';
@@ -16,7 +17,11 @@ export default async function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const u = await serverAdminApi.users.get(id);
+  const [adminMe, u] = await Promise.all([
+    requireAdminSession(`/users/${id}`),
+    serverAdminApi.users.get(id),
+  ]);
+  const isSelf = adminMe.id === u.id;
   const initials = `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
 
   const sessionColumns: Column<Session>[] = [
@@ -98,7 +103,14 @@ export default async function UserDetailPage({
         </div>
 
         {/* User Actions */}
-        <UserActions id={u.id} status={u.status} role={u.role} totpEnabledAt={u.totpEnabledAt} />
+        <UserActions
+          id={u.id}
+          email={u.email}
+          status={u.status}
+          role={u.role}
+          totpEnabledAt={u.totpEnabledAt}
+          isSelf={isSelf}
+        />
       </div>
 
       {/* KPI Stats */}

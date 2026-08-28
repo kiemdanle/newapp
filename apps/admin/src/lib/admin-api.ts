@@ -15,6 +15,12 @@ import {
   adminUserReset2faResponseSchema,
   type AdminUserReset2faRequest,
   type AdminUserReset2faResponse,
+  adminUserChangePasswordResponseSchema,
+  type AdminUserChangePasswordRequest,
+  type AdminUserChangePasswordResponse,
+  adminUserSendRandomPasswordResponseSchema,
+  type AdminUserSendRandomPasswordRequest,
+  type AdminUserSendRandomPasswordResponse,
   adminProductsListSchema,
   adminProductRowSchema,
   adminProductMergeResponseSchema,
@@ -85,6 +91,16 @@ export const serverAdminApi = {
         method: 'POST',
         body,
       }).then((r) => adminUserReset2faResponseSchema.parse(r)),
+    changePassword: (id: string, body: AdminUserChangePasswordRequest) =>
+      apiServerFetch<AdminUserChangePasswordResponse>(`/v1/admin/users/${id}/change-password`, {
+        method: 'POST',
+        body,
+      }).then((r) => adminUserChangePasswordResponseSchema.parse(r)),
+    sendRandomPassword: (id: string, body?: AdminUserSendRandomPasswordRequest) =>
+      apiServerFetch<AdminUserSendRandomPasswordResponse>(`/v1/admin/users/${id}/send-random-password`, {
+        method: 'POST',
+        body,
+      }).then((r) => adminUserSendRandomPasswordResponseSchema.parse(r)),
   },
   products: {
     list: (q: Q = {}) =>

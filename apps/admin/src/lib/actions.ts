@@ -16,6 +16,12 @@ import type {
   AdminUserReset2faRequest,
   AdminUserReset2faResponse,
 } from '@expyrico/shared';
+import type {
+  AdminUserChangePasswordRequest,
+  AdminUserChangePasswordResponse,
+  AdminUserSendRandomPasswordRequest,
+  AdminUserSendRandomPasswordResponse,
+} from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
 import { ApiError } from './api';
 import type { ActionResult } from './action-result';
@@ -70,6 +76,30 @@ export async function resetUser2faAction(
     revalidatePath('/users');
     revalidatePath(`/users/${id}`);
     revalidatePath('/settings/admins');
+  }
+  return result;
+}
+
+export async function changeUserPasswordAction(
+  id: string,
+  body: AdminUserChangePasswordRequest,
+): Promise<ActionResult<AdminUserChangePasswordResponse>> {
+  const result = await runAction(() => serverAdminApi.users.changePassword(id, body));
+  if (result.ok) {
+    revalidatePath('/users');
+    revalidatePath(`/users/${id}`);
+  }
+  return result;
+}
+
+export async function sendUserRandomPasswordAction(
+  id: string,
+  body?: AdminUserSendRandomPasswordRequest,
+): Promise<ActionResult<AdminUserSendRandomPasswordResponse>> {
+  const result = await runAction(() => serverAdminApi.users.sendRandomPassword(id, body));
+  if (result.ok) {
+    revalidatePath('/users');
+    revalidatePath(`/users/${id}`);
   }
   return result;
 }

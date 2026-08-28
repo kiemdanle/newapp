@@ -6,9 +6,11 @@ import {
   revokeUserSessionsAction,
   impersonateUserAction,
   resetUser2faAction,
+  sendUserRandomPasswordAction,
 } from '@/lib/actions';
 import { actionErrorMessage } from '@/lib/action-result';
-import { ShieldAlert } from 'lucide-react';
+import { ShieldAlert, KeyRound, Mail } from 'lucide-react';
+import { ChangePasswordModal } from './change-password-modal';
 
 /**
  * Client controls for the user-detail page. Each button drives a server action
@@ -18,19 +20,23 @@ import { ShieldAlert } from 'lucide-react';
  */
 export function UserActions({
   id,
+  email,
   status,
   role,
   totpEnabledAt,
+  isSelf = false,
 }: {
   id: string;
+  email: string;
   status: 'active' | 'suspended' | 'deleted';
   role: 'user' | 'admin';
   totpEnabledAt?: string | null;
+  isSelf?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-
   function run(fn: () => Promise<void>, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return;
     setErr(null);
@@ -38,7 +44,7 @@ export function UserActions({
     startTransition(async () => {
       try {
         await fn();
-        setMsg('Done.');
+        setMsg((prev) => prev ?? 'Done.');
       } catch (e) {
         setErr(e instanceof Error ? e.message : 'Action failed');
       }
@@ -46,7 +52,8 @@ export function UserActions({
   }
 
   return (
-    <div className="space-y-3">
+    <>
+      <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
         {status !== 'suspended' && (
           <Button
@@ -135,10 +142,49 @@ export function UserActions({
             <span>Reset 2FA</span>
           </Button>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending || isSelf}
+          title={isSelf ? 'Use your profile settings to change your own password.' : undefined}
+          onClick={() => setShowPasswordModal(true)}
+        >
+          <KeyRound className="mr-1.5 h-3.5 w-3.5 text-neutral-mid" />
+          <span>Set password</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending || isSelf}
+          title={isSelf ? 'Use your profile settings to change your own password.' : undefined}
+          onClick={() =>
+            run(
+              async () => {
+                const res = await sendUserRandomPasswordAction(id);
+                if (!res.ok) {
+                  throw new Error(actionErrorMessage(res));
+                }
+                setMsg(res.data.message);
+              },
+              `Reset password for ${email}?\n\nThis will:\n• Generate a temporary random password and email it to ${email}.\n• Revoke all active sessions and trusted devices immediately.`,
+            )
+          }
+        >
+          <Mail className="mr-1.5 h-3.5 w-3.5 text-neutral-mid" />
+          <span>Reset password & email</span>
+        </Button>
       </div>
       {pending && <p className="text-xs text-muted-foreground">Working…</p>}
       {msg && <p className="break-all text-xs text-foreground">{msg}</p>}
       {err && <p className="text-xs text-destructive">{err}</p>}
-    </div>
+      </div>
+      <ChangePasswordModal
+        userId={id}
+        userEmail={email}
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSuccess={(message) => setMsg(message)}
+      />
+    </>
   );
 }

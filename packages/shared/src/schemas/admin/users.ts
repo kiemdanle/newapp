@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { cursorQuerySchema, cursorPageSchema } from './common.js';
+import { passwordField } from '../auth.js';
 
 export const adminUserRoleSchema = z.enum(['user', 'admin']);
 export const adminUserStatusSchema = z.enum(['active', 'suspended', 'deleted']);
@@ -69,3 +70,27 @@ export const adminUserReset2faResponseSchema = z.object({
   message: z.string(),
 });
 export type AdminUserReset2faResponse = z.infer<typeof adminUserReset2faResponseSchema>;
+
+export const adminUserChangePasswordRequestSchema = z.object({
+  password: passwordField,
+});
+export type AdminUserChangePasswordRequest = z.infer<typeof adminUserChangePasswordRequestSchema>;
+
+export const adminUserChangePasswordResponseSchema = z.object({
+  ok: z.literal(true),
+  userId: z.string().uuid(),
+  message: z.string(),
+});
+export type AdminUserChangePasswordResponse = z.infer<typeof adminUserChangePasswordResponseSchema>;
+
+export const adminUserSendRandomPasswordRequestSchema = z.object({
+  notes: z.string().trim().max(500).optional(),
+});
+export type AdminUserSendRandomPasswordRequest = z.infer<typeof adminUserSendRandomPasswordRequestSchema>;
+
+export const adminUserSendRandomPasswordResponseSchema = z.object({
+  ok: z.literal(true),
+  userId: z.string().uuid(),
+  message: z.string(),
+});
+export type AdminUserSendRandomPasswordResponse = z.infer<typeof adminUserSendRandomPasswordResponseSchema>;

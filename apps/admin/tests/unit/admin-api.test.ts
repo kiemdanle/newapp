@@ -13,6 +13,7 @@ vi.mock('next/headers', () => ({
 }));
 
 import { ApiError, apiServerFetch } from '@/lib/api';
+import { serverAdminApi } from '@/lib/admin-api';
 import { COOKIE_NAMES } from '@/lib/cookies';
 
 const originalEnv = { ...process.env };
@@ -95,5 +96,25 @@ describe('apiServerFetch / ApiError', () => {
       status: 500,
       code: 'unknown_error',
     });
+  });
+});
+
+describe('serverAdminApi.users password operations', () => {
+  it('calls changePassword and parses valid response', async () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    mockFetchOnce(200, { ok: true, userId, message: 'Password updated successfully.' });
+
+    const res = await serverAdminApi.users.changePassword(userId, { password: 'new-secure-password-123' });
+    expect(res.ok).toBe(true);
+    expect(res.userId).toBe(userId);
+  });
+
+  it('calls sendRandomPassword and parses valid response', async () => {
+    const userId = '11111111-1111-1111-1111-111111111111';
+    mockFetchOnce(200, { ok: true, userId, message: 'A temporary random password has been generated and sent to the user email.' });
+
+    const res = await serverAdminApi.users.sendRandomPassword(userId, { notes: 'Phone support' });
+    expect(res.ok).toBe(true);
+    expect(res.userId).toBe(userId);
   });
 });

@@ -43,6 +43,15 @@ interface CodeEmailParts {
   /** Small reassurance line in the footer. */
   footnote: string;
 }
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 
 /**
  * Professional, client-safe HTML for a one-time-code email. Table-based layout
@@ -149,6 +158,80 @@ export async function sendPasswordResetCodeEmail(to: string, code: string): Prom
   });
 }
 
+export async function sendAdminRandomPasswordEmail(to: string, temporaryPassword: string): Promise<void> {
+  const cfg = getConfig();
+  if (cfg.env === 'test') {
+    logger.info({ to }, 'TEST: would send admin random password email');
+    return;
+  }
+  await getTransport().sendMail({
+    from: cfg.smtp.from,
+    to,
+    subject: 'Your temporary Expyrico password',
+    text: `An administrator has reset your Expyrico password.\n\nYour temporary password is:\n${temporaryPassword}\n\nAll existing sessions have been signed out for security. Use this password to sign in at ${cfg.webauthn.origin}/login, and update your password in Settings immediately.`,
+    html: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Your temporary Expyrico password</title>
+  </head>
+  <body style="margin:0; padding:0; background-color:${PALETTE.bg}; -webkit-text-size-adjust:100%;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${PALETTE.bg};">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; background-color:#FFFFFF; border:1px solid ${PALETTE.stone}; border-radius:16px; overflow:hidden;">
+            <!-- Brand bar -->
+            <tr>
+              <td style="background-color:${PALETTE.primary}; padding:20px 32px;">
+                <span style="font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:20px; font-weight:600; letter-spacing:0.5px; color:#FFFFFF;">expyrico</span>
+              </td>
+            </tr>
+            <!-- Heading + intro -->
+            <tr>
+              <td style="padding:32px 32px 0; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                <h1 style="margin:0; font-size:22px; line-height:28px; font-weight:600; color:${PALETTE.ink};">Temporary Password</h1>
+                <p style="margin:12px 0 0; font-size:15px; line-height:22px; color:${PALETTE.pebble};">An administrator has generated a temporary password for your Expyrico account.</p>
+              </td>
+            </tr>
+            <!-- Password panel -->
+            <tr>
+              <td style="padding:24px 32px 8px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${PALETTE.primaryLight}; border:1px solid ${PALETTE.primary}; border-radius:12px;">
+                  <tr>
+                    <td align="center" style="padding:18px 16px; font-family:Consolas,Monaco,'Courier New',monospace; font-size:20px; font-weight:700; letter-spacing:2px; color:${PALETTE.primaryDark}; word-break:break-all;">${escapeHtml(temporaryPassword)}</td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <!-- Security notice pill -->
+            <tr>
+              <td align="center" style="padding:8px 32px 20px;">
+                <span style="display:inline-block; background-color:${PALETTE.accentLight}; color:${PALETTE.ink}; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:13px; font-weight:600; padding:7px 14px; border-radius:999px;">🔒 All active sessions were signed out</span>
+              </td>
+            </tr>
+            <!-- CTA Button -->
+            <tr>
+              <td align="center" style="padding:0 32px 24px;">
+                <a href="${cfg.webauthn.origin}/login" style="display:inline-block; background-color:${PALETTE.primary}; color:#FFFFFF; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:14px; font-weight:600; text-decoration:none; padding:12px 28px; border-radius:8px;">Sign In to Expyrico</a>
+              </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+              <td style="border-top:1px solid ${PALETTE.stone}; padding:20px 32px 28px; font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                <p style="margin:0; font-size:13px; line-height:20px; color:${PALETTE.pebble};">Please sign in and change your password in account settings immediately.</p>
+                <p style="margin:12px 0 0; font-size:12px; line-height:18px; color:${PALETTE.pebble};">© Expyrico · Fresh food, tracked.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`,
+  });
+}
 export function resetEmailTransportForTests(): void {
   _transport = null;
 }
