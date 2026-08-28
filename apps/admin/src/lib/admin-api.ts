@@ -12,6 +12,9 @@ import {
   adminUserDetailSchema,
   adminUserRowSchema,
   adminUserImpersonateResponseSchema,
+  adminUserReset2faResponseSchema,
+  type AdminUserReset2faRequest,
+  type AdminUserReset2faResponse,
   adminProductsListSchema,
   adminProductRowSchema,
   adminProductMergeResponseSchema,
@@ -77,6 +80,11 @@ export const serverAdminApi = {
       apiServerFetch(`/v1/admin/users/${id}/impersonate`, { method: 'POST' }).then((r) =>
         adminUserImpersonateResponseSchema.parse(r),
       ),
+    reset2fa: (id: string, body?: AdminUserReset2faRequest) =>
+      apiServerFetch<AdminUserReset2faResponse>(`/v1/admin/users/${id}/reset-2fa`, {
+        method: 'POST',
+        body,
+      }).then((r) => adminUserReset2faResponseSchema.parse(r)),
   },
   products: {
     list: (q: Q = {}) =>

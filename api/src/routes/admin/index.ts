@@ -6,6 +6,7 @@ import { adminUsersGetRoute } from './users/get.js';
 import { adminUsersPatchRoute } from './users/patch.js';
 import { adminUsersRevokeSessionsRoute } from './users/revoke-sessions.js';
 import { adminUsersImpersonateRoute } from './users/impersonate.js';
+import { adminUsersReset2faRoute } from './users/reset-2fa.js';
 import { adminProductsListRoute } from './products/list.js';
 import { adminProductsGetRoute } from './products/get.js';
 import { adminProductsPatchRoute } from './products/patch.js';
@@ -52,6 +53,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminUsersPatchRoute, { prefix: '/users' });
   await app.register(adminUsersRevokeSessionsRoute, { prefix: '/users' });
   await app.register(adminUsersImpersonateRoute, { prefix: '/users' });
+  await app.register(adminUsersReset2faRoute, { prefix: '/users' });
 
   await app.register(adminProductsPendingListRoute, { prefix: '/products' });
   await app.register(adminProductsPendingGetRoute, { prefix: '/products' });

@@ -22,6 +22,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "seed:admin": "tsx --env-file=.env prisma/seed-admin.ts",
+    "admin:reset-2fa": "tsx --env-file=.env prisma/reset-admin-2fa.ts",
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {

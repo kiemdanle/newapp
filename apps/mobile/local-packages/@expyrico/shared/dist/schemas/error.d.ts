@@ -78,9 +78,9 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -106,9 +106,9 @@ export declare const problemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -148,8 +148,8 @@ export declare const problemSchema: z.ZodObject<{
         targetValue: string;
     }>>;
 }, "strip", z.ZodTypeAny, {
-    code: string;
     status: number;
+    code: string;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -160,9 +160,9 @@ export declare const problemSchema: z.ZodObject<{
     }[] | undefined;
     currentVersion?: number | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -194,8 +194,8 @@ export declare const problemSchema: z.ZodObject<{
         targetValue: string;
     } | undefined;
 }, {
-    code: string;
     status: number;
+    code: string;
     title: string;
     type?: string | undefined;
     detail?: string | undefined;
@@ -206,9 +206,9 @@ export declare const problemSchema: z.ZodObject<{
     }[] | undefined;
     currentVersion?: number | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -296,9 +296,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -324,9 +324,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
     }, {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -369,8 +369,8 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
     code: z.ZodLiteral<"version_conflict">;
     currentVersion: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
-    code: "version_conflict";
     status: number;
+    code: "version_conflict";
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -381,9 +381,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         message: string;
     }[] | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -415,8 +415,8 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         targetValue: string;
     } | undefined;
 }, {
-    code: "version_conflict";
     status: number;
+    code: "version_conflict";
     title: string;
     currentVersion: number;
     type?: string | undefined;
@@ -427,9 +427,9 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         message: string;
     }[] | undefined;
     canonicalProduct?: {
-        id: string;
         status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
         barcode: string | null;
+        id: string;
         qrPayload: string | null;
         name: string;
         description: string | null;
@@ -480,6 +480,8 @@ export declare const ERROR_CODES: {
     readonly INVALID_TOTP: "invalid_totp";
     readonly INVALID_RECOVERY_CODE: "invalid_recovery_code";
     readonly PASSKEY_VERIFICATION_FAILED: "passkey_verification_failed";
+    readonly CANNOT_RESET_UNENROLLED_2FA: "cannot_reset_unenrolled_2fa";
+    readonly SELF_2FA_RESET_CONFIRMATION_REQUIRED: "self_2fa_reset_confirmation_required";
     readonly REVIEW_ALREADY_EXISTS: "review_already_exists";
     readonly REVIEW_NOT_FOUND: "review_not_found";
     readonly REVIEW_HAS_NO_COMMENT: "review_has_no_comment";

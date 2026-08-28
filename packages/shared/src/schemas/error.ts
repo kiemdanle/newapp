@@ -60,6 +60,8 @@ export const ERROR_CODES = {
   INVALID_TOTP: 'invalid_totp',
   INVALID_RECOVERY_CODE: 'invalid_recovery_code',
   PASSKEY_VERIFICATION_FAILED: 'passkey_verification_failed',
+  CANNOT_RESET_UNENROLLED_2FA: 'cannot_reset_unenrolled_2fa',
+  SELF_2FA_RESET_CONFIRMATION_REQUIRED: 'self_2fa_reset_confirmation_required',
 
   // Reviews + reports
   REVIEW_ALREADY_EXISTS: 'review_already_exists',

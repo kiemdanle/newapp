@@ -24,6 +24,11 @@ const PENDING_ENROLLMENTS = new Map<string, Awaited<ReturnType<typeof buildEnrol
 // server-held secret divergent and fail verification.
 const ENROLLMENT_BUILDS = new Map<string, Promise<Awaited<ReturnType<typeof buildEnrollment>>>>();
 
+export function clearPendingEnrollment(userId: string): void {
+  PENDING_ENROLLMENTS.delete(userId);
+  ENROLLMENT_BUILDS.delete(userId);
+}
+
 /** Resolve and validate an admin enrollment challenge (purpose 'enroll'). */
 async function resolveEnrollmentChallenge(enrollmentChallenge: string) {
   const prisma = getPrisma();

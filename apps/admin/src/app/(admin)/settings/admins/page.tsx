@@ -3,6 +3,7 @@ import { DataTable, type Column } from '@/components/data-table';
 import { AdminInviteForm } from './admin-invite-form';
 import { RevokeAdminButton } from './revoke-admin-button';
 import { RevokeDeviceButton } from './revoke-device-button';
+import { ResetAdmin2faButton } from './reset-admin-2fa-button';
 import type { AdminRow, AdminTrustedDeviceRow } from '@expyrico/shared';
 import { ShieldCheck, Smartphone, CheckCircle, AlertCircle, Laptop } from 'lucide-react';
 
@@ -52,8 +53,13 @@ export default async function SettingsAdminsPage() {
       ),
     },
     {
-      header: 'Action',
-      cell: (a) => <RevokeAdminButton id={a.id} />,
+      header: 'Actions',
+      cell: (a) => (
+        <div className="flex items-center justify-end gap-2">
+          {a.totpEnabledAt && <ResetAdmin2faButton id={a.id} email={a.email} />}
+          <RevokeAdminButton id={a.id} />
+        </div>
+      ),
       className: 'text-right',
     },
   ];

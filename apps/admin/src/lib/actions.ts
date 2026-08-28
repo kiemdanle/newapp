@@ -12,6 +12,10 @@ import type {
   ProductEditRecoverRequest,
   ProductEditRow,
 } from '@expyrico/shared';
+import type {
+  AdminUserReset2faRequest,
+  AdminUserReset2faResponse,
+} from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
 import { ApiError } from './api';
 import type { ActionResult } from './action-result';
@@ -55,6 +59,19 @@ export async function revokeUserSessionsAction(id: string) {
 
 export async function impersonateUserAction(id: string): Promise<{ accessToken: string; expiresIn: number }> {
   return serverAdminApi.users.impersonate(id);
+}
+
+export async function resetUser2faAction(
+  id: string,
+  body?: AdminUserReset2faRequest,
+): Promise<ActionResult<AdminUserReset2faResponse>> {
+  const result = await runAction(() => serverAdminApi.users.reset2fa(id, body));
+  if (result.ok) {
+    revalidatePath('/users');
+    revalidatePath(`/users/${id}`);
+    revalidatePath('/settings/admins');
+  }
+  return result;
 }
 
 // --- Products ---

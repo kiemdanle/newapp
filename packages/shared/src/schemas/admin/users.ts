@@ -56,3 +56,16 @@ export const adminUserImpersonateResponseSchema = z.object({
 
 export type AdminUsersQuery = z.infer<typeof adminUsersQuerySchema>;
 export type AdminUserPatch = z.infer<typeof adminUserPatchSchema>;
+
+export const adminUserReset2faRequestSchema = z.object({
+  notes: z.string().trim().max(500).optional(),
+  confirmSelfReset: z.boolean().optional(),
+});
+export type AdminUserReset2faRequest = z.infer<typeof adminUserReset2faRequestSchema>;
+
+export const adminUserReset2faResponseSchema = z.object({
+  ok: z.literal(true),
+  userId: z.string().uuid(),
+  message: z.string(),
+});
+export type AdminUserReset2faResponse = z.infer<typeof adminUserReset2faResponseSchema>;

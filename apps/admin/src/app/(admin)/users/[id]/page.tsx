@@ -98,7 +98,7 @@ export default async function UserDetailPage({
         </div>
 
         {/* User Actions */}
-        <UserActions id={u.id} status={u.status} role={u.role} />
+        <UserActions id={u.id} status={u.status} role={u.role} totpEnabledAt={u.totpEnabledAt} />
       </div>
 
       {/* KPI Stats */}

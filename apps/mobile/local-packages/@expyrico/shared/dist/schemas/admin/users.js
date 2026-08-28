@@ -46,4 +46,13 @@ export const adminUserImpersonateResponseSchema = z.object({
     accessToken: z.string(),
     expiresIn: z.number().int(),
 });
+export const adminUserReset2faRequestSchema = z.object({
+    notes: z.string().trim().max(500).optional(),
+    confirmSelfReset: z.boolean().optional(),
+});
+export const adminUserReset2faResponseSchema = z.object({
+    ok: z.literal(true),
+    userId: z.string().uuid(),
+    message: z.string(),
+});
 //# sourceMappingURL=users.js.map

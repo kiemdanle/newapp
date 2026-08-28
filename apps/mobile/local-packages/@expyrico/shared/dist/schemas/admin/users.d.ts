@@ -12,24 +12,24 @@ export declare const adminUserRowSchema: z.ZodObject<{
     createdAt: z.ZodString;
     lastSeenAt: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    status: "active" | "suspended" | "deleted";
     id: string;
+    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     country: string | null;
     role: "user" | "admin";
-    status: "active" | "suspended" | "deleted";
-    createdAt: string;
     lastSeenAt: string | null;
 }, {
+    status: "active" | "suspended" | "deleted";
     id: string;
+    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     country: string | null;
     role: "user" | "admin";
-    status: "active" | "suspended" | "deleted";
-    createdAt: string;
     lastSeenAt: string | null;
 }>;
 export declare const adminUsersQuerySchema: z.ZodObject<{
@@ -43,19 +43,19 @@ export declare const adminUsersQuerySchema: z.ZodObject<{
     sort: z.ZodDefault<z.ZodEnum<["createdAt", "lastSeenAt", "email"]>>;
     order: z.ZodDefault<z.ZodEnum<["asc", "desc"]>>;
 }, "strip", z.ZodTypeAny, {
-    sort: "email" | "createdAt" | "lastSeenAt";
+    sort: "createdAt" | "email" | "lastSeenAt";
     limit: number;
     order: "asc" | "desc";
+    status?: "active" | "suspended" | "deleted" | undefined;
     country?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
     cursor?: string | undefined;
     q?: string | undefined;
 }, {
+    status?: "active" | "suspended" | "deleted" | undefined;
+    sort?: "createdAt" | "email" | "lastSeenAt" | undefined;
     country?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
-    sort?: "email" | "createdAt" | "lastSeenAt" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
     q?: string | undefined;
@@ -73,50 +73,50 @@ export declare const adminUsersListSchema: z.ZodObject<{
         createdAt: z.ZodString;
         lastSeenAt: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
+        status: "active" | "suspended" | "deleted";
         id: string;
+        createdAt: string;
         email: string;
         firstName: string;
         lastName: string;
         country: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
-        createdAt: string;
         lastSeenAt: string | null;
     }, {
+        status: "active" | "suspended" | "deleted";
         id: string;
+        createdAt: string;
         email: string;
         firstName: string;
         lastName: string;
         country: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
-        createdAt: string;
         lastSeenAt: string | null;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
+        status: "active" | "suspended" | "deleted";
         id: string;
+        createdAt: string;
         email: string;
         firstName: string;
         lastName: string;
         country: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
-        createdAt: string;
         lastSeenAt: string | null;
     }[];
     nextCursor: string | null;
 }, {
     items: {
+        status: "active" | "suspended" | "deleted";
         id: string;
+        createdAt: string;
         email: string;
         firstName: string;
         lastName: string;
         country: string | null;
         role: "user" | "admin";
-        status: "active" | "suspended" | "deleted";
-        createdAt: string;
         lastSeenAt: string | null;
     }[];
     nextCursor: string | null;
@@ -145,27 +145,27 @@ export declare const adminUserDetailSchema: z.ZodObject<{
         revokedAt: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        deviceInfo: Record<string, unknown> | null;
         ip: string | null;
+        deviceInfo: Record<string, unknown> | null;
         expiresAt: string;
         revokedAt: string | null;
     }, {
         id: string;
-        deviceInfo: Record<string, unknown> | null;
         ip: string | null;
+        deviceInfo: Record<string, unknown> | null;
         expiresAt: string;
         revokedAt: string | null;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
+    status: "active" | "suspended" | "deleted";
     id: string;
+    reviewCount: number;
+    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     country: string | null;
     role: "user" | "admin";
-    status: "active" | "suspended" | "deleted";
-    createdAt: string;
-    reviewCount: number;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
@@ -173,21 +173,21 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     openReportsAgainst: number;
     sessions: {
         id: string;
-        deviceInfo: Record<string, unknown> | null;
         ip: string | null;
+        deviceInfo: Record<string, unknown> | null;
         expiresAt: string;
         revokedAt: string | null;
     }[];
 }, {
+    status: "active" | "suspended" | "deleted";
     id: string;
+    reviewCount: number;
+    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     country: string | null;
     role: "user" | "admin";
-    status: "active" | "suspended" | "deleted";
-    createdAt: string;
-    reviewCount: number;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
@@ -195,8 +195,8 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     openReportsAgainst: number;
     sessions: {
         id: string;
-        deviceInfo: Record<string, unknown> | null;
         ip: string | null;
+        deviceInfo: Record<string, unknown> | null;
         expiresAt: string;
         revokedAt: string | null;
     }[];
@@ -207,25 +207,25 @@ export declare const adminUserPatchSchema: z.ZodEffects<z.ZodObject<{
     firstName: z.ZodOptional<z.ZodString>;
     lastName: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    status?: "active" | "suspended" | "deleted" | undefined;
     firstName?: string | undefined;
     lastName?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
 }, {
+    status?: "active" | "suspended" | "deleted" | undefined;
     firstName?: string | undefined;
     lastName?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
 }>, {
+    status?: "active" | "suspended" | "deleted" | undefined;
     firstName?: string | undefined;
     lastName?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
 }, {
+    status?: "active" | "suspended" | "deleted" | undefined;
     firstName?: string | undefined;
     lastName?: string | undefined;
     role?: "user" | "admin" | undefined;
-    status?: "active" | "suspended" | "deleted" | undefined;
 }>;
 export declare const adminUserImpersonateResponseSchema: z.ZodObject<{
     accessToken: z.ZodString;
@@ -239,4 +239,29 @@ export declare const adminUserImpersonateResponseSchema: z.ZodObject<{
 }>;
 export type AdminUsersQuery = z.infer<typeof adminUsersQuerySchema>;
 export type AdminUserPatch = z.infer<typeof adminUserPatchSchema>;
+export declare const adminUserReset2faRequestSchema: z.ZodObject<{
+    notes: z.ZodOptional<z.ZodString>;
+    confirmSelfReset: z.ZodOptional<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    notes?: string | undefined;
+    confirmSelfReset?: boolean | undefined;
+}, {
+    notes?: string | undefined;
+    confirmSelfReset?: boolean | undefined;
+}>;
+export type AdminUserReset2faRequest = z.infer<typeof adminUserReset2faRequestSchema>;
+export declare const adminUserReset2faResponseSchema: z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    userId: z.ZodString;
+    message: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    message: string;
+    ok: true;
+    userId: string;
+}, {
+    message: string;
+    ok: true;
+    userId: string;
+}>;
+export type AdminUserReset2faResponse = z.infer<typeof adminUserReset2faResponseSchema>;
 //# sourceMappingURL=users.d.ts.map
