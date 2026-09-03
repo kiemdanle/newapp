@@ -153,18 +153,20 @@ export default function ProductEditScreen() {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 10,
-                padding: 12,
+                gap: 12,
+                padding: 14,
                 borderRadius: theme.radii.md,
-                backgroundColor: '#FEEFC3',
+                backgroundColor: theme.colors.accentLight,
                 borderWidth: 1,
-                borderColor: '#F5A623',
+                borderColor: theme.colors.accent,
               }}
             >
-              <Ionicons name="time-outline" size={20} color="#D97706" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#92400E', fontWeight: '600', fontSize: 13 }}>Under Moderation Review</Text>
-                <Text testID="edit-pending-message" style={{ color: '#B45309', fontSize: 12, marginTop: 2 }}>
+              <Ionicons name="time-outline" size={22} color={theme.colors.accent} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ color: theme.scheme === 'dark' ? theme.colors.accent : '#7C3804', fontWeight: '700', fontSize: 14 }}>
+                  Under Moderation Review
+                </Text>
+                <Text testID="edit-pending-message" style={{ color: theme.colors.text, fontSize: 13, lineHeight: 18 }}>
                   Your suggested edit has been submitted and is awaiting review by our moderators.
                 </Text>
               </View>

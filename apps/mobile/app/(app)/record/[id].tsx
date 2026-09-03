@@ -22,8 +22,9 @@ import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
 import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 import { Button } from '../../../src/components/Button';
 import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
-import { choosePhotos, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
+import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
+import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 function getRelativeExpiryLabel(expiryDateStr: string, country?: string | null): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -84,6 +85,12 @@ export default function RecordDetail() {
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
   const catalogProductId = record.productId || product?.id;
+  const photoList = [
+    record.photoUrl,
+    product?.imageUrl,
+    ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
+  ].filter(Boolean) as string[];
+  const uniquePhotos = Array.from(new Set(photoList));
   const mark = async (status: 'consumed' | 'discarded') => {
     await patchLocalRecord(record.id, { status });
     navigation.goBack();
@@ -169,7 +176,9 @@ export default function RecordDetail() {
             if (picked.length > 0 && picked[0]) {
               await savePhotoToRecord(picked[0]);
             }
-          } catch {}
+          } catch (err) {
+            handlePhotoPickerError(err, 'gallery');
+          }
         },
       },
       { text: 'Cancel', style: 'cancel' },
@@ -207,23 +216,19 @@ export default function RecordDetail() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Photo / Add Photo Card */}
-        {imageUrl || (product?.photos && product.photos.length > 0) ? (
-          <View style={[styles.photoHeroWrap, { borderColor: theme.colors.border }]}>
-            <ProductThumbnail
-              product={product}
-              photoUrl={record.photoUrl}
-              style={styles.photoHero}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Change photo"
-              onPress={handlePickPhoto}
-              style={[styles.changePhotoFloatingBtn, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}
-            >
-              <Ionicons name="camera-outline" size={15} color={theme.colors.text} />
-              <Text style={[styles.changePhotoBtnText, { color: theme.colors.text }]}>Change</Text>
-            </Pressable>
-          </View>
+        {uniquePhotos.length > 0 ? (
+          <ItemImageGallery
+            photos={uniquePhotos}
+            title={displayName || 'Pantry Item'}
+            placeholderIcon="basket-outline"
+            placeholderText="No photo attached"
+            floatingAction={{
+              icon: 'camera-outline',
+              label: 'Change',
+              onPress: handlePickPhoto,
+              accessibilityLabel: 'Change photo',
+            }}
+          />
         ) : (
           <Pressable
             accessibilityRole="button"

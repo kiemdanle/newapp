@@ -58,6 +58,8 @@ apps/mobile/ios/Pods/
 apps/mobile/ios/build/
 apps/mobile/ios/.xcode.env.local
 apps/mobile/ios/GoogleService-Info.plist
+*.xcuserdata
+xcuserdata/
 apps/mobile/android/.gradle/
 apps/mobile/android/.kotlin/
 apps/mobile/android/local.properties

@@ -250,6 +250,7 @@ exports[`welcome in expyrico snapshot 1`] = `
               accessible={true}
               collapsable={false}
               focusable={true}
+              hitSlop={6}
               onBlur={[Function]}
               onClick={[Function]}
               onFocus={[Function]}
@@ -265,16 +266,30 @@ exports[`welcome in expyrico snapshot 1`] = `
                     "alignItems": "center",
                     "borderRadius": 22,
                     "borderWidth": 1,
+                    "elevation": 2,
                     "height": 44,
                     "justifyContent": "center",
                     "minHeight": 44,
                     "minWidth": 44,
+                    "shadowOffset": {
+                      "height": 2,
+                      "width": 0,
+                    },
+                    "shadowRadius": 6,
                     "width": 44,
                   },
                   {
-                    "backgroundColor": "#FAFAF8",
-                    "borderColor": "#F0F0ED",
-                    "opacity": 1,
+                    "backgroundColor": "#FFFFFF",
+                    "borderColor": "rgba(44, 44, 40, 0.08)",
+                    "shadowColor": "#2C2C28",
+                    "shadowOpacity": 0.06,
+                  },
+                  {
+                    "transform": [
+                      {
+                        "scale": 1,
+                      },
+                    ],
                   },
                 ]
               }
@@ -1095,6 +1110,7 @@ exports[`welcome in expyricoDark snapshot 1`] = `
               accessible={true}
               collapsable={false}
               focusable={true}
+              hitSlop={6}
               onBlur={[Function]}
               onClick={[Function]}
               onFocus={[Function]}
@@ -1110,16 +1126,30 @@ exports[`welcome in expyricoDark snapshot 1`] = `
                     "alignItems": "center",
                     "borderRadius": 22,
                     "borderWidth": 1,
+                    "elevation": 2,
                     "height": 44,
                     "justifyContent": "center",
                     "minHeight": 44,
                     "minWidth": 44,
+                    "shadowOffset": {
+                      "height": 2,
+                      "width": 0,
+                    },
+                    "shadowRadius": 6,
                     "width": 44,
                   },
                   {
                     "backgroundColor": "#191F1B",
                     "borderColor": "#2D3A34",
-                    "opacity": 1,
+                    "shadowColor": "#000000",
+                    "shadowOpacity": 0.28,
+                  },
+                  {
+                    "transform": [
+                      {
+                        "scale": 1,
+                      },
+                    ],
                   },
                 ]
               }

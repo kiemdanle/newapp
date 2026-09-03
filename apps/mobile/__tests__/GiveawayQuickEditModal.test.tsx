@@ -70,7 +70,7 @@ describe('GiveawayQuickEditModal', () => {
       height: 600,
     });
 
-    const { getByText, getByLabelText } = render(
+    const { getByText, getByLabelText, getByTestId } = render(
       wrap(
         <GiveawayQuickEditModal
           visible={true}
@@ -83,9 +83,10 @@ describe('GiveawayQuickEditModal', () => {
 
     const cameraBtn = getByLabelText('Take a photo with camera');
     fireEvent.press(cameraBtn);
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
 
     await waitFor(() => {
-      expect(mockTakePhoto).toHaveBeenCalledTimes(1);
       expect(getByText('Photos (2/5)')).toBeTruthy();
     });
 

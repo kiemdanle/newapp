@@ -136,7 +136,7 @@ export default function Profile() {
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Expyrico User';
 
   return (
-    <Screen contentContainerStyle={{ paddingBottom: 130 }}>
+    <Screen contentContainerStyle={{ paddingBottom: 84 }}>
       {/* Header */}
       <View style={styles.header}>
         <Logo size={32} withWordmark />
@@ -430,8 +430,8 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   header: {
-    marginBottom: 18,
-    marginTop: 6,
+    marginBottom: 12,
+    marginTop: 0,
   },
   headerSubcopy: {
     fontSize: 13,

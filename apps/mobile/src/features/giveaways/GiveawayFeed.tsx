@@ -13,7 +13,6 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
 import type { GiveawayFeedFilters } from '../../api/giveaways';
@@ -42,10 +41,8 @@ interface Props {
 
 export function GiveawayFeed({ onOpen, onNew }: Props) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppNavigationProp>();
   const currentUserId = useSessionStore((s) => s.user?.id ?? null);
-  const fabBottom = 84 + Math.max(insets.bottom, 0);
 
   const updateGiveaway = useUpdateGiveaway();
   const cancelGiveaway = useCancelGiveaway();
@@ -334,7 +331,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         keyExtractor={(d: Giveaway) => d.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: 150 + insets.bottom },
+          { paddingBottom: 84 },
         ]}
         refreshControl={
           <RefreshControl
@@ -441,23 +438,6 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         }
       />
 
-      {/* Floating Action Button (FAB) positioned cleanly above floating tab bar */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Share item"
-        onPress={onNew}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            bottom: fabBottom,
-            backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-            shadowColor: '#000',
-          },
-        ]}
-      >
-        <Ionicons name="add" size={22} color={theme.colors.primaryFg} style={{ marginRight: 4 }} />
-        <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>Share Item</Text>
-      </Pressable>
 
       {/* Filter Modal Sheet */}
       <GiveawayFilterModal
@@ -484,7 +464,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 8,
     paddingBottom: 6,
   },
   heading: {
@@ -565,24 +545,5 @@ const styles = StyleSheet.create({
   emptyStateActionText: {
     fontWeight: '700',
     fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 28,
-    minHeight: 50,
-    elevation: 6,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
-  fabText: {
-    fontSize: 15,
-    fontWeight: '700',
   },
 });

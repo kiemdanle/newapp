@@ -339,7 +339,7 @@ export default function NewProductScreen() {
             alignItems: 'center',
             justifyContent: 'space-between',
             backgroundColor: theme.colors.bgElevated,
-            borderColor: '#DCDED9',
+            borderColor: theme.colors.border,
             borderWidth: 1.5,
             borderRadius: theme.radii.lg,
             padding: 14,
@@ -376,13 +376,13 @@ export default function NewProductScreen() {
       {/* Name Input Card */}
       <View
         style={{
-          backgroundColor: '#FFFFFF',
-          borderColor: '#E2E2DE',
+          backgroundColor: theme.colors.bgElevated,
+          borderColor: theme.colors.border,
           borderWidth: 1.5,
           borderRadius: theme.radii.lg,
           padding: 18,
           gap: 12,
-          shadowColor: '#2C2C28',
+          shadowColor: theme.colors.neutralDark,
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.05,
           shadowRadius: 6,
@@ -395,8 +395,8 @@ export default function NewProductScreen() {
         </View>
         <View
           style={{
-            backgroundColor: nameFocused ? '#FFFFFF' : '#F9FAF9',
-            borderColor: nameFocused ? theme.colors.primary : '#DCDED9',
+            backgroundColor: nameFocused ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+            borderColor: nameFocused ? theme.colors.primary : theme.colors.border,
             borderWidth: 1.5,
             borderRadius: theme.radii.md,
             minHeight: 52,

@@ -15,8 +15,16 @@ if linkage != nil
 end
 
 target 'Expyrico' do
-  use_modular_headers!
   config = use_native_modules!
+  pod 'FirebaseCore', :modular_headers => true
+  pod 'FirebaseCoreInternal', :modular_headers => true
+  pod 'FirebaseCoreExtension', :modular_headers => true
+  pod 'FirebaseMessaging', :modular_headers => true
+  pod 'FirebaseInstallations', :modular_headers => true
+  pod 'GoogleDataTransport', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+  pod 'RecaptchaEnterprise', :modular_headers => true
 
   # WatermelonDB's podspec requires the NPM-vendored @nozbe/simdjson pod.
   pod 'simdjson', :path => '../../../node_modules/@nozbe/simdjson'
@@ -44,6 +52,9 @@ target 'Expyrico' do
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |bc|
         bc.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '16.0'
+        bc.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        bc.build_settings['CODE_SIGNING_IDENTITY'] = ''
+        bc.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
       end
     end
 

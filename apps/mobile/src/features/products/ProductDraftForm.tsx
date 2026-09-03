@@ -176,7 +176,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
           styles.identifierCard,
           {
             backgroundColor: theme.colors.bgElevated,
-            borderColor: '#DCDED9',
+            borderColor: theme.colors.border,
             borderRadius: theme.radii.lg,
           },
         ]}
@@ -212,9 +212,10 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
         style={[
           styles.card,
           {
-            backgroundColor: '#FFFFFF',
-            borderColor: '#E2E2DE',
+            backgroundColor: theme.colors.bgElevated,
+            borderColor: theme.colors.border,
             borderRadius: theme.radii.lg,
+            shadowColor: theme.colors.neutralDark,
           },
         ]}
       >
@@ -228,8 +229,8 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
             style={[
               styles.inputBox,
               {
-                backgroundColor: focusedField === 'name' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'name' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'name' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'name' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -265,8 +266,8 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               styles.inputBox,
               styles.multilineBox,
               {
-                backgroundColor: focusedField === 'description' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'description' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'description' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'description' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -306,8 +307,8 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               style={[
                 styles.inputBox,
                 {
-                  backgroundColor: focusedField === 'brand' ? '#FFFFFF' : '#F9FAF9',
-                  borderColor: focusedField === 'brand' ? theme.colors.primary : '#DCDED9',
+                  backgroundColor: focusedField === 'brand' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                  borderColor: focusedField === 'brand' ? theme.colors.primary : theme.colors.border,
                   borderRadius: theme.radii.md,
                 },
               ]}
@@ -340,8 +341,8 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               style={[
                 styles.inputBox,
                 {
-                  backgroundColor: focusedField === 'category' ? '#FFFFFF' : '#F9FAF9',
-                  borderColor: focusedField === 'category' ? theme.colors.primary : '#DCDED9',
+                  backgroundColor: focusedField === 'category' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                  borderColor: focusedField === 'category' ? theme.colors.primary : theme.colors.border,
                   borderRadius: theme.radii.md,
                 },
               ]}
@@ -439,7 +440,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     padding: 18,
     gap: 16,
-    shadowColor: '#2C2C28',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,

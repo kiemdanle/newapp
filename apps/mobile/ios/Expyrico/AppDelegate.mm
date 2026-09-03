@@ -6,13 +6,29 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  [FIRApp configure];
+  @try {
+    if ([FIRApp defaultApp] == nil) {
+      NSString *filePath = [[NSBundle mainBundle] pathForResource:@"GoogleService-Info" ofType:@"plist"];
+      if (filePath != nil) {
+        FIROptions *options = [[FIROptions alloc] initWithContentsOfFile:filePath];
+        if (options != nil) {
+          [FIRApp configureWithOptions:options];
+        }
+      }
+    }
+  } @catch (NSException *exception) {
+    NSLog(@"Firebase initialization error: %@", exception.reason);
+  }
+
   self.moduleName = @"Expyrico";
-  // You can add your custom initial props in the dictionary below.
-  // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
-  return [super application:application didFinishLaunchingWithOptions:launchOptions];
+  BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  self.window.backgroundColor = [UIColor systemBackgroundColor];
+  if (self.window.rootViewController.view != nil) {
+    self.window.rootViewController.view.backgroundColor = [UIColor systemBackgroundColor];
+  }
+  return result;
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge

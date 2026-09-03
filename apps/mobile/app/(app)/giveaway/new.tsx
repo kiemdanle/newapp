@@ -13,7 +13,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
-import { choosePhotos, takePhoto, type PickedPhoto } from '@/features/products/photo-picker-adapter';
+import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '@/features/products/photo-picker-adapter';
 import { WheelDatePickerModal } from '@/components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '@/components/MultiPhotoCameraModal';
 import { useSessionStore } from '@/auth/session-store';
@@ -69,30 +69,16 @@ export default function NewGiveawayScreen() {
     }
   }
 
-  async function handleTakePhoto() {
+  function handleTakePhoto() {
     if (photos.length >= MAX_PHOTOS) return;
     setError(null);
     setShowCameraModal(true);
-    try {
-      const picked = await takePhoto();
-      if (picked) {
-        setPhotos((prev) => [
-          ...prev,
-          {
-            id: `photo-${Date.now()}-${Math.random()}`,
-            path: picked.path,
-            mime: picked.mime,
-          },
-        ]);
-      }
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to capture photo');
-    }
   }
 
   async function handleChooseGallery() {
     const remaining = MAX_PHOTOS - photos.length;
     if (remaining <= 0) return;
+    setError(null);
     try {
       const pickedList = await choosePhotos(remaining);
       if (pickedList && pickedList.length > 0) {
@@ -104,7 +90,8 @@ export default function NewGiveawayScreen() {
         setPhotos((prev) => [...prev, ...newItems]);
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to select photos');
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setError(msg);
     }
   }
 

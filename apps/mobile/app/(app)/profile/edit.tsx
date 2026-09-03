@@ -24,8 +24,8 @@ import {
   type CountryMetadata,
 } from '../../../src/utils/country-format';
 import {
-  takePhoto,
   choosePhotos,
+  handlePhotoPickerError,
 } from '../../../src/features/products/photo-picker-adapter';
 import { useTheme } from '../../../src/theme/useTheme';
 
@@ -142,8 +142,12 @@ export default function EditProfileScreen() {
           if (buttonIndex === 0) {
             setIsCameraModalVisible(true);
           } else if (buttonIndex === 1) {
-            const photos = await choosePhotos(1).catch(() => []);
-            if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
+            try {
+              const photos = await choosePhotos(1);
+              if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
+            } catch (err) {
+              handlePhotoPickerError(err, 'gallery');
+            }
           } else if (user?.avatarUrl && buttonIndex === 2) {
             await handleAvatarDelete();
           }
@@ -160,8 +164,12 @@ export default function EditProfileScreen() {
         {
           text: 'Choose from Library',
           onPress: async () => {
-            const photos = await choosePhotos(1).catch(() => []);
-            if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
+            try {
+              const photos = await choosePhotos(1);
+              if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
+            } catch (err) {
+              handlePhotoPickerError(err, 'gallery');
+            }
           },
         },
         ...(user?.avatarUrl

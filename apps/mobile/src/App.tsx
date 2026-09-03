@@ -2,12 +2,12 @@ import 'react-native-get-random-values';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View, StyleSheet, TextInput, AppState, Platform, type AppStateStatus } from 'react-native';
 import { StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { createQueryClient } from './api/query-client';
-import { ThemeProvider } from './theme/ThemeProvider';
+import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from './theme/store';
 import { hydrateSession, useSessionStore } from './auth/session-store';
 import { imageDiskCache } from './cache/image-disk-cache';
@@ -49,6 +49,8 @@ export default function App() {
 }
 
 function RootApp() {
+  const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const [bootError, setBootError] = useState<string | null>(null);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
@@ -67,14 +69,32 @@ function RootApp() {
   const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <InAppNotificationBanner
         notification={activeNotification}
         onPress={(data) => void handleNotificationTap(data)}
         onDismiss={dismissNotification}
       />
-      <NavigationContainer ref={navigationRef}>
-        <StatusBar barStyle="default" />
+      <NavigationContainer
+        ref={navigationRef}
+        theme={{
+          ...DefaultTheme,
+          dark: isDark,
+          colors: {
+            ...DefaultTheme.colors,
+            primary: theme.colors.primary,
+            background: theme.colors.bg,
+            card: theme.colors.bgElevated,
+            text: theme.colors.text,
+            border: theme.colors.border,
+            notification: theme.colors.warning,
+          },
+        }}
+      >
+        <StatusBar
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+          backgroundColor={theme.colors.bg}
+        />
         <RootNavigator />
       </NavigationContainer>
       {bootError ? (

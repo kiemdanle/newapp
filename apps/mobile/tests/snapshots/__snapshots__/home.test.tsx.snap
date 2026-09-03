@@ -237,8 +237,9 @@ exports[`home in expyrico snapshot 1`] = `
                 {
                   "flexGrow": 1,
                   "gap": 12,
-                  "padding": 24,
-                  "paddingBottom": 116,
+                  "paddingBottom": 84,
+                  "paddingHorizontal": 18,
+                  "paddingTop": 4,
                 }
               }
               data={[]}
@@ -556,108 +557,6 @@ exports[`home in expyrico snapshot 1`] = `
           </View>
         </View>
       </RNCSafeAreaView>
-      <View
-        style={
-          [
-            {
-              "left": 24,
-              "position": "absolute",
-              "right": 24,
-            },
-            {
-              "bottom": 88,
-            },
-          ]
-        }
-        testID="home-scan-action"
-      >
-        <View
-          accessibilityLabel="Scan pantry items"
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "borderColor": "transparent",
-                "borderWidth": 1,
-                "height": 52,
-                "justifyContent": "center",
-                "minHeight": 52,
-                "paddingHorizontal": 24,
-                "paddingVertical": 0,
-              },
-              {
-                "backgroundColor": "#F5A623",
-                "borderRadius": 999,
-                "opacity": 1,
-              },
-              false,
-              false,
-              false,
-              false,
-              false,
-            ]
-          }
-        >
-          <View
-            style={
-              {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 8,
-                "justifyContent": "center",
-              }
-            }
-          >
-            <Text
-              style={
-                [
-                  {
-                    "includeFontPadding": false,
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#2C2C28",
-                    "fontSize": 14,
-                    "fontWeight": "700",
-                    "lineHeight": 20,
-                  },
-                ]
-              }
-            >
-              Scan an item
-            </Text>
-          </View>
-        </View>
-      </View>
     </View>
   </View>
 </View>
@@ -900,8 +799,9 @@ exports[`home in expyricoDark snapshot 1`] = `
                 {
                   "flexGrow": 1,
                   "gap": 12,
-                  "padding": 24,
-                  "paddingBottom": 116,
+                  "paddingBottom": 84,
+                  "paddingHorizontal": 18,
+                  "paddingTop": 4,
                 }
               }
               data={[]}
@@ -1219,108 +1119,6 @@ exports[`home in expyricoDark snapshot 1`] = `
           </View>
         </View>
       </RNCSafeAreaView>
-      <View
-        style={
-          [
-            {
-              "left": 24,
-              "position": "absolute",
-              "right": 24,
-            },
-            {
-              "bottom": 88,
-            },
-          ]
-        }
-        testID="home-scan-action"
-      >
-        <View
-          accessibilityLabel="Scan pantry items"
-          accessibilityRole="button"
-          accessibilityState={
-            {
-              "busy": undefined,
-              "checked": undefined,
-              "disabled": undefined,
-              "expanded": undefined,
-              "selected": undefined,
-            }
-          }
-          accessibilityValue={
-            {
-              "max": undefined,
-              "min": undefined,
-              "now": undefined,
-              "text": undefined,
-            }
-          }
-          accessible={true}
-          collapsable={false}
-          focusable={true}
-          onBlur={[Function]}
-          onClick={[Function]}
-          onFocus={[Function]}
-          onResponderGrant={[Function]}
-          onResponderMove={[Function]}
-          onResponderRelease={[Function]}
-          onResponderTerminate={[Function]}
-          onResponderTerminationRequest={[Function]}
-          onStartShouldSetResponder={[Function]}
-          style={
-            [
-              {
-                "borderColor": "transparent",
-                "borderWidth": 1,
-                "height": 52,
-                "justifyContent": "center",
-                "minHeight": 52,
-                "paddingHorizontal": 24,
-                "paddingVertical": 0,
-              },
-              {
-                "backgroundColor": "#F5A623",
-                "borderRadius": 999,
-                "opacity": 1,
-              },
-              false,
-              false,
-              false,
-              false,
-              false,
-            ]
-          }
-        >
-          <View
-            style={
-              {
-                "alignItems": "center",
-                "flexDirection": "row",
-                "gap": 8,
-                "justifyContent": "center",
-              }
-            }
-          >
-            <Text
-              style={
-                [
-                  {
-                    "includeFontPadding": false,
-                    "textAlign": "center",
-                  },
-                  {
-                    "color": "#2C2C28",
-                    "fontSize": 14,
-                    "fontWeight": "700",
-                    "lineHeight": 20,
-                  },
-                ]
-              }
-            >
-              Scan an item
-            </Text>
-          </View>
-        </View>
-      </View>
     </View>
   </View>
 </View>

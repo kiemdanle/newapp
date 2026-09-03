@@ -1,5 +1,14 @@
 import ImagePicker from 'react-native-image-crop-picker';
-import { takePhoto, takePhotos, choosePhotos, cleanupTemp, PhotoTooLargeError } from './photo-picker-adapter';
+import { Alert, Linking } from 'react-native';
+import {
+  takePhoto,
+  takePhotos,
+  choosePhotos,
+  cleanupTemp,
+  PhotoTooLargeError,
+  isPermissionDenied,
+  handlePhotoPickerError,
+} from './photo-picker-adapter';
 
 jest.mock('react-native-image-crop-picker', () => ({
   __esModule: true,
@@ -151,5 +160,43 @@ describe('cleanupTemp', () => {
     cleanSingleMock.mockRejectedValue(new Error('not found'));
 
     await expect(cleanupTemp(['/tmp/gone.jpg'])).resolves.toBeUndefined();
+  });
+});
+
+describe('isPermissionDenied', () => {
+  it('detects standard E_NO_LIBRARY_PERMISSION and E_NO_CAMERA_PERMISSION codes', () => {
+    expect(isPermissionDenied({ code: 'E_NO_LIBRARY_PERMISSION' })).toBe(true);
+    expect(isPermissionDenied({ code: 'E_NO_CAMERA_PERMISSION' })).toBe(true);
+    expect(isPermissionDenied({ code: 'E_PERMISSION_MISSING' })).toBe(true);
+    expect(isPermissionDenied(new Error('User did not grant library permission.'))).toBe(true);
+    expect(isPermissionDenied({ code: 'E_PICKER_CANCELLED' })).toBe(false);
+    expect(isPermissionDenied(new Error('Unknown failure'))).toBe(false);
+    expect(isPermissionDenied(null)).toBe(false);
+  });
+});
+
+describe('handlePhotoPickerError', () => {
+  beforeEach(() => {
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.spyOn(Linking, 'openSettings').mockImplementation(() => Promise.resolve());
+  });
+
+  it('returns null on user cancellation without opening settings alert', () => {
+    const res = handlePhotoPickerError({ code: 'E_PICKER_CANCELLED' }, 'gallery');
+    expect(res).toBeNull();
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('shows Open Settings alert when permission is denied and returns guidance string', () => {
+    const res = handlePhotoPickerError({ code: 'E_NO_LIBRARY_PERMISSION' }, 'gallery');
+    expect(res).toBe('Permission required. Please enable access in Settings.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Photo Library Access Required',
+      expect.stringContaining('access to your photo library'),
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Cancel' }),
+        expect.objectContaining({ text: 'Open Settings' }),
+      ]),
+    );
   });
 });

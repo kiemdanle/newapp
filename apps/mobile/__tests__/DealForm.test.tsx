@@ -132,15 +132,15 @@ describe('DealForm', () => {
     fireEvent.changeText(getByLabelText('store'), 'Whole Foods');
 
     fireEvent.press(getByTestId('deal-photo-camera-btn'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     await waitFor(() => expect(getByText('Proof Photo')).toBeTruthy());
-
     fireEvent.press(getByText('Post Deal to Community'));
 
     await waitFor(() => {
-      expect(mockUploadDealPhoto).toHaveBeenCalledWith({
-        path: '/tmp/receipt.jpg',
-        mime: 'image/jpeg',
-      });
+      expect(mockUploadDealPhoto).toHaveBeenCalledWith(
+        expect.objectContaining({ mime: 'image/jpeg' }),
+      );
       expect(mockCreateDeal).toHaveBeenCalledWith(
         expect.objectContaining({
           productId: 'p-1',

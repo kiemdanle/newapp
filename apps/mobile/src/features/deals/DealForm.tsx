@@ -13,7 +13,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal } from '@expyrico/shared';
 import { useCreateDeal, useDealStores, useUpdateDeal, uploadDealPhoto } from '../../api/deals';
-import { takePhoto, choosePhotos } from '../products/photo-picker-adapter';
+import { choosePhotos, handlePhotoPickerError } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { useSessionStore } from '../../auth/session-store';
@@ -56,17 +56,9 @@ export function DealForm({ product, existing, onDone }: Props) {
     }
   }
 
-  async function handleTakePhoto() {
+  function handleTakePhoto() {
     setError(null);
     setShowCameraModal(true);
-    try {
-      const picked = await takePhoto();
-      if (picked) {
-        setLocalPhoto({ path: picked.path, mime: picked.mime });
-      }
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to capture photo');
-    }
   }
 
   async function handleChooseGallery() {
@@ -76,7 +68,8 @@ export function DealForm({ product, existing, onDone }: Props) {
         setLocalPhoto({ path: pickedList[0].path, mime: pickedList[0].mime });
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to select photo');
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setError(msg);
     }
   }
 

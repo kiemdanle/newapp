@@ -41,7 +41,7 @@
 			<string>google-signin</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.123456789000-abcdefghijklmnopqrstuvwxyz</string>
+				<string>com.googleusercontent.apps.269819093852-0ss6nhpoeh58fthol49fiotofoclc36d</string>
 			</array>
 		</dict>
 	</array>
@@ -59,7 +59,11 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Expyrico needs your camera to scan barcodes and expiry labels on your items.</string>
+	<string>Expyrico needs access to your camera to scan barcodes and capture photos of your items, deals, and products.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Expyrico needs access to your photo library to select photos for products, deals, giveaways, and pantry items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Expyrico needs permission to save captured photos to your photo library.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

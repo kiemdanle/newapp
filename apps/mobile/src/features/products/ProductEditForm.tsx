@@ -63,7 +63,11 @@ function LiveCaption({ live, proposed }: { live: string | null; proposed: string
   const theme = useTheme();
   const liveText = live ?? '—';
   if (liveText === (proposed || '—')) return null;
-  return <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Live: {liveText}</Text>;
+  return (
+    <Text style={{ color: theme.colors.primaryDark, fontSize: 12, fontWeight: '500', marginTop: 2 }}>
+      Live: {liveText}
+    </Text>
+  );
 }
 
 export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirtyChange, readOnly, hideSaveButton }: ProductEditFormProps) {
@@ -196,9 +200,10 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
         style={[
           styles.card,
           {
-            backgroundColor: '#FFFFFF',
-            borderColor: '#E2E2DE',
+            backgroundColor: theme.colors.bgElevated,
+            borderColor: theme.colors.border,
             borderRadius: theme.radii.lg,
+            shadowColor: theme.colors.neutralDark,
           },
         ]}
       >
@@ -212,8 +217,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
             style={[
               styles.inputBox,
               {
-                backgroundColor: focusedField === 'name' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'name' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'name' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'name' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -248,8 +253,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               styles.inputBox,
               styles.multilineBox,
               {
-                backgroundColor: focusedField === 'description' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'description' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'description' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'description' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -287,8 +292,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               style={[
                 styles.inputBox,
                 {
-                  backgroundColor: focusedField === 'brand' ? '#FFFFFF' : '#F9FAF9',
-                  borderColor: focusedField === 'brand' ? theme.colors.primary : '#DCDED9',
+                  backgroundColor: focusedField === 'brand' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                  borderColor: focusedField === 'brand' ? theme.colors.primary : theme.colors.border,
                   borderRadius: theme.radii.md,
                 },
               ]}
@@ -320,8 +325,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               style={[
                 styles.inputBox,
                 {
-                  backgroundColor: focusedField === 'category' ? '#FFFFFF' : '#F9FAF9',
-                  borderColor: focusedField === 'category' ? theme.colors.primary : '#DCDED9',
+                  backgroundColor: focusedField === 'category' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                  borderColor: focusedField === 'category' ? theme.colors.primary : theme.colors.border,
                   borderRadius: theme.radii.md,
                 },
               ]}
@@ -353,8 +358,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
             style={[
               styles.inputBox,
               {
-                backgroundColor: focusedField === 'defaultShelfLifeDays' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'defaultShelfLifeDays' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'defaultShelfLifeDays' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'defaultShelfLifeDays' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -395,8 +400,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
               styles.inputBox,
               styles.multilineBox,
               {
-                backgroundColor: focusedField === 'notes' ? '#FFFFFF' : '#F9FAF9',
-                borderColor: focusedField === 'notes' ? theme.colors.primary : '#DCDED9',
+                backgroundColor: focusedField === 'notes' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
+                borderColor: focusedField === 'notes' ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
               },
             ]}
@@ -462,7 +467,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     padding: 18,
     gap: 16,
-    shadowColor: '#2C2C28',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,

@@ -46,8 +46,9 @@ exports[`reviews in expyrico snapshot 1`] = `
             },
             {
               "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
+              "paddingBottom": 84,
+              "paddingHorizontal": 20,
+              "paddingTop": 8,
             },
             undefined,
           ]
@@ -226,8 +227,9 @@ exports[`reviews in expyricoDark snapshot 1`] = `
             },
             {
               "gap": 16,
-              "padding": 24,
-              "paddingBottom": 110,
+              "paddingBottom": 84,
+              "paddingHorizontal": 20,
+              "paddingTop": 8,
             },
             undefined,
           ]

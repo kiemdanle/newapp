@@ -151,8 +151,9 @@ export function RecordList({ header, empty, refreshing, onRefresh }: RecordListP
         alwaysBounceVertical={true}
         contentContainerStyle={{
           gap: theme.spacing.md,
-          padding: theme.spacing.xl,
-          paddingBottom: 116,
+          paddingHorizontal: theme.spacing.lg,
+          paddingTop: theme.spacing.xs,
+          paddingBottom: 84,
           flexGrow: 1,
         }}
         renderSectionHeader={({ section }) => (

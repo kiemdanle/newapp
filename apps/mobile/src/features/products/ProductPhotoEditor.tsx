@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { CoordinatedEntity, DraftMutationCoordinator } from './draft-mutation-coordinator';
-import { takePhoto, choosePhotos, cleanupTemp, PhotoTooLargeError, type PickedPhoto } from './photo-picker-adapter';
+import { choosePhotos, cleanupTemp, handlePhotoPickerError, type PickedPhoto } from './photo-picker-adapter';
 import { PrivateProductImage, type PrivateMediaTarget } from '../../api/product-private-image';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
@@ -155,16 +155,10 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
     }
   }, [addPhoto]);
 
-  const onTakePhoto = useCallback(async () => {
+  const onTakePhoto = useCallback(() => {
     setPickerError(null);
     setCameraModalVisible(true);
-    try {
-      const picked = await takePhoto();
-      if (picked) addPhoto(picked);
-    } catch (err) {
-      setPickerError(err instanceof PhotoTooLargeError ? err.message : (err as Error).message);
-    }
-  }, [addPhoto]);
+  }, []);
 
   const onChoosePhotos = useCallback(async () => {
     setPickerError(null);
@@ -172,7 +166,8 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
       const picked = await choosePhotos(remaining);
       for (const p of picked) addPhoto(p);
     } catch (err) {
-      setPickerError(err instanceof PhotoTooLargeError ? err.message : (err as Error).message);
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setPickerError(msg);
     }
   }, [addPhoto, remaining]);
 
@@ -234,7 +229,17 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   );
 
   return (
-    <View style={styles.card}>
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.colors.bgElevated,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radii.lg,
+          shadowColor: theme.colors.neutralDark,
+        },
+      ]}
+    >
       <View style={styles.headerRow}>
         <View style={styles.titleGroup}>
           <Ionicons name="images-outline" size={16} color={theme.colors.primary} />
@@ -253,7 +258,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
             style={[
               styles.photoCard,
               {
-                borderColor: index === 0 ? theme.colors.primary : '#DCDED9',
+                borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radii.md,
                 backgroundColor: theme.colors.bgElevated,
               },
@@ -413,13 +418,9 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E2E2DE',
     borderWidth: 1.5,
-    borderRadius: 22,
     padding: 18,
     gap: 14,
-    shadowColor: '#2C2C28',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,

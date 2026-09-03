@@ -103,9 +103,8 @@ describe('<ProductPhotoEditor />', () => {
     await waitFor(() => expect(getByTestId('photo-photo-1')).toBeTruthy());
   });
 
-  it('adds a photo via camera, shows upload progress, then marks it uploaded and cleans up the temp file', async () => {
+  it('adds a photo via camera modal, shows upload progress, then marks it uploaded and cleans up the temp file', async () => {
     const { coordinator, enqueue, setState } = makeCoordinator(entity());
-    mockTakePhoto.mockResolvedValue({ path: '/tmp/a.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 100 });
     const gate = deferred<Entity>();
     enqueue.mockImplementation((op: { kind: string; onProgress?: (r: number) => void }) => {
       if (op.kind === 'upload') {
@@ -117,6 +116,8 @@ describe('<ProductPhotoEditor />', () => {
 
     const { getByTestId, findByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     const localEntry = await findByTestId('local-photo-local-1');
     expect(localEntry).toBeTruthy();
     const progressNode = await findByTestId('local-photo-local-1-progress');
@@ -126,7 +127,7 @@ describe('<ProductPhotoEditor />', () => {
     setState(updated);
     gate.resolve(updated);
 
-    await waitFor(() => expect(mockCleanupTemp).toHaveBeenCalledWith(['/tmp/a.jpg']));
+    await waitFor(() => expect(mockCleanupTemp).toHaveBeenCalled());
   });
 
   it('shows a picker cap message and disables Add controls once 5 photos are reached', async () => {
@@ -143,12 +144,13 @@ describe('<ProductPhotoEditor />', () => {
 
   it('a failed upload shows a Retry action, which re-attempts the same local file', async () => {
     const { coordinator, enqueue } = makeCoordinator(entity());
-    mockTakePhoto.mockResolvedValue({ path: '/tmp/a.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 100 });
     enqueue.mockRejectedValueOnce(new Error('network down'));
     enqueue.mockResolvedValueOnce(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]));
 
     const { getByTestId, findByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     const retryButton = await findByTestId('local-photo-local-1-retry');
     expect(retryButton).toBeTruthy();
 
@@ -158,7 +160,6 @@ describe('<ProductPhotoEditor />', () => {
 
   it('cancelling an in-flight upload aborts the transport and cleans up the temp file', async () => {
     const { coordinator, enqueue } = makeCoordinator(entity());
-    mockTakePhoto.mockResolvedValue({ path: '/tmp/a.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 100 });
     const cancel = jest.fn();
     const gate = deferred<Entity>();
     enqueue.mockImplementation((op: { kind: string; onHandle?: (h: { cancel: () => void }) => void }) => {
@@ -171,12 +172,14 @@ describe('<ProductPhotoEditor />', () => {
 
     const { getByTestId, findByTestId } = render(wrap(<ProductPhotoEditor target={{ kind: 'draft', productId: 'p1' }} coordinator={coordinator} />));
     fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     const cancelButton = await findByTestId('local-photo-local-1-cancel');
 
     fireEvent.press(cancelButton);
 
     expect(cancel).toHaveBeenCalled();
-    await waitFor(() => expect(mockCleanupTemp).toHaveBeenCalledWith(['/tmp/a.jpg']));
+    await waitFor(() => expect(mockCleanupTemp).toHaveBeenCalled());
   });
 
   it('choosing from the gallery passes the exact remaining slot count and queues one entry per picked photo', async () => {
@@ -360,12 +363,13 @@ describe('<ProductPhotoEditor />', () => {
     expect(onUnsettledChange).toHaveBeenLastCalledWith(false);
 
     fireEvent.press(getByTestId('photo-take'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     await waitFor(() => expect(onUnsettledChange).toHaveBeenLastCalledWith(true));
 
     gate.resolve(entity([{ id: 'new-1', position: 0, thumbnailUrl: '/new' }]));
     await waitFor(() => expect(onUnsettledChange).toHaveBeenLastCalledWith(false));
   });
-
   it('every interactive control meets the 48px touch-target minimum', async () => {
     const { coordinator } = makeCoordinator(entity([{ id: 'photo-1', position: 0, thumbnailUrl: '/x' }]));
     queueFetch(jsonResponse('bytes'));

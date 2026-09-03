@@ -8,7 +8,7 @@ import { useMyHouseholds } from '../../api/households';
 import { usePantryScope } from '../../store/pantryScope';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
-import { takePhoto, choosePhotos, type PickedPhoto } from '../products/photo-picker-adapter';
+import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 interface Props {
@@ -119,15 +119,21 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     }
   };
 
+  const isDark = theme.scheme === 'dark';
   const input = {
     color: theme.colors.text,
-    borderColor: theme.colors.border,
+    borderColor: isDark ? theme.colors.border : 'rgba(44, 44, 40, 0.08)',
     borderWidth: 1,
     borderRadius: theme.radii.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: theme.colors.bgElevated,
+    backgroundColor: isDark ? theme.colors.bgElevated : '#FFFFFF',
+    shadowColor: '#2C2C28',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: isDark ? 0 : 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   } as const;
   const onCameraCapture = (pickedList: PickedPhoto[]) => {
     if (pickedList && pickedList.length > 0 && pickedList[0]) {
@@ -135,15 +141,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     }
   };
 
-  const onTakePhoto = async () => {
+  const onTakePhoto = () => {
     setError(null);
     setShowCameraModal(true);
-    try {
-      const picked = await takePhoto();
-      if (picked) setPhoto(picked);
-    } catch (err) {
-      setError((err as Error).message);
-    }
   };
 
   const onChoosePhotos = async () => {
@@ -151,7 +151,8 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
       const picked = await choosePhotos(1);
       if (picked.length > 0 && picked[0]) setPhoto(picked[0]);
     } catch (err) {
-      setError((err as Error).message);
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setError(msg);
     }
   };
 
@@ -267,21 +268,39 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
           {onOpenOcr ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Scan expiry date with camera"
               testID="add-record-ocr"
               onPress={onOpenOcr}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 6,
-                paddingHorizontal: theme.spacing.md,
-                justifyContent: 'center',
-                borderRadius: theme.radii.md,
-                backgroundColor: theme.colors.primary,
-                minHeight: 48,
-              }}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  paddingHorizontal: theme.spacing.md,
+                  justifyContent: 'center',
+                  borderRadius: theme.radii.md,
+                  backgroundColor: isDark ? 'rgba(75, 174, 138, 0.18)' : '#D6F0E6',
+                  borderWidth: 1,
+                  borderColor: isDark ? 'rgba(75, 174, 138, 0.35)' : 'rgba(75, 174, 138, 0.25)',
+                  minHeight: 48,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                },
+              ]}
             >
-              <Ionicons name="camera-outline" size={18} color={theme.colors.primaryFg} />
-              <Text style={{ color: theme.colors.primaryFg, fontWeight: '700', fontSize: 13 }}>Scan date</Text>
+              <Ionicons
+                name="camera-outline"
+                size={18}
+                color={isDark ? theme.colors.primary : theme.colors.primaryDark}
+              />
+              <Text
+                style={{
+                  color: isDark ? theme.colors.primary : theme.colors.primaryDark,
+                  fontWeight: '700',
+                  fontSize: 13,
+                }}
+              >
+                Scan date
+              </Text>
             </Pressable>
           ) : null}
         </View>

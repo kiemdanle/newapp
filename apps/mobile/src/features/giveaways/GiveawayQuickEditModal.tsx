@@ -20,7 +20,7 @@ import { formatDate } from '../../utils/country-format';
 import { Button } from '../../components/Button';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
-import { takePhoto, choosePhotos, type PickedPhoto } from '../products/photo-picker-adapter';
+import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { uploadGiveawayPhoto } from '../../api/giveaways';
 const MAX_PHOTOS = 5;
 
@@ -112,25 +112,10 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
     }
   }
 
-  async function handleTakePhoto() {
+  function handleTakePhoto() {
     if (photos.length >= MAX_PHOTOS) return;
     setError(null);
     setShowCameraModal(true);
-    try {
-      const picked = await takePhoto();
-      if (picked) {
-        setPhotos((prev) => [
-          ...prev,
-          {
-            id: `photo-${Date.now()}-${Math.random()}`,
-            path: picked.path,
-            mime: picked.mime,
-          },
-        ]);
-      }
-    } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to capture photo');
-    }
   }
 
   async function handleChooseGallery() {
@@ -147,7 +132,8 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
         setPhotos((prev) => [...prev, ...newItems]);
       }
     } catch (err: unknown) {
-      setError((err as Error).message || 'Failed to select photos');
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setError(msg);
     }
   }
 

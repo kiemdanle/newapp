@@ -44,27 +44,15 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('GiveawayFeed', () => {
-  it('renders giveaways title, items, and floating action button', () => {
+  it('renders giveaways title and items', () => {
     const onOpen = jest.fn();
     const onNew = jest.fn();
 
-    const { getByText, getByLabelText } = render(
+    const { getByText } = render(
       wrap(<GiveawayFeed onOpen={onOpen} onNew={onNew} />),
     );
 
     expect(getByText('Giveaways')).toBeTruthy();
     expect(getByText('Tomato Soup')).toBeTruthy();
-    expect(getByLabelText('Share item')).toBeTruthy();
-  });
-
-  it('triggers onNew when Share Item FAB is pressed', () => {
-    const onNew = jest.fn();
-
-    const { getByLabelText } = render(
-      wrap(<GiveawayFeed onOpen={jest.fn()} onNew={onNew} />),
-    );
-
-    fireEvent.press(getByLabelText('Share item'));
-    expect(onNew).toHaveBeenCalledTimes(1);
   });
 });

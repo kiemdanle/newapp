@@ -51,26 +51,17 @@ describe('GiveawayImageGallery', () => {
     expect(getByLabelText('Close gallery')).toBeTruthy();
   });
 
-  it('allows sliding left/right in fullscreen modal to change photos', () => {
-    const { getByLabelText, getByText, getByTestId } = wrap(
+  it('allows changing photos in fullscreen modal via thumbnails', () => {
+    const { getByLabelText, getByText } = wrap(
       <GiveawayImageGallery photos={samplePhotos} title="Organic Honey" />,
     );
 
     // Open fullscreen modal on photo 1
     fireEvent.press(getByLabelText('View photo 1 of 4 full screen'));
     expect(getByText('1 / 4')).toBeTruthy();
-    // In fullscreen modal, simulate sliding right to photo 2 (offset = 1 screen width)
-    const screenWidth = Dimensions.get('window').width;
-    const modalScrollView = getByTestId('modal-fullscreen-carousel');
-    fireEvent.scroll(modalScrollView, {
-      nativeEvent: {
-        contentOffset: { x: screenWidth, y: 0 },
-        layoutMeasurement: { width: screenWidth, height: 600 },
-        contentSize: { width: screenWidth * 4, height: 600 },
-      },
-    });
 
-    // Subtitle updates to 2 / 4
+    // Jump to photo 2
+    fireEvent.press(getByLabelText('Go to photo 2'));
     expect(getByText('2 / 4')).toBeTruthy();
   });
 

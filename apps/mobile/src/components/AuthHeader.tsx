@@ -68,12 +68,24 @@ export function AuthBrandBar() {
         accessibilityRole="button"
         accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
         onPress={toggleTheme}
+        hitSlop={6}
         style={({ pressed }) => [
           styles.themeToggleBtn,
+          isDark
+            ? {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                shadowColor: '#000000',
+                shadowOpacity: 0.28,
+              }
+            : {
+                backgroundColor: '#FFFFFF',
+                borderColor: 'rgba(44, 44, 40, 0.08)',
+                shadowColor: theme.colors.neutralDark,
+                shadowOpacity: 0.06,
+              },
           {
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
-            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.93 : 1 }],
           },
         ]}
       >
@@ -103,5 +115,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
 });

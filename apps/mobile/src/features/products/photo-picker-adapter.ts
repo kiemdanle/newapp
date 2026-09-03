@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import ImagePicker from 'react-native-image-crop-picker';
 
 // Thin wrapper around react-native-image-crop-picker so every other module
@@ -39,11 +39,52 @@ export class PhotoTooLargeError extends Error {
     this.sizeBytes = sizeBytes;
   }
 }
-
 function isPickerCancellation(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'E_PICKER_CANCELLED';
 }
 
+export function isPermissionDenied(err: unknown): boolean {
+  if (typeof err === 'object' && err !== null) {
+    const code = String((err as { code?: unknown }).code || '');
+    const message = String((err as { message?: unknown }).message || '').toLowerCase();
+    if (
+      code === 'E_NO_LIBRARY_PERMISSION' ||
+      code === 'E_NO_CAMERA_PERMISSION' ||
+      code === 'E_PERMISSION_MISSING' ||
+      message.includes('permission') ||
+      message.includes('grant') ||
+      message.includes('access')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function handlePhotoPickerError(err: unknown, kind: 'gallery' | 'camera' = 'gallery'): string | null {
+  if (isPickerCancellation(err)) return null;
+  if (isPermissionDenied(err)) {
+    const title = kind === 'gallery' ? 'Photo Library Access Required' : 'Camera Access Required';
+    const message =
+      kind === 'gallery'
+        ? 'Expyrico needs access to your photo library to select photos. Please open Settings to enable photo access.'
+        : 'Expyrico needs access to your camera to take photos. Please open Settings to enable camera access.';
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Open Settings',
+        onPress: () => {
+          void Linking.openSettings();
+        },
+      },
+    ]);
+    return 'Permission required. Please enable access in Settings.';
+  }
+  if (err instanceof PhotoTooLargeError) {
+    return err.message;
+  }
+  return (err as Error).message || 'Failed to select photo';
+}
 async function toPickedPhoto(image: {
   path: string;
   width: number;

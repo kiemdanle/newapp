@@ -1,4 +1,3 @@
-// apps/mobile/src/features/giveaways/GiveawayImageGallery.tsx
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -15,18 +14,32 @@ import {
   type StyleProp,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useTheme } from '../../theme/useTheme';
-import { useCachedImage } from '../../cache/useCachedImage';
-import { FullScreenImageViewer } from '../../components/FullScreenImageViewer';
+import { useTheme } from '../theme/useTheme';
+import { useCachedImage } from '../cache/useCachedImage';
+import { FullScreenImageViewer } from './FullScreenImageViewer';
 
-interface Props {
+export interface ItemImageGalleryProps {
   photos: string[];
   title?: string;
+  placeholderIcon?: keyof typeof Ionicons.glyphMap;
+  placeholderText?: string;
+  floatingAction?: {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    onPress: () => void;
+    accessibilityLabel: string;
+  };
 }
 
 const INITIAL_HERO_WIDTH = Math.min(Dimensions.get('window').width - 32, 540);
 
-export function GiveawayImageGallery({ photos, title }: Props) {
+export function ItemImageGallery({
+  photos,
+  title,
+  placeholderIcon = 'image-outline',
+  placeholderText = 'No photos available',
+  floatingAction,
+}: ItemImageGalleryProps) {
   const theme = useTheme();
   const heroScrollRef = useRef<ScrollView>(null);
 
@@ -34,9 +47,9 @@ export function GiveawayImageGallery({ photos, title }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalIndex, setModalIndex] = useState(0);
-  const heroHeight = Math.round(containerWidth * 0.75); // 4:3 standard e-commerce ratio
+  const heroHeight = Math.round(containerWidth * 0.75); // 4:3 standard aspect ratio
 
-  // Clamp activeIndex if photos array shrinks or changes
+  // Clamp activeIndex if photos array changes
   useEffect(() => {
     if (activeIndex >= photos.length && photos.length > 0) {
       setActiveIndex(photos.length - 1);
@@ -51,13 +64,13 @@ export function GiveawayImageGallery({ photos, title }: Props) {
           {
             backgroundColor: theme.colors.bgGlass,
             borderColor: theme.colors.border,
-            borderRadius: 16,
+            borderRadius: theme.radii.lg,
           },
         ]}
       >
-        <Ionicons name="gift-outline" size={48} color={theme.colors.primary} />
+        <Ionicons name={placeholderIcon} size={48} color={theme.colors.primary} />
         <Text style={[styles.placeholderText, { color: theme.colors.textMuted }]}>
-          No photos provided
+          {placeholderText}
         </Text>
       </View>
     );
@@ -72,9 +85,11 @@ export function GiveawayImageGallery({ photos, title }: Props) {
 
   const handleHeroScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = e.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / containerWidth);
-    if (index >= 0 && index < photos.length && index !== activeIndex) {
-      setActiveIndex(index);
+    if (containerWidth > 0) {
+      const index = Math.round(offsetX / containerWidth);
+      if (index >= 0 && index < photos.length && index !== activeIndex) {
+        setActiveIndex(index);
+      }
     }
   };
 
@@ -93,7 +108,7 @@ export function GiveawayImageGallery({ photos, title }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Main Hero Product Image Carousel (Shopee VN Style) */}
+      {/* Main Hero Image Carousel */}
       <View
         style={[
           styles.heroWrapper,
@@ -135,7 +150,28 @@ export function GiveawayImageGallery({ photos, title }: Props) {
           ))}
         </ScrollView>
 
-        {/* Floating Expand Icon Hint */}
+        {/* Floating Action (e.g. Change Photo) */}
+        {floatingAction && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={floatingAction.accessibilityLabel}
+            onPress={floatingAction.onPress}
+            style={[
+              styles.floatingActionBtn,
+              {
+                backgroundColor: theme.colors.bgGlass,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name={floatingAction.icon} size={15} color={theme.colors.text} />
+            <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
+              {floatingAction.label}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* Expand Fullscreen Hint Button */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Enlarge photo full screen"
@@ -155,7 +191,7 @@ export function GiveawayImageGallery({ photos, title }: Props) {
         )}
       </View>
 
-      {/* Thumbnails Row */}
+      {/* Thumbnails Row (Tap thumbnail to change active hero photo) */}
       {photos.length > 1 && (
         <ScrollView
           horizontal
@@ -203,7 +239,7 @@ export function GiveawayImageGallery({ photos, title }: Props) {
         visible={modalVisible}
         photos={photos}
         initialIndex={modalIndex}
-        title={title || 'Giveaway Photo'}
+        title={title || 'Photo Gallery'}
         onClose={() => setModalVisible(false)}
       />
     </View>
@@ -237,7 +273,7 @@ const styles = StyleSheet.create({
   },
   placeholderHero: {
     width: '100%',
-    height: 220,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -269,11 +305,32 @@ const styles = StyleSheet.create({
     top: 12,
     right: 12,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    minHeight: 44,
+    minWidth: 44,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    zIndex: 5,
+  },
+  floatingActionBtn: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minHeight: 44,
+    borderRadius: 20,
+    borderWidth: 1,
+    zIndex: 5,
+  },
+  floatingActionText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   counterBadge: {
     position: 'absolute',
@@ -283,6 +340,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    zIndex: 5,
   },
   counterText: {
     color: '#FFFFFF',
@@ -299,6 +357,8 @@ const styles = StyleSheet.create({
   thumbCard: {
     width: 64,
     height: 64,
+    minHeight: 44,
+    minWidth: 44,
     overflow: 'hidden',
     position: 'relative',
   },

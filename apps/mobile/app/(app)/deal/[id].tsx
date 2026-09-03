@@ -1,5 +1,5 @@
 // apps/mobile/app/(app)/deal/[id].tsx
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Image,
@@ -17,6 +17,7 @@ import { useTheme } from '@/theme/useTheme';
 import { Screen } from '@/components/Screen';
 import { Button } from '@/components/Button';
 import { formatCurrency, formatDate } from '@/utils/country-format';
+import { ItemImageGallery } from '@/components/ItemImageGallery';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 export default function DealDetailScreen() {
@@ -43,7 +44,13 @@ export default function DealDetailScreen() {
     );
   }
 
-  function confirmDelete() {
+  const photoList = [
+    deal.photoUrl,
+    deal.product?.imageUrl,
+  ].filter(Boolean) as string[];
+  const uniquePhotos = Array.from(new Set(photoList));
+
+  function handleDelete() {
     Alert.alert(
       'Delete Deal',
       'Are you sure you want to remove this deal? This action cannot be undone.',
@@ -83,7 +90,14 @@ export default function DealDetailScreen() {
 
   return (
     <Screen>
-      {/* Product Hero Card */}
+      {/* Hero Image Gallery with Multi-Photo & Thumbnail Support */}
+      <ItemImageGallery
+        photos={uniquePhotos}
+        title={deal.product?.name || 'Deal'}
+        placeholderIcon="pricetag-outline"
+        placeholderText="No photos attached"
+      />
+
       <View
         style={[
           styles.heroCard,
@@ -91,26 +105,10 @@ export default function DealDetailScreen() {
             backgroundColor: theme.colors.bgElevated,
             borderColor: theme.colors.border,
             borderRadius: theme.radii.lg,
+            marginTop: 14,
           },
         ]}
       >
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={[styles.heroImage, { borderRadius: theme.radii.md }]}
-            resizeMode="cover"
-          />
-        ) : (
-          <View
-            style={[
-              styles.heroPlaceholder,
-              { backgroundColor: theme.colors.bgElevated, borderRadius: theme.radii.md },
-            ]}
-          >
-            <Text style={{ fontSize: 36 }}>🏷️</Text>
-          </View>
-        )}
-
         <View style={styles.heroContent}>
           <Text style={[styles.productName, { color: theme.colors.text }]}>
             {deal.product?.name ?? 'Product'}
@@ -283,7 +281,7 @@ export default function DealDetailScreen() {
               label="Delete deal"
               variant="danger"
               icon="trash-outline"
-              onPress={confirmDelete}
+              onPress={handleDelete}
             />
           </>
         )}

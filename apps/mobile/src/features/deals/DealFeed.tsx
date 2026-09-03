@@ -11,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
 import type { DealFeedFilters } from '../../api/deals';
@@ -38,8 +37,6 @@ interface Props {
 
 export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const fabBottom = 84 + Math.max(insets.bottom, 0);
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<DealSort>('score');
@@ -285,7 +282,7 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         keyExtractor={(d: Deal) => d.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: 150 + insets.bottom },
+          { paddingBottom: 84 },
         ]}
         refreshControl={
           <RefreshControl
@@ -365,24 +362,6 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         }
       />
 
-      {/* Floating Action Button (FAB) positioned cleanly above floating tab bar */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Post a deal"
-        onPress={onNew}
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            bottom: fabBottom,
-            backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-            shadowColor: '#000',
-          },
-        ]}
-      >
-        <Ionicons name="add" size={22} color={theme.colors.primaryFg} style={{ marginRight: 4 }} />
-        <Text style={[styles.fabText, { color: theme.colors.primaryFg }]}>Post Deal</Text>
-      </Pressable>
-
       {/* Filter Modal Sheet */}
       <DealFilterModal
         visible={filterModalVisible}
@@ -400,7 +379,7 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 8,
     paddingBottom: 6,
   },
   heading: {
@@ -458,7 +437,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 130,
+    paddingBottom: 84,
     paddingTop: 6,
   },
   loadingContainer: {
@@ -482,24 +461,5 @@ const styles = StyleSheet.create({
   emptyStateActionText: {
     fontWeight: '700',
     fontSize: 14,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 28,
-    minHeight: 50,
-    elevation: 6,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-  },
-  fabText: {
-    fontSize: 15,
-    fontWeight: '700',
   },
 });

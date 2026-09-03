@@ -99,11 +99,12 @@ describe('NewGiveawayScreen', () => {
       { path: '/tmp/photo2.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1000 },
     ]);
 
-    const { getByText, getByLabelText } = render(wrap(<NewGiveawayScreen />));
-
+    const { getByText, getByLabelText, getByTestId } = render(wrap(<NewGiveawayScreen />));
     fireEvent.press(getByText('Camera'));
-    await waitFor(() => expect(mockTakePhoto).toHaveBeenCalledTimes(1));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
 
+    await waitFor(() => expect(getByText('Cover')).toBeTruthy());
     fireEvent.press(getByText('Gallery'));
     await waitFor(() => expect(mockChoosePhotos).toHaveBeenCalledTimes(1));
 
@@ -120,19 +121,20 @@ describe('NewGiveawayScreen', () => {
       size: 1000,
     });
 
-    const { getByText, getByLabelText } = render(wrap(<NewGiveawayScreen />));
+    const { getByText, getByLabelText, getByTestId } = render(wrap(<NewGiveawayScreen />));
 
     fireEvent.changeText(getByLabelText('Giveaway title'), 'Canned Beans Pack');
     fireEvent.changeText(getByLabelText('Pickup location'), 'West End Community Center');
 
     fireEvent.press(getByText('Camera'));
+    fireEvent.press(getByTestId('multi-camera-shutter'));
+    fireEvent.press(getByTestId('multi-camera-done'));
     await waitFor(() => expect(getByText('Cover')).toBeTruthy());
-
     fireEvent.press(getByText('Post Giveaway'));
 
     await waitFor(() => {
       expect(mockUploadGiveawayPhoto).toHaveBeenCalledWith(
-        expect.objectContaining({ path: '/tmp/photo1.jpg' }),
+        expect.objectContaining({ mime: 'image/jpeg' }),
       );
       expect(mockCreateGiveaway).toHaveBeenCalledWith(
         expect.objectContaining({
