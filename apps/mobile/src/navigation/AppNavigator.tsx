@@ -77,7 +77,7 @@ const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: true }}>
       <Stack.Screen name="Tabs" component={TabsNavigator} />
       <Stack.Screen name="SettingsIndex" component={SettingsIndexScreen} options={{ headerShown: true, title: 'Settings' }} />
       <Stack.Screen name="SettingsTheme" component={SettingsThemeScreen} options={{ headerShown: true, title: 'Theme' }} />
