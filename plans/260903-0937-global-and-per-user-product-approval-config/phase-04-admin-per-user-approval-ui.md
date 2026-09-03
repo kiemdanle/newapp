@@ -115,10 +115,10 @@ Implement the per-user product approval configuration on the Admin User Details 
 4. Run `pnpm --filter admin lint` and `pnpm --filter admin typecheck`.
 
 ## Success Criteria
-- [ ] User details page displays whether the user is subject to mandatory approval.
-- [ ] Admin can click "Require approval" to flag a spamming user, and the badge immediately reflects "Approval Required".
-- [ ] Admin can click "Allow auto-approval" to remove the flag.
-- [ ] User table highlights users with active spam/approval restrictions.
+- [x] User details page displays whether the user is subject to mandatory approval.
+- [x] Admin can click "Require approval" to flag a spamming user, and the badge immediately reflects "Approval Required".
+- [x] Admin can click "Allow auto-approval" to remove the flag.
+- [x] User table highlights users with active spam/approval restrictions.
 
 ## Risk Assessment
 - Risk: Unintended approval toggle due to accidental click.

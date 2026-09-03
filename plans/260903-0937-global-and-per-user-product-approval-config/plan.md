@@ -1,7 +1,7 @@
 ---
 title: "Global and Per-User Product Approval Configuration"
 description: "Implement admin controls to globally enable/disable new product approval and configure per-user approval requirements to prevent spam."
-status: pending
+status: completed
 priority: P1
 effort: "2d"
 tags: [admin, products, moderation, spam-prevention, settings]
@@ -33,11 +33,11 @@ This plan implements a two-tier configuration system requested by the product te
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Shared Schemas, Database Model & Migration](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Backend Auto-Approval Engine & API Service](./phase-02-backend-auto-approval-engine.md) | Pending |
-| 3 | [Phase 3: Admin Global Approval Settings UI](./phase-03-admin-global-settings-ui.md) | Pending |
-| 4 | [Phase 4: Admin Per-User Approval Configuration UI](./phase-04-admin-per-user-approval-ui.md) | Pending |
-| 5 | [Phase 5: Verification, Integration Testing & Runbook](./phase-05-verification-and-testing.md) | Pending |
+| 1 | [Phase 1: Shared Schemas, Database Model & Migration](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Backend Auto-Approval Engine & API Service](./phase-02-backend-auto-approval-engine.md) | Completed |
+| 3 | [Phase 3: Admin Global Approval Settings UI](./phase-03-admin-global-settings-ui.md) | Completed |
+| 4 | [Phase 4: Admin Per-User Approval Configuration UI](./phase-04-admin-per-user-approval-ui.md) | Completed |
+| 5 | [Phase 5: Verification, Integration Testing & Runbook](./phase-05-verification-and-testing.md) | Completed |
 
 ## Architectural Decision: Approval Resolution Logic
 
@@ -78,13 +78,13 @@ This guarantees:
 
 ## Success Criteria
 
-- [ ] Prisma migration cleanly adds `require_product_approval` to `users` table with default `false`.
-- [ ] `@expyrico/shared` exports updated schemas for settings and admin user endpoints.
-- [ ] `submitDraft` automatically activates products and promotes private media to public storage when approval is disabled.
-- [ ] Flagging a user in Admin sets `requireProductApproval: true`, successfully redirecting their submissions to `/products/pending`.
-- [ ] Admin Settings page exposes a toggle to switch global approval on and off with immediate effect.
-- [ ] Admin User detail page displays current approval status and allows toggling with confirmation and audit logging.
-- [ ] All unit and integration tests across `@expyrico/shared`, `api`, and `apps/admin` pass cleanly.
+- [x] Prisma migration cleanly adds `require_product_approval` to `users` table with default `false`.
+- [x] `@expyrico/shared` exports updated schemas for settings and admin user endpoints.
+- [x] `submitDraft` automatically activates products and promotes private media to public storage when approval is disabled.
+- [x] Flagging a user in Admin sets `requireProductApproval: true`, successfully redirecting their submissions to `/products/pending`.
+- [x] Admin Settings page exposes a toggle to switch global approval on and off with immediate effect.
+- [x] Admin User detail page displays current approval status and allows toggling with confirmation and audit logging.
+- [x] All unit and integration tests across `@expyrico/shared`, `api`, and `apps/admin` pass cleanly.
 
 ## Validation Log
 

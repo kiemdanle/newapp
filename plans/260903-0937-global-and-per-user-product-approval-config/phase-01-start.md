@@ -75,10 +75,10 @@ Add the database column `require_product_approval` to the `User` model in Prisma
    - Run `pnpm --filter @expyrico/shared test`.
 
 ## Success Criteria
-- [ ] `model User` in `schema.prisma` contains `requireProductApproval Boolean @default(false)`.
-- [ ] Prisma migration applies cleanly to PostgreSQL without locking or errors.
-- [ ] `packages/shared` compiles and exports updated `productCreationSettingsSchema` and `adminUserPatchSchema`.
-- [ ] All unit tests in `packages/shared` pass.
+- [x] `model User` in `schema.prisma` contains `requireProductApproval Boolean @default(false)`.
+- [x] Prisma migration applies cleanly to PostgreSQL without locking or errors.
+- [x] `packages/shared` compiles and exports updated `productCreationSettingsSchema` and `adminUserPatchSchema`.
+- [x] All unit tests in `packages/shared` pass.
 
 ## Risk Assessment
 - Risk: Missing migration deployment in CI or production causing runtime Prisma errors when querying `requireProductApproval`.

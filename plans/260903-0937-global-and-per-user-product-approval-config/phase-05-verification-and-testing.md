@@ -58,10 +58,10 @@ Perform end-to-end verification and integration testing of the global product ap
    - Verify zero downtime for existing active products and catalog lookups.
 
 ## Success Criteria
-- [ ] All 4 policy matrix scenarios pass integration tests.
-- [ ] Photo asset promotion functions seamlessly without manual admin intervention during auto-approval.
-- [ ] Admin user page accurately shows and updates approval status with audit trail.
-- [ ] Monorepo typecheck, lint, and tests pass with zero errors.
+- [x] All 4 policy matrix scenarios pass integration tests.
+- [x] Photo asset promotion functions seamlessly without manual admin intervention during auto-approval.
+- [x] Admin user page accurately shows and updates approval status with audit trail.
+- [x] Monorepo typecheck, lint, and tests pass with zero errors.
 
 ## Risk Assessment
 - Risk: Legacy products or drafts with missing creator user record.

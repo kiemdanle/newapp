@@ -79,10 +79,10 @@ Implement the product auto-approval pipeline in the backend API. When a user sub
 5. Add unit and integration tests verifying auto-approval vs forced moderation.
 
 ## Success Criteria
-- [ ] Regular user submits draft with global approval disabled -> product is immediately active with public photo.
-- [ ] User flagged with `requireProductApproval: true` submits draft -> product is placed into `pending` status.
-- [ ] Global approval set to enabled -> all users' submissions enter `pending` status.
-- [ ] Admin patch endpoint successfully updates `requireProductApproval`.
+- [x] Regular user submits draft with global approval disabled -> product is immediately active with public photo.
+- [x] User flagged with `requireProductApproval: true` submits draft -> product is placed into `pending` status.
+- [x] Global approval set to enabled -> all users' submissions enter `pending` status.
+- [x] Admin patch endpoint successfully updates `requireProductApproval`.
 
 ## Risk Assessment
 - Risk: Photo publication race condition if background worker or recheck runs simultaneously.

@@ -99,9 +99,9 @@ Update the Admin settings interface (`apps/admin/src/app/(admin)/settings/featur
 4. Run `pnpm --filter admin lint` and `pnpm --filter admin typecheck`.
 
 ## Success Criteria
-- [ ] Admin can navigate to `/settings/feature-flags` and see the Product Approval Policy toggle.
-- [ ] Saving the form sends `{ mode, requireApproval }` to the API and shows a success confirmation.
-- [ ] Refreshing the page preserves the chosen setting.
+- [x] Admin can navigate to `/settings/feature-flags` and see the Product Approval Policy toggle.
+- [x] Saving the form sends `{ mode, requireApproval }` to the API and shows a success confirmation.
+- [x] Refreshing the page preserves the chosen setting.
 
 ## Risk Assessment
 - Risk: Setting desynchronization if API fails to save while client state updates.
