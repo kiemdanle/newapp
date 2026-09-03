@@ -165,21 +165,19 @@ exports[`home in expyrico snapshot 1`] = `
                   </Text>
                 </View>
               }
+              ListFooterComponent={[Function]}
               ListHeaderComponent={
                 <View
                   style={
                     {
-                      "gap": 16,
+                      "gap": 12,
                     }
                   }
                 >
                   <View
                     style={
                       {
-                        "alignItems": "center",
-                        "flexDirection": "row",
-                        "justifyContent": "space-between",
-                        "marginBottom": 2,
+                        "gap": 16,
                       }
                     }
                   >
@@ -188,48 +186,59 @@ exports[`home in expyrico snapshot 1`] = `
                         {
                           "alignItems": "center",
                           "flexDirection": "row",
-                          "gap": 10,
+                          "justifyContent": "space-between",
+                          "marginBottom": 2,
                         }
                       }
                     >
-                      <Logo
-                        size={28}
-                      />
-                      <View>
-                        <Text
-                          style={
-                            [
-                              {
-                                "fontSize": 20,
-                                "fontWeight": "700",
-                              },
-                              {
-                                "color": "#2C2C28",
-                              },
-                            ]
+                      <View
+                        style={
+                          {
+                            "alignItems": "center",
+                            "flexDirection": "row",
+                            "gap": 10,
                           }
-                        >
-                          Your pantry
-                        </Text>
-                        <Text
-                          style={
-                            [
-                              {
-                                "fontSize": 13,
-                                "marginTop": 2,
-                              },
-                              {
-                                "color": "#8C8C85",
-                              },
-                            ]
-                          }
-                        >
-                          Use what you need first.
-                        </Text>
+                        }
+                      >
+                        <Logo
+                          size={28}
+                        />
+                        <View>
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 20,
+                                  "fontWeight": "700",
+                                },
+                                {
+                                  "color": "#2C2C28",
+                                },
+                              ]
+                            }
+                          >
+                            Your pantry
+                          </Text>
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                  "marginTop": 2,
+                                },
+                                {
+                                  "color": "#8C8C85",
+                                },
+                              ]
+                            }
+                          >
+                            Use what you need first.
+                          </Text>
+                        </View>
                       </View>
                     </View>
+                    <ScopeToggle />
                   </View>
-                  <ScopeToggle />
                 </View>
               }
               alwaysBounceVertical={true}
@@ -247,6 +256,8 @@ exports[`home in expyrico snapshot 1`] = `
               getItemCount={[Function]}
               keyExtractor={[Function]}
               onContentSizeChange={[Function]}
+              onEndReached={[Function]}
+              onEndReachedThreshold={0.25}
               onLayout={[Function]}
               onMomentumScrollBegin={[Function]}
               onMomentumScrollEnd={[Function]}
@@ -282,17 +293,14 @@ exports[`home in expyrico snapshot 1`] = `
                   <View
                     style={
                       {
-                        "gap": 16,
+                        "gap": 12,
                       }
                     }
                   >
                     <View
                       style={
                         {
-                          "alignItems": "center",
-                          "flexDirection": "row",
-                          "justifyContent": "space-between",
-                          "marginBottom": 2,
+                          "gap": 16,
                         }
                       }
                     >
@@ -301,58 +309,60 @@ exports[`home in expyrico snapshot 1`] = `
                           {
                             "alignItems": "center",
                             "flexDirection": "row",
-                            "gap": 10,
+                            "justifyContent": "space-between",
+                            "marginBottom": 2,
                           }
                         }
                       >
                         <View
                           style={
-                            [
-                              {
-                                "alignItems": "center",
-                                "flexDirection": "row",
-                                "gap": 10,
-                              },
-                              {
-                                "minHeight": 28,
-                              },
-                            ]
+                            {
+                              "alignItems": "center",
+                              "flexDirection": "row",
+                              "gap": 10,
+                            }
                           }
                         >
-                          <RNSVGSvgView
-                            accessibilityLabel="Expyrico"
-                            align="xMidYMid"
-                            bbHeight={28}
-                            bbWidth={28}
-                            focusable={false}
-                            height={28}
-                            meetOrSlice={0}
-                            minX={0}
-                            minY={0}
+                          <View
                             style={
                               [
                                 {
-                                  "backgroundColor": "transparent",
-                                  "borderWidth": 0,
+                                  "alignItems": "center",
+                                  "flexDirection": "row",
+                                  "gap": 10,
                                 },
                                 {
-                                  "flex": 0,
-                                  "height": 28,
-                                  "width": 28,
+                                  "minHeight": 28,
                                 },
                               ]
                             }
-                            vbHeight={865}
-                            vbWidth={865}
-                            width={28}
                           >
-                            <RNSVGGroup
-                              fill={
-                                {
-                                  "payload": 4278190080,
-                                  "type": 0,
-                                }
+                            <RNSVGSvgView
+                              accessibilityLabel="Expyrico"
+                              align="xMidYMid"
+                              bbHeight={28}
+                              bbWidth={28}
+                              focusable={false}
+                              height={28}
+                              meetOrSlice={0}
+                              minX={0}
+                              minY={0}
+                              style={
+                                [
+                                  {
+                                    "backgroundColor": "transparent",
+                                    "borderWidth": 0,
+                                  },
+                                  {
+                                    "flex": 0,
+                                    "height": 28,
+                                    "width": 28,
+                                  },
+                                ]
                               }
+                              vbHeight={865}
+                              vbWidth={865}
+                              width={28}
                             >
                               <RNSVGGroup
                                 fill={
@@ -361,108 +371,117 @@ exports[`home in expyrico snapshot 1`] = `
                                     "type": 0,
                                   }
                                 }
-                                matrix={
-                                  [
-                                    1,
-                                    0,
-                                    0,
-                                    1,
-                                    0,
-                                    190,
-                                  ]
-                                }
                               >
-                                <RNSVGPath
-                                  d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                                <RNSVGGroup
                                   fill={
                                     {
-                                      "payload": 4283149962,
+                                      "payload": 4278190080,
                                       "type": 0,
                                     }
                                   }
-                                  propList={
+                                  matrix={
                                     [
-                                      "fill",
+                                      1,
+                                      0,
+                                      0,
+                                      1,
+                                      0,
+                                      190,
                                     ]
                                   }
-                                />
-                                <RNSVGPath
-                                  d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                                  fill={
-                                    {
-                                      "payload": 4294288931,
-                                      "type": 0,
+                                >
+                                  <RNSVGPath
+                                    d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                                    fill={
+                                      {
+                                        "payload": 4283149962,
+                                        "type": 0,
+                                      }
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
-                                <RNSVGPath
-                                  d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                                  fill={
-                                    {
-                                      "payload": 4292887594,
-                                      "type": 0,
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
-                                <RNSVGPath
-                                  d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                                  fill={
-                                    {
-                                      "payload": 4281084968,
-                                      "type": 0,
+                                  />
+                                  <RNSVGPath
+                                    d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                                    fill={
+                                      {
+                                        "payload": 4294288931,
+                                        "type": 0,
+                                      }
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                  <RNSVGPath
+                                    d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                                    fill={
+                                      {
+                                        "payload": 4292887594,
+                                        "type": 0,
+                                      }
+                                    }
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                  <RNSVGPath
+                                    d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                                    fill={
+                                      {
+                                        "payload": 4281084968,
+                                        "type": 0,
+                                      }
+                                    }
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                </RNSVGGroup>
                               </RNSVGGroup>
-                            </RNSVGGroup>
-                          </RNSVGSvgView>
-                        </View>
-                        <View>
-                          <Text
-                            style={
-                              [
-                                {
-                                  "fontSize": 20,
-                                  "fontWeight": "700",
-                                },
-                                {
-                                  "color": "#2C2C28",
-                                },
-                              ]
-                            }
-                          >
-                            Your pantry
-                          </Text>
-                          <Text
-                            style={
-                              [
-                                {
-                                  "fontSize": 13,
-                                  "marginTop": 2,
-                                },
-                                {
-                                  "color": "#8C8C85",
-                                },
-                              ]
-                            }
-                          >
-                            Use what you need first.
-                          </Text>
+                            </RNSVGSvgView>
+                          </View>
+                          <View>
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 20,
+                                    "fontWeight": "700",
+                                  },
+                                  {
+                                    "color": "#2C2C28",
+                                  },
+                                ]
+                              }
+                            >
+                              Your pantry
+                            </Text>
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                    "marginTop": 2,
+                                  },
+                                  {
+                                    "color": "#8C8C85",
+                                  },
+                                ]
+                              }
+                            >
+                              Use what you need first.
+                            </Text>
+                          </View>
                         </View>
                       </View>
                     </View>
@@ -552,6 +571,9 @@ exports[`home in expyrico snapshot 1`] = `
                     Scan the first item on your shelf and we’ll help you use it on time.
                   </Text>
                 </View>
+                <View
+                  onLayout={[Function]}
+                />
               </View>
             </RCTScrollView>
           </View>
@@ -727,21 +749,19 @@ exports[`home in expyricoDark snapshot 1`] = `
                   </Text>
                 </View>
               }
+              ListFooterComponent={[Function]}
               ListHeaderComponent={
                 <View
                   style={
                     {
-                      "gap": 16,
+                      "gap": 12,
                     }
                   }
                 >
                   <View
                     style={
                       {
-                        "alignItems": "center",
-                        "flexDirection": "row",
-                        "justifyContent": "space-between",
-                        "marginBottom": 2,
+                        "gap": 16,
                       }
                     }
                   >
@@ -750,48 +770,59 @@ exports[`home in expyricoDark snapshot 1`] = `
                         {
                           "alignItems": "center",
                           "flexDirection": "row",
-                          "gap": 10,
+                          "justifyContent": "space-between",
+                          "marginBottom": 2,
                         }
                       }
                     >
-                      <Logo
-                        size={28}
-                      />
-                      <View>
-                        <Text
-                          style={
-                            [
-                              {
-                                "fontSize": 20,
-                                "fontWeight": "700",
-                              },
-                              {
-                                "color": "#FAFAF8",
-                              },
-                            ]
+                      <View
+                        style={
+                          {
+                            "alignItems": "center",
+                            "flexDirection": "row",
+                            "gap": 10,
                           }
-                        >
-                          Your pantry
-                        </Text>
-                        <Text
-                          style={
-                            [
-                              {
-                                "fontSize": 13,
-                                "marginTop": 2,
-                              },
-                              {
-                                "color": "#B7BDB7",
-                              },
-                            ]
-                          }
-                        >
-                          Use what you need first.
-                        </Text>
+                        }
+                      >
+                        <Logo
+                          size={28}
+                        />
+                        <View>
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 20,
+                                  "fontWeight": "700",
+                                },
+                                {
+                                  "color": "#FAFAF8",
+                                },
+                              ]
+                            }
+                          >
+                            Your pantry
+                          </Text>
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                  "marginTop": 2,
+                                },
+                                {
+                                  "color": "#B7BDB7",
+                                },
+                              ]
+                            }
+                          >
+                            Use what you need first.
+                          </Text>
+                        </View>
                       </View>
                     </View>
+                    <ScopeToggle />
                   </View>
-                  <ScopeToggle />
                 </View>
               }
               alwaysBounceVertical={true}
@@ -809,6 +840,8 @@ exports[`home in expyricoDark snapshot 1`] = `
               getItemCount={[Function]}
               keyExtractor={[Function]}
               onContentSizeChange={[Function]}
+              onEndReached={[Function]}
+              onEndReachedThreshold={0.25}
               onLayout={[Function]}
               onMomentumScrollBegin={[Function]}
               onMomentumScrollEnd={[Function]}
@@ -844,17 +877,14 @@ exports[`home in expyricoDark snapshot 1`] = `
                   <View
                     style={
                       {
-                        "gap": 16,
+                        "gap": 12,
                       }
                     }
                   >
                     <View
                       style={
                         {
-                          "alignItems": "center",
-                          "flexDirection": "row",
-                          "justifyContent": "space-between",
-                          "marginBottom": 2,
+                          "gap": 16,
                         }
                       }
                     >
@@ -863,58 +893,60 @@ exports[`home in expyricoDark snapshot 1`] = `
                           {
                             "alignItems": "center",
                             "flexDirection": "row",
-                            "gap": 10,
+                            "justifyContent": "space-between",
+                            "marginBottom": 2,
                           }
                         }
                       >
                         <View
                           style={
-                            [
-                              {
-                                "alignItems": "center",
-                                "flexDirection": "row",
-                                "gap": 10,
-                              },
-                              {
-                                "minHeight": 28,
-                              },
-                            ]
+                            {
+                              "alignItems": "center",
+                              "flexDirection": "row",
+                              "gap": 10,
+                            }
                           }
                         >
-                          <RNSVGSvgView
-                            accessibilityLabel="Expyrico"
-                            align="xMidYMid"
-                            bbHeight={28}
-                            bbWidth={28}
-                            focusable={false}
-                            height={28}
-                            meetOrSlice={0}
-                            minX={0}
-                            minY={0}
+                          <View
                             style={
                               [
                                 {
-                                  "backgroundColor": "transparent",
-                                  "borderWidth": 0,
+                                  "alignItems": "center",
+                                  "flexDirection": "row",
+                                  "gap": 10,
                                 },
                                 {
-                                  "flex": 0,
-                                  "height": 28,
-                                  "width": 28,
+                                  "minHeight": 28,
                                 },
                               ]
                             }
-                            vbHeight={865}
-                            vbWidth={865}
-                            width={28}
                           >
-                            <RNSVGGroup
-                              fill={
-                                {
-                                  "payload": 4278190080,
-                                  "type": 0,
-                                }
+                            <RNSVGSvgView
+                              accessibilityLabel="Expyrico"
+                              align="xMidYMid"
+                              bbHeight={28}
+                              bbWidth={28}
+                              focusable={false}
+                              height={28}
+                              meetOrSlice={0}
+                              minX={0}
+                              minY={0}
+                              style={
+                                [
+                                  {
+                                    "backgroundColor": "transparent",
+                                    "borderWidth": 0,
+                                  },
+                                  {
+                                    "flex": 0,
+                                    "height": 28,
+                                    "width": 28,
+                                  },
+                                ]
                               }
+                              vbHeight={865}
+                              vbWidth={865}
+                              width={28}
                             >
                               <RNSVGGroup
                                 fill={
@@ -923,108 +955,117 @@ exports[`home in expyricoDark snapshot 1`] = `
                                     "type": 0,
                                   }
                                 }
-                                matrix={
-                                  [
-                                    1,
-                                    0,
-                                    0,
-                                    1,
-                                    0,
-                                    190,
-                                  ]
-                                }
                               >
-                                <RNSVGPath
-                                  d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                                <RNSVGGroup
                                   fill={
                                     {
-                                      "payload": 4283149962,
+                                      "payload": 4278190080,
                                       "type": 0,
                                     }
                                   }
-                                  propList={
+                                  matrix={
                                     [
-                                      "fill",
+                                      1,
+                                      0,
+                                      0,
+                                      1,
+                                      0,
+                                      190,
                                     ]
                                   }
-                                />
-                                <RNSVGPath
-                                  d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
-                                  fill={
-                                    {
-                                      "payload": 4294288931,
-                                      "type": 0,
+                                >
+                                  <RNSVGPath
+                                    d="M403.14,156.315c-95.566,9.562 -196.039,111.566 -196.876,113.645c-44.394,63.261 -51.483,111.55 -53.874,158.883c-0.344,6.818 -10.631,4.76 -15.196,4.758c-128.706,-0.058 -134.778,0.342 -135.986,-0.738c-3.929,-3.509 -1.857,-124.65 62.948,-227.356c135.19,-214.258 358.221,-205.617 359.138,-204.747c2.908,2.759 1.272,138.071 1.127,150.076c-0.087,7.208 -3.941,3.744 -21.28,5.479Z"
+                                    fill={
+                                      {
+                                        "payload": 4283149962,
+                                        "type": 0,
+                                      }
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
-                                <RNSVGPath
-                                  d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
-                                  fill={
-                                    {
-                                      "payload": 4292887594,
-                                      "type": 0,
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
-                                <RNSVGPath
-                                  d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
-                                  fill={
-                                    {
-                                      "payload": 4294638328,
-                                      "type": 0,
+                                  />
+                                  <RNSVGPath
+                                    d="M475.115,1.795c81.299,9.214 168.648,35.061 257.927,119.245c0.432,0.407 4.469,4.214 1.505,7.268c-8.278,8.528 -100.464,103.493 -105.208,104.897c-9.414,2.786 -21.543,-33.532 -109.982,-64.799c-39.276,-13.886 -77,-11.389 -79.276,-15.854c-0.859,-1.684 -0.398,-135.848 -0.357,-147.66c0.024,-7.022 10.176,-4.959 35.392,-3.097Z"
+                                    fill={
+                                      {
+                                        "payload": 4294288931,
+                                        "type": 0,
+                                      }
                                     }
-                                  }
-                                  propList={
-                                    [
-                                      "fill",
-                                    ]
-                                  }
-                                />
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                  <RNSVGPath
+                                    d="M711.958,426.857c-0.064,-1.097 0.351,-32.052 -12.346,-74.108c-20.592,-68.208 -60.742,-102.393 -58.941,-108.115c0.189,-0.601 104.507,-106.505 106.707,-106.864c4.358,-0.711 34.589,37.783 53.096,67.56c65.4,105.222 66.587,224.534 62.721,227.546c-2.569,2.001 -134.341,0.796 -146.022,0.689c-6.748,-0.062 -5.026,-5.895 -5.216,-6.707Z"
+                                    fill={
+                                      {
+                                        "payload": 4292887594,
+                                        "type": 0,
+                                      }
+                                    }
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                  <RNSVGPath
+                                    d="M137.568,209.402c0.099,-7.044 269.935,170.48 273.626,170.585c0.674,0.019 23.14,-8.868 45.531,1.862c55.373,26.536 28.262,115.076 -33.62,103.553c-48.798,-9.087 -45.849,-54.453 -45.457,-60.493c0.461,-7.098 -240.111,-213.364 -240.081,-215.508Z"
+                                    fill={
+                                      {
+                                        "payload": 4294638328,
+                                        "type": 0,
+                                      }
+                                    }
+                                    propList={
+                                      [
+                                        "fill",
+                                      ]
+                                    }
+                                  />
+                                </RNSVGGroup>
                               </RNSVGGroup>
-                            </RNSVGGroup>
-                          </RNSVGSvgView>
-                        </View>
-                        <View>
-                          <Text
-                            style={
-                              [
-                                {
-                                  "fontSize": 20,
-                                  "fontWeight": "700",
-                                },
-                                {
-                                  "color": "#FAFAF8",
-                                },
-                              ]
-                            }
-                          >
-                            Your pantry
-                          </Text>
-                          <Text
-                            style={
-                              [
-                                {
-                                  "fontSize": 13,
-                                  "marginTop": 2,
-                                },
-                                {
-                                  "color": "#B7BDB7",
-                                },
-                              ]
-                            }
-                          >
-                            Use what you need first.
-                          </Text>
+                            </RNSVGSvgView>
+                          </View>
+                          <View>
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 20,
+                                    "fontWeight": "700",
+                                  },
+                                  {
+                                    "color": "#FAFAF8",
+                                  },
+                                ]
+                              }
+                            >
+                              Your pantry
+                            </Text>
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                    "marginTop": 2,
+                                  },
+                                  {
+                                    "color": "#B7BDB7",
+                                  },
+                                ]
+                              }
+                            >
+                              Use what you need first.
+                            </Text>
+                          </View>
                         </View>
                       </View>
                     </View>
@@ -1114,6 +1155,9 @@ exports[`home in expyricoDark snapshot 1`] = `
                     Scan the first item on your shelf and we’ll help you use it on time.
                   </Text>
                 </View>
+                <View
+                  onLayout={[Function]}
+                />
               </View>
             </RCTScrollView>
           </View>
