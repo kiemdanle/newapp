@@ -51,7 +51,7 @@ export function PantryFilterModal({
   const [draftFilters, setDraftFilters] = useState<PantryFilterState>(filters);
 
   const { data: myHh } = useMyHouseholds();
-  const householdCount = myHh?.items.length ?? 0;
+  const householdCount = myHh?.items?.length ?? 0;
 
   useEffect(() => {
     if (visible) {
