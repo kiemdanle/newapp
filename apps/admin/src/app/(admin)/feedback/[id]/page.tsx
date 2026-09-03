@@ -224,7 +224,7 @@ export default async function AdminFeedbackDetailPage({
         </div>
 
         {/* Timeline with vertical continuous connector spine */}
-        <div className="relative pl-6 sm:pl-8 before:absolute before:left-3.5 sm:before:left-4 before:top-4 before:bottom-6 before:w-0.5 before:bg-border/80">
+        <div className="relative pl-10 sm:pl-12 before:absolute before:left-4 sm:before:left-4.5 before:top-4 before:bottom-6 before:w-0.5 before:bg-border/80">
           <div className="space-y-6">
             {ticket.messages.map((msg, index) => {
               const isAdmin = msg.senderType === 'admin';
@@ -232,20 +232,28 @@ export default async function AdminFeedbackDetailPage({
 
               return (
                 <div key={msg.id} className="relative group">
-                  {/* Timeline node icon */}
+                  {/* Timeline node avatar */}
                   <div
-                    className={`absolute -left-6 sm:-left-8 top-3 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-xs transition-transform group-hover:scale-105 ${
+                    className={`absolute -left-10 sm:-left-12 top-2.5 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border-2 shadow-xs transition-transform group-hover:scale-105 ${
                       isAdmin
-                        ? 'border-primary bg-emerald-50 text-primary ring-4 ring-primary/10'
+                        ? 'border-primary bg-primary text-white ring-4 ring-primary/15'
                         : isInitial
-                        ? 'border-neutral-dark bg-white text-neutral-dark ring-4 ring-neutral-200/60'
-                        : 'border-border bg-white text-neutral-mid ring-4 ring-neutral-100'
+                        ? 'border-neutral-dark bg-neutral-dark text-white ring-4 ring-neutral-200/60'
+                        : 'border-border bg-white text-neutral-dark ring-4 ring-neutral-100'
                     }`}
                   >
                     {isAdmin ? (
-                      <Shield size={12} className="fill-primary/20 text-primary" />
+                      <span className="text-xs font-bold font-display">E</span>
+                    ) : ticket.user.avatarUrl ? (
+                      <img
+                        src={ticket.user.avatarUrl}
+                        alt={fullName}
+                        className="h-full w-full rounded-full object-cover"
+                      />
                     ) : (
-                      <User size={12} />
+                      <span className="text-xs font-bold">
+                        {ticket.user.firstName?.[0]?.toUpperCase() || 'U'}
+                      </span>
                     )}
                   </div>
 
@@ -259,60 +267,41 @@ export default async function AdminFeedbackDetailPage({
                   >
                     {/* Message Header Bar */}
                     <div
-                      className={`flex flex-wrap items-center justify-between gap-2 px-4.5 py-3 border-b rounded-t-2xl ${
+                      className={`flex flex-wrap items-center justify-between gap-2 px-5 py-3.5 border-b rounded-t-2xl ${
                         isAdmin
-                          ? 'border-primary/15 bg-primary-light/20'
-                          : 'border-border/60 bg-neutral-light/40'
+                          ? 'border-primary/20 bg-primary-light/25'
+                          : 'border-border/70 bg-neutral-light/50'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        {/* Avatar */}
+                        <span className="text-sm font-bold text-neutral-dark">
+                          {isAdmin ? 'Expyrico Support Team' : fullName}
+                        </span>
                         {isAdmin ? (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold shadow-xs">
-                            E
-                          </div>
-                        ) : ticket.user.avatarUrl ? (
-                          <img
-                            src={ticket.user.avatarUrl}
-                            alt={fullName}
-                            className="h-6 w-6 rounded-full object-cover border border-border shadow-xs"
-                          />
-                        ) : (
-                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-neutral-dark text-[10px] font-bold shadow-xs">
-                            {ticket.user.firstName?.[0]?.toUpperCase() || 'U'}
-                          </div>
-                        )}
-
-                        {/* Name & Role Badge */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-neutral-dark">
-                            {isAdmin ? 'Expyrico Support Team' : fullName}
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary text-white px-2 py-0.5 text-[10px] font-bold tracking-wide">
+                            <Shield size={10} />
+                            <span>Staff Reply</span>
                           </span>
-                          {isAdmin ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-primary text-white px-2 py-0.5 text-[10px] font-bold tracking-wide">
-                              Staff
-                            </span>
-                          ) : isInitial ? (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-neutral-dark text-white px-2 py-0.5 text-[10px] font-semibold">
-                              Initial Report
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-md bg-neutral-light text-neutral-dark px-2 py-0.5 text-[10px] font-medium border border-border">
-                              Reporter
-                            </span>
-                          )}
-                        </div>
+                        ) : isInitial ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-neutral-dark text-white px-2 py-0.5 text-[10px] font-semibold">
+                            Initial Ticket
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-white text-neutral-dark px-2 py-0.5 text-[10px] font-medium border border-border shadow-xs">
+                            Follow-up
+                          </span>
+                        )}
                       </div>
 
                       {/* Formatted Datetime */}
                       <div className="flex items-center gap-1.5 text-xs text-neutral-mid font-mono">
-                        <Clock size={11} className="text-neutral-mid/70" />
+                        <Clock size={12} className="text-neutral-mid/70" />
                         <span>{formatDateTime(msg.createdAt)}</span>
                       </div>
                     </div>
 
                     {/* Message Body */}
-                    <div className="p-4.5 text-sm text-neutral-dark whitespace-pre-wrap leading-relaxed select-text">
+                    <div className="p-5 sm:p-6 text-sm text-neutral-dark whitespace-pre-wrap leading-relaxed select-text font-normal">
                       {msg.message}
                     </div>
                   </div>
@@ -323,8 +312,8 @@ export default async function AdminFeedbackDetailPage({
             {/* Active Reply Composer anchored as final timeline node */}
             {!isClosed && (
               <div className="relative pt-2">
-                <div className="absolute -left-6 sm:-left-8 top-5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary/40 bg-white text-primary shadow-xs ring-4 ring-primary/10">
-                  <CornerDownRight size={13} />
+                <div className="absolute -left-10 sm:-left-12 top-5 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border-2 border-primary bg-primary text-white shadow-xs ring-4 ring-primary/15">
+                  <CornerDownRight size={14} />
                 </div>
                 <FeedbackReplyBox ticketId={ticket.id} isClosed={isClosed} />
               </div>
