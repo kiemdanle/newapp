@@ -33,6 +33,7 @@ import { userReputationRoute } from './routes/users/reputation.js';
 import { referralRoutes } from './routes/referrals/index.js';
 import { householdsRoutes } from './routes/households/index.js';
 import { adminRoutes } from './routes/admin/index.js';
+import { feedbackRoutes } from './routes/feedback/index.js';
 import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 import { probeMediaCapabilities } from './services/products/product-image-processor.js';
@@ -143,6 +144,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(userReputationRoute, { prefix: '/v1' });
   await app.register(referralRoutes, { prefix: '/v1' });
   await app.register(householdsRoutes, { prefix: '/v1' });
+  await app.register(feedbackRoutes, { prefix: '/v1' });
   await app.register(adminRoutes, { prefix: '/v1/admin' });
 
   return app;

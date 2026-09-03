@@ -41,11 +41,13 @@ export function isPrivateUrl(url: string | null | undefined): boolean {
 
   if (trimmed.startsWith('/')) {
     return (
-      (trimmed.startsWith('/products/') ||
+      ((trimmed.startsWith('/products/') ||
         trimmed.startsWith('/v1/products/') ||
         trimmed.startsWith('/product-edits/') ||
         trimmed.startsWith('/v1/product-edits/')) &&
-      trimmed.includes('/photos/')
+        trimmed.includes('/photos/')) ||
+      trimmed.startsWith('/feedback/attachments/') ||
+      trimmed.startsWith('/v1/feedback/attachments/')
     );
   }
 
@@ -68,17 +70,17 @@ export function isPrivateUrl(url: string | null | undefined): boolean {
     const isTrustedOrigin =
       parsed.origin === baseOrigin ||
       (isLocalDevHost && (parsed.protocol === 'http:' || parsed.protocol === 'https:'));
-
     if (!isTrustedOrigin) return false;
 
     // Production remote endpoints MUST use https:
     if (!isLocalDevHost && parsed.protocol !== 'https:') return false;
 
     return (
-      (parsed.pathname.includes('/products/') &&
+      ((parsed.pathname.includes('/products/') &&
         parsed.pathname.includes('/photos/')) ||
       (parsed.pathname.includes('/product-edits/') &&
-        parsed.pathname.includes('/photos/'))
+        parsed.pathname.includes('/photos/')) ||
+      parsed.pathname.includes('/feedback/attachments/'))
     );
   } catch {
     return false;

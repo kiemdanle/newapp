@@ -19,6 +19,7 @@ export const NAV: NavSection[] = [
     title: 'Moderation',
     items: [
       { label: 'Reports', href: '/reports', icon: 'Flag' },
+      { label: 'User Feedback', href: '/feedback', icon: 'HelpCircle' },
       { label: 'Reviews', href: '/reviews', icon: 'MessageSquare' },
       { label: 'Deals', href: '/deals', icon: 'Tags' },
       { label: 'Giveaways', href: '/giveaways', icon: 'Gift' },

@@ -27,6 +27,7 @@ import {
   Clock,
   Map,
   Gift,
+  HelpCircle,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -52,13 +53,16 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Clock,
   Map,
   Gift,
+  HelpCircle,
 };
 
 export function Sidebar({
   pendingModerationCount = 0,
+  pendingFeedbackCount = 0,
   forceExpanded = false,
 }: {
   pendingModerationCount?: number;
+  pendingFeedbackCount?: number;
   forceExpanded?: boolean;
 }) {
   const pathname = usePathname();
@@ -93,7 +97,8 @@ export function Sidebar({
                 const Icon = ICON_MAP[item.icon];
                 const active = isActive(item.href);
                 const isPendingQueue = item.href === '/products/pending';
-
+                const isFeedbackQueue = item.href === '/feedback';
+                const badgeCount = isPendingQueue ? pendingModerationCount : (isFeedbackQueue ? pendingFeedbackCount : 0);
                 return (
                   <Link
                     key={item.href}
@@ -120,12 +125,12 @@ export function Sidebar({
                                 : 'text-neutral-mid group-hover:text-neutral-dark'
                             }`}
                           />
-                          {collapsed && isPendingQueue && pendingModerationCount > 0 && (
+                          {collapsed && badgeCount > 0 && (
                             <span
                               className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold text-neutral-dark shadow-xs animate-pulse"
-                              aria-label={`${pendingModerationCount} moderation items pending`}
+                              aria-label={`${badgeCount} items pending`}
                             >
-                              {pendingModerationCount}
+                              {badgeCount}
                             </span>
                           )}
                         </div>
@@ -133,12 +138,12 @@ export function Sidebar({
                       {!collapsed && <span className="truncate">{item.label}</span>}
                     </div>
 
-                    {!collapsed && isPendingQueue && pendingModerationCount > 0 && (
+                    {!collapsed && badgeCount > 0 && (
                       <span
                         className="inline-flex items-center justify-center rounded-full bg-accent px-2 py-0.5 text-xs font-bold text-neutral-dark shadow-xs"
-                        aria-label={`${pendingModerationCount} moderation items pending`}
+                        aria-label={`${badgeCount} items pending`}
                       >
-                        {pendingModerationCount}
+                        {badgeCount}
                       </span>
                     )}
                   </Link>

@@ -10,6 +10,8 @@ const VARIANTS: Record<string, 'good' | 'expiring' | 'expired' | 'neutral'> = {
   hidden: 'neutral',
   open: 'expiring',
   halfOpen: 'expiring',
+  in_progress: 'expiring',
+  replied: 'good',
   changes_required: 'expiring',
   suspended: 'expired',
   deleted: 'expired',

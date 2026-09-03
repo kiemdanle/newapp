@@ -62,6 +62,39 @@ enum ReportStatus {
   dismissed
 }
 
+enum FeedbackType {
+  bug
+  suggestion
+  feedback
+
+  @@map("feedback_type")
+}
+
+enum FeedbackStatus {
+  open
+  in_progress
+  replied
+  resolved
+  closed
+
+  @@map("feedback_status")
+}
+
+enum FeedbackSenderType {
+  user
+  admin
+
+  @@map("feedback_sender_type")
+}
+
+enum FeedbackAdminAlertStatus {
+  pending
+  sent
+  failed
+
+  @@map("feedback_admin_alert_status")
+}
+
 enum AuthCredentialType {
   password
   google
@@ -243,6 +276,10 @@ model User {
 
   moderationNotificationDeliveries ModerationNotificationDelivery[]
 
+  feedbackTicketsSubmitted FeedbackTicket[]     @relation("FeedbackAuthor")
+  feedbackTicketsResolved  FeedbackTicket[]     @relation("FeedbackResolver")
+  feedbackAttachments      FeedbackAttachment[] @relation("FeedbackAttachmentUploader")
+  feedbackMessagesSent     FeedbackMessage[]    @relation("FeedbackMessageSender")
   @@map("users")
 }
 
@@ -1035,4 +1072,79 @@ model HouseholdMember {
   @@unique([householdId, userId])
   @@index([userId])
   @@map("household_members")
+}
+
+model FeedbackTicket {
+  id              String         @id @default(uuid()) @db.Uuid
+  userId          String         @map("user_id") @db.Uuid
+  type            FeedbackType
+  title           String
+  description     String
+  status          FeedbackStatus @default(open)
+  deviceInfo      Json?          @map("device_info")
+  resolvedAt      DateTime?      @map("resolved_at")
+  resolvedBy      String?        @map("resolved_by") @db.Uuid
+  resolutionNotes String?        @map("resolution_notes")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  user        User                 @relation("FeedbackAuthor", fields: [userId], references: [id], onDelete: Cascade)
+  resolver    User?                @relation("FeedbackResolver", fields: [resolvedBy], references: [id], onDelete: SetNull)
+  attachments FeedbackAttachment[]
+  messages    FeedbackMessage[]
+  adminAlerts FeedbackAdminAlertOutbox[]
+
+  @@index([userId, createdAt])
+  @@index([status, type, createdAt])
+  @@map("feedback_tickets")
+}
+
+model FeedbackAttachment {
+  id            String   @id @default(uuid()) @db.Uuid
+  ticketId      String?  @map("ticket_id") @db.Uuid
+  uploaderId    String   @map("uploader_id") @db.Uuid
+  fileName      String   @map("file_name")
+  mimeType      String   @map("mime_type")
+  fileSizeBytes Int      @map("file_size_bytes")
+  storageKey    String   @map("storage_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  ticket   FeedbackTicket? @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  uploader User            @relation("FeedbackAttachmentUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([uploaderId])
+  @@map("feedback_attachments")
+}
+
+model FeedbackMessage {
+  id           String             @id @default(uuid()) @db.Uuid
+  ticketId     String             @map("ticket_id") @db.Uuid
+  senderType   FeedbackSenderType @map("sender_type")
+  senderUserId String             @map("sender_user_id") @db.Uuid
+  message      String
+  createdAt    DateTime           @default(now()) @map("created_at")
+
+  ticket     FeedbackTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  senderUser User           @relation("FeedbackMessageSender", fields: [senderUserId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("feedback_messages")
+}
+
+model FeedbackAdminAlertOutbox {
+  id           String                   @id @default(uuid()) @db.Uuid
+  ticketId     String                   @map("ticket_id") @db.Uuid
+  status       FeedbackAdminAlertStatus @default(pending)
+  attempts     Int                      @default(0)
+  dispatchedAt DateTime?                @map("dispatched_at")
+  lastError    String?                  @map("last_error")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+
+  ticket       FeedbackTicket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([ticketId])
+  @@map("feedback_admin_alert_outbox")
 }

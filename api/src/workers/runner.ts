@@ -13,6 +13,10 @@ import {
   startModerationNotificationWorker,
   stopModerationNotificationWatchdog,
 } from '../queues/jobs/moderation-notifications.js';
+import {
+  startFeedbackAdminAlertPoller,
+  stopFeedbackAdminAlertPoller,
+} from '../services/feedback/admin-alert-outbox.js';
 import { sweepOutbox } from '../services/notifications/outbox.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
@@ -49,6 +53,7 @@ export function startWorkers(): Worker[] {
   // the queue is paused — polling the outbox is the authoritative path,
   // BullMQ delivery only accelerates it.
   startIndependentOutboxPoller();
+  startFeedbackAdminAlertPoller();
   startModerationNotificationWatchdog();
   if (!_outboxInterval) {
     _outboxInterval = setInterval(() => {
@@ -66,6 +71,7 @@ export async function stopWorkers(): Promise<void> {
     clearInterval(_outboxInterval);
     _outboxInterval = null;
   }
+  stopFeedbackAdminAlertPoller();
   stopIndependentOutboxPoller();
   stopModerationNotificationWatchdog();
   await Promise.all(_workers.map((w) => w.close()));

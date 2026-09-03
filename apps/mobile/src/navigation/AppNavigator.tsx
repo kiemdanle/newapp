@@ -25,6 +25,8 @@ import ReportScreen from '../../app/(app)/report/index';
 import ScanScreen from '../../app/(app)/scan';
 import EditProfileScreen from '../../app/(app)/profile/edit';
 import PasswordScreen from '../../app/(app)/profile/password';
+import FeedbackHubScreen from '../../app/(app)/feedback/index';
+import FeedbackDetailScreen from '../../app/(app)/feedback/[id]';
 
 export type AppStackParamList = {
   Tabs: undefined;
@@ -65,6 +67,8 @@ export type AppStackParamList = {
   Scan: { target?: 'pantry' | 'deal' } | undefined;
   ProfileEdit: undefined;
   ProfilePassword: undefined;
+  FeedbackHub: { initialTab?: 'submit' | 'tickets' } | undefined;
+  FeedbackDetail: { id: string };
 };
 
 export type AppNavigationProp = NativeStackNavigationProp<AppStackParamList>;
@@ -99,6 +103,8 @@ export function AppNavigator() {
       <Stack.Screen name="Scan" component={ScanScreen} />
       <Stack.Screen name="ProfileEdit" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit profile' }} />
       <Stack.Screen name="ProfilePassword" component={PasswordScreen} options={{ headerShown: true, title: 'Password & security' }} />
+      <Stack.Screen name="FeedbackHub" component={FeedbackHubScreen} options={{ headerShown: true, title: 'Help & feedback' }} />
+      <Stack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} options={{ headerShown: true, title: 'Ticket details' }} />
     </Stack.Navigator>
   );
 }

@@ -119,6 +119,44 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
     }
     associatedRecordId = null;
   }
+  // 4. Feedback & Support notifications
+  else if (data.templateKey.startsWith('feedback_')) {
+    const ticketId = (data.payload?.ticketId as string) || '';
+    const ticket = ticketId
+      ? await prisma.feedbackTicket.findUnique({ where: { id: ticketId } })
+      : null;
+    const ticketTitle = ticket?.title || (data.payload?.title as string) || 'Support Ticket';
+
+    const template = await prisma.notificationTemplate.findUnique({
+      where: { key: data.templateKey },
+    });
+
+    if (data.templateKey === 'feedback_reply') {
+      title = template?.title ?? 'Support Team Replied';
+      const rawBody = template?.body ?? 'Support has replied to: {name}';
+      body = rawBody.replace(/\{name\}/g, () => ticketTitle);
+      payloadData = {
+        type: 'feedback_reply',
+        ticketId: ticketId || '',
+      };
+    } else if (data.templateKey === 'feedback_case_resolved') {
+      title = template?.title ?? 'Feedback Case Resolved';
+      const rawBody = template?.body ?? 'Your case regarding "{name}" has been marked as resolved.';
+      body = rawBody.replace(/\{name\}/g, () => ticketTitle);
+      payloadData = {
+        type: 'feedback_case_resolved',
+        ticketId: ticketId || '',
+      };
+    } else {
+      title = template?.title ?? 'Support Update';
+      body = (template?.body ?? 'Update on ticket: {name}').replace(/\{name\}/g, () => ticketTitle);
+      payloadData = {
+        type: data.templateKey,
+        ticketId: ticketId || '',
+      };
+    }
+    associatedRecordId = null;
+  }
   // 4. Pantry record expiry notifications
   else {
     const record = await prisma.record.findUnique({

@@ -56,6 +56,13 @@ import {
   adminReferralOverviewSchema,
   adminTrustedDevicesListSchema,
   adminTrustedDeviceRevokeResponseSchema,
+  adminFeedbackListPageSchema,
+  adminFeedbackCountsSchema,
+  adminFeedbackRowSchema,
+  feedbackMessageSchema,
+  feedbackTicketSchema,
+  type FeedbackReplyInput,
+  type UpdateFeedbackStatusInput,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -342,5 +349,33 @@ export const serverAdminApi = {
       apiServerFetch(`/v1/admin/trusted-devices/${id}`, { method: 'DELETE' }).then((r) =>
         adminTrustedDeviceRevokeResponseSchema.parse(r),
       ),
+  },
+  feedback: {
+    list: (q: Q = {}) =>
+      apiServerFetch(`/v1/admin/feedback${qs(q)}`).then((r) =>
+        adminFeedbackListPageSchema.parse(r),
+      ),
+    counts: () =>
+      apiServerFetch('/v1/admin/feedback/counts').then((r) =>
+        adminFeedbackCountsSchema.parse(r),
+      ),
+    get: (id: string) =>
+      apiServerFetch(`/v1/admin/feedback/${id}`).then((r) =>
+        adminFeedbackRowSchema
+          .extend({
+            messages: z.array(feedbackMessageSchema),
+          })
+          .parse(r),
+      ),
+    reply: (id: string, body: FeedbackReplyInput) =>
+      apiServerFetch(`/v1/admin/feedback/${id}/reply`, {
+        method: 'POST',
+        body,
+      }).then((r) => feedbackMessageSchema.parse(r)),
+    updateStatus: (id: string, body: UpdateFeedbackStatusInput) =>
+      apiServerFetch(`/v1/admin/feedback/${id}/status`, {
+        method: 'PATCH',
+        body,
+      }).then((r) => feedbackTicketSchema.parse(r)),
   },
 };

@@ -44,6 +44,7 @@ import { adminSettingsNotificationTemplatesRoute } from './settings/notification
 import { adminSettingsAdminsRoute } from './settings/admins.js';
 import { adminSettingsProductCreationRoute } from './settings/product-creation.js';
 import { adminTrustedDevicesRoute } from './trusted-devices.js';
+import { adminFeedbackRoutes } from './feedback/index.js';
 export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminOnlyPlugin);
   await app.register(auditPlugin);
@@ -102,4 +103,5 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminHouseholdsListRoute, { prefix: '/households' });
   await app.register(adminHouseholdsDissolveRoute, { prefix: '/households' });
   await app.register(adminTrustedDevicesRoute);
+  await app.register(adminFeedbackRoutes, { prefix: '/feedback' });
 }

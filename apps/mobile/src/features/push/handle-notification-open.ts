@@ -92,5 +92,13 @@ export async function handleNotificationTap(data: Record<string, unknown> | unde
     navigate('ProductDrafts', undefined);
     return true;
   }
+  if (
+    (data.type === 'feedback_reply' || data.type === 'feedback_case_resolved') &&
+    typeof data.ticketId === 'string' &&
+    data.ticketId.length > 0
+  ) {
+    navigate('FeedbackDetail', { id: data.ticketId });
+    return true;
+  }
   return false;
 }

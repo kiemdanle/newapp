@@ -267,3 +267,24 @@ export async function revokeTrustedDeviceAction(id: string) {
   await serverAdminApi.trustedDevices.revoke(id);
   revalidatePath('/settings/admins');
 }
+
+export async function replyFeedbackAction(id: string, message: string) {
+  const result = await serverAdminApi.feedback.reply(id, { message });
+  revalidatePath('/feedback');
+  revalidatePath(`/feedback/${id}`);
+  return result;
+}
+
+export async function updateFeedbackStatusAction(
+  id: string,
+  status: 'open' | 'in_progress' | 'replied' | 'resolved' | 'closed',
+  resolutionNotes?: string,
+) {
+  const result = await serverAdminApi.feedback.updateStatus(id, {
+    status,
+    ...(resolutionNotes ? { resolutionNotes } : {}),
+  });
+  revalidatePath('/feedback');
+  revalidatePath(`/feedback/${id}`);
+  return result;
+}

@@ -11,6 +11,10 @@ import { disconnectRedis, getRedis } from '../../src/redis.js';
 // Truncate all tables in dependency order before each test
 const tables = [
   'api_errors',
+  'feedback_admin_alert_outbox',
+  'feedback_messages',
+  'feedback_attachments',
+  'feedback_tickets',
   'notification_outbox',
   'transaction_ratings',
   'giveaway_claims',

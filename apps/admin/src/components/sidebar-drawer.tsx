@@ -6,7 +6,13 @@ import { Menu, X } from 'lucide-react';
 import { Sidebar } from '@/components/sidebar';
 import { Logo } from '@/components/logo';
 
-export function SidebarDrawer({ pendingModerationCount = 0 }: { pendingModerationCount?: number }) {
+export function SidebarDrawer({
+  pendingModerationCount = 0,
+  pendingFeedbackCount = 0,
+}: {
+  pendingModerationCount?: number;
+  pendingFeedbackCount?: number;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -46,7 +52,11 @@ export function SidebarDrawer({ pendingModerationCount = 0 }: { pendingModeratio
         </div>
         <div className="overflow-y-auto flex-1">
           <div onClick={() => setOpen(false)}>
-            <Sidebar pendingModerationCount={pendingModerationCount} forceExpanded={true} />
+            <Sidebar
+              pendingModerationCount={pendingModerationCount}
+              pendingFeedbackCount={pendingFeedbackCount}
+              forceExpanded={true}
+            />
           </div>
         </div>
       </div>

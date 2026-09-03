@@ -99,6 +99,12 @@ export const ERROR_CODES = {
     IDEMPOTENCY_IN_PROGRESS: 'idempotency_in_progress',
     // Products: abuse verification (Phase 7)
     ABUSE_CHECK_FAILED: 'abuse_check_failed',
+    // Feedback & Support
+    FEEDBACK_NOT_FOUND: 'feedback_not_found',
+    FEEDBACK_CASE_CLOSED: 'feedback_case_closed',
+    FEEDBACK_ATTACHMENT_TOO_LARGE: 'feedback_attachment_too_large',
+    FEEDBACK_ATTACHMENT_NOT_FOUND: 'feedback_attachment_not_found',
+    FEEDBACK_ATTACHMENT_LIMIT_EXCEEDED: 'feedback_attachment_limit_exceeded',
 };
 export const ITEM_LIMIT = 50;
 //# sourceMappingURL=error.js.map

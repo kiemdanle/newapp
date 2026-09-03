@@ -23,3 +23,5 @@ export * from './schemas/reputation.js';
 export * from './schemas/referral.js';
 export * from './schemas/household.js';
 export * from './schemas/locale.js';
+export * from './schemas/feedback.js';
+export * from './schemas/admin/feedback.js';

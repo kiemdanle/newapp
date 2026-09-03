@@ -519,6 +519,11 @@ export declare const ERROR_CODES: {
     readonly IDEMPOTENCY_KEY_REUSED: "idempotency_key_reused";
     readonly IDEMPOTENCY_IN_PROGRESS: "idempotency_in_progress";
     readonly ABUSE_CHECK_FAILED: "abuse_check_failed";
+    readonly FEEDBACK_NOT_FOUND: "feedback_not_found";
+    readonly FEEDBACK_CASE_CLOSED: "feedback_case_closed";
+    readonly FEEDBACK_ATTACHMENT_TOO_LARGE: "feedback_attachment_too_large";
+    readonly FEEDBACK_ATTACHMENT_NOT_FOUND: "feedback_attachment_not_found";
+    readonly FEEDBACK_ATTACHMENT_LIMIT_EXCEEDED: "feedback_attachment_limit_exceeded";
 };
 export declare const ITEM_LIMIT = 50;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];

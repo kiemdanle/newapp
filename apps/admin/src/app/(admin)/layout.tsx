@@ -5,15 +5,17 @@ import { requireAdminSession } from '@/lib/session';
 import { serverAdminApi } from '@/lib/admin-api';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const [me, moderationSummary] = await Promise.all([
+  const [me, moderationSummary, feedbackCounts] = await Promise.all([
     requireAdminSession(),
     serverAdminApi.system.moderationNotifications.summary(),
+    serverAdminApi.feedback.counts().catch(() => ({ open: 0 })),
   ]);
 
   return (
     <AdminShell
       email={me.email}
       pendingModerationCount={moderationSummary.total}
+      pendingFeedbackCount={feedbackCounts.open}
     >
       {children}
     </AdminShell>

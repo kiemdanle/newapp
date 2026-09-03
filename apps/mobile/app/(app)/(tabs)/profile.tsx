@@ -395,6 +395,32 @@ export default function Profile() {
         </View>
       </View>
 
+      {/* Section 4: Support & Feedback */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+          SUPPORT & FEEDBACK
+        </Text>
+        <View
+          style={[
+            styles.groupedCard,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <ActionRow
+            testID="profile-feedback-row"
+            accessibilityLabel="Help and feedback"
+            icon="chatbubble-ellipses-outline"
+            label="Help & feedback"
+            subtitle="Report bugs, send feedback, or submit suggestions"
+            onPress={() => navigation.push('FeedbackHub')}
+          />
+        </View>
+      </View>
+
       {/* Section 4: Session Actions */}
       <View style={[styles.section, { marginBottom: 32 }]}>
         <View
