@@ -24,7 +24,7 @@ export default function HomeTab() {
           <Logo size={28} />
           <View>
             <Text style={[styles.greeting, { color: theme.colors.text }]}>Your pantry</Text>
-            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what you need first.</Text>
+            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what's expiring first.</Text>
           </View>
         </View>
         <View style={styles.headerActions}>

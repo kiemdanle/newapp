@@ -232,7 +232,7 @@ exports[`home in expyrico snapshot 1`] = `
                               ]
                             }
                           >
-                            Use what you need first.
+                            Use what's expiring first.
                           </Text>
                         </View>
                       </View>
@@ -248,7 +248,6 @@ exports[`home in expyrico snapshot 1`] = `
                         <Memo(Pressable)
                           accessibilityLabel="Share pantry with family or roommates"
                           accessibilityRole="button"
-                          hitSlop={8}
                           onPress={[Function]}
                           style={[Function]}
                           testID="home-share-pantry-btn"
@@ -503,7 +502,7 @@ exports[`home in expyrico snapshot 1`] = `
                                 ]
                               }
                             >
-                              Use what you need first.
+                              Use what's expiring first.
                             </Text>
                           </View>
                         </View>
@@ -539,7 +538,6 @@ exports[`home in expyrico snapshot 1`] = `
                             accessible={true}
                             collapsable={false}
                             focusable={true}
-                            hitSlop={8}
                             onBlur={[Function]}
                             onClick={[Function]}
                             onFocus={[Function]}
@@ -898,7 +896,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                               ]
                             }
                           >
-                            Use what you need first.
+                            Use what's expiring first.
                           </Text>
                         </View>
                       </View>
@@ -914,7 +912,6 @@ exports[`home in expyricoDark snapshot 1`] = `
                         <Memo(Pressable)
                           accessibilityLabel="Share pantry with family or roommates"
                           accessibilityRole="button"
-                          hitSlop={8}
                           onPress={[Function]}
                           style={[Function]}
                           testID="home-share-pantry-btn"
@@ -1169,7 +1166,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                                 ]
                               }
                             >
-                              Use what you need first.
+                              Use what's expiring first.
                             </Text>
                           </View>
                         </View>
@@ -1205,7 +1202,6 @@ exports[`home in expyricoDark snapshot 1`] = `
                             accessible={true}
                             collapsable={false}
                             focusable={true}
-                            hitSlop={8}
                             onBlur={[Function]}
                             onClick={[Function]}
                             onFocus={[Function]}
