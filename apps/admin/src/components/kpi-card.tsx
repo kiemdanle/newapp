@@ -23,7 +23,7 @@ export function KpiCard({
         {/* Top bar: Icon badge and optional Trend indicator */}
         <div className="flex items-center justify-between gap-2">
           {Icon ? (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-light/40 text-primary-dark border border-primary/15 shadow-2xs group-hover:scale-105 group-hover:bg-primary-light/60 transition-transform motion-reduce:transform-none">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-light/40 text-primary-dark border border-primary/15 shadow-xs group-hover:scale-105 group-hover:bg-primary-light/60 transition-transform motion-reduce:transform-none">
               <Icon size={18} className="text-primary-dark" />
             </div>
           ) : (
@@ -51,7 +51,7 @@ export function KpiCard({
         <div className="mt-3.5 space-y-1">
           <div
             title={label}
-            className="text-xs font-semibold text-neutral-mid font-body leading-snug tracking-normal break-words"
+            className="text-xs font-semibold text-neutral-mid font-body leading-snug tracking-normal break-words min-h-[2rem] flex items-end"
           >
             {label}
           </div>
