@@ -141,24 +141,25 @@ export default function FeedbackHubScreen() {
           accessibilityRole="tab"
           accessibilityState={{ selected: mode === 'submit' }}
           onPress={() => setMode('submit')}
-          style={[
+          style={({ pressed }) => [
             styles.segmentBtn,
             mode === 'submit' && {
-              backgroundColor: theme.colors.primaryLight,
+              backgroundColor: theme.colors.primary,
             },
+            pressed && { opacity: 0.85 },
           ]}
         >
           <Ionicons
             name="create-outline"
             size={16}
-            color={mode === 'submit' ? theme.colors.primaryDark : theme.colors.textMuted}
+            color={mode === 'submit' ? '#FFFFFF' : theme.colors.textMuted}
           />
           <Text
             style={[
               styles.segmentText,
               {
-                color: mode === 'submit' ? theme.colors.primaryDark : theme.colors.textMuted,
-                fontWeight: mode === 'submit' ? '700' : '600',
+                color: mode === 'submit' ? '#FFFFFF' : theme.colors.textMuted,
+                fontWeight: mode === 'submit' ? '700' : '500',
               },
             ]}
           >
@@ -171,24 +172,25 @@ export default function FeedbackHubScreen() {
           accessibilityRole="tab"
           accessibilityState={{ selected: mode === 'tickets' }}
           onPress={() => setMode('tickets')}
-          style={[
+          style={({ pressed }) => [
             styles.segmentBtn,
             mode === 'tickets' && {
-              backgroundColor: theme.colors.primaryLight,
+              backgroundColor: theme.colors.primary,
             },
+            pressed && { opacity: 0.85 },
           ]}
         >
           <Ionicons
             name="chatbubbles-outline"
             size={16}
-            color={mode === 'tickets' ? theme.colors.primaryDark : theme.colors.textMuted}
+            color={mode === 'tickets' ? '#FFFFFF' : theme.colors.textMuted}
           />
           <Text
             style={[
               styles.segmentText,
               {
-                color: mode === 'tickets' ? theme.colors.primaryDark : theme.colors.textMuted,
-                fontWeight: mode === 'tickets' ? '700' : '600',
+                color: mode === 'tickets' ? '#FFFFFF' : theme.colors.textMuted,
+                fontWeight: mode === 'tickets' ? '700' : '500',
               },
             ]}
           >
@@ -214,7 +216,8 @@ export default function FeedbackHubScreen() {
               onChangeText={setTitle}
               maxLength={120}
               placeholder="e.g. Barcode scanner not focusing"
-              placeholderTextColor="rgba(140, 140, 133, 0.6)"
+              placeholderTextColor={theme.colors.textMuted}
+              selectionColor={theme.colors.primary}
               style={[
                 styles.textInput,
                 {
@@ -240,7 +243,8 @@ export default function FeedbackHubScreen() {
               multiline
               numberOfLines={4}
               placeholder="Provide exact details or steps to reproduce so our engineers can resolve it quickly..."
-              placeholderTextColor="rgba(140, 140, 133, 0.6)"
+              placeholderTextColor={theme.colors.textMuted}
+              selectionColor={theme.colors.primary}
               style={[
                 styles.textArea,
                 {
@@ -273,18 +277,25 @@ export default function FeedbackHubScreen() {
             style={({ pressed }) => [
               styles.submitBtn,
               {
-                backgroundColor: isFormValid ? theme.colors.primary : theme.colors.border,
-                opacity: pressed ? 0.8 : 1,
+                backgroundColor: isFormValid ? theme.colors.accent : theme.colors.border,
+                opacity: pressed && isFormValid ? 0.88 : 1,
               },
             ]}
           >
             {uploading ? (
               <View style={styles.uploadingRow}>
-                <ActivityIndicator size="small" color="#FFFFFF" />
-                <Text style={styles.submitBtnText}>{uploadProgress || 'Submitting…'}</Text>
+                <ActivityIndicator size="small" color={theme.colors.neutralDark} />
+                <Text style={[styles.submitBtnText, { color: theme.colors.neutralDark }]}>
+                  {uploadProgress || 'Submitting…'}
+                </Text>
               </View>
             ) : (
-              <Text style={[styles.submitBtnText, { color: isFormValid ? '#FFFFFF' : theme.colors.textMuted }]}>
+              <Text
+                style={[
+                  styles.submitBtnText,
+                  { color: isFormValid ? theme.colors.neutralDark : theme.colors.textMuted },
+                ]}
+              >
                 Submit Ticket
               </Text>
             )}
@@ -331,9 +342,9 @@ export default function FeedbackHubScreen() {
               </Text>
               <Pressable
                 onPress={() => setMode('submit')}
-                style={[styles.emptyBtn, { backgroundColor: theme.colors.primaryLight }]}
+                style={[styles.emptyBtn, { backgroundColor: theme.colors.primary }]}
               >
-                <Text style={[styles.emptyBtnText, { color: theme.colors.primaryDark }]}>File a report</Text>
+                <Text style={[styles.emptyBtnText, { color: '#FFFFFF' }]}>File a report</Text>
               </Pressable>
             </View>
           )}

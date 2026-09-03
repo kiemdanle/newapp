@@ -47,6 +47,14 @@ export function FeedbackTypeSelector({
       <View style={styles.row}>
         {OPTIONS.map((opt) => {
           const active = value === opt.type;
+          const isBug = opt.type === 'bug';
+          const isIdea = opt.type === 'suggestion';
+          const accentColor = isBug
+            ? theme.colors.danger
+            : isIdea
+            ? theme.colors.accent
+            : theme.colors.primary;
+
           return (
             <Pressable
               key={opt.type}
@@ -58,23 +66,33 @@ export function FeedbackTypeSelector({
               style={({ pressed }) => [
                 styles.chip,
                 {
-                  backgroundColor: active ? theme.colors.primaryLight : theme.colors.bgElevated,
+                  backgroundColor: theme.colors.bgElevated,
                   borderColor: active ? theme.colors.primary : theme.colors.border,
-                  opacity: pressed ? 0.8 : 1,
+                  borderWidth: active ? 2 : 1,
+                  opacity: pressed ? 0.85 : 1,
                 },
               ]}
             >
-              <Ionicons
-                name={opt.icon}
-                size={18}
-                color={active ? theme.colors.primaryDark : theme.colors.textMuted}
-              />
+              <View
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: active ? accentColor + '18' : theme.colors.border + '40',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={opt.icon}
+                  size={18}
+                  color={active ? accentColor : theme.colors.textMuted}
+                />
+              </View>
               <Text
                 style={[
                   styles.chipLabel,
                   {
-                    color: active ? theme.colors.primaryDark : theme.colors.text,
-                    fontWeight: active ? '700' : '600',
+                    color: active ? theme.colors.text : theme.colors.textMuted,
+                    fontWeight: active ? '700' : '500',
                   },
                 ]}
               >
@@ -104,14 +122,20 @@ const styles = StyleSheet.create({
   },
   chip: {
     flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    minHeight: 64,
+    gap: 6,
+    minHeight: 74,
+  },
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chipLabel: {
     fontSize: 11,

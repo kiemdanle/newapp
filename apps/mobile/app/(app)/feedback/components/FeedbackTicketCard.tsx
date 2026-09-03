@@ -7,16 +7,16 @@ import type { FeedbackTicket } from '@expyrico/shared';
 function statusColors(status: string, theme: ReturnType<typeof useTheme>) {
   switch (status) {
     case 'open':
-      return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, label: 'Open' };
+      return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, border: theme.colors.primary + '40', label: 'Open' };
     case 'in_progress':
-      return { bg: 'rgba(245, 166, 35, 0.15)', text: '#F5A623', label: 'In Progress' };
+      return { bg: theme.colors.accentLight, text: theme.colors.accent, border: theme.colors.accent + '40', label: 'In Progress' };
     case 'replied':
-      return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, label: 'Replied' };
+      return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, border: theme.colors.primary + '50', label: 'Support Replied' };
     case 'resolved':
-      return { bg: 'rgba(254, 239, 195, 0.6)', text: '#3A8F6F', label: 'Resolved' };
+      return { bg: theme.colors.primaryLight, text: theme.colors.primaryDark, border: theme.colors.primary + '60', label: 'Resolved' };
     case 'closed':
     default:
-      return { bg: theme.colors.border, text: theme.colors.textMuted, label: 'Closed' };
+      return { bg: theme.colors.border, text: theme.colors.textMuted, border: theme.colors.border, label: 'Closed' };
   }
 }
 
@@ -30,15 +30,16 @@ export function FeedbackTicketCard({
   const theme = useTheme();
   const st = statusColors(ticket.status, theme);
 
+  const isBug = ticket.type === 'bug';
+  const isIdea = ticket.type === 'suggestion';
   const iconName: keyof typeof Ionicons.glyphMap =
-    ticket.type === 'bug'
-      ? 'bug-outline'
-      : ticket.type === 'suggestion'
-      ? 'bulb-outline'
-      : 'chatbubble-ellipses-outline';
-
-  const typeLabel =
-    ticket.type === 'bug' ? 'Bug' : ticket.type === 'suggestion' ? 'Idea' : 'Feedback';
+    isBug ? 'bug-outline' : isIdea ? 'bulb-outline' : 'chatbubble-ellipses-outline';
+  const typeColor = isBug
+    ? theme.colors.danger
+    : isIdea
+    ? theme.colors.accent
+    : theme.colors.primary;
+  const typeLabel = isBug ? 'Bug' : isIdea ? 'Idea' : 'Feedback';
 
   const dateStr = new Date(ticket.createdAt).toLocaleDateString(undefined, {
     month: 'short',
@@ -61,12 +62,12 @@ export function FeedbackTicketCard({
       ]}
     >
       <View style={styles.topRow}>
-        <View style={styles.typeBadge}>
-          <Ionicons name={iconName} size={13} color={theme.colors.text} />
-          <Text style={[styles.typeText, { color: theme.colors.text }]}>{typeLabel}</Text>
+        <View style={[styles.typeBadge, { backgroundColor: theme.colors.bgElevated }]}>
+          <Ionicons name={iconName} size={13} color={typeColor} />
+          <Text style={[styles.typeText, { color: typeColor }]}>{typeLabel}</Text>
         </View>
 
-        <View style={[styles.statusPill, { backgroundColor: st.bg }]}>
+        <View style={[styles.statusPill, { backgroundColor: st.bg, borderColor: st.border, borderWidth: 1 }]}>
           <Text style={[styles.statusText, { color: st.text }]}>{st.label}</Text>
         </View>
       </View>
@@ -79,11 +80,11 @@ export function FeedbackTicketCard({
         {ticket.description}
       </Text>
 
-      <View style={styles.bottomRow}>
+      <View style={[styles.bottomRow, { borderTopColor: theme.colors.border }]}>
         <Text style={[styles.date, { color: theme.colors.textMuted }]}>{dateStr}</Text>
         <View style={styles.chevronWrap}>
-          <Text style={[styles.viewLink, { color: theme.colors.primaryDark }]}>View discussion</Text>
-          <Ionicons name="chevron-forward" size={14} color={theme.colors.primaryDark} />
+          <Text style={[styles.viewLink, { color: theme.colors.primary }]}>View discussion</Text>
+          <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
         </View>
       </View>
     </Pressable>
