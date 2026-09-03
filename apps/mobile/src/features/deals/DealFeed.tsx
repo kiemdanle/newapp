@@ -338,18 +338,6 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
                 title="No deals posted yet"
                 body="Be the first to share a grocery price drop in your area and help neighbors save!"
               />
-              <Pressable
-                accessibilityRole="button"
-                onPress={onNew}
-                style={[
-                  styles.emptyStateAction,
-                  { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
-                ]}
-              >
-                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
-                  + Post the first deal
-                </Text>
-              </Pressable>
             </View>
           )
         }
