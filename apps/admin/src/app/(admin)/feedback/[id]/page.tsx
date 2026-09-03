@@ -15,7 +15,23 @@ import {
   Lightbulb,
   MessageSquare,
   CheckCircle,
+  CornerDownRight,
 } from 'lucide-react';
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  const dateStr = d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timeStr = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+  return `${dateStr} · ${timeStr}`;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -185,56 +201,143 @@ export default async function AdminFeedbackDetailPage({
         <FeedbackAttachments attachments={ticket.attachments} />
       )}
 
-      {/* Conversation Timeline */}
+      {/* Conversation Timeline & Reply Thread */}
       <div className="space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-mid font-display">
-          Conversation Thread ({ticket.messages.length})
-        </h3>
+        <div className="flex items-center justify-between border-b border-border/80 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <MessageSquare size={15} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-neutral-dark font-display">
+                Conversation Thread
+              </h3>
+              <p className="text-[11px] text-neutral-mid">
+                {ticket.messages.length} {ticket.messages.length === 1 ? 'message' : 'messages'} recorded
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-light/80 px-2.5 py-1 text-[11px] font-medium text-neutral-mid border border-border">
+            <Clock size={11} />
+            <span>Last updated {formatDateTime(ticket.updatedAt)}</span>
+          </span>
+        </div>
 
-        <div className="space-y-3">
-          {ticket.messages.map((msg, index) => {
-            const isAdmin = msg.senderType === 'admin';
-            return (
-              <div
-                key={msg.id}
-                className={`rounded-2xl border p-4.5 transition-all ${
-                  isAdmin
-                    ? 'border-primary/25 bg-primary-light/15 ml-6 sm:ml-12 shadow-xs'
-                    : 'border-border bg-card mr-6 sm:mr-12 shadow-xs'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+        {/* Timeline with vertical continuous connector spine */}
+        <div className="relative pl-6 sm:pl-8 before:absolute before:left-3.5 sm:before:left-4 before:top-4 before:bottom-6 before:w-0.5 before:bg-border/80">
+          <div className="space-y-6">
+            {ticket.messages.map((msg, index) => {
+              const isAdmin = msg.senderType === 'admin';
+              const isInitial = index === 0;
+
+              return (
+                <div key={msg.id} className="relative group">
+                  {/* Timeline node icon */}
+                  <div
+                    className={`absolute -left-6 sm:-left-8 top-3 flex h-7 w-7 items-center justify-center rounded-full border-2 shadow-xs transition-transform group-hover:scale-105 ${
+                      isAdmin
+                        ? 'border-primary bg-emerald-50 text-primary ring-4 ring-primary/10'
+                        : isInitial
+                        ? 'border-neutral-dark bg-white text-neutral-dark ring-4 ring-neutral-200/60'
+                        : 'border-border bg-white text-neutral-mid ring-4 ring-neutral-100'
+                    }`}
+                  >
                     {isAdmin ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary text-white px-2 py-0.5 text-[10px] font-bold">
-                        <Shield size={10} />
-                        <span>Support Team</span>
-                      </span>
+                      <Shield size={12} className="fill-primary/20 text-primary" />
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-neutral-light text-neutral-dark px-2 py-0.5 text-[10px] font-semibold border border-border">
-                        <User size={10} />
-                        <span>{index === 0 ? 'Reporter (Initial Report)' : fullName}</span>
-                      </span>
+                      <User size={12} />
                     )}
                   </div>
-                  <div className="flex items-center gap-1 text-[11px] text-neutral-mid font-mono">
-                    <Clock size={11} />
-                    <span>{new Date(msg.createdAt).toLocaleString()}</span>
+
+                  {/* Message Card */}
+                  <div
+                    className={`rounded-2xl border transition-all duration-200 shadow-xs ${
+                      isAdmin
+                        ? 'border-primary/30 bg-gradient-to-b from-primary-light/15 via-white to-white hover:border-primary/50'
+                        : 'border-border/90 bg-white hover:border-neutral-300'
+                    }`}
+                  >
+                    {/* Message Header Bar */}
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-2 px-4.5 py-3 border-b rounded-t-2xl ${
+                        isAdmin
+                          ? 'border-primary/15 bg-primary-light/20'
+                          : 'border-border/60 bg-neutral-light/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {/* Avatar */}
+                        {isAdmin ? (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-[10px] font-bold shadow-xs">
+                            E
+                          </div>
+                        ) : ticket.user.avatarUrl ? (
+                          <img
+                            src={ticket.user.avatarUrl}
+                            alt={fullName}
+                            className="h-6 w-6 rounded-full object-cover border border-border shadow-xs"
+                          />
+                        ) : (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-neutral-200 text-neutral-dark text-[10px] font-bold shadow-xs">
+                            {ticket.user.firstName?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                        )}
+
+                        {/* Name & Role Badge */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-neutral-dark">
+                            {isAdmin ? 'Expyrico Support Team' : fullName}
+                          </span>
+                          {isAdmin ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-primary text-white px-2 py-0.5 text-[10px] font-bold tracking-wide">
+                              Staff
+                            </span>
+                          ) : isInitial ? (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-neutral-dark text-white px-2 py-0.5 text-[10px] font-semibold">
+                              Initial Report
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-md bg-neutral-light text-neutral-dark px-2 py-0.5 text-[10px] font-medium border border-border">
+                              Reporter
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Formatted Datetime */}
+                      <div className="flex items-center gap-1.5 text-xs text-neutral-mid font-mono">
+                        <Clock size={11} className="text-neutral-mid/70" />
+                        <span>{formatDateTime(msg.createdAt)}</span>
+                      </div>
+                    </div>
+
+                    {/* Message Body */}
+                    <div className="p-4.5 text-sm text-neutral-dark whitespace-pre-wrap leading-relaxed select-text">
+                      {msg.message}
+                    </div>
                   </div>
                 </div>
+              );
+            })}
 
-                <div className="text-sm text-neutral-dark whitespace-pre-wrap leading-relaxed">
-                  {msg.message}
+            {/* Active Reply Composer anchored as final timeline node */}
+            {!isClosed && (
+              <div className="relative pt-2">
+                <div className="absolute -left-6 sm:-left-8 top-5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-primary/40 bg-white text-primary shadow-xs ring-4 ring-primary/10">
+                  <CornerDownRight size={13} />
                 </div>
+                <FeedbackReplyBox ticketId={ticket.id} isClosed={isClosed} />
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Reply Box */}
-      <div className="pt-2">
-        <FeedbackReplyBox ticketId={ticket.id} isClosed={isClosed} />
+        {/* If closed, show clean resolution notice */}
+        {isClosed && (
+          <div className="pt-2">
+            <FeedbackReplyBox ticketId={ticket.id} isClosed={isClosed} />
+          </div>
+        )}
       </div>
     </div>
   );
