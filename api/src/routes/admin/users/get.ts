@@ -21,6 +21,7 @@ export async function adminUsersGetRoute(app: FastifyInstance) {
     return adminUserDetailSchema.parse({
       id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName,
       country: user.country, role: user.role, status: user.status,
+      requireProductApproval: user.requireProductApproval,
       createdAt: user.createdAt.toISOString(), lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
       emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
       totpEnabledAt: user.totpEnabledAt?.toISOString() ?? null,

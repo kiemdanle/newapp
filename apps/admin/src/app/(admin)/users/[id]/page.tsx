@@ -5,7 +5,7 @@ import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 import { DataTable, type Column } from '@/components/data-table';
 import { UserActions } from './user-actions';
-import { ArrowLeft, User as UserIcon, Shield, Package, MessageSquare, Flag, Key, CheckCircle } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Shield, ShieldAlert, Package, MessageSquare, Flag, Key, CheckCircle } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +94,16 @@ export default async function UserDetailPage({
                   Country: {u.country}
                 </span>
               )}
+              {u.requireProductApproval ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                  <ShieldAlert size={11} className="text-amber-600" />
+                  <span>Approval Required (Anti-Spam)</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary-light/40 border border-primary/20 px-2.5 py-0.5 text-xs font-medium text-primary-dark">
+                  <span>Approval: Auto (Default)</span>
+                </span>
+              )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-neutral-dark font-display tracking-tight">
               {`${u.firstName} ${u.lastName}`.trim() || u.email}
@@ -109,6 +119,7 @@ export default async function UserDetailPage({
           status={u.status}
           role={u.role}
           totpEnabledAt={u.totpEnabledAt}
+          requireProductApproval={u.requireProductApproval ?? false}
           isSelf={isSelf}
         />
       </div>

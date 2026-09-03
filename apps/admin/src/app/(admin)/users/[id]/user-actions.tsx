@@ -9,7 +9,7 @@ import {
   sendUserRandomPasswordAction,
 } from '@/lib/actions';
 import { actionErrorMessage } from '@/lib/action-result';
-import { ShieldAlert, KeyRound, Mail } from 'lucide-react';
+import { ShieldAlert, KeyRound, Mail, CheckCircle } from 'lucide-react';
 import { ChangePasswordModal } from './change-password-modal';
 
 /**
@@ -24,6 +24,7 @@ export function UserActions({
   status,
   role,
   totpEnabledAt,
+  requireProductApproval = false,
   isSelf = false,
 }: {
   id: string;
@@ -31,6 +32,7 @@ export function UserActions({
   status: 'active' | 'suspended' | 'deleted';
   role: 'user' | 'admin';
   totpEnabledAt?: string | null;
+  requireProductApproval?: boolean;
   isSelf?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
@@ -140,6 +142,39 @@ export function UserActions({
           >
             <ShieldAlert className="mr-1.5 h-3.5 w-3.5 text-amber-600" />
             <span>Reset 2FA</span>
+          </Button>
+        )}
+        {requireProductApproval ? (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              run(
+                () => patchUserAction(id, { requireProductApproval: false }),
+                'Allow auto-approval for this user?\n\nTheir new product submissions will follow the global approval policy.',
+              )
+            }
+            className="border-primary/40 text-primary-dark hover:bg-primary-light/30"
+          >
+            <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-primary" />
+            <span>Allow auto-approval</span>
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={pending}
+            onClick={() =>
+              run(
+                () => patchUserAction(id, { requireProductApproval: true }),
+                'Require product approval for this user?\n\nThis will force all new product submissions by this user into the moderation queue, even when global auto-approval is active.',
+              )
+            }
+            className="border-amber-300 text-amber-900 hover:bg-amber-50"
+          >
+            <ShieldAlert className="mr-1.5 h-3.5 w-3.5 text-amber-600" />
+            <span>Require approval</span>
           </Button>
         )}
         <Button

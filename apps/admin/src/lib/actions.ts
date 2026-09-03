@@ -228,7 +228,7 @@ export async function saveFeatureFlagsAction(body: {
   revalidatePath('/settings/feature-flags');
 }
 
-export async function saveProductCreationAction(body: { mode: 'off' | 'internal' | 'all' }) {
+export async function saveProductCreationAction(body: { mode: 'off' | 'internal' | 'all'; requireApproval?: boolean }) {
   await serverAdminApi.settings.productCreation.patch(body);
   revalidatePath('/settings/feature-flags');
 }

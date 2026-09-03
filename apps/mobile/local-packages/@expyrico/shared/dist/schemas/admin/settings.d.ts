@@ -27,10 +27,13 @@ export declare const moderationSettingsSchema: z.ZodObject<{
 }>;
 export declare const productCreationSettingsSchema: z.ZodObject<{
     mode: z.ZodEnum<["off", "internal", "all"]>;
+    requireApproval: z.ZodDefault<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     mode: "off" | "internal" | "all";
+    requireApproval: boolean;
 }, {
     mode: "off" | "internal" | "all";
+    requireApproval?: boolean | undefined;
 }>;
 export type ProductCreationSettings = z.infer<typeof productCreationSettingsSchema>;
 export declare const notificationTemplateSchema: z.ZodObject<{
@@ -88,15 +91,15 @@ export declare const adminRowSchema: z.ZodObject<{
     email: string;
     firstName: string;
     lastName: string;
-    totpEnabledAt: string | null;
     createdAt: string;
+    totpEnabledAt: string | null;
 }, {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-    totpEnabledAt: string | null;
     createdAt: string;
+    totpEnabledAt: string | null;
 }>;
 export type AdminRow = z.infer<typeof adminRowSchema>;
 export declare const adminInviteSchema: z.ZodObject<{

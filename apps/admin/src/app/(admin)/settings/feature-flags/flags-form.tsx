@@ -28,6 +28,7 @@ export function FlagsForm({
   const [err, setErr] = useState<string | null>(null);
   const [flags, setFlags] = useState<Flags>(initial);
   const [mode, setMode] = useState<'off' | 'internal' | 'all'>(initialProductCreation?.mode ?? 'all');
+  const [requireApproval, setRequireApproval] = useState<boolean>(initialProductCreation?.requireApproval ?? false);
   const toggle = (k: keyof Flags) => () =>
     setFlags((f) => ({ ...f, [k]: !f[k as 'reviewsEnabled'] }));
 
@@ -43,7 +44,7 @@ export function FlagsForm({
             ocrEnabled: flags.ocrEnabled,
             maintenanceBanner: flags.maintenanceBanner?.trim() ? flags.maintenanceBanner.trim() : null,
           }),
-          saveProductCreationAction({ mode }),
+          saveProductCreationAction({ mode, requireApproval }),
         ]);
         setMsg('Saved.');
       } catch (e) {
@@ -131,6 +132,48 @@ export function FlagsForm({
             <div>
               <span className="font-medium">Disabled (Off)</span>
               <p className="text-xs text-muted-foreground">No one can create new products; users can only save custom pantry items.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      {/* Product Approval Policy */}
+      <div className="space-y-3 rounded-lg border p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Community Product Approval Policy</h3>
+          <p className="text-xs text-muted-foreground">
+            Controls whether newly added community products require administrative review before becoming active in the catalog.
+          </p>
+        </div>
+        <div className="space-y-2 pt-1">
+          <label className="flex items-center gap-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="require_approval"
+              checked={!requireApproval}
+              onChange={() => setRequireApproval(false)}
+              className="h-4 w-4 text-primary"
+            />
+            <div>
+              <span className="font-medium">Auto-Approve (Approval Disabled - Default)</span>
+              <p className="text-xs text-muted-foreground">
+                Newly created products are active and immediately visible in the catalog without waiting in moderation.
+              </p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 text-sm cursor-pointer">
+            <input
+              type="radio"
+              name="require_approval"
+              checked={requireApproval}
+              onChange={() => setRequireApproval(true)}
+              className="h-4 w-4 text-primary"
+            />
+            <div>
+              <span className="font-medium">Require Approval (Approval Enabled)</span>
+              <p className="text-xs text-muted-foreground">
+                All newly created community products are held in the moderation queue until an admin reviews them.
+              </p>
             </div>
           </label>
         </div>

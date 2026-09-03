@@ -20,6 +20,7 @@ export async function adminUsersPatchRoute(app: FastifyInstance) {
         ...(input.role !== undefined ? { role: input.role } : {}),
         ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
         ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
+        ...(input.requireProductApproval !== undefined ? { requireProductApproval: input.requireProductApproval } : {}),
       },
     });
     if ((input.status && input.status !== 'active') || (input.role && input.role !== 'admin')) {
@@ -42,6 +43,7 @@ export async function adminUsersPatchRoute(app: FastifyInstance) {
     return adminUserRowSchema.parse({
       id: after.id, email: after.email, firstName: after.firstName, lastName: after.lastName,
       country: after.country, role: after.role, status: after.status,
+      requireProductApproval: after.requireProductApproval,
       createdAt: after.createdAt.toISOString(), lastSeenAt: after.lastSeenAt?.toISOString() ?? null,
     });
   });

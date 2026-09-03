@@ -36,6 +36,7 @@ export async function adminUsersListRoute(app: FastifyInstance) {
     const items = (hasMore ? rows.slice(0, -1) : rows).map((u) => ({
       id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName,
       country: u.country, role: u.role, status: u.status,
+      requireProductApproval: u.requireProductApproval,
       createdAt: u.createdAt.toISOString(), lastSeenAt: u.lastSeenAt?.toISOString() ?? null,
     }));
     const last = items.at(-1);

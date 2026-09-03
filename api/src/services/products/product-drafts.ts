@@ -28,6 +28,8 @@ import { assertWithinActiveDraftQuota } from './product-creation-quotas.js';
 import { assessProductCreationSubmission } from '../abuse/product-creation-assessment.js';
 import { recordModerationNotificationEvent } from '../notifications/moderation-notification-events.js';
 
+import { getSetting, SETTING_KEYS, productCreationSettingsSchema } from '../admin/settings.js';
+import { autoApproveProduct, hasExceededDailyAutoApprovalQuota } from './auto-approval.js';
 function draftIdentifierInput(input: ProductDraftCreateRequest): { barcode?: string; qr?: string } {
   return input.barcode !== undefined ? { barcode: input.barcode } : { qr: input.qrPayload! };
 }
@@ -303,8 +305,35 @@ export async function submitDraft(
     'product-creation: submission assessment recorded',
   );
 
+  // Approval policy evaluation:
+  // 1. If creator has requireProductApproval == true -> ALWAYS require moderation (anti-spam override)
+  // 2. If user exceeded daily auto-approval velocity cap -> require moderation
+  // 3. Otherwise, follow global requireApproval setting (if false, auto-approve!)
+  // Fail-safe: if creator record is missing, fail closed (require moderation)
+  const creator = await prisma.user.findUnique({
+    where: { id: actor.id },
+    select: { requireProductApproval: true },
+  });
+
+  const { requireApproval: globalRequireApproval } = await getSetting(
+    SETTING_KEYS.PRODUCT_CREATION,
+    productCreationSettingsSchema,
+  );
+
+  const exceededDailyCap = await hasExceededDailyAutoApprovalQuota(actor.id);
+
+  const needsApproval = Boolean(
+    (creator ? creator.requireProductApproval : true) ||
+    globalRequireApproval ||
+    exceededDailyCap,
+  );
+
+  if (!needsApproval) {
+    return autoApproveProduct(productId, input.version, actor.id);
+  }
   const submittedAt = new Date();
   await prisma.$transaction(async (tx) => {
+
     const result = await tx.product.updateMany({
       where: {
         id: productId,

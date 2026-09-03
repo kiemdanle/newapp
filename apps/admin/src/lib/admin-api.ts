@@ -263,7 +263,7 @@ export const serverAdminApi = {
         apiServerFetch('/v1/admin/settings/product-creation').then((r) =>
           productCreationSettingsSchema.parse(r),
         ),
-      patch: (body: { mode: 'off' | 'internal' | 'all' }) =>
+      patch: (body: { mode: 'off' | 'internal' | 'all'; requireApproval?: boolean }) =>
         apiServerFetch('/v1/admin/settings/product-creation', {
           method: 'PATCH',
           body,

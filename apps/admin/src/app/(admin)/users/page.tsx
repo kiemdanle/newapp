@@ -4,7 +4,7 @@ import { DataTable, type Column } from '@/components/data-table';
 import { LoadMore } from '@/components/load-more';
 import { StatusBadge } from '@/components/status-badge';
 import { FilterBar, SelectFilter, TextFilter } from '@/components/filter-bar';
-import { Users, User as UserIcon, Shield } from 'lucide-react';
+import { Users, User as UserIcon, Shield, ShieldAlert } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +31,7 @@ export default async function UsersPage({
         const initials = `${u.firstName?.[0] ?? ''}${u.lastName?.[0] ?? ''}`.toUpperCase() || 'U';
         return (
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light/60 text-xs font-bold text-primary-dark shadow-2xs">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-light/60 text-xs font-bold text-primary-dark shadow-xs">
               {initials}
             </div>
             <div className="min-w-0">
@@ -77,6 +77,20 @@ export default async function UsersPage({
         ),
     },
     { header: 'Status', cell: (u) => <StatusBadge status={u.status} /> },
+    {
+      header: 'Product Approval',
+      cell: (u) =>
+        u.requireProductApproval ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+            <ShieldAlert size={10} className="text-amber-600" />
+            <span>Required</span>
+          </span>
+        ) : (
+          <span className="text-[11px] text-neutral-mid font-medium">
+            Auto
+          </span>
+        ),
+    },
     {
       header: 'Last Active',
       cell: (u) => (

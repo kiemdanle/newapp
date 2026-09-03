@@ -14,6 +14,7 @@ export const moderationSettingsSchema = z.object({
 // idempotently before any reader starts.
 export const productCreationSettingsSchema = z.object({
     mode: z.enum(['off', 'internal', 'all']),
+    requireApproval: z.boolean().default(false),
 });
 export const notificationTemplateSchema = z.object({
     id: z.string().uuid(),

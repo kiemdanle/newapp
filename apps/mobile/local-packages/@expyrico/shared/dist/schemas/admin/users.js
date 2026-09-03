@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { cursorQuerySchema, cursorPageSchema } from './common.js';
+import { passwordField } from '../auth.js';
 export const adminUserRoleSchema = z.enum(['user', 'admin']);
 export const adminUserStatusSchema = z.enum(['active', 'suspended', 'deleted']);
 export const adminUserRowSchema = z.object({
@@ -10,6 +11,7 @@ export const adminUserRowSchema = z.object({
     country: z.string().nullable(),
     role: adminUserRoleSchema,
     status: adminUserStatusSchema,
+    requireProductApproval: z.boolean().default(false),
     createdAt: z.string().datetime(),
     lastSeenAt: z.string().datetime().nullable(),
 });
@@ -41,6 +43,7 @@ export const adminUserPatchSchema = z.object({
     role: adminUserRoleSchema.optional(),
     firstName: z.string().min(1).optional(),
     lastName: z.string().min(1).optional(),
+    requireProductApproval: z.boolean().optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'no fields to update' });
 export const adminUserImpersonateResponseSchema = z.object({
     accessToken: z.string(),
@@ -51,6 +54,22 @@ export const adminUserReset2faRequestSchema = z.object({
     confirmSelfReset: z.boolean().optional(),
 });
 export const adminUserReset2faResponseSchema = z.object({
+    ok: z.literal(true),
+    userId: z.string().uuid(),
+    message: z.string(),
+});
+export const adminUserChangePasswordRequestSchema = z.object({
+    password: passwordField,
+});
+export const adminUserChangePasswordResponseSchema = z.object({
+    ok: z.literal(true),
+    userId: z.string().uuid(),
+    message: z.string(),
+});
+export const adminUserSendRandomPasswordRequestSchema = z.object({
+    notes: z.string().trim().max(500).optional(),
+});
+export const adminUserSendRandomPasswordResponseSchema = z.object({
     ok: z.literal(true),
     userId: z.string().uuid(),
     message: z.string(),

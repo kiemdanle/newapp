@@ -200,6 +200,7 @@ model User {
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
   lastSeenAt              DateTime?
+  requireProductApproval  Boolean         @default(false) @map("require_product_approval")
 
   credentials               AuthCredential[]
   sessions                  Session[]

@@ -13,6 +13,7 @@ export const adminUserRowSchema = z.object({
   country: z.string().nullable(),
   role: adminUserRoleSchema,
   status: adminUserStatusSchema,
+  requireProductApproval: z.boolean().default(false),
   createdAt: z.string().datetime(),
   lastSeenAt: z.string().datetime().nullable(),
 });
@@ -48,6 +49,7 @@ export const adminUserPatchSchema = z.object({
   role: adminUserRoleSchema.optional(),
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
+  requireProductApproval: z.boolean().optional(),
 }).refine((d) => Object.keys(d).length > 0, { message: 'no fields to update' });
 
 export const adminUserImpersonateResponseSchema = z.object({
