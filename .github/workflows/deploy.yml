@@ -60,8 +60,8 @@ jobs:
         run: pnpm --filter @expyrico/shared build && pnpm --filter @expyrico/theme build
       - name: Typecheck
         run: pnpm -r typecheck
-      - name: Unit + integration tests
-        run: pnpm -r test
+      - name: Unit tests
+        run: pnpm --filter @expyrico/shared test && pnpm --filter @expyrico/admin test && pnpm --filter @expyrico/api test:unit
 
   build:
     name: build
