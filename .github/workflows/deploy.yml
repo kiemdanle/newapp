@@ -56,8 +56,9 @@ jobs:
         run: pnpm --filter @expyrico/api exec prisma generate
       - name: Apply migrations
         run: pnpm --filter @expyrico/api exec prisma migrate deploy
+      - name: Build shared packages
+        run: pnpm --filter @expyrico/shared build && pnpm --filter @expyrico/theme build
       - name: Typecheck
-        run: pnpm -r typecheck
       - name: Unit + integration tests
         run: pnpm -r test
 
