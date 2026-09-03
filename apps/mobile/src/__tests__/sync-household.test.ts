@@ -29,6 +29,21 @@ function shouldPurge(localHouseholdId: string | null, lostHouseholdIds: Set<stri
   return localHouseholdId !== null && lostHouseholdIds.has(localHouseholdId);
 }
 
+/**
+ * Pure: should a local household record be purged given the authoritative accessible household IDs?
+ */
+function shouldPurgeRevoked(localHouseholdId: string | null, accessibleHouseholdIds: Set<string>): boolean {
+  if (localHouseholdId === null) return false;
+  return !accessibleHouseholdIds.has(localHouseholdId);
+}
+
+/**
+ * Pure: should a push failure destroy the local record to prevent wedging sync?
+ */
+function shouldRecoverFromPushError(status: number, isHouseholdRecord: boolean): boolean {
+  return isHouseholdRecord && (status === 403 || status === 404);
+}
+
 describe('sync split conflict policy — pure logic', () => {
   describe('shouldServerWin', () => {
     it('household record always server-wins even when local has newer pending edit', () => {
@@ -68,6 +83,38 @@ describe('sync split conflict policy — pure logic', () => {
 
     it('keeps records of still-joined households', () => {
       expect(shouldPurge('hh-3', new Set(['hh-1', 'hh-2']))).toBe(false);
+    });
+  });
+
+  describe('shouldPurgeRevoked', () => {
+    it('purges records whose household is not in the authoritative accessible set', () => {
+      const accessible = new Set(['hh-1', 'hh-2']);
+      expect(shouldPurgeRevoked('hh-revoked', accessible)).toBe(true);
+    });
+
+    it('retains records whose household is in the authoritative accessible set', () => {
+      const accessible = new Set(['hh-1', 'hh-2']);
+      expect(shouldPurgeRevoked('hh-1', accessible)).toBe(false);
+    });
+
+    it('never purges personal records even if accessible households is empty', () => {
+      const accessible = new Set<string>();
+      expect(shouldPurgeRevoked(null, accessible)).toBe(false);
+    });
+  });
+
+  describe('shouldRecoverFromPushError', () => {
+    it('destroys local row on 403 or 404 for household records to unwedge sync', () => {
+      expect(shouldRecoverFromPushError(403, true)).toBe(true);
+      expect(shouldRecoverFromPushError(404, true)).toBe(true);
+    });
+
+    it('does not destroy on transient 500 errors', () => {
+      expect(shouldRecoverFromPushError(500, true)).toBe(false);
+    });
+
+    it('does not destroy personal records on 403', () => {
+      expect(shouldRecoverFromPushError(403, false)).toBe(false);
     });
   });
 });

@@ -12,6 +12,7 @@ export interface SyncOutcome {
   deletedIds: string[];
   conflicts: RecordSyncConflict[];
   serverTime: Date;
+  householdIds: string[];
 }
 
 /**
@@ -238,5 +239,5 @@ export async function syncRecords(
     take: 1000,
   });
 
-  return { changes, deletedIds, conflicts, serverTime };
+  return { changes, deletedIds, conflicts, serverTime, householdIds: householdIdList };
 }

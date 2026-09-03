@@ -199,4 +199,41 @@ describe('records household scope', () => {
     expect(res.statusCode).toBe(403);
     await app.close();
   });
+
+  it('member who did not create the record cannot move it to personal pantry (403)', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const member = await makeUser({ emailVerified: true });
+    const hh = await makeHousehold(owner.id);
+    await makeMembership(hh.id, member.id, { role: 'member' });
+    const rec = await makeRecord(owner.id, { householdId: hh.id, customName: 'Shared milk' });
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/v1/records/${rec.id}`,
+      headers: await headersFor(member.id),
+      payload: { householdId: null },
+    });
+    expect(res.statusCode).toBe(403);
+    const row = await getPrisma().record.findUnique({ where: { id: rec.id } });
+    expect(row?.householdId).toBe(hh.id); // stays in household
+    await app.close();
+  });
+
+  it('creator of household record can move it back to personal pantry', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const hh = await makeHousehold(owner.id);
+    const rec = await makeRecord(owner.id, { householdId: hh.id, customName: 'My shared milk' });
+
+    const res = await app.inject({
+      method: 'PATCH', url: `/v1/records/${rec.id}`,
+      headers: await headersFor(owner.id),
+      payload: { householdId: null },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().householdId).toBeNull();
+    const row = await getPrisma().record.findUnique({ where: { id: rec.id } });
+    expect(row?.householdId).toBeNull();
+    await app.close();
+  });
 });

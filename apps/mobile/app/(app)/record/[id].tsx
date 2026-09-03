@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   Alert,
   BackHandler,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +12,9 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRecord, patchLocalRecord, deleteLocalRecord } from '../../../src/api/records';
+import { useRecord, patchLocalRecord, deleteLocalRecord, type LocalRecord } from '../../../src/api/records';
+import { useMyHouseholds } from '../../../src/api/households';
+import type { Household } from '@expyrico/shared';
 import { useProduct, useCreateOrResumeDraft, usePatchDraft } from '../../../src/api/products';
 import { uploadProductPhoto } from '../../../src/api/product-photo-upload';
 import { useSessionStore } from '../../../src/auth/session-store';
@@ -49,6 +52,13 @@ export default function RecordDetail() {
   const [showEditModal, setShowEditModal] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
+  const { data: householdsData } = useMyHouseholds();
+  const households = householdsData?.items ?? [];
+
+  const handleReassignScope = async (newHouseholdId: string | null) => {
+    if (!record) return;
+    await patchLocalRecord(record.id, { householdId: newHouseholdId });
+  };
 
   React.useEffect(() => {
     const onBackPress = () => {
@@ -411,6 +421,12 @@ export default function RecordDetail() {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Item Information</Text>
+          <RecordLocationRow
+            record={record}
+            households={households}
+            onReassign={handleReassignScope}
+          />
+
 
           {category ? (
             <View style={styles.specRow}>
@@ -879,4 +895,278 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    gap: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalSubcopy: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  reassignOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reassignOptionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reassignCancelBtn: {
+    marginTop: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  reassignCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
+
+export function RecordLocationRow({
+  record,
+  households,
+  onReassign,
+}: {
+  record: LocalRecord;
+  households: Household[];
+  onReassign: (newHouseholdId: string | null) => Promise<void>;
+}) {
+  const theme = useTheme();
+  const [modalVisible, setModalVisible] = useState(false);
+  const currentUserId = useSessionStore((s) => s.user?.id ?? null);
+  const isCreator = !record.userId || !currentUserId || record.userId === currentUserId;
+  const canMoveToPersonal = !record.householdId || isCreator;
+
+  const currentHousehold = households.find((h) => h.id === record.householdId);
+  const locationLabel = currentHousehold ? currentHousehold.name : 'Personal Pantry';
+
+  return (
+    <>
+      <View style={styles.specRow}>
+        <View style={styles.specLabelWrap}>
+          <Ionicons
+            name={record.householdId ? 'people-outline' : 'person-outline'}
+            size={15}
+            color={theme.colors.textMuted}
+          />
+          <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>Pantry Location</Text>
+        </View>
+        <Pressable
+          testID="record-reassign-scope-btn"
+          disabled={households.length === 0}
+          accessibilityRole="button"
+          accessibilityLabel={`Change pantry location, currently ${locationLabel}`}
+          onPress={() => setModalVisible(true)}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+        >
+          <Text
+            testID="record-location-label"
+            style={[
+              styles.specValue,
+              {
+                color: households.length > 0 ? theme.colors.primaryDark : theme.colors.text,
+              },
+            ]}
+          >
+            {locationLabel}
+          </Text>
+          {households.length > 0 && (
+            <Ionicons name="chevron-forward" size={14} color={theme.colors.primaryDark} />
+          )}
+        </Pressable>
+      </View>
+
+      {/* Scope Selection Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <Pressable
+          testID="reassign-modal-backdrop"
+          style={styles.modalBackdrop}
+          onPress={() => setModalVisible(false)}
+        >
+          <Pressable
+            testID="reassign-modal-card"
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+              },
+            ]}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
+              Move Pantry Item
+            </Text>
+            <Text style={[styles.modalSubcopy, { color: theme.colors.textMuted }]}>
+              Choose where this item is stored
+            </Text>
+
+            <View style={{ gap: 8, marginTop: 8 }}>
+              {/* Personal Pantry Option — creator only */}
+              {canMoveToPersonal ? (
+              <Pressable
+                testID="reassign-option-personal"
+                accessibilityRole="button"
+                accessibilityLabel="Move to Personal Pantry"
+                onPress={async () => {
+                  setModalVisible(false);
+                  await onReassign(null);
+                }}
+                style={({ pressed }) => [
+                  styles.reassignOption,
+                  {
+                    backgroundColor:
+                      record.householdId === null
+                        ? theme.colors.primaryLight
+                        : theme.colors.bg,
+                    borderColor:
+                      record.householdId === null
+                        ? theme.colors.primary
+                        : theme.colors.border,
+                    opacity: pressed ? 0.8 : 1,
+                  },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color={
+                      record.householdId === null
+                        ? theme.colors.primaryDark
+                        : theme.colors.textMuted
+                    }
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.reassignOptionTitle,
+                        {
+                          color:
+                            record.householdId === null
+                              ? theme.colors.primaryDark
+                              : theme.colors.text,
+                        },
+                      ]}
+                    >
+                      Personal Pantry
+                    </Text>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                      Only you can see and manage this item
+                    </Text>
+                  </View>
+                </View>
+                {record.householdId === null && (
+                  <Ionicons name="checkmark-circle" size={18} color={theme.colors.primaryDark} />
+                )}
+              </Pressable>
+              ) : null}
+
+              {/* Household Options */}
+              {households.map((h) => {
+                const selected = record.householdId === h.id;
+                return (
+                  <Pressable
+                    key={h.id}
+                    testID={`reassign-option-${h.id}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Move to ${h.name}`}
+                    onPress={async () => {
+                      setModalVisible(false);
+                      await onReassign(h.id);
+                    }}
+                    style={({ pressed }) => [
+                      styles.reassignOption,
+                      {
+                        backgroundColor: selected
+                          ? theme.colors.primaryLight
+                          : theme.colors.bg,
+                        borderColor: selected
+                          ? theme.colors.primary
+                          : theme.colors.border,
+                        opacity: pressed ? 0.8 : 1,
+                      },
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <Ionicons
+                        name="people-outline"
+                        size={20}
+                        color={selected ? theme.colors.primaryDark : theme.colors.textMuted}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.reassignOptionTitle,
+                            {
+                              color: selected
+                                ? theme.colors.primaryDark
+                                : theme.colors.text,
+                            },
+                          ]}
+                        >
+                          {h.name}
+                        </Text>
+                        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                          Shared with household members
+                        </Text>
+                      </View>
+                    </View>
+                    {selected && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.primaryDark} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <Pressable
+              testID="reassign-modal-cancel"
+              accessibilityRole="button"
+              accessibilityLabel="Cancel moving item"
+              onPress={() => setModalVisible(false)}
+              style={({ pressed }) => [
+                styles.reassignCancelBtn,
+                {
+                  borderColor: theme.colors.border,
+                  opacity: pressed ? 0.8 : 1,
+                },
+              ]}
+            >
+              <Text style={[styles.reassignCancelText, { color: theme.colors.textMuted }]}>
+                Cancel
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+

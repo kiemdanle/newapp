@@ -26,59 +26,79 @@ async function pushPending(): Promise<void> {
   const deletes = await recordsCol.query(Q.where('pending_delete', true)).fetch();
 
   for (const rec of dirty) {
-    const clientId = rec.clientId || uuidv4();
-    if (!rec.serverId) {
-      // CREATE — POST /v1/records (includes householdId for household sharing)
-      const body: Record<string, unknown> = {
-        clientId,
-        productId: rec.productId,
-        customName: rec.customName,
-        expiryDate: rec.expiryDate,
-        purchaseDate: rec.purchaseDate,
-        quantity: rec.quantity,
-        unit: rec.unit,
-        notes: rec.notes,
-        photoUrl: rec.photoUrl,
-      };
-      if (rec.householdId) body.householdId = rec.householdId;
-      const res = await apiClient.post<{ id: string }>(
-        '/records',
-        body,
-        { headers: { 'Idempotency-Key': clientId } },
-      );
-      const remoteId = res.id;
-      await database.write(async () => {
-        await rec.update((r) => {
-          r.serverId = remoteId;
-          r.clientId = clientId;
-          r.pendingSync = false;
+    try {
+      const clientId = rec.clientId || uuidv4();
+      if (!rec.serverId) {
+        // CREATE — POST /v1/records (includes householdId for household sharing)
+        const body: Record<string, unknown> = {
+          clientId,
+          productId: rec.productId,
+          customName: rec.customName,
+          expiryDate: rec.expiryDate,
+          purchaseDate: rec.purchaseDate,
+          quantity: rec.quantity,
+          unit: rec.unit,
+          notes: rec.notes,
+          photoUrl: rec.photoUrl,
+        };
+        if (rec.householdId) body.householdId = rec.householdId;
+        const res = await apiClient.post<{ id: string }>(
+          '/records',
+          body,
+          { headers: { 'Idempotency-Key': clientId } },
+        );
+        const remoteId = res.id;
+        await database.write(async () => {
+          await rec.update((r) => {
+            r.serverId = remoteId;
+            r.clientId = clientId;
+            r.pendingSync = false;
+          });
         });
-      });
-    } else {
-      // UPDATE — PATCH /v1/records/:id
-      const patch: Record<string, unknown> = {
-        customName: rec.customName,
-        expiryDate: rec.expiryDate,
-        purchaseDate: rec.purchaseDate,
-        quantity: rec.quantity,
-        unit: rec.unit,
-        notes: rec.notes,
-        photoUrl: rec.photoUrl,
-        status: rec.status,
-      };
-      if (rec.householdId !== undefined) patch.householdId = rec.householdId;
-      await apiClient.patch(`/records/${rec.serverId}`, patch);
-      await database.write(async () => {
-        await rec.update((r) => {
-          r.pendingSync = false;
+      } else {
+        // UPDATE — PATCH /v1/records/:id
+        const patch: Record<string, unknown> = {
+          customName: rec.customName,
+          expiryDate: rec.expiryDate,
+          purchaseDate: rec.purchaseDate,
+          quantity: rec.quantity,
+          unit: rec.unit,
+          notes: rec.notes,
+          photoUrl: rec.photoUrl,
+          status: rec.status,
+        };
+        if (rec.householdId !== undefined) patch.householdId = rec.householdId;
+        await apiClient.patch(`/records/${rec.serverId}`, patch);
+        await database.write(async () => {
+          await rec.update((r) => {
+            r.pendingSync = false;
+          });
         });
-      });
+      }
+    } catch (err: any) {
+      const status = err?.status ?? err?.response?.status;
+      if (rec.householdId && (status === 403 || status === 404)) {
+        // Membership was revoked remotely or record was deleted on server:
+        // permanently destroy the local record so sync never wedges.
+        await database.write(async () => {
+          await rec.destroyPermanently();
+        });
+      } else {
+        throw err;
+      }
     }
   }
 
   for (const rec of deletes) {
-    if (rec.serverId) {
-      await apiClient.delete(`/records/${rec.serverId}`);
+    try {
+      if (rec.serverId) {
+        await apiClient.delete(`/records/${rec.serverId}`);
+      }
+    } catch (err: any) {
+      const status = err?.status ?? err?.response?.status;
+      if (status !== 403 && status !== 404) {
+        throw err;
+      }
     }
     await database.write(async () => {
       await rec.destroyPermanently();
@@ -110,6 +130,7 @@ async function pullSince(): Promise<void> {
           r.serverId = ch.id;
           r.clientId = ch.clientId;
           r.householdId = ch.householdId;
+          r.userId = ch.userId ?? null;
           r.productId = ch.productId;
           r.customName = ch.customName;
           r.expiryDate = ch.expiryDate;
@@ -144,6 +165,7 @@ async function pullSince(): Promise<void> {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
             r.householdId = ch.householdId;
+            r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
             r.expiryDate = ch.expiryDate;
@@ -163,6 +185,7 @@ async function pullSince(): Promise<void> {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
             r.householdId = ch.householdId;
+            r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
             r.expiryDate = ch.expiryDate;
@@ -186,6 +209,7 @@ async function pullSince(): Promise<void> {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
             r.householdId = ch.householdId;
+            r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
             r.expiryDate = ch.expiryDate;
@@ -204,6 +228,7 @@ async function pullSince(): Promise<void> {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
             r.householdId = null;
+            r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
             r.expiryDate = ch.expiryDate;
@@ -224,6 +249,17 @@ async function pullSince(): Promise<void> {
     for (const id of deletedIds) {
       const existing = await recordsCol.query(Q.where('server_id', id)).fetch();
       for (const e of existing) await e.destroyPermanently();
+    }
+    if (res.householdIds && res.householdIds.length >= 0) {
+      const accessibleHhIds = new Set(res.householdIds);
+      const localHouseholdRecords = await recordsCol
+        .query(Q.where('household_id', Q.notEq(null)))
+        .fetch();
+      for (const r of localHouseholdRecords) {
+        if (r.householdId && !accessibleHhIds.has(r.householdId)) {
+          await r.destroyPermanently();
+        }
+      }
     }
   });
 

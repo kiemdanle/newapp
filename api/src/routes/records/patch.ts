@@ -41,6 +41,15 @@ export async function patchRecordRoute(app: FastifyInstance) {
     if (newHouseholdId !== null && newHouseholdId !== oldHouseholdId) {
       await assertCanAssignToHousehold(newHouseholdId, userId);
     }
+    if (newHouseholdId === null && oldHouseholdId !== null) {
+      if (existing.userId !== userId) {
+        throw new AppError({
+          status: 403,
+          code: ERROR_CODES.FORBIDDEN,
+          title: 'Only the item creator can move it to personal pantry',
+        });
+      }
+    }
 
     const expiryChanged =
       input.expiryDate !== undefined &&

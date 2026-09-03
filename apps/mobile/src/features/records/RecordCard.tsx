@@ -9,17 +9,30 @@ import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
+import { usePantryScope } from '../../store/pantryScope';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
+  householdName?: string | null;
+  showHouseholdBadge?: boolean;
   addedByName?: string | null;
   onAddQuantity?: (record: LocalRecord) => void;
   onEdit?: (record: LocalRecord) => void;
   onDelete?: (record: LocalRecord) => void;
 }
 
-export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit, onDelete }: Props) {
+export function RecordCard({
+  record,
+  onPress,
+  householdName,
+  showHouseholdBadge,
+  addedByName,
+  onAddQuantity,
+  onEdit,
+  onDelete,
+}: Props) {
   const theme = useTheme();
+  const { scope } = usePantryScope();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const swipeableRef = useRef<Swipeable>(null);
   const { data: product } = useProduct(record.productId ?? undefined);
@@ -27,6 +40,10 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
   const brand = product?.brand;
   const category = record.category || product?.category;
   const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
+
+  const isHouseholdItem =
+    showHouseholdBadge ?? (scope === 'all' && Boolean(record.householdId));
+  const badgeLabel = householdName || 'Shared';
 
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
@@ -101,6 +118,7 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
     >
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`${displayName}${isHouseholdItem ? `, Shared in ${badgeLabel}` : ''}, Expires ${formatDate(record.expiryDate, userCountry)}`}
         onPress={onPress}
         testID={`record-card-${record.id}`}
         style={({ pressed }) => [
@@ -167,12 +185,44 @@ export function RecordCard({ record, onPress, addedByName, onAddQuantity, onEdit
                     {category}
                   </Text>
                 ) : null}
-                <Text
-                  style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
-                  numberOfLines={2}
-                >
-                  {displayName}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                  <Text
+                    style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
+                    numberOfLines={2}
+                  >
+                    {displayName}
+                  </Text>
+                  {isHouseholdItem && (
+                    <View
+                      testID={`record-household-badge-${record.id}`}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 3,
+                        backgroundColor: theme.colors.primaryLight,
+                        borderColor: 'rgba(75, 174, 138, 0.3)',
+                        borderWidth: 1,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: theme.radii.pill,
+                        maxWidth: 120,
+                      }}
+                    >
+                      <Ionicons name="people-outline" size={11} color={theme.colors.primaryDark} />
+                      <Text
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                        style={{
+                          color: theme.colors.primaryDark,
+                          fontSize: 10,
+                          fontWeight: '700',
+                        }}
+                      >
+                        {badgeLabel}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
               <View style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
                 <Text style={{ color: statusColor, fontSize: 11, fontWeight: '600' }}>

@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const mySchema = appSchema({
-  version: 2,
+  version: 3,
   tables: [
     tableSchema({
       name: 'records',
@@ -27,6 +27,7 @@ export const mySchema = appSchema({
         { name: 'pending_sync', type: 'boolean', isIndexed: true },
         { name: 'pending_delete', type: 'boolean', isIndexed: true },
         { name: 'household_id', type: 'string', isOptional: true },
+        { name: 'user_id', type: 'string', isOptional: true },
       ],
     }),
     tableSchema({

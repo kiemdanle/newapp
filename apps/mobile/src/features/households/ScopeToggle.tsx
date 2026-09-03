@@ -1,4 +1,4 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { usePantryScope, type PantryScope } from '../../store/pantryScope';
 import { useMyHouseholds } from '../../api/households';
 import { useTheme } from '../../theme/useTheme';
@@ -9,58 +9,83 @@ export function ScopeToggle() {
   const { scope, householdId, setScope } = usePantryScope();
 
   const households = data?.items ?? [];
-  const segments: Array<{ key: PantryScope; label: string; householdId?: string | null }> = [
-    { key: 'personal', label: 'Personal' },
-    ...households.map((h) => ({ key: 'household' as PantryScope, label: h.name, householdId: h.id })),
-  ];
+  if (households.length === 0) return null;
 
-  if (segments.length <= 1) return null; // No households — only personal, no toggle needed.
+  const segments: Array<{ key: PantryScope; label: string; householdId?: string | null }> = [
+    { key: 'all', label: 'All' },
+    { key: 'personal', label: 'Personal' },
+    ...households.map((household) => ({
+      key: 'household' as const,
+      label: household.name,
+      householdId: household.id,
+    })),
+  ];
+  const usesScrollingLayout = segments.length > 3;
+
+  const segmentButtons = segments.map((segment) => {
+    const active =
+      scope === segment.key &&
+      (segment.key !== 'household' || segment.householdId === householdId);
+    return (
+      <Pressable
+        key={segment.householdId ?? segment.key}
+        testID={`scope-toggle-${segment.key === 'household' ? segment.householdId : segment.key}`}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={`Filter pantry: ${segment.label}`}
+        onPress={() => setScope(segment.key, segment.householdId ?? null)}
+        style={({ pressed }) => ({
+          flex: usesScrollingLayout ? undefined : 1,
+          minWidth: usesScrollingLayout ? 84 : undefined,
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.sm,
+          minHeight: 44,
+          justifyContent: 'center',
+          alignItems: 'center',
+          borderRadius: theme.radii.md - 2,
+          backgroundColor: active ? theme.colors.primary : 'transparent',
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <Text
+          style={{
+            color: active ? theme.colors.primaryFg : theme.colors.textMuted,
+            fontSize: 13,
+            fontWeight: active ? '700' : '400',
+          }}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {segment.label}
+        </Text>
+      </Pressable>
+    );
+  });
 
   return (
     <View
       testID="scope-toggle"
       style={{
-        flexDirection: 'row',
         backgroundColor: theme.colors.bgElevated,
         borderRadius: theme.radii.md,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
         padding: 2,
         marginHorizontal: theme.spacing.lg,
         marginBottom: theme.spacing.sm,
       }}
     >
-      {segments.map((seg) => {
-        const active =
-          scope === seg.key &&
-          (seg.key === 'personal' || seg.householdId === householdId);
-        return (
-          <Pressable
-            key={seg.key === 'personal' ? 'personal' : seg.householdId ?? seg.label}
-            testID={`scope-toggle-${seg.key === 'personal' ? 'personal' : seg.householdId}`}
-            accessibilityRole="button"
-            onPress={() => setScope(seg.key, seg.householdId)}
-            style={{
-              flex: 1,
-              paddingVertical: theme.spacing.sm,
-              minHeight: 48,
-              justifyContent: 'center',
-              alignItems: 'center',
-              borderRadius: theme.radii.md - 2,
-              backgroundColor: active ? theme.colors.primary : 'transparent',
-            }}
-          >
-            <Text
-              style={{
-                color: active ? theme.colors.primaryFg : theme.colors.textMuted,
-                fontSize: 13,
-                fontWeight: active ? '600' : '400',
-              }}
-              numberOfLines={1}
-            >
-              {seg.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {!usesScrollingLayout ? (
+        <View style={{ flexDirection: 'row' }}>{segmentButtons}</View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ flexDirection: 'row', flexGrow: 1 }}
+        >
+          {segmentButtons}
+        </ScrollView>
+      )}
     </View>
   );
 }

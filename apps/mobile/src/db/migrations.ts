@@ -15,5 +15,18 @@ export const migrations = schemaMigrations({
         },
       ],
     },
+    {
+      // v2 → v3: add user_id to records to track creator ownership
+      toVersion: 3,
+      steps: [
+        {
+          type: 'add_columns' as const,
+          table: 'records',
+          columns: [
+            { name: 'user_id', type: 'string', isOptional: true },
+          ],
+        },
+      ],
+    },
   ],
 });

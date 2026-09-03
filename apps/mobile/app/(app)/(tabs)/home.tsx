@@ -14,9 +14,8 @@ export default function HomeTab() {
   const records = useActiveRecords();
   const groups = groupRecords(records);
   const totalUrgent = groups.expired.length + groups.today.length + groups.thisWeek.length;
-  const isEmpty = records.length === 0;
 
-  const header = (
+  const renderHeader = (isFiltered: boolean) => (
     <View style={styles.headerContent}>
       <View style={styles.header}>
         <View style={styles.brandRow}>
@@ -29,7 +28,7 @@ export default function HomeTab() {
         {totalUrgent > 0 ? <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}><Text style={[styles.countText, { color: theme.colors.primaryDark }]}>{totalUrgent} need attention</Text></View> : null}
       </View>
       <ScopeToggle />
-      {!isEmpty ? <UseNextHero groups={groups} /> : null}
+      {records.length > 0 && !isFiltered ? <UseNextHero groups={groups} /> : null}
     </View>
   );
 
@@ -45,7 +44,7 @@ export default function HomeTab() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Screen scroll={false} padded={false}>
-        <RecordList header={header} empty={empty} />
+        <RecordList header={renderHeader} empty={empty} />
       </Screen>
     </View>
   );

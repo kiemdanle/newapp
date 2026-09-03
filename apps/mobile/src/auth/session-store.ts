@@ -28,7 +28,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
       imageDiskCache.purgeUserPrivate(userId),
     ]);
   }
-  usePantryScope.getState().setScope('personal', null);
+  usePantryScope.getState().setScope('all', null);
   // Reset local SQLite database to prevent any records leaking to other accounts
   try {
     await database.write(async () => {

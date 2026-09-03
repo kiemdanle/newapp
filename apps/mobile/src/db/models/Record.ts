@@ -25,4 +25,5 @@ export class RecordModel extends Model {
   @field('pending_sync') pendingSync!: boolean;
   @field('pending_delete') pendingDelete!: boolean;
   @field('household_id') householdId!: string | null;
+  @field('user_id') userId!: string | null;
 }

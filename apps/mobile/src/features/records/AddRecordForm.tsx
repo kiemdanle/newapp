@@ -41,20 +41,16 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(null);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
-
-  // Read the active scope so we pre-select the right household.
   const { scope: activeScope, householdId: scopeHhId } = usePantryScope();
   const { data: myHh } = useMyHouseholds();
   const households = myHh?.items ?? [];
 
-  // If the active scope is a household, pre-select it — unless the product
-  // is still private, in which case personal scope is the only option.
-  const effectiveHouseholdId = lockedPersonalScope
-    ? null
-    : (selectedHouseholdId ?? (activeScope === 'household' ? scopeHhId : null));
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(
+    lockedPersonalScope || activeScope !== 'household' ? null : scopeHhId,
+  );
+  const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
 
   const save = async () => {
     if (!isoRe.test(expiry)) {
@@ -89,7 +85,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
           });
 
           const uploadHandle = uploadProductPhoto(
-            { kind: 'draft', productId: finalProductId },
+            { kind: 'draft', productId: draftRes.product.id },
             { path: photo.path, mime: photo.mime },
           );
           await uploadHandle.promise;

@@ -22,6 +22,7 @@ export interface LocalRecord {
   status: string;
   notifyAt: string[];
   householdId: string | null;
+  userId?: string | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -48,6 +49,7 @@ function toLocal(r: RecordModel): LocalRecord {
     status: r.status,
     notifyAt,
     householdId: r.householdId ?? null,
+    userId: r.userId ?? null,
   };
 }
 
@@ -123,6 +125,7 @@ export async function createLocalRecord(input: {
   notes?: string | null;
   photoUrl?: string | null;
   householdId?: string | null;
+  userId?: string | null;
 }): Promise<string> {
   const clientId = uuidv4();
   const col = database.get<RecordModel>('records');
@@ -148,6 +151,7 @@ export async function createLocalRecord(input: {
       r.pendingSync = true;
       r.pendingDelete = false;
       r.householdId = input.householdId ?? null;
+      r.userId = input.userId ?? null;
     });
     newId = created.id;
   });
@@ -158,7 +162,7 @@ export async function createLocalRecord(input: {
 export async function patchLocalRecord(
   id: string,
   patch: Partial<
-    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId'>
+    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId'>
   >,
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
@@ -174,6 +178,8 @@ export async function patchLocalRecord(
       if (patch.photoUrl !== undefined) r.photoUrl = patch.photoUrl;
       if (patch.category !== undefined) r.category = patch.category;
       if (patch.productId !== undefined) r.productId = patch.productId;
+      if (patch.householdId !== undefined) r.householdId = patch.householdId;
+      r.pendingSync = true;
     });
   });
   triggerSyncSoon();

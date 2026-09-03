@@ -13,6 +13,7 @@ export async function syncRecordsRoute(app: FastifyInstance) {
         changes: result.changes.map(toApiRecord),
         deletedIds: result.deletedIds,
         conflicts: result.conflicts,
+        householdIds: result.householdIds,
       }),
     );
   });

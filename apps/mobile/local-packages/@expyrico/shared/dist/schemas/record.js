@@ -87,6 +87,7 @@ export const recordSyncResponseSchema = z.object({
     changes: z.array(recordSchema),
     deletedIds: z.array(z.string().uuid()),
     conflicts: z.array(recordSyncConflictSchema).default([]),
+    householdIds: z.array(z.string().uuid()).default([]),
 });
 const deviceTokenSchema = z
     .string()

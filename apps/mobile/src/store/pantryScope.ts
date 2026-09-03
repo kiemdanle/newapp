@@ -1,7 +1,7 @@
 // apps/mobile/src/store/pantryScope.ts
 import { create } from 'zustand';
 
-export type PantryScope = 'personal' | 'household';
+export type PantryScope = 'all' | 'personal' | 'household';
 
 interface ScopeState {
   scope: PantryScope;
@@ -10,7 +10,7 @@ interface ScopeState {
 }
 
 export const usePantryScope = create<ScopeState>((set) => ({
-  scope: 'personal',
+  scope: 'all',
   householdId: null,
   setScope: (scope, householdId = null) => set({ scope, householdId }),
 }));
