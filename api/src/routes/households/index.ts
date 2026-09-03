@@ -5,6 +5,7 @@ import { getHouseholdRoute } from './get.js';
 import { patchHouseholdRoute } from './patch.js';
 import { dissolveHouseholdRoute } from './dissolve.js';
 import { membersAddRoute, membersListRoute, membersRemoveRoute } from './members.js';
+import { joinHouseholdRoute } from './join.js';
 
 export async function householdsRoutes(app: FastifyInstance) {
   await app.register(createHouseholdRoute);
@@ -15,4 +16,5 @@ export async function householdsRoutes(app: FastifyInstance) {
   await app.register(membersAddRoute);
   await app.register(membersListRoute);
   await app.register(membersRemoveRoute);
+  await app.register(joinHouseholdRoute);
 }

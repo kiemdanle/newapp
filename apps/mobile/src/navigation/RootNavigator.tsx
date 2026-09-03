@@ -3,6 +3,8 @@ import { Linking } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSessionStore } from '../auth/session-store';
 import { capturePendingReferralCode } from '../referral/pendingReferralStore';
+import { capturePendingHouseholdInviteCode } from '../features/households/pendingHouseholdInviteStore';
+import { navigate } from './navigationRef';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { AppSyncManager } from '../App';
@@ -43,6 +45,15 @@ function DeepLinkHandler() {
         if (parsed.protocol === 'expyrico:' && parsed.hostname === 'invite') {
           const code = parsed.searchParams.get('code');
           if (code) void capturePendingReferralCode(code);
+        } else if (
+          parsed.protocol === 'expyrico:' &&
+          (parsed.hostname === 'household' || parsed.hostname === 'join-household')
+        ) {
+          const code = parsed.searchParams.get('code');
+          if (code) {
+            void capturePendingHouseholdInviteCode(code);
+            navigate('Household', { joinCode: code });
+          }
         }
       } catch {
         // ignore parse failures on non-referral URLs

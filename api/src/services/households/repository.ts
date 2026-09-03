@@ -11,6 +11,7 @@ export function toApiHousehold(
     ownerUserId: h.ownerUserId,
     memberCount: opts.memberCount,
     myRole: opts.myRole,
+    inviteCode: h.inviteCode ?? undefined,
     createdAt: h.createdAt.toISOString(),
     updatedAt: h.updatedAt.toISOString(),
   };

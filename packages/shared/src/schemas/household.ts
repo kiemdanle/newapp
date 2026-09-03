@@ -23,6 +23,7 @@ export const householdSchema = z.object({
   ownerUserId: z.string().uuid(),
   memberCount: z.number().int().nonnegative().optional(),
   myRole: householdRoleSchema.optional(),
+  inviteCode: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -42,6 +43,11 @@ export const householdMemberAddSchema = z.object({
   userId: z.string().uuid(),
 });
 export type HouseholdMemberAdd = z.infer<typeof householdMemberAddSchema>;
+
+export const householdJoinSchema = z.object({
+  code: z.string().trim().toUpperCase().min(4).max(12),
+});
+export type HouseholdJoin = z.infer<typeof householdJoinSchema>;
 
 export const householdListResponseSchema = z.object({
   items: z.array(householdSchema),

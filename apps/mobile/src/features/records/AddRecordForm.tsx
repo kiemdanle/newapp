@@ -43,13 +43,16 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
-  const { scope: activeScope, householdId: scopeHhId } = usePantryScope();
+  const { scope: activeScope, householdId: scopeHhId, defaultHouseholdId } = usePantryScope();
   const { data: myHh } = useMyHouseholds();
   const households = myHh?.items ?? [];
 
-  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(
-    lockedPersonalScope || activeScope !== 'household' ? null : scopeHhId,
-  );
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(() => {
+    if (lockedPersonalScope) return null;
+    if (activeScope === 'household') return scopeHhId;
+    if (activeScope === 'all' && defaultHouseholdId) return defaultHouseholdId;
+    return null;
+  });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
 
   const save = async () => {

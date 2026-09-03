@@ -34,7 +34,7 @@ export type AppStackParamList = {
   SettingsTheme: undefined;
   SettingsAddPasskey: undefined;
   Invite: undefined;
-  Household: undefined;
+  Household: { joinCode?: string } | undefined;
   Product: { id: string };
   // `productId`/`resume` are set when scan.tsx routes here for an
   // `editable_private` (resume: 'edit') or `creator_pending` (resume:
@@ -105,6 +105,7 @@ export function AppNavigator() {
       <Stack.Screen name="ProfilePassword" component={PasswordScreen} options={{ headerShown: true, title: 'Password & security' }} />
       <Stack.Screen name="FeedbackHub" component={FeedbackHubScreen} options={{ headerShown: true, title: 'Help & feedback' }} />
       <Stack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} options={{ headerShown: true, title: 'Ticket details' }} />
+      <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
     </Stack.Navigator>
   );
 }

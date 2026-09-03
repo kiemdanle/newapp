@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, Pressable, ScrollView, Alert, Switch } from 'react-native';
 import {
   useMyHouseholds,
   useHousehold,
@@ -13,14 +13,23 @@ import { useSessionStore } from '../../auth/session-store';
 import { MemberRow } from './MemberRow';
 import { AddMemberForm } from './AddMemberForm';
 import { useTheme } from '../../theme/useTheme';
+import { HouseholdInviteCard } from './HouseholdInviteCard';
+import { JoinHouseholdModal } from './JoinHouseholdModal';
+import { readPendingHouseholdInviteCode, clearPendingHouseholdInviteCode } from './pendingHouseholdInviteStore';
+import { usePantryScope } from '../../store/pantryScope';
 
-export function HouseholdSettings() {
+export interface HouseholdSettingsProps {
+  initialJoinCode?: string | null;
+}
+
+export function HouseholdSettings({ initialJoinCode }: HouseholdSettingsProps = {}) {
+
   const theme = useTheme();
   const user = useSessionStore((s) => s.user);
   const { data: myHh } = useMyHouseholds();
   const createHousehold = useCreateHousehold();
   const dissolveHousehold = useDissolveHousehold();
-
+  const { defaultHouseholdId, setDefaultHouseholdId } = usePantryScope();
   const [newName, setNewName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -37,6 +46,23 @@ export function HouseholdSettings() {
 
   const [renameText, setRenameText] = useState('');
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(Boolean(initialJoinCode));
+  const [joinModalCode, setJoinModalCode] = useState<string | null>(initialJoinCode ?? null);
+
+  useEffect(() => {
+    if (initialJoinCode) {
+      setJoinModalCode(initialJoinCode);
+      setShowJoinModal(true);
+    } else {
+      void readPendingHouseholdInviteCode().then((code) => {
+        if (code) {
+          setJoinModalCode(code);
+          setShowJoinModal(true);
+          void clearPendingHouseholdInviteCode();
+        }
+      });
+    }
+  }, [initialJoinCode]);
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -70,7 +96,10 @@ export function HouseholdSettings() {
       {
         text: 'Dissolve',
         style: 'destructive',
-        onPress: () => dissolveHousehold.mutate(householdId),
+        onPress: () => {
+          if (defaultHouseholdId === householdId) setDefaultHouseholdId(null);
+          dissolveHousehold.mutate(householdId);
+        },
       },
     ]);
   };
@@ -87,7 +116,10 @@ export function HouseholdSettings() {
       {
         text: 'Leave',
         style: 'destructive',
-        onPress: () => removeMember.mutate({ householdId, userId: user.id }),
+        onPress: () => {
+          if (defaultHouseholdId === householdId) setDefaultHouseholdId(null);
+          removeMember.mutate({ householdId, userId: user.id });
+        },
       },
     ]);
   };
@@ -145,6 +177,26 @@ export function HouseholdSettings() {
               {createHousehold.isPending ? 'Creating…' : 'Create Household'}
             </Text>
           </Pressable>
+          <Pressable
+            testID="household-open-join-modal-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Join with an invite code"
+            onPress={() => setShowJoinModal(true)}
+            style={{
+              padding: theme.spacing.md,
+              borderRadius: theme.radii.pill,
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+              alignItems: 'center',
+              marginTop: theme.spacing.md,
+              minHeight: 52,
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>
+              Have an invite code? Join Household
+            </Text>
+          </Pressable>
         </View>
       ) : (
         /* Existing household */
@@ -182,6 +234,51 @@ export function HouseholdSettings() {
             </View>
           ) : null}
 
+          {/* Invite Card with 6-character code and 1-tap share sheet */}
+          {householdId ? (
+            <HouseholdInviteCard
+              householdId={householdId}
+              householdName={household?.name ?? activeHousehold?.name ?? 'Household'}
+              inviteCode={household?.inviteCode ?? activeHousehold?.inviteCode}
+              isOwner={myRole === 'owner'}
+            />
+          ) : null}
+
+          {/* Default Household Mode Switch */}
+          {householdId ? (
+            <View
+              testID="household-default-toggle-row"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                backgroundColor: theme.colors.bgElevated,
+                borderRadius: theme.radii.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                padding: theme.spacing.md,
+                marginTop: theme.spacing.md,
+              }}
+            >
+              <View style={{ flex: 1, paddingRight: theme.spacing.sm }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
+                  Default Household Pantry
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                  Save newly scanned and added groceries to this household by default.
+                </Text>
+              </View>
+              <Switch
+                testID="household-default-toggle-switch"
+                accessibilityLabel="Set as default household"
+                value={defaultHouseholdId === householdId}
+                onValueChange={(val) => setDefaultHouseholdId(val ? householdId : null)}
+                trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                thumbColor={theme.colors.bg}
+              />
+            </View>
+          ) : null}
+
           {/* Members */}
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, textTransform: 'uppercase', marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm }}>
             Members ({members.length})
@@ -215,7 +312,7 @@ export function HouseholdSettings() {
                     alignItems: 'center', minHeight: 52, justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: theme.colors.primary }}>+ Add member</Text>
+                  <Text style={{ color: theme.colors.primary }}>+ Add by User ID (Manual)</Text>
                 </Pressable>
               )}
 
@@ -259,6 +356,11 @@ export function HouseholdSettings() {
           )}
         </ScrollView>
       )}
+      <JoinHouseholdModal
+        visible={showJoinModal}
+        initialCode={joinModalCode}
+        onClose={() => setShowJoinModal(false)}
+      />
     </View>
   );
 }

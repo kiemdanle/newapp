@@ -1,6 +1,6 @@
 // apps/mobile/src/api/households.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Household, HouseholdCreate, HouseholdMember, HouseholdPatch, HouseholdMemberAdd } from '@expyrico/shared';
+import type { Household, HouseholdCreate, HouseholdMember, HouseholdPatch, HouseholdMemberAdd, HouseholdJoin } from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
 import { purgeHouseholdRecords } from '../db/sync';
@@ -94,5 +94,44 @@ export function useDissolveHousehold() {
       void qc.invalidateQueries({ queryKey: ['households'] });
       void qc.invalidateQueries({ queryKey: ['records'] });
     },
+  });
+}
+
+export function useRegenerateInviteCode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (householdId: string) =>
+      apiClient.post<Household>(`/households/${householdId}/regenerate-invite-code`, {}, {
+        headers: { 'idempotency-key': newIdempotencyKey() },
+      }),
+    onSuccess: (_data, householdId) => {
+      void qc.invalidateQueries({ queryKey: ['household', householdId] });
+      void qc.invalidateQueries({ queryKey: ['households'] });
+    },
+  });
+}
+
+export function useJoinHousehold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: HouseholdJoin) =>
+      apiClient.post<Household>('/households/join', input, {
+        headers: { 'idempotency-key': newIdempotencyKey() },
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['households'] });
+      void qc.invalidateQueries({ queryKey: ['records'] });
+    },
+  });
+}
+
+export function useHouseholdInvitePreview(code: string | undefined) {
+  return useQuery({
+    queryKey: ['householdInvitePreview', code],
+    queryFn: () =>
+      apiClient.get<{ id: string; name: string; ownerName: string; memberCount: number }>(
+        `/households/invite/${code}`,
+      ),
+    enabled: !!code && code.length >= 4,
   });
 }

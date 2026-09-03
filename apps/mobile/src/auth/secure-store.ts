@@ -90,3 +90,7 @@ export async function getItem(key: string): Promise<string | null> {
 export async function setItem(key: string, value: string): Promise<void> {
   await setValue(key, value);
 }
+
+export async function deleteItem(key: string): Promise<void> {
+  await deleteValue(key);
+}
