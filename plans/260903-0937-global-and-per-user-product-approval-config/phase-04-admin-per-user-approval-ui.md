@@ -7,6 +7,7 @@ effort: "4h"
 dependencies: [1, 2]
 ---
 <!-- Updated: Validation Session 1 - Standard admin RBAC and future-only anti-spam scope -->
+<!-- Updated: Red Team Review - Finding 5 (User List Schema & Table Alignment) -->
 
 # Phase 4: Admin Per-User Approval Configuration UI
 
@@ -31,6 +32,7 @@ Implement the per-user product approval configuration on the Admin User Details 
   - Anti-spam scope: Confirmed future submissions only; past active products remain published unless individually reported or edited.
   - On `/users`:
     - Display an anti-spam badge or icon in the user table if `requireProductApproval === true`.
+    - Ensure `api/src/routes/admin/users/list.ts` selects `requireProductApproval` so the column renders without additional queries.
 - Non-functional:
   - Accessible dialogs and confirmation states.
   - Seamless optimistic transition using React `useTransition`.

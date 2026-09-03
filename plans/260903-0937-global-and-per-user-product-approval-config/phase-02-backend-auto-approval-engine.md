@@ -7,6 +7,7 @@ effort: "6h"
 dependencies: [1]
 ---
 <!-- Updated: Validation Session 1 - Silent auto-approval and distinct post-submit status response -->
+<!-- Updated: Red Team Review - Findings 1, 2, 3, 4 (Two-phase photo promotion, zero-photo branch, null-user fail-safe, submission velocity throttling) -->
 
 # Phase 2: Backend Auto-Approval Engine & API Service
 
@@ -16,14 +17,16 @@ Implement the product auto-approval pipeline in the backend API. When a user sub
 ## Requirements
 - Functional:
   - In `submitDraft` (`api/src/services/products/product-drafts.ts`):
+    - Fail-safe user lookup: If creator record is missing or null, fail closed: `needsApproval = true` (never auto-approve orphaned drafts).
+    - Velocity throttle guard: Track daily auto-approved submissions in Redis (`product-creation:auto-approved-count:${actorId}:${utcDay}`); if user exceeds cap (default: 10 auto-approved products/day), gracefully route surplus submissions to `pending` moderation queue instead of rejecting or allowing infinite spam cycling.
     - Determine approval status:
-      `const needsApproval = user.requireProductApproval === true || globalSettings.requireApproval === true;`
+      `const needsApproval = Boolean(user.requireProductApproval || globalSettings.requireApproval || exceededDailyAutoApprovalCap);`
     - If `needsApproval === true`:
       - Preserve existing pending review flow (status: `'pending'`, emit moderation notification event).
     - If `needsApproval === false`:
-      - Execute auto-approval:
-        - Update product status to `'active'`, set `moderatedAt = new Date()`, `moderationNotes = 'Auto-approved'`.
-        - Promote pending private photos using `publishProductPhoto` (`publish_public` mutation lease), updating photo `moderationStatus: 'approved'`.
+      - Execute auto-approval via two-phase commit:
+        - **Branch A (Zero photos)**: If `pendingPhotos.length === 0`, directly update `product.status = 'active'`, `moderatedAt = new Date()` in a single atomic database transaction without acquiring a media lease.
+        - **Branch B (Has photos)**: Reserve capacity, acquire `withMediaMutationLease('publish_public')`, run `publishProductPhoto` for all pending photos, and only then atomically commit `product.status = 'active'` and `photos.moderationStatus = 'approved'`. If publication fails, roll back without marking product active.
         - Set position 0 photo URL as product `imageUrl`.
         - Enqueue outbox notification to creator (`product_approved`).
         - Silent auto-approval: Omit admin moderation notification events; write structured audit log (`product.auto_approve`).

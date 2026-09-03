@@ -6,6 +6,7 @@ priority: P1
 effort: "4h"
 dependencies: []
 ---
+<!-- Updated: Red Team Review - Finding 5 (User List Schema & DB Query Alignment) -->
 
 # Phase 1: Shared Schemas, Database Model & Migration
 
@@ -48,9 +49,12 @@ Add the database column `require_product_approval` to the `User` model in Prisma
 - Modify: `api/prisma/schema.prisma`
 - Create: `api/prisma/migrations/<timestamp>_user_require_product_approval/migration.sql`
 - Modify: `packages/shared/src/schemas/admin/settings.ts`
-- Modify: `packages/shared/src/schemas/admin/users.ts`
+  - `packages/shared/src/schemas/admin/users.ts`:
+    Update `adminUserRowSchema`, `adminUserDetailSchema`, and `adminUserPatchSchema`.
+  - `api/src/routes/admin/users/list.ts`:
+    Ensure Prisma query select explicitly includes `requireProductApproval: true` so the user directory list does not omit the field.
+- Modify: `api/src/routes/admin/users/list.ts`
 - Modify: `packages/shared/src/schemas/admin/settings.test.ts`
-- Modify: `packages/shared/src/schemas/user.test.ts`
 
 ## Implementation Steps
 1. Edit `api/prisma/schema.prisma`:

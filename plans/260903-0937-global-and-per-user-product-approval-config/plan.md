@@ -146,3 +146,30 @@ This guarantees:
 - **Decision deltas checked:** 4
 - **Reconciled stale references:** 0
 - **Unresolved contradictions:** 0
+
+## Red Team Review
+
+### Session 1 — 2026-09-03
+**Findings:** 5 (5 accepted, 0 rejected)
+**Severity breakdown:** 0 Critical, 2 High, 3 Medium
+
+| # | Finding | Severity | Disposition | Applied To | Codebase Evidence |
+|---|---------|----------|-------------|------------|-------------------|
+| 1 | Unbounded Submission Cycling Under Auto-Approval | High | Accept | Phase 2 | `api/src/services/products/product-creation-quotas.ts:40` |
+| 2 | Two-Phase Media Lease & Photo Promotion Atomicity | High | Accept | Phase 2 | `api/src/services/products/product-moderation.ts:175-215` |
+| 3 | Unhandled Zero-Photo Product Auto-Approval | Medium | Accept | Phase 2 | `api/src/services/products/product-moderation.ts:139-169` |
+| 4 | Missing/Null Creator User Fail-Safe | Medium | Accept | Phase 2 | `api/src/services/products/product-drafts.ts:78,245` |
+| 5 | User Directory List Query & Schema Alignment | Medium | Accept | Phase 1, Phase 4 | `api/src/routes/admin/users/list.ts:25`, `packages/shared/src/schemas/admin/users.ts:8` |
+
+#### Key Risk Mitigations Applied
+1. **Submission Velocity Throttling**: Added a daily auto-approved submission cap per user in Redis (`product-creation:auto-approved-count:${actorId}:${utcDay}`). Submissions beyond the cap gracefully divert to the `pending` moderation queue instead of flooding the active catalog.
+2. **Atomic Media Promotion**: Mirrored the two-phase commit pattern from `product-moderation.ts`: photos are published under a `publish_public` media lease before the database row transitions to `active`.
+3. **Zero-Photo Handling**: Added explicit branching for products without photos, bypassing the media lease and updating the product atomically.
+4. **Fail-Closed User Resolution**: If creator record is null or missing, system fails closed (`needsApproval = true`).
+5. **Admin List Query Alignment**: Added `requireProductApproval` to both `adminUserRowSchema` and the Prisma select in `api/src/routes/admin/users/list.ts`.
+
+### Whole-Plan Consistency Sweep (Post-Red Team)
+- **Files reread:** `plan.md`, `phase-01-start.md`, `phase-02-backend-auto-approval-engine.md`, `phase-03-admin-global-settings-ui.md`, `phase-04-admin-per-user-approval-ui.md`, `phase-05-verification-and-testing.md`
+- **Decision deltas checked:** 5
+- **Reconciled stale references:** 0
+- **Unresolved contradictions:** 0
