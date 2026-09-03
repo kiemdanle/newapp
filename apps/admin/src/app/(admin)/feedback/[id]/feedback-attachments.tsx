@@ -41,6 +41,7 @@ export function FeedbackAttachments({
                   onClick={() => setActiveImage(mediaUrl)}
                   className="aspect-video w-full rounded-xl bg-neutral-light overflow-hidden flex items-center justify-center cursor-pointer mb-2 relative"
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={mediaUrl}
                     alt={att.fileName}
@@ -96,6 +97,7 @@ export function FeedbackAttachments({
             >
               <X size={18} />
             </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={activeImage}
               alt="Attachment enlarged"

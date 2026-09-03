@@ -245,6 +245,7 @@ export default async function AdminFeedbackDetailPage({
                     {isAdmin ? (
                       <span className="text-xs font-bold font-display">E</span>
                     ) : ticket.user.avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={ticket.user.avatarUrl}
                         alt={fullName}
