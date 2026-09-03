@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ScopeToggle } from '../../src/features/households/ScopeToggle';
+import HomeTab from '../../app/(app)/(tabs)/home';
 import { HouseholdSettings } from '../../src/features/households/HouseholdSettings';
 import { AddRecordForm } from '../../src/features/records/AddRecordForm';
 import { usePantryScope } from '../../src/store/pantryScope';
@@ -47,7 +48,17 @@ describe('Pantry Share Discovery CTA and Default Household Mode', () => {
     });
   });
 
-  it('renders discovery CTA in ScopeToggle when user has 0 households, and tapping navigates to Household screen', () => {
+  it('renders ScopeToggle as null when user has 0 households (clean single-user view)', () => {
+    jest.spyOn(householdsApi, 'useMyHouseholds').mockReturnValue({
+      data: { items: [] },
+      isLoading: false,
+    } as any);
+
+    const { queryByTestId } = render(<ScopeToggle />);
+    expect(queryByTestId('scope-toggle')).toBeNull();
+  });
+
+  it('renders simple share icon button right-aligned in Home header, and tapping navigates to Household', () => {
     jest.spyOn(householdsApi, 'useMyHouseholds').mockReturnValue({
       data: { items: [] },
       isLoading: false,
@@ -55,12 +66,13 @@ describe('Pantry Share Discovery CTA and Default Household Mode', () => {
 
     const navigateSpy = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
 
-    const { getByTestId, getByText } = render(<ScopeToggle />);
+    const { getByTestId, getByText } = renderWithClient(<HomeTab />);
 
-    expect(getByTestId('scope-toggle-discovery-cta')).toBeTruthy();
-    expect(getByText('Share pantry with family or roommates')).toBeTruthy();
+    expect(getByText('Your pantry')).toBeTruthy();
+    const shareBtn = getByTestId('home-share-pantry-btn');
+    expect(shareBtn).toBeTruthy();
 
-    fireEvent.press(getByTestId('scope-toggle-discovery-cta'));
+    fireEvent.press(shareBtn);
     expect(navigateSpy).toHaveBeenCalledWith('Household');
   });
 

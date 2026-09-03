@@ -1,6 +1,4 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { navigate } from '../../navigation/navigationRef';
 import { usePantryScope, type PantryScope } from '../../store/pantryScope';
 import { useMyHouseholds } from '../../api/households';
 import { useTheme } from '../../theme/useTheme';
@@ -11,44 +9,7 @@ export function ScopeToggle() {
   const { scope, householdId, setScope } = usePantryScope();
 
   const households = data?.items ?? [];
-  if (households.length === 0) {
-    return (
-      <View style={{ marginHorizontal: theme.spacing.lg, marginBottom: theme.spacing.sm }}>
-        <Pressable
-          testID="scope-toggle-discovery-cta"
-          accessibilityRole="button"
-          accessibilityLabel="Share pantry with family or roommates"
-          onPress={() => navigate('Household')}
-          style={({ pressed }) => ({
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: theme.spacing.sm,
-            paddingVertical: theme.spacing.sm,
-            paddingHorizontal: theme.spacing.md,
-            borderRadius: theme.radii.pill,
-            backgroundColor: theme.colors.bgElevated,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            minHeight: 44,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Ionicons name="people-outline" size={16} color={theme.colors.primary} />
-          <Text
-            style={{
-              color: theme.colors.text,
-              fontSize: 13,
-              fontWeight: '600',
-            }}
-          >
-            Share pantry with family or roommates
-          </Text>
-          <Ionicons name="chevron-forward" size={14} color={theme.colors.textMuted} />
-        </Pressable>
-      </View>
-    );
-  }
+  if (households.length === 0) return null;
 
   const segments: Array<{ key: PantryScope; label: string; householdId?: string | null }> = [
     { key: 'all', label: 'All' },
