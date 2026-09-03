@@ -62,7 +62,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Primary KPI Grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3.5 sm:gap-4 sm:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           label="Total Users"
           value={o.totalUsers.toLocaleString()}
@@ -75,6 +75,7 @@ export default async function OverviewPage() {
           icon={Activity}
           trend={`${Math.round((o.activeUsers7d / Math.max(o.totalUsers, 1)) * 100)}% of total`}
           trendUp={true}
+          sub="Active past 7 days"
         />
         <KpiCard
           label="Active Users (30d)"
