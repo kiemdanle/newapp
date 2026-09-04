@@ -12,27 +12,31 @@ dependencies: [1, 2, 3, 4, 5]
 ## Overview
 Perform end-to-end verification of the full-stack review system across all test suites, static typing, code formatting, Android debug APK compilation via local Gradle toolchain, installation to the connected physical device via `adb`, and live visual inspection of review creation and review reading.
 
-<!-- Updated: Red Team Review - Added backend test coverage for queue job deduplication removal, status-change recalculation (admin/reports), server self-vote rejection (403), empty-string normalization, deterministic keyset cursor, and ReviewsHub navigation -->
+<!-- Updated: Red Team Review Round 4 - Added integration tests for partial unique index duplicate report concurrency (P2002 -> 409), spec §2.8 distinct reporter auto-hide threshold (>3), and sanitized public review DTO -->
 
 ## Requirements
 
 ### Automated Verification
 - **Backend Integration Tests**:
   - `api/tests/integration/reviews-community.test.ts`:
-    - Deterministic keyset cursor pagination across equal-score rows.
+    - Keyset cursor pagination with deterministic tie-breaker.
     - Sorting by score and by newest.
     - Exclusion of hidden reviews, deleted reviews, and draft products.
-    - Inclusion of both `user` and `product` projections.
+    - Inclusion of both `user` and `product` projections with sanitized author DTO.
     - Correct resolution of viewer `myVote`.
   - `api/tests/integration/reviews-update.test.ts`:
     - Clean -> hidden transition triggers product rating recalculation.
     - Hidden -> visible transition triggers product rating recalculation.
     - Rating-only -> written comment transition recalculates `reviewCount`.
-    - Written comment -> empty/null transition recalculates `reviewCount`.
+    - Written comment -> null transition recalculates `reviewCount`.
     - Atomic write prevents resurrection of soft-deleted review.
   - `api/tests/integration/reviews-helpful.test.ts`:
     - Rejection of author self-vote with `403 FORBIDDEN`.
-    - Verification of single thumbs-up toggle (POST `ReviewHelpful` -> DELETE).
+    - Verification of thumbs-up only (POST `ReviewHelpful` -> DELETE).
+    - Rejection of `{ helpful: false }` or conversion to thumbs-up only.
+  - `api/tests/integration/reports-create.test.ts`:
+    - Concurrent duplicate open reports trigger database partial unique constraint `reports_open_per_reporter_target_idx` returning `409 CONFLICT`.
+    - `maybeAutoHide` requires $>3$ distinct reporters across `open` and `resolved` reports to auto-hide content.
   - `api/tests/integration/reviews-rate-limits.test.ts`:
     - Verifies 429 status when exceeding read (60/min), write (15/min), and vote (30/min) limits.
 - **Mobile Unit & Component Tests**:
@@ -43,7 +47,7 @@ Perform end-to-end verification of the full-stack review system across all test 
     - Authoritative edit vs. create mode via `useMyProductReview`.
     - 3 recommendation pills with Expyrico palette (neutral Stone/Pebble for `wont_buy`).
     - Character counter (`0/2000`).
-    - Empty text normalization to `undefined`/`null`.
+    - Explicit `body: null` submission when comment is cleared in edit mode.
     - Moderation feedback panel for profanity-flagged reviews.
   - `apps/mobile/tests/unit/product-reviews-section.test.tsx`:
     - Sentiment percentage calculation strictly using `product.ratingCount` as denominator (never exceeding 100%).
@@ -86,6 +90,7 @@ Perform end-to-end verification of the full-stack review system across all test 
 - Test: `api/tests/integration/reviews-community.test.ts`
 - Test: `api/tests/integration/reviews-update.test.ts`
 - Test: `api/tests/integration/reviews-helpful.test.ts`
+- Test: `api/tests/integration/reports-create.test.ts`
 - Test: `api/tests/integration/reviews-rate-limits.test.ts`
 - Test: `apps/mobile/tests/unit/touch-target.test.ts`
 - Test: `apps/mobile/tests/unit/reviews-hub.test.tsx`
@@ -93,7 +98,7 @@ Perform end-to-end verification of the full-stack review system across all test 
 ## Implementation Steps
 
 1. **Run Backend Integration Tests**:
-   - `pnpm --filter @expyrico/api test tests/integration/reviews-community.test.ts tests/integration/reviews-update.test.ts tests/integration/reviews-helpful.test.ts tests/integration/reviews-rate-limits.test.ts tests/integration/my-reviews.test.ts`.
+   - `pnpm --filter @expyrico/api test tests/integration/reviews-community.test.ts tests/integration/reviews-update.test.ts tests/integration/reviews-helpful.test.ts tests/integration/reports-create.test.ts tests/integration/reviews-rate-limits.test.ts tests/integration/my-reviews.test.ts`.
 
 2. **Run Mobile Unit Test Suite**:
    - Execute all review test suites: `npm --prefix apps/mobile test tests/unit/api-reviews.test.ts tests/unit/product-review-screen.test.tsx tests/unit/product-reviews-section.test.tsx tests/unit/reviews-hub.test.tsx`.
@@ -114,6 +119,7 @@ Perform end-to-end verification of the full-stack review system across all test 
 
 ## Success Criteria
 - [ ] All backend and mobile unit/integration tests pass with 0 failures.
+- [ ] Database partial unique index on open reports prevents concurrent duplicate reports.
 - [ ] Touch target test passes for all newly introduced buttons and pills (`minHeight: 44`).
 - [ ] Typecheck passes with 0 TypeScript errors.
 - [ ] Debug APK builds cleanly via Gradle in $<60\text{s}$.
