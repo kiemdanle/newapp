@@ -10,9 +10,9 @@ dependencies: [1]
 # Phase 2: Mobile API Client, Query Hooks, and Cache Invalidation
 
 ## Overview
-Implement the mobile data layer in `apps/mobile/src/api/reviews.ts` using `@tanstack/react-query` v5 and the shared review contract. Provides declarative React hooks for loading product reviews, community reviews, personal review history, author's own review on a product, review submission/editing, deletion, and helpfulness voting with client-side review ID deduplication to absorb mutable-score pagination shifts and precise cache invalidation across both review queries and product detail aggregate counters (`['products', productId]`).
+Implement the mobile data layer in `apps/mobile/src/api/reviews.ts` using `@tanstack/react-query` v5 and the shared review contract. Provides declarative React hooks for loading product reviews, community reviews, personal review history, author's own review on a product, review submission/editing, deletion, and helpfulness voting with client-side review ID deduplication, full query cancellation, in-flight mutexing to prevent double-tap desync, and precise cache invalidation across both review queries and product detail aggregate counters (`['products', productId]`).
 
-<!-- Updated: Red Team Review Round 5 - Added client-side Set<string> deduplication helper for infinite feeds to gracefully absorb mutable-score pagination drift, aligned voting payload to thumbs-up only ({ helpful: true }), and removed artificial fallback query client -->
+<!-- Updated: Red Team Review Round 7 - Added concrete in-flight voting mutex (votingReviewIds), cancelQueries onMutate, onSettled reconciliation, client-side deduplicateReviews helper, and thumbs-up only voting -->
 
 ## Requirements
 
@@ -43,14 +43,19 @@ Implement the mobile data layer in `apps/mobile/src/api/reviews.ts` using `@tans
 - **Review Delete Mutation (`useDeleteReview`)**:
   - Executes `DELETE /v1/reviews/:reviewId`.
   - Invalidates `['products', productId]`, `['product-reviews', productId]`, `['my-product-review', productId]`, and `['my-reviews']`.
-- **Helpful Vote Mutation (`useVoteReviewHelpful`)**:
-  - Thumbs-up only toggle:
-    - **Mark Helpful**: `POST /v1/reviews/:reviewId/helpful` with `{ helpful: true }`.
-    - **Unmark Helpful**: `DELETE /v1/reviews/:reviewId/helpful`.
-  - Performs optimistic cache updates on the active `['product-reviews', productId]` and `['community-reviews']` query caches:
-    - **Transition 1 (`null -> helpful`)**: Tapping unvoted helpful button immediately marks `myVote = 'helpful'` and increments `helpfulCount += 1`.
-    - **Transition 2 (`helpful -> null`)**: Tapping already-helpful button calls DELETE, immediately marks `myVote = null` and decrements `helpfulCount -= 1`.
-    - **Error Rollback**: If network fails, reverts cache snapshot and displays toast error.
+- **Helpful Vote Mutation (`useVoteReviewHelpful`) with Concurrency Protection**:
+  - **In-Flight Lock**: Maintains a local set of in-flight review IDs (`votingReviewIds: Set<string>`); subsequent clicks on the same review while a vote mutation is pending are dropped immediately.
+  - **Query Cancellation**: Inside `onMutate`:
+    ```typescript
+    await queryClient.cancelQueries({ queryKey: ['product-reviews', productId] });
+    await queryClient.cancelQueries({ queryKey: ['community-reviews'] });
+    ```
+  - **Optimistic Snapshot & Toggle**:
+    - Snapshots previous query data for both keys.
+    - If `currentVote === 'helpful'`: calls `DELETE /reviews/${reviewId}/helpful`, toggles `myVote` to `null` and `helpfulCount = Math.max(0, helpfulCount - 1)`.
+    - If `currentVote !== 'helpful'`: calls `POST /reviews/${reviewId}/helpful` with `{ helpful: true }`, toggles `myVote` to `'helpful'` and `helpfulCount += 1`.
+  - **Rollback on Error**: Reverts snapshot on network failure and presents toast error.
+  - **Settled Reconciliation**: On `onSettled`, invalidates `['product-reviews', productId]` and `['community-reviews']` to reconcile with server authoritative state.
 
 ### Non-Functional
 - Strictly typed using `@expyrico/shared` types: `Review`, `ReviewRating`, `ReviewSort`, `ReviewCreate`, `ReviewPatch`, `ReviewHelpful`.
@@ -102,18 +107,25 @@ export function useVoteReviewHelpful(productId?: string);
    - `useCommunityReviews(options)`: Infinite query on `GET /reviews/community`.
    - `useMyReviews(options)`: Infinite query on `GET /me/reviews`.
 
-3. **Implement Mutation Hooks with Cache Invalidation**:
+3. **Implement Mutation Hooks with Cache Invalidation & In-Flight Lock**:
    - Invalidate `['products', productId]` and review query keys on create/update/delete.
-   - `useVoteReviewHelpful(productId)`: Optimistic toggle using `ReviewHelpful` payload.
+   - `useVoteReviewHelpful(productId)`:
+     - Guarantees single-tap execution via `votingReviewIds` lock.
+     - Calls `cancelQueries` before snapshotting.
+     - Performs optimistic toggle (`null -> helpful` via POST, `helpful -> null` via DELETE).
+     - Calls `invalidateQueries` in `onSettled` for reconciliation.
 
 4. **Unit Tests (`apps/mobile/tests/unit/api-reviews.test.ts`)**:
    - Assert exact query keys and parameters.
    - Assert `deduplicateReviews` correctly collapses duplicate items across pages.
+   - Assert in-flight lock drops rapid double clicks on the same review.
+   - Assert `cancelQueries` called before optimistic state mutation.
    - Assert `['products', productId]` invalidation on create/update/delete.
    - Assert optimistic transitions: `null -> helpful`, `helpful -> null`, and rollback on error.
 
 ## Success Criteria
 - [ ] `apps/mobile/src/api/reviews.ts` exports all query and mutation hooks with full type safety.
+- [ ] In-flight lock and `cancelQueries` prevent double-tap optimistic desync.
 - [ ] `deduplicateReviews` eliminates duplicate items across infinite query pages.
 - [ ] `useMyProductReview` returns authoritative user review state.
 - [ ] Voting uses thumbs-up only (`ReviewHelpful` with `{ helpful: true }` and `DELETE`).

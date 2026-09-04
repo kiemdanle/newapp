@@ -10,9 +10,9 @@ dependencies: [1, 2, 3]
 # Phase 4: Product Detail Screen Integration and Community Reviews Feed
 
 ## Overview
-Integrate a community reviews section directly into the product detail screen (`apps/mobile/app/(app)/product/[id].tsx`). Displays an aggregate recommendation sentiment banner derived authoritatively from the `Product` model (`buyAgainCount`, `buyAgainOnSaleCount`, `wontBuyCount`, `ratingCount`, `reviewCount`), prominent `"Write a Review"` / `"Edit Your Review"` action button, sort pills (`Top helpful` & `Newest`), and interactive `ReviewCard` components supporting helpfulness voting, author badges, and moderation visibility rules.
+Integrate a community reviews section directly into the product detail screen (`apps/mobile/app/(app)/product/[id].tsx`). Displays an aggregate recommendation sentiment banner derived authoritatively from the `Product` model (`buyAgainCount`, `buyAgainOnSaleCount`, `wontBuyCount`, `ratingCount`, `reviewCount`), prominent `"Write a Review"` / `"Edit Your Review"` action button, sort pills (`Top helpful` & `Newest`), and interactive `ReviewCard` components consuming the sanitized public review DTO with `isOwnReview` for type-safe self-voting suppression.
 
-<!-- Updated: Red Team Review - Uses ratingCount as denominator for sentiment %, uses useMyProductReview for button state, standardizes strictly on two database-indexed sort pills (score/new), suppresses self-voting in UI (backed by server 403), and adheres to Expyrico palette for wont_buy -->
+<!-- Updated: Red Team Review Round 7 - Consumed sanitized public review DTO with review.isOwnReview (no internal userId/currentUserId props), used ratingCount denominator, two sort pills (score/new), and Stone/Pebble wont_buy styling -->
 
 ## Requirements
 
@@ -41,7 +41,8 @@ Integrate a community reviews section directly into the product detail screen (`
     2. **Newest** (`new`): Chronological `createdAt DESC`, sorted in Postgres.
   - Tapping a pill triggers query refetch with active pill highlighted in Fresh Sage (`#4BAE8A`).
 - **`ReviewCard` Component (`apps/mobile/src/features/reviews/ReviewCard.tsx`)**:
-  - Author header: user avatar (or initials placeholder), first name, and relative timestamp (`2d ago`, `1mo ago`).
+  - Consumes sanitized public review DTO: `review: Review` (which omits `userId` and provides `isOwnReview: boolean`).
+  - Author header: user avatar (or initials placeholder), first name (`review.author?.firstName ?? 'Community Member'`), and relative timestamp (`2d ago`, `1mo ago`).
   - Recommendation badge (strictly adhering to Expyrico palette):
     - `Buy again`: Fresh Sage (`#4BAE8A`) text/border on Mint Mist (`#D6F0E6`) background with checkmark icon.
     - `Buy on sale`: Honey (`#F5A623`) text/border on Soft Butter (`#FEEFC3`) background with tag icon.
@@ -50,9 +51,22 @@ Integrate a community reviews section directly into the product detail screen (`
   - Helpful vote button:
     - Displays thumbs-up icon with vote count `Helpful (N)`.
     - If `myVote === 'helpful'`: highlighted in active Fresh Sage.
-    - If review has no text body (`body === null`): helpful button is hidden (per backend schema `422 REVIEW_HAS_NO_COMMENT` rule).
-    - If current user is review author: helpful button is hidden (server rejects self-votes with 403).
-    - Triggers light haptic feedback and optimistic count toggle.
+    - **Self-Vote & Comment Visibility Gate**:
+      ```tsx
+      {!review.isOwnReview && review.body ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Vote helpful, currently ${review.helpfulCount} votes`}
+          onPress={() => onVoteHelpful(review.id, review.myVote ?? null)}
+          style={[styles.helpfulButton, { minHeight: 44 }]}
+        >
+          <Ionicons name="thumbs-up-outline" size={16} color={review.myVote === 'helpful' ? theme.colors.primary : theme.colors.textMuted} />
+          <Text style={styles.helpfulText}>{review.helpfulCount}</Text>
+        </Pressable>
+      ) : null}
+      ```
+    - If `review.isOwnReview === true`: renders `"Your review"` subtle badge instead of helpful voting button.
+    - If review has no text body (`review.body === null`): helpful button is completely hidden.
 - **Pagination & "View all" Navigation**:
   - Displays top 3 reviews directly on the product detail page.
   - If more than 3 reviews exist, renders `"View all N reviews"` link routing to `ReviewsHub` with `{ productId: product.id }`.
@@ -82,7 +96,7 @@ Integrate a community reviews section directly into the product detail screen (`
 | Sort: [ Top helpful ] [ Newest ]                            |
 |                                                             |
 | +---------------------------------------------------------+ |
-| | (Avatar) Alex M. · 3d ago                 [ Buy again ] | |
+| | (Avatar) Alex · 3d ago                      [ Buy again ] | |
 | |                                                         | |
 | | Stays crisp in the crisper drawer for almost 2 weeks.   | |
 | | Great value for everyday cooking.                       | |
@@ -91,7 +105,7 @@ Integrate a community reviews section directly into the product detail screen (`
 | +---------------------------------------------------------+ |
 |                                                             |
 | +---------------------------------------------------------+ |
-| | (Avatar) Sarah T. · 1w ago              [ Buy on sale ] | |
+| | (Avatar) Sarah · 1w ago                   [ Buy on sale ] | |
 | |                                                         | |
 | | Good flavor but slightly pricey at full MSRP.           | |
 | |                                                         | |
@@ -112,11 +126,11 @@ Integrate a community reviews section directly into the product detail screen (`
 ## Implementation Steps
 
 1. **Build `ReviewCard.tsx` (`apps/mobile/src/features/reviews/ReviewCard.tsx`)**:
-   - Accepts `review: Review`, `currentUserId?: string`, `onVoteHelpful: (reviewId: string, currentVote: 'helpful' | null) => void`.
+   - Accepts `review: Review` and `onVoteHelpful: (reviewId: string, currentVote: 'helpful' | null) => void`.
    - Render author avatar using `Avatar` component, first name, and formatted date (`formatRelativeDate`).
    - Render recommendation badge with icon and matching Expyrico colors (`wont_buy` on Stone/Pebble/Almost Black, no Alert Red).
-   - If `review.body` is present and `review.userId !== currentUserId`, render helpful button; otherwise hide.
-   - Render helpful button with `accessibilityLabel="Vote review as helpful"` and `minHeight: 44`.
+   - If `!review.isOwnReview && review.body`: render helpful button with `minHeight: 44`.
+   - If `review.isOwnReview`: render `"Your review"` tag.
 
 2. **Build `ProductReviewsSection.tsx` (`apps/mobile/src/features/reviews/ProductReviewsSection.tsx`)**:
    - Accepts `product: Product`.
@@ -134,7 +148,7 @@ Integrate a community reviews section directly into the product detail screen (`
    - Test rendering 0 reviews empty state.
    - Test recommendation percentage calculation strictly using `product.ratingCount`.
    - Test rendering reviews list with recommendation badges.
-   - Test self-voting button suppression when author matches viewer.
+   - Test self-voting button is hidden when `review.isOwnReview === true`.
    - Test clicking "Write a review" triggers navigation.
    - Test clicking "Helpful" triggers vote mutation.
 
@@ -142,7 +156,7 @@ Integrate a community reviews section directly into the product detail screen (`
 - [ ] Product details screen renders community sentiment summary and review cards.
 - [ ] Sentiment percentage is calculated strictly using `product.ratingCount` as denominator.
 - [ ] Recommendation badges strictly adhere to Expyrico palette (`wont_buy` uses Stone/Pebble/Almost Black).
-- [ ] Self-voting button is suppressed for the review's author.
+- [ ] `ReviewCard` type-safely consumes sanitized DTO and uses `review.isOwnReview` to suppress self-voting.
 - [ ] Users can toggle between "Top helpful" and "Newest" sort orders.
 - [ ] Tapping helpful increments vote count with instant feedback.
 - [ ] Tapping "Write a review" navigates to `ProductReview`.
