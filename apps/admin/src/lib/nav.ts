@@ -66,6 +66,7 @@ export const NAV: NavSection[] = [
     title: 'Settings',
     items: [
       { label: 'Feature flags', href: '/settings/feature-flags', icon: 'ToggleRight' },
+      { label: 'Pantry units', href: '/settings/pantry-units', icon: 'Scale' },
       { label: 'Notification templates', href: '/settings/notification-templates', icon: 'Bell' },
       { label: 'Moderation', href: '/settings/moderation', icon: 'Shield' },
       { label: 'Admins', href: '/settings/admins', icon: 'ShieldCheck' },
