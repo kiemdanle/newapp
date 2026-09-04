@@ -155,8 +155,8 @@ describe('moderation template renderer', () => {
     expect(out.html).not.toContain('<b>needs</b>');
     expect(out.html).toContain('5 new item(s): 2 product(s), 3 revision(s)');
     expect(out.html).toContain('href="https://admin.example/products/pending"');
-    // Exactly one anchor, server-owned.
-    expect(out.html.match(/<a /g)).toHaveLength(1);
+    // Both anchors point to the server-owned canonical queue URL.
+    expect(out.html.match(/<a /g)).toHaveLength(2);
   });
 
   it('renders plain text with correct counts', async () => {

@@ -23,7 +23,10 @@ function stubAssessmentClient(score = 0.9, action = 'submit_product') {
 // mode gate itself (covered separately in product-creation-mode.test.ts) — set
 // mode to `all` so a non-allowlisted regular user isn't incidentally blocked.
 beforeEach(async () => {
-  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+  await getPrisma().setting.update({
+    where: { key: 'product_creation' },
+    data: { value: { mode: 'all', requireApproval: true } },
+  });
 });
 
 afterEach(() => {

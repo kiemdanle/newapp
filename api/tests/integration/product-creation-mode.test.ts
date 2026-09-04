@@ -53,8 +53,8 @@ async function buildServerWithTrackedExternalMiss() {
 
 type Mode = 'off' | 'internal' | 'all';
 
-async function setMode(mode: Mode): Promise<void> {
-  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode } } });
+async function setMode(mode: Mode, requireApproval = true): Promise<void> {
+  await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode, requireApproval } } });
 }
 
 async function authHeadersFor(userId: string, tokenVersion: number): Promise<{ authorization: string }> {
@@ -93,7 +93,7 @@ describe('GET/PATCH /v1/admin/settings/product-creation', () => {
     const { headers } = await makeAdmin();
     const res = await app.inject({ method: 'GET', url: '/v1/admin/settings/product-creation', headers });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ mode: 'off' });
+    expect(res.json()).toEqual({ mode: 'off', requireApproval: false });
     await app.close();
   });
 
@@ -121,10 +121,10 @@ describe('GET/PATCH /v1/admin/settings/product-creation', () => {
       payload: { mode: 'internal' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ mode: 'internal' });
+    expect(res.json()).toEqual({ mode: 'internal', requireApproval: false });
 
     const row = await getPrisma().setting.findUniqueOrThrow({ where: { key: 'product_creation' } });
-    expect(row.value).toEqual({ mode: 'internal' });
+    expect(row.value).toEqual({ mode: 'internal', requireApproval: false });
     expect(row.updatedBy).toBe(admin.id);
 
     const audit = await getPrisma().adminAuditLog.findFirst({
@@ -408,7 +408,7 @@ describe('POST /v1/products/drafts/:id/submit — completeness validation (revie
   });
 
   it('accepts submitting a draft once a real name was set via PATCH', async () => {
-    await getPrisma().setting.update({ where: { key: 'product_creation' }, data: { value: { mode: 'all' } } });
+    await setMode('all', true);
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const headers = await authHeadersFor(user.id, user.tokenVersion);

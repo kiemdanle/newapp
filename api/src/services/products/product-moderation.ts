@@ -193,7 +193,7 @@ async function approve(
             where: { id: product.id, status: 'pending', version },
             data: { status: 'active', moderationNotes: null, moderatedByUserId: actor.id, moderatedAt: new Date(), version: { increment: 1 } },
           });
-
+          if (updateResult.count === 0) versionConflict(await currentVersionOf(tx, product.id));
           for (let i = 0; i < pendingPhotos.length; i++) {
             await tx.productPhoto.update({
               where: { id: pendingPhotos[i]!.id },

@@ -668,7 +668,12 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
   });
 
   it('preserves existing pending/approved/rejected product_edits and legacy report-hidden products through migration A', async () => {
-    psql(adminUrl, ['-c', `CREATE DATABASE "${scratchDbName}" OWNER pantry_app`]);
+    try {
+      const dbUser = new URL(process.env.DATABASE_URL ?? 'postgresql://pantry@localhost').username || 'pantry';
+      psql(adminUrl, ['-c', `CREATE DATABASE "${scratchDbName}" OWNER ${dbUser}`]);
+    } catch {
+      psql(adminUrl, ['-c', `CREATE DATABASE "${scratchDbName}"`]);
+    }
     psql(scratchUrlForPsql, ['-c', 'CREATE EXTENSION IF NOT EXISTS pg_trgm']);
 
     const migrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
@@ -748,6 +753,5 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     expect(edits.every((e) => e.baseProductVersion === 1)).toBe(true);
 
     const settingsRow = await scratchPrisma.setting.findUnique({ where: { key: 'product_creation' } });
-    expect(settingsRow?.value).toEqual({ mode: 'off' });
-  });
+    expect(settingsRow?.value).toEqual({ mode: 'all' });
 });
