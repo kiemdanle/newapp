@@ -91,15 +91,15 @@ export declare const adminRowSchema: z.ZodObject<{
     email: string;
     firstName: string;
     lastName: string;
-    createdAt: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }, {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-    createdAt: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }>;
 export type AdminRow = z.infer<typeof adminRowSchema>;
 export declare const adminInviteSchema: z.ZodObject<{
@@ -115,4 +115,13 @@ export declare const adminInviteSchema: z.ZodObject<{
     firstName: string;
     lastName: string;
 }>;
+export declare const unitStringSchema: z.ZodString;
+export declare const pantryUnitsSettingsSchema: z.ZodObject<{
+    topUnits: z.ZodDefault<z.ZodEffects<z.ZodArray<z.ZodString, "many">, string[], string[]>>;
+}, "strip", z.ZodTypeAny, {
+    topUnits: string[];
+}, {
+    topUnits?: string[] | undefined;
+}>;
+export type PantryUnitsSettings = z.infer<typeof pantryUnitsSettingsSchema>;
 //# sourceMappingURL=settings.d.ts.map

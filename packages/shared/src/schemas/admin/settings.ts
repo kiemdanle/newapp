@@ -50,3 +50,22 @@ export const adminInviteSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
 });
+
+export const unitStringSchema = z
+  .string()
+  .trim()
+  .min(1, 'Unit cannot be empty')
+  .max(16, 'Unit cannot exceed 16 characters')
+  .regex(/^[a-zA-Z0-9\s/°\-_.]+$/, 'Unit contains invalid characters');
+
+export const pantryUnitsSettingsSchema = z.object({
+  topUnits: z
+    .array(unitStringSchema)
+    .length(4, 'Exactly 4 top units must be specified')
+    .refine(
+      (units) => new Set(units.map((u) => u.toLowerCase())).size === 4,
+      'Top units must all be distinct',
+    )
+    .default(['pcs', 'pack', 'can', 'bottle']),
+});
+export type PantryUnitsSettings = z.infer<typeof pantryUnitsSettingsSchema>;

@@ -50,6 +50,8 @@ import {
   moderationSettingsSchema,
   productCreationSettingsSchema,
   notificationTemplateSchema,
+  pantryUnitsSettingsSchema,
+  type PantryUnitsSettings,
   adminRowSchema,
   adminDealsListSchema,
   adminDealRowSchema,
@@ -275,6 +277,17 @@ export const serverAdminApi = {
           method: 'PATCH',
           body,
         }).then((r) => productCreationSettingsSchema.parse(r)),
+    },
+    pantryUnits: {
+      get: () =>
+        apiServerFetch('/v1/admin/settings/pantry-units').then((r) =>
+          pantryUnitsSettingsSchema.parse(r),
+        ),
+      patch: (body: PantryUnitsSettings) =>
+        apiServerFetch('/v1/admin/settings/pantry-units', {
+          method: 'PATCH',
+          body,
+        }).then((r) => pantryUnitsSettingsSchema.parse(r)),
     },
     notificationTemplates: {
       list: () =>

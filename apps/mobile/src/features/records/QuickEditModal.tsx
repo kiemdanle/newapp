@@ -6,6 +6,7 @@ import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
+import { UnitSelector } from '../../components/UnitSelector';
 
 interface Props {
   visible: boolean;
@@ -15,7 +16,6 @@ interface Props {
   onSave: (patch: { customName?: string | null; quantity: number; unit: string; expiryDate: string }) => Promise<void>;
 }
 
-const COMMON_UNITS = ['pcs', 'pack', 'can', 'bottle', 'box', 'bag', 'kg', 'g', 'l', 'ml'];
 
 export function QuickEditModal({ visible, record, productName, onClose, onSave }: Props) {
   const theme = useTheme();
@@ -130,31 +130,12 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
           </View>
 
           {/* Unit Selector */}
-          <View style={{ gap: 6 }}>
-            <Text style={[styles.label, { color: theme.colors.textMuted }]}>Unit</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-              {COMMON_UNITS.map((u) => {
-                const selected = unit.toLowerCase() === u;
-                return (
-                  <Pressable
-                    key={u}
-                    onPress={() => setUnit(u)}
-                    style={[
-                      styles.unitChip,
-                      {
-                        backgroundColor: selected ? theme.colors.primary : theme.colors.bgGlass,
-                        borderColor: selected ? theme.colors.primary : theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={{ color: selected ? '#FFFFFF' : theme.colors.text, fontSize: 12, fontWeight: '600' }}>
-                      {u}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+          <UnitSelector
+            value={unit}
+            onChange={setUnit}
+            label="Unit"
+            testID="quick-edit-unit-selector"
+          />
 
           {/* Expiry Date */}
           <View style={{ gap: 6 }}>
@@ -261,11 +242,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
-  },
-  unitChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
   },
 });

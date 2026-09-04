@@ -288,3 +288,9 @@ export async function updateFeedbackStatusAction(
   revalidatePath(`/feedback/${id}`);
   return result;
 }
+
+export async function savePantryUnitsAction(body: { topUnits: string[] }) {
+  const result = await serverAdminApi.settings.pantryUnits.patch(body);
+  revalidatePath('/settings/pantry-units');
+  return result;
+}

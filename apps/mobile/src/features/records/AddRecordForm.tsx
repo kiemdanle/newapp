@@ -12,6 +12,7 @@ import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../produ
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { ScopeSelectorPill } from './ScopeSelectorPill';
+import { UnitSelector } from '../../components/UnitSelector';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -317,31 +318,25 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         onConfirm={(iso) => setExpiry(iso)}
       />
 
-      {/* Compact 2-Column Quantity & Unit */}
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Quantity</Text>
-          <TextInput
-            accessibilityLabel="Text input field"
-            testID="add-record-quantity"
-            style={[input, { minHeight: 48 }]}
-            value={quantity}
-            keyboardType="numeric"
-            onChangeText={setQuantity}
-          />
-        </View>
-
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Unit</Text>
-          <TextInput
-            accessibilityLabel="Text input field"
-            testID="add-record-unit"
-            style={[input, { minHeight: 48 }]}
-            value={unit}
-            onChangeText={setUnit}
-          />
-        </View>
+      {/* Quantity & Unit Selection */}
+      <View style={{ gap: 6 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Quantity</Text>
+        <TextInput
+          accessibilityLabel="Text input field"
+          testID="add-record-quantity"
+          style={[input, { minHeight: 48 }]}
+          value={quantity}
+          keyboardType="numeric"
+          onChangeText={setQuantity}
+        />
       </View>
+
+      <UnitSelector
+        value={unit}
+        onChange={setUnit}
+        label="Unit"
+        testID="add-record-unit-selector"
+      />
 
       <View style={{ gap: 6 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Category (optional)</Text>

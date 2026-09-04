@@ -43,6 +43,7 @@ import { adminSettingsModerationRoute } from './settings/moderation.js';
 import { adminSettingsNotificationTemplatesRoute } from './settings/notification-templates.js';
 import { adminSettingsAdminsRoute } from './settings/admins.js';
 import { adminSettingsProductCreationRoute } from './settings/product-creation.js';
+import { adminSettingsPantryUnitsRoute } from './settings/pantry-units.js';
 import { adminTrustedDevicesRoute } from './trusted-devices.js';
 import { adminFeedbackRoutes } from './feedback/index.js';
 export async function adminRoutes(app: FastifyInstance) {
@@ -95,6 +96,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminSettingsNotificationTemplatesRoute, { prefix: '/settings' });
   await app.register(adminSettingsAdminsRoute, { prefix: '/settings' });
   await app.register(adminSettingsProductCreationRoute, { prefix: '/settings' });
+  await app.register(adminSettingsPantryUnitsRoute, { prefix: '/settings' });
   await app.register(adminDealsListRoute, { prefix: '/deals' });
   await app.register(adminDealsStatusRoute, { prefix: '/deals' });
   await app.register(adminGiveawaysListRoute, { prefix: '/giveaways' });

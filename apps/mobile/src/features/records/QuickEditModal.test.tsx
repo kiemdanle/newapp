@@ -1,8 +1,8 @@
 import React from 'react';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import { QuickEditModal } from './QuickEditModal';
 import type { LocalRecord } from '../../api/records';
-import { ThemeProvider } from '../../theme/ThemeProvider';
+import { renderWithTheme } from '../../../tests/helpers/renderWithTheme';
 
 const mockRecord: LocalRecord = {
   id: 'rec-1',
@@ -25,15 +25,14 @@ const mockRecord: LocalRecord = {
 
 describe('QuickEditModal', () => {
   it('renders record fields and steppers properly', () => {
-    const { getByLabelText, getByDisplayValue } = render(
-      <ThemeProvider>
-        <QuickEditModal
-          visible
-          record={mockRecord}
-          onClose={jest.fn()}
-          onSave={jest.fn()}
-        />
-      </ThemeProvider>,
+    const { getByLabelText, getByDisplayValue } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+      'expyrico',
     );
 
     expect(getByDisplayValue('Apples')).toBeTruthy();
@@ -44,15 +43,14 @@ describe('QuickEditModal', () => {
   });
 
   it('increments and decrements quantity via steppers', () => {
-    const { getByLabelText, getByDisplayValue } = render(
-      <ThemeProvider>
-        <QuickEditModal
-          visible
-          record={mockRecord}
-          onClose={jest.fn()}
-          onSave={jest.fn()}
-        />
-      </ThemeProvider>,
+    const { getByLabelText, getByDisplayValue } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+      'expyrico',
     );
 
     const incBtn = getByLabelText('Increase quantity');
@@ -68,15 +66,14 @@ describe('QuickEditModal', () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     const onClose = jest.fn();
 
-    const { getByTestId, getByLabelText } = render(
-      <ThemeProvider>
-        <QuickEditModal
-          visible
-          record={mockRecord}
-          onClose={onClose}
-          onSave={onSave}
-        />
-      </ThemeProvider>,
+    const { getByTestId, getByLabelText } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={onClose}
+        onSave={onSave}
+      />,
+      'expyrico',
     );
 
     fireEvent.changeText(getByLabelText('Item Name'), 'Gala Apples');
@@ -93,5 +90,69 @@ describe('QuickEditModal', () => {
       expiryDate: '2026-09-01',
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('renders UnitSelector and allows selecting another top 4 unit', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Initial unit 'pcs' is selected
+    expect(getByTestId('unit-pill-pcs')).toBeTruthy();
+    expect(getByTestId('unit-pill-pack')).toBeTruthy();
+    expect(getByTestId('unit-pill-can')).toBeTruthy();
+    expect(getByTestId('unit-pill-bottle')).toBeTruthy();
+    expect(getByTestId('unit-pill-more')).toBeTruthy();
+
+    // Select 'pack'
+    fireEvent.press(getByTestId('unit-pill-pack'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unit: 'pack',
+      }),
+    );
+  });
+
+  it('selects an American import unit (oz) via More sheet and saves', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Open More sheet
+    fireEvent.press(getByTestId('unit-pill-more'));
+
+    // Select 'oz'
+    fireEvent.press(getByTestId('unit-option-oz'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        unit: 'oz',
+      }),
+    );
   });
 });

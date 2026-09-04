@@ -35,6 +35,7 @@ import { householdsRoutes } from './routes/households/index.js';
 import { adminRoutes } from './routes/admin/index.js';
 import { feedbackRoutes } from './routes/feedback/index.js';
 import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
+import { pantryUnitsClientRoute } from './routes/settings/pantry-units.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 import { probeMediaCapabilities } from './services/products/product-image-processor.js';
 import { installMediaFreezePolicy } from './services/products/product-media-freeze.js';
@@ -146,6 +147,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(householdsRoutes, { prefix: '/v1' });
   await app.register(feedbackRoutes, { prefix: '/v1' });
   await app.register(adminRoutes, { prefix: '/v1/admin' });
+  await app.register(pantryUnitsClientRoute, { prefix: '/v1' });
 
   return app;
 }
