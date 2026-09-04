@@ -146,8 +146,6 @@ export function RecordCard({
           },
         ]}
       >
-        {/* Status edge bar */}
-        <View testID={`record-expiry-status-${status}`} style={{ width: 4, backgroundColor: statusColor }} />
         {selectionMode && (
           <View
             testID={`record-select-checkbox-${record.id}`}
@@ -250,7 +248,10 @@ export function RecordCard({
                   )}
                 </View>
               </View>
-              <View style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+              <View
+                testID={`record-expiry-status-${status}`}
+                style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}
+              >
                 <Text style={{ color: statusColor, fontSize: 11, fontWeight: '600' }}>
                   {record.quantity} {record.unit}
                 </Text>

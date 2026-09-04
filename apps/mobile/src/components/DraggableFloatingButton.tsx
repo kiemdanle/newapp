@@ -31,13 +31,14 @@ export function DraggableFloatingButton({
   const savedPosition = useUiPreferencesStore((s) => s.menuButtonPosition);
   const setSavedPosition = useUiPreferencesStore((s) => s.setMenuButtonPosition);
 
-  // Safe area bounds
+  // Safe area bounds: allow freeform dragging all the way to the bottom safe area
   const minX = insets.left + 12;
   const maxX = Math.max(minX, screenWidth - buttonWidth - insets.right - 12);
-  const minY = insets.top + 60;
-  const maxY = Math.max(minY, screenHeight - buttonHeight - insets.bottom - 70);
+  const minY = insets.top + 12;
+  const bottomOffset = Math.max(insets.bottom, 16);
+  const maxY = Math.max(minY, screenHeight - buttonHeight - bottomOffset);
 
-  // Default placement: bottom right corner
+  // Default placement: aligned with bottom navigation bar in bottom right
   const defaultX = maxX;
   const defaultY = maxY;
 
