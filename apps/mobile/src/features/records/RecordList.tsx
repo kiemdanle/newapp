@@ -14,6 +14,8 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelectionModeStore } from '../../store/selectionModeStore';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import {
   useActiveRecords,
@@ -98,11 +100,13 @@ export function RecordList({
   refreshing,
   onRefresh,
 }: RecordListProps) {
+  const insets = useSafeAreaInsets();
   const records = useActiveRecords();
   const { scope, householdId } = usePantryScope();
   const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
   const queryClient = useQueryClient();
+  const setGlobalSelectionMode = useSelectionModeStore((s) => s.setSelectionMode);
   const { data: householdsData } = useMyHouseholds();
   const householdNames = useMemo(() => {
     const map: Record<string, string> = {};
@@ -137,6 +141,13 @@ export function RecordList({
       setSelectedIds(new Set());
     }
   }, [scope, householdId]);
+
+  useEffect(() => {
+    setGlobalSelectionMode(selectionMode);
+    return () => {
+      setGlobalSelectionMode(false);
+    };
+  }, [selectionMode, setGlobalSelectionMode]);
 
   useEffect(() => {
     if (!selectionMode) return;
@@ -621,6 +632,7 @@ export function RecordList({
           style={[
             styles.bulkActionBar,
             {
+              bottom: Math.max(insets.bottom, 16),
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
             },
@@ -779,9 +791,10 @@ const styles = StyleSheet.create({
   },
   bulkActionBar: {
     position: 'absolute',
-    bottom: 16,
     left: 16,
     right: 16,
+    zIndex: 1000,
+    elevation: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -793,7 +806,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
   bulkActionCountWrap: {
     flexDirection: 'row',

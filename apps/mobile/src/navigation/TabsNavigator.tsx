@@ -14,6 +14,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { DraggableFloatingButton } from '../components/DraggableFloatingButton';
+import { useSelectionModeStore } from '../store/selectionModeStore';
 
 import HomeScreen from '../../app/(app)/(tabs)/home';
 import DealsScreen from '../../app/(app)/(tabs)/deals';
@@ -147,6 +148,7 @@ function SignatureMenuIcon({ isOpen, size = 22 }: { isOpen: boolean; size?: numb
 }
 
 function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
+  const isSelectionMode = useSelectionModeStore((s) => s.isSelectionMode);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -201,6 +203,10 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const menuVerticalStyle = opensUp
     ? { bottom: buttonPos ? height - buttonPos.y + 10 : bottomOffset + 60, top: undefined }
     : { top: buttonPos ? buttonPos.y + 58 : insets.top + 60, bottom: undefined };
+  if (isSelectionMode) {
+    return null;
+  }
+
   return (
     <>
       {/* Backdrop overlay when vertical menu is open */}
