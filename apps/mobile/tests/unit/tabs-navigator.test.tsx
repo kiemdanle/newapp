@@ -1,9 +1,10 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TabsNavigator } from '../../src/navigation/TabsNavigator';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
+import { useSelectionModeStore } from '../../src/store/selectionModeStore';
 
 jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual('react-native-safe-area-context'),
@@ -73,6 +74,24 @@ function renderTabs() {
 }
 
 describe('TabsNavigator with Vertical Menu and Centered Action Button', () => {
+  beforeEach(() => {
+    useSelectionModeStore.setState({ isSelectionMode: false });
+  });
+
+  it('hides both the center action button and the menu button when selection mode is active', () => {
+    const { queryByTestId } = renderTabs();
+
+    expect(queryByTestId('home-scan-action')).toBeTruthy();
+    expect(queryByTestId('bottom-nav-menu-button')).toBeTruthy();
+
+    act(() => {
+      useSelectionModeStore.setState({ isSelectionMode: true });
+    });
+
+    expect(queryByTestId('home-scan-action')).toBeNull();
+    expect(queryByTestId('bottom-nav-menu-button')).toBeNull();
+  });
+
   it('renders the Home scan action button and right-aligned menu button on initial load', () => {
     const { getByTestId, getByText } = renderTabs();
 

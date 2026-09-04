@@ -203,7 +203,7 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const opensUp = buttonPos ? buttonPos.y > height / 2 : true;
 
   const menuHorizontalStyle = opensLeft
-    ? { right: Math.max(16, width - (buttonPos ? buttonPos.x + 48 : width - 16)), left: undefined }
+    ? { right: Math.max(16, width - (buttonPos ? buttonPos.x + 52 : width - 16)), left: undefined }
     : { left: Math.max(16, buttonPos ? buttonPos.x : 16), right: undefined };
 
   const menuVerticalStyle = opensUp

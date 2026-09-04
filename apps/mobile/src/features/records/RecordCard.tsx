@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -38,6 +38,12 @@ export function RecordCard({
   onLongPress,
   onToggleSelect,
 }: Props) {
+  const handleCardLongPress = useCallback(() => {
+    if (!selectionMode && onLongPress) {
+      onLongPress();
+    }
+  }, [selectionMode, onLongPress]);
+
   const theme = useTheme();
   const { scope } = usePantryScope();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
@@ -128,7 +134,7 @@ export function RecordCard({
         accessibilityRole="button"
         accessibilityLabel={`${displayName}${isHouseholdItem ? `, Shared in ${badgeLabel}` : ''}, Expires ${formatDate(record.expiryDate, userCountry)}`}
         onPress={selectionMode ? onToggleSelect : onPress}
-        onLongPress={selectionMode ? undefined : onLongPress}
+        onLongPress={handleCardLongPress}
         delayLongPress={300}
         testID={`record-card-${record.id}`}
         style={({ pressed }) => [
