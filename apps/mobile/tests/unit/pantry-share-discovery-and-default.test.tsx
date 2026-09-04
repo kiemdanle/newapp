@@ -8,7 +8,7 @@ import { AddRecordForm } from '../../src/features/records/AddRecordForm';
 import { usePantryScope } from '../../src/store/pantryScope';
 import * as householdsApi from '../../src/api/households';
 import * as recordsApi from '../../src/api/records';
-import * as navigationRef from '../../src/navigation/navigationRef';
+import * as mockNavigation from '../mocks/react-navigation';
 
 jest.mock('../../src/api/records', () => {
   const actual = jest.requireActual('../../src/api/records');
@@ -64,7 +64,7 @@ describe('Pantry Share Discovery CTA and Default Household Mode', () => {
       isLoading: false,
     } as any);
 
-    const navigateSpy = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
+    const navigateSpy = jest.spyOn(mockNavigation.navigation, 'navigate');
 
     const { getByTestId, getByText } = renderWithClient(<HomeTab />);
 

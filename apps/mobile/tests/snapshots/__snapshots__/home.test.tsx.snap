@@ -254,7 +254,7 @@ exports[`home in expyrico snapshot 1`] = `
                         >
                           <Unknown
                             color="#4BAE8A"
-                            name="people-outline"
+                            name="share-social-outline"
                             size={20}
                           />
                         </Memo(Pressable)>
@@ -918,7 +918,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                         >
                           <Unknown
                             color="#4BAE8A"
-                            name="people-outline"
+                            name="share-social-outline"
                             size={20}
                           />
                         </Memo(Pressable)>

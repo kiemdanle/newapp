@@ -42,15 +42,15 @@ export default function HomeTab() {
               width: 44,
               height: 44,
               borderRadius: theme.radii.pill,
-              backgroundColor: theme.colors.bgElevated,
+              backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
               borderWidth: 1,
-              borderColor: theme.colors.border,
+              borderColor: pressed ? theme.colors.primary : theme.colors.border,
               alignItems: 'center',
               justifyContent: 'center',
-              opacity: pressed ? 0.75 : 1,
+              opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Ionicons name="people-outline" size={20} color={theme.colors.primary} />
+            <Ionicons name="share-social-outline" size={20} color={theme.colors.primary} />
           </Pressable>
         </View>
       </View>
