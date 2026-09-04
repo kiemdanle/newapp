@@ -11,13 +11,38 @@ dependencies: []
 
 ## Overview
 Implement the backend foundation required by the mobile review system, resolving critical queue durability, concurrent vote recount races, status drift across admin/report paths, empty-string counting, report abuse vulnerabilities, public DTO sanitization, and credential validation identified in red-team review:
-1. **Synchronous Product Tally Durability with Strict Lock Ordering (`api/src/services/reviews/product-tallies.ts`)**:
-   - Replaces lossy fire-and-forget Redis queues with synchronous, atomic Postgres transactions for all review mutations (`createReviewRoute`, `updateReviewRoute`), admin moderation status changes, and report auto-hiding.
-   - **Strict Lock Ordering**: Every mutation path executes `SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE` *first*, then mutates the `Review` row, then recomputes and writes tallies on `Product` in that same transaction. This eliminates races between concurrent mutations on different reviews for the same product, prevents deadlocks, and guarantees that when mobile refetches `useProduct(id)`, it reads 100% fresh tallies immediately upon commit.
-   - The old BullMQ worker in `api/src/queues/jobs/product-rating-recalc.ts` is retained only as an asynchronous background reconciliation task, but is completely bypassed for live mutations.
-2. **Vote Recount Concurrency Serialization (`api/src/services/reviews/repository.ts`)**:
+1. **Synchronous Product Tally Durability with Split Lock Helpers (`api/src/services/reviews/product-tallies.ts`)**:
+   - To realize the exact lock -> mutate -> recompute order without race conditions or deadlocks, Phase 1 exports two discrete helper functions:
+     - `lockProductForReviewMutation(tx: Prisma.TransactionClient, productId: string): Promise<void>`
+     - `recomputeAndSyncProductTallies(tx: Prisma.TransactionClient, productId: string): Promise<void>`
+   - Every review mutation (`createReviewRoute`, `updateReviewRoute`), admin moderation status change, and report auto-hiding executes:
+     ```typescript
+     await prisma.$transaction(async (tx) => {
+       await lockProductForReviewMutation(tx, productId); // 1. Lock Product row FIRST
+       const review = await tx.review.create({ ... });    // 2. Mutate Review row
+       await recomputeAndSyncProductTallies(tx, productId); // 3. Recompute and write tallies on Product
+       return review;
+     });
+     ```
+   - Guarantees immediate consistency: when mobile refetches `useProduct(id)`, it reads 100% fresh tallies upon transaction commit.
+2. **Clean BullMQ Queue Deletion**:
+   - The uncoordinated background worker in `api/src/queues/jobs/product-rating-recalc.ts` is deleted completely.
+   - Removed from `api/src/queues/index.ts:59` and `api/src/workers/runner.ts:39`, eliminating dead code and preventing uncoordinated background jobs from racing the synchronous transactional writer.
+3. **Legacy `not_helpful` Vote Migration**:
+   - In `migration.sql`:
+     ```sql
+     DELETE FROM "review_votes" WHERE "value" = 'not_helpful';
+     ```
+   - Cleans up legacy downvotes so database records reflect the thumbs-up only interaction model.
+4. **ViewerId Serialization on All Endpoints (`api/src/services/reviews/repository.ts`)**:
+   - `toApiReview(r, { viewerId, myVote })` computes `isOwnReview = Boolean(viewerId && r.userId === viewerId)`.
+   - Explicitly passed in `create.ts`, `update.ts`, `my-review.ts`, `my-reviews.ts`, `list-for-product.ts`, and `community.ts`.
+5. **Removal of Broken In-Memory `'rating'` Sort**:
+   - In `packages/shared/src/schemas/review.ts`: update `reviewSortSchema = z.enum(['score', 'new']).default('score')` (removing `'rating'`).
+   - In `api/src/routes/reviews/list-for-product.ts`: remove in-memory `items.sort()` block.
+6. **Vote Recount Concurrency Serialization (`api/src/services/reviews/repository.ts`)**:
    - In `recomputeReviewScore`, execute `SELECT id FROM reviews WHERE id = ${reviewId}::uuid FOR UPDATE` inside the transaction before running `groupBy`. This serializes concurrent votes on the same review and prevents stale snapshot overwrites.
-3. **Prisma Database Migration**:
+7. **Prisma Database Migration**:
    - Add composite indexes on `Review` for catalog-wide filtering and sorting:
      `@@index([status, score(sort: Desc), id(sort: Desc)])` and `@@index([status, createdAt(sort: Desc), id(sort: Desc)])`.
    - **Database-Enforced Concurrency-Safe Report Dedup**: Add a partial unique index on `reports` in `migration.sql`:
@@ -27,34 +52,30 @@ Implement the backend foundation required by the mobile review system, resolving
      WHERE "status" = 'open';
      ```
      In `api/src/routes/reports/create.ts`, catch Prisma unique constraint violation (`P2002`) and map to `409 CONFLICT`, preventing concurrent duplicate reports.
-4. **Distinct Reporter Auto-Hide (`api/src/services/reports/repository.ts`)**:
+8. **Distinct Reporter Auto-Hide (`api/src/services/reports/repository.ts`)**:
    - In `maybeAutoHide`, count distinct `reporterId` values where `status in ['open', 'resolved']`. Auto-hide is strictly triggered when `distinctReporters.length > AUTO_HIDE_REPORT_THRESHOLD` (on the 4th distinct reporter, preserving spec §2.8 threshold).
-5. **Product Visibility Gate on Review Lists (`api/src/routes/reviews/list-for-product.ts`)**:
-   - Type-safe visibility check with two explicit branches:
-     - If authenticated (`req.user` present): call `getVisibleProduct({ id: req.user.id, role: req.user.role }, productId)`. If null, throw 404.
-     - If anonymous (`req.user` undefined): load canonical product using `resolveCanonicalProduct`. If canonical status is not `'active'`, throw 404.
-   - Completely prevents reviews of draft, pending, or report-hidden products from leaking to unauthorized visitors.
-6. **Privacy-Hardened Public Review DTO (`packages/shared/src/schemas/review.ts` & `api/src/services/reviews/repository.ts`)**:
+9. **Product Visibility Gate on Review Lists (`api/src/routes/reviews/list-for-product.ts`)**: Call `getVisibleProduct(actor, productId)` before querying reviews. Return 404 for draft, pending, or report-hidden products unless caller has authorized access.
+10. **Privacy-Hardened Public Review DTO (`packages/shared/src/schemas/review.ts` & `api/src/services/reviews/repository.ts`)**:
    - Public review responses omit both top-level `userId` AND `author.id` to completely eliminate user UUID harvesting and tracking.
-   - Projects `author: { firstName: string, avatarUrl: string | null }` and a server-derived boolean `isOwnReview: boolean` computed by comparing `viewerId ? r.userId === viewerId : false`.
-7. **Thumbs-Up Only API Contract (`api/src/routes/reviews/helpful.ts`)**:
+   - Projects `author: { firstName: string, avatarUrl: string | null }` and a server-derived boolean `isOwnReview: boolean`.
+11. **Thumbs-Up Only API Contract (`api/src/routes/reviews/helpful.ts`)**:
    - Restrict `POST /v1/reviews/:id/helpful` to `{ helpful: true }` (or no body).
    - Use `DELETE /v1/reviews/:id/helpful` to remove votes.
    - Eliminate hidden downvoting from the public API.
    - Enforce server check `review.userId !== req.user.id` (`403 FORBIDDEN`).
-8. **Database-Validated Optional Auth (`api/src/plugins/auth.ts`)**: Add an `app.optionalAuth` preHandler that validates `tokenVersion` and active account status against the database whenever a Bearer token is provided on public feeds (`/products/:id/reviews`, `/reviews/community`).
-9. **Separate Create & Patch Body Schemas (`packages/shared/src/schemas/review.ts`)**:
+12. **Database-Validated Optional Auth (`api/src/plugins/auth.ts`)**: Add an `app.optionalAuth` preHandler that validates `tokenVersion` and active account status against the database whenever a Bearer token is provided on public feeds (`/products/:id/reviews`, `/reviews/community`).
+13. **Separate Create & Patch Body Schemas (`packages/shared/src/schemas/review.ts`)**:
    - `reviewCreateSchema`: accepts optional string, normalizes empty/whitespace to `null`.
    - `reviewPatchSchema`: accepts `string | null | undefined`, where `undefined` preserves existing body, and `null` (or empty string) normalizes to `null` to clear the comment and decrement `reviewCount`.
-10. **Authoritative Own Review Route (`GET /v1/products/:id/my-review`)**: Provide a dedicated endpoint in `api/src/routes/reviews/my-review.ts` returning `{ review: Review | null }`.
-11. **Idempotency on Review Creation**: Enable `config: { idempotent: 'required', rateLimit: reviewWriteRateLimit }` in `create.ts`.
-12. **Shared Review Schema Expansion**: Extend the shared `Review` contract to include optional lightweight `product` projection (`id`, `name`, `brand`, `imageUrl`).
-13. **Personal Reviews Route Projection**: Update `api/src/services/reviews/repository.ts` and `api/src/routes/reviews/my-reviews.ts` (`GET /v1/me/reviews`) to select `product` information.
-14. **Community Reviews Feed Endpoint**: Implement `GET /v1/reviews/community` in `api/src/routes/reviews/community.ts` supporting deterministic keyset pagination (composite cursor with `id` tie-breaker), sorting (`score` vs `new`), profanity-filter visibility rules (`status: 'visible'`), active-product constraints, and viewer `myVote` projection.
-15. **Universal Rate Limiting**: Apply explicit 60/min limit on reads, 15/min on write mutations, and 30/min on voting.
-16. **Testing & Vendored Sync**: Add integration tests covering synchronous tally updates with lock ordering, concurrent vote row locking, distinct reporter auto-hide, duplicate report rejection, product-visibility gating, thumbs-up only voting, optional auth token-version validation, 429 limits, and sync `@expyrico/shared` vendored dist.
+14. **Authoritative Own Review Route (`GET /v1/products/:id/my-review`)**: Provide a dedicated endpoint in `api/src/routes/reviews/my-review.ts` returning `{ review: Review | null }`.
+15. **Idempotency on Review Creation**: Enable `config: { idempotent: 'required', rateLimit: reviewWriteRateLimit }` in `create.ts`.
+16. **Shared Review Schema Expansion**: Extend the shared `Review` contract to include optional lightweight `product` projection (`id`, `name`, `brand`, `imageUrl`).
+17. **Personal Reviews Route Projection**: Update `api/src/services/reviews/repository.ts` and `api/src/routes/reviews/my-reviews.ts` (`GET /v1/me/reviews`) to select `product` information.
+18. **Community Reviews Feed Endpoint**: Implement `GET /v1/reviews/community` in `api/src/routes/reviews/community.ts` supporting deterministic keyset pagination (composite cursor with `id` tie-breaker), sorting (`score` vs `new`), profanity-filter visibility rules (`status: 'visible'`), active-product constraints, and viewer `myVote` projection.
+19. **Universal Rate Limiting**: Apply explicit 60/min limit on reads, 15/min on write mutations, and 30/min on voting.
+20. **Testing & Vendored Sync**: Add integration tests covering synchronous tally updates with lock ordering, concurrent vote row locking, distinct reporter auto-hide, duplicate report rejection, product-visibility gating, thumbs-up only voting, optional auth token-version validation, 429 limits, and sync `@expyrico/shared` vendored dist.
 
-<!-- Updated: Red Team Review Round 7 - Added strict lock ordering (Product SELECT FOR UPDATE first, then Review mutation, then tally recompute), type-safe anonymous visibility branching, and privacy-hardened DTO omitting author.id -->
+<!-- Updated: Red Team Review Round 8 - Split lock and recompute helpers in product-tallies.ts, cleanly deleted uncoordinated BullMQ queue/worker, migrated legacy not_helpful votes, serialized viewerId across all routes, and removed broken in-memory 'rating' sort -->
 
 ## Requirements
 
@@ -70,10 +91,12 @@ Implement the backend foundation required by the mobile review system, resolving
     CREATE UNIQUE INDEX IF NOT EXISTS "reports_open_per_reporter_target_idx"
     ON "reports" ("reporter_id", "target_type", "target_id")
     WHERE "status" = 'open';
+
+    DELETE FROM "review_votes" WHERE "value" = 'not_helpful';
     ```
 - **Privacy-Hardened Public Review DTO (`packages/shared/src/schemas/review.ts`)**:
   - In `reviewSchema`:
-    - Omit top-level `userId` on public list outputs.
+    - Omit top-level `userId` and `author.id`.
     - Project `author`:
       ```typescript
       author: z.object({
@@ -85,12 +108,13 @@ Implement the backend foundation required by the mobile review system, resolving
   - In `toApiReview(r, { viewerId, myVote })`:
     - `out.isOwnReview = Boolean(viewerId && r.userId === viewerId)`.
     - `out.author = r.user ? { firstName: r.user.firstName, avatarUrl: r.user.avatarUrl } : undefined`.
-- **Synchronous Product Tallies with Lock Ordering (`api/src/services/reviews/product-tallies.ts`)**:
-  - Export `syncProductRatingTallies(tx: Prisma.TransactionClient, productId: string): Promise<void>`:
+- **Synchronous Product Tallies with Split Helpers (`api/src/services/reviews/product-tallies.ts`)**:
+  - Export `lockProductForReviewMutation(tx: Prisma.TransactionClient, productId: string): Promise<void>`:
     ```typescript
-    // 1. Lock Product row first to serialize all concurrent review mutations for this product
     await tx.$executeRaw`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
-    // 2. Aggregate tallies
+    ```
+  - Export `recomputeAndSyncProductTallies(tx: Prisma.TransactionClient, productId: string): Promise<void>`:
+    ```typescript
     const byRating = await tx.review.groupBy({
       by: ['rating'],
       where: { productId, status: 'visible' },
@@ -102,7 +126,6 @@ Implement the backend foundation required by the mobile review system, resolving
     const reviewCount = await tx.review.count({
       where: { productId, status: 'visible', body: { not: null } },
     });
-    // 3. Write recomputed tallies to Product
     await tx.product.update({
       where: { id: productId },
       data: {
@@ -114,6 +137,10 @@ Implement the backend foundation required by the mobile review system, resolving
       },
     });
     ```
+- **BullMQ Queue Retirement**:
+  - Delete `api/src/queues/jobs/product-rating-recalc.ts`.
+  - Remove queue registration in `api/src/queues/index.ts:59`.
+  - Remove worker spawn in `api/src/workers/runner.ts:39`.
 - **Vote Recount Row Locking (`api/src/services/reviews/repository.ts`)**:
   - In `recomputeReviewScore(db: Db, reviewId: string)`:
     - Execute `await db.$executeRaw`SELECT id FROM reviews WHERE id = ${reviewId}::uuid FOR UPDATE`;` before `db.reviewVote.groupBy`.
@@ -154,7 +181,7 @@ Implement the backend foundation required by the mobile review system, resolving
   - `reviewCreateSchema`: normalizes empty/whitespace to `null`.
   - `reviewPatchSchema`: accepts `string | null | undefined`, where `null` explicitly clears body and `undefined` preserves.
 - **Authoritative Own Review Endpoint (`GET /v1/products/:id/my-review`)**:
-  - Returns `toApiReview(review)` if exists for caller and product, else `null`.
+  - Returns `toApiReview(review, { viewerId: req.user!.id })` if exists for caller and product, else `null`.
 - **Idempotency on Review Creation (`api/src/routes/reviews/create.ts`)**:
   - Add `config: { idempotent: 'required', rateLimit: reviewWriteRateLimit }`.
 - **Implement Community Reviews Route (`GET /v1/reviews/community`)**:
@@ -172,6 +199,9 @@ Implement the backend foundation required by the mobile review system, resolving
 
 ## Related Code Files
 - Create: `api/src/services/reviews/product-tallies.ts`
+- Delete: `api/src/queues/jobs/product-rating-recalc.ts`
+- Modify: `api/src/queues/index.ts`
+- Modify: `api/src/workers/runner.ts`
 - Modify: `api/src/services/reviews/repository.ts`
 - Modify: `api/src/routes/reviews/update.ts`
 - Modify: `api/src/routes/reviews/helpful.ts`
@@ -196,7 +226,11 @@ Implement the backend foundation required by the mobile review system, resolving
 - Modify: `api/tests/integration/reports-create.test.ts`
 
 ## Success Criteria
-- [ ] Product tallies update synchronously inside review writes with `SELECT FOR UPDATE` on `Product` locked *first*, guaranteeing zero Redis outage data loss and immediate refetch freshness.
+- [ ] Product row is locked first via `lockProductForReviewMutation`, then Review is mutated, then tallies recomputed via `recomputeAndSyncProductTallies` within the same transaction.
+- [ ] BullMQ queue and worker are deleted cleanly with zero orphaned references.
+- [ ] Legacy `not_helpful` votes are cleaned up in migration.
+- [ ] All endpoints pass `viewerId` to `toApiReview`, accurately generating `isOwnReview`.
+- [ ] Broken in-memory `'rating'` sort is removed from shared schema and product review route.
 - [ ] Vote recalculation executes `SELECT FOR UPDATE` on `Review`, ensuring race-free vote counts under concurrent bursts.
 - [ ] Partial unique index `reports_open_per_reporter_target_idx` prevents concurrent duplicate open reports, returning 409 Conflict.
 - [ ] Auto-hide counts distinct `reporterId` values across `open` and `resolved` reports, strictly requiring $>3$ distinct reporters.

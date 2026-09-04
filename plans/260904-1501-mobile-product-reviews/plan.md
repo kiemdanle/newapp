@@ -1,6 +1,6 @@
 ---
 title: "Mobile Product Reviews: Creation, Reading, and Community Feedback Architecture"
-description: "Comprehensive implementation plan to deliver full end-to-end mobile product review functionality: backend community feed endpoint, database-enforced report concurrency protection, synchronous product tally durability with strict lock ordering, universal rate limiting across all review routes, product projection on personal reviews, distinct reporter auto-hide, database-validated optional auth, TanStack Query API client, 3-tier recommendation submission, product detail review section with authoritative product tallies and helpfulness voting, and reviews hub navigation."
+description: "Comprehensive implementation plan to deliver full end-to-end mobile product review functionality: backend community feed endpoint, database-enforced report concurrency protection, synchronous product tally durability with split lock helpers, universal rate limiting across all review routes, product projection on personal reviews, queue deletion, distinct reporter auto-hide, database-validated optional auth, TanStack Query API client, 3-tier recommendation submission, product detail review section with authoritative product tallies and helpfulness voting, and reviews hub navigation."
 status: pending
 priority: P1
 effort: "2-3d"
@@ -29,8 +29,8 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 | # | Goal | Priority |
 |---|------|----------|
-| 1 | Extend backend shared contracts, add Prisma composite indexes and partial unique constraint on open reports, update product tallies synchronously with strict lock ordering, serialize vote recounting with row locking, enforce distinct reporter auto-hide, validate optionalAuth credentials, gate product visibility, project `product` metadata onto `GET /v1/me/reviews`, build `GET /v1/products/:id/my-review` and `GET /v1/reviews/community` feed endpoints, and enforce rate limits across all review routes | P1 |
-| 2 | Create typed React Query API client `apps/mobile/src/api/reviews.ts` covering product reviews list, community reviews, personal reviews, authoritative own-review query, creation, edit, deletion, helpful voting (`ReviewHelpful`), client-side review ID deduplication, in-flight mutexing, and exact cache invalidation of `['products', productId]` | P1 |
+| 1 | Extend backend shared contracts, add Prisma composite indexes and partial unique constraint on open reports, delete the uncoordinated BullMQ queue/worker, update product tallies synchronously with split lock helpers, serialize vote recounting with row locking, enforce distinct reporter auto-hide, validate optionalAuth credentials, gate product visibility type-safely, project `product` metadata onto `GET /v1/me/reviews`, build `GET /v1/products/:id/my-review` and `GET /v1/reviews/community` feed endpoints, and enforce rate limits across all review routes | P1 |
+| 2 | Create typed React Query API client `apps/mobile/src/api/reviews.ts` covering product reviews list, community reviews, personal reviews, authoritative own-review query, creation, edit, deletion, helpful voting (`ReviewHelpful`), client-side review ID deduplication, in-flight mutexing with `cancelQueries`, and exact cache invalidation of `['products', productId]` | P1 |
 | 3 | Align `apps/mobile/app/(app)/product/[id]/review.tsx` to the tri-state recommendation contract (`Buy again`, `Buy on sale`, `Won't buy` using neutral Stone/Pebble/Almost Black, strictly avoiding Alert Red), wire submission mutation, support `body: null` comment clearing, and handle edit state and moderation feedback | P1 |
 | 4 | Integrate Reviews section onto Product Detail (`apps/mobile/app/(app)/product/[id].tsx`) with recommendation percentage banner derived authoritatively using `product.ratingCount` as denominator, "Write/Edit Review" CTA, sorting pills (`Top helpful` & `Newest`), and interactive `ReviewCard` components consuming sanitized public DTOs with `isOwnReview` | P1 |
 | 5 | Register `ReviewsHub` in `AppNavigator.tsx` and integrate navigation entry points from `ProfileScreen` and Product Details, providing dual-view feeds ("My Reviews" & "Community Picks") with infinite pagination, pull-to-refresh, and quick navigation | P1 |
@@ -87,10 +87,12 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 ## Key Technical Decisions & Guardrails
 
-1. **Synchronous Product Tally Durability & Strict Lock Ordering**:
-   - Instead of fire-and-forget Redis queues that lose tallies during Redis outages or race immediate mobile cache refetches, review mutations (`createReviewRoute`, `updateReviewRoute`), admin moderation, and report auto-hide execute `syncProductRatingTallies(tx, productId)` inside the same Postgres transaction.
-   - **Lock Ordering**: Every write path locks the `Product` row first (`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`), then mutates the `Review` row, then recomputes and writes tallies on `Product` in that same transaction. This serializes all concurrent review writes for the same product and eliminates deadlocks.
-   - The BullMQ worker `product-rating-recalc.ts` is retained strictly as an optional maintenance/reconciliation task, but is completely bypassed for live mutations.
+1. **Synchronous Product Tally Durability & Split Lock Helpers**:
+   - Instead of fire-and-forget Redis queues that lose tallies during Redis outages or race immediate mobile cache refetches, review mutations (`createReviewRoute`, `updateReviewRoute`), admin moderation, and report auto-hide execute tallies inside the same Postgres transaction.
+   - **Lock Ordering**: `api/src/services/reviews/product-tallies.ts` exports two distinct helpers to strictly enforce order:
+     - `lockProductForReviewMutation(tx, productId)`: runs `SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`.
+     - `recomputeAndSyncProductTallies(tx, productId)`: aggregates visible reviews and updates `Product` in that same transaction.
+   - **Queue Retirement**: The uncoordinated BullMQ queue and worker in `product-rating-recalc.ts` are completely deleted, and removed from `queues/index.ts:59` and `workers/runner.ts:39`, eliminating dead code and racing background workers.
 
 2. **Vote Recount Concurrency Serialization**:
    - `recomputeReviewScore` inside `api/src/services/reviews/repository.ts` executes `SELECT id FROM reviews WHERE id = ${reviewId}::uuid FOR UPDATE` before running `groupBy` on `reviewVote`. This serializes concurrent votes on the same review and prevents stale snapshot overwrites.
@@ -118,7 +120,7 @@ This plan details the full implementation across 6 structured phases to bridge t
      - Authenticated: calls `getVisibleProduct({ id: req.user.id, role: req.user.role }, productId)`.
      - Anonymous: calls `resolveCanonicalProduct` and verifies status is `'active'`.
    - Public review responses omit both top-level internal `userId` AND `author.id`, projecting `author: { firstName, avatarUrl }` and server-derived `isOwnReview: boolean`.
-   - Helpful endpoint supports thumbs-up only (`{ helpful: true }` and `DELETE`), rejecting author self-votes with `403 FORBIDDEN`.
+   - Helpful endpoint supports thumbs-up only (`{ helpful: true }` and `DELETE`), rejecting author self-votes with `403 FORBIDDEN`. Legacy `not_helpful` votes are cleaned up in migration.
 
 6. **Universal Rate Limiting (Security Mandate)**:
    - Apply rate limiting to every review endpoint:
@@ -160,7 +162,7 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
-| 1 | Product Tally Durability & Lock Ordering | Critical | Accept | Phase 1 (`product-tallies.ts`, `create.ts`, `update.ts`): Replaced fire-and-forget Redis queue with synchronous `SELECT FOR UPDATE` on `Product` locked *first* before review mutation, ensuring immediate consistency. |
+| 1 | Product Tally Durability & Split Lock Ordering | Critical | Accept | Phase 1 (`product-tallies.ts`, `create.ts`, `update.ts`): Replaced fire-and-forget Redis queue with synchronous `lockProductForReviewMutation` (Product locked *first*) then `recomputeAndSyncProductTallies` within the same transaction. Retired uncoordinated BullMQ queue/worker. |
 | 2 | Vote Recount Concurrency Race on Un-Locked Review | Critical | Accept | Phase 1 (`services/reviews/repository.ts`): Inside `recomputeReviewScore`, execute `SELECT id FROM reviews WHERE id = ${reviewId}::uuid FOR UPDATE` before `groupBy` to serialize concurrent votes. |
 | 3 | Database-Level Concurrency Hole on Duplicate Open Reports | Critical | Accept | Phase 1 (`schema.prisma` migration & `reports/create.ts`): Added partial unique index `reports_open_per_reporter_target_idx` on `(reporter_id, target_type, target_id) WHERE status = 'open'`, mapping `P2002` to 409 Conflict. |
 | 4 | Distinct Reporter Auto-Hide Semantics | Critical | Accept | Phase 1 (`reports/repository.ts`): `maybeAutoHide` groups by `reporterId` across `status in ['open', 'resolved']`, auto-hiding strictly when `distinct > 3` (preserving spec §2.8 threshold). |
@@ -169,7 +171,7 @@ This plan details the full implementation across 6 structured phases to bridge t
 | 7 | Empty-String Comments Corrupt `reviewCount` | High | Accept | Phase 1 (`review.ts`, `create.ts`, `update.ts`): Trimmed empty or whitespace-only text normalizes to `null`, ensuring accurate `reviewCount` and community filtering. |
 | 8 | Review Patch Cannot Clear Comments (z.string rejects null) | High | Accept | Phase 1 (`review.ts`) & Phase 3: Separated `reviewCreateSchema` and `reviewPatchSchema` (accepts `string \| null \| undefined`, where `null` clears the comment). |
 | 9 | Product-Visibility Gating Missing on Review Lists | High | Accept | Phase 1 (`list-for-product.ts`): Type-safe visibility check branching for authenticated (`getVisibleProduct`) and anonymous (canonical active status) visitors. |
-| 10 | Stealth Downvote API Exposing Hidden Ranking Depression | High | Accept | Phase 1 (`helpful.ts`): Restricted `POST /v1/reviews/:id/helpful` to `{ helpful: true }` and `DELETE` to remove, eliminating negative ranking depression. |
+| 10 | Stealth Downvote API Exposing Hidden Ranking Depression | High | Accept | Phase 1 (`helpful.ts`): Restricted `POST /v1/reviews/:id/helpful` to `{ helpful: true }` and `DELETE` to remove, eliminating negative ranking depression. Legacy `not_helpful` votes deleted in migration. |
 | 11 | Public Review DTO Exposes Internal User UUIDs | High | Accept | Phase 1 (`review.ts`, `repository.ts`) & Phase 4: Public review DTO omits both top-level `userId` AND `author.id`, projecting `author: { firstName, avatarUrl }` and server-derived `isOwnReview: boolean`. In Phase 4, `ReviewCard` uses `!review.isOwnReview`. |
 | 12 | Revoked Credentials Can Access Hidden Reviews via Optional Auth | High | Accept | Phase 1 (`plugins/auth.ts`): Added `app.optionalAuth` validating database `tokenVersion` and active status when Bearer header is present. |
 | 13 | Server-Side Self-Vote Prevention Missing | High | Accept | Phase 1 (`helpful.ts`): Added server check `review.userId === req.user.id` throwing `403 FORBIDDEN`. |
@@ -179,8 +181,9 @@ This plan details the full implementation across 6 structured phases to bridge t
 ### Whole-Plan Consistency Sweep
 - **Stale terms / conflicts**: 0
 - **Contradictions resolved**:
-  - Replaced all lossy BullMQ recalc queue claims with synchronous transactional tally updates with strict lock ordering (`SELECT FOR UPDATE` on `Product` locked *first*).
-  - Addressed vote recount race with `SELECT FOR UPDATE` on `Review`.
+  - Split lock helpers (`lockProductForReviewMutation` and `recomputeAndSyncProductTallies`) enforce exact lock -> mutate -> recompute sequence in Postgres transactions.
+  - BullMQ queue/worker `product-rating-recalc` deleted cleanly, preventing dead code or uncoordinated background races.
+  - Legacy `not_helpful` votes cleaned up in migration; `reviewSortSchema` completely purged of broken in-memory `'rating'` option.
   - Type-safe anonymous and authenticated visibility branching specified for `list-for-product.ts`.
   - Public review DTO sanitizes both `userId` and `author.id`, projecting `author: { firstName, avatarUrl }` and `isOwnReview: boolean`.
   - Phase 4 `ReviewCard` consumes `!review.isOwnReview` and requires no `userId`/`currentUserId` props.
