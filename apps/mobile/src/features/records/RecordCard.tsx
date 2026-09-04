@@ -19,8 +19,11 @@ interface Props {
   onAddQuantity?: (record: LocalRecord) => void;
   onEdit?: (record: LocalRecord) => void;
   onDelete?: (record: LocalRecord) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onLongPress?: () => void;
+  onToggleSelect?: () => void;
 }
-
 export function RecordCard({
   record,
   onPress,
@@ -30,6 +33,10 @@ export function RecordCard({
   onAddQuantity,
   onEdit,
   onDelete,
+  selectionMode = false,
+  isSelected = false,
+  onLongPress,
+  onToggleSelect,
 }: Props) {
   const theme = useTheme();
   const { scope } = usePantryScope();
@@ -110,6 +117,7 @@ export function RecordCard({
   return (
     <Swipeable
       ref={swipeableRef}
+      enabled={!selectionMode}
       renderRightActions={renderRightActions}
       overshootRight={false}
       friction={1}
@@ -119,7 +127,9 @@ export function RecordCard({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${displayName}${isHouseholdItem ? `, Shared in ${badgeLabel}` : ''}, Expires ${formatDate(record.expiryDate, userCountry)}`}
-        onPress={onPress}
+        onPress={selectionMode ? onToggleSelect : onPress}
+        onLongPress={selectionMode ? undefined : onLongPress}
+        delayLongPress={300}
         testID={`record-card-${record.id}`}
         style={({ pressed }) => [
           {
@@ -138,6 +148,22 @@ export function RecordCard({
       >
         {/* Status edge bar */}
         <View testID={`record-expiry-status-${status}`} style={{ width: 4, backgroundColor: statusColor }} />
+        {selectionMode && (
+          <View
+            testID={`record-select-checkbox-${record.id}`}
+            style={{
+              paddingLeft: theme.spacing.md,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <Ionicons
+              name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
+              size={22}
+              color={isSelected ? theme.colors.primary : theme.colors.border}
+            />
+          </View>
+        )}
 
         <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', padding: theme.spacing.md }}>
           {/* Product Image Thumbnail */}

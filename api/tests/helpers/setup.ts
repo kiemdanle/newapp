@@ -43,6 +43,7 @@ const tables = [
   'product_edit_photos',
   'product_photos',
   'product_edits',
+  'household_invitations',
   'household_members',
   'records',
   'products',
@@ -56,6 +57,30 @@ beforeAll(async () => {
   const prisma = getPrisma();
   await prisma.$executeRawUnsafe('ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS quantity DOUBLE PRECISION NOT NULL DEFAULT 1;');
   await prisma.$executeRawUnsafe("ALTER TABLE giveaways ADD COLUMN IF NOT EXISTS unit VARCHAR(16) NOT NULL DEFAULT 'pcs';");
+  await prisma.$executeRawUnsafe('ALTER TABLE users ADD COLUMN IF NOT EXISTS ui_preferences JSONB;');
+  await prisma.$executeRawUnsafe(`
+    DO $$ BEGIN
+        CREATE TYPE "household_invitation_status" AS ENUM ('pending', 'accepted', 'declined', 'expired', 'revoked');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "household_invitations" (
+        "id" UUID NOT NULL,
+        "household_id" UUID NOT NULL,
+        "inviter_user_id" UUID NOT NULL,
+        "invited_email" TEXT NOT NULL,
+        "invited_user_id" UUID,
+        "token" TEXT NOT NULL,
+        "status" "household_invitation_status" NOT NULL DEFAULT 'pending',
+        "expires_at" TIMESTAMP(3) NOT NULL,
+        "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "household_invitations_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "household_invitations_token_key" ON "household_invitations"("token");');
 });
 
 beforeEach(async () => {

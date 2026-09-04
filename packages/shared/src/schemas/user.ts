@@ -44,3 +44,34 @@ export const countrySuggestionSchema = z.object({
   country: z.string().length(2).nullable(),
 });
 export type CountrySuggestion = z.infer<typeof countrySuggestionSchema>;
+
+export const menuButtonPositionSchema = z
+  .object({
+    x: z.number().min(0).max(4000),
+    y: z.number().min(0).max(4000),
+  })
+  .strict();
+export type MenuButtonPosition = z.infer<typeof menuButtonPositionSchema>;
+
+export const userUiPreferencesSchema = z
+  .object({
+    defaultPantryScope: z.enum(['personal', 'household']).optional(),
+    defaultHouseholdId: z.string().uuid().nullable().optional(),
+    menuButtonPosition: menuButtonPositionSchema.optional(),
+  })
+  .strict();
+export type UserUiPreferences = z.infer<typeof userUiPreferencesSchema>;
+
+export const userPreferencesPatchSchema = z
+  .object({
+    notificationPreferences: z.record(z.unknown()).optional(),
+    uiPreferences: userUiPreferencesSchema.optional(),
+  })
+  .strict();
+export type UserPreferencesPatch = z.infer<typeof userPreferencesPatchSchema>;
+
+export const userPreferencesResponseSchema = z.object({
+  notificationPreferences: z.record(z.unknown()).nullable().default(null),
+  uiPreferences: userUiPreferencesSchema.nullable().default(null),
+});
+export type UserPreferencesResponse = z.infer<typeof userPreferencesResponseSchema>;

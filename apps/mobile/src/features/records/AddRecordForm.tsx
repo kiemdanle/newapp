@@ -11,6 +11,7 @@ import { Button } from '../../components/Button';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
+import { ScopeSelectorPill } from './ScopeSelectorPill';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -43,14 +44,18 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
-  const { scope: activeScope, householdId: scopeHhId, defaultHouseholdId } = usePantryScope();
+  const { scope: activeScope, householdId: scopeHhId, defaultPantryTarget } = usePantryScope();
   const { data: myHh } = useMyHouseholds();
   const households = myHh?.items ?? [];
 
   const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(() => {
     if (lockedPersonalScope) return null;
     if (activeScope === 'household') return scopeHhId;
-    if (activeScope === 'all' && defaultHouseholdId) return defaultHouseholdId;
+    if (activeScope === 'all') {
+      if (defaultPantryTarget.scope === 'household' && defaultPantryTarget.householdId) {
+        return defaultPantryTarget.householdId;
+      }
+    }
     return null;
   });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
@@ -407,48 +412,14 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
       {/* Household picker — only shown when user has households and the
           product isn't still private (lockedPersonalScope). */}
       {households.length > 0 && !lockedPersonalScope ? (
-        <View style={{ gap: theme.spacing.xs }}>
-          <Text style={{ color: theme.colors.textMuted }}>Pantry</Text>
-          <View style={{ flexDirection: 'row', gap: theme.spacing.xs, flexWrap: 'wrap' }}>
-            <Pressable
-              testID="add-record-pantry-personal"
-              accessibilityRole="button"
-              onPress={() => setSelectedHouseholdId(null)}
-              style={{
-                paddingHorizontal: theme.spacing.md,
-                paddingVertical: theme.spacing.xs,
-                borderRadius: theme.radii.sm,
-                borderWidth: 1,
-                borderColor: !effectiveHouseholdId ? theme.colors.primary : theme.colors.border,
-                backgroundColor: !effectiveHouseholdId ? theme.colors.primary + '20' : 'transparent',
-              }}
-            >
-              <Text style={{ color: !effectiveHouseholdId ? theme.colors.primary : theme.colors.textMuted, fontSize: 12 }}>
-                Personal
-              </Text>
-            </Pressable>
-            {households.map((h) => (
-              <Pressable
-                key={h.id}
-                testID={`add-record-pantry-${h.id}`}
-                accessibilityRole="button"
-                onPress={() => setSelectedHouseholdId(h.id)}
-                style={{
-                  paddingHorizontal: theme.spacing.md,
-                  paddingVertical: theme.spacing.xs,
-                  borderRadius: theme.radii.sm,
-                  borderWidth: 1,
-                  borderColor: effectiveHouseholdId === h.id ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: effectiveHouseholdId === h.id ? theme.colors.primary + '20' : 'transparent',
-                }}
-              >
-                <Text style={{ color: effectiveHouseholdId === h.id ? theme.colors.primary : theme.colors.textMuted, fontSize: 12 }}>
-                  {h.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        <ScopeSelectorPill
+          testID="add-record-scope-selector"
+          selectedScope={effectiveHouseholdId ? 'household' : 'personal'}
+          selectedHouseholdId={effectiveHouseholdId}
+          onChange={(newScope, newHhId) => {
+            setSelectedHouseholdId(newScope === 'household' ? newHhId : null);
+          }}
+        />
       ) : null}
 
       <Pressable accessibilityRole="button"

@@ -1,9 +1,18 @@
 // apps/mobile/src/api/households.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Household, HouseholdCreate, HouseholdMember, HouseholdPatch, HouseholdMemberAdd, HouseholdJoin } from '@expyrico/shared';
+import type {
+  Household,
+  HouseholdCreate,
+  HouseholdMember,
+  HouseholdPatch,
+  HouseholdMemberAdd,
+  HouseholdJoin,
+  HouseholdInvitation,
+  HouseholdInvitationPreview,
+} from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
-import { purgeHouseholdRecords } from '../db/sync';
+import { purgeHouseholdRecords, runSync } from '../db/sync';
 
 interface HouseholdMembersResponse { items: HouseholdMember[] }
 interface HouseholdListResponse { items: Household[] }
@@ -133,5 +142,93 @@ export function useHouseholdInvitePreview(code: string | undefined) {
         `/households/invite/${code}`,
       ),
     enabled: !!code && code.length >= 4,
+  });
+}
+
+export function useMyPendingInvitations(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['households', 'invitations', 'mine'],
+    queryFn: () =>
+      apiClient.get<{ items: HouseholdInvitation[] }>('/households/invitations/mine'),
+    enabled: options?.enabled ?? true,
+    staleTime: 30_000,
+  });
+}
+
+export function useHouseholdInvitationPreview(token: string | undefined) {
+  return useQuery({
+    queryKey: ['households', 'invitation-preview', token],
+    queryFn: () =>
+      apiClient.get<HouseholdInvitationPreview>(`/households/invitations/${token}`),
+    enabled: Boolean(token),
+    staleTime: 60_000,
+  });
+}
+
+export function useAcceptHouseholdInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiClient.post<{ householdId: string; status: string }>(
+        `/households/invitations/${token}/accept`,
+      ),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['households'] });
+      await qc.invalidateQueries({ queryKey: ['households', 'invitations'] });
+      void runSync();
+    },
+  });
+}
+
+export function useDeclineHouseholdInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (token: string) =>
+      apiClient.post<{ status: string }>(`/households/invitations/${token}/decline`),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['households', 'invitations'] });
+    },
+  });
+}
+
+export function useCreateHouseholdInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ householdId, email }: { householdId: string; email: string }) =>
+      apiClient.post<{ invitation: HouseholdInvitation }>(
+        `/households/${householdId}/invitations`,
+        { email },
+      ),
+    onSuccess: async (_, { householdId }) => {
+      await qc.invalidateQueries({ queryKey: ['households', householdId, 'invitations'] });
+    },
+  });
+}
+
+export function useHouseholdInvitations(householdId: string | undefined) {
+  return useQuery({
+    queryKey: ['households', householdId, 'invitations'],
+    queryFn: () =>
+      apiClient.get<{ items: HouseholdInvitation[] }>(
+        `/households/${householdId}/invitations`,
+      ),
+    enabled: Boolean(householdId),
+    staleTime: 30_000,
+  });
+}
+
+export function useRevokeHouseholdInvitation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      householdId,
+      invitationId,
+    }: {
+      householdId: string;
+      invitationId: string;
+    }) => apiClient.delete(`/households/${householdId}/invitations/${invitationId}`),
+    onSuccess: async (_, { householdId }) => {
+      await qc.invalidateQueries({ queryKey: ['households', householdId, 'invitations'] });
+    },
   });
 }

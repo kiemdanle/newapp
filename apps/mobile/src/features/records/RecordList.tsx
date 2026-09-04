@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   FlatList,
   Pressable,
   RefreshControl,
@@ -34,6 +35,7 @@ import { PantrySortPills } from './PantrySortPills';
 import { PantryActiveFilterChips } from './PantryActiveFilterChips';
 import { PantryFilterModal } from './PantryFilterModal';
 import type { PantryFilterState, PantrySortOption } from './pantryFilterTypes';
+import { BulkScopeModal } from './BulkScopeModal';
 
 const SECTION_TITLES: Record<keyof GroupedRecords, string> = {
   expired: 'Expired',
@@ -49,6 +51,10 @@ interface RowProps {
   onAddQuantity: (record: LocalRecord) => void;
   onEdit: (record: LocalRecord) => void;
   onDelete: (record: LocalRecord) => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onLongPress?: (id: string) => void;
+  onToggleSelect?: (id: string) => void;
 }
 
 const RecordRow = React.memo(function RecordRow({
@@ -58,6 +64,10 @@ const RecordRow = React.memo(function RecordRow({
   onAddQuantity,
   onEdit,
   onDelete,
+  selectionMode,
+  isSelected,
+  onLongPress,
+  onToggleSelect,
 }: RowProps) {
   return (
     <RecordCard
@@ -67,6 +77,10 @@ const RecordRow = React.memo(function RecordRow({
       onAddQuantity={onAddQuantity}
       onEdit={onEdit}
       onDelete={onDelete}
+      selectionMode={selectionMode}
+      isSelected={isSelected}
+      onLongPress={onLongPress ? () => onLongPress(record.id) : undefined}
+      onToggleSelect={onToggleSelect ? () => onToggleSelect(record.id) : undefined}
     />
   );
 });
@@ -107,6 +121,9 @@ export function RecordList({
     expiryStatus: 'all',
   });
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkScopeModalVisible, setBulkScopeModalVisible] = useState(false);
   const previousScope = useRef({ scope, householdId });
   useEffect(() => {
     if (
@@ -116,8 +133,21 @@ export function RecordList({
       previousScope.current = { scope, householdId };
       setFilters({ expiryStatus: 'all' });
       setSearchQuery('');
+      setSelectionMode(false);
+      setSelectedIds(new Set());
     }
   }, [scope, householdId]);
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    const onBackPress = () => {
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [selectionMode]);
 
   const normalizedSearchQuery = searchQuery.trim();
   const isFiltered = Boolean(
@@ -274,20 +304,91 @@ export function RecordList({
     [editingRecord],
   );
 
+  const handleLongPress = useCallback((id: string) => {
+    setSelectionMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const handleToggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handlePressItem = useCallback(
+    (id: string) => {
+      if (selectionMode) {
+        handleToggleSelect(id);
+      } else {
+        openRecord(id);
+      }
+    },
+    [selectionMode, handleToggleSelect, openRecord],
+  );
+
+  const allSelectableItems = useMemo(
+    () => (isFiltered ? paginatedItems : records),
+    [isFiltered, paginatedItems, records],
+  );
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedIds.size === allSelectableItems.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allSelectableItems.map((r) => r.id)));
+    }
+  }, [selectedIds.size, allSelectableItems]);
+
+  const handleCancelSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleMovedBulk = useCallback(
+    (updatedCount: number, destinationName: string) => {
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+      Alert.alert(
+        'Items Moved',
+        `Moved ${updatedCount} ${updatedCount === 1 ? 'item' : 'items'} to ${destinationName}.`,
+      );
+    },
+    [],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: LocalRecord }) => (
       <RecordRow
         record={item}
         householdName={item.householdId ? householdNames[item.householdId] : undefined}
-        onPress={openRecord}
+        onPress={handlePressItem}
         onAddQuantity={handleAddQuantity}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        selectionMode={selectionMode}
+        isSelected={selectedIds.has(item.id)}
+        onLongPress={handleLongPress}
+        onToggleSelect={handleToggleSelect}
       />
     ),
-    [openRecord, handleAddQuantity, handleEdit, handleDelete, householdNames],
+    [
+      handlePressItem,
+      handleAddQuantity,
+      handleEdit,
+      handleDelete,
+      householdNames,
+      selectionMode,
+      selectedIds,
+      handleLongPress,
+      handleToggleSelect,
+    ],
   );
-
   const keyExtractor = useCallback((item: LocalRecord) => item.id, []);
   const handleClearAll = useCallback(() => {
     setSearchQuery('');
@@ -513,6 +614,104 @@ export function RecordList({
         onClose={() => setEditingRecord(null)}
         onSave={handleSaveEdit}
       />
+
+      {selectionMode && (
+        <View
+          testID="bulk-action-bar"
+          style={[
+            styles.bulkActionBar,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <View style={styles.bulkActionCountWrap}>
+            <Text
+              testID="bulk-selected-count"
+              style={[styles.bulkActionCountText, { color: theme.colors.text }]}
+            >
+              {selectedIds.size} selected
+            </Text>
+            <Pressable
+              testID="bulk-select-all-btn"
+              accessibilityRole="button"
+              accessibilityLabel={
+                selectedIds.size === allSelectableItems.length
+                  ? 'Deselect All'
+                  : 'Select All'
+              }
+              onPress={handleSelectAll}
+              hitSlop={8}
+            >
+              <Text
+                style={[
+                  styles.bulkActionSelectAllText,
+                  { color: theme.colors.primary },
+                ]}
+              >
+                {selectedIds.size === allSelectableItems.length
+                  ? 'Deselect All'
+                  : 'Select All'}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.bulkActionButtonsRow}>
+            <Pressable
+              testID="bulk-cancel-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Cancel selection"
+              onPress={handleCancelSelection}
+              style={[
+                styles.bulkCancelBtn,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.bg,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.bulkCancelBtnText,
+                  { color: theme.colors.textMuted },
+                ]}
+              >
+                Cancel
+              </Text>
+            </Pressable>
+
+            <Pressable
+              testID="bulk-move-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Move selected items to scope"
+              disabled={selectedIds.size === 0}
+              onPress={() => setBulkScopeModalVisible(true)}
+              style={[
+                styles.bulkMoveBtn,
+                {
+                  backgroundColor:
+                    selectedIds.size === 0
+                      ? theme.colors.border
+                      : theme.colors.primary,
+                  opacity: selectedIds.size === 0 ? 0.6 : 1,
+                },
+              ]}
+            >
+              <Ionicons name="swap-horizontal-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.bulkMoveBtnText}>Move to...</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      <BulkScopeModal
+        visible={bulkScopeModalVisible}
+        onClose={() => setBulkScopeModalVisible(false)}
+        selectedRecordIds={Array.from(selectedIds)}
+        records={records}
+        onSuccess={handleMovedBulk}
+      />
     </View>
   );
 }
@@ -575,6 +774,65 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   clearFiltersBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  bulkActionBar: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  bulkActionCountWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  bulkActionCountText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  bulkActionSelectAllText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bulkActionButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  bulkCancelBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  bulkCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  bulkMoveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+  },
+  bulkMoveBtnText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },

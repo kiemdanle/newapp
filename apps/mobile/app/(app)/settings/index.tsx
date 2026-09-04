@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp, AppStackParamList } from '../../../src/navigation/AppNavigator';
 import { Screen } from '../../../src/components/Screen';
 import { useTheme } from '../../../src/theme/useTheme';
-
+import { usePantryScope } from '../../../src/store/pantryScope';
+import { useMyHouseholds } from '../../../src/api/households';
+import { DefaultPantryModal } from '../../../src/features/settings/DefaultPantryModal';
 type RowKey = 'invite' | 'household' | 'theme' | 'add-passkey';
 
 type AppScreen = keyof AppStackParamList;
@@ -88,8 +90,22 @@ function SettingsRow({ row, onPress }: { row: Row; onPress: () => void }) {
 }
 
 export default function SettingsIndex() {
-  const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
+  const navigation = useNavigation<AppNavigationProp>();
+  const { defaultPantryTarget } = usePantryScope();
+  const { data: householdsData } = useMyHouseholds();
+  const [defaultPantryModalVisible, setDefaultPantryModalVisible] = useState(false);
+
+  const defaultPantrySubtitle = useMemo(() => {
+    if (defaultPantryTarget.scope === 'personal') {
+      return 'Personal Pantry (Private)';
+    }
+    const h = householdsData?.items?.find(
+      (item) => item.id === defaultPantryTarget.householdId,
+    );
+    return h ? `${h.name} (Shared)` : 'Household (Shared)';
+  }, [defaultPantryTarget, householdsData]);
+
   return (
     <Screen>
       <Text
@@ -101,13 +117,103 @@ export default function SettingsIndex() {
       >
         Settings
       </Text>
-      <Text style={[styles.intro, { color: theme.colors.textMuted }]}>Make Expyrico fit the way you share and shop.</Text>
-      <SettingsGroup title="Your account" rows={ACCOUNT_ROWS} onPress={(screen) => (navigation.push as (screen: AppScreen) => void)(screen)} />
-      <SettingsGroup title="App preferences" rows={PREFERENCE_ROWS} onPress={(screen) => (navigation.push as (screen: AppScreen) => void)(screen)} />
+      <Text style={[styles.intro, { color: theme.colors.textMuted }]}>
+        Make Expyrico fit the way you share and shop.
+      </Text>
+      <SettingsGroup
+        title="Your account"
+        rows={ACCOUNT_ROWS}
+        onPress={(screen) => (navigation.push as (screen: AppScreen) => void)(screen)}
+      />
+
+      <View style={styles.group}>
+        <Text style={[styles.groupTitle, { color: theme.colors.textMuted }]}>
+          App preferences
+        </Text>
+        <View
+          style={[
+            styles.rows,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          {/* Default Pantry Setting */}
+          <Pressable
+            testID="settings-row-default-pantry"
+            accessibilityRole="button"
+            accessibilityLabel="Default Pantry for New Items"
+            onPress={() => setDefaultPantryModalVisible(true)}
+            style={({ pressed }) => [
+              styles.row,
+              {
+                backgroundColor: pressed
+                  ? theme.colors.bgGlass
+                  : theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+                opacity: pressed ? 0.84 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.icon, { backgroundColor: theme.colors.bgGlass }]}>
+              <Ionicons
+                name="basket-outline"
+                size={20}
+                color={theme.colors.primary}
+              />
+            </View>
+            <View style={styles.rowCopy}>
+              <Text
+                style={{
+                  color: theme.colors.text,
+                  fontSize: theme.typeRamp.titleMedium.fontSize,
+                  fontWeight: theme.typeRamp.titleMedium.fontWeight as any,
+                }}
+              >
+                Default Pantry
+              </Text>
+              <Text
+                style={{
+                  color: theme.colors.textMuted,
+                  fontSize: theme.typeRamp.labelMedium.fontSize,
+                }}
+              >
+                {defaultPantrySubtitle}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.colors.textMuted}
+            />
+          </Pressable>
+
+          {/* Remaining preference rows */}
+          {PREFERENCE_ROWS.map((row) => (
+            <React.Fragment key={row.key}>
+              <View
+                style={[styles.divider, { backgroundColor: theme.colors.border }]}
+              />
+              <SettingsRow
+                row={row}
+                onPress={() =>
+                  (navigation.push as (screen: AppScreen) => void)(row.screen)
+                }
+              />
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+
+      <DefaultPantryModal
+        visible={defaultPantryModalVisible}
+        onClose={() => setDefaultPantryModalVisible(false)}
+      />
     </Screen>
   );
 }
-
 function SettingsGroup({ title, rows, onPress }: { title: string; rows: Row[]; onPress: (screen: AppScreen) => void }) {
   const theme = useTheme();
   return (

@@ -34,4 +34,27 @@ export const meUsageResponseSchema = z.object({
 export const countrySuggestionSchema = z.object({
     country: z.string().length(2).nullable(),
 });
+export const menuButtonPositionSchema = z
+    .object({
+    x: z.number().min(0).max(4000),
+    y: z.number().min(0).max(4000),
+})
+    .strict();
+export const userUiPreferencesSchema = z
+    .object({
+    defaultPantryScope: z.enum(['personal', 'household']).optional(),
+    defaultHouseholdId: z.string().uuid().nullable().optional(),
+    menuButtonPosition: menuButtonPositionSchema.optional(),
+})
+    .strict();
+export const userPreferencesPatchSchema = z
+    .object({
+    notificationPreferences: z.record(z.unknown()).optional(),
+    uiPreferences: userUiPreferencesSchema.optional(),
+})
+    .strict();
+export const userPreferencesResponseSchema = z.object({
+    notificationPreferences: z.record(z.unknown()).nullable().default(null),
+    uiPreferences: userUiPreferencesSchema.nullable().default(null),
+});
 //# sourceMappingURL=user.js.map

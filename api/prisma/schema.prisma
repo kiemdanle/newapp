@@ -230,6 +230,7 @@ model User {
   totpEnabledAt           DateTime?
   tokenVersion            Int             @default(0)
   notificationPreferences Json?
+  uiPreferences           Json?           @map("ui_preferences")
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
   lastSeenAt              DateTime?
@@ -273,6 +274,8 @@ model User {
   referralReceived          Referral?           @relation("ReferralReceived")
   householdsOwned           Household[]         @relation("HouseholdOwner")
   householdMemberships      HouseholdMember[]
+  householdInvitationsSent     HouseholdInvitation[] @relation("HouseholdInvitationsSent")
+  householdInvitationsReceived HouseholdInvitation[] @relation("HouseholdInvitationsReceived")
 
   moderationNotificationDeliveries ModerationNotificationDelivery[]
 
@@ -1055,6 +1058,7 @@ model Household {
   owner   User              @relation("HouseholdOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   members HouseholdMember[]
   records Record[]
+  invitations HouseholdInvitation[]
 
   @@index([ownerUserId])
   @@map("households")
@@ -1075,6 +1079,37 @@ model HouseholdMember {
   @@map("household_members")
 }
 
+
+enum HouseholdInvitationStatus {
+  pending
+  accepted
+  declined
+  expired
+  revoked
+
+  @@map("household_invitation_status")
+}
+
+model HouseholdInvitation {
+  id            String                    @id @default(uuid()) @db.Uuid
+  householdId   String                    @map("household_id") @db.Uuid
+  inviterUserId String                    @map("inviter_user_id") @db.Uuid
+  invitedEmail  String                    @map("invited_email")
+  invitedUserId String?                   @map("invited_user_id") @db.Uuid
+  token         String                    @unique
+  status        HouseholdInvitationStatus @default(pending)
+  expiresAt     DateTime                  @map("expires_at")
+  createdAt     DateTime                  @default(now()) @map("created_at")
+  updatedAt     DateTime                  @updatedAt @map("updated_at")
+
+  household     Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  inviterUser   User                      @relation("HouseholdInvitationsSent", fields: [inviterUserId], references: [id], onDelete: Cascade)
+  invitedUser   User?                     @relation("HouseholdInvitationsReceived", fields: [invitedUserId], references: [id], onDelete: SetNull)
+
+  @@index([invitedEmail, status])
+  @@index([householdId, status])
+  @@map("household_invitations")
+}
 model FeedbackTicket {
   id              String         @id @default(uuid()) @db.Uuid
   userId          String         @map("user_id") @db.Uuid

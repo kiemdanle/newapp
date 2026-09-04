@@ -236,4 +236,157 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
         } | undefined;
     }[];
 }>;
+export declare const householdInvitationStatusSchema: z.ZodEnum<["pending", "accepted", "declined", "expired", "revoked"]>;
+export type HouseholdInvitationStatus = z.infer<typeof householdInvitationStatusSchema>;
+export declare const householdInvitationSchema: z.ZodObject<{
+    id: z.ZodString;
+    householdId: z.ZodString;
+    inviterUserId: z.ZodString;
+    invitedEmail: z.ZodString;
+    invitedUserId: z.ZodNullable<z.ZodString>;
+    status: z.ZodEnum<["pending", "accepted", "declined", "expired", "revoked"]>;
+    token: z.ZodOptional<z.ZodString>;
+    expiresAt: z.ZodString;
+    createdAt: z.ZodString;
+    inviterName: z.ZodOptional<z.ZodString>;
+    householdName: z.ZodOptional<z.ZodString>;
+    memberCount: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    householdId: string;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    createdAt: string;
+    inviterUserId: string;
+    invitedEmail: string;
+    invitedUserId: string | null;
+    expiresAt: string;
+    memberCount?: number | undefined;
+    token?: string | undefined;
+    inviterName?: string | undefined;
+    householdName?: string | undefined;
+}, {
+    id: string;
+    householdId: string;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    createdAt: string;
+    inviterUserId: string;
+    invitedEmail: string;
+    invitedUserId: string | null;
+    expiresAt: string;
+    memberCount?: number | undefined;
+    token?: string | undefined;
+    inviterName?: string | undefined;
+    householdName?: string | undefined;
+}>;
+export type HouseholdInvitation = z.infer<typeof householdInvitationSchema>;
+export declare const householdInvitationCreateSchema: z.ZodObject<{
+    email: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    email: string;
+}, {
+    email: string;
+}>;
+export type HouseholdInvitationCreate = z.infer<typeof householdInvitationCreateSchema>;
+export declare const householdInvitationsListResponseSchema: z.ZodObject<{
+    items: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        householdId: z.ZodString;
+        inviterUserId: z.ZodString;
+        invitedEmail: z.ZodString;
+        invitedUserId: z.ZodNullable<z.ZodString>;
+        status: z.ZodEnum<["pending", "accepted", "declined", "expired", "revoked"]>;
+        token: z.ZodOptional<z.ZodString>;
+        expiresAt: z.ZodString;
+        createdAt: z.ZodString;
+        inviterName: z.ZodOptional<z.ZodString>;
+        householdName: z.ZodOptional<z.ZodString>;
+        memberCount: z.ZodOptional<z.ZodNumber>;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        householdId: string;
+        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        createdAt: string;
+        inviterUserId: string;
+        invitedEmail: string;
+        invitedUserId: string | null;
+        expiresAt: string;
+        memberCount?: number | undefined;
+        token?: string | undefined;
+        inviterName?: string | undefined;
+        householdName?: string | undefined;
+    }, {
+        id: string;
+        householdId: string;
+        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        createdAt: string;
+        inviterUserId: string;
+        invitedEmail: string;
+        invitedUserId: string | null;
+        expiresAt: string;
+        memberCount?: number | undefined;
+        token?: string | undefined;
+        inviterName?: string | undefined;
+        householdName?: string | undefined;
+    }>, "many">;
+}, "strip", z.ZodTypeAny, {
+    items: {
+        id: string;
+        householdId: string;
+        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        createdAt: string;
+        inviterUserId: string;
+        invitedEmail: string;
+        invitedUserId: string | null;
+        expiresAt: string;
+        memberCount?: number | undefined;
+        token?: string | undefined;
+        inviterName?: string | undefined;
+        householdName?: string | undefined;
+    }[];
+}, {
+    items: {
+        id: string;
+        householdId: string;
+        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        createdAt: string;
+        inviterUserId: string;
+        invitedEmail: string;
+        invitedUserId: string | null;
+        expiresAt: string;
+        memberCount?: number | undefined;
+        token?: string | undefined;
+        inviterName?: string | undefined;
+        householdName?: string | undefined;
+    }[];
+}>;
+export type HouseholdInvitationsListResponse = z.infer<typeof householdInvitationsListResponseSchema>;
+export declare const householdInvitationPreviewSchema: z.ZodObject<{
+    id: z.ZodString;
+    householdId: z.ZodString;
+    householdName: z.ZodString;
+    inviterName: z.ZodString;
+    inviterAvatarUrl: z.ZodNullable<z.ZodString>;
+    memberCount: z.ZodNumber;
+    status: z.ZodEnum<["pending", "accepted", "declined", "expired", "revoked"]>;
+    expiresAt: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    id: string;
+    householdId: string;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    memberCount: number;
+    expiresAt: string;
+    inviterName: string;
+    householdName: string;
+    inviterAvatarUrl: string | null;
+}, {
+    id: string;
+    householdId: string;
+    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    memberCount: number;
+    expiresAt: string;
+    inviterName: string;
+    householdName: string;
+    inviterAvatarUrl: string | null;
+}>;
+export type HouseholdInvitationPreview = z.infer<typeof householdInvitationPreviewSchema>;
 //# sourceMappingURL=household.d.ts.map

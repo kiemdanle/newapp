@@ -157,6 +157,16 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
     }
     associatedRecordId = null;
   }
+  else if (data.templateKey === 'household_invitation') {
+    title = 'Household Invitation';
+    body = `${data.payload?.inviterName ?? 'Someone'} invited you to join '${data.payload?.householdName ?? 'a household'}'`;
+    payloadData = {
+      type: 'household_invitation',
+      token: (data.payload?.token as string) || '',
+      householdId: data.recordId || '',
+    };
+    associatedRecordId = null;
+  }
   // 4. Pantry record expiry notifications
   else {
     const record = await prisma.record.findUnique({

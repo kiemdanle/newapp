@@ -13,6 +13,7 @@ import Svg, { Rect, Path, G } from 'react-native-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
+import { DraggableFloatingButton } from '../components/DraggableFloatingButton';
 
 import HomeScreen from '../../app/(app)/(tabs)/home';
 import DealsScreen from '../../app/(app)/(tabs)/deals';
@@ -148,11 +149,11 @@ function SignatureMenuIcon({ isOpen, size = 22 }: { isOpen: boolean; size?: numb
 function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isCompact = isCompactTabLayout(width);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+  const [buttonPos, setButtonPos] = useState<{ x: number; y: number } | null>(null);
   const menuAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.spring(menuAnim, {
       toValue: isMenuOpen ? 1 : 0,
@@ -184,12 +185,22 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
     inputRange: [0, 1],
     outputRange: [0.90, 1],
   });
-
   const iconRotation = menuAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '90deg'],
   });
 
+  // Dynamic quadrant-aware popover menu positioning
+  const opensLeft = buttonPos ? buttonPos.x > width / 2 : true;
+  const opensUp = buttonPos ? buttonPos.y > height / 2 : true;
+
+  const menuHorizontalStyle = opensLeft
+    ? { right: Math.max(16, width - (buttonPos ? buttonPos.x + 48 : width - 16)), left: undefined }
+    : { left: Math.max(16, buttonPos ? buttonPos.x : 16), right: undefined };
+
+  const menuVerticalStyle = opensUp
+    ? { bottom: buttonPos ? height - buttonPos.y + 10 : bottomOffset + 60, top: undefined }
+    : { top: buttonPos ? buttonPos.y + 58 : insets.top + 60, bottom: undefined };
   return (
     <>
       {/* Backdrop overlay when vertical menu is open */}
@@ -204,8 +215,9 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
         pointerEvents={isMenuOpen ? 'auto' : 'none'}
         style={[
           styles.verticalMenuContainer,
+          menuHorizontalStyle,
+          menuVerticalStyle,
           {
-            bottom: bottomOffset + 60,
             opacity: menuOpacity,
             transform: [{ translateY: menuTranslateY }, { scale: menuScale }],
             backgroundColor: theme.colors.bgElevated,
@@ -348,20 +360,25 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
             </Pressable>
           </View>
         ) : null}
+      </View>
 
-        {/* Right-aligned Menu Icon Button */}
-        <Pressable
+      {/* Draggable Menu Button */}
+      <DraggableFloatingButton
+        buttonWidth={48}
+        buttonHeight={48}
+        onPress={toggleMenu}
+        onPositionChange={setButtonPos}
+      >
+        <View
           testID="bottom-nav-menu-button"
           accessibilityRole="button"
           accessibilityLabel={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
           accessibilityState={{ expanded: isMenuOpen }}
-          onPress={toggleMenu}
-          style={({ pressed }) => [
+          style={[
             styles.menuButton,
             {
               backgroundColor: isMenuOpen ? theme.colors.primaryLight : theme.colors.bgElevated,
               borderColor: isMenuOpen ? theme.colors.primary : theme.colors.border,
-              opacity: pressed ? 0.85 : 1,
               shadowColor: '#000',
             },
           ]}
@@ -369,8 +386,8 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
           <Animated.View style={{ transform: [{ rotate: iconRotation }] }}>
             <SignatureMenuIcon isOpen={isMenuOpen} size={22} />
           </Animated.View>
-        </Pressable>
-      </View>
+        </View>
+      </DraggableFloatingButton>
     </>
   );
 }

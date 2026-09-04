@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from '../db/index';
 import { triggerSyncSoon } from '../db/triggers';
 import { usePantryScope } from '../store/pantryScope';
+import { apiClient } from './client';
+import { runSync } from '../db/sync';
 
 export interface LocalRecord {
   id: string; // watermelon id
@@ -194,4 +196,53 @@ export async function deleteLocalRecord(id: string): Promise<void> {
     });
   });
   triggerSyncSoon();
+}
+
+export async function bulkPatchLocalRecordScope(
+  recordIds: string[],
+  targetHouseholdId: string | null,
+): Promise<{ updatedCount: number; recordIds: string[] }> {
+  const col = database.get<RecordModel>('records');
+  let recs = await col.query(Q.where('id', Q.oneOf(recordIds))).fetch();
+
+  // If any records are pending initial sync (no serverId yet), trigger sync first
+  const hasUnsynced = recs.some((r) => !r.serverId);
+  if (hasUnsynced) {
+    try {
+      await runSync();
+      recs = await col.query(Q.where('id', Q.oneOf(recordIds))).fetch();
+    } catch {
+      // If sync fails, continue with whatever serverIds we have
+    }
+  }
+
+  const serverRecordIds = recs
+    .map((r) => r.serverId)
+    .filter((id): id is string => Boolean(id));
+
+  if (serverRecordIds.length === 0) {
+    return { updatedCount: 0, recordIds: [] };
+  }
+
+  const response = await apiClient.post<{ updatedCount: number; recordIds: string[] }>(
+    '/records/bulk-scope',
+    {
+      recordIds: serverRecordIds,
+      targetHouseholdId,
+    },
+  );
+
+  const updatedServerIdSet = new Set(response.recordIds);
+  await database.write(async () => {
+    for (const rec of recs) {
+      if (rec.serverId && updatedServerIdSet.has(rec.serverId)) {
+        await rec.update((r) => {
+          r.householdId = targetHouseholdId;
+          r.pendingSync = false;
+        });
+      }
+    }
+  });
+
+  return response;
 }

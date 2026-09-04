@@ -576,4 +576,26 @@ export declare const pushTokenSchema: z.ZodObject<{
     lastUsedAt: string | null;
 }>;
 export type PushToken = z.infer<typeof pushTokenSchema>;
+export declare const recordBulkScopeSchema: z.ZodObject<{
+    recordIds: z.ZodArray<z.ZodString, "many">;
+    targetHouseholdId: z.ZodNullable<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    recordIds: string[];
+    targetHouseholdId: string | null;
+}, {
+    recordIds: string[];
+    targetHouseholdId: string | null;
+}>;
+export type RecordBulkScope = z.infer<typeof recordBulkScopeSchema>;
+export declare const recordBulkScopeResponseSchema: z.ZodObject<{
+    updatedCount: z.ZodNumber;
+    recordIds: z.ZodArray<z.ZodString, "many">;
+}, "strip", z.ZodTypeAny, {
+    recordIds: string[];
+    updatedCount: number;
+}, {
+    recordIds: string[];
+    updatedCount: number;
+}>;
+export type RecordBulkScopeResponse = z.infer<typeof recordBulkScopeResponseSchema>;
 //# sourceMappingURL=record.d.ts.map

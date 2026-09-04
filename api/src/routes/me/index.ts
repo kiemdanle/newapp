@@ -5,6 +5,7 @@ import { usageRoute } from './usage.js';
 import { countrySuggestionRoute } from './country-suggestion.js';
 import { avatarRoutes } from './avatar.js';
 import { passwordRoute } from './password.js';
+import { preferencesRoute } from './preferences.js';
 
 export async function meRoutes(app: FastifyInstance) {
   await app.register(profileRoute);
@@ -13,4 +14,5 @@ export async function meRoutes(app: FastifyInstance) {
   await app.register(countrySuggestionRoute);
   await app.register(avatarRoutes);
   await app.register(passwordRoute);
+  await app.register(preferencesRoute);
 }

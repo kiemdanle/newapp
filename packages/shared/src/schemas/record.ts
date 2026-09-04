@@ -139,3 +139,15 @@ export const pushTokenSchema = z.object({
   lastUsedAt: z.string().datetime().nullable(),
 });
 export type PushToken = z.infer<typeof pushTokenSchema>;
+
+export const recordBulkScopeSchema = z.object({
+  recordIds: z.array(z.string().uuid()).min(1).max(100),
+  targetHouseholdId: z.string().uuid().nullable(),
+});
+export type RecordBulkScope = z.infer<typeof recordBulkScopeSchema>;
+
+export const recordBulkScopeResponseSchema = z.object({
+  updatedCount: z.number().int().min(0),
+  recordIds: z.array(z.string().uuid()),
+});
+export type RecordBulkScopeResponse = z.infer<typeof recordBulkScopeResponseSchema>;

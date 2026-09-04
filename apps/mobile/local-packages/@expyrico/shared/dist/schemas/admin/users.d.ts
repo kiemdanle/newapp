@@ -20,8 +20,8 @@ export declare const adminUserRowSchema: z.ZodObject<{
     country: string | null;
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
-    requireProductApproval: boolean;
     createdAt: string;
+    requireProductApproval: boolean;
     lastSeenAt: string | null;
 }, {
     id: string;
@@ -84,8 +84,8 @@ export declare const adminUsersListSchema: z.ZodObject<{
         country: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        requireProductApproval: boolean;
         createdAt: string;
+        requireProductApproval: boolean;
         lastSeenAt: string | null;
     }, {
         id: string;
@@ -109,8 +109,8 @@ export declare const adminUsersListSchema: z.ZodObject<{
         country: string | null;
         role: "user" | "admin";
         status: "active" | "suspended" | "deleted";
-        requireProductApproval: boolean;
         createdAt: string;
+        requireProductApproval: boolean;
         lastSeenAt: string | null;
     }[];
     nextCursor: string | null;
@@ -173,8 +173,8 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     country: string | null;
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
-    requireProductApproval: boolean;
     createdAt: string;
+    requireProductApproval: boolean;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;

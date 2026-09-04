@@ -94,4 +94,148 @@ export declare const countrySuggestionSchema: z.ZodObject<{
     country: string | null;
 }>;
 export type CountrySuggestion = z.infer<typeof countrySuggestionSchema>;
+export declare const menuButtonPositionSchema: z.ZodObject<{
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+}, "strict", z.ZodTypeAny, {
+    x: number;
+    y: number;
+}, {
+    x: number;
+    y: number;
+}>;
+export type MenuButtonPosition = z.infer<typeof menuButtonPositionSchema>;
+export declare const userUiPreferencesSchema: z.ZodObject<{
+    defaultPantryScope: z.ZodOptional<z.ZodEnum<["personal", "household"]>>;
+    defaultHouseholdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    menuButtonPosition: z.ZodOptional<z.ZodObject<{
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+    }, "strict", z.ZodTypeAny, {
+        x: number;
+        y: number;
+    }, {
+        x: number;
+        y: number;
+    }>>;
+}, "strict", z.ZodTypeAny, {
+    defaultPantryScope?: "personal" | "household" | undefined;
+    defaultHouseholdId?: string | null | undefined;
+    menuButtonPosition?: {
+        x: number;
+        y: number;
+    } | undefined;
+}, {
+    defaultPantryScope?: "personal" | "household" | undefined;
+    defaultHouseholdId?: string | null | undefined;
+    menuButtonPosition?: {
+        x: number;
+        y: number;
+    } | undefined;
+}>;
+export type UserUiPreferences = z.infer<typeof userUiPreferencesSchema>;
+export declare const userPreferencesPatchSchema: z.ZodObject<{
+    notificationPreferences: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodUnknown>>;
+    uiPreferences: z.ZodOptional<z.ZodObject<{
+        defaultPantryScope: z.ZodOptional<z.ZodEnum<["personal", "household"]>>;
+        defaultHouseholdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        menuButtonPosition: z.ZodOptional<z.ZodObject<{
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            x: number;
+            y: number;
+        }, {
+            x: number;
+            y: number;
+        }>>;
+    }, "strict", z.ZodTypeAny, {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    }, {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    }>>;
+}, "strict", z.ZodTypeAny, {
+    notificationPreferences?: Record<string, unknown> | undefined;
+    uiPreferences?: {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    } | undefined;
+}, {
+    notificationPreferences?: Record<string, unknown> | undefined;
+    uiPreferences?: {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    } | undefined;
+}>;
+export type UserPreferencesPatch = z.infer<typeof userPreferencesPatchSchema>;
+export declare const userPreferencesResponseSchema: z.ZodObject<{
+    notificationPreferences: z.ZodDefault<z.ZodNullable<z.ZodRecord<z.ZodString, z.ZodUnknown>>>;
+    uiPreferences: z.ZodDefault<z.ZodNullable<z.ZodObject<{
+        defaultPantryScope: z.ZodOptional<z.ZodEnum<["personal", "household"]>>;
+        defaultHouseholdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        menuButtonPosition: z.ZodOptional<z.ZodObject<{
+            x: z.ZodNumber;
+            y: z.ZodNumber;
+        }, "strict", z.ZodTypeAny, {
+            x: number;
+            y: number;
+        }, {
+            x: number;
+            y: number;
+        }>>;
+    }, "strict", z.ZodTypeAny, {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    }, {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    }>>>;
+}, "strip", z.ZodTypeAny, {
+    notificationPreferences: Record<string, unknown> | null;
+    uiPreferences: {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    } | null;
+}, {
+    notificationPreferences?: Record<string, unknown> | null | undefined;
+    uiPreferences?: {
+        defaultPantryScope?: "personal" | "household" | undefined;
+        defaultHouseholdId?: string | null | undefined;
+        menuButtonPosition?: {
+            x: number;
+            y: number;
+        } | undefined;
+    } | null | undefined;
+}>;
+export type UserPreferencesResponse = z.infer<typeof userPreferencesResponseSchema>;
 //# sourceMappingURL=user.d.ts.map

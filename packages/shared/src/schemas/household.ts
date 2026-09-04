@@ -61,3 +61,52 @@ export const householdListResponseSchema = z.object({
 export const householdMembersResponseSchema = z.object({
   items: z.array(householdMemberSchema),
 });
+
+export const householdInvitationStatusSchema = z.enum([
+  'pending',
+  'accepted',
+  'declined',
+  'expired',
+  'revoked',
+]);
+export type HouseholdInvitationStatus = z.infer<typeof householdInvitationStatusSchema>;
+
+export const householdInvitationSchema = z.object({
+  id: z.string().uuid(),
+  householdId: z.string().uuid(),
+  inviterUserId: z.string().uuid(),
+  invitedEmail: z.string().email(),
+  invitedUserId: z.string().uuid().nullable(),
+  status: householdInvitationStatusSchema,
+  token: z.string().optional(),
+  expiresAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+  inviterName: z.string().optional(),
+  householdName: z.string().optional(),
+  memberCount: z.number().int().optional(),
+});
+export type HouseholdInvitation = z.infer<typeof householdInvitationSchema>;
+
+export const householdInvitationCreateSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+export type HouseholdInvitationCreate = z.infer<typeof householdInvitationCreateSchema>;
+
+export const householdInvitationsListResponseSchema = z.object({
+  items: z.array(householdInvitationSchema),
+});
+export type HouseholdInvitationsListResponse = z.infer<
+  typeof householdInvitationsListResponseSchema
+>;
+
+export const householdInvitationPreviewSchema = z.object({
+  id: z.string().uuid(),
+  householdId: z.string().uuid(),
+  householdName: z.string(),
+  inviterName: z.string(),
+  inviterAvatarUrl: z.string().nullable(),
+  memberCount: z.number().int(),
+  status: householdInvitationStatusSchema,
+  expiresAt: z.string().datetime(),
+});
+export type HouseholdInvitationPreview = z.infer<typeof householdInvitationPreviewSchema>;

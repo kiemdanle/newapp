@@ -41,6 +41,15 @@ export async function verifyEmailRoute(app: FastifyInstance) {
         where: { id: row.id },
         data: { usedAt: new Date() },
       }),
+      prisma.householdInvitation.updateMany({
+        where: {
+          invitedEmail: input.email.toLowerCase(),
+          status: 'pending',
+        },
+        data: {
+          invitedUserId: row.userId,
+        },
+      }),
     ]);
     return reply.send({ verified: true });
   });

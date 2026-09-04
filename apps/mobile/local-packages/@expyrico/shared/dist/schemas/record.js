@@ -107,4 +107,12 @@ export const pushTokenSchema = z.object({
     createdAt: z.string().datetime(),
     lastUsedAt: z.string().datetime().nullable(),
 });
+export const recordBulkScopeSchema = z.object({
+    recordIds: z.array(z.string().uuid()).min(1).max(100),
+    targetHouseholdId: z.string().uuid().nullable(),
+});
+export const recordBulkScopeResponseSchema = z.object({
+    updatedCount: z.number().int().min(0),
+    recordIds: z.array(z.string().uuid()),
+});
 //# sourceMappingURL=record.js.map

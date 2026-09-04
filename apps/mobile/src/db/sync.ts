@@ -75,13 +75,20 @@ async function pushPending(): Promise<void> {
           });
         });
       }
-    } catch (err: any) {
-      const status = err?.status ?? err?.response?.status;
+    } catch (err: unknown) {
+      let status: number | undefined;
+      if (err && typeof err === 'object') {
+        const e = err as { status?: number; response?: { status?: number } };
+        status = e.status ?? e.response?.status;
+      }
       if (rec.householdId && (status === 403 || status === 404)) {
-        // Membership was revoked remotely or record was deleted on server:
-        // permanently destroy the local record so sync never wedges.
+        // Membership was revoked remotely while offline:
+        // preserve the user's item by safely reverting householdId to null and clearing pendingSync.
         await database.write(async () => {
-          await rec.destroyPermanently();
+          await rec.update((r) => {
+            r.householdId = null;
+            r.pendingSync = false;
+          });
         });
       } else {
         throw err;
