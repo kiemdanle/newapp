@@ -57,13 +57,17 @@ jest.mock('../../src/api/giveaways', () => ({
 jest.mock('../../src/api/products', () => ({
   useProductDrafts: () => ({ data: { pages: [] } }),
 }));
+let activeQueryClient: QueryClient | null = null;
 
 function renderTabs() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
+  activeQueryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0, staleTime: 0 },
+      mutations: { retry: false },
+    },
   });
   return render(
-    <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={activeQueryClient}>
       <ThemeProvider>
         <NavigationContainer>
           <TabsNavigator />
@@ -72,6 +76,11 @@ function renderTabs() {
     </QueryClientProvider>,
   );
 }
+
+afterEach(() => {
+  activeQueryClient?.clear();
+  activeQueryClient = null;
+});
 
 describe('TabsNavigator with Vertical Menu and Centered Action Button', () => {
   beforeEach(() => {
