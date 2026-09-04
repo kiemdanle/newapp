@@ -1,24 +1,27 @@
 ---
-phase: 5
+phase: 6
 title: "Automated Testing, APK Build, and Device Live Verification"
 status: pending
 priority: P1
 effort: "3-4h"
-dependencies: [1, 2, 3, 4]
+dependencies: [1, 2, 3, 4, 5]
 ---
 
-# Phase 5: Automated Testing, APK Build, and Device Live Verification
+# Phase 6: Automated Testing, APK Build, and Device Live Verification
 
 ## Overview
-Perform end-to-end verification of the mobile review system across all test suites, static typing, code formatting, Android debug APK compilation via local Gradle toolchain, installation to the connected physical device via `adb`, and live visual inspection of review creation and review reading.
+Perform end-to-end verification of the full-stack review system across all test suites, static typing, code formatting, Android debug APK compilation via local Gradle toolchain, installation to the connected physical device via `adb`, and live visual inspection of review creation and review reading.
 
 ## Requirements
 
 ### Automated Verification
-- **Unit & Component Tests**:
-  - `apps/mobile/tests/unit/api-reviews.test.ts`: 100% pass for React Query hooks and cache invalidation.
+- **Backend Integration Tests**:
+  - `pnpm --filter @expyrico/api test tests/integration/reviews-community.test.ts`: 100% pass for community feed sorting, active product constraints, profanity filter exclusions, and viewer `myVote` resolution.
+  - `pnpm --filter @expyrico/api test tests/integration/my-reviews.test.ts`: 100% pass for user's personal reviews with product projection.
+- **Mobile Unit & Component Tests**:
+  - `apps/mobile/tests/unit/api-reviews.test.ts`: 100% pass for React Query hooks and exact cache invalidation (including `['products', productId]`).
   - `apps/mobile/tests/unit/product-review-screen.test.tsx`: 100% pass for recommendation selection, text validation, submit mutation, and profanity feedback.
-  - `apps/mobile/tests/unit/product-reviews-section.test.tsx`: 100% pass for sentiment banner, sort toggling, review cards, and helpfulness voting.
+  - `apps/mobile/tests/unit/product-reviews-section.test.tsx`: 100% pass for sentiment banner (authoritative `Product` tallies), sort toggling, review cards, and helpfulness voting.
   - `apps/mobile/tests/unit/reviews-tab.test.tsx`: 100% pass for Reviews tab segmentation, personal reviews feed, and empty states.
 - **Snapshot Suite**:
   - Update any modified screen snapshots (`home.test.tsx`, `reviews.test.tsx`).
@@ -45,34 +48,38 @@ Perform end-to-end verification of the mobile review system across all test suit
   - Capture and verify screenshots on device:
     - Product detail screen showing Community Reviews section and "Write a Review" button.
     - Review submission screen showing 3 recommendation pills and text body.
-    - Reviews hub tab showing personal reviews feed.
+    - Reviews hub tab showing personal reviews feed and community picks.
 
 ## Related Code Files
 - Read: `apps/mobile/android/app/build.gradle`
+- Test: `api/tests/integration/reviews-community.test.ts`
 - Test: `apps/mobile/tests/unit/touch-target.test.ts`
 - Test: `apps/mobile/tests/snapshots/reviews.test.tsx`
 
 ## Implementation Steps
 
-1. **Run Mobile Unit Test Suite**:
+1. **Run Backend Integration Tests**:
+   - `pnpm --filter @expyrico/api test tests/integration/reviews-community.test.ts tests/integration/my-reviews.test.ts`.
+
+2. **Run Mobile Unit Test Suite**:
    - Execute all review test suites: `npm --prefix apps/mobile test tests/unit/api-reviews.test.ts tests/unit/product-review-screen.test.tsx tests/unit/product-reviews-section.test.tsx tests/unit/reviews-tab.test.tsx`.
    - Run complete suite: `npm --prefix apps/mobile test`.
 
-2. **Run Monorepo Typecheck & Vendored Integrity**:
+3. **Run Monorepo Typecheck & Vendored Integrity**:
    - `npm --prefix apps/mobile run typecheck`.
    - `node scripts/check-vendored-shared-dist.mjs`.
 
-3. **Assemble Debug Android APK**:
+4. **Assemble Debug Android APK**:
    - Execute Gradle assemble task with local Android SDK/JBR environment variables.
    - Verify build artifact `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`.
 
-4. **Install & Verify On-Device**:
+5. **Install & Verify On-Device**:
    - Stream install APK via `adb install -r`.
    - Launch `com.expyrico.app/.MainActivity`.
    - Capture device screenshots into `/tmp/` and inspect.
 
 ## Success Criteria
-- [ ] All mobile unit and snapshot tests pass with 0 failures.
+- [ ] All backend and mobile unit/integration tests pass with 0 failures.
 - [ ] Touch target test passes for all newly introduced buttons and pills (`minHeight: 44`).
 - [ ] Typecheck passes with 0 TypeScript errors.
 - [ ] Debug APK builds cleanly via Gradle in $<60\text{s}$.

@@ -1,13 +1,13 @@
 ---
-phase: 2
+phase: 3
 title: "Review Submission Flow and Sentiment Selector"
 status: pending
 priority: P1
 effort: "4-5h"
-dependencies: [1]
+dependencies: [1, 2]
 ---
 
-# Phase 2: Review Submission Flow and Sentiment Selector
+# Phase 3: Review Submission Flow and Sentiment Selector
 
 ## Overview
 Transform `apps/mobile/app/(app)/product/[id]/review.tsx` from an unwired mock into a complete, user-tested review submission experience. Replaces the legacy 1–5 star rating with Expyrico's three-pill recommendation selector (`Buy again`, `Buy on sale`, `Won't buy`), binds the form to `useCreateReview()` and `useUpdateReview()`, validates input constraints, provides real-time character counting, handles moderation feedback for profanity-flagged reviews, and ensures clean Android back-navigation.
@@ -17,10 +17,10 @@ Transform `apps/mobile/app/(app)/product/[id]/review.tsx` from an unwired mock i
 ### Functional
 - **Tri-State Recommendation Selector**:
   - Three accessible radio pill options:
-    1. **Buy again** (`buy_again`): Recommended for full price. Styled with Fresh Sage (`#4BAE8A`) background/border and checkmark/thumbs-up icon.
-    2. **Buy on sale** (`buy_again_on_sale`): Worth it at a discount. Styled with Honey (`#F5A623`) / Soft Butter (`#FEEFC3`) and price tag icon.
-    3. **Won't buy** (`wont_buy`): Not recommended. Styled with Alert Red (`#E0442A`) and thumbs-down/close icon.
-  - Interactive selection provides haptic feedback and clear active state indicators.
+    1. **Buy again** (`buy_again`): Recommended for full price. Styled with Fresh Sage (`#4BAE8A`) border/accent, Mint Mist (`#D6F0E6`) active background, and checkmark icon.
+    2. **Buy on sale** (`buy_again_on_sale`): Worth it at a discount. Styled with Honey (`#F5A623`) border/accent, Soft Butter (`#FEEFC3`) active background, and tag icon.
+    3. **Won't buy** (`wont_buy`): Not recommended. **Strictly compliant with Expyrico palette** (Alert Red is forbidden for recommendations): styled with Stone (`#F0F0ED`) background, Pebble (`#8C8C85`) border, and Almost Black (`#2C2C28`) text with a thumbs-down icon.
+  - Interactive selection provides light haptic feedback and clear active state indicators.
 - **Review Comment Input**:
   - Multi-line text input with `maxLength={2000}`.
   - Displays remaining character counter (e.g. `124/2000`).
@@ -39,7 +39,7 @@ Transform `apps/mobile/app/(app)/product/[id]/review.tsx` from an unwired mock i
 
 ### Non-Functional
 - Adheres to `ak:ui-ux-pro-max` guidelines: minimum touch targets $\ge 44\times 44\text{ pt}$ (`minHeight: 44`), proper `accessibilityRole="radiogroup"` and `accessibilityRole="radio"` attributes.
-- Colors resolve exclusively to the Expyrico palette (`docs/design/expyrico-colour-palette.md`).
+- Colors resolve exclusively to the Expyrico palette (`docs/design/expyrico-colour-palette.md`). Alert Red `#E0442A` is never used for branding or recommendation states.
 
 ## Architecture & Layout
 
@@ -82,8 +82,11 @@ Transform `apps/mobile/app/(app)/product/[id]/review.tsx` from an unwired mock i
    - Render 3 pills with icons:
      - `buy_again`: `checkmark-circle-outline` or `thumbs-up-outline`
      - `buy_again_on_sale`: `pricetag-outline`
-     - `wont_buy`: `close-circle-outline` or `thumbs-down-outline`
-   - Apply active backgrounds: Mint Mist `#D6F0E6` (Fresh Sage border) for Buy again, Soft Butter `#FEEFC3` (Honey border) for Buy on sale, soft red tint (Alert Red border) for Won't buy.
+     - `wont_buy`: `thumbs-down-outline`
+   - Apply active backgrounds:
+     - `buy_again`: Mint Mist `#D6F0E6`, border Fresh Sage `#4BAE8A`.
+     - `buy_again_on_sale`: Soft Butter `#FEEFC3`, border Honey `#F5A623`.
+     - `wont_buy`: Neutral Stone `#F0F0ED`, border Pebble `#8C8C85`, text Almost Black `#2C2C28`. (Zero Alert Red).
 
 2. **Integrate Existing Review Data Fetching**:
    - Query product details via `useProduct(id)` to show product title and brand.
@@ -106,9 +109,10 @@ Transform `apps/mobile/app/(app)/product/[id]/review.tsx` from an unwired mock i
 
 ## Success Criteria
 - [ ] Review screen displays product metadata and Expyrico 3-pill recommendation selector.
+- [ ] Recommendation pills strictly adhere to Expyrico palette (`wont_buy` uses neutral Stone/Pebble/Almost Black, no Alert Red).
 - [ ] Tapping submit sends typed payload to `POST /v1/products/:id/reviews` (or PATCH).
 - [ ] Character counter accurately updates up to 2000 characters.
-- [ ] All interactive buttons and pills meet $\ge 44\text{ pt}$ minimum touch target.
+- [ ] All interactive buttons and pills meet $\ge 44\text{ pt}$ minimum touch target (`minHeight: 44`).
 - [ ] Unit tests pass 100%.
 
 ## Risk Assessment
