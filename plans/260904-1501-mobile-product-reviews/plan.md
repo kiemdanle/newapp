@@ -1,6 +1,6 @@
 ---
 title: "Mobile Product Reviews: Creation, Reading, and Community Feedback Architecture"
-description: "Comprehensive implementation plan to deliver full end-to-end mobile product review functionality: backend community feed endpoint, universal rate limiting across all review routes, product projection on personal reviews, review edit tally recalculation fix, TanStack Query API client, 3-tier recommendation submission, product detail review section with authoritative product tallies and helpfulness voting, and community reviews hub tab."
+description: "Comprehensive implementation plan to deliver full end-to-end mobile product review functionality: backend community feed endpoint, universal rate limiting across all review routes, product projection on personal reviews, review edit tally recalculation fix, queue job deduplication fix, TanStack Query API client, 3-tier recommendation submission, product detail review section with authoritative product tallies and helpfulness voting, and reviews hub navigation."
 status: pending
 priority: P1
 effort: "2-3d"
@@ -20,7 +20,7 @@ Currently, the Expyrico platform features a partial backend reviews API (`/v1/pr
 5. Product details (`apps/mobile/app/(app)/product/[id].tsx`) contains no "Write a Review" entry point, no sentiment summary, and no reviews feed.
 6. The review submission screen (`apps/mobile/app/(app)/product/[id]/review.tsx`) is an unwired stub (`// TODO: wire to API when M2 backend lands`) displaying a legacy 1–5 number row that contradicts the backend's tri-state recommendation contract (`buy_again` | `buy_again_on_sale` | `wont_buy`).
 7. There is no mobile API client or TanStack Query hook layer (`apps/mobile/src/api/reviews.ts`).
-8. The bottom navigation "Reviews" tab (`apps/mobile/app/(app)/(tabs)/reviews.tsx`) renders a static `EmptyState` placeholder with no user or community data.
+8. The bottom navigation does not register `ReviewsHub` in `TabsNavigator` or `AppNavigator`, leaving reviews screens disconnected from user navigation.
 
 This plan details the full implementation across 6 structured phases to bridge these gaps, delivering a polished, high-performance, secure, and accessible review experience compliant with Expyrico design guidelines (`docs/design/expyrico-colour-palette.md`).
 
@@ -28,22 +28,22 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 | # | Goal | Priority |
 |---|------|----------|
-| 1 | Extend backend shared contracts, add Prisma composite indexes, fix review edit tally drift, project `product` metadata onto `GET /v1/me/reviews`, build `GET /v1/reviews/community` feed endpoint with deterministic keyset cursor, and enforce rate limits across all review routes | P1 |
-| 2 | Create typed React Query API client `apps/mobile/src/api/reviews.ts` covering product reviews list, community reviews, personal reviews, creation, edit, deletion, helpful voting (`ReviewHelpful`), and exact cache invalidation of `['products', productId]` | P1 |
+| 1 | Extend backend shared contracts, add Prisma composite indexes, fix BullMQ recalc queue deduplication and review status drift, project `product` metadata onto `GET /v1/me/reviews`, build `GET /v1/products/:id/my-review` and `GET /v1/reviews/community` feed endpoints, and enforce rate limits across all review routes | P1 |
+| 2 | Create typed React Query API client `apps/mobile/src/api/reviews.ts` covering product reviews list, community reviews, personal reviews, authoritative own-review query, creation, edit, deletion, helpful voting (`ReviewHelpful`), and exact cache invalidation of `['products', productId]` | P1 |
 | 3 | Align `apps/mobile/app/(app)/product/[id]/review.tsx` to the tri-state recommendation contract (`Buy again`, `Buy on sale`, `Won't buy` using neutral Stone/Pebble/Almost Black, strictly avoiding Alert Red), wire submission mutation, and handle edit state and moderation feedback | P1 |
 | 4 | Integrate Reviews section onto Product Detail (`apps/mobile/app/(app)/product/[id].tsx`) with recommendation percentage banner derived authoritatively using `product.ratingCount` as denominator, "Write/Edit Review" CTA, sorting pills (`Top helpful` & `Newest`), and interactive `ReviewCard` components with helpful voting | P1 |
-| 5 | Transform `apps/mobile/app/(app)/(tabs)/reviews.tsx` into a dual-view Reviews Hub ("My Reviews" & "Community Picks") with infinite pagination, pull-to-refresh, and quick navigation | P1 |
+| 5 | Register `ReviewsHub` in `AppNavigator.tsx` and integrate navigation entry points from `ProfileScreen` and Product Details, providing dual-view feeds ("My Reviews" & "Community Picks") with infinite pagination, pull-to-refresh, and quick navigation | P1 |
 | 6 | Comprehensive test suite (backend integration, 429 rate limit tests, tally drift transition tests, mobile unit, component, snapshot) and on-device Android APK verification via Gradle toolchain | P1 |
 
 ## Phases Roadmap
 
 | # | Phase | File | Status | Priority | Effort |
 |---|-------|------|--------|----------|--------|
-| 1 | Backend Contracts, Migration, Tally Drift Fix, Community Feed, and Universal Rate Limiting | [phase-01-backend-contracts-and-community-feed.md](./phase-01-backend-contracts-and-community-feed.md) | pending | P1 | 4-5h |
+| 1 | Backend Contracts, Migration, Recalc Queue Fix, Community Feed, and Universal Rate Limiting | [phase-01-backend-contracts-and-community-feed.md](./phase-01-backend-contracts-and-community-feed.md) | pending | P1 | 4-5h |
 | 2 | Mobile API Client, Query Hooks, and Cache Invalidation | [phase-02-mobile-api-client-and-query-hooks.md](./phase-02-mobile-api-client-and-query-hooks.md) | pending | P1 | 3-4h |
 | 3 | Review Submission Flow and Sentiment Selector | [phase-03-review-submission-flow.md](./phase-03-review-submission-flow.md) | pending | P1 | 4-5h |
 | 4 | Product Detail Screen Integration and Community Reviews Feed | [phase-04-product-detail-reviews-section.md](./phase-04-product-detail-reviews-section.md) | pending | P1 | 4-5h |
-| 5 | Community and Personal Reviews Hub Tab | [phase-05-community-and-my-reviews-tab.md](./phase-05-community-and-my-reviews-tab.md) | pending | P1 | 3-4h |
+| 5 | Reviews Hub Screen, Navigation Registration, and Community Feed | [phase-05-community-and-my-reviews-tab.md](./phase-05-community-and-my-reviews-tab.md) | pending | P1 | 3-4h |
 | 6 | Automated Testing, APK Build, and Device Live Verification | [phase-06-testing-and-device-verification.md](./phase-06-testing-and-device-verification.md) | pending | P1 | 3-4h |
 
 ## Architecture & Data Flow
@@ -61,15 +61,16 @@ This plan details the full implementation across 6 structured phases to bridge t
         ┌───────────────────────────────┐     ┌────────────────────────────────┐
         │  Review Modal / Screen        │     │  useProductReviews(id, sort)   │
         │  (product/[id]/review.tsx)    │     └────────────────┬───────────────┘
-        │  - [Buy again] [Sale] [Don't] │                      │
-        │  - Optional body (<=2000 ch)  │                      ▼
-        └──────────────┬────────────────┘     ┌────────────────────────────────┐
-                       │                      │  ReviewCard components         │
-      useCreateReview  │                      │  - Recommendation badge        │
-      useUpdateReview  ▼                      │  - User avatar & name          │
-        ┌───────────────────────────────┐     │  - Review text body            │
-        │  POST /v1/products/:id/reviews│     │  - Helpful vote button & count │
-        │  PATCH /v1/reviews/:id        │     └────────────────┬───────────────┘
+        │  - useMyProductReview(id)     │                      │
+        │  - [Buy again] [Sale] [Don't] │                      ▼
+        │  - Optional body (<=2000 ch)  │     ┌────────────────────────────────┐
+        └──────────────┬────────────────┘     │  ReviewCard components         │
+                       │                      │  - Recommendation badge        │
+      useCreateReview  │                      │  - User avatar & name          │
+      useUpdateReview  ▼                      │  - Review text body            │
+        ┌───────────────────────────────┐     │  - Helpful vote button & count │
+        │  POST /v1/products/:id/reviews│     └────────────────┬───────────────┘
+        │  PATCH /v1/reviews/:id        │                      │
         └──────────────┬────────────────┘                      │
                        │                                       ▼
                        │ Invalidates ['products', id] ┌─────────────────────────────┐
@@ -96,7 +97,7 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 2. **Universal Rate Limiting (Security Mandate)**:
    - Apply rate limiting to every review endpoint:
-     - Read endpoints (`GET /products/:id/reviews`, `GET /me/reviews`, `GET /reviews/community`): 60/minute.
+     - Read endpoints (`GET /products/:id/reviews`, `GET /me/reviews`, `GET /reviews/community`, `GET /products/:id/my-review`): 60/minute.
      - Write endpoints (`POST /products/:id/reviews`, `PATCH /reviews/:id`, `DELETE /reviews/:id`): 15/minute.
      - Vote endpoints (`POST /reviews/:id/helpful`, `DELETE /reviews/:id/helpful`): 30/minute.
    - Verified via dedicated 429 integration tests in `api/tests/integration/reviews-rate-limits.test.ts`.
@@ -106,6 +107,7 @@ This plan details the full implementation across 6 structured phases to bridge t
    - All review mutations (`useCreateReview`, `useUpdateReview`, `useDeleteReview`) MUST invalidate:
      - `['products', productId]` (ensuring product detail counters refresh immediately).
      - `['product-reviews', productId]`
+     - `['my-product-review', productId]`
      - `['my-reviews']`
      - `['community-reviews']`
 
@@ -124,8 +126,9 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 6. **Helpful Voting Contract**:
    - Validates `ReviewHelpful` (`{ helpful: boolean }`) for POST.
+   - Server-side check rejects author self-votes with `403 FORBIDDEN`.
    - Binary toggle: Tapping Helpful button toggles helpfulness on/off (`POST { helpful: true }` / `DELETE /reviews/:id/helpful`).
-   - The UI hides the helpful button when `review.body` is null (`422 REVIEW_HAS_NO_COMMENT`).
+   - The UI hides the helpful button when `review.body` is null (`422 REVIEW_HAS_NO_COMMENT`) or when viewer is the review's author.
    - Optimistic cache updates on the local TanStack Query cache provide instant feedback with zero network latency.
 
 7. **Touch Targets & Android Back Handling**:
@@ -134,35 +137,30 @@ This plan details the full implementation across 6 structured phases to bridge t
 
 ---
 
-## Validation Log
+## Red Team Review
 
-### Verification Results
-- **Claims checked**: 24
-- **Verified**: 24 | **Failed**: 0 | **Unverified**: 0
-- **Tier**: Full (6 phases)
+### Session — 2026-09-04
+**Findings:** 8 (8 accepted, 0 rejected)
+**Severity breakdown:** 2 Critical, 5 High, 1 Medium
 
-### Interview Decisions & Rationale
-1. **Sorting Options on Feeds**:
-   - **User Choice**: Two options: Top Helpful (`score`) & Newest (`new`).
-   - **Rationale**: Eliminates broken in-memory sorting in `list-for-product.ts` (`sort='rating'`), enabling 100% database-indexed deterministic pagination.
-2. **Community Reviews Feed Indexing & Pagination**:
-   - **User Choice**: Add dedicated global composite indexes and deterministic cursor.
-   - **Rationale**: Migration adds `@@index([status, score(sort: Desc), id(sort: Desc)])` and `@@index([status, createdAt(sort: Desc), id(sort: Desc)])` with compound `[score, id]` cursor, preventing sequential scans and pagination drift.
-3. **Helpful Voting Interaction Model**:
-   - **User Choice**: Single thumbs-up toggle.
-   - **Rationale**: Simplest, cleanest mobile ergonomics matching consumer platforms. Uses `POST { helpful: true }` (`ReviewHelpful`) and `DELETE /reviews/:id/helpful`.
-4. **Review Edit Tally Drift Fix**:
-   - **Decision**: Update `api/src/routes/reviews/update.ts` to enqueue `enqueueProductRatingRecalc` whenever rating, body presence, or status changes, verified with transition tests.
-5. **Authoritative Counters Math**:
-   - **Decision**: Strictly compute recommendation percentage using `product.ratingCount` as denominator (never `reviewCount`).
-6. **Expyrico Palette Mandate**:
-   - **Decision**: Replace Alert Red with neutral Stone/Pebble/Almost Black on `wont_buy` pills and cards.
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Recalc Queue Fixed Job ID Causes Permanent Tally Desync | Critical | Accept | Phase 1 (`product-rating-recalc.ts`) |
+| 2 | Review Status Writers Lack Recalculation (Admin Status, Reports Auto-Hide) | Critical | Accept | Phase 1 (`update.ts`, `status.ts`, `repository.ts`) |
+| 3 | Empty-String Comments Corrupt `reviewCount` and Enter Community Feed | High | Accept | Phase 1 (`review.ts`, `create.ts`, `update.ts`) |
+| 4 | Server-Side Self-Vote Prevention Missing | High | Accept | Phase 1 (`helpful.ts`) |
+| 5 | Reviews Hub is Not Registered in `AppNavigator` | High | Accept | Phase 5 (`AppNavigator.tsx`, `profile.tsx`) |
+| 6 | Authoritative Own Review Endpoint (`GET /v1/products/:id/my-review`) & Idempotent Create | High | Accept | Phase 1 (`my-review.ts`, `create.ts`) & Phase 3 |
+| 7 | Helpful Voting Uses `ReviewHelpful` Payload & Prevents Concurrency Double-Taps | High | Accept | Phase 2 (`reviews.ts`) & Phase 4 |
+| 8 | Remove Artificial Fallback QueryClient | Medium | Accept | Phase 2 (`reviews.ts`) |
 
 ### Whole-Plan Consistency Sweep
 - **Stale terms / conflicts**: 0
 - **Contradictions resolved**:
-  - Reconciled Phase 1 and Phase 2 query invalidation to `['products', productId]` (matching `useProduct` in `products.ts:42`).
-  - Aligned voting payload across all documents to `ReviewHelpful` (`{ helpful: boolean }`).
-  - Aligned all sort references across all phases to the 2 supported options: `'score'` and `'new'`.
-  - Reconciled all recommendation color references to exclude Alert Red and use neutral Stone/Pebble for `wont_buy`.
+  - Reconciled all review queue references to unique job IDs.
+  - Aligned all sort references across all phases strictly to `'score' | 'new'` (removed broken in-memory `'rating'` option).
+  - Reconciled all voting payload types to `ReviewHelpful` (`{ helpful: boolean }`).
+  - Reconciled all palette references to exclude Alert Red and use neutral Stone/Pebble for `wont_buy`.
+  - Reconciled query invalidation to `['products', productId]` (plural) to refresh authoritative `Product` fields.
+  - Linked `ReviewsHub` to `AppNavigator.tsx` and `profile.tsx` ActionRow.
 - **Unresolved contradictions**: 0

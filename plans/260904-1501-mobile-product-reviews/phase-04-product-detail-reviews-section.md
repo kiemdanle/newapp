@@ -10,7 +10,9 @@ dependencies: [1, 2, 3]
 # Phase 4: Product Detail Screen Integration and Community Reviews Feed
 
 ## Overview
-Integrate a community reviews section directly into the product detail screen (`apps/mobile/app/(app)/product/[id].tsx`). Displays an aggregate recommendation sentiment banner derived authoritatively from the `Product` model (`buyAgainCount`, `buyAgainOnSaleCount`, `wontBuyCount`, `ratingCount`, `reviewCount`), prominent `"Write a Review"` / `"Edit Your Review"` action button, sort pills (`Top helpful`, `Newest`, `Rating`), and interactive `ReviewCard` components supporting helpfulness voting, author badges, and moderation visibility rules.
+Integrate a community reviews section directly into the product detail screen (`apps/mobile/app/(app)/product/[id].tsx`). Displays an aggregate recommendation sentiment banner derived authoritatively from the `Product` model (`buyAgainCount`, `buyAgainOnSaleCount`, `wontBuyCount`, `ratingCount`, `reviewCount`), prominent `"Write a Review"` / `"Edit Your Review"` action button, sort pills (`Top helpful` & `Newest`), and interactive `ReviewCard` components supporting helpfulness voting, author badges, and moderation visibility rules.
+
+<!-- Updated: Red Team Review - Uses ratingCount as denominator for sentiment %, uses useMyProductReview for button state, standardizes strictly on two database-indexed sort pills (score/new), suppresses self-voting in UI (backed by server 403), and adheres to Expyrico palette for wont_buy -->
 
 ## Requirements
 
@@ -19,7 +21,7 @@ Integrate a community reviews section directly into the product detail screen (`
   - **Authoritative Data Source & Correct Math**: Must read directly from the `product` record returned by `useProduct(id)` (`apps/mobile/src/api/products.ts:42`):
     - **Denominator**: `product.ratingCount` (the sum of all three recommendation tallies: `buyAgainCount + buyAgainOnSaleCount + wontBuyCount`).
     - **Numerator**: `(product.buyAgainCount ?? 0) + (product.buyAgainOnSaleCount ?? 0)`.
-    - **Written Reviews Count**: `product.reviewCount` represents only reviews that carry a written text comment (`body !== null`). It is presented separately and **NEVER used as the denominator** (using `reviewCount` would yield >100% when users rate without writing text).
+    - **Written Reviews Count**: `product.reviewCount` represents only reviews that carry a written text comment (`body !== null`). It is presented separately and **NEVER used as the denominator** (preventing $>100\%$ ratios).
     ```typescript
     const totalRatings = product.ratingCount ?? 0;
     const positiveCount = (product.buyAgainCount ?? 0) + (product.buyAgainOnSaleCount ?? 0);
@@ -30,13 +32,13 @@ Integrate a community reviews section directly into the product detail screen (`
     - Breakdown counts display: `18 Buy again · 4 On sale · 2 Won't buy`.
   - If `totalRatings === 0`: displays gentle empty state `"No reviews yet · Be the first to share your experience"`.
 - **Review Action Button**:
-  - If user has not reviewed: renders primary/outline button `"Write a review"` navigating to `ProductReview` with `{ id: product.id }`.
-  - If user has already reviewed: renders `"Edit your review"` with a badge `"You reviewed this item [Buy again]"`.
+  - Uses `useMyProductReview(product.id)`:
+    - If user has not reviewed: renders primary button `"Write a review"` navigating to `ProductReview` with `{ id: product.id }`.
+    - If user has already reviewed: renders outline button `"Edit your review"` with an author badge `"You recommended this item [Buy again]"`.
 - **Sorting Controls**:
-  - 3 sort pills:
-    1. **Top helpful** (`score`): default Bayesian helpfulness score.
-    2. **Newest** (`new`): latest created date first.
-    3. **Helpful ratio** (`rating`): reviews with highest positive helpful votes first.
+  - Exactly 2 database-indexed sort pills:
+    1. **Top helpful** (`score`): Bayesian Wilson score, sorted in Postgres.
+    2. **Newest** (`new`): Chronological `createdAt DESC`, sorted in Postgres.
   - Tapping a pill triggers query refetch with active pill highlighted in Fresh Sage (`#4BAE8A`).
 - **`ReviewCard` Component (`apps/mobile/src/features/reviews/ReviewCard.tsx`)**:
   - Author header: user avatar (or initials placeholder), first name, and relative timestamp (`2d ago`, `1mo ago`).
@@ -49,11 +51,11 @@ Integrate a community reviews section directly into the product detail screen (`
     - Displays thumbs-up icon with vote count `Helpful (N)`.
     - If `myVote === 'helpful'`: highlighted in active Fresh Sage.
     - If review has no text body (`body === null`): helpful button is hidden (per backend schema `422 REVIEW_HAS_NO_COMMENT` rule).
-    - Prevents voting on user's own review.
+    - If current user is review author: helpful button is hidden (server rejects self-votes with 403).
     - Triggers light haptic feedback and optimistic count toggle.
 - **Pagination & "View all" Navigation**:
   - Displays top 3 reviews directly on the product detail page.
-  - If more than 3 reviews exist, renders `"View all N reviews"` link that expands or navigates to the full reviews list.
+  - If more than 3 reviews exist, renders `"View all N reviews"` link routing to `ReviewsHub` with `{ productId: product.id }`.
 
 ### Non-Functional
 - Performance: uses memoized `ReviewCard` components to prevent re-rendering when scrolling product photos or editing quantity.
@@ -77,7 +79,7 @@ Integrate a community reviews section directly into the product detail screen (`
 |                                                             |
 | [ + Write a Review ]                                        |
 |                                                             |
-| Sort: [ Top helpful ] [ Newest ] [ Rating ]                 |
+| Sort: [ Top helpful ] [ Newest ]                            |
 |                                                             |
 | +---------------------------------------------------------+ |
 | | (Avatar) Alex M. · 3d ago                 [ Buy again ] | |
@@ -113,44 +115,35 @@ Integrate a community reviews section directly into the product detail screen (`
    - Accepts `review: Review`, `currentUserId?: string`, `onVoteHelpful: (reviewId: string, currentVote: 'helpful' | null) => void`.
    - Render author avatar using `Avatar` component, first name, and formatted date (`formatRelativeDate`).
    - Render recommendation badge with icon and matching Expyrico colors (`wont_buy` on Stone/Pebble/Almost Black, no Alert Red).
-   - If `review.body` is present, render body text; if `review.body` is null, hide body and helpful button.
+   - If `review.body` is present and `review.userId !== currentUserId`, render helpful button; otherwise hide.
    - Render helpful button with `accessibilityLabel="Vote review as helpful"` and `minHeight: 44`.
 
 2. **Build `ProductReviewsSection.tsx` (`apps/mobile/src/features/reviews/ProductReviewsSection.tsx`)**:
    - Accepts `product: Product`.
-   - Derives recommendation percentage directly using `ratingCount` as denominator and `reviewCount` as written review count:
-     ```typescript
-     const totalRatings = product.ratingCount ?? 0;
-     const positiveCount = (product.buyAgainCount ?? 0) + (product.buyAgainOnSaleCount ?? 0);
-     const recommendPct = totalRatings > 0 ? Math.round((positiveCount / totalRatings) * 100) : null;
-     ```
+   - Derives recommendation percentage directly using `ratingCount` as denominator and `reviewCount` as written review count.
+   - Uses `useMyProductReview(product.id)` to determine button label ("Write a review" vs "Edit your review").
    - Fetches review list via `useProductReviews(product.id, { sort })`.
    - Renders summary banner with recommendation metric.
-   - Renders "Write a review" / "Edit your review" button.
-   - Renders 3 sort pills with active indicator.
+   - Renders 2 sort pills (`Top helpful` and `Newest`) with active indicator.
    - Maps and renders list of `ReviewCard` items.
 
 3. **Mount in `apps/mobile/app/(app)/product/[id].tsx`**:
    - Place `<ProductReviewsSection product={data} />` cleanly below the `AddRecordForm` and above screen bottom padding.
-   - Ensure screen scrolling remains smooth with no nested virtualized list warnings (`ScrollView` with mapped cards).
 
 4. **Add Unit Tests (`apps/mobile/tests/unit/product-reviews-section.test.tsx`)**:
    - Test rendering 0 reviews empty state.
-   - Test recommendation percentage calculation strictly using `product.ratingCount` (never exceeding 100%).
+   - Test recommendation percentage calculation strictly using `product.ratingCount`.
    - Test rendering reviews list with recommendation badges.
+   - Test self-voting button suppression when author matches viewer.
    - Test clicking "Write a review" triggers navigation.
    - Test clicking "Helpful" triggers vote mutation.
-   - Test changing sort pill refetches with new sort order.
 
 ## Success Criteria
 - [ ] Product details screen renders community sentiment summary and review cards.
-- [ ] Sentiment percentage is calculated strictly using `product.ratingCount` as denominator (and `reviewCount` presented as comment count).
+- [ ] Sentiment percentage is calculated strictly using `product.ratingCount` as denominator.
 - [ ] Recommendation badges strictly adhere to Expyrico palette (`wont_buy` uses Stone/Pebble/Almost Black).
-- [ ] Users can toggle between "Top helpful", "Newest", and "Rating" sort orders.
+- [ ] Self-voting button is suppressed for the review's author.
+- [ ] Users can toggle between "Top helpful" and "Newest" sort orders.
 - [ ] Tapping helpful increments vote count with instant feedback.
 - [ ] Tapping "Write a review" navigates to `ProductReview`.
 - [ ] Unit tests pass 100%.
-
-## Risk Assessment
-- **Risk**: A product with 100+ reviews causes slow rendering inside `ScrollView`.
-- **Mitigation**: Limit inline product reviews to initial 5 items with a "Load more reviews" or "View all" trigger.

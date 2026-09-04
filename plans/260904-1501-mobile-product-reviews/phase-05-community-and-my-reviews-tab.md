@@ -1,29 +1,50 @@
 ---
 phase: 5
-title: "Community and Personal Reviews Hub Tab"
+title: "Reviews Hub Screen, Navigation Registration, and Community Feed"
 status: pending
 priority: P1
 effort: "3-4h"
 dependencies: [1, 2, 3, 4]
 ---
 
-# Phase 5: Community and Personal Reviews Hub Tab
+# Phase 5: Reviews Hub Screen, Navigation Registration, and Community Feed
 
 ## Overview
-Replaces the static placeholder in `apps/mobile/app/(app)/(tabs)/reviews.tsx` with a fully integrated Reviews Hub. Leverages the backend contracts established in Phase 1 to provide two rich, data-grounded feeds:
-1. **My Reviews**: Lists all products the user has reviewed using `useMyReviews()`, rendering the authoritative `product` metadata (`name`, `brand`, `imageUrl`) projected by `GET /v1/me/reviews`, with their recommendation badge, notes, date, and shortcuts to edit or jump to the product.
-2. **Community Reviews**: Lists recent helpful reviews across all catalog products using `useCommunityReviews()`, querying the new `GET /v1/reviews/community` endpoint with sorting (`score` vs `new`), infinite pagination, and pull-to-refresh.
+Implements and registers the dedicated `ReviewsHub` screen in the mobile navigation architecture, providing two rich, data-grounded feeds:
+1. **Navigation Registration**: Register `ReviewsHub` in `apps/mobile/src/navigation/AppNavigator.tsx` (`<Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />`) and add entry points from:
+   - **Profile Screen** (`apps/mobile/app/(app)/(tabs)/profile.tsx`): ActionRow `"My Reviews & Community"` with `chatbubbles-outline` icon.
+   - **Product Details Screen** (`apps/mobile/app/(app)/product/[id].tsx`): `"View all reviews"` link.
+2. **My Reviews Feed**: Lists all products the user has reviewed using `useMyReviews()`, rendering the authoritative `product` metadata (`name`, `brand`, `imageUrl`) projected by `GET /v1/me/reviews`, with their recommendation badge, notes, date, and shortcuts to edit or jump to the product.
+3. **Community Reviews Feed**: Lists recent helpful reviews across all catalog products using `useCommunityReviews()`, querying `GET /v1/reviews/community` with sorting (`Top helpful` vs `Newest`), infinite pagination, and pull-to-refresh.
+
+<!-- Updated: Red Team Review - Registered ReviewsHub in AppNavigator.tsx, added entry points in Profile and Product Details, and implemented full infinite query pagination for personal reviews -->
 
 ## Requirements
 
 ### Functional
+- **Navigation Registration (`apps/mobile/src/navigation/AppNavigator.tsx`)**:
+  - Add to `AppStackParamList`:
+    ```typescript
+    ReviewsHub: { productId?: string; initialTab?: 'mine' | 'community' } | undefined;
+    ```
+  - Register `<Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />`.
+- **Navigation Entry Points**:
+  - In `apps/mobile/app/(app)/(tabs)/profile.tsx`:
+    - Add `ActionRow`:
+      - `testID="profile-action-reviews"`
+      - `icon="chatbubbles-outline"`
+      - `label="My Reviews & Community"`
+      - `subtitle="See your recommendations and community picks"`
+      - `onPress={() => navigation.push('ReviewsHub')}`
+  - In `ProductReviewsSection.tsx`:
+    - Tapping `"View all N reviews"` navigates to `navigation.push('ReviewsHub', { productId: product.id })`.
 - **Segmented View Switcher**:
   - Two accessible segmented tabs at the top:
     - `"My Reviews"`: Displays reviews written by the authenticated user (`useMyReviews()`).
     - `"Community"`: Displays recent high-scoring reviews across the community (`useCommunityReviews()`).
-  - Smooth indicator or active pill styling in Fresh Sage (`#4BAE8A`) with Mint Mist (`#D6F0E6`) accent.
+  - Active pill styling in Fresh Sage (`#4BAE8A`) with Mint Mist (`#D6F0E6`) accent.
 - **My Reviews Feed**:
-  - Displays list of user's personal reviews using `useMyReviews()`.
+  - Displays list of user's personal reviews using infinite query `useMyReviews()`.
   - Each item renders using `MyReviewCard`:
     - Product name & brand (guaranteed by Phase 1's `product` projection on `Review`).
     - Product thumbnail photo.
@@ -46,8 +67,6 @@ Replaces the static placeholder in `apps/mobile/app/(app)/(tabs)/reviews.tsx` wi
   - Pull-to-refresh (`RefreshControl`) re-queries the latest reviews.
   - Infinite scrolling with `onEndReached` calling `fetchNextPage()`.
   - Tapping a review item's product title opens `ProductDetail`.
-- **State Preservation**:
-  - Retains active tab state (`my_reviews` vs `community`) during session navigation.
 
 ### Non-Functional
 - Optimized `FlatList` with `keyExtractor`, `ItemSeparatorComponent`, and windowing to maintain 60fps scrolling.
@@ -57,8 +76,7 @@ Replaces the static placeholder in `apps/mobile/app/(app)/(tabs)/reviews.tsx` wi
 
 ```
 +-------------------------------------------------------------+
-| COMMUNITY                                                   |
-| Product Reviews                                             |
+| <- Back                                             Reviews |
 | Discover what is worth buying again                         |
 |                                                             |
 | +---------------------------------------------------------+ |
@@ -85,42 +103,48 @@ Replaces the static placeholder in `apps/mobile/app/(app)/(tabs)/reviews.tsx` wi
 ```
 
 ## Related Code Files
-- Modify: `apps/mobile/app/(app)/(tabs)/reviews.tsx`
+- Modify: `apps/mobile/src/navigation/AppNavigator.tsx`
+- Modify: `apps/mobile/app/(app)/(tabs)/profile.tsx`
+- Create: `apps/mobile/src/features/reviews/ReviewsHubScreen.tsx`
 - Create: `apps/mobile/src/features/reviews/MyReviewCard.tsx`
 - Create: `apps/mobile/src/features/reviews/CommunityReviewsFeed.tsx`
 - Read: `apps/mobile/src/api/reviews.ts`
 - Read: `apps/mobile/src/components/Screen.tsx`
-- Test: `apps/mobile/tests/unit/reviews-tab.test.tsx`
+- Test: `apps/mobile/tests/unit/reviews-hub.test.tsx`
 
 ## Implementation Steps
 
-1. **Build `MyReviewCard.tsx` (`apps/mobile/src/features/reviews/MyReviewCard.tsx`)**:
-   - Renders personal review card with product title, brand, product thumbnail, recommendation pill (`wont_buy` on Stone/Pebble/Almost Black), comment body, date, and "Edit" / "View product" buttons (`minHeight: 44`).
-   - Styled using `theme.colors.bgElevated` and `theme.colors.border`.
+1. **Register Screen in `AppNavigator.tsx`**:
+   - Add `ReviewsHub` to `AppStackParamList`.
+   - Mount `<Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />`.
 
-2. **Build `CommunityReviewsFeed.tsx` (`apps/mobile/src/features/reviews/CommunityReviewsFeed.tsx`)**:
+2. **Add Entry Point in `ProfileScreen`**:
+   - In `apps/mobile/app/(app)/(tabs)/profile.tsx`, add `ActionRow` linking to `ReviewsHub`.
+
+3. **Build `MyReviewCard.tsx` (`apps/mobile/src/features/reviews/MyReviewCard.tsx`)**:
+   - Renders personal review card with product title, brand, product thumbnail, recommendation pill (`wont_buy` on Stone/Pebble/Almost Black), comment body, date, and "Edit" / "View product" buttons (`minHeight: 44`).
+
+4. **Build `CommunityReviewsFeed.tsx` (`apps/mobile/src/features/reviews/CommunityReviewsFeed.tsx`)**:
    - Renders infinite `FlatList` of community reviews using `useCommunityReviews()`.
    - Embeds sorting pills (`Top helpful` vs `Newest`).
    - Renders `ReviewCard` with product banner linking to `ProductDetail`.
 
-3. **Wire Segmented Header in `reviews.tsx`**:
+5. **Build `ReviewsHubScreen.tsx` (`apps/mobile/src/features/reviews/ReviewsHubScreen.tsx`)**:
    - Implement segmented switch: `[ My Reviews ] [ Community ]`.
    - Dynamically renders active feed based on selected tab.
+   - Preserves active tab selection during session.
 
-4. **Update Snapshots & Unit Tests (`tests/unit/reviews-tab.test.tsx`)**:
+6. **Add Unit & Navigation Tests (`tests/unit/reviews-hub.test.tsx`)**:
+   - Test navigating from Profile to ReviewsHub.
    - Test switching between My Reviews and Community tabs.
    - Test rendering personal reviews and clicking "Edit".
    - Test empty state when user has no reviews.
 
 ## Success Criteria
-- [ ] Reviews tab renders active segmented views (My Reviews and Community).
-- [ ] Users can see all reviews they've authored with full product details (`name`, `brand`).
+- [ ] `ReviewsHub` is registered in `AppNavigator` and accessible from Profile and Product Details.
+- [ ] Users can see all reviews they've authored with full product details (`name`, `brand`, thumbnail).
 - [ ] Recommendation states strictly avoid Alert Red (Stone/Pebble/Almost Black used for `wont_buy`).
 - [ ] Community feed loads real reviews from `GET /v1/reviews/community`.
 - [ ] Pull-to-refresh smoothly reloads data.
 - [ ] Empty state provides clear CTA to scan and review products.
 - [ ] Unit tests pass with 0 regressions.
-
-## Risk Assessment
-- **Risk**: Missing product reference on older reviews in database.
-- **Mitigation**: Graceful fallback to `review.product?.name ?? 'Reviewed Product'` and hide broken thumbnail image placeholders.
