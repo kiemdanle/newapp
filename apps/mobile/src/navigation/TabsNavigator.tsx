@@ -158,12 +158,16 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const menuAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(menuAnim, {
+    const anim = Animated.spring(menuAnim, {
       toValue: isMenuOpen ? 1 : 0,
       useNativeDriver: true,
       friction: 8,
       tension: 65,
-    }).start();
+    });
+    anim.start();
+    return () => {
+      anim.stop();
+    };
   }, [isMenuOpen, menuAnim]);
 
   useEffect(() => {

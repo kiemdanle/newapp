@@ -1,5 +1,5 @@
-import React from 'react';
-import { act, fireEvent } from '@testing-library/react-native';
+import React, { useState } from 'react';
+import { act, fireEvent, userEvent } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import { RecordCard } from '../../src/features/records/RecordCard';
@@ -141,6 +141,47 @@ describe('RecordCard Multi-Select & Long-Press', () => {
 
     expect(handleToggleSelect).toHaveBeenCalledTimes(1);
     expect(handlePress).not.toHaveBeenCalled();
+  });
+
+  it('preserves selection after releasing a long press (900ms duration) and does not toggle on release', async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const toggleSpy = jest.fn();
+
+    function StatefulHarness() {
+      const [selectionMode, setSelectionMode] = useState(false);
+      const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+      return (
+        <RecordCard
+          record={mockRecords[0]!}
+          selectionMode={selectionMode}
+          isSelected={selectedIds.has(mockRecords[0]!.id)}
+          onPress={jest.fn()}
+          onLongPress={() => {
+            setSelectionMode(true);
+            setSelectedIds(new Set([mockRecords[0]!.id]));
+          }}
+          onToggleSelect={toggleSpy}
+        />
+      );
+    }
+
+    const { getByTestId } = renderWithTheme(<StatefulHarness />, 'expyrico');
+    const card = getByTestId('record-card-rec-1');
+
+    await user.longPress(card, { duration: 900 });
+
+    // After 900ms long press and release, the card is in selection mode and selected
+    expect(getByTestId('record-select-checkbox-rec-1')).toBeTruthy();
+    // Toggle was suppressed on the release of the long press!
+    expect(toggleSpy).not.toHaveBeenCalled();
+
+    // Subsequent deliberate tap triggers toggle
+    await user.press(card);
+    expect(toggleSpy).toHaveBeenCalledTimes(1);
+
+    jest.useRealTimers();
   });
 });
 

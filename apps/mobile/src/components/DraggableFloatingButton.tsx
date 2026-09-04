@@ -79,13 +79,17 @@ export function DraggableFloatingButton({
 
   useEffect(() => {
     if (savedPosition) {
-      const clampedX = Math.min(Math.max(savedPosition.x, minX), maxX);
-      const clampedY = Math.min(Math.max(savedPosition.y, minY), maxY);
-      currentPos.current = { x: clampedX, y: clampedY };
-      pan.setValue({ x: clampedX, y: clampedY });
-      onPositionChange?.(currentPos.current);
+      const clamped = clampCoordinates(savedPosition.x, savedPosition.y, boundsRef.current);
+      currentPos.current = clamped;
+      pan.setValue(clamped);
+      onPositionChange?.(clamped);
+    } else {
+      const defaultPos = { x: defaultX, y: defaultY };
+      currentPos.current = defaultPos;
+      pan.setValue(defaultPos);
+      onPositionChange?.(defaultPos);
     }
-  }, [savedPosition, minX, maxX, minY, maxY, pan, onPositionChange]);
+  }, [savedPosition, defaultX, defaultY, onPositionChange, pan]);
 
   const panResponder = useRef(
     PanResponder.create({

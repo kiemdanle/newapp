@@ -38,11 +38,34 @@ export function RecordCard({
   onLongPress,
   onToggleSelect,
 }: Props) {
+  const isLongPressActiveRef = useRef(false);
+
   const handleCardLongPress = useCallback(() => {
     if (!selectionMode && onLongPress) {
+      isLongPressActiveRef.current = true;
       onLongPress();
     }
   }, [selectionMode, onLongPress]);
+
+  const handleCardPress = useCallback(() => {
+    if (isLongPressActiveRef.current) {
+      isLongPressActiveRef.current = false;
+      return;
+    }
+    if (selectionMode) {
+      onToggleSelect?.();
+    } else {
+      onPress();
+    }
+  }, [selectionMode, onToggleSelect, onPress]);
+
+  const handlePressOut = useCallback(() => {
+    if (isLongPressActiveRef.current) {
+      setTimeout(() => {
+        isLongPressActiveRef.current = false;
+      }, 50);
+    }
+  }, []);
 
   const theme = useTheme();
   const { scope } = usePantryScope();
@@ -133,9 +156,9 @@ export function RecordCard({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${displayName}${isHouseholdItem ? `, Shared in ${badgeLabel}` : ''}, Expires ${formatDate(record.expiryDate, userCountry)}`}
-        onPress={selectionMode ? onToggleSelect : onPress}
-        onLongPress={handleCardLongPress}
-        delayLongPress={300}
+        onPress={handleCardPress}
+        onLongPress={onLongPress ? handleCardLongPress : undefined}
+        onPressOut={handlePressOut}
         testID={`record-card-${record.id}`}
         style={({ pressed }) => [
           {
