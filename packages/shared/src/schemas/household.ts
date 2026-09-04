@@ -39,9 +39,14 @@ export const householdPatchSchema = z.object({
 });
 export type HouseholdPatch = z.infer<typeof householdPatchSchema>;
 
-export const householdMemberAddSchema = z.object({
-  userId: z.string().uuid(),
-});
+export const householdMemberAddSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email().optional(),
+    userId: z.string().uuid().optional(),
+  })
+  .refine((data) => Boolean(data.email || data.userId), {
+    message: 'Either email or userId must be provided',
+  });
 export type HouseholdMemberAdd = z.infer<typeof householdMemberAddSchema>;
 
 export const householdJoinSchema = z.object({

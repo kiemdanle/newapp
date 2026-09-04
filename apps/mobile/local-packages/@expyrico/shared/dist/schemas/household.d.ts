@@ -22,9 +22,9 @@ export declare const householdMemberSchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    role: "owner" | "member";
-    userId: string;
     householdId: string;
+    userId: string;
+    role: "owner" | "member";
     joinedAt: string;
     user?: {
         id: string;
@@ -33,9 +33,9 @@ export declare const householdMemberSchema: z.ZodObject<{
     } | undefined;
 }, {
     id: string;
-    role: "owner" | "member";
-    userId: string;
     householdId: string;
+    userId: string;
+    role: "owner" | "member";
     joinedAt: string;
     user?: {
         id: string;
@@ -50,24 +50,27 @@ export declare const householdSchema: z.ZodObject<{
     ownerUserId: z.ZodString;
     memberCount: z.ZodOptional<z.ZodNumber>;
     myRole: z.ZodOptional<z.ZodEnum<["owner", "member"]>>;
+    inviteCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    createdAt: string;
-    updatedAt: string;
     name: string;
     ownerUserId: string;
+    createdAt: string;
+    updatedAt: string;
     memberCount?: number | undefined;
     myRole?: "owner" | "member" | undefined;
+    inviteCode?: string | null | undefined;
 }, {
     id: string;
-    createdAt: string;
-    updatedAt: string;
     name: string;
     ownerUserId: string;
+    createdAt: string;
+    updatedAt: string;
     memberCount?: number | undefined;
     myRole?: "owner" | "member" | undefined;
+    inviteCode?: string | null | undefined;
 }>;
 export type Household = z.infer<typeof householdSchema>;
 export declare const householdCreateSchema: z.ZodObject<{
@@ -86,14 +89,31 @@ export declare const householdPatchSchema: z.ZodObject<{
     name: string;
 }>;
 export type HouseholdPatch = z.infer<typeof householdPatchSchema>;
-export declare const householdMemberAddSchema: z.ZodObject<{
-    userId: z.ZodString;
+export declare const householdMemberAddSchema: z.ZodEffects<z.ZodObject<{
+    email: z.ZodOptional<z.ZodString>;
+    userId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    userId: string;
+    userId?: string | undefined;
+    email?: string | undefined;
 }, {
-    userId: string;
+    userId?: string | undefined;
+    email?: string | undefined;
+}>, {
+    userId?: string | undefined;
+    email?: string | undefined;
+}, {
+    userId?: string | undefined;
+    email?: string | undefined;
 }>;
 export type HouseholdMemberAdd = z.infer<typeof householdMemberAddSchema>;
+export declare const householdJoinSchema: z.ZodObject<{
+    code: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    code: string;
+}, {
+    code: string;
+}>;
+export type HouseholdJoin = z.infer<typeof householdJoinSchema>;
 export declare const householdListResponseSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{
         id: z.ZodString;
@@ -101,44 +121,49 @@ export declare const householdListResponseSchema: z.ZodObject<{
         ownerUserId: z.ZodString;
         memberCount: z.ZodOptional<z.ZodNumber>;
         myRole: z.ZodOptional<z.ZodEnum<["owner", "member"]>>;
+        inviteCode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        createdAt: string;
-        updatedAt: string;
         name: string;
         ownerUserId: string;
+        createdAt: string;
+        updatedAt: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
+        inviteCode?: string | null | undefined;
     }, {
         id: string;
-        createdAt: string;
-        updatedAt: string;
         name: string;
         ownerUserId: string;
+        createdAt: string;
+        updatedAt: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
+        inviteCode?: string | null | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        createdAt: string;
-        updatedAt: string;
         name: string;
         ownerUserId: string;
+        createdAt: string;
+        updatedAt: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
+        inviteCode?: string | null | undefined;
     }[];
 }, {
     items: {
         id: string;
-        createdAt: string;
-        updatedAt: string;
         name: string;
         ownerUserId: string;
+        createdAt: string;
+        updatedAt: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
+        inviteCode?: string | null | undefined;
     }[];
 }>;
 export declare const householdMembersResponseSchema: z.ZodObject<{
@@ -163,9 +188,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
         }>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        role: "owner" | "member";
-        userId: string;
         householdId: string;
+        userId: string;
+        role: "owner" | "member";
         joinedAt: string;
         user?: {
             id: string;
@@ -174,9 +199,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
         } | undefined;
     }, {
         id: string;
-        role: "owner" | "member";
-        userId: string;
         householdId: string;
+        userId: string;
+        role: "owner" | "member";
         joinedAt: string;
         user?: {
             id: string;
@@ -187,9 +212,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        role: "owner" | "member";
-        userId: string;
         householdId: string;
+        userId: string;
+        role: "owner" | "member";
         joinedAt: string;
         user?: {
             id: string;
@@ -200,9 +225,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        role: "owner" | "member";
-        userId: string;
         householdId: string;
+        userId: string;
+        role: "owner" | "member";
         joinedAt: string;
         user?: {
             id: string;

@@ -32,13 +32,18 @@ async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: s
 export async function membersAddRoute(app: FastifyInstance) {
   app.post('/households/:id/members', { onRequest: [app.requireAuth] }, async (req, reply) => {
     const { id: householdId } = paramsSchema.parse(req.params);
-    const { userId } = householdMemberAddSchema.parse(req.body);
+    const body = householdMemberAddSchema.parse(req.body);
     const prisma = getPrisma();
     const household = await prisma.household.findUnique({ where: { id: householdId } });
     if (!household) throw new AppError({ status: 404, code: ERROR_CODES.HOUSEHOLD_NOT_FOUND, title: 'Household not found' });
     await assertOwner(householdId, req.user!.id);
-    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    const targetUser = body.email
+      ? await prisma.user.findUnique({ where: { email: body.email.toLowerCase() } })
+      : body.userId
+        ? await prisma.user.findUnique({ where: { id: body.userId } })
+        : null;
     if (!targetUser) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'User not found' });
+    const userId = targetUser.id;
 
     let member: Awaited<ReturnType<typeof prisma.householdMember.create>>;
     try {

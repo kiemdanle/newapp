@@ -18,6 +18,7 @@ export const householdSchema = z.object({
     ownerUserId: z.string().uuid(),
     memberCount: z.number().int().nonnegative().optional(),
     myRole: householdRoleSchema.optional(),
+    inviteCode: z.string().nullable().optional(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
 });
@@ -27,8 +28,16 @@ export const householdCreateSchema = z.object({
 export const householdPatchSchema = z.object({
     name: z.string().trim().min(1).max(120),
 });
-export const householdMemberAddSchema = z.object({
-    userId: z.string().uuid(),
+export const householdMemberAddSchema = z
+    .object({
+    email: z.string().trim().toLowerCase().email().optional(),
+    userId: z.string().uuid().optional(),
+})
+    .refine((data) => Boolean(data.email || data.userId), {
+    message: 'Either email or userId must be provided',
+});
+export const householdJoinSchema = z.object({
+    code: z.string().trim().toUpperCase().min(4).max(12),
 });
 export const householdListResponseSchema = z.object({
     items: z.array(householdSchema),

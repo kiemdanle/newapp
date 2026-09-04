@@ -38,6 +38,34 @@ describe('households members', () => {
     await app.close();
   });
 
+  it('owner adds a member by email address', async () => {
+    const app = await buildServer();
+    const owner = await makeUser({ emailVerified: true });
+    const member = await makeUser({ emailVerified: true });
+    const hh = await makeHousehold(owner.id, { name: 'Home' });
+
+    const addRes = await app.inject({
+      method: 'POST',
+      url: `/v1/households/${hh.id}/members`,
+      headers: await headersFor(owner.id),
+      payload: { email: member.email },
+    });
+    expect(addRes.statusCode).toBe(201);
+    expect(addRes.json().userId).toBe(member.id);
+    expect(addRes.json().role).toBe('member');
+
+    // Adding non-existent email returns 404
+    const notFoundRes = await app.inject({
+      method: 'POST',
+      url: `/v1/households/${hh.id}/members`,
+      headers: await headersFor(owner.id),
+      payload: { email: 'nonexistent@example.com' },
+    });
+    expect(notFoundRes.statusCode).toBe(404);
+
+    await app.close();
+  });
+
   it('member sees the members list', async () => {
     const app = await buildServer();
     const owner = await makeUser({ emailVerified: true });

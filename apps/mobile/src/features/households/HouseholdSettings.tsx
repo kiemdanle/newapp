@@ -312,7 +312,7 @@ export function HouseholdSettings({ initialJoinCode }: HouseholdSettingsProps = 
                     alignItems: 'center', minHeight: 52, justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: theme.colors.primary }}>+ Add by User ID (Manual)</Text>
+                  <Text style={{ color: theme.colors.primary, fontWeight: '600' }}>+ Add Member by Email</Text>
                 </Pressable>
               )}
 
