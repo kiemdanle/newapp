@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { useProduct } from '../../api/products';
+import { useMyHouseholds } from '../../api/households';
 import { useTheme } from '../../theme/useTheme';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
@@ -26,7 +27,11 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
   const groups = useMemo(() => propGroups ?? groupRecords(activeRecords), [propGroups, activeRecords]);
   const item = pickMostUrgent(groups);
   const { data: product } = useProduct(item?.productId ?? undefined);
+  const { data: myHouseholdsData } = useMyHouseholds();
   if (!item) return null;
+  const householdName = item.householdId
+    ? myHouseholdsData?.items?.find((h) => h.id === item.householdId)?.name ?? 'Shared'
+    : null;
 
   const displayName = item.customName || product?.name || 'Item';
   const brand = product?.brand;
@@ -61,15 +66,58 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
       ]}
     >
       <View style={styles.eyebrowRow}>
-        <View style={[styles.dot, { backgroundColor: statusColor }]} />
-        <Text
-          style={[
-            styles.eyebrow,
-            { color: isUrgent ? statusColor : theme.colors.textMuted },
-          ]}
-        >
-          USE NEXT
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+          <View style={[styles.dot, { backgroundColor: statusColor }]} />
+          <Text
+            style={[
+              styles.eyebrow,
+              { color: isUrgent ? statusColor : theme.colors.textMuted },
+            ]}
+          >
+            USE NEXT
+          </Text>
+        </View>
+        {householdName ? (
+          <View
+            testID="use-next-household-badge"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 3,
+              backgroundColor: 'rgba(75, 174, 138, 0.16)',
+              borderColor: 'rgba(75, 174, 138, 0.45)',
+              borderWidth: 1,
+              paddingHorizontal: 7,
+              paddingVertical: 2,
+              borderRadius: theme.radii.pill,
+            }}
+          >
+            <Ionicons name="people" size={11} color="#4BAE8A" />
+            <Text style={{ color: '#4BAE8A', fontSize: 11, fontWeight: '700' }}>
+              {householdName}
+            </Text>
+          </View>
+        ) : (
+          <View
+            testID="use-next-personal-badge"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 3,
+              backgroundColor: theme.colors.bgGlass,
+              borderColor: theme.colors.border,
+              borderWidth: 1,
+              paddingHorizontal: 7,
+              paddingVertical: 2,
+              borderRadius: theme.radii.pill,
+            }}
+          >
+            <Ionicons name="person" size={10} color={theme.colors.textMuted} />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' }}>
+              Personal
+            </Text>
+          </View>
+        )}
       </View>
 
       {brand ? (

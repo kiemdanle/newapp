@@ -509,6 +509,7 @@ export function RecordList({
         <SectionList
           testID="pantry-record-list"
           sections={sections}
+          extraData={householdNames}
           scrollEnabled
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -566,6 +567,7 @@ export function RecordList({
         <FlatList
           testID="pantry-record-list"
           data={paginatedItems}
+          extraData={householdNames}
           scrollEnabled
           renderItem={renderItem}
           keyExtractor={keyExtractor}

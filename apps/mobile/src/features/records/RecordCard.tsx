@@ -57,8 +57,9 @@ export function RecordCard({
 
   const isHouseholdItem =
     showHouseholdBadge ?? (scope === 'all' && Boolean(record.householdId));
+  const isPersonalItem =
+    showHouseholdBadge === undefined ? (scope === 'all' && !record.householdId) : false;
   const badgeLabel = householdName || 'Shared';
-
   const status = expiryStatus(record.expiryDate);
   const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
   const statusBg = status === 'amber'
@@ -216,44 +217,12 @@ export function RecordCard({
                     {category}
                   </Text>
                 ) : null}
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                  <Text
-                    style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
-                    numberOfLines={2}
-                  >
-                    {displayName}
-                  </Text>
-                  {isHouseholdItem && (
-                    <View
-                      testID={`record-household-badge-${record.id}`}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 3,
-                        backgroundColor: theme.colors.primaryLight,
-                        borderColor: 'rgba(75, 174, 138, 0.3)',
-                        borderWidth: 1,
-                        paddingHorizontal: 6,
-                        paddingVertical: 2,
-                        borderRadius: theme.radii.pill,
-                        maxWidth: 120,
-                      }}
-                    >
-                      <Ionicons name="people-outline" size={11} color={theme.colors.primaryDark} />
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                        style={{
-                          color: theme.colors.primaryDark,
-                          fontSize: 10,
-                          fontWeight: '700',
-                        }}
-                      >
-                        {badgeLabel}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                <Text
+                  style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
+                  numberOfLines={2}
+                >
+                  {displayName}
+                </Text>
               </View>
               <View
                 testID={`record-expiry-status-${status}`}
@@ -264,9 +233,68 @@ export function RecordCard({
                 </Text>
               </View>
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-              Expires {formatDate(record.expiryDate, userCountry)}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {isHouseholdItem ? (
+                <View
+                  testID={`record-household-badge-${record.id}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    backgroundColor: 'rgba(75, 174, 138, 0.16)',
+                    borderColor: 'rgba(75, 174, 138, 0.45)',
+                    borderWidth: 1,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    borderRadius: theme.radii.pill,
+                    maxWidth: 140,
+                  }}
+                >
+                  <Ionicons name="people" size={11} color="#4BAE8A" />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={{
+                      color: '#4BAE8A',
+                      fontSize: 11,
+                      fontWeight: '700',
+                    }}
+                  >
+                    {badgeLabel}
+                  </Text>
+                </View>
+              ) : isPersonalItem ? (
+                <View
+                  testID={`record-personal-badge-${record.id}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    borderWidth: 1,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    borderRadius: theme.radii.pill,
+                  }}
+                >
+                  <Ionicons name="person" size={10} color={theme.colors.textMuted} />
+                  <Text
+                    style={{
+                      color: theme.colors.textMuted,
+                      fontSize: 11,
+                      fontWeight: '600',
+                    }}
+                  >
+                    Personal
+                  </Text>
+                </View>
+              ) : null}
+
+              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                Expires {formatDate(record.expiryDate, userCountry)}
+              </Text>
+            </View>
             {addedByName ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 3 }}>
                 added by {addedByName}

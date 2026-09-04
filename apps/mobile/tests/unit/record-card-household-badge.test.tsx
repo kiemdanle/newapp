@@ -75,6 +75,21 @@ describe('RecordCard Household Attribution Badge', () => {
     expect(screen.queryByTestId('record-household-badge-rec-test-1')).toBeNull();
   });
 
+  it('renders personal attribution badge for personal items when scope is "all"', () => {
+    const record = { ...baseRecord, householdId: null };
+    renderWithTheme(
+      <RecordCard
+        record={record}
+        onPress={jest.fn()}
+      />,
+      'expyrico',
+    );
+
+    const personalBadge = screen.getByTestId('record-personal-badge-rec-test-1');
+    expect(personalBadge).toBeTruthy();
+    expect(screen.getByText('Personal')).toBeTruthy();
+  });
+
   it('does not render attribution badge when scope is "personal" or "household"', () => {
     const record = { ...baseRecord, householdId: 'hh-1' };
 
