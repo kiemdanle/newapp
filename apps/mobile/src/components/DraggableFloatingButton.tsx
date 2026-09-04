@@ -18,7 +18,7 @@ export function computeSafeBounds(
 ): { minX: number; maxX: number; minY: number; maxY: number } {
   const minX = insets.left + 12;
   const maxX = Math.max(minX, screenWidth - buttonWidth - insets.right - 12);
-  const minY = insets.top + 12;
+  const minY = insets.top + 60;
   const bottomOffset = Math.max(insets.bottom, 16);
   const maxY = Math.max(minY, screenHeight - buttonHeight - bottomOffset);
   return { minX, maxX, minY, maxY };
@@ -46,8 +46,8 @@ export interface DraggableFloatingButtonProps {
 
 export function DraggableFloatingButton({
   children,
-  buttonWidth = 48,
-  buttonHeight = 48,
+  buttonWidth = 52,
+  buttonHeight = 52,
   onPress,
   onPositionChange,
   testID = 'draggable-floating-button',
@@ -59,8 +59,9 @@ export function DraggableFloatingButton({
 
   // Safe area bounds: allow freeform dragging all the way to the bottom safe area
   const bounds = computeSafeBounds(screenWidth, screenHeight, buttonWidth, buttonHeight, insets);
+  const boundsRef = useRef(bounds);
+  boundsRef.current = bounds;
   const { minX, maxX, minY, maxY } = bounds;
-
   // Default placement: aligned with bottom navigation bar in bottom right
   const defaultX = maxX;
   const defaultY = maxY;
@@ -131,9 +132,8 @@ export function DraggableFloatingButton({
         const target = clampCoordinates(
           currentPos.current.x + gestureState.dx,
           currentPos.current.y + gestureState.dy,
-          bounds,
+          boundsRef.current,
         );
-
         currentPos.current = target;
 
         Animated.spring(pan, {

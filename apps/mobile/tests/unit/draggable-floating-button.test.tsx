@@ -46,6 +46,26 @@ describe('DraggableFloatingButton', () => {
     );
   });
 
+  it('clamps bottom position allowing placement at the bottom navigation row on mount', () => {
+    useUiPreferencesStore.setState({ menuButtonPosition: { x: 150, y: 9999 } });
+    const handlePosChange = jest.fn();
+
+    render(
+      <DraggableFloatingButton
+        buttonWidth={52}
+        buttonHeight={52}
+        onPress={jest.fn()}
+        onPositionChange={handlePosChange}
+      >
+        <Text>Menu</Text>
+      </DraggableFloatingButton>,
+    );
+
+    expect(handlePosChange).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 150, y: 1252 }),
+    );
+  });
+
   it('updates store when setMenuButtonPosition is called', async () => {
     const store = useUiPreferencesStore.getState();
     await store.setMenuButtonPosition({ x: 200, y: 400 });
@@ -64,8 +84,8 @@ describe('DraggableFloatingButton', () => {
     expect(bounds.minX).toBe(22);
     // maxX = 400 - 48 - right(10) - 12 = 330
     expect(bounds.maxX).toBe(330);
-    // minY = top + 12 = 52
-    expect(bounds.minY).toBe(52);
+    // minY = top + 60 = 100
+    expect(bounds.minY).toBe(100);
     // maxY = 800 - 48 - Math.max(bottom(30), 16) = 722
     // Must be at the bottom navigation row (722), not restricted 70px above (< 660)
     expect(bounds.maxY).toBe(722);

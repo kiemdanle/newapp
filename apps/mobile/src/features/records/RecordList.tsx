@@ -14,7 +14,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelectionModeStore } from '../../store/selectionModeStore';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import {
@@ -100,7 +99,6 @@ export function RecordList({
   refreshing,
   onRefresh,
 }: RecordListProps) {
-  const insets = useSafeAreaInsets();
   const records = useActiveRecords();
   const { scope, householdId } = usePantryScope();
   const navigation = useNavigation<AppNavigationProp>();
@@ -632,7 +630,6 @@ export function RecordList({
           style={[
             styles.bulkActionBar,
             {
-              bottom: Math.max(insets.bottom, 16),
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
             },
@@ -791,6 +788,7 @@ const styles = StyleSheet.create({
   },
   bulkActionBar: {
     position: 'absolute',
+    bottom: 16,
     left: 16,
     right: 16,
     zIndex: 1000,

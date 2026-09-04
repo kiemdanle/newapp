@@ -156,6 +156,7 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [buttonPos, setButtonPos] = useState<{ x: number; y: number } | null>(null);
   const menuAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.spring(menuAnim, {
       toValue: isMenuOpen ? 1 : 0,
@@ -165,6 +166,11 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
     }).start();
   }, [isMenuOpen, menuAnim]);
 
+  useEffect(() => {
+    if (isSelectionMode) {
+      setIsMenuOpen(false);
+    }
+  }, [isSelectionMode]);
   const activeRouteName = state.routes[state.index]?.name as keyof TabsParamList;
   const actionConfig = TAB_ACTIONS[activeRouteName];
 
@@ -370,8 +376,8 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
 
       {/* Draggable Menu Button */}
       <DraggableFloatingButton
-        buttonWidth={48}
-        buttonHeight={48}
+        buttonWidth={52}
+        buttonHeight={52}
         onPress={toggleMenu}
         onPositionChange={setButtonPos}
       >
@@ -523,8 +529,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   menuButton: {
-    position: 'absolute',
-    right: 16,
     width: 52,
     height: 52,
     borderRadius: 26,
