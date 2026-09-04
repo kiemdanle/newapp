@@ -24,6 +24,14 @@ function makeRecord(overrides: Partial<LocalRecord> = {}): LocalRecord {
 }
 
 describe('filterAndSortRecords', () => {
+  beforeAll(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-09-03T12:00:00Z'));
+  });
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   const sampleRecords: LocalRecord[] = [
     makeRecord({
       id: 'rec-1',

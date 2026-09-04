@@ -275,6 +275,7 @@ exports[`home in expyrico snapshot 1`] = `
                 }
               }
               data={[]}
+              extraData={{}}
               getItem={[Function]}
               getItemCount={[Function]}
               keyExtractor={[Function]}
@@ -939,6 +940,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                 }
               }
               data={[]}
+              extraData={{}}
               getItem={[Function]}
               getItemCount={[Function]}
               keyExtractor={[Function]}

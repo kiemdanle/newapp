@@ -45,7 +45,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
-  const { scope: activeScope, householdId: scopeHhId, defaultPantryTarget } = usePantryScope();
+  const { scope: activeScope, householdId: scopeHhId, defaultPantryTarget, defaultHouseholdId } = usePantryScope();
   const { data: myHh } = useMyHouseholds();
   const households = myHh?.items ?? [];
 
@@ -53,9 +53,10 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     if (lockedPersonalScope) return null;
     if (activeScope === 'household') return scopeHhId;
     if (activeScope === 'all') {
-      if (defaultPantryTarget.scope === 'household' && defaultPantryTarget.householdId) {
-        return defaultPantryTarget.householdId;
-      }
+      const targetHhId =
+        (defaultPantryTarget?.scope === 'household' ? defaultPantryTarget.householdId : null) ??
+        defaultHouseholdId;
+      if (targetHhId) return targetHhId;
     }
     return null;
   });

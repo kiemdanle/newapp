@@ -1,6 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientContext, useQuery } from '@tanstack/react-query';
+import { useContext } from 'react';
 import { apiClient } from '../api/client';
+
+let fallbackQueryClient: QueryClient | null = null;
+function getFallbackQueryClient(): QueryClient {
+  if (!fallbackQueryClient) {
+    fallbackQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+        },
+      },
+    });
+  }
+  return fallbackQueryClient;
+}
 
 export const DEFAULT_TOP_4_UNITS = ['pcs', 'pack', 'can', 'bottle'] as const;
 export const TOP_UNITS_STORAGE_KEY = '@expyrico_pantry_top_units';
@@ -56,8 +72,12 @@ export function normalizeUnit(unit: string | null | undefined): string {
 }
 
 export function usePantryTopUnits(): string[] {
-  const { data } = useQuery({
-    queryKey: ['settings', 'pantry-units'],
+  const contextClient = useContext(QueryClientContext);
+  const client = contextClient ?? getFallbackQueryClient();
+
+  const { data } = useQuery(
+    {
+      queryKey: ['settings', 'pantry-units'],
     queryFn: async () => {
       try {
         const res = await apiClient.get<{ topUnits: string[] }>('/settings/pantry-units');
@@ -78,7 +98,7 @@ export function usePantryTopUnits(): string[] {
       return [...DEFAULT_TOP_4_UNITS];
     },
     staleTime: 5 * 60 * 1000,
-  });
+  }, client);
 
   return data ?? [...DEFAULT_TOP_4_UNITS];
 }

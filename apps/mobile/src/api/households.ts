@@ -1,5 +1,6 @@
 // apps/mobile/src/api/households.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientContext } from '@tanstack/react-query';
+import { useContext } from 'react';
 import type {
   Household,
   HouseholdCreate,
@@ -17,12 +18,29 @@ import { purgeHouseholdRecords, runSync } from '../db/sync';
 interface HouseholdMembersResponse { items: HouseholdMember[] }
 interface HouseholdListResponse { items: Household[] }
 
+let fallbackHouseholdsQueryClient: QueryClient | null = null;
+function getFallbackQueryClient(): QueryClient {
+  if (!fallbackHouseholdsQueryClient) {
+    fallbackHouseholdsQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          staleTime: Infinity,
+        },
+      },
+    });
+  }
+  return fallbackHouseholdsQueryClient;
+}
+
 export function useMyHouseholds() {
+  const contextClient = useContext(QueryClientContext);
+  const client = contextClient ?? getFallbackQueryClient();
   return useQuery({
     queryKey: ['households'],
     queryFn: () => apiClient.get<HouseholdListResponse>('/households/mine'),
     staleTime: 30_000,
-  });
+  }, client);
 }
 
 export function useHousehold(id: string | undefined) {
