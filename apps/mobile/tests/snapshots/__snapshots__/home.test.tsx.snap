@@ -192,7 +192,7 @@ exports[`home in expyrico snapshot 1`] = `
                             "alignItems": "center",
                             "flexDirection": "row",
                             "justifyContent": "space-between",
-                            "marginBottom": 2,
+                            "marginBottom": 4,
                           }
                         }
                       >
@@ -200,16 +200,27 @@ exports[`home in expyrico snapshot 1`] = `
                           style={
                             {
                               "alignItems": "center",
+                              "flex": 1,
                               "flexDirection": "row",
                               "gap": 10,
+                              "marginRight": 8,
+                              "minWidth": 0,
                             }
                           }
                         >
                           <Logo
                             size={28}
                           />
-                          <View>
+                          <View
+                            style={
+                              {
+                                "flex": 1,
+                                "minWidth": 0,
+                              }
+                            }
+                          >
                             <Text
+                              numberOfLines={1}
                               style={
                                 [
                                   {
@@ -225,6 +236,7 @@ exports[`home in expyrico snapshot 1`] = `
                               Your pantry
                             </Text>
                             <Text
+                              numberOfLines={1}
                               style={
                                 [
                                   {
@@ -246,23 +258,11 @@ exports[`home in expyrico snapshot 1`] = `
                             {
                               "alignItems": "center",
                               "flexDirection": "row",
+                              "flexShrink": 0,
                               "gap": 8,
                             }
                           }
                         >
-                          <Memo(Pressable)
-                            accessibilityLabel="View pantry history and discarded items"
-                            accessibilityRole="button"
-                            onPress={[Function]}
-                            style={[Function]}
-                            testID="home-pantry-history-btn"
-                          >
-                            <Unknown
-                              color="#4BAE8A"
-                              name="time-outline"
-                              size={20}
-                            />
-                          </Memo(Pressable)>
                           <Memo(Pressable)
                             accessibilityLabel="Share pantry with family or roommates"
                             accessibilityRole="button"
@@ -277,6 +277,131 @@ exports[`home in expyrico snapshot 1`] = `
                             />
                           </Memo(Pressable)>
                         </View>
+                      </View>
+                      <View
+                        style={
+                          {
+                            "flexDirection": "row",
+                            "gap": 8,
+                            "marginBottom": 2,
+                            "marginTop": 2,
+                          }
+                        }
+                      >
+                        <Memo(Pressable)
+                          accessibilityLabel="In Stock items, 0 items"
+                          accessibilityRole="tab"
+                          accessibilityState={
+                            {
+                              "selected": true,
+                            }
+                          }
+                          onPress={[Function]}
+                          style={
+                            [
+                              {
+                                "alignItems": "center",
+                                "borderRadius": 999,
+                                "borderWidth": 1,
+                                "flex": 1,
+                                "flexDirection": "row",
+                                "justifyContent": "center",
+                                "minHeight": 44,
+                                "paddingHorizontal": 12,
+                              },
+                              {
+                                "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                "borderColor": "#4BAE8A",
+                              },
+                            ]
+                          }
+                          testID="pantry-tab-in-stock"
+                        >
+                          <Unknown
+                            color="#3A8F6F"
+                            name="cube-outline"
+                            size={16}
+                            style={
+                              {
+                                "marginRight": 6,
+                              }
+                            }
+                          />
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                },
+                                {
+                                  "color": "#3A8F6F",
+                                  "fontWeight": "700",
+                                },
+                              ]
+                            }
+                          >
+                            In Stock (
+                            0
+                            )
+                          </Text>
+                        </Memo(Pressable)>
+                        <Memo(Pressable)
+                          accessibilityLabel="Pantry history and discarded items, 0 items"
+                          accessibilityRole="tab"
+                          accessibilityState={
+                            {
+                              "selected": false,
+                            }
+                          }
+                          onPress={[Function]}
+                          style={
+                            [
+                              {
+                                "alignItems": "center",
+                                "borderRadius": 999,
+                                "borderWidth": 1,
+                                "flex": 1,
+                                "flexDirection": "row",
+                                "justifyContent": "center",
+                                "minHeight": 44,
+                                "paddingHorizontal": 12,
+                              },
+                              {
+                                "backgroundColor": "#FAFAF8",
+                                "borderColor": "#F0F0ED",
+                              },
+                            ]
+                          }
+                          testID="pantry-tab-history"
+                        >
+                          <Unknown
+                            color="#8C8C85"
+                            name="time-outline"
+                            size={16}
+                            style={
+                              {
+                                "marginRight": 6,
+                              }
+                            }
+                          />
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                },
+                                {
+                                  "color": "#8C8C85",
+                                  "fontWeight": "600",
+                                },
+                              ]
+                            }
+                          >
+                            History (
+                            0
+                            )
+                          </Text>
+                        </Memo(Pressable)>
                       </View>
                       <ScopeToggle />
                     </View>
@@ -352,7 +477,7 @@ exports[`home in expyrico snapshot 1`] = `
                               "alignItems": "center",
                               "flexDirection": "row",
                               "justifyContent": "space-between",
-                              "marginBottom": 2,
+                              "marginBottom": 4,
                             }
                           }
                         >
@@ -360,8 +485,11 @@ exports[`home in expyrico snapshot 1`] = `
                             style={
                               {
                                 "alignItems": "center",
+                                "flex": 1,
                                 "flexDirection": "row",
                                 "gap": 10,
+                                "marginRight": 8,
+                                "minWidth": 0,
                               }
                             }
                           >
@@ -492,8 +620,16 @@ exports[`home in expyrico snapshot 1`] = `
                                 </RNSVGGroup>
                               </RNSVGSvgView>
                             </View>
-                            <View>
+                            <View
+                              style={
+                                {
+                                  "flex": 1,
+                                  "minWidth": 0,
+                                }
+                              }
+                            >
                               <Text
+                                numberOfLines={1}
                                 style={
                                   [
                                     {
@@ -509,6 +645,7 @@ exports[`home in expyrico snapshot 1`] = `
                                 Your pantry
                               </Text>
                               <Text
+                                numberOfLines={1}
                                 style={
                                   [
                                     {
@@ -530,57 +667,11 @@ exports[`home in expyrico snapshot 1`] = `
                               {
                                 "alignItems": "center",
                                 "flexDirection": "row",
+                                "flexShrink": 0,
                                 "gap": 8,
                               }
                             }
                           >
-                            <View
-                              accessibilityLabel="View pantry history and discarded items"
-                              accessibilityRole="button"
-                              accessibilityState={
-                                {
-                                  "busy": undefined,
-                                  "checked": undefined,
-                                  "disabled": undefined,
-                                  "expanded": undefined,
-                                  "selected": undefined,
-                                }
-                              }
-                              accessibilityValue={
-                                {
-                                  "max": undefined,
-                                  "min": undefined,
-                                  "now": undefined,
-                                  "text": undefined,
-                                }
-                              }
-                              accessible={true}
-                              collapsable={false}
-                              focusable={true}
-                              onBlur={[Function]}
-                              onClick={[Function]}
-                              onFocus={[Function]}
-                              onResponderGrant={[Function]}
-                              onResponderMove={[Function]}
-                              onResponderRelease={[Function]}
-                              onResponderTerminate={[Function]}
-                              onResponderTerminationRequest={[Function]}
-                              onStartShouldSetResponder={[Function]}
-                              style={
-                                {
-                                  "alignItems": "center",
-                                  "backgroundColor": "#FAFAF8",
-                                  "borderColor": "#F0F0ED",
-                                  "borderRadius": 999,
-                                  "borderWidth": 1,
-                                  "height": 44,
-                                  "justifyContent": "center",
-                                  "opacity": 1,
-                                  "width": 44,
-                                }
-                              }
-                              testID="home-pantry-history-btn"
-                            />
                             <View
                               accessibilityLabel="Share pantry with family or roommates"
                               accessibilityRole="button"
@@ -622,12 +713,164 @@ exports[`home in expyrico snapshot 1`] = `
                                   "borderWidth": 1,
                                   "height": 44,
                                   "justifyContent": "center",
+                                  "minHeight": 44,
                                   "opacity": 1,
                                   "width": 44,
                                 }
                               }
                               testID="home-share-pantry-btn"
                             />
+                          </View>
+                        </View>
+                        <View
+                          style={
+                            {
+                              "flexDirection": "row",
+                              "gap": 8,
+                              "marginBottom": 2,
+                              "marginTop": 2,
+                            }
+                          }
+                        >
+                          <View
+                            accessibilityLabel="In Stock items, 0 items"
+                            accessibilityRole="tab"
+                            accessibilityState={
+                              {
+                                "busy": undefined,
+                                "checked": undefined,
+                                "disabled": undefined,
+                                "expanded": undefined,
+                                "selected": true,
+                              }
+                            }
+                            accessibilityValue={
+                              {
+                                "max": undefined,
+                                "min": undefined,
+                                "now": undefined,
+                                "text": undefined,
+                              }
+                            }
+                            accessible={true}
+                            collapsable={false}
+                            focusable={true}
+                            onBlur={[Function]}
+                            onClick={[Function]}
+                            onFocus={[Function]}
+                            onResponderGrant={[Function]}
+                            onResponderMove={[Function]}
+                            onResponderRelease={[Function]}
+                            onResponderTerminate={[Function]}
+                            onResponderTerminationRequest={[Function]}
+                            onStartShouldSetResponder={[Function]}
+                            style={
+                              [
+                                {
+                                  "alignItems": "center",
+                                  "borderRadius": 999,
+                                  "borderWidth": 1,
+                                  "flex": 1,
+                                  "flexDirection": "row",
+                                  "justifyContent": "center",
+                                  "minHeight": 44,
+                                  "paddingHorizontal": 12,
+                                },
+                                {
+                                  "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                  "borderColor": "#4BAE8A",
+                                },
+                              ]
+                            }
+                            testID="pantry-tab-in-stock"
+                          >
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                  },
+                                  {
+                                    "color": "#3A8F6F",
+                                    "fontWeight": "700",
+                                  },
+                                ]
+                              }
+                            >
+                              In Stock (
+                              0
+                              )
+                            </Text>
+                          </View>
+                          <View
+                            accessibilityLabel="Pantry history and discarded items, 0 items"
+                            accessibilityRole="tab"
+                            accessibilityState={
+                              {
+                                "busy": undefined,
+                                "checked": undefined,
+                                "disabled": undefined,
+                                "expanded": undefined,
+                                "selected": false,
+                              }
+                            }
+                            accessibilityValue={
+                              {
+                                "max": undefined,
+                                "min": undefined,
+                                "now": undefined,
+                                "text": undefined,
+                              }
+                            }
+                            accessible={true}
+                            collapsable={false}
+                            focusable={true}
+                            onBlur={[Function]}
+                            onClick={[Function]}
+                            onFocus={[Function]}
+                            onResponderGrant={[Function]}
+                            onResponderMove={[Function]}
+                            onResponderRelease={[Function]}
+                            onResponderTerminate={[Function]}
+                            onResponderTerminationRequest={[Function]}
+                            onStartShouldSetResponder={[Function]}
+                            style={
+                              [
+                                {
+                                  "alignItems": "center",
+                                  "borderRadius": 999,
+                                  "borderWidth": 1,
+                                  "flex": 1,
+                                  "flexDirection": "row",
+                                  "justifyContent": "center",
+                                  "minHeight": 44,
+                                  "paddingHorizontal": 12,
+                                },
+                                {
+                                  "backgroundColor": "#FAFAF8",
+                                  "borderColor": "#F0F0ED",
+                                },
+                              ]
+                            }
+                            testID="pantry-tab-history"
+                          >
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                  },
+                                  {
+                                    "color": "#8C8C85",
+                                    "fontWeight": "600",
+                                  },
+                                ]
+                              }
+                            >
+                              History (
+                              0
+                              )
+                            </Text>
                           </View>
                         </View>
                       </View>
@@ -923,7 +1166,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                             "alignItems": "center",
                             "flexDirection": "row",
                             "justifyContent": "space-between",
-                            "marginBottom": 2,
+                            "marginBottom": 4,
                           }
                         }
                       >
@@ -931,16 +1174,27 @@ exports[`home in expyricoDark snapshot 1`] = `
                           style={
                             {
                               "alignItems": "center",
+                              "flex": 1,
                               "flexDirection": "row",
                               "gap": 10,
+                              "marginRight": 8,
+                              "minWidth": 0,
                             }
                           }
                         >
                           <Logo
                             size={28}
                           />
-                          <View>
+                          <View
+                            style={
+                              {
+                                "flex": 1,
+                                "minWidth": 0,
+                              }
+                            }
+                          >
                             <Text
+                              numberOfLines={1}
                               style={
                                 [
                                   {
@@ -956,6 +1210,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                               Your pantry
                             </Text>
                             <Text
+                              numberOfLines={1}
                               style={
                                 [
                                   {
@@ -977,23 +1232,11 @@ exports[`home in expyricoDark snapshot 1`] = `
                             {
                               "alignItems": "center",
                               "flexDirection": "row",
+                              "flexShrink": 0,
                               "gap": 8,
                             }
                           }
                         >
-                          <Memo(Pressable)
-                            accessibilityLabel="View pantry history and discarded items"
-                            accessibilityRole="button"
-                            onPress={[Function]}
-                            style={[Function]}
-                            testID="home-pantry-history-btn"
-                          >
-                            <Unknown
-                              color="#4BAE8A"
-                              name="time-outline"
-                              size={20}
-                            />
-                          </Memo(Pressable)>
                           <Memo(Pressable)
                             accessibilityLabel="Share pantry with family or roommates"
                             accessibilityRole="button"
@@ -1008,6 +1251,131 @@ exports[`home in expyricoDark snapshot 1`] = `
                             />
                           </Memo(Pressable)>
                         </View>
+                      </View>
+                      <View
+                        style={
+                          {
+                            "flexDirection": "row",
+                            "gap": 8,
+                            "marginBottom": 2,
+                            "marginTop": 2,
+                          }
+                        }
+                      >
+                        <Memo(Pressable)
+                          accessibilityLabel="In Stock items, 0 items"
+                          accessibilityRole="tab"
+                          accessibilityState={
+                            {
+                              "selected": true,
+                            }
+                          }
+                          onPress={[Function]}
+                          style={
+                            [
+                              {
+                                "alignItems": "center",
+                                "borderRadius": 999,
+                                "borderWidth": 1,
+                                "flex": 1,
+                                "flexDirection": "row",
+                                "justifyContent": "center",
+                                "minHeight": 44,
+                                "paddingHorizontal": 12,
+                              },
+                              {
+                                "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                "borderColor": "#4BAE8A",
+                              },
+                            ]
+                          }
+                          testID="pantry-tab-in-stock"
+                        >
+                          <Unknown
+                            color="#3A8F6F"
+                            name="cube-outline"
+                            size={16}
+                            style={
+                              {
+                                "marginRight": 6,
+                              }
+                            }
+                          />
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                },
+                                {
+                                  "color": "#3A8F6F",
+                                  "fontWeight": "700",
+                                },
+                              ]
+                            }
+                          >
+                            In Stock (
+                            0
+                            )
+                          </Text>
+                        </Memo(Pressable)>
+                        <Memo(Pressable)
+                          accessibilityLabel="Pantry history and discarded items, 0 items"
+                          accessibilityRole="tab"
+                          accessibilityState={
+                            {
+                              "selected": false,
+                            }
+                          }
+                          onPress={[Function]}
+                          style={
+                            [
+                              {
+                                "alignItems": "center",
+                                "borderRadius": 999,
+                                "borderWidth": 1,
+                                "flex": 1,
+                                "flexDirection": "row",
+                                "justifyContent": "center",
+                                "minHeight": 44,
+                                "paddingHorizontal": 12,
+                              },
+                              {
+                                "backgroundColor": "#191F1B",
+                                "borderColor": "#2D3A34",
+                              },
+                            ]
+                          }
+                          testID="pantry-tab-history"
+                        >
+                          <Unknown
+                            color="#B7BDB7"
+                            name="time-outline"
+                            size={16}
+                            style={
+                              {
+                                "marginRight": 6,
+                              }
+                            }
+                          />
+                          <Text
+                            style={
+                              [
+                                {
+                                  "fontSize": 13,
+                                },
+                                {
+                                  "color": "#B7BDB7",
+                                  "fontWeight": "600",
+                                },
+                              ]
+                            }
+                          >
+                            History (
+                            0
+                            )
+                          </Text>
+                        </Memo(Pressable)>
                       </View>
                       <ScopeToggle />
                     </View>
@@ -1083,7 +1451,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                               "alignItems": "center",
                               "flexDirection": "row",
                               "justifyContent": "space-between",
-                              "marginBottom": 2,
+                              "marginBottom": 4,
                             }
                           }
                         >
@@ -1091,8 +1459,11 @@ exports[`home in expyricoDark snapshot 1`] = `
                             style={
                               {
                                 "alignItems": "center",
+                                "flex": 1,
                                 "flexDirection": "row",
                                 "gap": 10,
+                                "marginRight": 8,
+                                "minWidth": 0,
                               }
                             }
                           >
@@ -1223,8 +1594,16 @@ exports[`home in expyricoDark snapshot 1`] = `
                                 </RNSVGGroup>
                               </RNSVGSvgView>
                             </View>
-                            <View>
+                            <View
+                              style={
+                                {
+                                  "flex": 1,
+                                  "minWidth": 0,
+                                }
+                              }
+                            >
                               <Text
+                                numberOfLines={1}
                                 style={
                                   [
                                     {
@@ -1240,6 +1619,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                                 Your pantry
                               </Text>
                               <Text
+                                numberOfLines={1}
                                 style={
                                   [
                                     {
@@ -1261,57 +1641,11 @@ exports[`home in expyricoDark snapshot 1`] = `
                               {
                                 "alignItems": "center",
                                 "flexDirection": "row",
+                                "flexShrink": 0,
                                 "gap": 8,
                               }
                             }
                           >
-                            <View
-                              accessibilityLabel="View pantry history and discarded items"
-                              accessibilityRole="button"
-                              accessibilityState={
-                                {
-                                  "busy": undefined,
-                                  "checked": undefined,
-                                  "disabled": undefined,
-                                  "expanded": undefined,
-                                  "selected": undefined,
-                                }
-                              }
-                              accessibilityValue={
-                                {
-                                  "max": undefined,
-                                  "min": undefined,
-                                  "now": undefined,
-                                  "text": undefined,
-                                }
-                              }
-                              accessible={true}
-                              collapsable={false}
-                              focusable={true}
-                              onBlur={[Function]}
-                              onClick={[Function]}
-                              onFocus={[Function]}
-                              onResponderGrant={[Function]}
-                              onResponderMove={[Function]}
-                              onResponderRelease={[Function]}
-                              onResponderTerminate={[Function]}
-                              onResponderTerminationRequest={[Function]}
-                              onStartShouldSetResponder={[Function]}
-                              style={
-                                {
-                                  "alignItems": "center",
-                                  "backgroundColor": "#191F1B",
-                                  "borderColor": "#2D3A34",
-                                  "borderRadius": 999,
-                                  "borderWidth": 1,
-                                  "height": 44,
-                                  "justifyContent": "center",
-                                  "opacity": 1,
-                                  "width": 44,
-                                }
-                              }
-                              testID="home-pantry-history-btn"
-                            />
                             <View
                               accessibilityLabel="Share pantry with family or roommates"
                               accessibilityRole="button"
@@ -1353,12 +1687,164 @@ exports[`home in expyricoDark snapshot 1`] = `
                                   "borderWidth": 1,
                                   "height": 44,
                                   "justifyContent": "center",
+                                  "minHeight": 44,
                                   "opacity": 1,
                                   "width": 44,
                                 }
                               }
                               testID="home-share-pantry-btn"
                             />
+                          </View>
+                        </View>
+                        <View
+                          style={
+                            {
+                              "flexDirection": "row",
+                              "gap": 8,
+                              "marginBottom": 2,
+                              "marginTop": 2,
+                            }
+                          }
+                        >
+                          <View
+                            accessibilityLabel="In Stock items, 0 items"
+                            accessibilityRole="tab"
+                            accessibilityState={
+                              {
+                                "busy": undefined,
+                                "checked": undefined,
+                                "disabled": undefined,
+                                "expanded": undefined,
+                                "selected": true,
+                              }
+                            }
+                            accessibilityValue={
+                              {
+                                "max": undefined,
+                                "min": undefined,
+                                "now": undefined,
+                                "text": undefined,
+                              }
+                            }
+                            accessible={true}
+                            collapsable={false}
+                            focusable={true}
+                            onBlur={[Function]}
+                            onClick={[Function]}
+                            onFocus={[Function]}
+                            onResponderGrant={[Function]}
+                            onResponderMove={[Function]}
+                            onResponderRelease={[Function]}
+                            onResponderTerminate={[Function]}
+                            onResponderTerminationRequest={[Function]}
+                            onStartShouldSetResponder={[Function]}
+                            style={
+                              [
+                                {
+                                  "alignItems": "center",
+                                  "borderRadius": 999,
+                                  "borderWidth": 1,
+                                  "flex": 1,
+                                  "flexDirection": "row",
+                                  "justifyContent": "center",
+                                  "minHeight": 44,
+                                  "paddingHorizontal": 12,
+                                },
+                                {
+                                  "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                  "borderColor": "#4BAE8A",
+                                },
+                              ]
+                            }
+                            testID="pantry-tab-in-stock"
+                          >
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                  },
+                                  {
+                                    "color": "#3A8F6F",
+                                    "fontWeight": "700",
+                                  },
+                                ]
+                              }
+                            >
+                              In Stock (
+                              0
+                              )
+                            </Text>
+                          </View>
+                          <View
+                            accessibilityLabel="Pantry history and discarded items, 0 items"
+                            accessibilityRole="tab"
+                            accessibilityState={
+                              {
+                                "busy": undefined,
+                                "checked": undefined,
+                                "disabled": undefined,
+                                "expanded": undefined,
+                                "selected": false,
+                              }
+                            }
+                            accessibilityValue={
+                              {
+                                "max": undefined,
+                                "min": undefined,
+                                "now": undefined,
+                                "text": undefined,
+                              }
+                            }
+                            accessible={true}
+                            collapsable={false}
+                            focusable={true}
+                            onBlur={[Function]}
+                            onClick={[Function]}
+                            onFocus={[Function]}
+                            onResponderGrant={[Function]}
+                            onResponderMove={[Function]}
+                            onResponderRelease={[Function]}
+                            onResponderTerminate={[Function]}
+                            onResponderTerminationRequest={[Function]}
+                            onStartShouldSetResponder={[Function]}
+                            style={
+                              [
+                                {
+                                  "alignItems": "center",
+                                  "borderRadius": 999,
+                                  "borderWidth": 1,
+                                  "flex": 1,
+                                  "flexDirection": "row",
+                                  "justifyContent": "center",
+                                  "minHeight": 44,
+                                  "paddingHorizontal": 12,
+                                },
+                                {
+                                  "backgroundColor": "#191F1B",
+                                  "borderColor": "#2D3A34",
+                                },
+                              ]
+                            }
+                            testID="pantry-tab-history"
+                          >
+                            <Text
+                              style={
+                                [
+                                  {
+                                    "fontSize": 13,
+                                  },
+                                  {
+                                    "color": "#B7BDB7",
+                                    "fontWeight": "600",
+                                  },
+                                ]
+                              }
+                            >
+                              History (
+                              0
+                              )
+                            </Text>
                           </View>
                         </View>
                       </View>

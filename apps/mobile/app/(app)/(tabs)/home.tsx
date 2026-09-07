@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
@@ -6,15 +7,18 @@ import { Screen } from '../../../src/components/Screen';
 import { RecordList } from '../../../src/features/records/RecordList';
 import { UseNextHero } from '../../../src/features/records/UseNextHero';
 import { ScopeToggle } from '../../../src/features/households/ScopeToggle';
-import { useActiveRecords } from '../../../src/api/records';
+import { useActiveRecords, usePantryHistoryRecords } from '../../../src/api/records';
 import { groupRecords } from '../../../src/features/records/groupRecords';
 import { useTheme } from '../../../src/theme/useTheme';
 import { Logo } from '../../../src/components/Logo';
+import { PantryHistoryView } from '../../../src/features/records/PantryHistoryView';
 
 export default function HomeTab() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
+  const [activeTab, setActiveTab] = useState<'in_stock' | 'history'>('in_stock');
   const records = useActiveRecords();
+  const allHistoryRecords = usePantryHistoryRecords('all');
   const groups = groupRecords(records);
   const totalUrgent = groups.expired.length + groups.today.length + groups.thisWeek.length;
   const renderHeader = (isFiltered: boolean) => (
@@ -22,36 +26,23 @@ export default function HomeTab() {
       <View style={styles.header}>
         <View style={styles.brandRow}>
           <Logo size={28} />
-          <View>
-            <Text style={[styles.greeting, { color: theme.colors.text }]}>Your pantry</Text>
-            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>Use what's expiring first.</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={[styles.greeting, { color: theme.colors.text }]} numberOfLines={1}>
+              Your pantry
+            </Text>
+            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]} numberOfLines={1}>
+              Use what&apos;s expiring first.
+            </Text>
           </View>
         </View>
         <View style={styles.headerActions}>
           {totalUrgent > 0 ? (
             <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}>
-              <Text style={[styles.countText, { color: theme.colors.primaryDark }]}>{totalUrgent} need attention</Text>
+              <Text style={[styles.countText, { color: theme.colors.primaryDark }]} numberOfLines={1}>
+                {totalUrgent} urgent
+              </Text>
             </View>
           ) : null}
-          <Pressable
-            testID="home-pantry-history-btn"
-            accessibilityRole="button"
-            accessibilityLabel="View pantry history and discarded items"
-            onPress={() => navigation.navigate('PantryHistory')}
-            style={({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: theme.radii.pill,
-              backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
-              borderWidth: 1,
-              borderColor: pressed ? theme.colors.primary : theme.colors.border,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
-          </Pressable>
           <Pressable
             testID="home-share-pantry-btn"
             accessibilityRole="button"
@@ -60,6 +51,7 @@ export default function HomeTab() {
             style={({ pressed }) => ({
               width: 44,
               height: 44,
+              minHeight: 44,
               borderRadius: theme.radii.pill,
               backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
               borderWidth: 1,
@@ -73,8 +65,82 @@ export default function HomeTab() {
           </Pressable>
         </View>
       </View>
+
+      {/* Segmented Top Tabs: In Stock vs History */}
+      <View style={styles.tabBar}>
+        <Pressable
+          testID="pantry-tab-in-stock"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'in_stock' }}
+          accessibilityLabel={`In Stock items, ${records.length} items`}
+          onPress={() => setActiveTab('in_stock')}
+          style={[
+            styles.tabItem,
+            {
+              backgroundColor:
+                activeTab === 'in_stock' ? 'rgba(75, 174, 138, 0.14)' : theme.colors.bgElevated,
+              borderColor: activeTab === 'in_stock' ? '#4BAE8A' : theme.colors.border,
+            },
+          ]}
+        >
+          <Ionicons
+            name="cube-outline"
+            size={16}
+            color={activeTab === 'in_stock' ? '#3A8F6F' : theme.colors.textMuted}
+            style={{ marginRight: 6 }}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color: activeTab === 'in_stock' ? '#3A8F6F' : theme.colors.textMuted,
+                fontWeight: activeTab === 'in_stock' ? '700' : '600',
+              },
+            ]}
+          >
+            In Stock ({records.length})
+          </Text>
+        </Pressable>
+
+        <Pressable
+          testID="pantry-tab-history"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === 'history' }}
+          accessibilityLabel={`Pantry history and discarded items, ${allHistoryRecords.length} items`}
+          onPress={() => setActiveTab('history')}
+          style={[
+            styles.tabItem,
+            {
+              backgroundColor:
+                activeTab === 'history' ? 'rgba(75, 174, 138, 0.14)' : theme.colors.bgElevated,
+              borderColor: activeTab === 'history' ? '#4BAE8A' : theme.colors.border,
+            },
+          ]}
+        >
+          <Ionicons
+            name="time-outline"
+            size={16}
+            color={activeTab === 'history' ? '#3A8F6F' : theme.colors.textMuted}
+            style={{ marginRight: 6 }}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              {
+                color: activeTab === 'history' ? '#3A8F6F' : theme.colors.textMuted,
+                fontWeight: activeTab === 'history' ? '700' : '600',
+              },
+            ]}
+          >
+            History ({allHistoryRecords.length})
+          </Text>
+        </Pressable>
+      </View>
+
       <ScopeToggle />
-      {records.length > 0 && !isFiltered ? <UseNextHero groups={groups} /> : null}
+      {activeTab === 'in_stock' && records.length > 0 && !isFiltered ? (
+        <UseNextHero groups={groups} />
+      ) : null}
     </View>
   );
 
@@ -90,7 +156,11 @@ export default function HomeTab() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Screen scroll={false} padded={false}>
-        <RecordList header={renderHeader} empty={empty} />
+        {activeTab === 'in_stock' ? (
+          <RecordList header={renderHeader} empty={empty} />
+        ) : (
+          <PantryHistoryView header={renderHeader} />
+        )}
       </Screen>
     </View>
   );
@@ -98,11 +168,23 @@ export default function HomeTab() {
 
 const styles = StyleSheet.create({
   headerContent: { gap: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', gap: 10, flex: 1, minWidth: 0, marginRight: 8 },
+  tabBar: { flexDirection: 'row', gap: 8, marginTop: 2, marginBottom: 2 },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  tabText: { fontSize: 13 },
   greeting: { fontSize: 20, fontWeight: '700' },
-  countPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  countPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   countText: { fontSize: 12, fontWeight: '700' },
   headerSubcopy: { fontSize: 13, marginTop: 2 },
   emptyCard: { alignItems: 'center', borderWidth: 1, gap: 10, padding: 24 },

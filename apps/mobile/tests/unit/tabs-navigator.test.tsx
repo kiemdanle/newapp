@@ -20,6 +20,7 @@ jest.mock('../../src/db/sync', () => ({
 // Mock records
 jest.mock('../../src/api/records', () => ({
   useActiveRecords: () => [],
+  usePantryHistoryRecords: () => [],
   patchLocalRecord: jest.fn(),
   deleteLocalRecord: jest.fn(),
 }));
