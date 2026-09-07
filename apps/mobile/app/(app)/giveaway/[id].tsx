@@ -164,7 +164,7 @@ export default function GiveawayDetailScreen() {
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 110,
+          paddingBottom: Math.max(insets.bottom, 34) + 90,
           gap: 14,
         }}
         showsVerticalScrollIndicator={false}
@@ -479,7 +479,7 @@ export default function GiveawayDetailScreen() {
           {
             backgroundColor: theme.colors.bgElevated,
             borderTopColor: theme.colors.border,
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: Math.max(insets.bottom, 34),
           },
         ]}
       >

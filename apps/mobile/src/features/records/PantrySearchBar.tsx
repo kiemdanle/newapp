@@ -1,6 +1,14 @@
 // apps/mobile/src/features/records/PantrySearchBar.tsx
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputSubmitEditingEventData,
+  View,
+} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../../theme/useTheme';
 
@@ -19,33 +27,43 @@ export function PantrySearchBar({
 }: PantrySearchBarProps) {
   const theme = useTheme();
   const [localText, setLocalText] = useState(value);
-  const debounceTimerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const textRef = useRef(value);
+  const isFocusedRef = useRef(false);
 
-  // Synchronize when external reset occurs (e.g. from Clear All chips)
+  // Synchronize ONLY when external reset occurs (e.g. from Clear All chips or reset)
+  // NEVER push value back into localText if the input is actively focused by the user
+  // and localText matches value. That prevents React Native Android from calling native
+  // EditText.setText(), which cancels the active Shift/IME composition state!
   useEffect(() => {
-    setLocalText(value);
+    if (value === '') {
+      textRef.current = '';
+      setLocalText('');
+    } else if (!isFocusedRef.current && value !== textRef.current) {
+      textRef.current = value;
+      setLocalText(value);
+    }
   }, [value]);
 
   const handleChangeText = (text: string) => {
+    textRef.current = text;
     setLocalText(text);
-    clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => {
-      onChangeText(text);
-    }, 300);
+  };
+
+  const handleSearch = () => {
+    onChangeText(textRef.current.trim());
+  };
+
+  const handleSubmitEditing = (
+    e?: NativeSyntheticEvent<TextInputSubmitEditingEventData>,
+  ) => {
+    const text = e?.nativeEvent?.text !== undefined ? e.nativeEvent.text : textRef.current;
+    onChangeText(text.trim());
   };
 
   const handleClear = () => {
-    clearTimeout(debounceTimerRef.current);
+    textRef.current = '';
     setLocalText('');
-    onChangeText('');
   };
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(debounceTimerRef.current);
-    };
-  }, []);
-
   const isFilterActive = activeFilterCount > 0;
 
   return (
@@ -60,12 +78,6 @@ export function PantrySearchBar({
           },
         ]}
       >
-        <Ionicons
-          name="search-outline"
-          size={18}
-          color={theme.colors.textMuted}
-          style={styles.searchIcon}
-        />
         <TextInput
           testID="pantry-search-input"
           accessibilityRole="search"
@@ -73,7 +85,14 @@ export function PantrySearchBar({
           placeholder="Search name, brand, category, notes…"
           placeholderTextColor={theme.colors.textMuted}
           value={localText}
+          onFocus={() => {
+            isFocusedRef.current = true;
+          }}
+          onBlur={() => {
+            isFocusedRef.current = false;
+          }}
           onChangeText={handleChangeText}
+          onSubmitEditing={handleSubmitEditing}
           returnKeyType="search"
           autoCapitalize="none"
           autoCorrect={false}
@@ -85,12 +104,26 @@ export function PantrySearchBar({
             accessibilityRole="button"
             accessibilityLabel="Clear search"
             onPress={handleClear}
-            hitSlop={12}
+            hitSlop={8}
             style={styles.clearBtn}
           >
             <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
           </Pressable>
         ) : null}
+        <Pressable
+          testID="pantry-search-submit-btn"
+          accessibilityRole="button"
+          accessibilityLabel="Search"
+          onPress={handleSearch}
+          hitSlop={8}
+          style={styles.searchSubmitBtn}
+        >
+          <Ionicons
+            name="search-outline"
+            size={20}
+            color={localText.trim().length > 0 ? theme.colors.primary : theme.colors.textMuted}
+          />
+        </Pressable>
       </View>
 
       <Pressable
@@ -143,10 +176,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 44,
     borderWidth: 1,
-    paddingHorizontal: 12,
-  },
-  searchIcon: {
-    marginRight: 8,
+    paddingLeft: 14,
+    paddingRight: 8,
+    gap: 6,
   },
   input: {
     flex: 1,
@@ -155,6 +187,11 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     padding: 4,
+  },
+  searchSubmitBtn: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterBtn: {
     width: 44,

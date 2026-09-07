@@ -5,7 +5,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
-import { notificationScheduleQueue } from '../../queues/index.js';
+import { notificationScheduleQueue, notificationSendQueue } from '../../queues/index.js';
 import { assertCanWriteRecord, assertCanAssignToHousehold } from '../../services/households/permissions.js';
 import { fanOutHouseholdRecordReminders, reschedulePersonalRecordReminders } from '../../services/households/household-reminders.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
@@ -51,16 +51,25 @@ export async function patchRecordRoute(app: FastifyInstance) {
       }
     }
 
+    const effectiveStatus = input.status ?? existing.status;
+    const isBecomingInactive =
+      (input.status === 'consumed' || input.status === 'discarded') && existing.status === 'active';
+    const isBecomingActive =
+      input.status === 'active' && existing.status !== 'active';
+    const isRemainingActive = effectiveStatus === 'active';
+
     const expiryChanged =
       input.expiryDate !== undefined &&
       input.expiryDate !== existing.expiryDate.toISOString().slice(0, 10);
     const offsetsChanged = input.notificationOffsetsDays !== undefined;
     const scopeChanged = input.householdId !== undefined && input.householdId !== oldHouseholdId;
-    const reschedule = expiryChanged || offsetsChanged || scopeChanged;
+    const reschedule = isRemainingActive && (expiryChanged || offsetsChanged || scopeChanged || isBecomingActive);
 
     const nextExpiry = input.expiryDate ? new Date(input.expiryDate) : existing.expiryDate;
     let nextNotifyAt: string[];
-    if (reschedule) {
+    if (effectiveStatus !== 'active') {
+      nextNotifyAt = [];
+    } else if (reschedule) {
       let offsets = input.notificationOffsetsDays;
       if (offsets === undefined) {
         const user = await prisma.user.findUnique({
@@ -104,15 +113,44 @@ export async function patchRecordRoute(app: FastifyInstance) {
           ...(input.notes !== undefined ? { notes: input.notes } : {}),
           ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
-          ...(input.status === 'consumed' ? { consumedAt: new Date() } : {}),
-          ...(reschedule ? { notifyAt: nextNotifyAt } : {}),
+          ...(input.status === 'consumed'
+            ? {
+                consumedAt: input.consumedAt ? new Date(input.consumedAt) : new Date(),
+                discardedAt: null,
+                discardReason: null,
+              }
+            : {}),
+          ...(input.status === 'discarded'
+            ? {
+                discardedAt: input.discardedAt ? new Date(input.discardedAt) : new Date(),
+                discardReason: input.discardReason || 'other',
+                consumedAt: null,
+              }
+            : {}),
+          ...(input.status === 'active'
+            ? {
+                consumedAt: null,
+                discardedAt: null,
+                discardReason: null,
+              }
+            : {}),
+          ...(effectiveStatus !== 'active' ? { notifyAt: [] } : reschedule ? { notifyAt: nextNotifyAt } : {}),
           ...(input.householdId !== undefined ? { householdId: input.householdId } : {}),
         },
       });
     });
 
-    // Reschedule reminders when scope, expiry, or offsets change.
-    if (reschedule) {
+    // Notification hygiene: cancel pending notifications when inactive, reschedule when active.
+    if (effectiveStatus !== 'active') {
+      const sendQ = notificationSendQueue();
+      const scheduleQ = notificationScheduleQueue();
+      const jobs = await sendQ.getJobs(['delayed', 'waiting', 'paused']);
+      await Promise.all(
+        jobs.filter((j) => j.data?.recordId === id).map((j) => j.remove()),
+      );
+      const scheduleJob = await scheduleQ.getJob(`schedule__${id}`);
+      if (scheduleJob) await scheduleJob.remove();
+    } else if (reschedule) {
       if (scopeChanged && oldHouseholdId) {
         // Record left a household — revert to creator-only reminders via the
         // schedule worker (which now handles personal path).
@@ -131,7 +169,6 @@ export async function patchRecordRoute(app: FastifyInstance) {
         );
       }
     }
-
     return reply.send(toApiRecord(updated));
   });
 }

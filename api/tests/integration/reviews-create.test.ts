@@ -4,9 +4,11 @@ import { issueAccessToken } from '../../src/services/auth/tokens.js';
 import { makeProduct, makeUser } from '../helpers/factories.js';
 import { getPrisma } from '../../src/db.js';
 
+import { randomUUID } from 'node:crypto';
+
 async function authHeader(userId: string, role: 'user' | 'admin' = 'user') {
   const token = await issueAccessToken({ sub: userId, role, tokenVersion: 0 });
-  return { authorization: `Bearer ${token}` };
+  return { authorization: `Bearer ${token}`, 'idempotency-key': randomUUID() };
 }
 
 describe('POST /v1/products/:id/reviews', () => {
@@ -55,7 +57,7 @@ describe('POST /v1/products/:id/reviews', () => {
     const dup = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
-      headers: h,
+      headers: { ...(await authHeader(user.id)), 'idempotency-key': randomUUID() },
       payload: { rating: 'wont_buy' },
     });
     expect(dup.statusCode).toBe(409);
@@ -102,29 +104,21 @@ describe('POST /v1/products/:id/reviews', () => {
     await app.close();
   });
 
-  it('enqueues a product-rating-recalc on successful create', async () => {
+  it('synchronously updates product tallies on successful create', async () => {
     const app = await buildServer();
     const user = await makeUser({ emailVerified: true });
     const product = await makeProduct();
-    const { getProductRatingQueue } = await import(
-      '../../src/queues/jobs/product-rating-recalc.js'
-    );
-    await getProductRatingQueue().obliterate({ force: true });
-    await app.inject({
+    const res = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/reviews`,
       headers: await authHeader(user.id),
-      payload: { rating: 'buy_again' },
+      payload: { rating: 'buy_again', body: 'Loving this product!' },
     });
-    const counts = await getProductRatingQueue().getJobCounts(
-      'waiting',
-      'delayed',
-      'active',
-      'completed',
-    );
-    expect(
-      (counts.waiting ?? 0) + (counts.delayed ?? 0) + (counts.active ?? 0) + (counts.completed ?? 0),
-    ).toBe(1);
+    expect(res.statusCode).toBe(201);
+    const updatedProduct = await getPrisma().product.findUnique({ where: { id: product.id } });
+    expect(updatedProduct?.ratingCount).toBe(1);
+    expect(updatedProduct?.buyAgainCount).toBe(1);
+    expect(updatedProduct?.reviewCount).toBe(1);
     await getPrisma().$disconnect();
     await app.close();
   });

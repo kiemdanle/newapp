@@ -116,8 +116,9 @@ export async function syncRecords(
             await assertProductUse(userId, u.productId, { purpose: 'household_record' }, tx);
           }
 
+          const uStatus = u.status ?? 'active';
           const offsets = u.notificationOffsetsDays ?? userOffsets;
-          const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
+          const notifyAt = uStatus === 'active' ? computeNotifyAt(new Date(u.expiryDate), offsets) : [];
           const created = await tx.record.create({
             data: {
               userId,
@@ -131,11 +132,16 @@ export async function syncRecords(
               unit: u.unit,
               notes: u.notes ?? null,
               photoUrl: u.photoUrl ?? null,
-              status: u.status ?? 'active',
+              status: uStatus,
+              consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : new Date()) : null,
+              discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
+              discardReason: uStatus === 'discarded' ? (u.discardReason || 'other') : null,
               notifyAt,
             },
           });
-          scheduledRecordIds.push(created.id);
+          if (uStatus === 'active') {
+            scheduledRecordIds.push(created.id);
+          }
         });
       } catch (err) {
         if (!(err instanceof ProductUseRejectionError)) throw err;
@@ -148,8 +154,9 @@ export async function syncRecords(
       // --- Personal path: last-write-wins ---
       if (existing && existing.updatedAt >= clientUpdatedAt) continue; // server is newer
 
+      const uStatus = u.status ?? existing?.status ?? 'active';
       const offsets = u.notificationOffsetsDays ?? userOffsets;
-      const notifyAt = computeNotifyAt(new Date(u.expiryDate), offsets);
+      const notifyAt = uStatus === 'active' ? computeNotifyAt(new Date(u.expiryDate), offsets) : [];
       // A stored productId identical to what's already on the row is a preserved
       // reference; anything else (brand-new row, or the client changing which
       // product it points at) is a new attachment and must be checked as such.
@@ -179,6 +186,9 @@ export async function syncRecords(
               notes: u.notes ?? null,
               photoUrl: u.photoUrl ?? null,
               status: u.status ?? 'active',
+              consumedAt: (u.status ?? 'active') === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : new Date()) : null,
+              discardedAt: (u.status ?? 'active') === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
+              discardReason: (u.status ?? 'active') === 'discarded' ? (u.discardReason || 'other') : null,
               notifyAt,
             },
             update: {
@@ -190,11 +200,16 @@ export async function syncRecords(
               unit: u.unit,
               notes: u.notes ?? null,
               photoUrl: u.photoUrl ?? null,
-              status: u.status ?? existing?.status ?? 'active',
+              status: uStatus,
+              consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : (existing?.consumedAt ?? new Date())) : null,
+              discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : (existing?.discardedAt ?? new Date())) : null,
+              discardReason: uStatus === 'discarded' ? (u.discardReason || existing?.discardReason || 'other') : null,
               notifyAt,
             },
           });
-          scheduledRecordIds.push(upserted.id);
+          if (uStatus === 'active') {
+            scheduledRecordIds.push(upserted.id);
+          }
         });
       } catch (err) {
         if (!(err instanceof ProductUseRejectionError)) throw err;

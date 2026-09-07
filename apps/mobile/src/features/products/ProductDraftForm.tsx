@@ -351,7 +351,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 accessibilityLabel="Category"
                 testID="draft-category"
                 editable={!readOnly}
-                placeholder="e.g. Dairy"
+                placeholder="e.g: Produce, Diary, Bakery, Meat & Seafood, More"
                 placeholderTextColor={theme.colors.textMuted}
                 style={[styles.textInput, { color: theme.colors.text }]}
                 value={fields.category}

@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
 import type { GiveawayFeedFilters } from '../../api/giveaways';
@@ -33,6 +34,15 @@ const SORTS: { id: GiveawaySort; label: string; icon: string }[] = [
   { id: 'claims_desc', label: 'Popular', icon: '🔥' },
   { id: 'old', label: 'Oldest', icon: '📜' },
 ];
+const STATUS_LABELS: Record<string, string> = {
+  all: 'All',
+  open: 'Open',
+  claimed: 'Reserved',
+  handed_off: 'Handed off',
+  completed: 'Collected',
+  cancelled: 'Cancelled',
+};
+
 
 interface Props {
   onOpen: (id: string) => void;
@@ -41,8 +51,11 @@ interface Props {
 
 export function GiveawayFeed({ onOpen, onNew }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppNavigationProp>();
-  const currentUserId = useSessionStore((s) => s.user?.id ?? null);
+  const user = useSessionStore((s) => s.user);
+  const userCountry = user?.country?.trim().toUpperCase() || 'LOCAL';
+  const currentUserId = user?.id ?? null;
 
   const updateGiveaway = useUpdateGiveaway();
   const cancelGiveaway = useCancelGiveaway();
@@ -51,18 +64,28 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<GiveawaySort>('new');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [filters, setFilters] = useState<GiveawayFeedFilters>({
+  const [filters, setFilters] = useState<GiveawayFeedFilters>(() => ({
     status: 'open',
     sort: 'new',
-  });
+    country: (useSessionStore.getState().user?.country?.trim().toUpperCase()) || 'LOCAL',
+  }));
 
-  // Calculate active filter count (excluding default open status & new sort)
+  React.useEffect(() => {
+    const normalizedCountry = user?.country?.trim().toUpperCase();
+    if (normalizedCountry && filters.country !== normalizedCountry) {
+      setFilters((prev) => ({
+        ...prev,
+        country: normalizedCountry,
+      }));
+    }
+  }, [user?.country, filters.country]);
+
+  // Calculate active filter count (excluding default open status, new sort & default local region)
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.status && filters.status !== 'open') count++;
     if (filters.location) count++;
     if (filters.hasPhoto) count++;
-    if (filters.country === 'ALL') count++;
     return count;
   }, [filters]);
 
@@ -95,13 +118,12 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
     searchQuery.trim() ||
       (filters.status && filters.status !== 'open') ||
       filters.location ||
-      filters.hasPhoto ||
-      filters.country === 'ALL',
+      filters.hasPhoto,
   );
 
   function clearAllFilters() {
     setSearchQuery('');
-    setFilters({ status: 'open', sort: selectedSort });
+    setFilters({ status: 'open', sort: selectedSort, country: userCountry });
   }
 
   function removeFilter(key: keyof GiveawayFeedFilters) {
@@ -170,7 +192,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       {/* Top Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 8) + 4 }]}>
         <Text style={[styles.heading, { color: theme.colors.text }]}>Giveaways</Text>
         <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
           Offer food or groceries to neighbors before they expire.
@@ -259,7 +281,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
                 ]}
               >
                 <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
-                  🏷️ Status: {filters.status} ✕
+                  🏷️ Status: {STATUS_LABELS[filters.status] || filters.status} ✕
                 </Text>
               </Pressable>
             ) : null}
@@ -294,20 +316,6 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
               </Pressable>
             ) : null}
 
-            {filters.country === 'ALL' ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => removeFilter('country')}
-                style={[
-                  styles.activeChip,
-                  { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-                ]}
-              >
-                <Text style={[styles.activeChipText, { color: theme.colors.text }]}>
-                  🌍 Worldwide ✕
-                </Text>
-              </Pressable>
-            ) : null}
 
             <Pressable
               accessibilityRole="button"
@@ -331,7 +339,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         keyExtractor={(d: Giveaway) => d.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: 84 },
+          { paddingBottom: 72 + Math.min(insets.bottom, 12) },
         ]}
         refreshControl={
           <RefreshControl
@@ -464,19 +472,19 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 6,
+    paddingTop: 4,
+    paddingBottom: 2,
   },
   heading: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
   },
   subheading: {
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 12,
+    marginTop: 1,
   },
   sortContainer: {
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   sortList: {
     paddingHorizontal: 20,
@@ -485,8 +493,8 @@ const styles = StyleSheet.create({
   sortPill: {
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 7,
-    minHeight: 36,
+    paddingVertical: 5,
+    minHeight: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -522,7 +530,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   loadingContainer: {
     paddingVertical: 40,

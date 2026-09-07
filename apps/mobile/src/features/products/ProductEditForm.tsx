@@ -335,6 +335,8 @@ export function ProductEditForm({ initialEdit, liveProduct, coordinator, onDirty
                 accessibilityLabel="Category"
                 testID="edit-category"
                 editable={!readOnly}
+                placeholder="e.g: Produce, Diary, Bakery, Meat & Seafood, More"
+                placeholderTextColor={theme.colors.textMuted}
                 style={[styles.textInput, { color: theme.colors.text }]}
                 value={fields.category}
                 onFocus={() => setFocusedField('category')}

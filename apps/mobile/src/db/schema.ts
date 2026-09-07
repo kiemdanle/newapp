@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const mySchema = appSchema({
-  version: 3,
+  version: 4,
   tables: [
     tableSchema({
       name: 'records',
@@ -19,11 +19,13 @@ export const mySchema = appSchema({
         { name: 'store', type: 'string', isOptional: true },
         { name: 'notes', type: 'string', isOptional: true },
         { name: 'photo_url', type: 'string', isOptional: true },
-        { name: 'status', type: 'string' },
+        { name: 'status', type: 'string', isIndexed: true },
         { name: 'notify_at_json', type: 'string' }, // JSON array of ISO ts
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
         { name: 'consumed_at', type: 'number', isOptional: true },
+        { name: 'discarded_at', type: 'number', isOptional: true },
+        { name: 'discard_reason', type: 'string', isOptional: true },
         { name: 'pending_sync', type: 'boolean', isIndexed: true },
         { name: 'pending_delete', type: 'boolean', isIndexed: true },
         { name: 'household_id', type: 'string', isOptional: true },

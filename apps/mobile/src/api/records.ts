@@ -25,6 +25,9 @@ export interface LocalRecord {
   notifyAt: string[];
   householdId: string | null;
   userId?: string | null;
+  consumedAt?: string | null;
+  discardedAt?: string | null;
+  discardReason?: string | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -52,6 +55,9 @@ function toLocal(r: RecordModel): LocalRecord {
     notifyAt,
     householdId: r.householdId ?? null,
     userId: r.userId ?? null,
+    consumedAt: r.consumedAt ? r.consumedAt.toISOString() : null,
+    discardedAt: r.discardedAt ? r.discardedAt.toISOString() : null,
+    discardReason: r.discardReason ?? null,
   };
 }
 
@@ -95,6 +101,41 @@ export function useAllActiveRecords(): LocalRecord[] {
       .subscribe((res) => setRows(res.map(toLocal)));
     return () => sub.unsubscribe();
   }, []);
+  return rows;
+}
+
+export function usePantryHistoryRecords(
+  filter: 'all' | 'consumed' | 'discarded' = 'all',
+): LocalRecord[] {
+  const [rows, setRows] = useState<LocalRecord[]>([]);
+  const { scope, householdId } = usePantryScope();
+
+  useEffect(() => {
+    const col = database.get<RecordModel>('records');
+    const statusCondition =
+      filter === 'all'
+        ? Q.where('status', Q.oneOf(['consumed', 'discarded']))
+        : Q.where('status', filter);
+
+    const conditions: any[] = [
+      statusCondition,
+      Q.where('pending_delete', false),
+    ];
+
+    if (scope === 'personal') {
+      conditions.push(Q.where('household_id', null));
+    } else if (scope === 'household' && householdId) {
+      conditions.push(Q.where('household_id', householdId));
+    }
+
+    const sub = col
+      .query(...conditions, Q.sortBy('updated_at', Q.desc))
+      .observe()
+      .subscribe((res) => setRows(res.map(toLocal)));
+
+    return () => sub.unsubscribe();
+  }, [filter, scope, householdId]);
+
   return rows;
 }
 
@@ -185,6 +226,152 @@ export async function patchLocalRecord(
     });
   });
   triggerSyncSoon();
+}
+
+export interface MarkRecordResult {
+  affectedId: string;
+  isSplit: boolean;
+  parentId?: string | null;
+  markedQuantity: number;
+}
+
+export async function markRecordStatusWithQuantity(
+  id: string,
+  status: 'consumed' | 'discarded',
+  quantityToMark: number,
+  discardReason: string | null = null,
+): Promise<MarkRecordResult> {
+  if (quantityToMark <= 0) {
+    throw new Error('Quantity to mark must be greater than zero');
+  }
+  const cleanReason = discardReason ? discardReason.trim().slice(0, 50) : null;
+  const col = database.get<RecordModel>('records');
+  let affectedId = id;
+  let isSplit = false;
+  let parentId: string | null = null;
+  await database.write(async () => {
+    const rec = await col.find(id);
+    if (quantityToMark >= rec.quantity) {
+      // Full record transition
+      await rec.update((r) => {
+        r.status = status;
+        if (status === 'consumed') {
+          r.consumedAt = new Date();
+          r.discardedAt = null;
+          r.discardReason = null;
+        } else {
+          r.discardedAt = new Date();
+          r.discardReason = cleanReason;
+          r.consumedAt = null;
+        }
+        r.pendingSync = true;
+      });
+    } else {
+      // Partial consumption: decrement active record, create history entry
+      isSplit = true;
+      parentId = rec.id;
+      const originalQuantity = rec.quantity;
+      const originalPrice = rec.price;
+      const remaining = originalQuantity - quantityToMark;
+      const splitPrice = originalPrice ? (originalPrice / originalQuantity) * quantityToMark : null;
+      const remainingPrice = originalPrice ? (originalPrice / originalQuantity) * remaining : null;
+
+      await rec.update((r) => {
+        r.quantity = remaining;
+        r.price = remainingPrice;
+        r.pendingSync = true;
+      });
+
+      const historyRec = await col.create((r) => {
+        r.clientId = uuidv4();
+        r.productId = rec.productId;
+        r.customName = rec.customName;
+        r.category = rec.category;
+        r.expiryDate = rec.expiryDate;
+        r.purchaseDate = rec.purchaseDate;
+        r.quantity = quantityToMark;
+        r.unit = rec.unit;
+        r.price = splitPrice;
+        r.notes = rec.notes;
+        r.photoUrl = rec.photoUrl;
+        r.householdId = rec.householdId;
+        r.userId = rec.userId;
+        r.status = status;
+        r.consumedAt = status === 'consumed' ? new Date() : null;
+        r.discardedAt = status === 'discarded' ? new Date() : null;
+        r.discardReason = cleanReason;
+        r.notifyAtJson = '[]';
+        r.pendingSync = true;
+        r.pendingDelete = false;
+      });
+      affectedId = historyRec.id;
+    }
+  });
+
+  triggerSyncSoon();
+  return { affectedId, isSplit, parentId, markedQuantity: quantityToMark };
+}
+
+export interface RestoreRecordResult {
+  restoredRecordId: string;
+  wasReassignedToPersonal: boolean;
+  mergedBackToParent: boolean;
+}
+
+export async function restoreLocalRecord(
+  id: string,
+  accessibleHouseholdIds: string[] = [],
+  splitContext?: { isSplit?: boolean; parentId?: string | null; quantity?: number },
+): Promise<RestoreRecordResult> {
+  const col = database.get<RecordModel>('records');
+  let wasReassignedToPersonal = false;
+  let mergedBackToParent = false;
+  let finalId = id;
+
+  await database.write(async () => {
+    const rec = await col.find(id);
+
+    // If this was a partial-quantity split and the parent active record still exists,
+    // merge quantity back into parent and delete the split record to avoid orphan splits.
+    if (splitContext?.isSplit && splitContext?.parentId) {
+      try {
+        const parentRec = await col.find(splitContext.parentId);
+        if (parentRec && parentRec.status === 'active' && !parentRec.pendingDelete) {
+          await parentRec.update((p) => {
+            p.quantity = p.quantity + (splitContext.quantity ?? rec.quantity);
+            if (p.price != null && rec.price != null) {
+              p.price = Number((p.price + rec.price).toFixed(2));
+            }
+            p.pendingSync = true;
+          });
+          await rec.destroyPermanently();
+          mergedBackToParent = true;
+          finalId = parentRec.id;
+          return;
+        }
+      } catch {
+        // Parent not found or error, fall back to standard restore
+      }
+    }
+
+    let targetHouseholdId = rec.householdId;
+    if (targetHouseholdId && accessibleHouseholdIds.length > 0 && !accessibleHouseholdIds.includes(targetHouseholdId)) {
+      targetHouseholdId = null;
+      wasReassignedToPersonal = true;
+    }
+
+    await rec.update((r) => {
+      r.status = 'active';
+      r.consumedAt = null;
+      r.discardedAt = null;
+      r.discardReason = null;
+      r.householdId = targetHouseholdId;
+      r.pendingSync = true;
+    });
+  });
+
+  triggerSyncSoon();
+  return { restoredRecordId: finalId, wasReassignedToPersonal, mergedBackToParent };
 }
 
 export async function deleteLocalRecord(id: string): Promise<void> {

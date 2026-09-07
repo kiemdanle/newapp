@@ -23,7 +23,7 @@ describe('GET /v1/me/reviews', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.items).toHaveLength(2);
-    expect(body.items.every((r: { userId: string }) => r.userId === me.id)).toBe(true);
+    expect(body.items.every((r: { isOwnReview: boolean; userId?: unknown }) => r.isOwnReview === true && r.userId === undefined)).toBe(true);
     await app.close();
   });
 

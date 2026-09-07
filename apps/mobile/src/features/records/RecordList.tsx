@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
-  FlatList,
   Pressable,
   RefreshControl,
   SectionList,
@@ -225,13 +224,23 @@ export function RecordList({
   }, [loadMore]);
 
   const groups = useMemo(() => groupRecords(paginatedItems), [paginatedItems]);
-  const sections = useMemo(
-    () =>
-      (Object.keys(SECTION_TITLES) as Array<keyof typeof SECTION_TITLES>)
-        .filter((key) => groups[key].length > 0)
-        .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] })),
-    [groups],
-  );
+  const sections = useMemo(() => {
+    if (isFiltered) {
+      if (paginatedItems.length === 0) {
+        return [];
+      }
+      return [
+        {
+          key: 'filtered_results',
+          title: totalCount > 0 ? `Showing ${paginatedItems.length} of ${totalCount} items` : '',
+          data: paginatedItems,
+        },
+      ];
+    }
+    return (Object.keys(SECTION_TITLES) as Array<keyof typeof SECTION_TITLES>)
+      .filter((key) => groups[key].length > 0)
+      .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] }));
+  }, [isFiltered, groups, paginatedItems, totalCount]);
 
   const openRecord = useCallback(
     (id: string) => navigation.navigate('Record', { id }),
@@ -504,47 +513,56 @@ export function RecordList({
 
   return (
     <View style={{ flex: 1 }}>
-      {!isFiltered ? (
-        // DEFAULT UNFILTERED VIEW: Urgency SectionList + Header + Controls + Pagination
-        <SectionList
-          testID="pantry-record-list"
-          sections={sections}
-          extraData={householdNames}
-          scrollEnabled
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          stickySectionHeadersEnabled={false}
-          ListHeaderComponent={
-            <View style={styles.headerStack}>
-              {resolvedHeader}
-              {records.length > 0 ? renderControls() : null}
-            </View>
+      {/* STABLE SINGLE SectionList: Preserves search input focus, cursor, and keyboard connection */}
+      <SectionList
+        testID="pantry-record-list"
+        sections={sections}
+        extraData={householdNames}
+        scrollEnabled
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <View style={styles.headerStack}>
+            {resolvedHeader}
+            {records.length > 0 || isFiltered ? renderControls() : null}
+          </View>
+        }
+        ListEmptyComponent={isFiltered ? renderFilterEmptyState : empty}
+        ListFooterComponent={renderPaginationFooter}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.25}
+        onScrollBeginDrag={handleScrollBegin}
+        onMomentumScrollBegin={handleScrollBegin}
+        refreshControl={
+          <RefreshControl
+            testID="pantry-refresh-control"
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.bgElevated}
+          />
+        }
+        alwaysBounceVertical={true}
+        contentContainerStyle={{
+          gap: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+          paddingTop: theme.spacing.xs,
+          paddingBottom: 84,
+          flexGrow: 1,
+        }}
+        renderSectionHeader={({ section }) => {
+          if (isFiltered) {
+            return section.title ? (
+              <View style={styles.resultsBar}>
+                <Text style={[styles.resultsText, { color: theme.colors.textMuted }]}>
+                  {section.title}
+                </Text>
+              </View>
+            ) : null;
           }
-          ListEmptyComponent={empty}
-          ListFooterComponent={renderPaginationFooter}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.25}
-          onScrollBeginDrag={handleScrollBegin}
-          onMomentumScrollBegin={handleScrollBegin}
-          refreshControl={
-            <RefreshControl
-              testID="pantry-refresh-control"
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
-              colors={[theme.colors.primary]}
-              progressBackgroundColor={theme.colors.bgElevated}
-            />
-          }
-          alwaysBounceVertical={true}
-          contentContainerStyle={{
-            gap: theme.spacing.md,
-            paddingHorizontal: theme.spacing.lg,
-            paddingTop: theme.spacing.xs,
-            paddingBottom: 84,
-            flexGrow: 1,
-          }}
-          renderSectionHeader={({ section }) => (
+          return (
             <View style={{ marginTop: theme.spacing.sm }}>
               <Text
                 testID={`record-section-${section.key}`}
@@ -560,56 +578,9 @@ export function RecordList({
                 {section.title} · {section.data.length}
               </Text>
             </View>
-          )}
-        />
-      ) : (
-        // FILTERED / SORTED VIEW: Paginated FlatList + Result Count Bar + Controls + Pagination
-        <FlatList
-          testID="pantry-record-list"
-          data={paginatedItems}
-          extraData={householdNames}
-          scrollEnabled
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          ListHeaderComponent={
-            <View style={styles.headerStack}>
-              {resolvedHeader}
-              {renderControls()}
-              {totalCount > 0 ? (
-                <View style={styles.resultsBar}>
-                  <Text style={[styles.resultsText, { color: theme.colors.textMuted }]}>
-                    Showing {paginatedItems.length} of {totalCount} items
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-          }
-          ListEmptyComponent={renderFilterEmptyState}
-          ListFooterComponent={renderPaginationFooter}
-          onEndReached={handleEndReached}
-          onEndReachedThreshold={0.25}
-          onScrollBeginDrag={handleScrollBegin}
-          onMomentumScrollBegin={handleScrollBegin}
-          refreshControl={
-            <RefreshControl
-              testID="pantry-refresh-control"
-              refreshing={isRefreshing}
-              onRefresh={handleRefresh}
-              tintColor={theme.colors.primary}
-              colors={[theme.colors.primary]}
-              progressBackgroundColor={theme.colors.bgElevated}
-            />
-          }
-          alwaysBounceVertical={true}
-          contentContainerStyle={{
-            gap: theme.spacing.md,
-            paddingHorizontal: theme.spacing.lg,
-            paddingTop: theme.spacing.xs,
-            paddingBottom: 84,
-            flexGrow: 1,
-          }}
-        />
-      )}
+          );
+        }}
+      />
 
       <PantryFilterModal
         visible={filterModalVisible}

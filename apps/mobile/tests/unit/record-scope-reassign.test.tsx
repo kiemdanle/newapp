@@ -17,6 +17,14 @@ jest.mock('../../src/api/records', () => {
   };
 });
 
+jest.mock('../../src/api/products', () => {
+  const actual = jest.requireActual('../../src/api/products');
+  return {
+    ...actual,
+    useProduct: () => ({ data: null }),
+  };
+});
+
 
 const mockHouseholds: Household[] = [
   {

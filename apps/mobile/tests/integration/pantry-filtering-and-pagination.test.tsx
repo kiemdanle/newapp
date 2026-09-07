@@ -155,18 +155,29 @@ describe('Pantry Filtering and Pagination Integration', () => {
 
       // 3. Search Flow: Type "Milk"
       const searchInput = screen.getByTestId('pantry-search-input');
+      const initialList = screen.getByTestId('pantry-record-list');
       act(() => {
         fireEvent.changeText(searchInput, 'Milk');
-        jest.advanceTimersByTime(300); // debounce
       });
-
-      // Switches to FlatList filtered view
+      act(() => {
+        fireEvent(searchInput, 'submitEditing', { nativeEvent: { text: 'Milk' } });
+      });
+      expect(screen.getByTestId('pantry-record-list')).toBe(initialList);
+      expect(screen.getByTestId('pantry-search-input')).toBe(searchInput);
       expect(screen.getByText('Organic Milk')).toBeTruthy();
       expect(screen.queryByText('Greek Yogurt')).toBeNull();
       expect(screen.getByText('Showing 1 of 1 items')).toBeTruthy();
 
-      // Clear search via active chip
-      const clearSearchChip = screen.getByLabelText('Remove filter: "Milk"');
+      // Search for non-existent item -> renders filter empty state
+      act(() => {
+        fireEvent.changeText(searchInput, 'NonExistentProductXYZ');
+      });
+      act(() => {
+        fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
+      });
+      expect(screen.getByTestId('pantry-filter-empty-card')).toBeTruthy();
+      expect(screen.getByText('No matching pantry items')).toBeTruthy();
+      const clearSearchChip = screen.getByLabelText('Remove filter: "NonExistentProductXYZ"');
       act(() => {
         fireEvent.press(clearSearchChip);
         jest.advanceTimersByTime(300);
@@ -178,7 +189,7 @@ describe('Pantry Filtering and Pagination Integration', () => {
         fireEvent.press(sortAtoZ);
       });
 
-      // In custom sort, view transitions to FlatList with active sort indicator
+      // In custom sort, view updates SectionList results with active sort indicator
       expect(screen.getByText('Showing 20 of 45 items')).toBeTruthy();
 
       // 5. Filter Modal Flow: Open filter modal and filter by Category "Dairy"

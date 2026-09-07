@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GiveawayFilterModal } from '../src/features/giveaways/GiveawayFilterModal';
+import { useSessionStore } from '../src/auth/session-store';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 
 function wrap(node: React.ReactNode) {
@@ -14,8 +15,8 @@ function wrap(node: React.ReactNode) {
 }
 
 describe('GiveawayFilterModal', () => {
-  it('renders status options, location input, photo toggle, and region toggles', () => {
-    const { getByText, getByPlaceholderText, getByLabelText } = render(
+  it('renders status options, location input, photo toggle, and hides search region', () => {
+    const { getByText, getByLabelText, queryByText } = render(
       wrap(
         <GiveawayFilterModal
           visible={true}
@@ -30,7 +31,10 @@ describe('GiveawayFilterModal', () => {
     expect(getByText('🎁 Open Offers')).toBeTruthy();
     expect(getByLabelText('Filter by location')).toBeTruthy();
     expect(getByText('📷 Has Photo Only')).toBeTruthy();
-    expect(getByText('📍 Near Me (Local)')).toBeTruthy();
+    expect(getByText('Reserved')).toBeTruthy();
+    expect(getByText('Collected')).toBeTruthy();
+    expect(queryByText('Search Region')).toBeNull();
+    expect(queryByText('📍 Near Me (Local)')).toBeNull();
   });
 
   it('applies filters on Apply button press', () => {
@@ -84,6 +88,84 @@ describe('GiveawayFilterModal', () => {
         status: undefined,
         location: undefined,
         hasPhoto: undefined,
+      }),
+    );
+  });
+
+  it('automatically applies Near Me (Local) user country by default', () => {
+    useSessionStore.setState({
+      user: {
+        id: 'u-1',
+        email: 'u1@expyrico.test',
+        firstName: 'Alex',
+        lastName: 'Smith',
+        country: 'US',
+        address: 'Downtown Hub',
+        role: 'user',
+        status: 'active',
+        themePreference: 'expyrico',
+      } as any,
+    });
+
+    const onApply = jest.fn();
+    const onClose = jest.fn();
+
+    const { getByText } = render(
+      wrap(
+        <GiveawayFilterModal
+          visible={true}
+          onClose={onClose}
+          filters={{ status: 'open', sort: 'new' }}
+          onApply={onApply}
+        />,
+      ),
+    );
+
+    fireEvent.press(getByText('Apply Filters'));
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: 'US',
+      }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('auto-fills location when Use profile location is pressed', () => {
+    useSessionStore.setState({
+      user: {
+        id: 'u-1',
+        email: 'u1@expyrico.test',
+        firstName: 'Alex',
+        lastName: 'Smith',
+        country: 'US',
+        address: 'Sunset Blvd, CA',
+        role: 'user',
+        status: 'active',
+        themePreference: 'expyrico',
+      } as any,
+    });
+
+    const onApply = jest.fn();
+    const onClose = jest.fn();
+
+    const { getByText, getByLabelText } = render(
+      wrap(
+        <GiveawayFilterModal
+          visible={true}
+          onClose={onClose}
+          filters={{ status: 'open', sort: 'new' }}
+          onApply={onApply}
+        />,
+      ),
+    );
+
+    fireEvent.press(getByText('📍 Use profile location'));
+    fireEvent.press(getByText('Apply Filters'));
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: 'Sunset Blvd, CA',
       }),
     );
   });

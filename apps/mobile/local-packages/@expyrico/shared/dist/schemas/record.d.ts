@@ -19,6 +19,8 @@ export declare const recordSchema: z.ZodObject<{
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
     consumedAt: z.ZodNullable<z.ZodString>;
+    discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
     clientId: string;
@@ -37,6 +39,8 @@ export declare const recordSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     consumedAt: string | null;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
 }, {
     id: string;
     clientId: string;
@@ -55,6 +59,8 @@ export declare const recordSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     consumedAt: string | null;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
 }>;
 export type Record = z.infer<typeof recordSchema>;
 export declare const recordCreateBaseSchema: z.ZodObject<{
@@ -167,6 +173,9 @@ export declare const recordPatchSchema: z.ZodObject<{
     notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     photoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     status: z.ZodOptional<z.ZodEnum<["active", "consumed", "discarded", "expired"]>>;
+    consumedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
     /** Move a record between personal and a household; enforced server-side. */
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -180,6 +189,9 @@ export declare const recordPatchSchema: z.ZodObject<{
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
     status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
     householdId?: string | null | undefined;
@@ -191,6 +203,9 @@ export declare const recordPatchSchema: z.ZodObject<{
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
     status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }>;
 export type RecordPatch = z.infer<typeof recordPatchSchema>;
@@ -213,6 +228,8 @@ export declare const recordListResponseSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
         consumedAt: z.ZodNullable<z.ZodString>;
+        discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         clientId: string;
@@ -231,6 +248,8 @@ export declare const recordListResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }, {
         id: string;
         clientId: string;
@@ -249,6 +268,8 @@ export declare const recordListResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
@@ -270,6 +291,8 @@ export declare const recordListResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }[];
     nextCursor: string | null;
 }, {
@@ -291,6 +314,8 @@ export declare const recordListResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }[];
     nextCursor: string | null;
 }>;
@@ -345,6 +370,9 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         id: z.ZodOptional<z.ZodString>;
         status: z.ZodOptional<z.ZodEnum<["active", "consumed", "discarded", "expired"]>>;
         updatedAt: z.ZodString;
+        consumedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         clientId: string;
         expiryDate: string;
@@ -359,6 +387,9 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notes?: string | null | undefined;
         photoUrl?: string | null | undefined;
         status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+        consumedAt?: string | null | undefined;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }, {
         clientId: string;
@@ -374,6 +405,9 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notes?: string | null | undefined;
         photoUrl?: string | null | undefined;
         status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+        consumedAt?: string | null | undefined;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }>, "many">;
     deletes: z.ZodArray<z.ZodString, "many">;
@@ -392,6 +426,9 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notes?: string | null | undefined;
         photoUrl?: string | null | undefined;
         status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+        consumedAt?: string | null | undefined;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }[];
     deletes: string[];
@@ -411,6 +448,9 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notes?: string | null | undefined;
         photoUrl?: string | null | undefined;
         status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+        consumedAt?: string | null | undefined;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }[];
     deletes: string[];
@@ -437,6 +477,8 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
         consumedAt: z.ZodNullable<z.ZodString>;
+        discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
         clientId: string;
@@ -455,6 +497,8 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }, {
         id: string;
         clientId: string;
@@ -473,6 +517,8 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }>, "many">;
     deletedIds: z.ZodArray<z.ZodString, "many">;
     conflicts: z.ZodDefault<z.ZodArray<z.ZodObject<{
@@ -506,6 +552,8 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }[];
     deletedIds: string[];
     conflicts: {
@@ -533,6 +581,8 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         consumedAt: string | null;
+        discardedAt?: string | null | undefined;
+        discardReason?: string | null | undefined;
     }[];
     deletedIds: string[];
     conflicts?: {

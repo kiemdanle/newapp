@@ -9,6 +9,7 @@ import { PrePromptModal } from '../../src/features/scan/PrePromptModal';
 import { CameraPermissionDeniedModal } from '../../src/features/scan/CameraPermissionDeniedModal';
 import { useProductLookupV2 } from '../../src/api/products';
 import { AddRecordForm } from '../../src/features/records/AddRecordForm';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { useTheme } from '../../src/theme/useTheme';
 import { Button } from '../../src/components/Button';
 import type { AppNavigationProp } from '../../src/navigation/AppNavigator';
@@ -298,13 +299,18 @@ export default function ScanScreen() {
             <Button label="Back" variant="ghost" onPress={() => setUi({ phase: 'scanning' })} />
           </View>
         ) : (
-          <View style={{ flex: 1 }}>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 80 }}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
             <AddRecordForm
               productId={null}
               customName={customName}
               onSaved={() => navigation.replace('Tabs')}
             />
-          </View>
+          </KeyboardAwareScrollView>
         )
       ) : null}
 

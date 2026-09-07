@@ -27,12 +27,13 @@ describe('GET /v1/products/:id/reviews', () => {
     const product = await makeProduct();
     const owner = await makeUser({ email: `owner-${Date.now()}@t.l` });
     const other = await makeUser({ email: `other-${Date.now()}@t.l` });
-    await makeReview({ userId: owner.id, productId: product.id, status: 'hidden' });
-    await makeReview({ userId: other.id, productId: product.id, status: 'visible' });
+    const r1 = await makeReview({ userId: owner.id, productId: product.id, status: 'hidden' });
+    const r2 = await makeReview({ userId: other.id, productId: product.id, status: 'visible' });
 
     const res = await app.inject({ method: 'GET', url: `/v1/products/${product.id}/reviews` });
     expect(res.json().items).toHaveLength(1);
-    expect(res.json().items[0].userId).toBe(other.id);
+    expect(res.json().items[0].id).toBe(r2.id);
+    expect(res.json().items[0].userId).toBeUndefined();
     await app.close();
   });
 

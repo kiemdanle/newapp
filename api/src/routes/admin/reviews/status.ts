@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { adminReviewStatusPatchSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
+import {
+  lockProductForReviewMutation,
+  recomputeAndSyncProductTallies,
+} from '../../../services/reviews/product-tallies.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -13,7 +17,13 @@ export async function adminReviewsStatusRoute(app: FastifyInstance) {
     const prisma = getPrisma();
     const before = await prisma.review.findUnique({ where: { id } });
     if (!before) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Review not found' });
-    await prisma.review.update({ where: { id }, data: { status } });
+
+    await prisma.$transaction(async (tx) => {
+      await lockProductForReviewMutation(tx, before.productId);
+      await tx.review.update({ where: { id }, data: { status } });
+      await recomputeAndSyncProductTallies(tx, before.productId);
+    });
+
     await req.auditLog('review.status', { type: 'review', id }, {
       before: { status: before.status }, after: { status },
     });

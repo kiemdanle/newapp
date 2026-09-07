@@ -138,6 +138,8 @@ export function DealForm({ product, existing, onDone }: Props) {
       style={[styles.container, { backgroundColor: theme.colors.bg }]}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets={true}
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.text }]}>

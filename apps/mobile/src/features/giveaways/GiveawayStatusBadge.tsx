@@ -5,9 +5,9 @@ import { useTheme } from '../../theme/useTheme';
 
 const LABELS: Record<GiveawayStatus, string> = {
   open: 'Open',
-  claimed: 'Claimed',
+  claimed: 'Reserved',
   handed_off: 'Handed off',
-  completed: 'Completed',
+  completed: 'Collected',
   cancelled: 'Cancelled',
 };
 

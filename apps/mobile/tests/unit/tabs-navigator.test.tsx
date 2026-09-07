@@ -57,6 +57,29 @@ jest.mock('../../src/api/giveaways', () => ({
 jest.mock('../../src/api/products', () => ({
   useProductDrafts: () => ({ data: { pages: [] } }),
 }));
+// Mock reviews
+jest.mock('../../src/api/reviews', () => ({
+  useMyReviews: () => ({
+    data: { pages: [{ items: [] }] },
+    isLoading: false,
+    isRefetching: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+  }),
+  useCommunityReviews: () => ({
+    data: { pages: [{ items: [] }] },
+    isLoading: false,
+    isRefetching: false,
+    refetch: jest.fn(),
+    hasNextPage: false,
+    fetchNextPage: jest.fn(),
+    isFetchingNextPage: false,
+  }),
+  useVoteReviewHelpful: () => ({ mutate: jest.fn() }),
+  deduplicateReviews: (pages: any) => (pages ? pages.flatMap((p: any) => p.items) : []),
+}));
 let activeQueryClient: QueryClient | null = null;
 
 function renderTabs() {
@@ -118,6 +141,7 @@ describe('TabsNavigator with Vertical Menu and Centered Action Button', () => {
     expect(getByTestId('nav-Home')).toBeTruthy();
     expect(getByTestId('nav-Giveaways')).toBeTruthy();
     expect(getByTestId('nav-Deals')).toBeTruthy();
+    expect(getByTestId('nav-Reviews')).toBeTruthy();
     expect(getByTestId('nav-Profile')).toBeTruthy();
     expect(getByTestId('bottom-nav-backdrop')).toBeTruthy();
   });
@@ -149,6 +173,16 @@ describe('TabsNavigator with Vertical Menu and Centered Action Button', () => {
     // Center action button updates to Deals action
     expect(getByTestId('deal-new-action')).toBeTruthy();
     expect(getByText('Post a deal')).toBeTruthy();
+  });
+  it('switches to Reviews tab and updates center action button to Scan to review', () => {
+    const { getByTestId, getByText, queryByTestId } = renderTabs();
+
+    fireEvent.press(getByTestId('bottom-nav-menu-button'));
+    fireEvent.press(getByTestId('nav-Reviews'));
+
+    expect(queryByTestId('bottom-nav-backdrop')).toBeNull();
+    expect(getByTestId('reviews-scan-action')).toBeTruthy();
+    expect(getByText('Scan to review')).toBeTruthy();
   });
 
   it('switches to Giveaways tab and updates center action button to Create giveaway', () => {

@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 20,
-    paddingVertical: 6,
+    paddingVertical: 3,
   },
   searchBox: {
     flex: 1,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     paddingHorizontal: 12,
-    minHeight: 48,
+    minHeight: 44,
   },
   searchIcon: {
     marginRight: 8,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 15,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   clearBtn: {
     padding: 4,
@@ -136,8 +136,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterBtn: {
-    minHeight: 48,
-    minWidth: 48,
+    minHeight: 44,
+    minWidth: 44,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',

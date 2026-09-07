@@ -171,7 +171,7 @@ describe('Unified Pantry and Household Sharing Integration', () => {
 
     act(() => {
       fireEvent.changeText(screen.getByTestId('pantry-search-input'), 'Greek');
-      jest.advanceTimersByTime(350);
+      fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
     });
     expect(screen.getByTestId('record-card-rec-shared-1')).toBeTruthy();
     expect(screen.queryByTestId('record-card-rec-personal-1')).toBeNull();
@@ -179,7 +179,7 @@ describe('Unified Pantry and Household Sharing Integration', () => {
     // Search for a personal item using active input
     act(() => {
       fireEvent.changeText(screen.getByTestId('pantry-search-input'), 'Almond');
-      jest.advanceTimersByTime(350);
+      fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
     });
     expect(screen.getByTestId('record-card-rec-personal-2')).toBeTruthy();
     expect(screen.queryByTestId('record-card-rec-shared-1')).toBeNull();
@@ -208,7 +208,7 @@ describe('Unified Pantry and Household Sharing Integration', () => {
     // Search in All mode
     act(() => {
       fireEvent.changeText(screen.getByTestId('pantry-search-input'), 'Greek');
-      jest.advanceTimersByTime(350);
+      fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
     });
     expect(screen.getByTestId('record-card-rec-shared-1')).toBeTruthy();
     expect(screen.queryByTestId('record-card-rec-personal-1')).toBeNull();

@@ -755,3 +755,4 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     const settingsRow = await scratchPrisma.setting.findUnique({ where: { key: 'product_creation' } });
     expect(settingsRow?.value).toEqual({ mode: 'all' });
 });
+});

@@ -12,6 +12,7 @@ import {
 import type { GiveawayStatus } from '@expyrico/shared';
 import type { GiveawayFeedFilters } from '../../api/giveaways';
 import { useTheme } from '../../theme/useTheme';
+import { useSessionStore } from '../../auth/session-store';
 
 interface Props {
   visible: boolean;
@@ -23,25 +24,30 @@ interface Props {
 const STATUS_OPTIONS: { id: GiveawayStatus | 'all'; label: string }[] = [
   { id: 'open', label: '🎁 Open Offers' },
   { id: 'all', label: 'All Statuses' },
-  { id: 'claimed', label: 'Claimed' },
-  { id: 'completed', label: 'Completed' },
+  { id: 'claimed', label: 'Reserved' },
+  { id: 'completed', label: 'Collected' },
 ];
 
 export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Props) {
   const theme = useTheme();
+  const user = useSessionStore((s) => s.user);
+  const userCountry = user?.country?.trim().toUpperCase() || 'LOCAL';
+  const profileLocation = user?.address?.trim() ?? '';
 
   const [status, setStatus] = useState<GiveawayStatus | 'all'>(filters.status ?? 'open');
   const [location, setLocation] = useState<string>(filters.location ?? '');
   const [hasPhoto, setHasPhoto] = useState<boolean>(filters.hasPhoto ?? false);
-  const [countryScope, setCountryScope] = useState<'local' | 'global'>(
-    filters.country?.toUpperCase() === 'ALL' ? 'global' : 'local',
-  );
+
+  React.useEffect(() => {
+    setStatus(filters.status ?? 'open');
+    setLocation(filters.location ?? '');
+    setHasPhoto(filters.hasPhoto ?? false);
+  }, [filters]);
 
   function handleReset() {
     setStatus('open');
     setLocation('');
     setHasPhoto(false);
-    setCountryScope('local');
   }
 
   function handleApply() {
@@ -50,7 +56,7 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
       status: status !== 'open' ? status : undefined,
       location: location.trim() || undefined,
       hasPhoto: hasPhoto ? true : undefined,
-      country: countryScope === 'global' ? 'ALL' : undefined,
+      country: userCountry,
     });
     onClose();
   }
@@ -69,7 +75,13 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
             </Pressable>
           </View>
 
-          <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+          <ScrollView
+            style={styles.body}
+            contentContainerStyle={styles.bodyContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
+          >
             {/* Status Filter */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Offer Status</Text>
@@ -103,29 +115,6 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
               </View>
             </View>
 
-            {/* Location / Neighborhood Filter */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                Location / Neighborhood
-              </Text>
-              <TextInput
-                accessibilityLabel="Filter by location"
-                placeholder="e.g. Downtown, West End, or zip code…"
-                placeholderTextColor={theme.colors.textMuted}
-                value={location}
-                onChangeText={setLocation}
-                style={[
-                  styles.textInput,
-                  {
-                    color: theme.colors.text,
-                    backgroundColor: theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.md,
-                  },
-                ]}
-              />
-            </View>
-
             {/* Photo Filter */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Media</Text>
@@ -153,56 +142,45 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
               </View>
             </View>
 
-            {/* Country Scope */}
+            {/* Location / Neighborhood Filter */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Search Region</Text>
-              <View style={styles.chipRow}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setCountryScope('local')}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor:
-                        countryScope === 'local' ? theme.colors.primary : theme.colors.bgElevated,
-                      borderColor:
-                        countryScope === 'local' ? theme.colors.primary : theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: countryScope === 'local' ? theme.colors.primaryFg : theme.colors.text },
-                    ]}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+                  Location / Neighborhood
+                </Text>
+                {profileLocation && location !== profileLocation ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Auto-fill location from profile"
+                    onPress={() => setLocation(profileLocation)}
+                    hitSlop={8}
                   >
-                    📍 Near Me (Local)
+                    <Text style={{ color: theme.colors.primaryDark, fontSize: 12, fontWeight: '600' }}>
+                      📍 Use profile location
+                    </Text>
+                  </Pressable>
+                ) : profileLocation && location === profileLocation ? (
+                  <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '600' }}>
+                    ✓ Filled from profile
                   </Text>
-                </Pressable>
-
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setCountryScope('global')}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor:
-                        countryScope === 'global' ? theme.colors.primary : theme.colors.bgElevated,
-                      borderColor:
-                        countryScope === 'global' ? theme.colors.primary : theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      { color: countryScope === 'global' ? theme.colors.primaryFg : theme.colors.text },
-                    ]}
-                  >
-                    🌍 Worldwide
-                  </Text>
-                </Pressable>
+                ) : null}
               </View>
+              <TextInput
+                accessibilityLabel="Filter by location"
+                placeholder="e.g. Downtown, West End, or zip code…"
+                placeholderTextColor={theme.colors.textMuted}
+                value={location}
+                onChangeText={setLocation}
+                style={[
+                  styles.textInput,
+                  {
+                    color: theme.colors.text,
+                    backgroundColor: theme.colors.bgElevated,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.md,
+                  },
+                ]}
+              />
             </View>
           </ScrollView>
 

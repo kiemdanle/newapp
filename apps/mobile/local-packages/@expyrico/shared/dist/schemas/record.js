@@ -21,6 +21,8 @@ export const recordSchema = z.object({
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     consumedAt: z.string().datetime().nullable(),
+    discardedAt: z.string().datetime().nullable().optional(),
+    discardReason: z.string().trim().min(1).max(50).nullable().optional(),
 });
 export const recordCreateBaseSchema = z.object({
     clientId: z.string().uuid(),
@@ -46,6 +48,9 @@ export const recordPatchSchema = z.object({
     notes: z.string().trim().max(2000).nullable().optional(),
     photoUrl: z.string().url().nullable().optional(),
     status: recordStatusSchema.optional(),
+    consumedAt: z.string().datetime().nullable().optional(),
+    discardedAt: z.string().datetime().nullable().optional(),
+    discardReason: z.string().trim().min(1).max(50).nullable().optional(),
     notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
     /** Move a record between personal and a household; enforced server-side. */
     householdId: z.string().uuid().nullable().optional(),
@@ -78,6 +83,9 @@ export const recordSyncBatchSchema = z.object({
         id: z.string().uuid().optional(),
         status: recordStatusSchema.optional(),
         updatedAt: z.string().datetime(),
+        consumedAt: z.string().datetime().nullable().optional(),
+        discardedAt: z.string().datetime().nullable().optional(),
+        discardReason: z.string().trim().min(1).max(50).nullable().optional(),
     }))
         .max(500),
     deletes: z.array(z.string().uuid()).max(500),

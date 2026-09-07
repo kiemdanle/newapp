@@ -309,11 +309,11 @@ export function GiveawayCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginVertical: 5,
+    marginVertical: 4,
     overflow: 'hidden',
   },
   card: {
-    padding: 14,
+    padding: 12,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.04,

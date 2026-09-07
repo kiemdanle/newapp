@@ -1,8 +1,16 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  KeyboardAvoidingView,
+  Platform,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { AuthBackButton } from './AuthBackButton';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 export function Screen({
   children,
@@ -11,6 +19,7 @@ export function Screen({
   backFallback,
   style,
   contentContainerStyle,
+  keyboardAvoiding = true,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
@@ -18,19 +27,43 @@ export function Screen({
   backFallback?: string;
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  keyboardAvoiding?: boolean;
 }) {
   const theme = useTheme();
-  const Body = scroll ? ScrollView : View;
+
+  if (scroll) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
+        <KeyboardAwareScrollView
+          contentContainerStyle={[styles.body, padded && styles.padded, contentContainerStyle]}
+          style={[styles.flex, style]}
+          keyboardAvoiding={keyboardAvoiding}
+        >
+          {backFallback ? <AuthBackButton fallback={backFallback} /> : null}
+          {children}
+        </KeyboardAwareScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  const content = (
+    <View
+      style={[styles.flex, style, padded && styles.padded, contentContainerStyle]}
+    >
+      {backFallback ? <AuthBackButton fallback={backFallback} /> : null}
+      {children}
+    </View>
+  );
+
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
-      <Body
-        contentContainerStyle={[styles.body, padded && styles.padded, contentContainerStyle]}
-        style={[styles.flex, style]}
-        showsVerticalScrollIndicator={false}
-      >
-        {backFallback ? <AuthBackButton fallback={backFallback} /> : null}
-        {children}
-      </Body>
+      {keyboardAvoiding && Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        content
+      )}
     </SafeAreaView>
   );
 }

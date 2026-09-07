@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { giveawayListQuerySchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { toApiGiveaway } from '../../services/giveaways/repository.js';
+import { detectCountryFromIp } from '../../services/country/detect.js';
 
 export async function listGiveawaysRoute(app: FastifyInstance) {
   app.get('/giveaways', async (req) => {
@@ -13,6 +14,9 @@ export async function listGiveawaysRoute(app: FastifyInstance) {
     if (viewerId) {
       const viewer = await prisma.user.findUnique({ where: { id: viewerId }, select: { country: true } });
       viewerCountry = viewer?.country ?? null;
+    }
+    if (!viewerCountry) {
+      viewerCountry = await detectCountryFromIp(req.ip).catch(() => null);
     }
 
     const whereConditions: Array<Record<string, unknown>> = [];
@@ -42,8 +46,15 @@ export async function listGiveawaysRoute(app: FastifyInstance) {
     }
 
     if (query.country) {
-      if (query.country.toUpperCase() !== 'ALL') {
-        whereConditions.push({ country: query.country.toUpperCase() });
+      const c = query.country.toUpperCase();
+      if (c === 'ALL') {
+        // Global scope: no country condition
+      } else if (c === 'LOCAL') {
+        if (viewerCountry) {
+          whereConditions.push({ country: viewerCountry });
+        }
+      } else {
+        whereConditions.push({ country: c });
       }
     } else if (viewerCountry !== null) {
       whereConditions.push({

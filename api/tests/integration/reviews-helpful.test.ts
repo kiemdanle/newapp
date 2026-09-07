@@ -28,17 +28,34 @@ describe('POST /v1/reviews/:id/helpful', () => {
     await app.close();
   });
 
-  it('switches a vote from helpful to not-helpful (still one row)', async () => {
+  it('rejects author self-voting with 403 forbidden', async () => {
     const app = await buildServer();
     const author = await makeUser({ email: `s1-${Date.now()}@t.l` });
-    const voter = await makeUser({ email: `s2-${Date.now()}@t.l` });
     const product = await makeProduct();
     const r = await makeReview({ userId: author.id, productId: product.id, body: 'comment' });
-    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: true } });
-    await app.inject({ method: 'POST', url: `/v1/reviews/${r.id}/helpful`, headers: await h(voter.id), payload: { helpful: false } });
-    const all = await getPrisma().reviewVote.findMany({ where: { reviewId: r.id } });
-    expect(all).toHaveLength(1);
-    expect(all[0]!.value).toBe('not_helpful');
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/reviews/${r.id}/helpful`,
+      headers: await h(author.id),
+      payload: { helpful: true },
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('rejects helpful: false with 400 validation error (thumbs-up only)', async () => {
+    const app = await buildServer();
+    const author = await makeUser({ email: `tf1-${Date.now()}@t.l` });
+    const voter = await makeUser({ email: `tf2-${Date.now()}@t.l` });
+    const product = await makeProduct();
+    const r = await makeReview({ userId: author.id, productId: product.id, body: 'comment' });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/reviews/${r.id}/helpful`,
+      headers: await h(voter.id),
+      payload: { helpful: false },
+    });
+    expect(res.statusCode).toBe(400);
     await app.close();
   });
 

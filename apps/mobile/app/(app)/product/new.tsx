@@ -15,6 +15,7 @@ import { ensurePushTokenRegistered } from '../../../src/features/push/registerPu
 import { useTheme } from '../../../src/theme/useTheme';
 import { Screen } from '../../../src/components/Screen';
 import { Button } from '../../../src/components/Button';
+import { KeyboardAwareScrollView } from '../../../src/components/KeyboardAwareScrollView';
 
 type RouteParams = {
   barcode?: string;
@@ -154,7 +155,12 @@ export default function NewProductScreen() {
   // still `pending` (private) until an admin approves it.
   if (submittedProduct) {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: theme.colors.bg }}
+        contentContainerStyle={{ paddingBottom: 80 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
           <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '600' }}>
             Submitted for review — you can add it to your pantry now.
@@ -163,13 +169,14 @@ export default function NewProductScreen() {
         <AddRecordForm
           productId={submittedProduct.id}
           productName={submittedProduct.name}
+          initialCategory={submittedProduct.category}
           lockedPersonalScope
           onSaved={async () => {
             await ensurePushTokenRegistered();
             navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
           }}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   }
 
@@ -178,7 +185,12 @@ export default function NewProductScreen() {
   // Still private (non-`active`) until approved, so scope stays locked here too.
   if (product && resume === 'pending') {
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: theme.colors.bg }}
+        contentContainerStyle={{ paddingBottom: 80 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
           <Text style={{ color: theme.colors.textMuted }}>
             This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your pantry now.'}
@@ -200,6 +212,7 @@ export default function NewProductScreen() {
           <AddRecordForm
             productId={product.id}
             productName={product.name}
+            initialCategory={product.category}
             lockedPersonalScope
             onSaved={async () => {
               await ensurePushTokenRegistered();
@@ -207,7 +220,7 @@ export default function NewProductScreen() {
             }}
           />
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   }
 
@@ -266,7 +279,12 @@ export default function NewProductScreen() {
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <ScrollView
+          contentContainerStyle={{ padding: theme.spacing.lg }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+        >
           <DraftEditor
             product={product}
             feedback={feedback}
@@ -314,6 +332,9 @@ export default function NewProductScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
       >
       {/* Step Indicator Header */}
       <View style={{ gap: 6 }}>

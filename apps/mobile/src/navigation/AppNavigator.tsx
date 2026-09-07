@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Review } from '@expyrico/shared';
 import { Pressable } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,6 +14,7 @@ import ProductNewScreen from '../../app/(app)/product/new';
 import ProductDraftsScreen from '../../app/(app)/product/drafts';
 import ProductReviewScreen from '../../app/(app)/product/[id]/review';
 import ProductEditScreen from '../../app/(app)/product/[id]/edit';
+import ProductReviewsScreen from '../../app/(app)/product/[id]/reviews';
 import DealScreen from '../../app/(app)/deal/[id]';
 import DealNewScreen from '../../app/(app)/deal/new';
 import GiveawayScreen from '../../app/(app)/giveaway/[id]';
@@ -27,7 +29,8 @@ import EditProfileScreen from '../../app/(app)/profile/edit';
 import PasswordScreen from '../../app/(app)/profile/password';
 import FeedbackHubScreen from '../../app/(app)/feedback/index';
 import FeedbackDetailScreen from '../../app/(app)/feedback/[id]';
-
+import ReviewsHubScreen from '../features/reviews/ReviewsHubScreen';
+import PantryHistoryScreen from '../../app/(app)/pantry/history';
 export type AppStackParamList = {
   Tabs: undefined;
   SettingsIndex: undefined;
@@ -53,7 +56,8 @@ export type AppStackParamList = {
     target?: 'pantry' | 'deal';
   } | undefined;
   ProductDrafts: undefined;
-  ProductReview: { id: string };
+  ProductReview: { id: string; review?: Review };
+  ProductReviews: { id: string };
   ProductEdit: { id: string };
   Deal: { id: string };
   DealNew: { editId?: string; productId?: string } | undefined;
@@ -69,6 +73,8 @@ export type AppStackParamList = {
   ProfilePassword: undefined;
   FeedbackHub: { initialTab?: 'submit' | 'tickets' } | undefined;
   FeedbackDetail: { id: string };
+  ReviewsHub: { productId?: string; initialTab?: 'mine' | 'community' } | undefined;
+  PantryHistory: undefined;
 };
 
 export type AppNavigationProp = NativeStackNavigationProp<AppStackParamList>;
@@ -88,6 +94,7 @@ export function AppNavigator() {
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />
       <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'My drafts' }} />
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
+      <Stack.Screen name="ProductReviews" component={ProductReviewsScreen} />
       <Stack.Screen name="ProductEdit" component={ProductEditScreen} />
       <Stack.Screen name="Deal" component={DealScreen} />
       <Stack.Screen name="DealNew" component={DealNewScreen} options={{ headerShown: true, title: 'Post a deal' }} />
@@ -106,6 +113,8 @@ export function AppNavigator() {
       <Stack.Screen name="FeedbackHub" component={FeedbackHubScreen} options={{ headerShown: true, title: 'Help & feedback' }} />
       <Stack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} options={{ headerShown: true, title: 'Ticket details' }} />
       <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
+      <Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />
+      <Stack.Screen name="PantryHistory" component={PantryHistoryScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

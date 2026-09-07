@@ -19,6 +19,7 @@ import { ensurePushTokenRegistered, PUSH_REGISTERED_FLAG_KEY, PUSH_REGISTERED_US
 import { handleNotificationTap, registerModerationNotificationBatch } from './features/push/handle-notification-open';
 import { navigationRef } from './navigation/navigationRef';
 import { InAppNotificationBanner } from './components/InAppNotificationBanner';
+import { UndoToast } from './components/UndoToast';
 import { useInAppNotificationStore } from './store/inAppNotification';
 import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
@@ -97,6 +98,7 @@ function RootApp() {
         />
         <RootNavigator />
       </NavigationContainer>
+      <UndoToast />
       {bootError ? (
         <View
           style={[

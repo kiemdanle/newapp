@@ -8,15 +8,22 @@ import { AppError } from '../../errors.js';
 import { toApiReview } from '../../services/reviews/repository.js';
 import { containsProfanity } from '../../services/reviews/profanity.js';
 import { enqueueModerationFlag } from '../../queues/jobs/moderation-flag.js';
-import { enqueueProductRatingRecalc } from '../../queues/jobs/product-rating-recalc.js';
+import {
+  lockProductForReviewMutation,
+  recomputeAndSyncProductTallies,
+} from '../../services/reviews/product-tallies.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
+import { reviewWriteRateLimit } from './rate-limits.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
 export async function createReviewRoute(app: FastifyInstance) {
   app.post(
     '/products/:id/reviews',
-    { onRequest: app.requireAuth },
+    {
+      onRequest: app.requireAuth,
+      config: { idempotent: 'required', rateLimit: reviewWriteRateLimit },
+    },
     async (req, reply) => {
       const { id: productId } = paramsSchema.parse(req.params);
       const input = reviewCreateSchema.parse(req.body);
@@ -30,15 +37,20 @@ export async function createReviewRoute(app: FastifyInstance) {
 
       let review;
       try {
-        review = await prisma.review.create({
-          data: {
-            userId,
-            productId,
-            rating: input.rating,
-            body: input.body ?? null,
-            status,
-          },
-          include: { user: { select: { id: true, firstName: true, avatarUrl: true } } },
+        review = await prisma.$transaction(async (tx) => {
+          await lockProductForReviewMutation(tx, productId);
+          const created = await tx.review.create({
+            data: {
+              userId,
+              productId,
+              rating: input.rating,
+              body: input.body ?? null,
+              status,
+            },
+            include: { user: { select: { firstName: true, avatarUrl: true } } },
+          });
+          await recomputeAndSyncProductTallies(tx, productId);
+          return created;
         });
       } catch (err) {
         if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -55,9 +67,7 @@ export async function createReviewRoute(app: FastifyInstance) {
         await enqueueModerationFlag(review.id);
       }
 
-      await enqueueProductRatingRecalc(productId);
-
-      return reply.status(201).send(toApiReview(review));
+      return reply.status(201).send(toApiReview(review, { viewerId: userId }));
     },
   );
 }

@@ -21,10 +21,6 @@ import {
   getModerationFlagQueue,
 } from './jobs/moderation-flag.js';
 import {
-  PRODUCT_RATING_RECALC_QUEUE,
-  getProductRatingQueue,
-} from './jobs/product-rating-recalc.js';
-import {
   PRODUCT_MEDIA_CLEANUP_QUEUE,
   productMediaCleanupQueue,
 } from './jobs/product-media-cleanup.js';
@@ -38,7 +34,6 @@ export * from './notification-schedule.js';
 export * from './notification-send.js';
 export * from './jobs/score-recalc.js';
 export * from './jobs/moderation-flag.js';
-export * from './jobs/product-rating-recalc.js';
 export * from './jobs/product-media-cleanup.js';
 export * from './jobs/moderation-notifications.js';
 
@@ -56,7 +51,6 @@ export function getAllQueues(): { name: string; queue: Queue }[] {
     { name: NOTIFICATION_SEND_QUEUE, queue: notificationSendQueue() },
     { name: SCORE_RECALC_QUEUE, queue: getScoreRecalcQueue() },
     { name: MODERATION_FLAG_QUEUE, queue: getModerationFlagQueue() },
-    { name: PRODUCT_RATING_RECALC_QUEUE, queue: getProductRatingQueue() },
     { name: PRODUCT_MEDIA_CLEANUP_QUEUE, queue: productMediaCleanupQueue() },
     { name: MODERATION_NOTIFICATION_QUEUE, queue: moderationNotificationQueue() },
   ];

@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GiveawayFeed } from '../src/features/giveaways/GiveawayFeed';
+import { useSessionStore } from '../src/auth/session-store';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
 
 const mockGiveaway = {
@@ -54,5 +55,25 @@ describe('GiveawayFeed', () => {
 
     expect(getByText('Giveaways')).toBeTruthy();
     expect(getByText('Tomato Soup')).toBeTruthy();
+  });
+
+  it('renders active filter chip when status filter is applied and allows clearing', () => {
+    const { getByLabelText, getByText, queryByText } = render(
+      wrap(<GiveawayFeed onOpen={jest.fn()} onNew={jest.fn()} />),
+    );
+
+    // Open filter modal
+    fireEvent.press(getByLabelText('Open filters'));
+
+    // Select Reserved status and Apply
+    fireEvent.press(getByText('Reserved'));
+    fireEvent.press(getByText('Apply Filters'));
+
+    // Expect active filter chip to be displayed
+    expect(getByText('🏷️ Status: Reserved ✕')).toBeTruthy();
+
+    // Tap the chip to remove the filter
+    fireEvent.press(getByText('🏷️ Status: Reserved ✕'));
+    expect(queryByText('🏷️ Status: Reserved ✕')).toBeNull();
   });
 });

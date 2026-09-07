@@ -147,7 +147,12 @@ export default function ProductEditScreen() {
             <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+        <ScrollView
+          contentContainerStyle={{ padding: theme.spacing.lg }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+        >
           <View style={{ gap: theme.spacing.md }}>
             <View
               style={{
@@ -205,7 +210,12 @@ export default function ProductEditScreen() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: theme.spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ padding: theme.spacing.lg }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
+      >
         <EditEditor
           productId={productId}
           liveProduct={liveProduct}

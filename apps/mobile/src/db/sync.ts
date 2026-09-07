@@ -68,10 +68,15 @@ async function pushPending(): Promise<void> {
           status: rec.status,
         };
         if (rec.householdId !== undefined) patch.householdId = rec.householdId;
+        if (rec.consumedAt) patch.consumedAt = rec.consumedAt.toISOString();
+        if (rec.discardedAt) patch.discardedAt = rec.discardedAt.toISOString();
+        if (rec.discardReason !== undefined && rec.discardReason !== null) patch.discardReason = rec.discardReason;
         await apiClient.patch(`/records/${rec.serverId}`, patch);
         await database.write(async () => {
           await rec.update((r) => {
-            r.pendingSync = false;
+            if (r.status === patch.status) {
+              r.pendingSync = false;
+            }
           });
         });
       }
@@ -147,6 +152,9 @@ async function pullSince(): Promise<void> {
           r.notes = ch.notes;
           r.photoUrl = ch.photoUrl;
           r.status = ch.status;
+          r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
+          r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
+          r.discardReason = ch.discardReason ?? null;
           r.notifyAtJson = JSON.stringify(ch.notifyAt);
           r.pendingSync = false;
           r.pendingDelete = false;
@@ -182,12 +190,14 @@ async function pullSince(): Promise<void> {
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
             r.status = ch.status;
+            r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
+            r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
+            r.discardReason = ch.discardReason ?? null;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
           });
         } else {
-          // New household record the device hasn't seen → insert.
           await recordsCol.create((r) => {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
@@ -202,6 +212,9 @@ async function pullSince(): Promise<void> {
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
             r.status = ch.status;
+            r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
+            r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
+            r.discardReason = ch.discardReason ?? null;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -226,6 +239,9 @@ async function pullSince(): Promise<void> {
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
             r.status = ch.status;
+            r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
+            r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
+            r.discardReason = ch.discardReason ?? null;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -245,6 +261,9 @@ async function pullSince(): Promise<void> {
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
             r.status = ch.status;
+            r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
+            r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
+            r.discardReason = ch.discardReason ?? null;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -252,7 +271,6 @@ async function pullSince(): Promise<void> {
         }
       }
     }
-
     for (const id of deletedIds) {
       const existing = await recordsCol.query(Q.where('server_id', id)).fetch();
       for (const e of existing) await e.destroyPermanently();

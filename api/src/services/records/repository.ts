@@ -20,5 +20,7 @@ export function toApiRecord(r: PrismaRecord): ApiRecord {
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     consumedAt: r.consumedAt ? r.consumedAt.toISOString() : null,
+    discardedAt: r.discardedAt ? r.discardedAt.toISOString() : null,
+    discardReason: r.discardReason ?? null,
   };
 }

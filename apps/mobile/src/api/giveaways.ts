@@ -10,7 +10,7 @@ import type {
 } from '@expyrico/shared';
 import { apiClient } from './client';
 import { newIdempotencyKey } from '../lib/idempotency';
-
+import { useSessionStore } from '../auth/session-store';
 type Page = { items: Giveaway[]; cursor: string | null };
 
 export interface GiveawayFeedFilters {
@@ -60,6 +60,28 @@ export function useGiveaway(id: string) {
     queryFn: () => apiClient.get<Giveaway>(`/giveaways/${id}`),
     staleTime: 30_000,
     enabled: !!id,
+  });
+}
+
+export function useActiveGiveawaysForRecord(
+  recordId: string | undefined,
+  serverId: string | null | undefined,
+) {
+  const currentUserId = useSessionStore((s) => s.user?.id);
+  return useQuery({
+    queryKey: ['active-giveaways-for-record', recordId, serverId, currentUserId],
+    queryFn: async () => {
+      const res = await apiClient.get<{ items: Giveaway[] }>('/giveaways?country=ALL&status=all');
+      const items = res?.items ?? [];
+      return items.filter(
+        (g) =>
+          g.giverUserId === currentUserId &&
+          (g.status === 'open' || g.status === 'claimed') &&
+          ((recordId && g.recordId === recordId) || (serverId && g.recordId === serverId)),
+      );
+    },
+    enabled: Boolean(currentUserId && (recordId || serverId)),
+    staleTime: 10_000,
   });
 }
 

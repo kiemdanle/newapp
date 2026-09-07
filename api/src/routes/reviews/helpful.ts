@@ -4,22 +4,29 @@ import { ERROR_CODES, reviewHelpfulSchema } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { recomputeReviewScore } from '../../services/reviews/repository.js';
+import { reviewVoteRateLimit } from './rate-limits.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
-const voteRateLimit = { max: 30, timeWindow: '1 minute' } as const;
 
 export async function reviewHelpfulRoutes(app: FastifyInstance) {
   app.post(
     '/reviews/:id/helpful',
-    { onRequest: [app.requireAuth], config: { rateLimit: voteRateLimit } },
+    { onRequest: [app.requireAuth], config: { rateLimit: reviewVoteRateLimit } },
     async (req, reply) => {
       const { id: reviewId } = paramsSchema.parse(req.params);
-      const { helpful } = reviewHelpfulSchema.parse(req.body);
+      reviewHelpfulSchema.parse(req.body ?? {});
       const prisma = getPrisma();
 
       const review = await prisma.review.findUnique({ where: { id: reviewId } });
       if (!review || review.status === 'deleted') {
         throw new AppError({ status: 404, code: ERROR_CODES.REVIEW_NOT_FOUND, title: 'Review not found' });
+      }
+      if (review.userId === req.user!.id) {
+        throw new AppError({
+          status: 403,
+          code: ERROR_CODES.FORBIDDEN,
+          title: 'You cannot vote on your own review',
+        });
       }
       // Helpfulness voting only applies to reviews that carry a comment.
       if (review.body === null) {
@@ -30,12 +37,11 @@ export async function reviewHelpfulRoutes(app: FastifyInstance) {
         });
       }
 
-      const value = helpful ? 'helpful' : 'not_helpful';
       await prisma.$transaction(async (tx) => {
         await tx.reviewVote.upsert({
           where: { userId_reviewId: { userId: req.user!.id, reviewId } },
-          create: { userId: req.user!.id, reviewId, value },
-          update: { value },
+          create: { userId: req.user!.id, reviewId, value: 'helpful' },
+          update: { value: 'helpful' },
         });
         await recomputeReviewScore(tx, reviewId);
       });
@@ -45,7 +51,7 @@ export async function reviewHelpfulRoutes(app: FastifyInstance) {
 
   app.delete(
     '/reviews/:id/helpful',
-    { onRequest: [app.requireAuth], config: { rateLimit: voteRateLimit } },
+    { onRequest: [app.requireAuth], config: { rateLimit: reviewVoteRateLimit } },
     async (req, reply) => {
       const { id: reviewId } = paramsSchema.parse(req.params);
       const prisma = getPrisma();

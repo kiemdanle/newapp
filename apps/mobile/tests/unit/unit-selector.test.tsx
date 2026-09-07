@@ -74,7 +74,7 @@ describe('UnitPickerModal', () => {
       'expyrico',
     );
 
-    expect(getByText('American Imports (US Customary)')).toBeTruthy();
+    expect(getByText('Traditional Units')).toBeTruthy();
     expect(getByTestId('unit-option-oz')).toBeTruthy();
     expect(getByTestId('unit-option-lb')).toBeTruthy();
     expect(getByTestId('unit-option-fl-oz')).toBeTruthy();

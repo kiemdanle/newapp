@@ -98,6 +98,8 @@ export default function PasswordScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets={true}
     >
       {/* Information Header Card */}
       <View

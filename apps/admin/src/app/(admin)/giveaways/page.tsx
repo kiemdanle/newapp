@@ -96,9 +96,9 @@ export default async function GiveawaysPage({
           value={sp.status}
           options={[
             { value: 'open', label: 'Open' },
-            { value: 'claimed', label: 'Claimed' },
+            { value: 'claimed', label: 'Reserved' },
             { value: 'handed_off', label: 'Handed off' },
-            { value: 'completed', label: 'Completed' },
+            { value: 'completed', label: 'Collected' },
             { value: 'cancelled', label: 'Cancelled' },
           ]}
         />

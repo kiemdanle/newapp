@@ -7,11 +7,12 @@ import { findUserById } from '../services/users/repository.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
-    user?: { id: string; role: 'user' | 'admin'; tokenVersion: number };
+    user?: { id: string; role: 'user' | 'admin'; tokenVersion: number } | undefined;
   }
   interface FastifyInstance {
     requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    optionalAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
@@ -53,6 +54,24 @@ const authPluginImpl: FastifyPluginAsync = async (app: FastifyInstance) => {
     const user = await findUserById(req.user!.id);
     if (!user || user.role !== 'admin') {
       throw new AppError({ status: 403, code: ERROR_CODES.FORBIDDEN, title: 'Forbidden' });
+    }
+  });
+
+  app.decorate('optionalAuth', async (req: FastifyRequest) => {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) {
+      req.user = undefined;
+      return;
+    }
+    if (!req.user) {
+      throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+    }
+    const user = await findUserById(req.user.id);
+    if (!user || user.status !== 'active') {
+      throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
+    }
+    if (req.user.tokenVersion !== user.tokenVersion) {
+      throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
     }
   });
 };

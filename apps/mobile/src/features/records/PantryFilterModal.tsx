@@ -13,7 +13,6 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { LocalRecord } from '../../api/records';
 import { useTheme } from '../../theme/useTheme';
-import { filterAndSortRecords } from './filterAndSortRecords';
 import type { PantryFilterState } from './pantryFilterTypes';
 import { useMyHouseholds } from '../../api/households';
 
@@ -23,7 +22,6 @@ export interface PantryFilterModalProps {
   filters: PantryFilterState;
   onApply: (filters: PantryFilterState) => void;
   records: LocalRecord[];
-  productNameLookup?: Record<string, string>;
 }
 
 const STANDARD_CATEGORIES = [
@@ -44,7 +42,6 @@ export function PantryFilterModal({
   filters,
   onApply,
   records,
-  productNameLookup,
 }: PantryFilterModalProps) {
   const theme = useTheme();
 
@@ -76,11 +73,6 @@ export function PantryFilterModal({
       (name) => ({ name, count: counts[name] || 0 }),
     );
   }, [records]);
-
-  const matchingCount = useMemo(
-    () => filterAndSortRecords(records, draftFilters, 'expiry_asc', productNameLookup).length,
-    [records, draftFilters, productNameLookup],
-  );
 
   const handleReset = () => {
     setDraftFilters({
@@ -154,6 +146,9 @@ export function PantryFilterModal({
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
           >
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
@@ -425,7 +420,7 @@ export function PantryFilterModal({
             <Pressable
               testID="pantry-filter-apply-btn"
               accessibilityRole="button"
-              accessibilityLabel={`Apply filters, ${matchingCount} matching items`}
+              accessibilityLabel="Apply filters"
               onPress={handleApply}
               style={[
                 styles.applyBtn,
@@ -436,7 +431,7 @@ export function PantryFilterModal({
               ]}
             >
               <Text style={[styles.applyText, { color: theme.colors.text }]}>
-                Apply ({matchingCount} items)
+                Apply
               </Text>
             </Pressable>
           </View>

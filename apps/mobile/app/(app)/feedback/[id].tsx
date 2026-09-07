@@ -125,8 +125,13 @@ export default function FeedbackDetailScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
       style={styles.keyboardContainer}
     >
-      <Screen contentContainerStyle={styles.container}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+      <Screen scroll={false} keyboardAvoiding={false} contentContainerStyle={styles.container}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+        >
           {/* Header Card */}
           <View style={[styles.headerCard, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
             <View style={styles.badgeRow}>

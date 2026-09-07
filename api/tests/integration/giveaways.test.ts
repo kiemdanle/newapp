@@ -46,6 +46,16 @@ describe('GET /v1/giveaways', () => {
     expect(res.json().items.map((x: { id: string }) => x.id)).not.toContain(g.id);
     await app.close();
   });
+  it('scopes to viewer country with country=LOCAL and does not leak other countries', async () => {
+    const app = await buildServer();
+    const giver = await makeUser({ email: `gcl-giver-${Date.now()}@t.l`, country: 'US' });
+    const viewerGB = await makeUser({ email: `gcl-viewer-${Date.now()}@t.l`, country: 'GB' });
+    const g = await makeGiveaway({ giverUserId: giver.id, country: 'US' });
+    const res = await app.inject({ method: 'GET', url: '/v1/giveaways?country=LOCAL', headers: await auth(viewerGB.id) });
+    expect(res.json().items.map((x: { id: string }) => x.id)).not.toContain(g.id);
+    await app.close();
+  });
+
 
   it('global fallback when viewer has no country', async () => {
     const app = await buildServer();

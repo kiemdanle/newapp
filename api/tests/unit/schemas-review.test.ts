@@ -26,10 +26,10 @@ describe('reviewCreateSchema', () => {
     expect(r).toEqual({ rating: 'buy_again', body: 'great' });
   });
 
-  it('accepts missing body', () => {
+  it('accepts missing body and normalizes to null', () => {
     const r = reviewCreateSchema.parse({ rating: 'wont_buy' });
     expect(r.rating).toBe('wont_buy');
-    expect(r.body).toBeUndefined();
+    expect(r.body).toBeNull();
   });
 
   it('rejects unknown rating value', () => {
@@ -68,13 +68,13 @@ describe('reviewSortSchema', () => {
     expect(reviewSortSchema.parse(undefined)).toBe('score');
   });
 
-  it('accepts the three sort modes', () => {
+  it('accepts sort modes score and new', () => {
     expect(reviewSortSchema.parse('score')).toBe('score');
     expect(reviewSortSchema.parse('new')).toBe('new');
-    expect(reviewSortSchema.parse('rating')).toBe('rating');
   });
 
-  it('rejects unknown sorts', () => {
+  it('rejects unknown sorts including legacy rating', () => {
+    expect(() => reviewSortSchema.parse('rating')).toThrow();
     expect(() => reviewSortSchema.parse('popular')).toThrow();
   });
 });

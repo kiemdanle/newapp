@@ -198,6 +198,9 @@ export default function NewGiveawayScreen() {
     <ScrollView
       style={[styles.container, { backgroundColor: theme.colors.bg }]}
       contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets={true}
     >
       <View style={styles.header}>
         <Text style={[styles.heading, { color: theme.colors.text }]}>Share an Item</Text>

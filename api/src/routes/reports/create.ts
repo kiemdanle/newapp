@@ -1,4 +1,6 @@
 import type { FastifyInstance } from 'fastify';
+import prismaPkg from '@prisma/client';
+const { Prisma } = prismaPkg;
 import { reportCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
@@ -26,15 +28,29 @@ export async function createReportRoute(app: FastifyInstance) {
     if (!exists) {
       throw new AppError({ status: 404, code: ERROR_CODES.REPORT_TARGET_NOT_FOUND, title: 'Report target not found' });
     }
-    const report = await getPrisma().report.create({
-      data: {
-        reporterId: userId,
-        targetType: input.targetType,
-        targetId: input.targetId,
-        reason: input.reason,
-        body: input.body ?? null,
-      },
-    });
+
+    let report;
+    try {
+      report = await getPrisma().report.create({
+        data: {
+          reporterId: userId,
+          targetType: input.targetType,
+          targetId: input.targetId,
+          reason: input.reason,
+          body: input.body ?? null,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.CONFLICT,
+          title: 'You already have an open report for this item',
+        });
+      }
+      throw err;
+    }
+
     await maybeAutoHide(input.targetType, input.targetId);
     return reply.status(201).send(toApiReport(report));
   });

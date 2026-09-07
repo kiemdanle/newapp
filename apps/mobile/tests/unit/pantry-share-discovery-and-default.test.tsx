@@ -22,6 +22,7 @@ jest.mock('../../src/api/records', () => {
 jest.mock('../../src/api/products', () => ({
   useCreateOrResumeDraft: () => ({ mutateAsync: jest.fn() }),
   usePatchDraft: () => ({ mutateAsync: jest.fn() }),
+  useProduct: () => ({ data: null }),
 }));
 
 jest.mock('../../src/api/product-photo-upload', () => ({

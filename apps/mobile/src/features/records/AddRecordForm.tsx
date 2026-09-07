@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, Text, TextInput, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createLocalRecord } from '../../api/records';
-import { useCreateOrResumeDraft, usePatchDraft } from '../../api/products';
+import { useCreateOrResumeDraft, usePatchDraft, useProduct } from '../../api/products';
 import { uploadProductPhoto } from '../../api/product-photo-upload';
 import { useMyHouseholds } from '../../api/households';
 import { usePantryScope } from '../../store/pantryScope';
@@ -17,6 +17,7 @@ interface Props {
   productId?: string | null;
   productName?: string | null;
   customName?: string | null;
+  initialCategory?: string | null;
   onSaved: (localId: string) => void;
   onOpenOcr?: () => void;
   /** True while the product this record attaches to is still private
@@ -28,10 +29,35 @@ interface Props {
 
 const isoRe = /^\d{4}-\d{2}-\d{2}$/;
 
-export function AddRecordForm({ productId, productName, customName, onSaved, onOpenOcr, lockedPersonalScope }: Props) {
+export function AddRecordForm({
+  productId,
+  productName,
+  customName,
+  initialCategory,
+  onSaved,
+  onOpenOcr,
+  lockedPersonalScope,
+}: Props) {
   const theme = useTheme();
+  const { data: product } = useProduct(productId ?? undefined);
+  const lastProductIdRef = useRef(productId);
+  const hasUserEditedCategoryRef = useRef(false);
   const [expiry, setExpiry] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(() => initialCategory || product?.category || '');
+
+  if (lastProductIdRef.current !== productId) {
+    lastProductIdRef.current = productId;
+    hasUserEditedCategoryRef.current = false;
+  }
+
+  useEffect(() => {
+    if (!hasUserEditedCategoryRef.current) {
+      const cat = initialCategory || product?.category;
+      if (cat) {
+        setCategory(cat);
+      }
+    }
+  }, [initialCategory, product?.category]);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
@@ -42,6 +68,7 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const patchDraft = usePatchDraft();
@@ -141,6 +168,19 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
     shadowRadius: 3,
     elevation: 1,
   } as const;
+
+  const getInputStyle = (fieldKey: string) => [
+    input,
+    {
+      borderColor:
+        focusedField === fieldKey
+          ? theme.colors.primary
+          : isDark
+            ? theme.colors.border
+            : 'rgba(44, 44, 40, 0.08)',
+      borderWidth: focusedField === fieldKey ? 1.5 : 1,
+    },
+  ];
   const onCameraCapture = (pickedList: PickedPhoto[]) => {
     if (pickedList && pickedList.length > 0 && pickedList[0]) {
       setPhoto(pickedList[0]);
@@ -325,7 +365,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         <TextInput
           accessibilityLabel="Text input field"
           testID="add-record-quantity"
-          style={[input, { minHeight: 48 }]}
+          style={[getInputStyle('quantity'), { minHeight: 48 }]}
+          onFocus={() => setFocusedField('quantity')}
+          onBlur={() => setFocusedField(null)}
           value={quantity}
           keyboardType="numeric"
           onChangeText={setQuantity}
@@ -344,10 +386,15 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         <TextInput
           accessibilityLabel="Text input field"
           testID="add-record-category"
-          style={[input, { minHeight: 48 }]}
+          style={[getInputStyle('category'), { minHeight: 48 }]}
+          onFocus={() => setFocusedField('category')}
+          onBlur={() => setFocusedField(null)}
           value={category}
-          onChangeText={setCategory}
-          placeholder="e.g. Dairy, Produce"
+          onChangeText={(val) => {
+            hasUserEditedCategoryRef.current = true;
+            setCategory(val);
+          }}
+          placeholder="e.g: Produce, Diary, Bakery, Meat & Seafood, More"
           placeholderTextColor={theme.colors.textMuted}
         />
       </View>
@@ -357,7 +404,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
         <TextInput
           accessibilityLabel="Text input field"
           testID="add-record-notes"
-          style={[input, { minHeight: 64 }]}
+          style={[getInputStyle('notes'), { minHeight: 64 }]}
+          onFocus={() => setFocusedField('notes')}
+          onBlur={() => setFocusedField(null)}
           value={notes}
           onChangeText={setNotes}
           multiline
@@ -379,7 +428,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
             <TextInput
               accessibilityLabel="Text input field"
               testID="add-record-price"
-              style={[input, { minHeight: 48 }]}
+              style={[getInputStyle('price'), { minHeight: 48 }]}
+              onFocus={() => setFocusedField('price')}
+              onBlur={() => setFocusedField(null)}
               value={price}
               keyboardType="numeric"
               onChangeText={setPrice}
@@ -392,7 +443,9 @@ export function AddRecordForm({ productId, productName, customName, onSaved, onO
             <TextInput
               accessibilityLabel="Text input field"
               testID="add-record-store"
-              style={[input, { minHeight: 48 }]}
+              style={[getInputStyle('store'), { minHeight: 48 }]}
+              onFocus={() => setFocusedField('store')}
+              onBlur={() => setFocusedField(null)}
               value={store}
               onChangeText={setStore}
               placeholder="e.g. Trader Joe's"

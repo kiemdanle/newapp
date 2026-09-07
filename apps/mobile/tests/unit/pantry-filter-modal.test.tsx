@@ -52,9 +52,10 @@ describe('PantryFilterModal', () => {
     expect(screen.getByText('EXPIRY STATUS')).toBeTruthy();
     expect(screen.getByText('FOOD CATEGORY')).toBeTruthy();
     expect(screen.getByText('AVAILABILITY')).toBeTruthy();
+    expect(screen.getByText('Apply')).toBeTruthy();
   });
 
-  it('allows selecting expiry status and updates match count', () => {
+  it('allows selecting expiry status and applies filters', () => {
     const onApply = jest.fn();
     const screen = renderWithTheme(
       <PantryFilterModal

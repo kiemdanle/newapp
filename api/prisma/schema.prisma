@@ -732,8 +732,10 @@ model Record {
   clientId     String       @unique @map("client_id") @db.Uuid
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
-  consumedAt   DateTime?    @map("consumed_at")
-  householdId  String?      @map("household_id") @db.Uuid
+  consumedAt    DateTime?    @map("consumed_at")
+  discardedAt   DateTime?    @map("discarded_at")
+  discardReason String?      @map("discard_reason")
+  householdId   String?      @map("household_id") @db.Uuid
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
@@ -744,6 +746,8 @@ model Record {
   @@index([userId, status, expiryDate])
   @@index([householdId, status, expiryDate])
   @@index([householdId, updatedAt])
+  @@index([userId, status, discardedAt])
+  @@index([userId, status, consumedAt])
   @@map("records")
 }
 
@@ -784,6 +788,8 @@ model Review {
 
   @@unique([userId, productId])
   @@index([productId, status, score(sort: Desc)])
+  @@index([status, score(sort: Desc), id(sort: Desc)])
+  @@index([status, createdAt(sort: Desc), id(sort: Desc)])
   @@map("reviews")
 }
 

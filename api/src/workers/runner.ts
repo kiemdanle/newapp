@@ -4,7 +4,6 @@ import { startSendWorker } from './notification-send.js';
 import { startProductLookupWorker } from './product-lookup.js';
 import { startScoreRecalcWorker } from '../queues/jobs/score-recalc.js';
 import { startModerationFlagWorker } from '../queues/jobs/moderation-flag.js';
-import { startProductRatingWorker } from '../queues/jobs/product-rating-recalc.js';
 import { startProductMediaCleanupWorker, scheduleProductMediaCleanup } from '../queues/jobs/product-media-cleanup.js';
 import { startIndependentOutboxPoller, stopIndependentOutboxPoller } from '../services/products/product-media-outbox.js';
 import {
@@ -36,7 +35,6 @@ export function startWorkers(): Worker[] {
     startProductLookupWorker(),
     startScoreRecalcWorker(),
     startModerationFlagWorker(),
-    startProductRatingWorker(),
     startProductMediaCleanupWorker(),
     startModerationNotificationWorker(),
   ];

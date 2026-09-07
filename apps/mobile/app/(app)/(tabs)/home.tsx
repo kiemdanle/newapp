@@ -34,6 +34,25 @@ export default function HomeTab() {
             </View>
           ) : null}
           <Pressable
+            testID="home-pantry-history-btn"
+            accessibilityRole="button"
+            accessibilityLabel="View pantry history and discarded items"
+            onPress={() => navigation.navigate('PantryHistory')}
+            style={({ pressed }) => ({
+              width: 44,
+              height: 44,
+              borderRadius: theme.radii.pill,
+              backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+              borderWidth: 1,
+              borderColor: pressed ? theme.colors.primary : theme.colors.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.85 : 1,
+            })}
+          >
+            <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+          </Pressable>
+          <Pressable
             testID="home-share-pantry-btn"
             accessibilityRole="button"
             accessibilityLabel="Share pantry with family or roommates"

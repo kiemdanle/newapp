@@ -1,12 +1,14 @@
 import type { Report } from '@prisma/client';
 import type { Report as ApiReport, ReportTargetType } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
+import {
+  lockProductForReviewMutation,
+  recomputeAndSyncProductTallies,
+} from '../reviews/product-tallies.js';
 
 /**
  * Spec §2.8: content auto-hides once it accumulates more than this many
- * non-dismissed reports. Hardcoded here as the spec literal. A later milestone
- * may introduce an admin-configurable override that defaults to this same value;
- * no settings dependency is imported now (that module ships later).
+ * non-dismissed reports from distinct reporters. Hardcoded here as the spec literal.
  */
 const AUTO_HIDE_REPORT_THRESHOLD = 3;
 
@@ -24,10 +26,12 @@ export function toApiReport(r: Report): ApiReport {
 }
 
 /**
- * Spec §2.8: more than 3 *open or resolved* reports against the same target
- * auto-hides the content pending admin review. "dismissed" reports do not count.
- * - reviews → set `reviews.status = 'hidden'`
- * - products → set `products.status = 'pending'` (admins can re-approve)
+ * Spec §2.8: more than 3 distinct reporters across *open or resolved* reports against the
+ * same target auto-hides the content pending admin review. "dismissed" reports do not count.
+ * - reviews → set `reviews.status = 'hidden'` and recompute product tallies synchronously
+ * - products → set `products.status = 'report_hidden'`
+ * - deals → set `deals.status = 'hidden'`
+ * - giveaways → set `giveaways.status = 'cancelled'`
  * - users → no auto-hide; admin queue picks them up
  *
  * Idempotent: re-running on an already-hidden target is a no-op.
@@ -37,24 +41,26 @@ export async function maybeAutoHide(
   targetId: string,
 ): Promise<{ hidden: boolean }> {
   const prisma = getPrisma();
-  const count = await prisma.report.count({
+  const distinctReporters = await prisma.report.groupBy({
+    by: ['reporterId'],
     where: { targetType, targetId, status: { in: ['open', 'resolved'] } },
   });
-  // Spec §2.8 literal: more than 3 non-dismissed reports auto-hides the target.
-  if (count <= AUTO_HIDE_REPORT_THRESHOLD) return { hidden: false };
+  // Auto-hide strictly requires distinct reporters count > AUTO_HIDE_REPORT_THRESHOLD (on the 4th)
+  if (distinctReporters.length <= AUTO_HIDE_REPORT_THRESHOLD) return { hidden: false };
 
   if (targetType === 'review') {
     const r = await prisma.review.findUnique({ where: { id: targetId } });
     if (!r || r.status === 'hidden' || r.status === 'deleted') return { hidden: false };
-    await prisma.review.update({ where: { id: targetId }, data: { status: 'hidden' } });
+    await prisma.$transaction(async (tx) => {
+      await lockProductForReviewMutation(tx, r.productId);
+      await tx.review.update({ where: { id: targetId }, data: { status: 'hidden' } });
+      await recomputeAndSyncProductTallies(tx, r.productId);
+    });
     return { hidden: true };
   }
   if (targetType === 'product') {
     const p = await prisma.product.findUnique({ where: { id: targetId } });
     if (!p || p.status !== 'active') return { hidden: false };
-    // `report_hidden` is the distinct catalog-moderation state for a reported
-    // active product; `pending` is reserved for creator-submitted drafts and must
-    // never be written by report auto-hide.
     await prisma.product.update({ where: { id: targetId }, data: { status: 'report_hidden' } });
     return { hidden: true };
   }

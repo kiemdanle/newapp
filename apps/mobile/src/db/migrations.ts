@@ -28,5 +28,19 @@ export const migrations = schemaMigrations({
         },
       ],
     },
+    {
+      // v3 → v4: add discarded_at and discard_reason to records
+      toVersion: 4,
+      steps: [
+        {
+          type: 'add_columns' as const,
+          table: 'records',
+          columns: [
+            { name: 'discarded_at', type: 'number', isOptional: true },
+            { name: 'discard_reason', type: 'string', isOptional: true },
+          ],
+        },
+      ],
+    },
   ],
 });

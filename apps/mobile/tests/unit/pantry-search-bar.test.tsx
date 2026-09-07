@@ -13,7 +13,7 @@ describe('PantrySearchBar', () => {
     jest.useRealTimers();
   });
 
-  it('renders with placeholder and initial empty text', () => {
+  it('renders with placeholder, initial empty text, and submit icon', () => {
     const screen = renderWithTheme(
       <PantrySearchBar
         value=""
@@ -25,11 +25,12 @@ describe('PantrySearchBar', () => {
     );
 
     expect(screen.getByTestId('pantry-search-input')).toBeTruthy();
+    expect(screen.getByTestId('pantry-search-submit-btn')).toBeTruthy();
     expect(screen.queryByTestId('pantry-search-clear-btn')).toBeNull();
     expect(screen.queryByTestId('pantry-filter-badge')).toBeNull();
   });
 
-  it('debounces onChangeText calls by 300ms', () => {
+  it('does not trigger search automatically while typing (no autocomplete)', () => {
     const onChangeText = jest.fn();
     const screen = renderWithTheme(
       <PantrySearchBar
@@ -44,23 +45,61 @@ describe('PantrySearchBar', () => {
     const input = screen.getByTestId('pantry-search-input');
     fireEvent.changeText(input, 'organic milk');
 
-    // Should not fire immediately
-    expect(onChangeText).not.toHaveBeenCalled();
-
-    // Advance timers by 299ms
+    // Advance timers - search must NEVER trigger automatically while typing
     act(() => {
-      jest.advanceTimersByTime(299);
+      jest.advanceTimersByTime(2000);
     });
     expect(onChangeText).not.toHaveBeenCalled();
+  });
 
-    // Advance to 300ms
+  it('triggers search when user clicks the magnifier search icon', () => {
+    const onChangeText = jest.fn();
+    const screen = renderWithTheme(
+      <PantrySearchBar
+        value=""
+        onChangeText={onChangeText}
+        onOpenFilter={jest.fn()}
+        activeFilterCount={0}
+      />,
+      'expyrico',
+    );
+
+    const input = screen.getByTestId('pantry-search-input');
     act(() => {
-      jest.advanceTimersByTime(1);
+      fireEvent.changeText(input, 'organic milk');
     });
+
+    act(() => {
+      fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
+    });
+
     expect(onChangeText).toHaveBeenCalledWith('organic milk');
   });
 
-  it('clears text immediately on clear button press', () => {
+  it('triggers search when user presses search button in keyboard (submitEditing)', () => {
+    const onChangeText = jest.fn();
+    const screen = renderWithTheme(
+      <PantrySearchBar
+        value=""
+        onChangeText={onChangeText}
+        onOpenFilter={jest.fn()}
+        activeFilterCount={0}
+      />,
+      'expyrico',
+    );
+
+    const input = screen.getByTestId('pantry-search-input');
+    act(() => {
+      fireEvent.changeText(input, 'fresh cheese');
+    });
+    act(() => {
+      fireEvent(input, 'submitEditing');
+    });
+
+    expect(onChangeText).toHaveBeenCalledWith('fresh cheese');
+  });
+
+  it('clears draft text on clear button press without triggering search callback', () => {
     const onChangeText = jest.fn();
     const screen = renderWithTheme(
       <PantrySearchBar
@@ -73,10 +112,45 @@ describe('PantrySearchBar', () => {
     );
 
     const clearBtn = screen.getByTestId('pantry-search-clear-btn');
-    fireEvent.press(clearBtn);
+    act(() => {
+      fireEvent.press(clearBtn);
+    });
 
-    expect(onChangeText).toHaveBeenCalledWith('');
+    // Does NOT trigger onChangeText callback - only clears draft
+    expect(onChangeText).not.toHaveBeenCalled();
+    expect(screen.getByTestId('pantry-search-input').props.value).toBe('');
     expect(screen.queryByTestId('pantry-search-clear-btn')).toBeNull();
+
+    // Now clicking search submits the empty search
+    act(() => {
+      fireEvent.press(screen.getByTestId('pantry-search-submit-btn'));
+    });
+    expect(onChangeText).toHaveBeenCalledWith('');
+  });
+
+  it('ensures neither typing nor clear button calls onChangeText until submitted', () => {
+    const onChangeText = jest.fn();
+    const screen = renderWithTheme(
+      <PantrySearchBar
+        value=""
+        onChangeText={onChangeText}
+        onOpenFilter={jest.fn()}
+        activeFilterCount={0}
+      />,
+      'expyrico',
+    );
+
+    const input = screen.getByTestId('pantry-search-input');
+    act(() => {
+      fireEvent.changeText(input, 'yogurt');
+    });
+    expect(onChangeText).not.toHaveBeenCalled();
+
+    const clearBtn = screen.getByTestId('pantry-search-clear-btn');
+    act(() => {
+      fireEvent.press(clearBtn);
+    });
+    expect(onChangeText).not.toHaveBeenCalled();
   });
 
   it('displays filter badge when activeFilterCount > 0 and calls onOpenFilter', () => {

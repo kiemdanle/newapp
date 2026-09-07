@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { adminReportResolveSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../../db.js';
 import { AppError } from '../../../errors.js';
+import {
+  lockProductForReviewMutation,
+  recomputeAndSyncProductTallies,
+} from '../../../services/reviews/product-tallies.js';
 
 const paramsSchema = z.object({ id: z.string().uuid() });
 
@@ -16,9 +20,19 @@ export async function adminReportsResolveRoute(app: FastifyInstance) {
     if (report.status !== 'open') throw new AppError({ status: 409, code: ERROR_CODES.CONFLICT, title: 'Already resolved' });
     await prisma.$transaction(async (tx) => {
       if (input.action === 'hide' && report.targetType === 'review') {
-        await tx.review.update({ where: { id: report.targetId }, data: { status: 'hidden' } });
+        const r = await tx.review.findUnique({ where: { id: report.targetId } });
+        if (r) {
+          await lockProductForReviewMutation(tx, r.productId);
+          await tx.review.update({ where: { id: report.targetId }, data: { status: 'hidden' } });
+          await recomputeAndSyncProductTallies(tx, r.productId);
+        }
       } else if (input.action === 'delete' && report.targetType === 'review') {
-        await tx.review.update({ where: { id: report.targetId }, data: { status: 'deleted' } });
+        const r = await tx.review.findUnique({ where: { id: report.targetId } });
+        if (r) {
+          await lockProductForReviewMutation(tx, r.productId);
+          await tx.review.update({ where: { id: report.targetId }, data: { status: 'deleted' } });
+          await recomputeAndSyncProductTallies(tx, r.productId);
+        }
       } else if (input.action === 'ban') {
         let offenderId: string | null = null;
         if (report.targetType === 'user') offenderId = report.targetId;

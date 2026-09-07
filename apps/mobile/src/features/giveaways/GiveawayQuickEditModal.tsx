@@ -226,6 +226,9 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.formContent}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets={true}
           >
             {/* Photos Section */}
             <View style={styles.fieldGroup}>

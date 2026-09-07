@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
 import type { DealFeedFilters } from '../../api/deals';
@@ -37,6 +38,7 @@ interface Props {
 
 export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<DealSort>('score');
@@ -99,7 +101,7 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       {/* Top Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.heading, { color: theme.colors.text }]}>Deals</Text>
           <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
@@ -282,7 +284,7 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
         keyExtractor={(d: Deal) => d.id}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: 84 },
+          { paddingBottom: 84 + insets.bottom },
         ]}
         refreshControl={
           <RefreshControl

@@ -54,7 +54,7 @@ export const UNIT_CATEGORIES: UnitCategory[] = [
     ],
   },
   {
-    title: 'American Imports (US Customary)',
+    title: 'Traditional Units',
     units: [
       { key: 'oz', label: 'Ounce', sublabel: 'oz · Weight (16 oz = 1 lb)' },
       { key: 'lb', label: 'Pound', sublabel: 'lb · Weight' },

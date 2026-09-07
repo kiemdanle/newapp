@@ -22,6 +22,8 @@ export class RecordModel extends Model {
   @readonly @date('created_at') createdAt!: Date;
   @readonly @date('updated_at') updatedAt!: Date;
   @date('consumed_at') consumedAt!: Date | null;
+  @date('discarded_at') discardedAt!: Date | null;
+  @field('discard_reason') discardReason!: string | null;
   @field('pending_sync') pendingSync!: boolean;
   @field('pending_delete') pendingDelete!: boolean;
   @field('household_id') householdId!: string | null;

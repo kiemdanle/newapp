@@ -81,6 +81,17 @@ beforeAll(async () => {
     );
   `);
   await prisma.$executeRawUnsafe('CREATE UNIQUE INDEX IF NOT EXISTS "household_invitations_token_key" ON "household_invitations"("token");');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "reviews_status_score_id_idx" ON "reviews"("status", "score" DESC, "id" DESC);');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "reviews_status_created_at_id_idx" ON "reviews"("status", "created_at" DESC, "id" DESC);');
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX IF NOT EXISTS "reports_open_per_reporter_target_idx"
+    ON "reports" ("reporter_id", "target_type", "target_id")
+    WHERE "status" = 'open';
+  `);
+  await prisma.$executeRawUnsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS discarded_at TIMESTAMP(3);');
+  await prisma.$executeRawUnsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS discard_reason TEXT;');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "records_user_id_status_discarded_at_idx" ON records(user_id, status, discarded_at);');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "records_user_id_status_consumed_at_idx" ON records(user_id, status, consumed_at);');
 });
 
 beforeEach(async () => {

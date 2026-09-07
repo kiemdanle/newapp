@@ -200,7 +200,12 @@ export function HouseholdSettings({ initialJoinCode }: HouseholdSettingsProps = 
         </View>
       ) : (
         /* Existing household */
-        <ScrollView style={{ flex: 1 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          automaticallyAdjustKeyboardInsets={true}
+        >
           <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>
             {household?.name ?? activeHousehold?.name ?? 'Household'}
           </Text>

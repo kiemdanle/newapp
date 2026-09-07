@@ -232,6 +232,8 @@ export default function EditProfileScreen() {
       style={{ flex: 1, backgroundColor: theme.colors.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets={true}
     >
       {/* Avatar Section */}
       <View style={styles.avatarSection}>

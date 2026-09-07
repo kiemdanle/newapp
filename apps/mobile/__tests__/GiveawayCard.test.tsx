@@ -114,4 +114,16 @@ describe('GiveawayCard', () => {
     fireEvent.press(shareBtn);
     expect(onShare).toHaveBeenCalledWith(mockGiveaway);
   });
+
+  it('renders Reserved badge for claimed status and Collected badge for completed status', () => {
+    const { getByText: getByText1 } = render(
+      wrap(<GiveawayCard giveaway={{ ...mockGiveaway, status: 'claimed' }} onPress={jest.fn()} />),
+    );
+    expect(getByText1('Reserved')).toBeTruthy();
+
+    const { getByText: getByText2 } = render(
+      wrap(<GiveawayCard giveaway={{ ...mockGiveaway, status: 'completed' }} onPress={jest.fn()} />),
+    );
+    expect(getByText2('Collected')).toBeTruthy();
+  });
 });

@@ -20,11 +20,13 @@ import HomeScreen from '../../app/(app)/(tabs)/home';
 import DealsScreen from '../../app/(app)/(tabs)/deals';
 import GiveawaysScreen from '../../app/(app)/(tabs)/giveaways';
 import ProfileScreen from '../../app/(app)/(tabs)/profile';
+import ReviewsScreen from '../../app/(app)/(tabs)/reviews';
 
 export type TabsParamList = {
   Home: undefined;
-  Deals: undefined;
   Giveaways: undefined;
+  Deals: undefined;
+  Reviews: undefined;
   Profile: undefined;
 };
 
@@ -58,6 +60,13 @@ const TAB_META: Record<
     sublabel: 'Grocery discounts',
     badgeBg: 'rgba(75, 174, 138, 0.14)',
     iconColor: '#3A8F6F',
+  },
+  Reviews: {
+    icon: 'star',
+    label: 'Reviews',
+    sublabel: 'Ratings & community',
+    badgeBg: 'rgba(245, 166, 35, 0.14)',
+    iconColor: '#F5A623',
   },
   Profile: {
     icon: 'person',
@@ -109,6 +118,15 @@ const TAB_ACTIONS: Partial<Record<keyof TabsParamList, ActionConfig>> = {
     bg: '#4BAE8A', // Expyrico Fresh Sage
     fg: '#FFFFFF',
     onPress: (nav) => nav.navigate('DealNew'),
+  },
+  Reviews: {
+    testID: 'reviews-scan-action',
+    accessibilityLabel: 'Scan product to review',
+    label: 'Scan to review',
+    icon: 'scan-outline',
+    bg: '#4BAE8A', // Expyrico Fresh Sage
+    fg: '#FFFFFF',
+    onPress: (nav) => nav.navigate('Scan'),
   },
 };
 
@@ -419,6 +437,7 @@ export function TabsNavigator() {
       <Tabs.Screen name="Home" component={HomeScreen} />
       <Tabs.Screen name="Giveaways" component={GiveawaysScreen} />
       <Tabs.Screen name="Deals" component={DealsScreen} />
+      <Tabs.Screen name="Reviews" component={ReviewsScreen} />
       <Tabs.Screen name="Profile" component={ProfileScreen} />
     </Tabs.Navigator>
   );

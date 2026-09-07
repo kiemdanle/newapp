@@ -12,8 +12,12 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRecord, patchLocalRecord, deleteLocalRecord, type LocalRecord } from '../../../src/api/records';
+import { useRecord, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, type LocalRecord } from '../../../src/api/records';
 import { useMyHouseholds } from '../../../src/api/households';
+import { useActiveGiveawaysForRecord } from '../../../src/api/giveaways';
+import { useUndoToastStore } from '../../../src/store/undoToast';
+import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
+import { DiscardReasonModal } from '../../../src/components/DiscardReasonModal';
 import type { Household } from '@expyrico/shared';
 import { useProduct, useCreateOrResumeDraft, usePatchDraft } from '../../../src/api/products';
 import { uploadProductPhoto } from '../../../src/api/product-photo-upload';
@@ -28,17 +32,22 @@ import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraM
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
-function getRelativeExpiryLabel(expiryDateStr: string, country?: string | null): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
+export function getRelativeExpiryLabel(
+  expiryDateStr: string,
+  country?: string | null,
+  now: Date = new Date(),
+): string {
+  if (!expiryDateStr) return '';
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const exp = new Date(`${expiryDateStr}T00:00:00Z`);
   const diffDays = Math.round((exp.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
 
+  if (Number.isNaN(diffDays)) return formatDate(expiryDateStr, country);
   if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`;
   if (diffDays === 0) return 'Expires today';
   if (diffDays === 1) return 'Tomorrow';
-  if (diffDays <= 7) return `In ${diffDays} days`;
-  return formatDate(expiryDateStr, country);
+  return `In ${diffDays} days`;
 }
 export default function RecordDetail() {
   const theme = useTheme();
@@ -54,7 +63,11 @@ export default function RecordDetail() {
   const patchDraft = usePatchDraft();
   const { data: householdsData } = useMyHouseholds();
   const households = householdsData?.items ?? [];
-
+  const { data: activeGiveaways } = useActiveGiveawaysForRecord(record?.id, record?.serverId);
+  const [pendingStatus, setPendingStatus] = useState<'consumed' | 'discarded' | null>(null);
+  const [pendingQuantity, setPendingQuantity] = useState<number>(1);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [showDiscardReasonModal, setShowDiscardReasonModal] = useState(false);
   const handleReassignScope = async (newHouseholdId: string | null) => {
     if (!record) return;
     await patchLocalRecord(record.id, { householdId: newHouseholdId });
@@ -101,8 +114,72 @@ export default function RecordDetail() {
     ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
   ].filter(Boolean) as string[];
   const uniquePhotos = Array.from(new Set(photoList));
-  const mark = async (status: 'consumed' | 'discarded') => {
-    await patchLocalRecord(record.id, { status });
+  const handleInitiateMark = (status: 'consumed' | 'discarded') => {
+    if (activeGiveaways && activeGiveaways.length > 0) {
+      Alert.alert(
+        'Item Listed in Giveaway',
+        'This pantry item is currently offered in a community giveaway. Please cancel the giveaway before marking it as used or discarded.',
+        [{ text: 'OK', style: 'default' }],
+      );
+      return;
+    }
+
+    if (record.quantity > 1) {
+      setPendingStatus(status);
+      setShowQuantityModal(true);
+    } else if (status === 'discarded') {
+      setPendingStatus('discarded');
+      setPendingQuantity(1);
+      setShowDiscardReasonModal(true);
+    } else {
+      void executeMark('consumed', 1, null);
+    }
+  };
+
+  const executeMark = async (
+    status: 'consumed' | 'discarded',
+    quantity: number,
+    reason: string | null = null,
+  ) => {
+    const result = await markRecordStatusWithQuantity(record.id, status, quantity, reason);
+    useUndoToastStore.getState().show({
+      recordId: result.affectedId,
+      parentId: result.parentId,
+      isSplit: result.isSplit,
+      quantity: result.markedQuantity,
+      unit: record.unit,
+      itemName: displayName,
+      status,
+      discardReason: reason,
+    });
+    navigation.goBack();
+  };
+
+  const handleConfirmQuantity = (selectedQty: number) => {
+    setShowQuantityModal(false);
+    if (pendingStatus === 'discarded') {
+      setPendingQuantity(selectedQty);
+      setShowDiscardReasonModal(true);
+    } else if (pendingStatus === 'consumed') {
+      void executeMark('consumed', selectedQty, null);
+    }
+  };
+
+  const handleSelectDiscardReason = (reason: string) => {
+    setShowDiscardReasonModal(false);
+    void executeMark('discarded', pendingQuantity, reason);
+  };
+
+  const handleRestore = async () => {
+    const accessibleHouseholdIds = householdsData?.items?.map((h) => h.id) ?? [];
+    const result = await restoreLocalRecord(record.id, accessibleHouseholdIds);
+    if (result.wasReassignedToPersonal) {
+      Alert.alert(
+        'Restored to Personal Pantry',
+        'Your previous household is no longer accessible, so this item was restored to your personal pantry.',
+        [{ text: 'OK' }],
+      );
+    }
     navigation.goBack();
   };
 
@@ -220,10 +297,13 @@ export default function RecordDetail() {
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: insets.bottom + 96,
+          paddingBottom: Math.max(insets.bottom, 34) + 90,
           gap: 14,
         }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets={true}
       >
         {/* Hero Photo / Add Photo Card */}
         {uniquePhotos.length > 0 ? (
@@ -261,6 +341,40 @@ export default function RecordDetail() {
               Take a photo or choose from library
             </Text>
           </Pressable>
+        )}
+
+        {/* Historical Status Banner for non-active items */}
+        {record.status !== 'active' && (
+          <View
+            testID="record-historical-status-banner"
+            style={[
+              styles.historicalBanner,
+              {
+                backgroundColor:
+                  record.status === 'consumed'
+                    ? 'rgba(75, 174, 138, 0.12)'
+                    : 'rgba(245, 166, 35, 0.12)',
+                borderColor:
+                  record.status === 'consumed' ? theme.colors.primary : theme.colors.accent,
+              },
+            ]}
+          >
+            <Ionicons
+              name={record.status === 'consumed' ? 'checkmark-circle' : 'trash'}
+              size={22}
+              color={record.status === 'consumed' ? theme.colors.primary : theme.colors.accent}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.historicalBannerTitle, { color: theme.colors.text }]}>
+                {record.status === 'consumed' ? 'Marked as Used' : 'Marked as Discarded'}
+              </Text>
+              <Text style={[styles.historicalBannerSubtitle, { color: theme.colors.textMuted }]}>
+                {record.status === 'consumed'
+                  ? `Consumed${record.consumedAt ? ` on ${formatDate(record.consumedAt.slice(0, 10), userCountry)}` : ''}`
+                  : `Discarded${record.discardedAt ? ` on ${formatDate(record.discardedAt.slice(0, 10), userCountry)}` : ''}${record.discardReason ? ` · Reason: ${record.discardReason.charAt(0).toUpperCase() + record.discardReason.slice(1)}` : ''}`}
+              </Text>
+            </View>
+          </View>
         )}
 
         {/* Title & Quick Actions Row */}
@@ -590,6 +704,9 @@ export default function RecordDetail() {
             </View>
           )}
         </View>
+          {product ? (
+            <ProductReviewsSection product={product} />
+          ) : null}
       </ScrollView>
 
       {/* Floating Bottom Action Toolbar */}
@@ -599,30 +716,40 @@ export default function RecordDetail() {
           {
             backgroundColor: theme.colors.bgElevated,
             borderTopColor: theme.colors.border,
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: Math.max(insets.bottom, 34),
           },
         ]}
       >
-        <View style={styles.actionRow}>
-          <View style={{ flex: 1.8 }}>
-            <Button
-              testID="record-mark-consumed"
-              label="Mark as used"
-              icon="checkmark-circle-outline"
-              variant="primary"
-              onPress={() => void mark('consumed')}
-            />
+        {record.status !== 'active' ? (
+          <Button
+            testID="record-restore-pantry-btn"
+            label="Restore to Pantry"
+            icon="refresh-outline"
+            variant="primary"
+            onPress={() => void handleRestore()}
+          />
+        ) : (
+          <View style={styles.actionRow}>
+            <View style={{ flex: 1 }}>
+              <Button
+                testID="record-mark-consumed"
+                label="Mark as used"
+                icon="checkmark-circle-outline"
+                variant="primary"
+                onPress={() => handleInitiateMark('consumed')}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                testID="record-mark-discarded"
+                label="Mark as discarded"
+                icon="trash-outline"
+                variant="outline"
+                onPress={() => handleInitiateMark('discarded')}
+              />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Button
-              testID="record-mark-discarded"
-              label="Discard"
-              icon="trash-outline"
-              variant="outline"
-              onPress={() => void mark('discarded')}
-            />
-          </View>
-        </View>
+        )}
       </View>
       {/* Quick Edit Modal */}
       <QuickEditModal
@@ -639,11 +766,42 @@ export default function RecordDetail() {
         onCapture={handleCameraCapture}
         onClose={() => setShowCameraModal(false)}
       />
+      <QuantityPromptModal
+        visible={showQuantityModal}
+        itemName={displayName}
+        maxQuantity={record.quantity}
+        unit={record.unit}
+        actionType={pendingStatus || 'consumed'}
+        onClose={() => setShowQuantityModal(false)}
+        onConfirm={handleConfirmQuantity}
+      />
+      <DiscardReasonModal
+        visible={showDiscardReasonModal}
+        itemName={displayName}
+        onClose={() => setShowDiscardReasonModal(false)}
+        onSelectReason={handleSelectDiscardReason}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  historicalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+  },
+  historicalBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  historicalBannerSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
   center: {
     flex: 1,
     alignItems: 'center',

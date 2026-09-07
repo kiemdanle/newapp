@@ -1,4 +1,4 @@
-import type { Review, User, Prisma, PrismaClient } from '@prisma/client';
+import type { Review, User, Product, Prisma, PrismaClient } from '@prisma/client';
 import type { Review as ApiReview } from '@expyrico/shared';
 import { wilsonLowerBound } from './wilson.js';
 
@@ -6,10 +6,13 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * Recomputes a review's denormalized helpful tallies + Wilson score from its
- * votes. The score ranks by helpfulness (helpful vs not-helpful), independent
- * of the product rating aggregate.
+ * votes. Locks the review row first via SELECT FOR UPDATE to serialize concurrent
+ * vote recalculations and prevent stale snapshot overwrites.
  */
 export async function recomputeReviewScore(db: Db, reviewId: string): Promise<void> {
+  // Lock review row first to serialize concurrent vote recalculations
+  await db.$executeRaw`SELECT id FROM reviews WHERE id = ${reviewId}::uuid FOR UPDATE`;
+
   const agg = await db.reviewVote.groupBy({
     by: ['value'],
     where: { reviewId },
@@ -31,17 +34,17 @@ export async function recomputeReviewScore(db: Db, reviewId: string): Promise<vo
   });
 }
 
-type ReviewWithAuthor = Review & {
-  user?: Pick<User, 'id' | 'firstName' | 'avatarUrl'> | null;
+type ReviewWithRelations = Review & {
+  user?: Pick<User, 'firstName' | 'avatarUrl'> | null;
+  product?: Pick<Product, 'id' | 'name' | 'brand' | 'imageUrl'> | null;
 };
 
 export function toApiReview(
-  r: ReviewWithAuthor,
-  opts: { myVote?: 'helpful' | 'not_helpful' | null } = {},
+  r: ReviewWithRelations,
+  opts: { viewerId?: string | null; myVote?: 'helpful' | 'not_helpful' | null } = {},
 ): ApiReview {
   const out: ApiReview = {
     id: r.id,
-    userId: r.userId,
     productId: r.productId,
     rating: r.rating,
     body: r.body,
@@ -51,13 +54,21 @@ export function toApiReview(
     status: r.status,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+    isOwnReview: Boolean(opts.viewerId && r.userId === opts.viewerId),
     myVote: opts.myVote ?? null,
   };
   if (r.user) {
     out.author = {
-      id: r.user.id,
       firstName: r.user.firstName,
       avatarUrl: r.user.avatarUrl,
+    };
+  }
+  if (r.product) {
+    out.product = {
+      id: r.product.id,
+      name: r.product.name,
+      brand: r.product.brand ?? null,
+      imageUrl: r.product.imageUrl ?? null,
     };
   }
   return out;

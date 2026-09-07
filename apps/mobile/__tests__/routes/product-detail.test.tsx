@@ -30,6 +30,16 @@ jest.mock('../../src/api/households', () => ({
 jest.mock('../../src/store/pantryScope', () => ({
   usePantryScope: () => ({ scope: 'personal', householdId: null, setScope: jest.fn() }),
 }));
+import { useMyProductReview, useMyReviews } from '../../src/api/reviews';
+
+jest.mock('../../src/api/reviews', () => ({
+  useMyProductReview: jest.fn(() => ({ data: { review: null } })),
+  useMyReviews: jest.fn(() => ({ data: { pages: [] } })),
+  useProductReviews: jest.fn(() => ({ data: { pages: [] } })),
+  useVoteReviewHelpful: jest.fn(() => ({ mutate: jest.fn() })),
+  deduplicateReviews: jest.fn((pages) => (pages ? pages.flatMap((p: any) => p.items) : [])),
+  isUserOwnReview: jest.fn(() => false),
+}));
 
 function wrap(node: React.ReactNode) {
   return (
@@ -90,5 +100,96 @@ describe('<ProductDetail /> — Suggest an edit', () => {
 
     await findByTestId('add-record-save');
     expect(queryByTestId('product-suggest-edit')).toBeNull();
+  });
+
+  it('renders stars row right below product name when product has a review', async () => {
+    (useMyProductReview as jest.Mock).mockReturnValue({
+      data: {
+        review: {
+          id: 'rev-1',
+          productId: 'p1',
+          rating: 'buy_again_on_sale',
+          body: 'Great taste',
+          status: 'visible',
+          isOwnReview: true,
+        },
+      },
+    });
+
+    queueFetch(jsonResponse(PRODUCT));
+    const { findByTestId, getByText } = render(wrap(<ProductDetail />));
+
+    const starsRow = await findByTestId('product-header-stars');
+    expect(starsRow).toBeTruthy();
+    expect(getByText('3.0')).toBeTruthy();
+    expect(getByText('Your review')).toBeTruthy();
+
+    fireEvent.press(starsRow);
+    expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'p1' });
+  });
+
+  it('handles route-ID != canonical-product-ID aliasing gracefully', async () => {
+    __setRouteParams({ id: 'alias-route-id' });
+    const canonicalProduct = { ...PRODUCT, id: 'canonical-p1' };
+    queueFetch(jsonResponse(canonicalProduct));
+
+    (useMyProductReview as jest.Mock).mockImplementation((targetId) => {
+      if (targetId === 'canonical-p1') {
+        return {
+          data: {
+            review: {
+              id: 'rev-1',
+              productId: 'canonical-p1',
+              rating: 'buy_again',
+              status: 'visible',
+              isOwnReview: true,
+            },
+          },
+        };
+      }
+      return { data: { review: null } };
+    });
+
+    const { findByTestId, getByText } = render(wrap(<ProductDetail />));
+
+    const starsRow = await findByTestId('product-header-stars');
+    expect(starsRow).toBeTruthy();
+    expect(getByText('5.0')).toBeTruthy();
+
+    fireEvent.press(starsRow);
+    expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'canonical-p1' });
+  });
+
+  it('falls back to useMyReviews when useMyProductReview is null or 404', async () => {
+    (useMyProductReview as jest.Mock).mockReturnValue({ data: { review: null } });
+    (useMyReviews as jest.Mock).mockReturnValue({
+      data: {
+        pages: [
+          {
+            items: [
+              {
+                id: 'rev-dan-1',
+                productId: 'p1',
+                rating: 'buy_again_on_sale',
+                body: 'Very good',
+                status: 'visible',
+                isOwnReview: true,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    queueFetch(jsonResponse(PRODUCT));
+    const { findByTestId, getByText } = render(wrap(<ProductDetail />));
+
+    const starsRow = await findByTestId('product-header-stars');
+    expect(starsRow).toBeTruthy();
+    expect(getByText('3.0')).toBeTruthy();
+    expect(getByText('Your review')).toBeTruthy();
+
+    fireEvent.press(starsRow);
+    expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'p1' });
   });
 });
