@@ -90,6 +90,9 @@ export interface RecordListProps {
   empty?: React.ReactElement;
   refreshing?: boolean;
   onRefresh?: () => void | Promise<void>;
+  urgentFilterActive?: boolean;
+  onUrgentFilterChange?: (active: boolean) => void;
+  dayTick?: number;
 }
 
 export function RecordList({
@@ -97,6 +100,9 @@ export function RecordList({
   empty,
   refreshing,
   onRefresh,
+  urgentFilterActive,
+  onUrgentFilterChange,
+  dayTick,
 }: RecordListProps) {
   const records = useActiveRecords();
   const { scope, householdId } = usePantryScope();
@@ -118,13 +124,46 @@ export function RecordList({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSort, setSelectedSort] = useState<PantrySortOption>('expiry_asc');
-  const [filters, setFilters] = useState<PantryFilterState>({
-    expiryStatus: 'all',
-  });
+  const [filters, setFilters] = useState<PantryFilterState>(() => ({
+    expiryStatus: urgentFilterActive ? 'urgent' : 'all',
+  }));
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkScopeModalVisible, setBulkScopeModalVisible] = useState(false);
+  const lastPropRef = useRef(urgentFilterActive);
+  const prevExpiryStatusRef = useRef(filters.expiryStatus);
+
+  useEffect(() => {
+    if (urgentFilterActive !== undefined && urgentFilterActive !== lastPropRef.current) {
+      lastPropRef.current = urgentFilterActive;
+      const target = urgentFilterActive ? 'urgent' : 'all';
+      setFilters((prev) => {
+        if (prev.expiryStatus === target) return prev;
+        return { ...prev, expiryStatus: target };
+      });
+    }
+  }, [urgentFilterActive]);
+
+  useEffect(() => {
+    if (prevExpiryStatusRef.current !== filters.expiryStatus) {
+      prevExpiryStatusRef.current = filters.expiryStatus;
+      const isUrgent = filters.expiryStatus === 'urgent';
+      if (urgentFilterActive !== undefined && isUrgent !== urgentFilterActive) {
+        lastPropRef.current = isUrgent;
+        onUrgentFilterChange?.(isUrgent);
+      }
+    }
+  }, [filters.expiryStatus, urgentFilterActive, onUrgentFilterChange]);
+  useEffect(() => {
+    if (selectionMode || selectedIds.size > 0) {
+      setSelectionMode(false);
+      setSelectedIds(new Set());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, urgentFilterActive]);
+
+
   const previousScope = useRef({ scope, householdId });
   useEffect(() => {
     if (
@@ -179,6 +218,8 @@ export function RecordList({
   }, [filters]);
 
   const resolvedHeader = typeof header === 'function' ? header(isFiltered) : header;
+  const currentDate = useMemo(() => (dayTick ? new Date(dayTick) : new Date()), [dayTick]);
+  const activeSort = filters.expiryStatus === 'urgent' ? 'expiry_asc' : selectedSort;
   const filteredRecords = useMemo(
     () =>
       filterAndSortRecords(
@@ -187,9 +228,11 @@ export function RecordList({
           ...filters,
           query: normalizedSearchQuery || undefined,
         },
-        selectedSort,
+        activeSort,
+        undefined,
+        currentDate,
       ),
-    [records, filters, normalizedSearchQuery, selectedSort],
+    [records, filters, normalizedSearchQuery, activeSort, currentDate],
   );
 
   const resetKey = [
@@ -201,9 +244,9 @@ export function RecordList({
     filters.inStockOnly,
     filters.store,
     filters.householdScope,
-    selectedSort,
+    activeSort,
+    dayTick,
   ].join(':');
-
   const {
     paginatedItems,
     hasMore,
@@ -223,8 +266,17 @@ export function RecordList({
     loadMore();
   }, [loadMore]);
 
-  const groups = useMemo(() => groupRecords(paginatedItems), [paginatedItems]);
+  const groups = useMemo(() => groupRecords(paginatedItems, currentDate), [paginatedItems, currentDate]);
   const sections = useMemo(() => {
+    if (filters.expiryStatus === 'urgent') {
+      if (paginatedItems.length === 0) {
+        return [];
+      }
+      const urgencyKeys: Array<keyof typeof SECTION_TITLES> = ['expired', 'today', 'thisWeek'];
+      return urgencyKeys
+        .filter((key) => groups[key].length > 0)
+        .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] }));
+    }
     if (isFiltered) {
       if (paginatedItems.length === 0) {
         return [];
@@ -240,7 +292,7 @@ export function RecordList({
     return (Object.keys(SECTION_TITLES) as Array<keyof typeof SECTION_TITLES>)
       .filter((key) => groups[key].length > 0)
       .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] }));
-  }, [isFiltered, groups, paginatedItems, totalCount]);
+  }, [filters.expiryStatus, isFiltered, groups, paginatedItems, totalCount]);
 
   const openRecord = useCallback(
     (id: string) => navigation.navigate('Record', { id }),
@@ -453,11 +505,7 @@ export function RecordList({
           searchQuery={searchQuery}
           onRemoveFilter={(key) => setFilters((prev) => ({ ...prev, [key]: undefined }))}
           onClearSearch={() => setSearchQuery('')}
-          onClearAll={() => {
-            setSearchQuery('');
-            setFilters({ expiryStatus: 'all' });
-            setSelectedSort('expiry_asc');
-          }}
+          onClearAll={handleClearAll}
         />
       ) : null}
     </View>
@@ -494,11 +542,7 @@ export function RecordList({
         testID="pantry-clear-filters-cta"
         accessibilityRole="button"
         accessibilityLabel="Clear active filters"
-        onPress={() => {
-          setSearchQuery('');
-          setFilters({ expiryStatus: 'all' });
-          setSelectedSort('expiry_asc');
-        }}
+        onPress={handleClearAll}
         style={[
           styles.clearFiltersBtn,
           { backgroundColor: theme.colors.accent, borderRadius: theme.radii.md },
@@ -519,6 +563,8 @@ export function RecordList({
         sections={sections}
         extraData={householdNames}
         scrollEnabled
+        initialNumToRender={30}
+        maxToRenderPerBatch={30}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         stickySectionHeadersEnabled={false}
@@ -534,25 +580,29 @@ export function RecordList({
         onEndReachedThreshold={0.25}
         onScrollBeginDrag={handleScrollBegin}
         onMomentumScrollBegin={handleScrollBegin}
-        refreshControl={
-          <RefreshControl
-            testID="pantry-refresh-control"
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
-            colors={[theme.colors.primary]}
-            progressBackgroundColor={theme.colors.bgElevated}
-          />
-        }
+        refreshControl={refreshControl}
         alwaysBounceVertical={true}
-        contentContainerStyle={{
-          gap: theme.spacing.md,
-          paddingHorizontal: theme.spacing.lg,
-          paddingTop: theme.spacing.xs,
-          paddingBottom: 84,
-          flexGrow: 1,
-        }}
+        contentContainerStyle={listContentContainerStyle}
         renderSectionHeader={({ section }) => {
+          if (filters.expiryStatus === 'urgent') {
+            return (
+              <View style={{ marginTop: theme.spacing.sm }}>
+                <Text
+                  testID={`record-section-${section.key}`}
+                  style={{
+                    color: theme.colors.textMuted,
+                    textTransform: 'uppercase',
+                    fontSize: 11,
+                    fontWeight: '700',
+                    letterSpacing: 0.8,
+                    marginBottom: theme.spacing.sm,
+                  }}
+                >
+                  {section.title} · {section.data.length}
+                </Text>
+              </View>
+            );
+          }
           if (isFiltered) {
             return section.title ? (
               <View style={styles.resultsBar}>

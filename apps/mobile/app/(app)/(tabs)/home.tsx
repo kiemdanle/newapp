@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { AppState, StyleSheet, Text, View, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -7,6 +7,7 @@ import { Screen } from '../../../src/components/Screen';
 import { RecordList } from '../../../src/features/records/RecordList';
 import { UseNextHero } from '../../../src/features/records/UseNextHero';
 import { ScopeToggle } from '../../../src/features/households/ScopeToggle';
+import { usePantryScope } from '../../../src/store/pantryScope';
 import { useActiveRecords, usePantryHistoryRecords } from '../../../src/api/records';
 import { groupRecords } from '../../../src/features/records/groupRecords';
 import { useTheme } from '../../../src/theme/useTheme';
@@ -17,10 +18,48 @@ export default function HomeTab() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const [activeTab, setActiveTab] = useState<'in_stock' | 'history'>('in_stock');
+  const [isUrgentActive, setIsUrgentActive] = useState(false);
+  const [dayTick, setDayTick] = useState(() => Date.now());
+  const { scope, householdId } = usePantryScope();
+  const previousScope = useRef({ scope, householdId });
+
+  useEffect(() => {
+    if (
+      previousScope.current.scope !== scope ||
+      previousScope.current.householdId !== householdId
+    ) {
+      previousScope.current = { scope, householdId };
+      setIsUrgentActive(false);
+    }
+  }, [scope, householdId]);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setDayTick(Date.now());
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   const records = useActiveRecords();
   const allHistoryRecords = usePantryHistoryRecords('all');
-  const groups = groupRecords(records);
+  const groups = groupRecords(records, new Date(dayTick));
   const totalUrgent = groups.expired.length + groups.today.length + groups.thisWeek.length;
+
+  useEffect(() => {
+    if (totalUrgent === 0 && isUrgentActive) {
+      setIsUrgentActive(false);
+    }
+  }, [totalUrgent, isUrgentActive]);
+  const handlePressUrgent = () => {
+    if (activeTab === 'history') {
+      setActiveTab('in_stock');
+      setIsUrgentActive(true);
+      return;
+    }
+    setIsUrgentActive((prev) => !prev);
+  };
+
   const renderHeader = (isFiltered: boolean) => (
     <View style={styles.headerContent}>
       <View style={styles.header}>
@@ -37,11 +76,43 @@ export default function HomeTab() {
         </View>
         <View style={styles.headerActions}>
           {totalUrgent > 0 ? (
-            <View style={[styles.countPill, { backgroundColor: theme.colors.accentLight }]}>
-              <Text style={[styles.countText, { color: theme.colors.primaryDark }]} numberOfLines={1}>
+            <Pressable
+              testID="home-urgent-pill"
+              accessibilityRole="button"
+              accessibilityLabel={`${totalUrgent} urgent ${totalUrgent === 1 ? 'item' : 'items'}. ${
+                isUrgentActive ? 'Filter active. Tap to show all items.' : 'Tap to filter urgent items.'
+              }`}
+              accessibilityState={{ selected: isUrgentActive }}
+              hitSlop={8}
+              onPress={handlePressUrgent}
+              style={({ pressed }) => [
+                styles.countPill,
+                {
+                  backgroundColor: isUrgentActive ? theme.colors.accent : theme.colors.accentLight,
+                  borderColor: isUrgentActive ? '#2C2C28' : theme.colors.accent,
+                  borderWidth: 1.5,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              {isUrgentActive ? (
+                <Ionicons
+                  name="funnel"
+                  size={11}
+                  color="#2C2C28"
+                  style={{ marginRight: 4 }}
+                />
+              ) : null}
+              <Text
+                style={[
+                  styles.countText,
+                  { color: isUrgentActive ? '#2C2C28' : theme.colors.primaryDark },
+                ]}
+                numberOfLines={1}
+              >
                 {totalUrgent} urgent
               </Text>
-            </View>
+            </Pressable>
           ) : null}
           <Pressable
             testID="home-share-pantry-btn"
@@ -157,7 +228,13 @@ export default function HomeTab() {
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <Screen scroll={false} padded={false}>
         {activeTab === 'in_stock' ? (
-          <RecordList header={renderHeader} empty={empty} />
+          <RecordList
+            header={renderHeader}
+            empty={empty}
+            urgentFilterActive={isUrgentActive}
+            onUrgentFilterChange={setIsUrgentActive}
+            dayTick={dayTick}
+          />
         ) : (
           <PantryHistoryView header={renderHeader} />
         )}
@@ -184,7 +261,15 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 13 },
   greeting: { fontSize: 20, fontWeight: '700' },
-  countPill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  countPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    minHeight: 32,
+  },
   countText: { fontSize: 12, fontWeight: '700' },
   headerSubcopy: { fontSize: 13, marginTop: 2 },
   emptyCard: { alignItems: 'center', borderWidth: 1, gap: 10, padding: 24 },

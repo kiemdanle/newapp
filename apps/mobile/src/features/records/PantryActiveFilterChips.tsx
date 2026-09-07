@@ -54,7 +54,11 @@ export function PantryActiveFilterChips({
     let color = theme.colors.primaryDark;
     let bg = theme.colors.primaryLight;
 
-    if (filters.expiryStatus === 'expired') {
+    if (filters.expiryStatus === 'urgent') {
+      label = 'Status: Urgent (≤ 7 days)';
+      color = theme.colors.primaryDark;
+      bg = theme.colors.accentLight;
+    } else if (filters.expiryStatus === 'expired') {
       label = 'Status: Expired';
       color = theme.colors.danger;
       bg = theme.colors.bgGlass;
@@ -134,7 +138,7 @@ export function PantryActiveFilterChips({
               accessibilityRole="button"
               accessibilityLabel={`Remove filter: ${chip.label}`}
               onPress={chip.onRemove}
-              hitSlop={8}
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 12 }}
               style={styles.removeBtn}
             >
               <Ionicons
@@ -187,6 +191,8 @@ const styles = StyleSheet.create({
   removeBtn: {
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 22,
+    minHeight: 22,
   },
   clearAllBtn: {
     paddingHorizontal: 6,

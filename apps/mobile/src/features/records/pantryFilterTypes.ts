@@ -13,7 +13,7 @@ export type PantrySortOption =
 export interface PantryFilterState {
   query?: string;
   category?: string;
-  expiryStatus?: 'all' | 'expired' | 'expiring_soon' | 'good';
+  expiryStatus?: 'all' | 'expired' | 'expiring_soon' | 'good' | 'urgent';
   inStockOnly?: boolean;
   householdScope?: 'all' | 'personal' | 'household';
   store?: string;

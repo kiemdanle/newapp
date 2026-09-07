@@ -50,6 +50,7 @@ export function filterAndSortRecords(
   filters: PantryFilterState = {},
   sort: PantrySortOption = 'expiry_asc',
   productNameLookup?: Record<string, string>,
+  now: Date = new Date(),
 ): LocalRecord[] {
   // 1. Filter Phase
   const filtered = records.filter((record) => {
@@ -67,7 +68,10 @@ export function filterAndSortRecords(
 
     // Expiry status filter
     if (filters.expiryStatus && filters.expiryStatus !== 'all') {
-      const status = expiryStatus(record.expiryDate);
+      const status = expiryStatus(record.expiryDate, now);
+      if (filters.expiryStatus === 'urgent' && status !== 'red' && status !== 'amber') {
+        return false;
+      }
       if (filters.expiryStatus === 'expired' && status !== 'red') {
         return false;
       }

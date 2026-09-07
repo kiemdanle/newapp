@@ -140,6 +140,25 @@ describe('filterAndSortRecords', () => {
       const results = filterAndSortRecords(sampleRecords, { expiryStatus: 'good' });
       expect(results.map((r) => r.id)).toEqual(['rec-4']);
     });
+
+    it('filters for urgent items (both expired and expiring soon, <= 7 days)', () => {
+      const results = filterAndSortRecords(sampleRecords, { expiryStatus: 'urgent' });
+      expect(results.map((r) => r.id)).toEqual(['rec-1', 'rec-3', 'rec-2']);
+    });
+
+    it('respects a custom now parameter across midnight that changes urgent membership', () => {
+      const borderlineItem = makeRecord({ id: 'rec-border', expiryDate: '2026-09-12' });
+      const records = [...sampleRecords, borderlineItem];
+
+      // At default now (2026-09-03), rec-border is 9 days out (> 7 days) -> NOT urgent
+      const defaultResults = filterAndSortRecords(records, { expiryStatus: 'urgent' });
+      expect(defaultResults.map((r) => r.id)).not.toContain('rec-border');
+
+      // At customNow (2026-09-07), rec-border is 5 days out (<= 7 days) -> URGENT
+      const customNow = new Date('2026-09-07T12:00:00Z');
+      const customResults = filterAndSortRecords(records, { expiryStatus: 'urgent' }, 'expiry_asc', undefined, customNow);
+      expect(customResults.map((r) => r.id)).toContain('rec-border');
+    });
   });
 
   describe('inStockOnly filtering', () => {

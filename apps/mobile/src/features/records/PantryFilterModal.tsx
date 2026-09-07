@@ -157,6 +157,7 @@ export function PantryFilterModal({
               <View style={styles.pillsRow}>
                 {[
                   { id: 'all', label: 'All Items' },
+                  { id: 'urgent', label: 'Urgent' },
                   { id: 'expiring_soon', label: 'Expiring Soon' },
                   { id: 'good', label: 'Fresh / Good' },
                   { id: 'expired', label: 'Expired' },
@@ -170,7 +171,7 @@ export function PantryFilterModal({
                     selectedBg = theme.colors.bgGlass;
                     selectedBorder = theme.colors.danger;
                     selectedText = theme.colors.danger;
-                  } else if (item.id === 'expiring_soon') {
+                  } else if (item.id === 'urgent' || item.id === 'expiring_soon') {
                     selectedBg = theme.colors.accentLight;
                     selectedBorder = theme.colors.accent;
                     selectedText = theme.colors.primaryDark;
@@ -182,6 +183,7 @@ export function PantryFilterModal({
                       testID={`pantry-filter-expiry-${item.id}`}
                       accessibilityRole="button"
                       accessibilityLabel={`Filter by ${item.label}`}
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() =>
                         setDraftFilters((prev) => ({
                           ...prev,
