@@ -145,10 +145,6 @@ export function SlidingDrawer({
     outputRange: [0, width],
   });
 
-  const scale = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 0.94],
-  });
 
   const backdropOpacity = slideAnim.interpolate({
     inputRange: [0, 1],
@@ -180,9 +176,9 @@ export function SlidingDrawer({
         style={[
           styles.outerDeck,
           {
-            transform: [{ translateX }, { scale }],
-            shadowOpacity: isOpen ? 0.18 : 0,
-            elevation: isOpen ? 12 : 0,
+            transform: [{ translateX }],
+            shadowOpacity: isOpen ? 0.22 : 0,
+            elevation: isOpen ? 16 : 0,
           },
         ]}
         testID="sliding-drawer-outer-deck"
@@ -191,8 +187,7 @@ export function SlidingDrawer({
           style={[
             styles.innerDeck,
             {
-              borderRadius: isOpen ? 16 : 0,
-              overflow: isOpen ? 'hidden' : 'visible',
+              overflow: 'hidden',
               backgroundColor: theme.colors.bg,
             },
           ]}

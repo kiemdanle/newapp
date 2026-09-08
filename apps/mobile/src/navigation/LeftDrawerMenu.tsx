@@ -134,7 +134,7 @@ export function LeftDrawerMenu() {
         styles.container,
         {
           backgroundColor: theme.colors.bg,
-          paddingTop: Math.max(insets.top, 16),
+          paddingTop: insets.top,
         },
       ]}
       testID="left-drawer-menu-container"
@@ -190,6 +190,7 @@ export function LeftDrawerMenu() {
           testID="drawer-user-card"
         >
           <Avatar
+            url={user?.avatarUrl}
             firstName={user?.firstName}
             lastName={user?.lastName}
             size="md"
@@ -472,7 +473,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingTop: 4,
+    paddingBottom: 8,
+    minHeight: 44,
   },
   brandInfo: {
     flex: 1,
@@ -483,9 +486,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
