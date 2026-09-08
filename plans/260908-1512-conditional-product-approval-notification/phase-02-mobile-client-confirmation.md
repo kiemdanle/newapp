@@ -85,3 +85,4 @@ This causes the interface in Image #1: even when auto-approved, the screen false
 
 <!-- Updated: Validation Session 1 - Confirmed household scope unlock on active products -->
 <!-- Updated: Validation Session 2 - Confirmed toast tap continues navigating to Product Details screen -->
+<!-- Updated: Red Team Review - Confirmed lockedPersonalScope={submittedProduct.status !== 'active'} defensive fallback -->

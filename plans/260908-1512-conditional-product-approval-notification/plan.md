@@ -165,3 +165,25 @@ sequenceDiagram
 - **Stale Terms / Rename Check**: Clean. No renamed endpoints or conflicting terminology.
 - **Contract Alignment**: Backend outbox suppression and mobile post-submission messaging are aligned across all 3 phases.
 - **Unresolved Contradictions**: 0. Plan is coherent and ready for execution.
+
+---
+
+## Red Team Review
+
+### Session — 2026-09-08
+**Findings:** 6 total (3 accepted, 3 rejected)  
+**Severity breakdown:** 1 Critical (rejected duplicate), 3 High (2 accepted, 1 rejected), 2 Medium (1 accepted, 1 rejected)
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Dead `sweepOutbox` and unused notification imports in `autoApproveProduct` | Medium | Accept | Phase 1 |
+| 2 | Explicit scope locking fallback for unexpected statuses in `new.tsx` | Medium | Accept | Phase 2 |
+| 3 | Complete symmetrical removal of `enqueueOutbox` across zero-photo and photo branches | High | Accept | Phase 1 |
+| 4 | Photo moderation gate during auto-approval | High | Reject (contradicts admin feature flag policy) | — |
+| 5 | Retroactive auto-approval of pre-existing pending queue | Medium | Reject (contradicts user decision in Validation Session 2) | — |
+| 6 | Custom local notifications queue for background/offline FCM | Low | Reject (native FCM system tray already handles background notifications) | — |
+
+### Whole-Plan Consistency Sweep
+- **Decision Delta**: Cleaned up dead `sweepOutbox` calls from `auto-approval.ts`; solidified `lockedPersonalScope={submittedProduct.status !== 'active'}` fallback in `new.tsx`.
+- **Contradictions Found**: 0.
+- **Status**: All phase files updated and verified consistent.

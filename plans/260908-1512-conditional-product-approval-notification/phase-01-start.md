@@ -63,3 +63,4 @@ Conversely, when `needsApproval: true`:
 
 <!-- Updated: Validation Session 1 - Confirmed complete suppression of notifications on auto-approval -->
 <!-- Updated: Validation Session 2 - Confirmed backend source suppression in autoApproveProduct without mobile filter requirement -->
+<!-- Updated: Red Team Review - Confirmed removal of sweepOutbox calls and symmetrical deletion across zero-photo and photo branches -->
