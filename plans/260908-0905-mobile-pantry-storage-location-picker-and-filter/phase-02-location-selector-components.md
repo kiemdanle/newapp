@@ -72,24 +72,26 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
    - Helper `normalizeLocation(val?: string | null): string`: trims and lowercases for internal equality comparisons.
    - Helper `normalizeLocationTitleCase(val: string): string`: converts input to clean Title Case (e.g. `spice rack` → `Spice Rack`).
    - Helper `getLocationIcon(location?: string | null): keyof typeof Ionicons.glyphMap`:
-     - `Fridge`: `'thermometer-outline'`
-     - `Freezer`: `'snow-outline'`
-     - `Pantry`: `'basket-outline'`
-     - `Counter`: `'tablet-landscape-outline'`
-     - default/custom: `'cube-outline'`
+     - Normalizes input case-insensitively (`normalizeLocation(location)`):
+       - `'fridge'`: `'thermometer-outline'`
+       - `'freezer'`: `'snow-outline'`
+       - `'pantry'`: `'basket-outline'`
+       - `'counter'`: `'tablet-landscape-outline'`
+       - default/custom: `'cube-outline'`
+
 2. **LocationPickerModal Component (`apps/mobile/src/components/LocationPickerModal.tsx`)**:
    - Bottom sheet modal using React Native `Modal`, `KeyboardAvoidingView`, and theme styling.
    - Controlled search/custom input with auto-capitalization and "Apply" button.
+   - **Title Case on Write**: When the user taps "Apply", custom text is converted to Title Case via `normalizeLocationTitleCase(input.trim())` before invoking `onSelect(...)`. Ensures values are stored canonicalized in SQLite and cards display "Spice Rack" rather than "spice rack".
    - Filtered chip grid combining matches from `COMMON_OTHER_LOCATIONS` and `DEFAULT_TOP_LOCATIONS`.
    - Prominent "Clear Location" button to deselect location (`onSelect(null)`).
    - Full keyboard accessibility and safe area handling (`useSafeAreaInsets`).
-
 3. **LocationSelector Component (`apps/mobile/src/components/LocationSelector.tsx`)**:
    - Renders label (default: `"Location (optional)"`) and a single row of 5 pills (`flexDirection: 'row', gap: 6`).
    - Top 4 pills render with `DEFAULT_TOP_LOCATIONS`.
    - Active pill styles: `backgroundColor: theme.colors.primary`, `borderColor: theme.colors.primary`, `color: '#FFFFFF'`, `fontWeight: '700'`.
    - Inactive pill styles: `backgroundColor: theme.colors.bgGlass`, `borderColor: theme.colors.border`, `color: theme.colors.text`, `fontWeight: '600'`.
-   - Tap handler: if current value matches pill, trigger `onChange(null)` (deselection); otherwise `onChange(location)`.
+   - Tap handler: if current value matches pill, trigger `onChange(null)` (deselection); otherwise `onChange(normalizeLocationTitleCase(location))`.
    - 5th pill displays `"More ▾"` or `"${value} ▾"` with `chevron-down` icon. If value is not in top 4, displays active style.
    - Tapping 5th pill toggles `modalVisible`.
 
@@ -101,7 +103,7 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
      - Passing custom location (e.g. "Spice Rack") displays "Spice Rack ▾" with active styling.
    - `location-picker-modal.test.tsx`:
      - Renders preset chips and custom input.
-     - Typing custom location and clicking "Apply" calls `onSelect('Custom Name')`.
+     - Typing lowercase custom location (e.g. `'spice rack'`) and clicking "Apply" calls `onSelect('Spice Rack')` with Title Case normalization on write.
      - Clicking "Clear Location" calls `onSelect(null)`.
 
 ## Success Criteria

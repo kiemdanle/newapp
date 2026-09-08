@@ -101,6 +101,9 @@ Establish the foundational data contracts and storage persistence for the option
 
 
 5. **Live Sync Path & Multi-Branch Pull Wiring (`api/src/services/records/sync.ts`, `apps/mobile/src/db/sync.ts`)**:
+   - **Scope-Aware LWW Sync Conflict Resolution**:
+     - **Personal Scope (Last-Write-Wins with Timestamp Guard)**: Client mutations apply if `updatedAt` is newer than server (`if (existing && existing.updatedAt >= clientUpdatedAt) continue;`). When client is newer, `tx.record.upsert` updates `location: u.location !== undefined ? (u.location ?? null) : undefined` alongside status and quantity.
+     - **Household Scope (Server-Authoritative)**: If the server record already exists, the server row remains authoritative and client overwrites are rejected to preserve household multi-user integrity; for brand-new offline-created household records, `tx.record.create` sets `location: u.location ?? null`.
    - In `api/src/services/records/sync.ts`:
      - Household record create branch (`tx.record.create`): map `location: u.location ?? null`.
      - Personal record upsert create branch: map `location: u.location ?? null`.
