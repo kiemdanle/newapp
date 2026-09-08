@@ -329,9 +329,21 @@ export default function ProductReview() {
           ]}
         >
           <View style={styles.productRow}>
-            {productData?.imageUrl ? (
+            {Boolean(
+              productData?.imageUrl ||
+                (productData?.photos &&
+                  (productData.photos[0]?.displayUrl ||
+                    productData.photos[0]?.thumbnailUrl)),
+            ) ? (
               <Image
-                source={{ uri: productData.imageUrl }}
+                source={{
+                  uri:
+                    productData?.imageUrl ||
+                    (productData?.photos &&
+                      (productData.photos[0]?.displayUrl ||
+                        productData.photos[0]?.thumbnailUrl)) ||
+                    '',
+                }}
                 style={styles.productImage}
                 resizeMode="cover"
                 accessibilityIgnoresInvertColors
@@ -814,10 +826,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     lineHeight: 22,
-  },
-  charCountText: {
-    fontSize: 12,
-    fontWeight: '500',
   },
   charCount: {
     fontSize: 12,

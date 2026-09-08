@@ -1,0 +1,90 @@
+---
+title: "Mobile Pantry Quick Edit Brand Architecture"
+description: "Enable pantry users to view and edit the Brand field directly in QuickEditModal below Item Name, with full persistence across WatermelonDB, sync, backend Prisma schema, and pantry display cards."
+status: in-progress
+priority: P1
+effort: "4h"
+tags: [pantry, quick-edit, mobile, watermelon-db, prisma, sync, brand]
+created: 2026-09-08
+---
+
+# Mobile Pantry Quick Edit Brand Architecture
+
+## Overview
+
+In the Expyrico mobile pantry, users can quick-edit a record's name, category, quantity, unit, location, and expiry date via `QuickEditModal`. However, the **Brand** field was not editable in quick edit: catalog products displayed a read-only brand from the catalog, while custom items (without a barcode or catalog product) had no brand affordance at all.
+
+This plan adds the ability for users to view, input, and edit the **Brand** directly in `QuickEditModal`, positioned immediately below the **Item Name** input. The brand is persisted locally in WatermelonDB `records`, synchronized with the backend `Record` table via Prisma, pre-populated gracefully from `record.brand || product?.brand`, and displayed dynamically across all pantry card views (`RecordCard`, `PantryGridCard`, `UseNextHero`, `PantrySelectModal`, and `record/[id].tsx`).
+
+```
+┌────────────────────────────────────────────────────────┐
+│ QuickEditModal                                         │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Item Name: [ Fresh Milk                          ] │ │
+│ └────────────────────────────────────────────────────┘ │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Brand:     [ TH True Milk                        ] │ │ ◄── NEW: Placed below Item Name
+│ └────────────────────────────────────────────────────┘ │
+│ ┌────────────────────────────────────────────────────┐ │
+│ │ Category:  [ Dairy                               ] │ │
+│ └────────────────────────────────────────────────────┘ │
+│   [Quantity / Unit / Location / Expiry Date]           │
+└────────────────────────────────────────────────────────┘
+                           │
+       ┌───────────────────┴───────────────────┐
+       ▼                                       ▼
+WatermelonDB `records.brand`          Prisma `Record.brand`
+(v5 → v6 Migration)                   (PostgreSQL Column)
+       │                                       │
+       └───────────────────┬───────────────────┘
+                           ▼
+Display: `record.brand || product?.brand`
+(RecordCard, PantryGridCard, UseNextHero, PantryDetail)
+```
+
+## Goals
+
+| # | Goal | Priority |
+|---|------|----------|
+| 1 | Position a responsive `Brand` field directly below `Item Name` in `QuickEditModal` with pre-population from `record.brand \|\| product?.brand` and asynchronous fallback. | P1 |
+| 2 | Persist `brand` in local WatermelonDB `records` via schema v6 migration, `RecordModel`, and `LocalRecord` CRUD operations. | P1 |
+| 3 | Extend shared record schemas (`recordSchema`, `recordCreateSchema`, `recordPatchSchema`) and Prisma backend `Record` model to store and sync `brand`. | P1 |
+| 4 | Ensure all pantry display surfaces (`RecordCard`, `PantryGridCard`, `UseNextHero`, `PantrySelectModal`, `record/[id].tsx`) prioritize `record.brand \|\| product?.brand`. | P1 |
+| 5 | Include `record.brand` in pantry search query matching (`filterAndSortRecords.ts`) so searching by brand immediately finds updated items. | P1 |
+
+## Phases
+
+| # | Phase | Status |
+|---|-------|--------|
+| 1 | [Phase 1: Shared Schema & API Support](./phase-01-shared-schema-and-api-support.md) | Pending |
+| 2 | [Phase 2: Local Database Persistence](./phase-02-local-database-persistence.md) | Pending |
+| 3 | [Phase 3: QuickEditModal UI & State Wiring](./phase-03-quick-edit-modal-ui-and-state.md) | Pending |
+| 4 | [Phase 4: Pantry Cards, Search & Callers](./phase-04-pantry-cards-search-and-callers.md) | Pending |
+| 5 | [Phase 5: Automated Testing & Device Verification](./phase-05-testing-and-device-verification.md) | Pending |
+
+## Architecture & Data Flow
+
+### 1. Precedence Contract
+Following the exact precedent established for `customName` and `category`:
+- **Display Name**: `record.customName || product?.name || 'Item'`
+- **Brand**: `record.brand || product?.brand || null`
+- **Category**: `record.category || product?.category || null`
+
+When a user edits the brand in `QuickEditModal`, `record.brand` is updated. For custom items (no `productId`), this gives them a proper brand attribute. For catalog items, this allows the user to correct or localize the brand without modifying the global product catalog.
+
+### 2. Synchronization Flow
+- Local update: `patchLocalRecord(id, { brand: trimmedBrand })` sets `r.brand` and marks `r.pendingSync = true`.
+- Network push: `pushPending()` in `sync.ts` includes `brand: rec.brand` in `POST /records` (for new records) and `PATCH /records/:id` (for existing records).
+- Backend patch: `patchRecordRoute` validates `brand` via `recordPatchSchema` and writes `brand` to Prisma `record.update`.
+- Pull sync: `toApiRecord` maps `r.brand` into the sync batch, and mobile `pullSince()` persists it into WatermelonDB.
+
+## Success Criteria
+
+- [ ] `QuickEditModal` renders `TextField` for Brand placed directly below `Item Name`.
+- [ ] Brand input auto-populates with `record.brand || product?.brand` upon modal opening, and handles asynchronous product loading if the product was not yet cached.
+- [ ] Saving updates `record.brand` via `patchLocalRecord` or `createLocalRecord` (in duplicate flow).
+- [ ] Local WatermelonDB schema cleanly migrates from version 5 to 6 without data loss.
+- [ ] Backend Prisma `Record` table stores `brand` and accepts it through `POST /records` and `PATCH /records/:id`.
+- [ ] Pantry search matches on `record.brand`.
+- [ ] Unit tests pass across `QuickEditModal.test.tsx`, `RecordCard.test.tsx`, `filterAndSortRecords.test.ts`, and backend integration tests.
+- [ ] Verified on physical Android device with screenshot evidence showing the Brand field in `QuickEditModal`.
