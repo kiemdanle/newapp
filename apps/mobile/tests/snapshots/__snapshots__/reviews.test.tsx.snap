@@ -131,6 +131,58 @@ exports[`reviews in expyrico snapshot 1`] = `
                     }
                   >
                     <View
+                      accessibilityLabel="Open navigation menu"
+                      accessibilityRole="button"
+                      accessibilityState={
+                        {
+                          "busy": undefined,
+                          "checked": undefined,
+                          "disabled": undefined,
+                          "expanded": false,
+                          "selected": undefined,
+                        }
+                      }
+                      accessibilityValue={
+                        {
+                          "max": undefined,
+                          "min": undefined,
+                          "now": undefined,
+                          "text": undefined,
+                        }
+                      }
+                      accessible={true}
+                      collapsable={false}
+                      focusable={true}
+                      hitSlop={8}
+                      onBlur={[Function]}
+                      onClick={[Function]}
+                      onFocus={[Function]}
+                      onResponderGrant={[Function]}
+                      onResponderMove={[Function]}
+                      onResponderRelease={[Function]}
+                      onResponderTerminate={[Function]}
+                      onResponderTerminationRequest={[Function]}
+                      onStartShouldSetResponder={[Function]}
+                      style={
+                        [
+                          {
+                            "alignItems": "center",
+                            "borderRadius": 8,
+                            "height": 44,
+                            "justifyContent": "center",
+                            "minHeight": 44,
+                            "minWidth": 44,
+                            "width": 44,
+                          },
+                          false,
+                          {
+                            "marginRight": 8,
+                          },
+                        ]
+                      }
+                      testID="reviews-hamburger-button"
+                    />
+                    <View
                       style={
                         [
                           {
@@ -943,6 +995,58 @@ exports[`reviews in expyricoDark snapshot 1`] = `
                       }
                     }
                   >
+                    <View
+                      accessibilityLabel="Open navigation menu"
+                      accessibilityRole="button"
+                      accessibilityState={
+                        {
+                          "busy": undefined,
+                          "checked": undefined,
+                          "disabled": undefined,
+                          "expanded": false,
+                          "selected": undefined,
+                        }
+                      }
+                      accessibilityValue={
+                        {
+                          "max": undefined,
+                          "min": undefined,
+                          "now": undefined,
+                          "text": undefined,
+                        }
+                      }
+                      accessible={true}
+                      collapsable={false}
+                      focusable={true}
+                      hitSlop={8}
+                      onBlur={[Function]}
+                      onClick={[Function]}
+                      onFocus={[Function]}
+                      onResponderGrant={[Function]}
+                      onResponderMove={[Function]}
+                      onResponderRelease={[Function]}
+                      onResponderTerminate={[Function]}
+                      onResponderTerminationRequest={[Function]}
+                      onStartShouldSetResponder={[Function]}
+                      style={
+                        [
+                          {
+                            "alignItems": "center",
+                            "borderRadius": 8,
+                            "height": 44,
+                            "justifyContent": "center",
+                            "minHeight": 44,
+                            "minWidth": 44,
+                            "width": 44,
+                          },
+                          false,
+                          {
+                            "marginRight": 8,
+                          },
+                        ]
+                      }
+                      testID="reviews-hamburger-button"
+                    />
                     <View
                       style={
                         [

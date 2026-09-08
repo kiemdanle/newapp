@@ -2,72 +2,63 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '../api/client';
 
-export interface MenuButtonPosition {
-  x: number;
-  y: number;
-}
+export type PantryViewMode = 'list' | 'grid';
 
-const MENU_POSITION_STORAGE_KEY = '@expyrico_menu_button_position';
+export const PANTRY_VIEW_MODE_STORAGE_KEY = '@expyrico_pantry_view_mode';
 
 interface UiPreferencesState {
-  menuButtonPosition: MenuButtonPosition | null;
-  setMenuButtonPosition: (pos: MenuButtonPosition) => Promise<void>;
+  pantryViewMode: PantryViewMode;
+  setPantryViewMode: (mode: PantryViewMode) => Promise<void>;
   hydrate: () => Promise<void>;
 }
 
+let userHasToggledPantryViewMode = false;
+
+export function resetPantryViewModeState() {
+  userHasToggledPantryViewMode = false;
+  useUiPreferencesStore.setState({ pantryViewMode: 'list' });
+}
+
 export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
-  // Hydrate from AsyncStorage immediately on launch
-  AsyncStorage.getItem(MENU_POSITION_STORAGE_KEY)
+  AsyncStorage.getItem(PANTRY_VIEW_MODE_STORAGE_KEY)
     .then((stored) => {
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored) as MenuButtonPosition;
-          if (
-            typeof parsed.x === 'number' &&
-            typeof parsed.y === 'number' &&
-            Number.isFinite(parsed.x) &&
-            Number.isFinite(parsed.y)
-          ) {
-            set({ menuButtonPosition: parsed });
-          }
-        } catch {}
+      if (!userHasToggledPantryViewMode && (stored === 'list' || stored === 'grid')) {
+        set({ pantryViewMode: stored });
       }
     })
-    .catch(() => {});
+    .catch(() => {
+      /* best-effort */
+    });
 
   return {
-    menuButtonPosition: null,
-    setMenuButtonPosition: async (pos: MenuButtonPosition) => {
-      set({ menuButtonPosition: pos });
+    pantryViewMode: 'list',
+    setPantryViewMode: async (mode: PantryViewMode) => {
+      userHasToggledPantryViewMode = true;
+      set({ pantryViewMode: mode });
       try {
-        await AsyncStorage.setItem(MENU_POSITION_STORAGE_KEY, JSON.stringify(pos));
-      } catch {}
-
-      // Sync to backend user preferences
-      try {
-        await apiClient.patch('/me/preferences', {
-          uiPreferences: {
-            menuButtonPosition: pos,
-          },
-        });
+        await AsyncStorage.setItem(PANTRY_VIEW_MODE_STORAGE_KEY, mode);
       } catch {
-        // Silently tolerate offline state; local storage retains coordinates
+        /* best-effort */
       }
     },
     hydrate: async () => {
       try {
         const res = await apiClient.get<{
           uiPreferences?: {
-            menuButtonPosition?: MenuButtonPosition;
+            pantryViewMode?: PantryViewMode;
           } | null;
         }>('/me/preferences');
 
-        if (res.uiPreferences?.menuButtonPosition) {
-          const pos = res.uiPreferences.menuButtonPosition;
-          set({ menuButtonPosition: pos });
-          await AsyncStorage.setItem(MENU_POSITION_STORAGE_KEY, JSON.stringify(pos));
+        if (res.uiPreferences?.pantryViewMode) {
+          set({ pantryViewMode: res.uiPreferences.pantryViewMode });
+          await AsyncStorage.setItem(
+            PANTRY_VIEW_MODE_STORAGE_KEY,
+            res.uiPreferences.pantryViewMode
+          );
         }
-      } catch {}
+      } catch {
+        /* best-effort */
+      }
     },
   };
 });

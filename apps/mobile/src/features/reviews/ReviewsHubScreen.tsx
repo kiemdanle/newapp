@@ -18,6 +18,7 @@ import { MyReviewCard } from './MyReviewCard';
 import { CommunityReviewsFeed } from './CommunityReviewsFeed';
 import { Button } from '../../components/Button';
 import { Logo } from '../../components/Logo';
+import { HamburgerButton } from '../../components/HamburgerButton';
 import { useTheme } from '../../theme/useTheme';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 
@@ -74,6 +75,7 @@ export function ReviewsHubScreen() {
         {/* Top Header Row with Logo & Quick Stat Badge */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
+            <HamburgerButton testID="reviews-hamburger-button" style={{ marginRight: 8 }} />
             <Logo size={28} />
             <View style={styles.headerTextGroup}>
               <Text

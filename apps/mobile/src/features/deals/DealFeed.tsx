@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal, DealSort } from '@expyrico/shared';
 import type { DealFeedFilters } from '../../api/deals';
 import { useDealFeed } from '../../api/deals';
@@ -20,6 +19,7 @@ import { DealCard } from './DealCard';
 import { DealSearchBar } from './DealSearchBar';
 import { DealFilterModal } from './DealFilterModal';
 import { EmptyState } from '../../components/EmptyState';
+import { HamburgerButton } from '../../components/HamburgerButton';
 import { useTheme } from '../../theme/useTheme';
 
 const SORTS: { id: DealSort; label: string; icon: string }[] = [
@@ -36,7 +36,7 @@ interface Props {
   onNew: () => void;
 }
 
-export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
+export function DealFeed({ currentUserId, onOpen, onReport, onNew: _onNew }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   // Search & Filter state
@@ -101,7 +101,8 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       {/* Top Header */}
-      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 16) + 8, flexDirection: 'row', alignItems: 'center' }]}>
+        <HamburgerButton testID="deals-hamburger-button" style={{ marginRight: 10 }} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.heading, { color: theme.colors.text }]}>Deals</Text>
           <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>

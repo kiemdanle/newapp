@@ -1,20 +1,19 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { createBottomTabNavigator, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import {
-  Animated,
   Pressable,
   StyleSheet,
   Text,
-  TouchableWithoutFeedback,
   useWindowDimensions,
   View,
 } from 'react-native';
-import Svg, { Rect, Path, G } from 'react-native-svg';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
-import { DraggableFloatingButton } from '../components/DraggableFloatingButton';
 import { useSelectionModeStore } from '../store/selectionModeStore';
+import { useDrawerStore } from '../store/drawerStore';
+import { SlidingDrawer } from '../components/SlidingDrawer';
+import { LeftDrawerMenu } from './LeftDrawerMenu';
 
 import HomeScreen from '../../app/(app)/(tabs)/home';
 import DealsScreen from '../../app/(app)/(tabs)/deals';
@@ -30,7 +29,7 @@ export type TabsParamList = {
   Profile: undefined;
 };
 
-const TAB_META: Record<
+export const TAB_META: Record<
   keyof TabsParamList,
   {
     icon: keyof typeof Ionicons.glyphMap;
@@ -130,299 +129,126 @@ const TAB_ACTIONS: Partial<Record<keyof TabsParamList, ActionConfig>> = {
   },
 };
 
-/**
- * Signature Bento App Matrix Menu Icon
- * Crafted with Expyrico Fresh Sage & Honey accent geometric tiles.
- */
-function SignatureMenuIcon({ isOpen, size = 22 }: { isOpen: boolean; size?: number }) {
-  const theme = useTheme();
-
-  if (isOpen) {
-    return (
-      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M6 6L18 18M18 6L6 18"
-          stroke={theme.colors.primaryDark}
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      {/* Top-Left: Expyrico Fresh Sage */}
-      <Rect x="3.2" y="3.2" width="7.8" height="7.8" rx="2.6" fill="#4BAE8A" />
-      {/* Top-Right: Text Primary */}
-      <Rect x="13" y="3.2" width="7.8" height="7.8" rx="2.6" fill={theme.colors.text} />
-      {/* Bottom-Left: Text Primary */}
-      <Rect x="3.2" y="13" width="7.8" height="7.8" rx="2.6" fill={theme.colors.text} />
-      {/* Bottom-Right: Expyrico Honey Accent */}
-      <Rect x="13" y="13" width="7.8" height="7.8" rx="2.6" fill="#F5A623" />
-    </Svg>
-  );
-}
-
 function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const isSelectionMode = useSelectionModeStore((s) => s.isSelectionMode);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const isCompact = isCompactTabLayout(width);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [buttonPos, setButtonPos] = useState<{ x: number; y: number } | null>(null);
-  const menuAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const anim = Animated.spring(menuAnim, {
-      toValue: isMenuOpen ? 1 : 0,
-      useNativeDriver: true,
-      friction: 8,
-      tension: 65,
-    });
-    anim.start();
-    return () => {
-      anim.stop();
-    };
-  }, [isMenuOpen, menuAnim]);
-
-  useEffect(() => {
-    if (isSelectionMode) {
-      setIsMenuOpen(false);
-    }
-  }, [isSelectionMode]);
+  const { width } = useWindowDimensions();
   const activeRouteName = state.routes[state.index]?.name as keyof TabsParamList;
   const actionConfig = TAB_ACTIONS[activeRouteName];
-
   const bottomOffset = insets.bottom > 0 ? insets.bottom + 2 : 12;
 
-  const toggleMenu = useCallback(() => {
-    setIsMenuOpen((prev) => !prev);
-  }, []);
 
-  const closeMenu = useCallback(() => {
-    setIsMenuOpen(false);
-  }, []);
-
-  const menuOpacity = menuAnim;
-  const menuTranslateY = menuAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [18, 0],
-  });
-  const menuScale = menuAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.90, 1],
-  });
-  const iconRotation = menuAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '90deg'],
-  });
-
-  // Dynamic quadrant-aware popover menu positioning
-  const opensLeft = buttonPos ? buttonPos.x > width / 2 : true;
-  const opensUp = buttonPos ? buttonPos.y > height / 2 : true;
-
-  const menuHorizontalStyle = opensLeft
-    ? { right: Math.max(16, width - (buttonPos ? buttonPos.x + 52 : width - 16)), left: undefined }
-    : { left: Math.max(16, buttonPos ? buttonPos.x : 16), right: undefined };
-
-  const menuVerticalStyle = opensUp
-    ? { bottom: buttonPos ? height - buttonPos.y + 10 : bottomOffset + 60, top: undefined }
-    : { top: buttonPos ? buttonPos.y + 58 : insets.top + 60, bottom: undefined };
   if (isSelectionMode) {
     return null;
   }
 
   return (
-    <>
-      {/* Backdrop overlay when vertical menu is open */}
-      {isMenuOpen && (
-        <TouchableWithoutFeedback onPress={closeMenu} testID="bottom-nav-backdrop">
-          <View style={styles.backdrop} />
-        </TouchableWithoutFeedback>
-      )}
-
-      {/* Floating vertical popover menu placed above the bottom right menu button */}
-      <Animated.View
-        pointerEvents={isMenuOpen ? 'auto' : 'none'}
-        style={[
-          styles.verticalMenuContainer,
-          menuHorizontalStyle,
-          menuVerticalStyle,
-          {
-            opacity: menuOpacity,
-            transform: [{ translateY: menuTranslateY }, { scale: menuScale }],
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
-            shadowColor: theme.colors.neutralDark,
-          },
-        ]}
-      >
-        <View style={styles.menuHeaderRow}>
-          <Text style={[styles.menuHeaderTitle, { color: theme.colors.textMuted }]}>MENU</Text>
-        </View>
-
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
-          const meta = TAB_META[route.name as keyof TabsParamList];
-          if (!meta) return null;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name as keyof TabsParamList);
-            }
-            closeMenu();
-          };
-
-          return (
-            <Pressable
-              key={route.key}
-              testID={`nav-${route.name}`}
-              accessibilityRole="button"
-              accessibilityLabel={meta.label}
-              onPress={onPress}
-              style={({ pressed }) => [
-                styles.menuItem,
-                {
-                  backgroundColor: isFocused
-                    ? theme.colors.primaryLight
-                    : pressed
-                      ? theme.colors.bgGlass
-                      : 'transparent',
-                },
-              ]}
-            >
-              <View style={styles.menuItemLeft}>
-                <View
-                  style={[
-                    styles.menuItemIconBadge,
-                    {
-                      backgroundColor: isFocused ? '#FFFFFF' : meta.badgeBg,
-                    },
-                  ]}
-                >
-                  <Ionicons
-                    name={meta.icon}
-                    size={18}
-                    color={isFocused ? theme.colors.primaryDark : meta.iconColor}
-                  />
-                </View>
-                <View style={styles.menuItemCopy}>
-                  <Text
-                    style={[
-                      styles.menuItemLabel,
-                      {
-                        color: isFocused ? theme.colors.primaryDark : theme.colors.text,
-                        fontWeight: isFocused ? '700' : '600',
-                      },
-                    ]}
-                  >
-                    {meta.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.menuItemSublabel,
-                      {
-                        color: isFocused ? theme.colors.primaryDark : theme.colors.textMuted,
-                        opacity: isFocused ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    {meta.sublabel}
-                  </Text>
-                </View>
-              </View>
-              {isFocused ? (
-                <View
-                  style={[
-                    styles.activeIndicatorPill,
-                    { backgroundColor: theme.colors.primaryDark },
-                  ]}
-                >
-                  <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </Animated.View>
-
-      {/* Unified Bottom Bar Row */}
-      <View
-        style={[
-          styles.bottomRowWrapper,
-          {
-            bottom: bottomOffset,
-          },
-        ]}
-        pointerEvents="box-none"
-      >
-        {/* Center-aligned Action Button */}
-        {actionConfig ? (
-          <View style={styles.centerActionWrapper} pointerEvents="box-none">
-            <Pressable
-              testID={actionConfig.testID}
-              accessibilityRole="button"
-              accessibilityLabel={actionConfig.accessibilityLabel}
-              onPress={() => actionConfig.onPress(navigation)}
-              style={({ pressed }) => [
-                styles.actionButton,
-                {
-                  backgroundColor: actionConfig.bg,
-                  maxWidth: width - 110,
-                  opacity: pressed ? 0.88 : 1,
-                  shadowColor: '#000',
-                },
-              ]}
-            >
-              <Ionicons
-                name={actionConfig.icon}
-                size={20}
-                color={actionConfig.fg}
-                style={styles.actionIcon}
-              />
-              <Text style={[styles.actionLabel, { color: actionConfig.fg }]} numberOfLines={1}>
-                {actionConfig.label}
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-      </View>
-
-      {/* Draggable Menu Button */}
-      <DraggableFloatingButton
-        buttonWidth={52}
-        buttonHeight={52}
-        onPress={toggleMenu}
-        onPositionChange={setButtonPos}
-      >
+    <View
+      style={[
+        styles.bottomRowWrapper,
+        {
+          bottom: bottomOffset,
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      {/* Center-aligned Action Button */}
+      {activeRouteName === 'Home' ? (
         <View
-          testID="bottom-nav-menu-button"
-          accessibilityRole="button"
-          accessibilityLabel={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          accessibilityState={{ expanded: isMenuOpen }}
           style={[
-            styles.menuButton,
+            styles.dualActionWrapper,
             {
-              backgroundColor: isMenuOpen ? theme.colors.primaryLight : theme.colors.bgElevated,
-              borderColor: isMenuOpen ? theme.colors.primary : theme.colors.border,
-              shadowColor: '#000',
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
             },
           ]}
+          pointerEvents="box-none"
         >
-          <Animated.View style={{ transform: [{ rotate: iconRotation }] }}>
-            <SignatureMenuIcon isOpen={isMenuOpen} size={22} />
-          </Animated.View>
+          {/* Left button: Manually input */}
+          <Pressable
+            testID="home-manual-add-action"
+            accessibilityRole="button"
+            accessibilityLabel="Manually input item"
+            onPress={() => navigation.navigate('Scan', { initialPhase: 'manual' })}
+            style={({ pressed }) => [
+              styles.manualInputButton,
+              {
+                backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                borderRightColor: theme.colors.border,
+                opacity: pressed ? 0.88 : 1,
+              },
+            ]}
+          >
+            <Ionicons
+              name="create-outline"
+              size={18}
+              color={theme.colors.primaryDark}
+              style={styles.actionIcon}
+            />
+            <Text
+              style={[styles.manualInputLabel, { color: theme.colors.text }]}
+              numberOfLines={1}
+            >
+              Manually input
+            </Text>
+          </Pressable>
+
+          {/* Right button: Scan an item */}
+          <Pressable
+            testID="home-scan-action"
+            accessibilityRole="button"
+            accessibilityLabel="Scan pantry items"
+            onPress={() => navigation.navigate('Scan')}
+            style={({ pressed }) => [
+              styles.scanActionButton,
+              {
+                backgroundColor: '#F5A623',
+                opacity: pressed ? 0.88 : 1,
+              },
+            ]}
+          >
+            <Ionicons
+              name="scan-outline"
+              size={20}
+              color="#2C2C28"
+              style={styles.actionIcon}
+            />
+            <Text style={[styles.scanActionLabel, { color: '#2C2C28' }]} numberOfLines={1}>
+              Scan an item
+            </Text>
+          </Pressable>
         </View>
-      </DraggableFloatingButton>
-    </>
+      ) : actionConfig ? (
+        <View style={styles.centerActionWrapper} pointerEvents="box-none">
+          <Pressable
+            testID={actionConfig.testID}
+            accessibilityRole="button"
+            accessibilityLabel={actionConfig.accessibilityLabel}
+            onPress={() => actionConfig.onPress(navigation)}
+            style={({ pressed }) => [
+              styles.actionButton,
+              {
+                backgroundColor: actionConfig.bg,
+                maxWidth: width - 48,
+                opacity: pressed ? 0.88 : 1,
+                shadowColor: '#000',
+              },
+            ]}
+          >
+            <Ionicons
+              name={actionConfig.icon}
+              size={20}
+              color={actionConfig.fg}
+              style={styles.actionIcon}
+            />
+            <Text style={[styles.actionLabel, { color: actionConfig.fg }]} numberOfLines={1}>
+              {actionConfig.label}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -430,93 +256,30 @@ const Tabs = createBottomTabNavigator<TabsParamList>();
 
 export function TabsNavigator() {
   return (
-    <Tabs.Navigator
-      screenOptions={{ headerShown: false }}
-      tabBar={(props) => <BottomActionNavBar {...props} />}
-    >
-      <Tabs.Screen name="Home" component={HomeScreen} />
-      <Tabs.Screen name="Giveaways" component={GiveawaysScreen} />
-      <Tabs.Screen name="Deals" component={DealsScreen} />
-      <Tabs.Screen name="Reviews" component={ReviewsScreen} />
-      <Tabs.Screen name="Profile" component={ProfileScreen} />
-    </Tabs.Navigator>
+    <SlidingDrawer drawerContent={<LeftDrawerMenu />}>
+      <Tabs.Navigator
+        screenOptions={{ headerShown: false }}
+        tabBar={(props) => <BottomActionNavBar {...props} />}
+        screenListeners={{
+          state: (e) => {
+            const currentRoute = e.data.state.routes[e.data.state.index]?.name;
+            if (currentRoute) {
+              useDrawerStore.getState().setActiveTab(currentRoute as keyof TabsParamList);
+            }
+          },
+        }}
+      >
+        <Tabs.Screen name="Home" component={HomeScreen} />
+        <Tabs.Screen name="Giveaways" component={GiveawaysScreen} />
+        <Tabs.Screen name="Deals" component={DealsScreen} />
+        <Tabs.Screen name="Reviews" component={ReviewsScreen} />
+        <Tabs.Screen name="Profile" component={ProfileScreen} />
+      </Tabs.Navigator>
+    </SlidingDrawer>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.22)',
-    zIndex: 99,
-  },
-  verticalMenuContainer: {
-    position: 'absolute',
-    right: 16,
-    minWidth: 200,
-    borderRadius: 22,
-    borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    zIndex: 100,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 12,
-  },
-  menuHeaderRow: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    paddingBottom: 6,
-  },
-  menuHeaderTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    minHeight: 52,
-    marginVertical: 1,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  menuItemIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuItemCopy: {
-    gap: 2,
-    flex: 1,
-  },
-  menuItemLabel: {
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  menuItemSublabel: {
-    fontSize: 11,
-    lineHeight: 14,
-  },
-  activeIndicatorPill: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 6,
-  },
   bottomRowWrapper: {
     position: 'absolute',
     left: 0,
@@ -551,16 +314,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
-  menuButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
+  dualActionWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  manualInputButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    elevation: 6,
+    paddingHorizontal: 10,
+    height: 48,
+    borderRightWidth: 1,
+    gap: 5,
+  },
+  manualInputLabel: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  scanActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    height: 48,
+    gap: 5,
+  },
+  scanActionLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
 });

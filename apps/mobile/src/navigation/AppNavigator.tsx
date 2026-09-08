@@ -1,9 +1,9 @@
 import React from 'react';
 import type { Review } from '@expyrico/shared';
-import { Pressable } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { TabsNavigator } from './TabsNavigator';
+import type { NavigatorScreenParams } from '@react-navigation/native';
+import { TabsNavigator, type TabsParamList } from './TabsNavigator';
+import { useTheme } from '../theme/useTheme';
 import SettingsIndexScreen from '../../app/(app)/settings/index';
 import SettingsThemeScreen from '../../app/(app)/settings/theme';
 import SettingsAddPasskeyScreen from '../../app/(app)/settings/add-passkey';
@@ -32,7 +32,7 @@ import FeedbackDetailScreen from '../../app/(app)/feedback/[id]';
 import ReviewsHubScreen from '../features/reviews/ReviewsHubScreen';
 import PantryHistoryScreen from '../../app/(app)/pantry/history';
 export type AppStackParamList = {
-  Tabs: undefined;
+  Tabs: NavigatorScreenParams<TabsParamList> | undefined;
   SettingsIndex: undefined;
   SettingsTheme: undefined;
   SettingsAddPasskey: undefined;
@@ -68,7 +68,7 @@ export type AppStackParamList = {
   GiveawayRate: { id: string };
   Record: { id: string };
   Report: { targetType: string; targetId: string };
-  Scan: { target?: 'pantry' | 'deal' } | undefined;
+  Scan: { target?: 'pantry' | 'deal'; initialPhase?: 'scanning' | 'manual' } | undefined;
   ProfileEdit: undefined;
   ProfilePassword: undefined;
   FeedbackHub: { initialTab?: 'submit' | 'tickets' } | undefined;
@@ -82,13 +82,23 @@ export type AppNavigationProp = NativeStackNavigationProp<AppStackParamList>;
 const Stack = createNativeStackNavigator<AppStackParamList>();
 
 export function AppNavigator() {
+  const theme = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true, fullScreenGestureEnabled: true }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true,
+        headerStyle: { backgroundColor: theme.colors.bg },
+        headerTintColor: theme.colors.text,
+        contentStyle: { backgroundColor: theme.colors.bg },
+      }}
+    >
       <Stack.Screen name="Tabs" component={TabsNavigator} />
       <Stack.Screen name="SettingsIndex" component={SettingsIndexScreen} options={{ headerShown: true, title: 'Settings' }} />
       <Stack.Screen name="SettingsTheme" component={SettingsThemeScreen} options={{ headerShown: true, title: 'Theme' }} />
       <Stack.Screen name="SettingsAddPasskey" component={SettingsAddPasskeyScreen} options={{ headerShown: true, title: 'Add a passkey' }} />
-      <Stack.Screen name="Invite" component={InviteScreen} />
+      <Stack.Screen name="Invite" component={InviteScreen} options={{ headerShown: true, title: 'Invite friends' }} />
       {/* Body has no back control; native header provides Navigate up. */}
       <Stack.Screen name="Product" component={ProductScreen} options={{ headerShown: true, title: 'Product Details' }} />
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />

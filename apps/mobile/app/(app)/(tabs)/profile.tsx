@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { Screen } from '../../../src/components/Screen';
 import { Logo } from '../../../src/components/Logo';
+import { HamburgerButton } from '../../../src/components/HamburgerButton';
 import { Avatar } from '../../../src/components/Avatar';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useSessionStore } from '../../../src/auth/session-store';
@@ -139,7 +140,10 @@ export default function Profile() {
     <Screen contentContainerStyle={{ paddingBottom: 84 }}>
       {/* Header */}
       <View style={styles.header}>
-        <Logo size={32} withWordmark />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+          <HamburgerButton testID="profile-hamburger-button" />
+          <Logo size={32} withWordmark />
+        </View>
         <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]}>
           Account, activity, and preferences.
         </Text>

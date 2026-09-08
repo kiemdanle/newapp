@@ -9,6 +9,8 @@ import { clearDraftLocalStateForUser } from '../features/products/product-draft-
 import { database } from '../db/index';
 import { clearQueryClient } from '../api/query-client';
 import { usePantryScope } from '../store/pantryScope';
+import { resetPantryViewModeState, PANTRY_VIEW_MODE_STORAGE_KEY } from '../store/uiPreferencesStore';
+import { useDrawerStore } from '../store/drawerStore';
 import { triggerSyncSoon } from '../db/triggers';
 import { imageDiskCache } from '../cache/image-disk-cache';
 import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-revalidator';
@@ -40,6 +42,10 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   }
   // Clear last sync timestamp so next user starts fresh
   await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
+  // Reset pantry view mode to default list and clear local persistence
+  resetPantryViewModeState();
+  await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
+  useDrawerStore.getState().reset();
 }
 interface SessionState {
   user: User | null;

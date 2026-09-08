@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
 import type { GiveawayFeedFilters } from '../../api/giveaways';
 import { useGiveawayFeed, useUpdateGiveaway, useCancelGiveaway } from '../../api/giveaways';
@@ -22,6 +21,7 @@ import { GiveawayCard } from './GiveawayCard';
 import { GiveawaySearchBar } from './GiveawaySearchBar';
 import { GiveawayFilterModal } from './GiveawayFilterModal';
 import { GiveawayQuickEditModal } from './GiveawayQuickEditModal';
+import { HamburgerButton } from '@/components/HamburgerButton';
 import { EmptyState } from '@/components/EmptyState';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
@@ -192,11 +192,14 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       {/* Top Header */}
-      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 8) + 4 }]}>
-        <Text style={[styles.heading, { color: theme.colors.text }]}>Giveaways</Text>
-        <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-          Offer food or groceries to neighbors before they expire.
-        </Text>
+      <View style={[styles.headerRow, { paddingTop: Math.max(insets.top, 8) + 4, flexDirection: 'row', alignItems: 'center' }]}>
+        <HamburgerButton testID="giveaways-hamburger-button" style={{ marginRight: 10 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.heading, { color: theme.colors.text }]}>Giveaways</Text>
+          <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
+            Offer food or groceries to neighbors before they expire.
+          </Text>
+        </View>
       </View>
 
       {/* Search Bar + Filter Button */}
