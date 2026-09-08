@@ -11,6 +11,7 @@ dependencies: [1, 2, 3, 4]
 
 ## Overview
 Comprehensive verification covering backend unit tests (UPCitemdb 429 handling, OpenFoodFacts timeouts, 12/13-digit normalization, in-store barcode fast-path), mobile scanner unit tests, full TypeScript typechecking, local Android Gradle build, and live physical device verification.
+<!-- Updated: Red Team Review - Added quota cooldown and barcode preservation test cases -->
 
 ---
 
@@ -86,3 +87,6 @@ Comprehensive verification covering backend unit tests (UPCitemdb 429 handling, 
 - [ ] 0 TypeScript errors across the repository.
 - [ ] Debug APK builds and installs cleanly via ADB.
 - [ ] In-store and uncached barcodes allow immediate pantry addition without ever showing a dead-end error.
+- [ ] UPCitemdb 429 cooldown verified: subsequent lookups within 5 minutes skip network calls.
+- [ ] Mobile scanner verified: 5-second timeout and "Cancel & Enter Manually" button allow immediate item addition during network dead-ends.
+- [ ] Scanned barcode is verified preserved in SQLite record when entered via manual fallback.

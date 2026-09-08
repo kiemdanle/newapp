@@ -144,4 +144,33 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
   - Reconciled Phase 1 (`phase-01-upstream-client-resiliency-and-rate-limit-isolation.md`): silent 429 handling and dual 12/13-digit fallback.
   - Reconciled Phase 4 (`phase-04-mobile-scanner-resilience.md`): "Add as Private Item" escape hatch on error screens.
   - Reconciled Phase 5 (`phase-05-testing-and-verification.md`): updated verification matrix with `product-lookup.test.ts`.
+
+---
+
+## Red Team Review
+
+### Session — 2026-09-08
+**Findings:** 8 consolidated finding groups (8 accepted, 0 rejected)
+**Severity Breakdown:** 0 Critical, 6 High, 2 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Backfill enqueuer hook registration missing in `server.ts` bootstrap | High | Accept | Phase 3 |
+| 2 | OpenFoodFacts timeout vs breaker budget mismatch and redundant 12/13 retry | High | Accept | Phase 1 |
+| 3 | Barcode preservation missing when falling back to manual pantry creation | High | Accept | Phase 4 |
+| 4 | Mobile escape hatch unreachable during hanging in-flight network request | High | Accept | Phase 4 |
+| 5 | Household scope leak risk in scanner manual fallback | High | Accept | Phase 4 |
+| 6 | Photo attachment blocking local save in manual fallback | High | Accept | Phase 4 |
+| 7 | UPCitemdb trial cooldown & Retry-After backoff to avoid quota hammering | Medium | Accept | Phase 1 |
+| 8 | In-store barcode prefix regex normalization precision (GTIN-13) | Medium | Accept | Phase 2 |
+
+### Whole-Plan Consistency Sweep
+- **Status**: Zero unresolved contradictions.
+- **Verified Invariants Across All Plan Files**:
+  1. **Worker Contract & Bootstrap**: `server.ts` registers `setLookupBackfillEnqueuer` with BullMQ retry options; `workers/product-lookup.ts` consumes `lookupProductForBackfill` and throws a retryable Error on `unavailable`.
+  2. **Timeout Boundaries**: `off-client.ts` uses a clean single-request 3500ms timeout enclosed by a 4000ms breaker, with zero redundant retries.
+  3. **Quota Protection**: `upcitemdb-client.ts` implements a 5-minute quota cooldown when HTTP 429 is encountered, returning `not_found` without hitting the network.
+  4. **True Concurrent Resolution**: `lookup.ts` races external providers concurrently via `queryExternalProvidersConcurrently`, returning immediately on the first `found` hit.
+  5. **Durable Barcode & Scope**: `scan.tsx` preserves `scannedBarcode` in `AddRecordForm`, honors active scope, applies a 5s client timeout, and renders an in-flight manual escape button.
+  6. **Prefix Precision**: `isRestrictedInStoreBarcode` canonicalizes to GTIN-13 before checking prefix `02` or `20-29`.
 <!-- slug: resilient-barcode-lookup-and-upstream-fallback -->

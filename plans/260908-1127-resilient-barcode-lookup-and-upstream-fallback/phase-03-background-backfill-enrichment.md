@@ -12,6 +12,7 @@ dependencies: [2]
 ## Overview
 Connect `lookup-v2` and manual item creation to the background backfill queue (`enqueueLookupBackfill` / `workers/product-lookup.ts`) so that products missed during synchronous scanning due to transient upstream network latency are asynchronously fetched, enriched, and cached in PostgreSQL for subsequent scans.
 <!-- Updated: Contract Verifier Audit - Worker return contract correction and retryable outage error propagation -->
+<!-- Updated: Red Team Review - Server bootstrap enqueuer registration & BullMQ retry options -->
 
 ---
 
@@ -72,6 +73,7 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
 ---
 
 ## Related Code Files
+- Modify: `api/src/server.ts`
 - Modify: `api/src/routes/products/lookup-v2.ts`
 - Modify: `api/src/workers/product-lookup.ts`
 - Modify: `api/src/services/products/lookup-backfill.ts`
@@ -95,7 +97,29 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
      }
      ```
 
-2. **Implement `lookupProductForBackfill` in `api/src/services/products/lookup.ts`**:
+2. **Register Enqueuer in `api/src/server.ts`**:
+   - In `buildServer()`, register the live BullMQ queue adapter with deduplication and retry options:
+     ```typescript
+     import { productLookupQueue } from './queues/product-lookup.js';
+     import { setLookupBackfillEnqueuer } from './services/products/lookup-backfill.js';
+
+     setLookupBackfillEnqueuer(async (barcode: string, requestedByUserId: string) => {
+       const queue = productLookupQueue();
+       await queue.add(
+         'product-lookup',
+         { barcode, requestedByUserId },
+         {
+           jobId: `backfill__${barcode}`, // Deduplicate identical in-flight barcodes
+           attempts: 3,
+           backoff: { type: 'exponential', delay: 5000 },
+           removeOnComplete: 100,
+           removeOnFail: 200,
+         },
+       );
+     });
+     ```
+
+3. **Implement `lookupProductForBackfill` in `api/src/services/products/lookup.ts`**:
    - Re-use `queryExternalProvidersConcurrently(barcode)` to check OpenFoodFacts and UPCitemdb in parallel:
      ```typescript
      export async function lookupProductForBackfill(barcode: string): Promise<{
@@ -118,7 +142,7 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
      }
      ```
 
-3. **Correct Worker Contract and Error Throw in `api/src/workers/product-lookup.ts`**:
+4. **Correct Worker Contract and Error Throw in `api/src/workers/product-lookup.ts`**:
    - Import `lookupProductForBackfill`:
      ```typescript
      const res = await lookupProductForBackfill(job.data.barcode);
@@ -133,7 +157,7 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
      logger.info({ barcode: job.data.barcode }, 'product backfill miss');
      ```
 
-4. **Add Unit Tests in `api/src/workers/product-lookup.test.ts`**:
+5. **Add Unit Tests in `api/src/workers/product-lookup.test.ts`**:
    - Test job completes on `status === 'found'`.
    - Test job completes without retry on conclusive `status === 'not_found'`.
    - Test job throws Error on `status === 'unavailable'`, verifying BullMQ retry trigger.

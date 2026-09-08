@@ -11,20 +11,21 @@ dependencies: []
 
 ## Overview
 Harden the external product lookup clients (`off-client.ts` for OpenFoodFacts and `upcitemdb-client.ts` for UPCitemdb) against latency timeouts, trial-tier rate limiting (HTTP 429), and 12/13-digit EAN/UPC-A formatting mismatches.
+<!-- Updated: Red Team Review - Quota cooldown & clean 3500ms timeout budget -->
 <!-- Updated: Validation Session 1 - Silent 429 handling & 12/13-digit fallback -->
 
 ---
 
 ## Requirements
 
-### Functional Requirements
 1. **OpenFoodFacts Latency Tolerance**:
    - Increase `getJson` timeout in `off-client.ts` from `1500ms` to `3500ms`.
-   - Update `offBreaker` timeout from `2000ms` to `4000ms` to match.
-   - For 12-digit UPC barcodes (e.g. `012345678905`), if the raw query returns 404, automatically retry with a leading `0` (`0012345678905`) to match OpenFoodFacts' 13-digit EAN canonical indexing.
-2. **UPCitemdb Rate-Limit Isolation (HTTP 429)**:
+   - Update `offBreaker` timeout from `2000ms` to `4000ms` to cleanly enclose the single HTTP request deadline.
+   - Rely on OpenFoodFacts' native server-side read normalization (which automatically normalizes 12-digit UPCs to 13-digit EANs on lookup), eliminating redundant sequential 404 retries and keeping scan latency bounded under 3.5s.
+2. **UPCitemdb Rate-Limit Isolation & Quota Cooldown (HTTP 429)**:
    - In `fetchUpc()`, intercept `HttpError` with status `429 Too Many Requests`.
-   - Do NOT throw `429` into `upcBreaker` (which trips the circuit breaker for 30 seconds). Instead, return `{ status: 'not_found' }` (or a dedicated `{ status: 'skipped' }`) so UPCitemdb quota exhaustion does not mark the entire service as unavailable.
+   - Do NOT throw `429` into `upcBreaker`. Instead, return `{ status: 'not_found' }`.
+   - Maintain an in-memory quota cooldown timestamp (`upcQuotaCooldownUntil`): when HTTP 429 is encountered, set a 5-minute cooldown (or respect `Retry-After` header if present). During cooldown, `lookupUpcitemdb` skips outbound network requests entirely and returns `{ status: 'not_found' }`, preventing quota hammering.
 3. **Dedicated User-Agent & Headers**:
    - Maintain the compliant User-Agent header `'PantryApp/1.0 (+self-hosted)'` required by OpenFoodFacts.
 
@@ -68,21 +69,10 @@ Harden the external product lookup clients (`off-client.ts` for OpenFoodFacts an
         [ (Does not trip breaker) ]     [ (Trips breaker safely) ]
 ```
 
----
-
-## Related Code Files
-- Modify: `api/src/services/products/off-client.ts`
-- Modify: `api/src/services/products/upcitemdb-client.ts`
-- Test: `api/src/services/products/lookup.test.ts`
-
----
-
-## Implementation Steps
-
 1. **Update `api/src/services/products/off-client.ts`**:
    - Change `timeoutMs` in `fetchOff` from `1500` to `3500`.
    - In `offBreaker` configuration, adjust `timeout` from `2000` to `4000`.
-   - Implement dual-query fallback for 12-digit barcodes:
+   - Clean single-request execution with 3500ms timeout:
      ```typescript
      let raw: unknown;
      try {
@@ -91,40 +81,36 @@ Harden the external product lookup clients (`off-client.ts` for OpenFoodFacts an
          headers: { 'user-agent': 'PantryApp/1.0 (+self-hosted)' },
        });
      } catch (err) {
-       if (err instanceof HttpError && err.status === 404) {
-         if (barcode.length === 12) {
-           try {
-             raw = await getJson<unknown>(OFF_URL(`0${barcode}`), {
-               timeoutMs: 3500,
-               headers: { 'user-agent': 'PantryApp/1.0 (+self-hosted)' },
-             });
-           } catch (fallbackErr) {
-             if (fallbackErr instanceof HttpError && fallbackErr.status === 404) {
-               return { status: 'not_found' };
-             }
-             throw fallbackErr;
-           }
-         } else {
-           return { status: 'not_found' };
-         }
-       } else {
-         throw err;
-       }
+       if (err instanceof HttpError && err.status === 404) return { status: 'not_found' };
+       throw err;
      }
      ```
 
 2. **Update `api/src/services/products/upcitemdb-client.ts`**:
-   - Intercept HTTP 429 in `fetchUpc`:
+   - Implement 5-minute quota cooldown and 429 interception:
      ```typescript
-     try {
-       raw = await getJson<unknown>(UPC_URL(barcode), { timeoutMs: 2000 });
-     } catch (err) {
-       if (err instanceof HttpError) {
-         if (err.status === 404 || err.status === 429) {
-           return { status: 'not_found' };
-         }
+     let upcQuotaCooldownUntil = 0;
+
+     async function fetchUpc(barcode: string): Promise<ExternalLookupResult> {
+       if (Date.now() < upcQuotaCooldownUntil) {
+         return { status: 'not_found' }; // Quota cooldown active: skip network call
        }
-       throw err;
+
+       let raw: unknown;
+       try {
+         raw = await getJson<unknown>(UPC_URL(barcode), { timeoutMs: 2000 });
+       } catch (err) {
+         if (err instanceof HttpError) {
+           if (err.status === 404) return { status: 'not_found' };
+           if (err.status === 429) {
+             // Rate limit reached: back off for 5 minutes without tripping breaker
+             upcQuotaCooldownUntil = Date.now() + 5 * 60 * 1000;
+             return { status: 'not_found' };
+           }
+         }
+         throw err;
+       }
+       }
      }
      ```
    - Log a debug warning when 429 is encountered so quota exhaustion is observable in server metrics without affecting user scans.

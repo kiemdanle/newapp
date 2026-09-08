@@ -12,6 +12,7 @@ dependencies: [1]
 ## Overview
 Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement in-store restricted barcode fast-pathing, resilient provider chaining, and non-blocking fallback for product creators when external services are degraded.
 <!-- Updated: Validation Session 1 - Parallel concurrent upstream queries & fail-open classification -->
+<!-- Updated: Red Team Review - GTIN canonicalization for restricted prefix check -->
 
 ---
 
@@ -91,8 +92,11 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
    export function isRestrictedInStoreBarcode(barcode?: string): boolean {
      if (!barcode) return false;
      const clean = barcode.trim();
-     // GS1 variable-weight / in-store prefixes: 02, 20-29
-     return /^(02|2[0-9])\d{6,}$/.test(clean);
+     if (!/^\d{8,14}$/.test(clean)) return false;
+     // Canonicalize to GTIN-13 representation: pad 12-digit UPC-A with leading zero
+     const gtin13 = clean.length === 12 ? `0${clean}` : clean;
+     // GS1 prefix 200-299 (restricted circulation) or prefix 02 (US retailer variable-measure)
+     return /^(02|2[0-9])\d{6,}$/.test(gtin13);
    }
    ```
 
