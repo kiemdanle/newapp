@@ -1,38 +1,89 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { LocalRecord } from '../../api/records';
+import { useProduct } from '../../api/products';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
+import { useSessionStore } from '../../auth/session-store';
 import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { UnitSelector } from '../../components/UnitSelector';
+import { STANDARD_CATEGORIES } from './PantryFilterModal';
 
 interface Props {
   visible: boolean;
   record: LocalRecord | null;
   productName?: string | null;
   onClose: () => void;
-  onSave: (patch: { customName?: string | null; quantity: number; unit: string; expiryDate: string }) => Promise<void>;
+  onSave: (patch: {
+    customName?: string | null;
+    category?: string | null;
+    quantity: number;
+    unit: string;
+    expiryDate: string;
+  }) => Promise<void>;
 }
 
 
 export function QuickEditModal({ visible, record, productName, onClose, onSave }: Props) {
   const theme = useTheme();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
+  const insets = useSafeAreaInsets();
+  const { data: product } = useProduct(record?.productId ?? undefined);
   const [customName, setCustomName] = useState('');
+  const [category, setCategory] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [expiryDate, setExpiryDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const userEditedNameRef = useRef(false);
+  const userEditedCategoryRef = useRef(false);
+  const lastRecordIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (record) {
-      setCustomName(record.customName ?? productName ?? '');
+    if (!visible || !record) {
+      lastRecordIdRef.current = null;
+      userEditedNameRef.current = false;
+      userEditedCategoryRef.current = false;
+      return;
+    }
+
+    if (lastRecordIdRef.current !== record.id) {
+      lastRecordIdRef.current = record.id;
+      userEditedNameRef.current = false;
+      userEditedCategoryRef.current = false;
+
+      const initialName = record.customName || productName || product?.name || '';
+      const initialCat = record.category || product?.category || '';
+      setCustomName(initialName);
+      setCategory(initialCat);
       setQuantity(String(record.quantity ?? 1));
       setUnit(record.unit || 'pcs');
       setExpiryDate(record.expiryDate || '');
+    } else {
+      // Product may have loaded asynchronously after modal opened
+      if (!userEditedNameRef.current && !record.customName && !customName && product?.name) {
+        setCustomName(product.name);
+      }
+      if (!userEditedCategoryRef.current && !record.category && !category && product?.category) {
+        setCategory(product.category);
+      }
     }
-  }, [record, productName]);
+  }, [visible, record, productName, product?.name, product?.category]);
 
   if (!record) return null;
 
@@ -49,15 +100,22 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   };
 
   const handleSave = async () => {
+    const trimmedExpiry = expiryDate.trim();
+    if (!trimmedExpiry) {
+      setShowDatePicker(true);
+      return;
+    }
+
     const parsedQty = parseFloat(quantity);
     const validQty = Number.isFinite(parsedQty) && parsedQty > 0 ? parsedQty : record.quantity;
     setSaving(true);
     try {
       await onSave({
         customName: customName.trim() || null,
+        category: category.trim() || null,
         quantity: validQty,
         unit: unit.trim() || 'pcs',
-        expiryDate: expiryDate.trim() || record.expiryDate,
+        expiryDate: trimmedExpiry,
       });
       onClose();
     } finally {
@@ -65,12 +123,29 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
     }
   };
 
+  const resolvedPlaceholder = productName || product?.name || 'Item name';
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.backdrop}
+      >
         <Pressable
-          style={[styles.modalCard, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}
-          onPress={(e) => e.stopPropagation()}
+          style={styles.dismissOverlay}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss modal"
+        />
+        <View
+          style={[
+            styles.modalCard,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              paddingBottom: Math.max(insets.bottom, 16) + 8,
+            },
+          ]}
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.colors.text }]}>Quick Edit</Text>
@@ -79,20 +154,93 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
               onPress={onClose}
               accessibilityRole="button"
               accessibilityLabel="Close edit modal"
+              style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}
             >
-              <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
             </Pressable>
           </View>
 
-          {/* Item Name */}
-          <TextField
-            label="Item Name"
-            value={customName}
-            onChangeText={setCustomName}
-            placeholder={productName || 'Item name'}
-            autoCapitalize="sentences"
-          />
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.formScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Item Name */}
+            <TextField
+              label="Item Name"
+              value={customName}
+              onChangeText={(val) => {
+                userEditedNameRef.current = true;
+                setCustomName(val);
+              }}
+              placeholder={resolvedPlaceholder}
+              autoCapitalize="sentences"
+            />
 
+            {/* Category */}
+            <View style={{ gap: 6 }}>
+              <Text style={[styles.label, { color: theme.colors.textMuted }]}>Category</Text>
+              <TextInput
+                testID="quick-edit-category-input"
+                accessibilityLabel="Category"
+                value={category}
+                onChangeText={(val) => {
+                  userEditedCategoryRef.current = true;
+                  setCategory(val);
+                }}
+                placeholder="e.g. Produce, Dairy, Bakery, etc."
+                placeholderTextColor={theme.colors.textMuted}
+                style={[
+                  styles.categoryInput,
+                  {
+                    color: theme.colors.text,
+                    borderColor: theme.colors.border,
+                    backgroundColor: theme.colors.bgGlass,
+                  },
+                ]}
+              />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryChipsRow}
+                keyboardShouldPersistTaps="handled"
+              >
+                {STANDARD_CATEGORIES.map((cat) => {
+                  const isSelected = category.trim().toLowerCase() === cat.toLowerCase();
+                  return (
+                    <Pressable
+                      key={cat}
+                      testID={`quick-edit-cat-${cat.toLowerCase().replace(/\s+/g, '-')}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select category ${cat}`}
+                      onPress={() => {
+                        userEditedCategoryRef.current = true;
+                        setCategory(isSelected ? '' : cat);
+                      }}
+                      style={[
+                        styles.categoryChip,
+                        {
+                          backgroundColor: isSelected ? theme.colors.primaryLight : theme.colors.bgGlass,
+                          borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          {
+                            color: isSelected ? theme.colors.primaryDark : theme.colors.text,
+                            fontWeight: isSelected ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
           {/* Quantity Stepper */}
           <View style={{ gap: 6 }}>
             <Text style={[styles.label, { color: theme.colors.textMuted }]}>Quantity</Text>
@@ -165,7 +313,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
                     fontWeight: expiryDate ? '600' : '400',
                   }}
                 >
-                  {expiryDate || 'Select expiry date'}
+                  {expiryDate ? formatDate(expiryDate, userCountry) : 'Select expiry date'}
                 </Text>
               </View>
               <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
@@ -193,8 +341,9 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
               <Button testID="save-quick-edit" label="Save" loading={saving} onPress={handleSave} />
             </View>
           </View>
-        </Pressable>
-      </Pressable>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -205,12 +354,20 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+  dismissOverlay: {
+    flex: 1,
+  },
   modalCard: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 24,
-    gap: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
     borderWidth: 1,
+    maxHeight: '88%',
+  },
+  formScroll: {
+    gap: 16,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',
@@ -242,5 +399,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryInput: {
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+  },
+  categoryChipsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingVertical: 2,
+  },
+  categoryChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  categoryChipText: {
+    fontSize: 12,
   },
 });

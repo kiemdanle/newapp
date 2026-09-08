@@ -40,7 +40,7 @@ export function DealSearchBar({
           styles.searchBox,
           {
             backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
+            borderColor: theme.colors.neutralMid,
             borderRadius: theme.radii.lg,
           },
         ]}

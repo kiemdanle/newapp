@@ -85,6 +85,7 @@ describe('QuickEditModal', () => {
 
     expect(onSave).toHaveBeenCalledWith({
       customName: 'Gala Apples',
+      category: 'Produce',
       quantity: 5,
       unit: 'pcs',
       expiryDate: '2026-09-01',
@@ -154,5 +155,87 @@ describe('QuickEditModal', () => {
         unit: 'oz',
       }),
     );
+  });
+
+  it('auto-populates item name and category from product when customName is null', () => {
+    const recordWithoutCustomName: LocalRecord = {
+      ...mockRecord,
+      customName: null,
+      category: null,
+    };
+
+    const { getByDisplayValue } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithoutCustomName}
+        productName="Vinamilk Yogurt"
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+      'expyrico',
+    );
+
+    expect(getByDisplayValue('Vinamilk Yogurt')).toBeTruthy();
+  });
+
+  it('allows selecting category from quick chips and typing custom category', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+
+    const { getByTestId, getByLabelText, getByDisplayValue } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Initial category 'Produce' is in the text field
+    expect(getByDisplayValue('Produce')).toBeTruthy();
+
+    // Select 'Dairy' chip
+    fireEvent.press(getByTestId('quick-edit-cat-dairy'));
+    expect(getByDisplayValue('Dairy')).toBeTruthy();
+
+    // Or type a custom category
+    fireEvent.changeText(getByLabelText('Category'), 'Fresh Fruits');
+    expect(getByDisplayValue('Fresh Fruits')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: 'Fresh Fruits',
+      }),
+    );
+  });
+
+  it('blocks saving and opens date picker when expiryDate is empty', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordWithEmptyExpiry: LocalRecord = {
+      ...mockRecord,
+      expiryDate: '',
+    };
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithEmptyExpiry}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+    // Date picker is opened
+    expect(getByTestId('date-picker-done')).toBeTruthy();
   });
 });

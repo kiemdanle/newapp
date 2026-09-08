@@ -46,7 +46,7 @@ export function TextField({
           styles.inputContainer,
           {
             backgroundColor: theme.colors.bgElevated,
-            borderColor: error ? theme.colors.danger : focused ? theme.colors.primary : theme.colors.border,
+            borderColor: error ? theme.colors.danger : focused ? theme.colors.primary : theme.colors.neutralMid,
             borderRadius: theme.radii.md,
           },
         ]}

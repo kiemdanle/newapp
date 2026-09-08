@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createLocalRecord } from '../../api/records';
 import { useCreateOrResumeDraft, usePatchDraft, useProduct } from '../../api/products';
@@ -7,12 +7,15 @@ import { uploadProductPhoto } from '../../api/product-photo-upload';
 import { useMyHouseholds } from '../../api/households';
 import { usePantryScope } from '../../store/pantryScope';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
+import { useSessionStore } from '../../auth/session-store';
 import { Button } from '../../components/Button';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { ScopeSelectorPill } from './ScopeSelectorPill';
 import { UnitSelector } from '../../components/UnitSelector';
+import { STANDARD_CATEGORIES } from './PantryFilterModal';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -41,10 +44,11 @@ export function AddRecordForm({
   const theme = useTheme();
   const { data: product } = useProduct(productId ?? undefined);
   const lastProductIdRef = useRef(productId);
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const hasUserEditedCategoryRef = useRef(false);
+  const [itemName, setItemName] = useState(() => customName ?? productName ?? '');
   const [expiry, setExpiry] = useState('');
   const [category, setCategory] = useState(() => initialCategory || product?.category || '');
-
   if (lastProductIdRef.current !== productId) {
     lastProductIdRef.current = productId;
     hasUserEditedCategoryRef.current = false;
@@ -58,6 +62,11 @@ export function AddRecordForm({
       }
     }
   }, [initialCategory, product?.category]);
+  useEffect(() => {
+    if (customName !== undefined && customName !== null) {
+      setItemName(customName);
+    }
+  }, [customName]);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
@@ -88,8 +97,11 @@ export function AddRecordForm({
     return null;
   });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
-
   const save = async () => {
+    if (!productId && !itemName.trim()) {
+      setError('Item name is required');
+      return;
+    }
     if (!isoRe.test(expiry)) {
       setError('Expiry date is required (YYYY-MM-DD)');
       return;
@@ -117,8 +129,8 @@ export function AddRecordForm({
           await patchDraft.mutateAsync({
             id: finalProductId,
             version: draftRes.product.version,
-            name: customName ?? productName ?? 'Custom Item',
-            category: category || null,
+            name: itemName.trim() || (customName ?? productName ?? 'Custom Item'),
+            category: category.trim() || null,
           });
 
           const uploadHandle = uploadProductPhoto(
@@ -133,8 +145,8 @@ export function AddRecordForm({
 
       const localId = await createLocalRecord({
         productId: finalProductId,
-        customName: finalProductId ? null : (customName ?? productName ?? 'Item'),
-        category: category || null,
+        customName: finalProductId ? null : itemName.trim(),
+        category: category.trim() || null,
         expiryDate: expiry,
         quantity: qty,
         unit,
@@ -204,7 +216,23 @@ export function AddRecordForm({
 
   return (
     <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
-      {productName ? (
+      {!productId ? (
+        <View style={{ gap: 6 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item name *</Text>
+          <TextInput
+            accessibilityLabel="Item Name"
+            testID="add-record-custom-name"
+            style={[getInputStyle('name'), { minHeight: 48 }]}
+            onFocus={() => setFocusedField('name')}
+            onBlur={() => setFocusedField(null)}
+            value={itemName}
+            onChangeText={setItemName}
+            placeholder="e.g. Fresh salmon, Apples, Sourdough"
+            placeholderTextColor={theme.colors.textMuted}
+            autoFocus={!customName}
+          />
+        </View>
+      ) : productName ? (
         <View style={{ gap: 2, marginBottom: 2 }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' }}>
             PANTRY ITEM
@@ -298,7 +326,7 @@ export function AddRecordForm({
                   fontWeight: expiry ? '600' : '400',
                 }}
               >
-                {expiry ? expiry : 'Select expiry date'}
+                {expiry ? formatDate(expiry, userCountry) : 'Select expiry date'}
               </Text>
             </View>
             <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
@@ -384,7 +412,7 @@ export function AddRecordForm({
       <View style={{ gap: 6 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Category (optional)</Text>
         <TextInput
-          accessibilityLabel="Text input field"
+          accessibilityLabel="Category"
           testID="add-record-category"
           style={[getInputStyle('category'), { minHeight: 48 }]}
           onFocus={() => setFocusedField('category')}
@@ -394,9 +422,58 @@ export function AddRecordForm({
             hasUserEditedCategoryRef.current = true;
             setCategory(val);
           }}
-          placeholder="e.g: Produce, Diary, Bakery, Meat & Seafood, More"
+          placeholder="e.g. Produce, Dairy, Bakery, Meat & Seafood, etc."
           placeholderTextColor={theme.colors.textMuted}
         />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 8, paddingVertical: 2 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {STANDARD_CATEGORIES.map((cat) => {
+            const isSelected = category.trim().toLowerCase() === cat.toLowerCase();
+            return (
+              <Pressable
+                key={cat}
+                testID={`add-record-category-chip-${cat.toLowerCase().replace(/[^a-z0-9]/g, '-')}`}
+                accessibilityRole="button"
+                accessibilityLabel={`Select category ${cat}`}
+                onPress={() => {
+                  hasUserEditedCategoryRef.current = true;
+                  setCategory(isSelected ? '' : cat);
+                }}
+                style={({ pressed }) => [
+                  {
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: theme.radii.pill,
+                    borderWidth: 1,
+                    borderColor: isSelected ? theme.colors.primaryDark : theme.colors.border,
+                    backgroundColor: isSelected
+                      ? theme.colors.primaryLight
+                      : pressed
+                        ? theme.colors.bgGlass
+                        : theme.colors.bgElevated,
+                    minHeight: 32,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: isSelected ? '700' : '500',
+                    color: isSelected ? theme.colors.primaryDark : theme.colors.text,
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <View style={{ gap: 6 }}>

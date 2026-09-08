@@ -7,6 +7,8 @@ import { useActiveRecords, type LocalRecord } from '../../api/records';
 import { useProduct } from '../../api/products';
 import { useMyHouseholds } from '../../api/households';
 import { useTheme } from '../../theme/useTheme';
+import { formatDate } from '../../utils/country-format';
+import { useSessionStore } from '../../auth/session-store';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { groupRecords, type GroupedRecords } from './groupRecords';
@@ -24,6 +26,7 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const activeRecords = useActiveRecords();
+  const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const groups = useMemo(() => propGroups ?? groupRecords(activeRecords), [propGroups, activeRecords]);
   const item = pickMostUrgent(groups);
   const { data: product } = useProduct(item?.productId ?? undefined);
@@ -45,7 +48,7 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
     <Pressable
       testID="use-next-hero"
       accessibilityRole="button"
-      accessibilityLabel={`Use next: ${displayName}, expires ${item.expiryDate}`}
+      accessibilityLabel={`Use next: ${displayName}, expires ${formatDate(item.expiryDate, userCountry)}`}
       onPress={() => navigation.navigate('Record', { id: item.id })}
       style={({ pressed }) => [
         styles.card,
@@ -150,7 +153,7 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
             { color: theme.colors.text },
           ]}
         >
-          Expires {item.expiryDate}
+          Expires {formatDate(item.expiryDate, userCountry)}
         </Text>
         <View
           style={[

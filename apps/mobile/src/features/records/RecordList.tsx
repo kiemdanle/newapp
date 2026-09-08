@@ -15,8 +15,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useSelectionModeStore } from '../../store/selectionModeStore';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
+import { v4 as uuidv4 } from 'uuid';
 import {
   useActiveRecords,
+  createLocalRecord,
   patchLocalRecord,
   deleteLocalRecord,
   type LocalRecord,
@@ -36,7 +38,16 @@ import { PantryActiveFilterChips } from './PantryActiveFilterChips';
 import { PantryFilterModal } from './PantryFilterModal';
 import type { PantryFilterState, PantrySortOption } from './pantryFilterTypes';
 import { BulkScopeModal } from './BulkScopeModal';
+import { useUiPreferencesStore } from '../../store/uiPreferencesStore';
+import { PantryGridCard } from './PantryGridCard';
 
+function chunkArray<T>(items: T[], size: number = 2): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
 const SECTION_TITLES: Record<keyof GroupedRecords, string> = {
   expired: 'Expired',
   today: 'Expires today',
@@ -48,7 +59,7 @@ interface RowProps {
   record: LocalRecord;
   householdName?: string | null;
   onPress: (id: string) => void;
-  onAddQuantity: (record: LocalRecord) => void;
+  onDuplicate: (record: LocalRecord) => void;
   onEdit: (record: LocalRecord) => void;
   onDelete: (record: LocalRecord) => void;
   selectionMode?: boolean;
@@ -61,7 +72,7 @@ const RecordRow = React.memo(function RecordRow({
   record,
   householdName,
   onPress,
-  onAddQuantity,
+  onDuplicate,
   onEdit,
   onDelete,
   selectionMode,
@@ -74,7 +85,7 @@ const RecordRow = React.memo(function RecordRow({
       record={record}
       householdName={householdName}
       onPress={() => onPress(record.id)}
-      onAddQuantity={onAddQuantity}
+      onDuplicate={onDuplicate}
       onEdit={onEdit}
       onDelete={onDelete}
       selectionMode={selectionMode}
@@ -131,6 +142,7 @@ export function RecordList({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkScopeModalVisible, setBulkScopeModalVisible] = useState(false);
+  const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
   const lastPropRef = useRef(urgentFilterActive);
   const prevExpiryStatusRef = useRef(filters.expiryStatus);
 
@@ -258,6 +270,7 @@ export function RecordList({
   const onEndReachedCalledDuringMomentumRef = useRef(true);
   const handleScrollBegin = useCallback(() => {
     onEndReachedCalledDuringMomentumRef.current = false;
+    setActiveDrawerId(null);
   }, []);
 
   const handleEndReached = useCallback(() => {
@@ -265,6 +278,24 @@ export function RecordList({
     onEndReachedCalledDuringMomentumRef.current = true;
     loadMore();
   }, [loadMore]);
+
+  const viewMode = useUiPreferencesStore((s) => s.pantryViewMode);
+  const setPantryViewMode = useUiPreferencesStore((s) => s.setPantryViewMode);
+
+  const handleToggleViewMode = useCallback(() => {
+    onEndReachedCalledDuringMomentumRef.current = true;
+    setActiveDrawerId(null);
+    void setPantryViewMode(viewMode === 'grid' ? 'list' : 'grid');
+  }, [viewMode, setPantryViewMode]);
+  useEffect(() => {
+    onEndReachedCalledDuringMomentumRef.current = true;
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (selectionMode) {
+      setActiveDrawerId(null);
+    }
+  }, [selectionMode]);
 
   const groups = useMemo(() => groupRecords(paginatedItems, currentDate), [paginatedItems, currentDate]);
   const sections = useMemo(() => {
@@ -275,7 +306,12 @@ export function RecordList({
       const urgencyKeys: Array<keyof typeof SECTION_TITLES> = ['expired', 'today', 'thisWeek'];
       return urgencyKeys
         .filter((key) => groups[key].length > 0)
-        .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] }));
+        .map((key) => ({
+          key,
+          title: SECTION_TITLES[key],
+          data: viewMode === 'grid' ? chunkArray(groups[key], 2) : groups[key],
+          originalCount: groups[key].length,
+        }));
     }
     if (isFiltered) {
       if (paginatedItems.length === 0) {
@@ -285,14 +321,20 @@ export function RecordList({
         {
           key: 'filtered_results',
           title: totalCount > 0 ? `Showing ${paginatedItems.length} of ${totalCount} items` : '',
-          data: paginatedItems,
+          data: viewMode === 'grid' ? chunkArray(paginatedItems, 2) : paginatedItems,
+          originalCount: paginatedItems.length,
         },
       ];
     }
     return (Object.keys(SECTION_TITLES) as Array<keyof typeof SECTION_TITLES>)
       .filter((key) => groups[key].length > 0)
-      .map((key) => ({ key, title: SECTION_TITLES[key], data: groups[key] }));
-  }, [filters.expiryStatus, isFiltered, groups, paginatedItems, totalCount]);
+      .map((key) => ({
+        key,
+        title: SECTION_TITLES[key],
+        data: viewMode === 'grid' ? chunkArray(groups[key], 2) : groups[key],
+        originalCount: groups[key].length,
+      }));
+  }, [filters.expiryStatus, isFiltered, groups, paginatedItems, totalCount, viewMode]);
 
   const openRecord = useCallback(
     (id: string) => navigation.navigate('Record', { id }),
@@ -333,18 +375,24 @@ export function RecordList({
     flexGrow: 1,
   };
 
-  const handleAddQuantity = useCallback(
-    (record: LocalRecord) =>
-      patchLocalRecord(record.id, { quantity: record.quantity + 1 }),
-    [],
-  );
+  const handleDuplicate = useCallback((record: LocalRecord) => {
+    const draft: LocalRecord = {
+      ...record,
+      id: `draft-duplicate-${record.id}`,
+      serverId: null,
+      clientId: uuidv4(),
+      expiryDate: '',
+      status: 'active',
+    };
+    setEditingRecord(draft);
+  }, []);
 
   const handleEdit = useCallback((record: LocalRecord) => {
     setEditingRecord(record);
   }, []);
 
-  const handleDelete = useCallback((record: LocalRecord) => {
-    const itemName = record.customName || 'this item';
+  const handleDelete = useCallback((record: LocalRecord, displayName?: string) => {
+    const itemName = displayName || record.customName || 'this item';
     Alert.alert(
       'Delete Item',
       `Are you sure you want to delete "${itemName}"? It will be removed from your pantry.`,
@@ -364,12 +412,30 @@ export function RecordList({
   const handleSaveEdit = useCallback(
     async (patch: {
       customName?: string | null;
+      category?: string | null;
       quantity: number;
       unit: string;
       expiryDate: string;
     }) => {
       if (!editingRecord) return;
-      await patchLocalRecord(editingRecord.id, patch);
+      if (editingRecord.id.startsWith('draft-duplicate-')) {
+        await createLocalRecord({
+          productId: editingRecord.productId,
+          customName: patch.customName !== undefined ? patch.customName : editingRecord.customName,
+          category: patch.category !== undefined ? patch.category : editingRecord.category,
+          expiryDate: patch.expiryDate,
+          quantity: patch.quantity,
+          unit: patch.unit,
+          price: editingRecord.price,
+          store: editingRecord.store,
+          notes: editingRecord.notes,
+          photoUrl: editingRecord.photoUrl,
+          householdId: editingRecord.householdId,
+          userId: editingRecord.userId,
+        });
+      } else {
+        await patchLocalRecord(editingRecord.id, patch);
+      }
     },
     [editingRecord],
   );
@@ -433,23 +499,73 @@ export function RecordList({
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: LocalRecord }) => (
-      <RecordRow
-        record={item}
-        householdName={item.householdId ? householdNames[item.householdId] : undefined}
-        onPress={handlePressItem}
-        onAddQuantity={handleAddQuantity}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        selectionMode={selectionMode}
-        isSelected={selectedIds.has(item.id)}
-        onLongPress={handleLongPress}
-        onToggleSelect={handleToggleSelect}
-      />
-    ),
+    ({ item }: { item: LocalRecord | LocalRecord[] }) => {
+      if (Array.isArray(item)) {
+        const first = item[0];
+        const second = item[1];
+        if (!first) return null;
+        return (
+          <View style={styles.gridRow}>
+            <PantryGridCard
+              record={first}
+              householdName={first.householdId ? householdNames[first.householdId] : undefined}
+              onPress={() => handlePressItem(first.id)}
+              selectionMode={selectionMode}
+              isSelected={selectedIds.has(first.id)}
+              onLongPress={handleLongPress ? () => handleLongPress(first.id) : undefined}
+              onToggleSelect={handleToggleSelect ? () => handleToggleSelect(first.id) : undefined}
+              onDuplicate={handleDuplicate}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              isDrawerOpen={activeDrawerId === first.id}
+              onOpenDrawer={() => setActiveDrawerId(first.id)}
+              onCloseDrawer={() => {
+                setActiveDrawerId((curr) => (curr === first.id ? null : curr));
+              }}
+            />
+            {second ? (
+              <PantryGridCard
+                record={second}
+                householdName={second.householdId ? householdNames[second.householdId] : undefined}
+                onPress={() => handlePressItem(second.id)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(second.id)}
+                onLongPress={handleLongPress ? () => handleLongPress(second.id) : undefined}
+                onToggleSelect={handleToggleSelect ? () => handleToggleSelect(second.id) : undefined}
+                onDuplicate={handleDuplicate}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                isDrawerOpen={activeDrawerId === second.id}
+                onOpenDrawer={() => setActiveDrawerId(second.id)}
+                onCloseDrawer={() => {
+                  setActiveDrawerId((curr) => (curr === second.id ? null : curr));
+                }}
+              />
+            ) : (
+              <View style={styles.gridSpacer} />
+            )}
+          </View>
+        );
+      }
+
+      return (
+        <RecordRow
+          record={item}
+          householdName={item.householdId ? householdNames[item.householdId] : undefined}
+          onPress={handlePressItem}
+          onDuplicate={handleDuplicate}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          selectionMode={selectionMode}
+          isSelected={selectedIds.has(item.id)}
+          onLongPress={handleLongPress}
+          onToggleSelect={handleToggleSelect}
+        />
+      );
+    },
     [
       handlePressItem,
-      handleAddQuantity,
+      handleDuplicate,
       handleEdit,
       handleDelete,
       householdNames,
@@ -457,9 +573,17 @@ export function RecordList({
       selectedIds,
       handleLongPress,
       handleToggleSelect,
+      activeDrawerId,
     ],
   );
-  const keyExtractor = useCallback((item: LocalRecord) => item.id, []);
+  const keyExtractor = useCallback((item: LocalRecord | LocalRecord[]) => {
+    if (Array.isArray(item)) {
+      const first = item[0];
+      const second = item[1];
+      return `${first ? first.id : 'empty'}:${second ? second.id : 'empty'}`;
+    }
+    return item.id;
+  }, []);
   const handleClearAll = useCallback(() => {
     setSearchQuery('');
     setFilters({ expiryStatus: 'all' });
@@ -497,6 +621,8 @@ export function RecordList({
         onChangeText={setSearchQuery}
         onOpenFilter={() => setFilterModalVisible(true)}
         activeFilterCount={activeFilterCount}
+        viewMode={viewMode}
+        onToggleViewMode={handleToggleViewMode}
       />
       <PantrySortPills selectedSort={selectedSort} onSelectSort={setSelectedSort} />
       {isFiltered ? (
@@ -560,8 +686,8 @@ export function RecordList({
       {/* STABLE SINGLE SectionList: Preserves search input focus, cursor, and keyboard connection */}
       <SectionList
         testID="pantry-record-list"
-        sections={sections}
-        extraData={householdNames}
+        sections={sections as any}
+        extraData={{ viewMode, selectionMode, selectedIds, householdNames, activeDrawerId }}
         scrollEnabled
         initialNumToRender={30}
         maxToRenderPerBatch={30}
@@ -584,6 +710,7 @@ export function RecordList({
         alwaysBounceVertical={true}
         contentContainerStyle={listContentContainerStyle}
         renderSectionHeader={({ section }) => {
+          const count = (section as any).originalCount ?? section.data.length;
           if (filters.expiryStatus === 'urgent') {
             return (
               <View style={{ marginTop: theme.spacing.sm }}>
@@ -598,7 +725,7 @@ export function RecordList({
                     marginBottom: theme.spacing.sm,
                   }}
                 >
-                  {section.title} · {section.data.length}
+                  {section.title} · {count}
                 </Text>
               </View>
             );
@@ -625,7 +752,7 @@ export function RecordList({
                   marginBottom: theme.spacing.sm,
                 }}
               >
-                {section.title} · {section.data.length}
+                {section.title} · {count}
               </Text>
             </View>
           );
@@ -863,6 +990,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 16,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  gridSpacer: {
+    flex: 1,
   },
   bulkMoveBtnText: {
     color: '#FFFFFF',

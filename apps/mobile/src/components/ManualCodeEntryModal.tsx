@@ -221,7 +221,7 @@ export function ManualCodeEntryModal({
             <View
               style={[
                 styles.inputWrapper,
-                { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border },
+                { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.neutralMid },
               ]}
             >
               <TextInput

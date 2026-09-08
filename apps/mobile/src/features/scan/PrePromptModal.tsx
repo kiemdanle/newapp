@@ -5,9 +5,10 @@ interface Props {
   visible: boolean;
   onAllow: () => void;
   onCancel: () => void;
+  onAddManually?: () => void;
 }
 
-export function PrePromptModal({ visible, onAllow, onCancel }: Props) {
+export function PrePromptModal({ visible, onAllow, onCancel, onAddManually }: Props) {
   const theme = useTheme();
   return (
     <Modal transparent visible={visible} animationType="fade">
@@ -41,8 +42,13 @@ export function PrePromptModal({ visible, onAllow, onCancel }: Props) {
             images.
           </Text>
           <View
-            style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.md }}
+            style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.md }}
           >
+            {onAddManually ? (
+              <Pressable accessibilityRole="button" onPress={onAddManually} testID="pre-prompt-manual-add" style={{ minHeight: 44, paddingHorizontal: theme.spacing.sm, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: theme.colors.primaryDark, fontWeight: '600' }}>Manually Input</Text>
+              </Pressable>
+            ) : null}
             <Pressable accessibilityRole="button" onPress={onCancel} testID="pre-prompt-cancel">
               <Text style={{ color: theme.colors.textMuted }}>Not now</Text>
             </Pressable>

@@ -574,7 +574,7 @@ exports[`sign-in in expyrico snapshot 1`] = `
                         },
                         {
                           "backgroundColor": "#FAFAF8",
-                          "borderColor": "#F0F0ED",
+                          "borderColor": "#8C8C85",
                           "borderRadius": 16,
                         },
                       ]
@@ -648,7 +648,7 @@ exports[`sign-in in expyrico snapshot 1`] = `
                           },
                           {
                             "backgroundColor": "#FAFAF8",
-                            "borderColor": "#F0F0ED",
+                            "borderColor": "#8C8C85",
                             "borderRadius": 16,
                           },
                         ]
@@ -1825,7 +1825,7 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                         },
                         {
                           "backgroundColor": "#191F1B",
-                          "borderColor": "#2D3A34",
+                          "borderColor": "#B7BDB7",
                           "borderRadius": 16,
                         },
                       ]
@@ -1899,7 +1899,7 @@ exports[`sign-in in expyricoDark snapshot 1`] = `
                           },
                           {
                             "backgroundColor": "#191F1B",
-                            "borderColor": "#2D3A34",
+                            "borderColor": "#B7BDB7",
                             "borderRadius": 16,
                           },
                         ]

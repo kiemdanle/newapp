@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { LocalRecord } from '../../api/records';
@@ -16,7 +16,7 @@ interface Props {
   householdName?: string | null;
   showHouseholdBadge?: boolean;
   addedByName?: string | null;
-  onAddQuantity?: (record: LocalRecord) => void;
+  onDuplicate?: (record: LocalRecord) => void;
   onEdit?: (record: LocalRecord) => void;
   onDelete?: (record: LocalRecord) => void;
   selectionMode?: boolean;
@@ -30,7 +30,7 @@ export function RecordCard({
   householdName,
   showHouseholdBadge,
   addedByName,
-  onAddQuantity,
+  onDuplicate,
   onEdit,
   onDelete,
   selectionMode = false,
@@ -53,7 +53,6 @@ export function RecordCard({
   const displayName = record.customName || product?.name || 'Item';
   const brand = product?.brand;
   const category = record.category || product?.category;
-  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
 
   const isHouseholdItem =
     showHouseholdBadge ?? (scope === 'all' && Boolean(record.householdId));
@@ -74,21 +73,6 @@ export function RecordCard({
   ) => {
     return (
       <View style={styles.rightActionsRow}>
-        {/* Quick +1 Quantity */}
-        <Pressable
-          testID={`record-add-quantity-${record.id}`}
-          accessibilityRole="button"
-          accessibilityLabel={`Add 1 to ${displayName}`}
-          onPress={() => {
-            swipeableRef.current?.close();
-            onAddQuantity?.(record);
-          }}
-          style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
-        >
-          <Ionicons name="add" size={22} color="#FFFFFF" />
-          <Text style={styles.actionBtnText}>+1</Text>
-        </Pressable>
-
         {/* Quick Edit */}
         <Pressable
           testID={`record-edit-${record.id}`}
@@ -102,6 +86,21 @@ export function RecordCard({
         >
           <Ionicons name="create-outline" size={20} color="#FFFFFF" />
           <Text style={styles.actionBtnText}>Edit</Text>
+        </Pressable>
+
+        {/* Quick Duplicate */}
+        <Pressable
+          testID={`record-duplicate-${record.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Duplicate ${displayName}`}
+          onPress={() => {
+            swipeableRef.current?.close();
+            onDuplicate?.(record);
+          }}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
+        >
+          <Ionicons name="copy-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Duplicate</Text>
         </Pressable>
 
         {/* Quick Delete */}
@@ -144,7 +143,8 @@ export function RecordCard({
             flexDirection: 'row',
             borderRadius: theme.radii.md,
             backgroundColor: theme.colors.bgElevated,
-            overflow: 'hidden',
+            borderWidth: 1,
+            borderColor: theme.colors.border,
             opacity: pressed ? 0.88 : 1,
             shadowColor: theme.colors.neutralDark,
             shadowOpacity: 0.05,
@@ -166,7 +166,7 @@ export function RecordCard({
             <Ionicons
               name={isSelected ? 'checkmark-circle' : 'ellipse-outline'}
               size={22}
-              color={isSelected ? theme.colors.primary : theme.colors.border}
+              color={isSelected ? theme.colors.primary : theme.colors.neutralMid}
             />
           </View>
         )}
@@ -309,28 +309,27 @@ export function RecordCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    marginBottom: 10,
-    borderRadius: 12,
-    overflow: 'hidden',
+    borderRadius: 16,
   },
   rightActionsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    marginBottom: 10,
     marginLeft: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   actionBtn: {
-    width: 60,
+    width: 66,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
     paddingVertical: 10,
+    paddingHorizontal: 2,
   },
   actionBtnText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '700',
+    textAlign: 'center',
   },
 });

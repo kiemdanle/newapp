@@ -400,4 +400,63 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(mockLookup).toHaveBeenCalledTimes(1);
     await act(async () => resolveLookup?.({ outcome: 'not_found', canCreate: true }));
   });
+
+  it('renders "Manually Input" button in scanning mode when target is not deal', async () => {
+    __setRouteParams({});
+    const { getByTestId, getByText } = render(wrap(<ScanScreen />));
+    expect(getByTestId('scan-manual-add')).toBeTruthy();
+    expect(getByText('Manually Input')).toBeTruthy();
+    expect(getByText('Produce, bakery, wet market items')).toBeTruthy();
+  });
+
+  it('does not render "Add without barcode" button when target is deal', async () => {
+    __setRouteParams({ target: 'deal' });
+    const { queryByTestId } = render(wrap(<ScanScreen />));
+    expect(queryByTestId('scan-manual-add')).toBeNull();
+  });
+
+  it('tapping "Manually Input" transitions to manual-entry phase and renders AddRecordForm without barcode scan', async () => {
+    __setRouteParams({});
+    const { getByTestId, queryByTestId, findByText } = render(wrap(<ScanScreen />));
+    fireEvent.press(getByTestId('scan-manual-add'));
+
+    expect(queryByTestId('scan-manual-add')).toBeNull();
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+    expect(await findByText('MANUALLY INPUT')).toBeTruthy();
+    expect(mockLookup).not.toHaveBeenCalled();
+  });
+
+  it('allows manual add from CameraPermissionDeniedModal', async () => {
+    mockInitialPermission = 'denied';
+    mockCheckPermission.mockResolvedValue('denied');
+    const { findByTestId, getByTestId, queryByTestId } = render(wrap(<ScanScreen />));
+
+    expect(await findByTestId('camera-permission-denied-manual-add')).toBeTruthy();
+    await act(async () => fireEvent.press(getByTestId('camera-permission-denied-manual-add')));
+
+    expect(queryByTestId('camera-permission-denied-modal')).toBeNull();
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+  });
+
+  it('allows manual add from PrePromptModal', async () => {
+    mockInitialPermission = 'unknown';
+    mockCheckPermission.mockResolvedValue('unknown');
+    const { findByTestId, getByTestId, queryByTestId } = render(wrap(<ScanScreen />));
+
+    expect(await findByTestId('pre-prompt-manual-add')).toBeTruthy();
+    await act(async () => fireEvent.press(getByTestId('pre-prompt-manual-add')));
+
+    expect(queryByTestId('pre-prompt-cancel')).toBeNull();
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+  });
+
+  it('starts directly in manual-entry when initialPhase is manual even if camera permission is denied', async () => {
+    mockInitialPermission = 'denied';
+    mockCheckPermission.mockResolvedValue('denied');
+    __setRouteParams({ initialPhase: 'manual' });
+    const { getByTestId, queryByTestId } = render(wrap(<ScanScreen />));
+
+    expect(queryByTestId('camera-permission-denied-modal')).toBeNull();
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+  });
 });

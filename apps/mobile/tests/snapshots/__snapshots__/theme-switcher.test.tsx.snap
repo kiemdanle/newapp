@@ -20,11 +20,16 @@ exports[`theme settings in expyrico snapshot 1`] = `
   >
     <View
       style={
-        {
-          "flex": 1,
-          "gap": 8,
-          "padding": 24,
-        }
+        [
+          {
+            "flex": 1,
+            "gap": 8,
+            "padding": 24,
+          },
+          {
+            "backgroundColor": "#FAFAF8",
+          },
+        ]
       }
     >
       <Text
@@ -461,11 +466,16 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
   >
     <View
       style={
-        {
-          "flex": 1,
-          "gap": 8,
-          "padding": 24,
-        }
+        [
+          {
+            "flex": 1,
+            "gap": 8,
+            "padding": 24,
+          },
+          {
+            "backgroundColor": "#111512",
+          },
+        ]
       }
     >
       <Text
@@ -538,8 +548,8 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
                 "padding": 14,
               },
               {
-                "backgroundColor": "#111512",
-                "borderColor": "#2D3A34",
+                "backgroundColor": "#FAFAF8",
+                "borderColor": "#F0F0ED",
                 "borderRadius": 22,
                 "borderWidth": 1,
                 "minHeight": 48,
@@ -593,8 +603,8 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
                     "width": 22,
                   },
                   {
-                    "backgroundColor": "#191F1B",
-                    "borderColor": "#2D3A34",
+                    "backgroundColor": "#FAFAF8",
+                    "borderColor": "#F0F0ED",
                     "borderRadius": 10,
                     "borderWidth": 1,
                   },
@@ -605,7 +615,7 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#FAFAF8",
+                "color": "#2C2C28",
                 "fontSize": 16,
                 "fontWeight": "500",
               }
@@ -616,12 +626,12 @@ exports[`theme settings in expyricoDark snapshot 1`] = `
           <Text
             style={
               {
-                "color": "#B7BDB7",
+                "color": "#8C8C85",
                 "fontSize": 12,
               }
             }
           >
-            Device dark
+            Device light
           </Text>
         </View>
         <View

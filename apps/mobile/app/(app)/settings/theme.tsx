@@ -1,4 +1,4 @@
-import { Pressable, View, Text, StyleSheet } from 'react-native';
+import { Pressable, View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { themes, type Theme } from '@expyrico/theme';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useThemeStore } from '../../../src/theme/store';
@@ -13,9 +13,10 @@ export default function ThemeSettings() {
   const active = useTheme();
   const themeId = useThemeStore((s) => s.themeId);
   const setTheme = useThemeStore((s) => s.setTheme);
-
+  const systemScheme = useColorScheme();
+  const systemTheme = systemScheme === 'dark' ? themes.expyricoDark : themes.expyrico;
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: active.colors.bg }]}>
       <Text style={{ fontSize: active.typeRamp.headlineMedium.fontSize, fontWeight: active.typeRamp.headlineMedium.fontWeight as any, color: active.colors.text }}>
         Appearance
       </Text>
@@ -25,8 +26,8 @@ export default function ThemeSettings() {
       <View style={styles.grid}>
         <ThemePreviewCard
           label="System"
-          description={`Device ${active.scheme === 'dark' ? 'dark' : 'light'}`}
-          theme={active}
+          description={`Device ${systemScheme === 'dark' ? 'dark' : 'light'}`}
+          theme={systemTheme}
           selected={themeId === 'system'}
           preference="system"
           fullWidth

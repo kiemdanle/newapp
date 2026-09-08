@@ -4,6 +4,16 @@ import {
   DEFAULT_COUNTRY_METADATA,
   type CountryMetadata,
 } from '@expyrico/shared';
+import { useSessionStore } from '../auth/session-store';
+
+function getEffectiveCountry(countryCode?: string | null): string | null | undefined {
+  if (countryCode !== undefined && countryCode !== null) return countryCode;
+  try {
+    return useSessionStore.getState().user?.country ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export { getCountryMetadata, getAllCountries, DEFAULT_COUNTRY_METADATA, type CountryMetadata };
 
@@ -50,7 +60,7 @@ export function formatDate(
   const d = toDate(input);
   if (!d) return '';
 
-  const meta = getCountryMetadata(countryCode);
+  const meta = getCountryMetadata(getEffectiveCountry(countryCode));
   const style = options?.style ?? 'short';
 
   if (style === 'relative') {
@@ -115,7 +125,7 @@ export function formatTime(
   const d = toDate(input);
   if (!d) return '';
 
-  const meta = getCountryMetadata(countryCode);
+  const meta = getCountryMetadata(getEffectiveCountry(countryCode));
   const hours = d.getHours();
   const minutes = pad(d.getMinutes());
   const seconds = options?.showSeconds ? `:${pad(d.getSeconds())}` : '';
@@ -153,7 +163,7 @@ export function formatCurrency(
 ): string {
   if (amount === null || amount === undefined || Number.isNaN(amount)) return '$0.00';
 
-  const meta = getCountryMetadata(countryCode);
+  const meta = getCountryMetadata(getEffectiveCountry(countryCode));
   const currencyCode = currencyOverride ? currencyOverride.toUpperCase() : meta.currencyCode;
 
   // Currencies without fractional cents
@@ -218,7 +228,7 @@ export function formatNumber(
   countryCode?: string | null,
 ): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '0';
-  const meta = getCountryMetadata(countryCode);
+  const meta = getCountryMetadata(getEffectiveCountry(countryCode));
   const delimiter = meta.locale.startsWith('vi') || meta.locale.startsWith('de') || meta.locale.startsWith('fr') ? '.' : ',';
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimiter);
 }

@@ -17,6 +17,8 @@ export interface PantrySearchBarProps {
   onChangeText: (text: string) => void;
   onOpenFilter: () => void;
   activeFilterCount: number;
+  viewMode?: 'list' | 'grid';
+  onToggleViewMode?: () => void;
 }
 
 export function PantrySearchBar({
@@ -24,6 +26,8 @@ export function PantrySearchBar({
   onChangeText,
   onOpenFilter,
   activeFilterCount,
+  viewMode = 'list',
+  onToggleViewMode,
 }: PantrySearchBarProps) {
   const theme = useTheme();
   const [localText, setLocalText] = useState(value);
@@ -73,7 +77,7 @@ export function PantrySearchBar({
           styles.searchBox,
           {
             backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
+            borderColor: theme.colors.neutralMid,
             borderRadius: theme.radii.lg,
           },
         ]}
@@ -139,7 +143,7 @@ export function PantrySearchBar({
           styles.filterBtn,
           {
             backgroundColor: isFilterActive ? theme.colors.primaryLight : theme.colors.bgElevated,
-            borderColor: isFilterActive ? theme.colors.primary : theme.colors.border,
+            borderColor: isFilterActive ? theme.colors.primary : theme.colors.neutralMid,
             borderRadius: theme.radii.lg,
           },
         ]}
@@ -160,6 +164,29 @@ export function PantrySearchBar({
           </View>
         ) : null}
       </Pressable>
+
+      {onToggleViewMode ? (
+        <Pressable
+          testID="pantry-view-mode-toggle-btn"
+          accessibilityRole="button"
+          accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+          onPress={onToggleViewMode}
+          style={({ pressed }) => [
+            styles.filterBtn,
+            {
+              backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+              borderColor: theme.colors.neutralMid,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <Ionicons
+            name={viewMode === 'grid' ? 'list-outline' : 'grid-outline'}
+            size={20}
+            color={theme.colors.text}
+          />
+        </Pressable>
+      ) : null}
     </View>
   );
 }

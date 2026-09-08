@@ -273,6 +273,7 @@ export default function RecordDetail() {
   };
   const handleSaveQuickEdit = async (patch: {
     customName?: string | null;
+    category?: string | null;
     quantity: number;
     unit: string;
     expiryDate: string;

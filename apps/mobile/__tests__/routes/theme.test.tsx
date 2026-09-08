@@ -1,7 +1,7 @@
 // apps/mobile/__tests__/routes/theme.test.tsx
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, useColorScheme } from 'react-native';
 import ThemeSettings from '../../app/(app)/settings/theme';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
@@ -47,5 +47,28 @@ describe('<ThemeSettings />', () => {
       fireEvent.press(getByTestId('theme-card-expyricoDark'));
     });
     expect(useThemeStore.getState().themeId).toBe('expyricoDark');
+  });
+
+  it('accurately displays Device dark or Device light based on system color scheme', async () => {
+    const colorSchemeSpy = jest.spyOn(require('react-native'), 'useColorScheme').mockReturnValue('dark');
+    const { getByText, rerender } = render(wrap(<ThemeSettings />));
+
+    expect(getByText('Device dark')).toBeTruthy();
+
+    // Select Light theme in-app
+    await act(async () => {
+      useThemeStore.getState().setTheme('expyrico');
+    });
+    rerender(wrap(<ThemeSettings />));
+
+    // System card MUST still display "Device dark" because device OS is in dark mode
+    expect(getByText('Device dark')).toBeTruthy();
+
+    // Now mock system scheme as light
+    colorSchemeSpy.mockReturnValue('light');
+    rerender(wrap(<ThemeSettings />));
+    expect(getByText('Device light')).toBeTruthy();
+
+    colorSchemeSpy.mockRestore();
   });
 });

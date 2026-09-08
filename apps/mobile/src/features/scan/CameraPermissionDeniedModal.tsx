@@ -4,9 +4,10 @@ import { useTheme } from '../../theme/useTheme';
 interface Props {
   onCancel: () => void;
   onOpenSettings: () => void;
+  onAddManually?: () => void;
 }
 
-export function CameraPermissionDeniedModal({ onCancel, onOpenSettings }: Props) {
+export function CameraPermissionDeniedModal({ onCancel, onOpenSettings, onAddManually }: Props) {
   const theme = useTheme();
 
   return (
@@ -41,8 +42,23 @@ export function CameraPermissionDeniedModal({ onCancel, onOpenSettings }: Props)
             Allow camera access in your phone settings to scan a barcode or QR code.
           </Text>
           <View
-            style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: theme.spacing.md }}
+            style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: theme.spacing.md }}
           >
+            {onAddManually ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onAddManually}
+                testID="camera-permission-denied-manual-add"
+                style={{
+                  minHeight: 44,
+                  paddingHorizontal: theme.spacing.sm,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: theme.colors.primaryDark, fontWeight: '600' }}>Manually Input</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               onPress={onCancel}

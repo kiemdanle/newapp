@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { RecordList } from './RecordList';
 import { ThemeProvider } from '../../theme/ThemeProvider';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -103,5 +103,20 @@ describe('RecordList pull-to-refresh', () => {
 
     expect(onRefreshMock).toHaveBeenCalledTimes(1);
     expect(runSync).not.toHaveBeenCalled();
+  });
+});
+
+describe('RecordList item duplication', () => {
+  it('opens QuickEditModal with an in-memory draft when duplicate is pressed', () => {
+    const { getByTestId, getByText } = renderWithProviders(<RecordList />);
+    const duplicateBtn = getByTestId('record-duplicate-rec-1');
+    expect(duplicateBtn).toBeTruthy();
+
+    act(() => {
+      fireEvent.press(duplicateBtn);
+    });
+
+    expect(getByText('Milk')).toBeTruthy();
+    expect(getByText('Select expiry date')).toBeTruthy();
   });
 });

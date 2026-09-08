@@ -24,7 +24,7 @@ export interface PantryFilterModalProps {
   records: LocalRecord[];
 }
 
-const STANDARD_CATEGORIES = [
+export const STANDARD_CATEGORIES = [
   'Produce',
   'Dairy',
   'Bakery',

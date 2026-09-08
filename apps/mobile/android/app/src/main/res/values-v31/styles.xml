@@ -9,5 +9,6 @@
         <item name="android:statusBarColor">@color/warm_white</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
     </style>
 </resources>

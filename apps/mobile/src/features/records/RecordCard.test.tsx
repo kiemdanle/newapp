@@ -47,16 +47,17 @@ describe('RecordCard with swipe actions', () => {
     expect(getByText(/Expires/)).toBeTruthy();
   });
 
-  it('triggers onAddQuantity when the +1 swipe action is pressed', () => {
-    const onAddQuantity = jest.fn();
-    const { getByTestId } = renderWithProviders(
-      <RecordCard record={mockRecord} onPress={jest.fn()} onAddQuantity={onAddQuantity} />,
+  it('triggers onDuplicate when the duplicate swipe action is pressed', () => {
+    const onDuplicate = jest.fn();
+    const { getByTestId, getByText } = renderWithProviders(
+      <RecordCard record={mockRecord} onPress={jest.fn()} onDuplicate={onDuplicate} />,
     );
 
-    const addBtn = getByTestId('record-add-quantity-rec-1');
-    expect(addBtn).toBeTruthy();
-    fireEvent.press(addBtn);
-    expect(onAddQuantity).toHaveBeenCalledWith(mockRecord);
+    const duplicateBtn = getByTestId('record-duplicate-rec-1');
+    expect(duplicateBtn).toBeTruthy();
+    expect(getByText('Duplicate')).toBeTruthy();
+    fireEvent.press(duplicateBtn);
+    expect(onDuplicate).toHaveBeenCalledWith(mockRecord);
   });
 
   it('triggers onEdit when the edit swipe action is pressed', () => {

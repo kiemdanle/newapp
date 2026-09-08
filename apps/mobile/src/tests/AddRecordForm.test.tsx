@@ -90,8 +90,7 @@ describe('AddRecordForm', () => {
     // No household picker at all — not even the "Personal" chip — while locked.
     expect(queryByTestId('add-record-pantry-personal')).toBeNull();
     expect(queryByTestId('add-record-pantry-hh-1')).toBeNull();
-    expect(queryByText('Pantry')).toBeNull();
-
+    expect(queryByTestId('add-record-scope-selector')).toBeNull();
     fireEvent.changeText(getByTestId('add-record-expiry-input'), '2099-12-31');
     fireEvent.press(getByTestId('add-record-save'));
 
@@ -234,6 +233,44 @@ describe('AddRecordForm', () => {
       expect.objectContaining({
         productId: 'p-1',
         category: 'Fresh Drinks',
+      }),
+    );
+  });
+
+  it('renders editable item name input when productId is null and validates required name', async () => {
+    const { getByTestId, findByText } = render(
+      <AddRecordForm productId={null} onSaved={jest.fn()} />,
+    );
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-10-15');
+    fireEvent.press(getByTestId('add-record-save'));
+    expect(await findByText('Item name is required')).toBeTruthy();
+  });
+
+  it('saves custom item without barcode with name and category chip selection', async () => {
+    const onSaved = jest.fn();
+    const { getByTestId } = render(
+      <AddRecordForm productId={null} onSaved={onSaved} />,
+    );
+
+    fireEvent.changeText(getByTestId('add-record-custom-name'), 'Honeycrisp Apples');
+    fireEvent.press(getByTestId('add-record-category-chip-produce'));
+    expect(getByTestId('add-record-category').props.value).toBe('Produce');
+
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-09-20');
+    fireEvent.changeText(getByTestId('add-record-quantity'), '4');
+    fireEvent.press(getByTestId('add-record-save'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('local-id-1'));
+    expect(createLocalRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: null,
+        customName: 'Honeycrisp Apples',
+        category: 'Produce',
+        expiryDate: '2026-09-20',
+        quantity: 4,
+        unit: 'pcs',
       }),
     );
   });
