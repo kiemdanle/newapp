@@ -63,7 +63,7 @@ Add an optional **"Location"** field to pantry item editing (`QuickEditModal`) a
 | 2 | **LocationPickerModal Sheet** | Bottom sheet modal with search/custom text input, "Apply" button, common location preset chips, and "Clear Location" action. | P1 |
 | 3 | **QuickEditModal Placement & Integration** | Placed directly under Unit and above Expiry Date. Field is optional; saves seamlessly when selected or empty (`null`). | P1 |
 | 4 | **AddRecordForm Integration** | Integrated into new item creation form matching the Quick Edit visual sequence. Optional; defaults to null. | P1 |
-| 5 | **Database & Offline Migration** | WatermelonDB schema bump (v4 → v5) with SQLite column `location` (string, optional). Model `@field('location')` and `LocalRecord` interface updated. Shared schemas updated with validation. | P1 |
+| 5 | **Database & Offline Migration** | WatermelonDB schema bump (v4 → v5) with SQLite column `location` (string, optional) and Postgres migration `20260908093000_add_record_location` + Prisma client generate. Model `@field('location')` and `LocalRecord` interface updated. Shared schemas updated with validation. | P1 |
 | 6 | **Pantry Location Filtering & Chips** | Multi-select `PantryFilterState.locations?: string[]` integrated into `filterAndSortRecords`. "STORAGE LOCATION" section in `PantryFilterModal` with counts. Per-location dismissible chips in `PantryActiveFilterChips` with wired array removal. | P1 |
 | 7 | **Card Location Indicator** | Display subtle location badge on `RecordCard` metadata row so users immediately recognize storage location at a glance. | P2 |
 | 8 | **Automated Testing & Device Verification** | Unit tests for selector, modal, filters, forms. Typecheck passes. Gradle debug APK builds successfully and verified on attached physical device via ADB. | P1 |
@@ -87,7 +87,7 @@ Add an optional **"Location"** field to pantry item editing (`QuickEditModal`) a
 1. **Strictly Optional Storage Field**: Location is never required to save an item. If not provided or cleared, it safely defaults to `null` on both local SQLite and backend Prisma.
 2. **Tap-to-Deselect Behavior**: Unlike `UnitSelector` (where an item must always have a unit like `pcs`), `Location` is optional. Tapping an already-active location pill unselects it, returning the value to `null`.
 3. **Pill Group Visual Continuity**: Matches `UnitSelector` with `height: 38`, `minWidth: 44`, `borderRadius: theme.radii.pill`, Fresh Sage `#4BAE8A` for active state, and `#FFFFFF` active text.
-4. **WatermelonDB v4 → v5 Schema Migration**: Using `@nozbe/watermelondb/Schema/migrations` `add_columns` ensures existing user pantries upgrade seamlessly without data loss or SQLite table drops.
+4. **WatermelonDB v4 → v5 & Postgres Schema Migration**: Using `@nozbe/watermelondb/Schema/migrations` `add_columns` ensures existing mobile pantries upgrade seamlessly without SQLite table drops. In Postgres, `api/prisma/migrations/20260908093000_add_record_location/migration.sql` adds nullable `location` column, followed by `prisma generate` to update `@prisma/client`.
 5. **Full Live Sync Path Wiring**: In addition to Prisma schema and `recordSchema`, `location` is integrated end-to-end: `recordCreateSchema` & `recordPatchSchema` allow it, `create.ts`/`patch.ts` write it, `duplicate.ts` preserves it, `sync.ts` writes it on push, and all pull branches (conflict, household, personal create, personal update) populate `r.location = ch.location ?? null`.
 6. **Per-Value Filter Removal Wiring**: `PantryActiveFilterChipsProps.onRemoveFilter` is typed `(key: keyof PantryFilterState, value?: string) => void`. `RecordList.tsx:632` filters out `value` from `prev.locations` instead of wiping the entire array.
 
@@ -103,6 +103,7 @@ Add an optional **"Location"** field to pantry item editing (`QuickEditModal`) a
 - [ ] `AddRecordForm` supports selecting and saving item location.
 - [ ] `PantryFilterModal` includes "STORAGE LOCATION" section with item counts and multi-select support.
 - [ ] Selecting one or multiple locations filters the pantry list accurately and renders per-location dismissible chips in `PantryActiveFilterChips`.
+- [ ] Postgres migration `20260908093000_add_record_location` created and Prisma client generated.
 - [ ] WatermelonDB migration v4 → v5 runs without errors.
 - [ ] Full test suite passes; APK builds and installs cleanly on physical device via ADB.
 

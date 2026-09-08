@@ -42,6 +42,7 @@ Establish the foundational data contracts and storage persistence for the option
 - Modify: `packages/shared/src/schemas/record.ts`
 - Modify: `packages/shared/src/schemas/record.test.ts`
 - Modify: `api/prisma/schema.prisma`
+- Create: `api/prisma/migrations/20260908093000_add_record_location/migration.sql`
 - Modify: `api/src/services/records/repository.ts`
 - Modify: `api/src/routes/records/create.ts`
 - Modify: `api/src/routes/records/patch.ts`
@@ -59,8 +60,14 @@ Establish the foundational data contracts and storage persistence for the option
    - Add `location: z.string().trim().max(50).nullable().optional()` to `recordCreateBaseSchema` and `recordPatchSchema`.
    - Update unit tests in `packages/shared/src/schemas/record.test.ts` to verify valid strings, null, whitespace trim, and length constraints (>50 rejection).
 
-2. **Backend Prisma Schema & Endpoints**:
+2. **Backend Prisma Schema, Postgres Migration & Endpoints**:
    - Add `location String?` to `model Record` in `api/prisma/schema.prisma`.
+   - Create SQL migration `api/prisma/migrations/20260908093000_add_record_location/migration.sql`:
+     ```sql
+     -- AlterTable
+     ALTER TABLE "records" ADD COLUMN IF NOT EXISTS "location" TEXT;
+     ```
+   - Execute Prisma client generate: `npm --prefix api run db:generate` (`prisma generate`) so types reflect the new column.
    - Update `toApiRecord` in `api/src/services/records/repository.ts` to include `location: r.location ?? null`.
    - Update `api/src/routes/records/create.ts` to write `location: input.location?.trim() || null` to Prisma.
    - Update `api/src/routes/records/patch.ts` to write `location: input.location !== undefined ? (input.location?.trim() || null) : undefined` to Prisma.
@@ -108,10 +115,12 @@ Establish the foundational data contracts and storage persistence for the option
      - Ensures household pull creates rows with location preserved, avoiding data drop.
 ## Success Criteria
 - [ ] `packages/shared` tests pass with `location` field validations.
+- [ ] Postgres migration `20260908093000_add_record_location` created and Prisma client regenerated.
 - [ ] WatermelonDB schema compiles with version 5 and includes `location` column.
 - [ ] Migration v4 → v5 defined cleanly without table reconstruction.
 - [ ] `LocalRecord` and `RecordModel` correctly expose and persist `location`.
 - [ ] Record CRUD operations (`createLocalRecord`, `updateLocalRecord`, `duplicateLocalRecord`) retain `location`.
+- [ ] Live sync path (push create/patch + pull conflict, household, and personal create/update) preserves `location`.
 
 ## Risk Assessment
 - *Risk*: WatermelonDB migration failure on devices with existing v4 SQLite databases causing crashes on startup.
