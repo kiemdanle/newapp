@@ -16,7 +16,7 @@ Establish the foundational data contracts and storage persistence for the option
 ## Requirements
 - Functional:
   - Store optional item storage location as a trimmed string (up to 50 chars), defaulting to `null`.
-  - Enable seamless reading and writing of `location` via `LocalRecord`, `createLocalRecord`, `updateLocalRecord`, and `duplicateLocalRecord`.
+  - Enable seamless reading and writing of `location` via `LocalRecord`, `createLocalRecord`, `patchLocalRecord`, and `markRecordStatusWithQuantity`.
   - Ensure background offline synchronization transfers `location` to/from backend API.
 - Non-functional:
   - Non-destructive database migration (v4 → v5) preserves all existing pantry records.
@@ -54,8 +54,8 @@ Establish the foundational data contracts and storage persistence for the option
 - Modify: `apps/mobile/src/db/models/Record.ts`
 - Modify: `apps/mobile/src/api/records.ts`
 - Modify: `apps/mobile/src/db/sync.ts`
-
 ## Implementation Steps
+1. **Shared Schema Update (`packages/shared/src/schemas/record.ts`)**:
    - Add `location: z.string().trim().max(50).nullable().optional()` to `recordSchema`.
    - Reject control characters and unprintable chars in location schema.
    - Add `location: z.string().trim().max(50).nullable().optional()` to `recordCreateBaseSchema` and `recordPatchSchema`.
@@ -116,7 +116,7 @@ Establish the foundational data contracts and storage persistence for the option
      - Personal record upsert update branch: map `location: u.location !== undefined ? (u.location ?? null) : undefined`.
    - In `apps/mobile/src/db/sync.ts`:
      - `pushPending`: include `if (rec.location) body.location = rec.location;` in POST `/records` body.
-     - `pushPending`: include `if (rec.location !== undefined) patch.location = rec.location;` in PATCH `/records/:id` body.
+     - `pushPending`: in PATCH `/records/:id` body, omit `location` unless this device specifically mutated it (e.g. `if (rec.location) patch.location = rec.location;`), preventing an unmutated `null` column on device B from wiping out a household item's server location (e.g. Fridge) during an unrelated quantity or status sync.
      - `pullSince`: populate `r.location = ch.location ?? null;` across all pull update branches:
        1. Scope-change conflict resolution branch (`ch.location`).
        2. Household records sync branch (`ch.location`).
@@ -128,7 +128,7 @@ Establish the foundational data contracts and storage persistence for the option
 - [ ] WatermelonDB schema compiles with version 5 and includes `location` column.
 - [ ] Migration v4 → v5 defined cleanly without table reconstruction.
 - [ ] `LocalRecord` and `RecordModel` correctly expose and persist `location`.
-- [ ] Record CRUD operations (`createLocalRecord`, `updateLocalRecord`, `duplicateLocalRecord`) retain `location`.
+- [ ] Record CRUD operations (`createLocalRecord`, `patchLocalRecord`, `markRecordStatusWithQuantity`) retain `location`.
 - [ ] Live sync path (push create/patch + pull conflict, household, and personal create/update) preserves `location`.
 
 ## Risk Assessment
