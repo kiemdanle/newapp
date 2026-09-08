@@ -331,7 +331,12 @@ export default function NewProductScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ padding: theme.spacing.lg, gap: theme.spacing.lg }}
+        contentContainerStyle={{
+          paddingHorizontal: theme.spacing.lg,
+          paddingTop: Math.round(theme.spacing.lg / 2),
+          paddingBottom: theme.spacing.lg,
+          gap: theme.spacing.lg,
+        }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         automaticallyAdjustKeyboardInsets={true}
@@ -466,7 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 6,
     borderBottomWidth: 1,
   },
   closeBtn: {
