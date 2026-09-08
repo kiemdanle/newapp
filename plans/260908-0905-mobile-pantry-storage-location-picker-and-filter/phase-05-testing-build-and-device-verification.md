@@ -11,6 +11,7 @@ dependencies: ["phase-01-schema-and-database-migrations", "phase-02-location-sel
 
 ## Overview
 Validate the entire end-to-end location selection, persistence, and filtering system across unit tests, TypeScript typechecking, local Android Gradle build (`assembleDebug`), and physical device verification via ADB.
+<!-- Updated: Red Team Review - Migration deploy check, relative test paths, sync test loop -->
 
 ## Requirements
 - Functional:
@@ -30,9 +31,11 @@ Validate the entire end-to-end location selection, persistence, and filtering sy
 | Component / Layer | Verification Command | Target Result |
 |-------------------|----------------------|---------------|
 | Shared Schema | `npm --prefix packages/shared test` | All validation tests pass |
+| Postgres Migration | `npm --prefix api run db:migrate:deploy` | Migration applied cleanly |
+| API Tests & Sync | `npm --prefix api test` | All API unit & integration tests pass |
 | Mobile Components | `npm --prefix apps/mobile test -- tests/unit/location-selector.test.tsx tests/unit/location-picker-modal.test.tsx` | All tests pass |
-| Mobile Filters | `npm --prefix apps/mobile test -- apps/mobile/src/features/records/filterAndSortRecords.test.ts` | All filter tests pass |
-| Mobile Forms | `npm --prefix apps/mobile test -- apps/mobile/src/features/records/QuickEditModal.test.tsx` | Form tests pass |
+| Mobile Filters | `npm --prefix apps/mobile test -- src/features/records/filterAndSortRecords.test.ts tests/unit/pantry-filter-modal.test.tsx` | All filter tests pass |
+| Mobile Forms | `npm --prefix apps/mobile test -- src/features/records/QuickEditModal.test.tsx src/tests/AddRecordForm.test.tsx` | Form tests pass |
 | Full Mobile Suite | `npm --prefix apps/mobile test` | All 140+ test suites pass |
 | TypeScript | `npm --prefix apps/mobile run typecheck` | 0 type errors |
 | Gradle Build | `cd apps/mobile && JAVA_HOME=... ANDROID_HOME=... ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug` | BUILD SUCCESSFUL |
@@ -44,19 +47,25 @@ Validate the entire end-to-end location selection, persistence, and filtering sy
 - Modify: `apps/mobile/tests/unit/location-picker-modal.test.tsx`
 - Modify: `apps/mobile/src/features/records/filterAndSortRecords.test.ts`
 - Modify: `apps/mobile/src/features/records/QuickEditModal.test.tsx`
-- Modify: `apps/mobile/src/features/records/PantryFilterModal.test.tsx`
-
+- Modify: `apps/mobile/tests/unit/pantry-filter-modal.test.tsx`
+- Modify: `apps/mobile/src/tests/AddRecordForm.test.tsx`
 ## Implementation Steps
 1. **Automated Test Suite Execution**:
    - Run shared package unit tests: `npm --prefix packages/shared test`.
-   - Run newly created and updated mobile unit tests:
+   - Deploy database migration and run backend tests:
+     ```bash
+     npm --prefix api run db:migrate:deploy
+     npm --prefix api test
+     ```
+   - Run newly created and updated mobile unit tests with relative paths:
      ```bash
      npm --prefix apps/mobile test -- \
        tests/unit/location-selector.test.tsx \
        tests/unit/location-picker-modal.test.tsx \
-       apps/mobile/src/features/records/filterAndSortRecords.test.ts \
-       apps/mobile/src/features/records/QuickEditModal.test.tsx \
-       apps/mobile/src/features/records/PantryFilterModal.test.tsx
+       src/features/records/filterAndSortRecords.test.ts \
+       src/features/records/QuickEditModal.test.tsx \
+       tests/unit/pantry-filter-modal.test.tsx \
+       src/tests/AddRecordForm.test.tsx
      ```
    - Run full regression suite across mobile app: `npm --prefix apps/mobile test`.
 

@@ -11,6 +11,7 @@ dependencies: ["phase-01-schema-and-database-migrations", "phase-02-location-sel
 
 ## Overview
 Integrate the `LocationSelector` component into pantry item editing (`QuickEditModal`) and new item creation (`AddRecordForm`), positioned directly under **Unit** and above **Expiry Date**, ensuring the field is optional and saves smoothly with or without a value.
+<!-- Updated: Red Team Review - Caller threading, hydration guard, real test paths -->
 
 ## Requirements
 - Functional:
@@ -54,15 +55,17 @@ Integrate the `LocationSelector` component into pantry item editing (`QuickEditM
 
 ## Related Code Files
 - Modify: `apps/mobile/src/features/records/QuickEditModal.tsx`
+- Modify: `apps/mobile/src/features/records/RecordList.tsx`
+- Modify: `apps/mobile/app/(app)/record/[id].tsx`
 - Modify: `apps/mobile/src/features/records/AddRecordForm.tsx`
 - Modify: `apps/mobile/src/features/records/QuickEditModal.test.tsx`
-- Modify: `apps/mobile/tests/unit/add-record-form.test.tsx`
+- Modify: `apps/mobile/src/tests/AddRecordForm.test.tsx`
 
 ## Implementation Steps
 1. **QuickEditModal Integration (`apps/mobile/src/features/records/QuickEditModal.tsx`)**:
    - Import `LocationSelector` from `@/components/LocationSelector`.
    - Add state: `const [location, setLocation] = useState<string | null>(record.location ?? null);`.
-   - Synchronize with `record.location` inside `useEffect` when `visible` or `record` changes.
+   - **Hydration Guard**: Initialize `setLocation(record.location ?? null)` strictly inside the `if (lastRecordIdRef.current !== record.id)` block so that subsequent product hydration (`useProduct`) effects do not wipe user's in-progress pill selections.
    - Insert `<LocationSelector>` component:
      ```tsx
      {/* Unit Selector */}
@@ -85,9 +88,12 @@ Integrate the `LocationSelector` component into pantry item editing (`QuickEditM
      <View style={{ gap: 6 }}>
      ...
      ```
-   - In `handleSave`:
-     - Pass `location: location?.trim() || null` in the update payload.
-     - Call `updateLocalRecord(record.id, { ..., location: location?.trim() || null })`.
+   - In `QuickEditModal.tsx:onSave` interface & `handleSave`:
+     - Extend `onSave` patch payload type to include `location?: string | null`.
+     - Call `onSave({ ..., location: location?.trim() || null })`.
+   - **Caller Threading to SQLite**:
+     - In `RecordList.tsx` (`handleSaveEdit`): update the patch type to include `location?: string | null;`. When handling a duplicated draft (`draft-duplicate-*`), pass `location: patch.location ?? editingRecord.location` to `createLocalRecord`. For regular edits, forward `location: patch.location` to `patchLocalRecord`.
+     - In `apps/mobile/app/(app)/record/[id].tsx` (`handleSaveQuickEdit`): update the patch type and forward `location: patch.location` to `patchLocalRecord`.
 2. **AddRecordForm Integration (`apps/mobile/src/features/records/AddRecordForm.tsx`)**:
    - Import `LocationSelector` from `@/components/LocationSelector`.
    - Add state: `const [location, setLocation] = useState<string | null>(null);`.
@@ -109,11 +115,14 @@ Integrate the `LocationSelector` component into pantry item editing (`QuickEditM
      - Include `location: location?.trim() || null` in the `createLocalRecord` arguments.
    - In form reset logic, reset `setLocation(null)`.
 
-3. **Form Tests Updating (`QuickEditModal.test.tsx`)**:
-   - Add test case: renders `LocationSelector` with initial `record.location`.
-   - Add test case: clicking a location pill (e.g. `Fridge`) and saving passes `location: 'Fridge'` to `onSave`.
-   - Add test case: clearing location and saving passes `location: null`.
-
+3. **Form Tests Updating (`QuickEditModal.test.tsx`, `AddRecordForm.test.tsx`)**:
+   - In `apps/mobile/src/features/records/QuickEditModal.test.tsx`:
+     - Update existing `onSave` assertions (lines 86-93) to expect `location: null` in the payload.
+     - Add test case: renders `LocationSelector` with initial `record.location`.
+     - Add test case: clicking a location pill (e.g. `Fridge`) and saving passes `location: 'Fridge'` to `onSave`.
+     - Add test case: clearing location and saving passes `location: null`.
+   - In `apps/mobile/src/tests/AddRecordForm.test.tsx`:
+     - Add test verifying that selecting a location passes `location: 'Fridge'` to `createLocalRecord`.
 ## Success Criteria
 - [ ] `LocationSelector` appears between Unit and Expiry Date in `QuickEditModal`.
 - [ ] Selecting a location in `QuickEditModal` saves to the database.

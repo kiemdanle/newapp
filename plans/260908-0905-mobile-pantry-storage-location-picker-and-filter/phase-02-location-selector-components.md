@@ -11,6 +11,7 @@ dependencies: ["phase-01-schema-and-database-migrations"]
 
 ## Overview
 Develop the reusable `LocationSelector` and `LocationPickerModal` mobile components, matching the visual style, interaction physics, and accessibility standards of `UnitSelector` with 4 fixed quick pills (`Fridge`, `Freezer`, `Pantry`, `Counter`), an adaptive 5th pill (`More ▾` / `${location} ▾`), and tap-to-deselect capability.
+<!-- Updated: Red Team Review - Modal dismissal and 50-char clamp -->
 
 ## Requirements
 - Functional:
@@ -81,10 +82,11 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
 
 2. **LocationPickerModal Component (`apps/mobile/src/components/LocationPickerModal.tsx`)**:
    - Bottom sheet modal using React Native `Modal`, `KeyboardAvoidingView`, and theme styling.
-   - Controlled search/custom input with auto-capitalization and "Apply" button.
-   - **Title Case on Write**: When the user taps "Apply", custom text is converted to Title Case via `normalizeLocationTitleCase(input.trim())` before invoking `onSelect(...)`. Ensures values are stored canonicalized in SQLite and cards display "Spice Rack" rather than "spice rack".
+   - Controlled search/custom input with auto-capitalization, `maxLength={50}`, and "Apply" button.
+   - **50-Character Clamp & Title Case on Write**: Custom text is trimmed, truncated to 50 characters, and converted to Title Case via `normalizeLocationTitleCase(input.trim().slice(0, 50))` before invoking `onSelect(...)`. Ensures stored SQLite values never exceed schema limits or fail sync validation.
+   - **Explicit Dismissal on Selection**: After any selection (custom Apply, tapping a preset chip, or clicking "Clear Location"), immediately call `onClose()` so the modal closes seamlessly and reveals the updated 5th pill in the parent form.
    - Filtered chip grid combining matches from `COMMON_OTHER_LOCATIONS` and `DEFAULT_TOP_LOCATIONS`.
-   - Prominent "Clear Location" button to deselect location (`onSelect(null)`).
+   - Prominent "Clear Location" button to deselect location (`onSelect(null); onClose();`).
    - Full keyboard accessibility and safe area handling (`useSafeAreaInsets`).
 3. **LocationSelector Component (`apps/mobile/src/components/LocationSelector.tsx`)**:
    - Renders label (default: `"Location (optional)"`) and a single row of 5 pills (`flexDirection: 'row', gap: 6`).
@@ -93,7 +95,7 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
    - Inactive pill styles: `backgroundColor: theme.colors.bgGlass`, `borderColor: theme.colors.border`, `color: theme.colors.text`, `fontWeight: '600'`.
    - Tap handler: if current value matches pill, trigger `onChange(null)` (deselection); otherwise `onChange(normalizeLocationTitleCase(location))`.
    - 5th pill displays `"More ▾"` or `"${value} ▾"` with `chevron-down` icon. If value is not in top 4, displays active style.
-   - Tapping 5th pill toggles `modalVisible`.
+   - Tapping 5th pill toggles `modalVisible`. `LocationPickerModal` receives `onSelect={(loc) => { onChange(loc); setModalVisible(false); }}` and `onClose={() => setModalVisible(false)}`.
 
 4. **Unit Testing (`apps/mobile/tests/unit/`)**:
    - `location-selector.test.tsx`:

@@ -10,6 +10,7 @@ dependencies: []
 # Phase 1: Database Schema, Shared Types, and WatermelonDB Migration
 
 ## Overview
+<!-- Updated: Red Team Review - Live mutators, migrate deploy, vendored shared -->
 Establish the foundational data contracts and storage persistence for the optional `location` field across `@expyrico/shared`, the backend Prisma schema/repository, and mobile WatermelonDB local SQLite database with automated migration (v4 → v5).
 
 ## Requirements
@@ -55,10 +56,11 @@ Establish the foundational data contracts and storage persistence for the option
 - Modify: `apps/mobile/src/db/sync.ts`
 
 ## Implementation Steps
-1. **Shared Schema Update (`packages/shared/src/schemas/record.ts`)**:
    - Add `location: z.string().trim().max(50).nullable().optional()` to `recordSchema`.
+   - Reject control characters and unprintable chars in location schema.
    - Add `location: z.string().trim().max(50).nullable().optional()` to `recordCreateBaseSchema` and `recordPatchSchema`.
    - Update unit tests in `packages/shared/src/schemas/record.test.ts` to verify valid strings, null, whitespace trim, and length constraints (>50 rejection).
+   - **Rebuild & Refresh Vendored Dist**: Execute `pnpm -F @expyrico/shared build` and copy `packages/shared/dist` to `apps/mobile/local-packages/@expyrico/shared/dist/` so mobile runs with the updated typed contract.
 
 2. **Backend Prisma Schema, Postgres Migration & Endpoints**:
    - Add `location String?` to `model Record` in `api/prisma/schema.prisma`.
@@ -67,6 +69,7 @@ Establish the foundational data contracts and storage persistence for the option
      -- AlterTable
      ALTER TABLE "records" ADD COLUMN IF NOT EXISTS "location" TEXT;
      ```
+   - Deploy Postgres migration: execute `npm --prefix api run db:migrate:deploy` (`prisma migrate deploy`) so the `records.location` column exists before API startup.
    - Execute Prisma client generate: `npm --prefix api run db:generate` (`prisma generate`) so types reflect the new column.
    - Update `toApiRecord` in `api/src/services/records/repository.ts` to include `location: r.location ?? null`.
    - Update `api/src/routes/records/create.ts` to write `location: input.location?.trim() || null` to Prisma.
@@ -91,13 +94,16 @@ Establish the foundational data contracts and storage persistence for the option
      }
      ```
 
-4. **RecordModel & LocalRecord API Wiring (`apps/mobile/src/db/models/Record.ts`, `apps/mobile/src/api/records.ts`)**:
+4. **RecordModel & Live Mobile Mutators Wiring (`apps/mobile/src/db/models/Record.ts`, `apps/mobile/src/api/records.ts`)**:
    - In `RecordModel`: add `@field('location') location!: string | null;`.
    - In `LocalRecord` interface: add `location: string | null;`.
    - In `toLocal(r: RecordModel)`: map `location: r.location ?? null`.
-   - In `createLocalRecord`: assign `rec.location = input.location ? input.location.trim() : null;`.
-   - In `updateLocalRecord`: handle `if (patch.location !== undefined) rec.location = patch.location ? patch.location.trim() : null;`.
-   - In `duplicateLocalRecord`: map `location: record.location ?? null`.
+   - In `createLocalRecord`: accept `location?: string | null` in args, assign `rec.location = input.location ? input.location.trim().slice(0, 50) : null;`.
+   - In `patchLocalRecord` (real writer, not fictional updateLocalRecord):
+     - Add `location?: string | null` to the `patch` argument type.
+     - In `rec.update`: assign `if (patch.location !== undefined) rec.location = patch.location ? patch.location.trim().slice(0, 50) : null;`.
+   - In `markRecordStatusWithQuantity` (partial split writer):
+     - Copy `r.location = rec.location ?? null;` when creating the split history record.
 
 
 5. **Live Sync Path & Multi-Branch Pull Wiring (`api/src/services/records/sync.ts`, `apps/mobile/src/db/sync.ts`)**:

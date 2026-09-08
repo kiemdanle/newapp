@@ -11,6 +11,7 @@ dependencies: ["phase-01-schema-and-database-migrations", "phase-03-form-integra
 
 ## Overview
 Empower users to filter their pantry inventory by storage location within `PantryFilterModal`, surface active location chips in `PantryActiveFilterChips`, match locations in pantry text search queries (`filterAndSortRecords`), and render a clean location badge on `RecordCard`.
+<!-- Updated: Red Team Review - RecordList gatekeepers, PantryGridCard badge, real test paths -->
 <!-- Updated: Validation Session 1 - Multi-select location filters -->
 
 ## Requirements
@@ -54,8 +55,9 @@ Empower users to filter their pantry inventory by storage location within `Pantr
 - Modify: `apps/mobile/src/features/records/PantryActiveFilterChips.tsx`
 - Modify: `apps/mobile/src/features/records/RecordList.tsx`
 - Modify: `apps/mobile/src/features/records/RecordCard.tsx`
+- Modify: `apps/mobile/src/features/records/PantryGridCard.tsx`
 - Modify: `apps/mobile/src/features/records/filterAndSortRecords.test.ts`
-- Modify: `apps/mobile/src/features/records/PantryFilterModal.test.tsx`
+- Modify: `apps/mobile/tests/unit/pantry-filter-modal.test.tsx`
 
 ## Implementation Steps
 1. **Filter Types Update (`apps/mobile/src/features/records/pantryFilterTypes.ts`)**:
@@ -104,8 +106,11 @@ Empower users to filter their pantry inventory by storage location within `Pantr
          onRemove: () => onRemoveFilter('locations', loc),
        });
        ```
-   - In `RecordList.tsx` (line ~632):
-     - Update `onRemoveFilter` handler to support per-value filtering:
+   - In `RecordList.tsx`:
+     - **Update `isFiltered` (lines 212-221)**: Add `|| Boolean(filters.locations && filters.locations.length > 0)`. Without this, chips never mount, the filter button badge stays 0, filter-empty state never appears, and Select All uses unfiltered records.
+     - **Update `activeFilterCount` (lines 222-231)**: Add `+ (filters.locations?.length ?? 0)`.
+     - **Update `resetKey` (lines 252-261)**: Append `filters.locations?.join(',')` so pagination resets when location filters change.
+     - **Update `onRemoveFilter` (line ~632)**: Handle per-value removal:
        ```tsx
        onRemoveFilter={(key, value) =>
          setFilters((prev) => {
@@ -120,7 +125,6 @@ Empower users to filter their pantry inventory by storage location within `Pantr
          })
        }
        ```
-     - Prevents wiping the entire `locations[]` array when closing one specific location chip.
 5. **RecordCard Badging (`apps/mobile/src/features/records/RecordCard.tsx`)**:
    - If `record.location`:
      - Render a compact pill badge in the secondary metadata row:
@@ -148,14 +152,16 @@ Empower users to filter their pantry inventory by storage location within `Pantr
            {record.location}
          </Text>
        </View>
-       ```
+     - In `apps/mobile/src/features/records/PantryGridCard.tsx`:
+       - Render the same compact location badge in the grid card footer metadata row (lines 316-343) alongside household/personal badges so grid view users see location at a glance.
 
-6. **Unit Tests**:
-   - Update `filterAndSortRecords.test.ts` to test:
+6. **Unit Tests (`filterAndSortRecords.test.ts`, `pantry-filter-modal.test.tsx`)**:
+   - Update `apps/mobile/src/features/records/filterAndSortRecords.test.ts`:
      - Text query matching against `location`.
-     - Filtering records specifically by `location`.
+     - Filtering records specifically by `locations` array.
      - Case-insensitive location filter matching.
-   - Update `PantryFilterModal.test.tsx` to verify rendering of location section, selecting a location chip, and clearing location.
+   - Update `apps/mobile/tests/unit/pantry-filter-modal.test.tsx`:
+     - Verify rendering of "STORAGE LOCATION" section, multi-selecting location chips, and clearing.
 
 ## Success Criteria
 - [ ] Searching "fridge" returns records whose `location` is "Fridge".

@@ -151,4 +151,33 @@ Add an optional **"Location"** field to pantry item editing (`QuickEditModal`) a
   - Updated Phase 1 (`phase-01-schema-and-database-migrations.md`) to reflect standard scope-aware LWW for location fields in sync upserts.
   - Updated Phase 2 (`phase-02-location-selector-components.md`) to include `normalizeLocationTitleCase` helper in `apps/mobile/src/utils/locations.ts`.
   - Updated Phase 4 (`phase-04-pantry-filtering-and-card-badging.md`) to define contextual icon mapping (`getLocationIcon`) on `RecordCard` and case-insensitive Title Case aggregation in `PantryFilterModal`.
+
+---
+
+## Red Team Review
+
+### Session — 2026-09-08
+**Findings:** 8 consolidated finding groups (8 accepted, 0 rejected)
+**Severity Breakdown:** 3 Critical, 4 High, 1 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Fictional `updateLocalRecord`/`duplicateLocalRecord` replaced with real mutators (`patchLocalRecord`, `createLocalRecord`, `markRecordStatusWithQuantity`, `RecordList.handleSaveEdit`, `record/[id].tsx:handleSaveQuickEdit`) | Critical | Accept | Phase 1, Phase 3 |
+| 2 | Postgres migration deploy (`npm --prefix api run db:migrate:deploy`) must run before API serves traffic to avoid column missing 500s | Critical | Accept | Phase 1, Phase 5 |
+| 3 | `RecordList.tsx` filter gatekeepers (`isFiltered`, `activeFilterCount`, `resetKey`, Select All, empty state) omitted `locations` | Critical | Accept | Phase 4 |
+| 4 | Vendored `@expyrico/shared` in `apps/mobile/local-packages` must be rebuilt/copied to avoid stale contract stripping `location` | High | Accept | Phase 1 |
+| 5 | Location string length (50-char max clamp) & control character sanitization in schema and `LocationPickerModal` | High | Accept | Phase 1, Phase 2 |
+| 6 | `QuickEditModal` hydration guard (`lastRecordIdRef`) to prevent `useProduct` from wiping in-progress location selection | High | Accept | Phase 3 |
+| 7 | Target test paths corrected (`src/tests/AddRecordForm.test.tsx`, `tests/unit/pantry-filter-modal.test.tsx`) & relative paths in Jest | High | Accept | Phase 3, Phase 4, Phase 5 |
+| 8 | Location badge parity on `PantryGridCard.tsx` for grid view users and explicit `onClose()` on modal select | Medium | Accept | Phase 2, Phase 4 |
+
+### Whole-Plan Consistency Sweep
+- **Status**: Zero unresolved contradictions.
+- **Verified Invariants Across All Plan Files**:
+  1. **Purged Fictional Methods**: All references to `updateLocalRecord` and `duplicateLocalRecord` have been completely removed and replaced with the actual mutator pipeline (`patchLocalRecord`, `createLocalRecord`, `handleSaveEdit`, `markRecordStatusWithQuantity`).
+  2. **Migration & Build Deployment**: Phase 1 and Phase 5 explicitly include `prisma migrate deploy` (`npm --prefix api run db:migrate:deploy`) and `@expyrico/shared` vendoring rebuild.
+  3. **Filter Gatekeepers**: Phase 4 explicitly wires `filters.locations` into `isFiltered`, `activeFilterCount`, `resetKey`, and per-value `onRemoveFilter` in `RecordList.tsx`.
+  4. **Component State Safety**: Phase 2 enforces `maxLength={50}` and `onClose()` dismiss; Phase 3 guards `setLocation` hydration with `lastRecordIdRef`.
+  5. **Card Parity**: Both `RecordCard.tsx` and `PantryGridCard.tsx` render the dynamic location badge with `getLocationIcon`.
+  6. **Test File Realignment**: All test commands and file lists point to verified real filesystem locations.
 <!-- slug: mobile-pantry-storage-location-picker-and-filter -->
