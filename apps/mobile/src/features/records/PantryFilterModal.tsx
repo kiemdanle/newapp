@@ -1,3 +1,4 @@
+// apps/mobile/src/features/records/PantryFilterModal.tsx
 import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -78,6 +79,7 @@ export function PantryFilterModal({
       (name) => ({ name, count: counts[name] || 0 }),
     );
   }, [records]);
+
   const locationOptions = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const record of records) {
@@ -97,7 +99,6 @@ export function PantryFilterModal({
       count: counts[name] || 0,
     }));
   }, [records]);
-
 
   const handleReset = () => {
     setDraftFilters({
@@ -143,9 +144,8 @@ export function PantryFilterModal({
           style={[
             styles.sheetContainer,
             {
-              backgroundColor: theme.colors.bg,
-              borderTopLeftRadius: theme.radii.lg,
-              borderTopRightRadius: theme.radii.lg,
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
             },
           ]}
         >
@@ -163,9 +163,15 @@ export function PantryFilterModal({
               accessibilityLabel="Close filters"
               onPress={onClose}
               hitSlop={10}
-              style={[styles.closeBtn, { backgroundColor: theme.colors.bgElevated }]}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: theme.colors.primaryLight,
+                  borderColor: 'rgba(75, 174, 138, 0.35)',
+                },
+              ]}
             >
-              <Ionicons name="close" size={20} color={theme.colors.text} />
+              <Ionicons name="close" size={18} color={theme.colors.primaryDark} />
             </Pressable>
           </View>
 
@@ -176,10 +182,14 @@ export function PantryFilterModal({
             keyboardDismissMode="on-drag"
             automaticallyAdjustKeyboardInsets={true}
           >
+            {/* EXPIRY STATUS */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-                EXPIRY STATUS
-              </Text>
+              <View style={styles.categoryHeaderRow}>
+                <Ionicons name="time-outline" size={13} color={theme.colors.primaryDark} />
+                <Text style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}>
+                  EXPIRY STATUS
+                </Text>
+              </View>
               <View style={styles.pillsRow}>
                 {[
                   { id: 'all', label: 'All Items' },
@@ -194,7 +204,7 @@ export function PantryFilterModal({
                   let selectedText = theme.colors.primaryDark;
 
                   if (item.id === 'expired') {
-                    selectedBg = theme.colors.bgGlass;
+                    selectedBg = 'rgba(224, 68, 42, 0.12)';
                     selectedBorder = theme.colors.danger;
                     selectedText = theme.colors.danger;
                   } else if (item.id === 'urgent' || item.id === 'expiring_soon') {
@@ -216,12 +226,17 @@ export function PantryFilterModal({
                           expiryStatus: item.id as PantryFilterState['expiryStatus'],
                         }))
                       }
-                      style={[
+                      style={({ pressed }) => [
                         styles.choicePill,
                         {
-                          backgroundColor: isSelected ? selectedBg : theme.colors.bgElevated,
-                          borderColor: isSelected ? selectedBorder : theme.colors.border,
-                          borderRadius: theme.radii.md,
+                          backgroundColor: isSelected
+                            ? selectedBg
+                            : 'rgba(214, 240, 230, 0.45)',
+                          borderColor: isSelected
+                            ? selectedBorder
+                            : 'rgba(75, 174, 138, 0.28)',
+                          borderWidth: isSelected ? 2 : 1,
+                          opacity: pressed ? 0.82 : 1,
                         },
                       ]}
                     >
@@ -230,7 +245,7 @@ export function PantryFilterModal({
                           styles.choiceText,
                           {
                             color: isSelected ? selectedText : theme.colors.text,
-                            fontWeight: isSelected ? '700' : '500',
+                            fontWeight: isSelected ? '800' : '600',
                           },
                         ]}
                       >
@@ -242,11 +257,15 @@ export function PantryFilterModal({
               </View>
             </View>
 
+            {/* FOOD CATEGORY */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-                  FOOD CATEGORY
-                </Text>
+                <View style={styles.categoryHeaderRow}>
+                  <Ionicons name="restaurant-outline" size={13} color={theme.colors.primaryDark} />
+                  <Text style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}>
+                    FOOD CATEGORY
+                  </Text>
+                </View>
                 {draftFilters.category ? (
                   <Pressable
                     accessibilityRole="button"
@@ -270,22 +289,24 @@ export function PantryFilterModal({
                       testID={`pantry-filter-cat-${cat.name.toLowerCase().replace(/\s+/g, '-')}`}
                       accessibilityRole="button"
                       accessibilityLabel={`Filter by category ${cat.name}`}
+                      accessibilityState={{ selected: isSelected }}
                       onPress={() =>
                         setDraftFilters((prev) => ({
                           ...prev,
                           category: isSelected ? undefined : cat.name,
                         }))
                       }
-                      style={[
+                      style={({ pressed }) => [
                         styles.catChip,
                         {
                           backgroundColor: isSelected
                             ? theme.colors.primaryLight
-                            : theme.colors.bgElevated,
+                            : 'rgba(214, 240, 230, 0.45)',
                           borderColor: isSelected
                             ? theme.colors.primary
-                            : theme.colors.border,
-                          borderRadius: theme.radii.pill,
+                            : 'rgba(75, 174, 138, 0.28)',
+                          borderWidth: isSelected ? 2 : 1,
+                          opacity: pressed ? 0.82 : 1,
                         },
                       ]}
                     >
@@ -296,7 +317,7 @@ export function PantryFilterModal({
                             color: isSelected
                               ? theme.colors.primaryDark
                               : theme.colors.text,
-                            fontWeight: isSelected ? '700' : '500',
+                            fontWeight: isSelected ? '800' : '600',
                           },
                         ]}
                       >
@@ -309,7 +330,7 @@ export function PantryFilterModal({
                             {
                               backgroundColor: isSelected
                                 ? theme.colors.primary
-                                : theme.colors.border,
+                                : 'rgba(75, 174, 138, 0.25)',
                             },
                           ]}
                         >
@@ -318,8 +339,8 @@ export function PantryFilterModal({
                               styles.countBadgeText,
                               {
                                 color: isSelected
-                                  ? theme.colors.bgElevated
-                                  : theme.colors.textMuted,
+                                  ? '#FFFFFF'
+                                  : theme.colors.primaryDark,
                               },
                             ]}
                           >
@@ -333,12 +354,15 @@ export function PantryFilterModal({
               </View>
             </View>
 
-            {/* Storage Location Section (Multi-Select) */}
+            {/* STORAGE LOCATION (Multi-Select) */}
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-                  STORAGE LOCATION
-                </Text>
+                <View style={styles.categoryHeaderRow}>
+                  <Ionicons name="navigate-outline" size={13} color={theme.colors.primaryDark} />
+                  <Text style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}>
+                    STORAGE LOCATION
+                  </Text>
+                </View>
                 {draftFilters.locations && draftFilters.locations.length > 0 ? (
                   <Pressable
                     testID="pantry-filter-locations-clear"
@@ -387,23 +411,24 @@ export function PantryFilterModal({
                           };
                         })
                       }
-                      style={[
+                      style={({ pressed }) => [
                         styles.catChip,
                         {
                           backgroundColor: isSelected
                             ? theme.colors.primaryLight
-                            : theme.colors.bgElevated,
+                            : 'rgba(214, 240, 230, 0.45)',
                           borderColor: isSelected
                             ? theme.colors.primary
-                            : theme.colors.border,
-                          borderRadius: theme.radii.pill,
+                            : 'rgba(75, 174, 138, 0.28)',
+                          borderWidth: isSelected ? 2 : 1,
+                          opacity: pressed ? 0.82 : 1,
                         },
                       ]}
                     >
                       <Ionicons
                         name={iconName}
                         size={14}
-                        color={isSelected ? theme.colors.primaryDark : theme.colors.textMuted}
+                        color={isSelected ? theme.colors.primaryDark : theme.colors.primaryDark}
                       />
                       <Text
                         style={[
@@ -412,7 +437,7 @@ export function PantryFilterModal({
                             color: isSelected
                               ? theme.colors.primaryDark
                               : theme.colors.text,
-                            fontWeight: isSelected ? '700' : '500',
+                            fontWeight: isSelected ? '800' : '600',
                           },
                         ]}
                       >
@@ -425,41 +450,44 @@ export function PantryFilterModal({
                             {
                               backgroundColor: isSelected
                                 ? theme.colors.primary
-                                 : theme.colors.border,
-                             },
-                           ]}
-                         >
-                           <Text
-                             style={[
-                               styles.countBadgeText,
-                               {
-                                 color: isSelected
-                                   ? theme.colors.bgElevated
-                                   : theme.colors.textMuted,
-                               },
-                             ]}
-                           >
-                             {loc.count}
-                           </Text>
-                         </View>
-                       ) : null}
-                     </Pressable>
-                   );
-                 })}
-               </View>
-             </View>
+                                : 'rgba(75, 174, 138, 0.25)',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.countBadgeText,
+                              {
+                                color: isSelected
+                                  ? '#FFFFFF'
+                                  : theme.colors.primaryDark,
+                              },
+                            ]}
+                          >
+                            {loc.count}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
 
+            {/* AVAILABILITY */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-                AVAILABILITY
-              </Text>
+              <View style={styles.categoryHeaderRow}>
+                <Ionicons name="checkbox-outline" size={13} color={theme.colors.primaryDark} />
+                <Text style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}>
+                  AVAILABILITY
+                </Text>
+              </View>
               <View
                 style={[
                   styles.toggleRow,
                   {
-                    backgroundColor: theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.md,
+                    backgroundColor: 'rgba(214, 240, 230, 0.25)',
+                    borderColor: 'rgba(75, 174, 138, 0.25)',
                   },
                 ]}
               >
@@ -484,11 +512,15 @@ export function PantryFilterModal({
               </View>
             </View>
 
+            {/* INVENTORY SCOPE */}
             {showHouseholdScope ? (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
-                  INVENTORY SCOPE
-                </Text>
+                <View style={styles.categoryHeaderRow}>
+                  <Ionicons name="people-outline" size={13} color={theme.colors.primaryDark} />
+                  <Text style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}>
+                    INVENTORY SCOPE
+                  </Text>
+                </View>
                 <View style={styles.pillsRow}>
                   {[
                     { id: 'all', label: 'All Items' },
@@ -502,22 +534,24 @@ export function PantryFilterModal({
                         testID={`pantry-filter-scope-${scope.id}`}
                         accessibilityRole="button"
                         accessibilityLabel={`Scope ${scope.label}`}
+                        accessibilityState={{ selected: isSelected }}
                         onPress={() =>
                           setDraftFilters((prev) => ({
                             ...prev,
                             householdScope: scope.id as PantryFilterState['householdScope'],
                           }))
                         }
-                        style={[
+                        style={({ pressed }) => [
                           styles.choicePill,
                           {
                             backgroundColor: isSelected
                               ? theme.colors.primaryLight
-                              : theme.colors.bgElevated,
+                              : 'rgba(214, 240, 230, 0.45)',
                             borderColor: isSelected
                               ? theme.colors.primary
-                              : theme.colors.border,
-                            borderRadius: theme.radii.md,
+                              : 'rgba(75, 174, 138, 0.28)',
+                            borderWidth: isSelected ? 2 : 1,
+                            opacity: pressed ? 0.82 : 1,
                           },
                         ]}
                       >
@@ -528,7 +562,7 @@ export function PantryFilterModal({
                               color: isSelected
                                 ? theme.colors.primaryDark
                                 : theme.colors.text,
-                              fontWeight: isSelected ? '700' : '500',
+                              fontWeight: isSelected ? '800' : '600',
                             },
                           ]}
                         >
@@ -542,17 +576,19 @@ export function PantryFilterModal({
             ) : null}
           </ScrollView>
 
+          {/* Footer Actions */}
           <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
             <Pressable
               testID="pantry-filter-reset-btn"
               accessibilityRole="button"
               accessibilityLabel="Reset all filters"
               onPress={handleReset}
-              style={[
+              style={({ pressed }) => [
                 styles.resetBtn,
                 {
                   borderColor: theme.colors.border,
-                  borderRadius: theme.radii.md,
+                  backgroundColor: theme.colors.bgElevated,
+                  opacity: pressed ? 0.82 : 1,
                 },
               ]}
             >
@@ -566,15 +602,15 @@ export function PantryFilterModal({
               accessibilityRole="button"
               accessibilityLabel="Apply filters"
               onPress={handleApply}
-              style={[
+              style={({ pressed }) => [
                 styles.applyBtn,
                 {
                   backgroundColor: theme.colors.accent,
-                  borderRadius: theme.radii.md,
+                  opacity: pressed ? 0.85 : 1,
                 },
               ]}
             >
-              <Text style={[styles.applyText, { color: theme.colors.text }]}>
+              <Text style={styles.applyText}>
                 Apply
               </Text>
             </Pressable>
@@ -589,13 +625,18 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   backdrop: {
     flex: 1,
   },
   sheetContainer: {
-    maxHeight: '88%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    maxHeight: '85%',
     overflow: 'hidden',
   },
   sheetHeader: {
@@ -603,7 +644,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 14,
+    paddingBottom: 12,
     borderBottomWidth: 1,
   },
   sheetTitle: {
@@ -611,13 +652,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sheetSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 2,
   },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 12,
@@ -625,10 +667,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    gap: 20,
+    gap: 18,
   },
   section: {
-    gap: 10,
+    gap: 8,
+  },
+  categoryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -638,7 +685,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   clearLink: {
     fontSize: 12,
@@ -652,7 +700,10 @@ const styles = StyleSheet.create({
   choicePill: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderWidth: 1,
+    borderRadius: 12,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   choiceText: {
     fontSize: 13,
@@ -667,15 +718,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderWidth: 1,
+    borderRadius: 16,
+    minHeight: 44,
+    gap: 6,
   },
   catChipText: {
     fontSize: 13,
   },
   countBadge: {
-    marginLeft: 6,
+    marginLeft: 2,
     paddingHorizontal: 6,
-    paddingVertical: 1,
+    paddingVertical: 2,
     borderRadius: 8,
   },
   countBadgeText: {
@@ -688,6 +741,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
+    borderRadius: 14,
   },
   toggleLabel: {
     fontSize: 14,
@@ -702,13 +756,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderTopWidth: 1,
   },
   resetBtn: {
     paddingVertical: 12,
     paddingHorizontal: 18,
     borderWidth: 1,
+    borderRadius: 10,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -719,11 +775,14 @@ const styles = StyleSheet.create({
   applyBtn: {
     flex: 1,
     paddingVertical: 12,
+    borderRadius: 10,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
   },
   applyText: {
     fontSize: 14,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
