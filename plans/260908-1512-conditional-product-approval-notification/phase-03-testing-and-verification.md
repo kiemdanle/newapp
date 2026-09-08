@@ -71,3 +71,5 @@ Validates backend notification suppression, manual approval notification deliver
 - **Risk**: Device test depends on local network or API availability.
 - **Observable Signal**: ADB installation succeeds but app shows network error on submit.
 - **Mitigation**: Verify local API server is running on port 3000 and reverse ADB port forwarding (`adb reverse tcp:3000 tcp:3000`) is active.
+
+<!-- Updated: Validation Session 1 - Confirmed flagged user diverted to pending and outbox assertion on manual approval -->

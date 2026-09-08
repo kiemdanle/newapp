@@ -82,3 +82,5 @@ This causes the interface in Image #1: even when auto-approved, the screen false
 - **Risk**: Existing unit tests for `product-new.test.tsx` might check for exact text matching "Submitted for review".
 - **Observable Signal**: Jest test failure in `apps/mobile/__tests__/routes/product-new.test.tsx`.
 - **Mitigation**: `product-new.test.tsx:192` tests `expect(await findByTestId('new-product-submitted-message')).toBeTruthy()` which matches the testID regardless of text. We will also add explicit text assertions for both active and pending branches.
+
+<!-- Updated: Validation Session 1 - Confirmed household scope unlock on active products -->

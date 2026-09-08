@@ -103,3 +103,37 @@ sequenceDiagram
 - [ ] Submitting a product when `requireApproval: true` holds the product in `pending` and displays "Submitted for review — you can add it to your pantry now."
 - [ ] When an admin manually approves a pending product in the admin portal, the creator receives the FCM push and the "Product Approved" toast appears.
 - [ ] All integration tests in `@expyrico/api` and component tests in `apps/mobile` pass.
+
+---
+
+## Validation Log
+
+### Verification Results
+- **Timestamp**: 2026-09-08 08:30 UTC
+- **Tier**: Standard (Fact Checker + Contract Verifier)
+- **Claims Checked**: 7
+- **Results**: Verified: 7 | Failed: 0 | Unverified: 0
+- **Evidence**:
+  - `api/src/services/products/auto-approval.ts:112, 200`: `enqueueOutbox` calls verified present and isolated to policy auto-approval.
+  - `api/src/services/products/product-moderation.ts:159, 228`: `enqueueOutbox` calls verified present for manual admin review approval.
+  - `api/src/services/products/product-drafts.ts:318-333`: `needsApproval` correctly branches between `autoApproveProduct` and `status: 'pending'`.
+  - `apps/mobile/app/(app)/product/new.tsx:156-180`: `submittedProduct` render block verified; currently unconditionally displays "Submitted for review" and locks personal scope.
+  - `apps/mobile/src/App.tsx:175-199`: `messaging().onMessage` verified as the trigger for the in-app notification banner toast.
+  - `api/tests/integration/product-approval-policy.test.ts:39-69`: Scenario A verified testing auto-approval under `requireApproval: false`.
+  - `apps/mobile/__tests__/routes/product-new.test.tsx:178-200`: Existing tests verified using `findByTestId('new-product-submitted-message')`.
+
+### Interview Log
+- **Date**: 2026-09-08
+- **Questions Asked**: 3
+- **Decisions & Rationale**:
+  1. **Notification Suppression Scope**: *Completely suppress notification on auto-approval.*  
+     *Rationale*: When approval is disabled, new products become active immediately upon submission. Sending an immediate approval or publish notification creates confusing noise on an active device.
+  2. **Flagged User Handling**: *Keep in pending and notify upon manual approval.*  
+     *Rationale*: Preserves anti-spam security invariants. If a user is flagged or exceeds quota, their submission requires human moderation, and they receive the notification only when an admin approves the item.
+  3. **Household Scope Behavior**: *Unlock household scope for active products.*  
+     *Rationale*: Once a product is active in the catalog, it is public, so users can add it directly to shared household pantries without being restricted to personal scope.
+
+### Whole-Plan Consistency Sweep
+- **Stale Terms / Rename Check**: Clean. No renamed endpoints or conflicting terminology.
+- **Contract Alignment**: Backend outbox suppression and mobile post-submission messaging are aligned across all 3 phases.
+- **Unresolved Contradictions**: 0. Plan is coherent and ready for execution.

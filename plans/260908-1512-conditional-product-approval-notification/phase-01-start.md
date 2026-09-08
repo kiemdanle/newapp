@@ -60,3 +60,5 @@ Conversely, when `needsApproval: true`:
 - **Risk**: A downstream test might explicitly assert that `enqueueOutbox` is called during `autoApproveProduct`.
 - **Observable Signal**: Test failure in `api/tests/integration` or `api/tests/unit`.
 - **Mitigation**: Grep showed no test in `api/tests` currently checks for `product_approved` during auto-approval. We will add a dedicated assertion in integration tests in Phase 3.
+
+<!-- Updated: Validation Session 1 - Confirmed complete suppression of notifications on auto-approval -->
