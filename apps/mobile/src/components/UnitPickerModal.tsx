@@ -1,3 +1,4 @@
+// apps/mobile/src/components/UnitPickerModal.tsx
 import React, { useState } from 'react';
 import {
   Alert,
@@ -33,14 +34,17 @@ export function UnitPickerModal({
   const theme = useTheme();
   const [search, setSearch] = useState('');
   const [customUnit, setCustomUnit] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [customFocused, setCustomFocused] = useState(false);
 
   if (!visible) return null;
 
   const normalizedCurrent = normalizeUnit(currentUnit);
   const normalizedSearch = search.trim().toLowerCase();
 
-  const handleApplyCustom = () => {
-    const trimmed = customUnit.trim().toLowerCase();
+  const handleApplyCustom = (rawText?: string) => {
+    const text = rawText ?? customUnit;
+    const trimmed = text.trim().toLowerCase();
     if (!trimmed) return;
 
     if (!CUSTOM_UNIT_REGEX.test(trimmed)) {
@@ -58,8 +62,24 @@ export function UnitPickerModal({
 
     onSelect(trimmed);
     setCustomUnit('');
+    setSearch('');
     onClose();
   };
+
+  // Check if any category has matching units
+  const totalMatchingUnits = UNIT_CATEGORIES.reduce((count, cat) => {
+    return (
+      count +
+      cat.units.filter((u) => {
+        if (!normalizedSearch) return true;
+        return (
+          u.key.toLowerCase().includes(normalizedSearch) ||
+          u.label.toLowerCase().includes(normalizedSearch) ||
+          u.sublabel?.toLowerCase().includes(normalizedSearch)
+        );
+      }).length
+    );
+  }, 0);
 
   return (
     <Modal
@@ -72,7 +92,12 @@ export function UnitPickerModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}
       >
-        <Pressable style={styles.backdropOverlay} onPress={onClose} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss unit picker"
+          style={styles.backdropOverlay}
+          onPress={onClose}
+        />
 
         <View
           testID="unit-picker-modal"
@@ -86,46 +111,79 @@ export function UnitPickerModal({
         >
           {/* Header */}
           <View style={styles.header}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>
-              Select Unit
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.title, { color: theme.colors.text }]}>
+                Select Unit
+              </Text>
+              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+                Choose a measurement unit or enter a custom one.
+              </Text>
+            </View>
             <Pressable
               testID="unit-picker-close-btn"
               accessibilityRole="button"
               accessibilityLabel="Close unit picker"
               onPress={onClose}
               hitSlop={8}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: theme.colors.bgGlass,
+                  borderColor: theme.colors.border,
+                },
+              ]}
             >
-              <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
             </Pressable>
           </View>
 
           {/* Search bar */}
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: theme.colors.bg,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <Ionicons name="search" size={16} color={theme.colors.textMuted} />
-            <TextInput
-              testID="unit-picker-search-input"
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search units (e.g. oz, lb, fl oz, kg)..."
-              placeholderTextColor={theme.colors.textMuted}
-              style={[styles.searchInput, { color: theme.colors.text }]}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {search ? (
-              <Pressable onPress={() => setSearch('')} hitSlop={6}>
-                <Ionicons name="close-circle" size={16} color={theme.colors.textMuted} />
-              </Pressable>
-            ) : null}
+          <View style={styles.searchRow}>
+            <View
+              style={[
+                styles.searchBar,
+                {
+                  backgroundColor: theme.colors.bgElevated,
+                  borderColor: searchFocused
+                    ? theme.colors.primary
+                    : theme.colors.neutralMid,
+                },
+              ]}
+            >
+              <Ionicons
+                name="search"
+                size={16}
+                color={searchFocused ? theme.colors.primary : theme.colors.textMuted}
+              />
+              <TextInput
+                testID="unit-picker-search-input"
+                value={search}
+                onChangeText={setSearch}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                placeholder="Search units (e.g. oz, lb, fl oz, kg)..."
+                placeholderTextColor={theme.colors.textMuted}
+                style={[styles.searchInput, { color: theme.colors.text }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={() => handleApplyCustom(search)}
+              />
+              {search.length > 0 && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search input"
+                  onPress={() => setSearch('')}
+                  hitSlop={6}
+                >
+                  <Ionicons
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.textMuted}
+                  />
+                </Pressable>
+              )}
+            </View>
           </View>
 
           {/* Categorized List */}
@@ -133,7 +191,55 @@ export function UnitPickerModal({
             style={styles.scrollList}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
           >
+            {/* Fallback chip when search has no matching preset units */}
+            {totalMatchingUnits === 0 && search.trim().length > 0 && (
+              <View
+                style={[
+                  styles.notFoundBox,
+                  {
+                    backgroundColor: theme.colors.bgElevated,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={theme.colors.textMuted}
+                />
+                <Text
+                  style={[styles.notFoundText, { color: theme.colors.textMuted }]}
+                >
+                  No preset unit found for &quot;{search}&quot;.
+                </Text>
+                <Pressable
+                  testID="unit-picker-not-found-chip"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use ${search.trim()} as measurement unit`}
+                  onPress={() => handleApplyCustom(search)}
+                  style={[
+                    styles.applyCustomChip,
+                    {
+                      backgroundColor: theme.colors.accentLight,
+                      borderColor: theme.colors.accent,
+                    },
+                  ]}
+                >
+                  <Ionicons name="add" size={16} color={theme.colors.neutralDark} />
+                  <Text
+                    style={[
+                      styles.applyCustomChipText,
+                      { color: theme.colors.neutralDark },
+                    ]}
+                  >
+                    Use &quot;{search.trim().toLowerCase().slice(0, 16)}&quot;
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
             {UNIT_CATEGORIES.map((cat) => {
               const matchingUnits = cat.units.filter((u) => {
                 if (!normalizedSearch) return true;
@@ -151,7 +257,7 @@ export function UnitPickerModal({
                   <Text
                     style={[
                       styles.categoryTitle,
-                      { color: theme.colors.primaryDark },
+                      { color: theme.colors.textMuted },
                     ]}
                   >
                     {cat.title}
@@ -171,15 +277,16 @@ export function UnitPickerModal({
                             onSelect(u.key);
                             onClose();
                           }}
-                          style={[
+                          style={({ pressed }) => [
                             styles.unitCard,
                             {
-                              borderColor: isSelected
-                                ? theme.colors.primary
-                                : theme.colors.border,
                               backgroundColor: isSelected
                                 ? theme.colors.primaryLight
-                                : theme.colors.bg,
+                                : theme.colors.bgElevated,
+                              borderColor: isSelected
+                                ? theme.colors.primary
+                                : theme.colors.neutralMid,
+                              opacity: pressed ? 0.82 : 1,
                             },
                           ]}
                         >
@@ -201,7 +308,11 @@ export function UnitPickerModal({
                               numberOfLines={1}
                               style={[
                                 styles.unitLabelText,
-                                { color: theme.colors.textMuted },
+                                {
+                                  color: isSelected
+                                    ? theme.colors.primaryDark
+                                    : theme.colors.textMuted,
+                                },
                               ]}
                             >
                               {u.label}
@@ -222,49 +333,81 @@ export function UnitPickerModal({
               );
             })}
 
-            {/* Custom Unit Entry */}
-            <View style={styles.customSection}>
+            {/* Dedicated Custom Unit Definition Section */}
+            <View
+              style={[
+                styles.customSection,
+                { borderTopColor: theme.colors.border },
+              ]}
+            >
               <Text
                 style={[
                   styles.categoryTitle,
                   { color: theme.colors.textMuted },
                 ]}
               >
-                Custom Unit
+                DEFINE CUSTOM UNIT
+              </Text>
+              <Text
+                style={[styles.customSubcopy, { color: theme.colors.textMuted }]}
+              >
+                Can&apos;t find your measurement unit above? Type and define your own:
               </Text>
               <View style={styles.customInputRow}>
                 <TextInput
                   testID="unit-picker-custom-input"
                   value={customUnit}
                   onChangeText={setCustomUnit}
-                  placeholder="Type custom unit (e.g. tray, bunch)..."
+                  onFocus={() => setCustomFocused(true)}
+                  onBlur={() => setCustomFocused(false)}
+                  placeholder="e.g. tray, bunch, tub..."
                   placeholderTextColor={theme.colors.textMuted}
                   maxLength={16}
                   style={[
-                    styles.customTextInput,
+                    styles.customInput,
                     {
-                      backgroundColor: theme.colors.bg,
-                      borderColor: theme.colors.border,
                       color: theme.colors.text,
+                      backgroundColor: theme.colors.bgElevated,
+                      borderColor: customFocused
+                        ? theme.colors.primary
+                        : theme.colors.neutralMid,
                     },
                   ]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="done"
+                  onSubmitEditing={() => handleApplyCustom()}
                 />
                 <Pressable
                   testID="unit-picker-custom-apply-btn"
                   accessibilityRole="button"
                   accessibilityLabel="Apply custom unit"
-                  onPress={handleApplyCustom}
+                  onPress={() => handleApplyCustom()}
                   style={[
                     styles.customApplyBtn,
                     {
                       backgroundColor: customUnit.trim()
-                        ? theme.colors.primary
-                        : theme.colors.border,
+                        ? theme.colors.accent
+                        : theme.colors.bgElevated,
+                      borderColor: customUnit.trim()
+                        ? theme.colors.accent
+                        : theme.colors.neutralMid,
                     },
                   ]}
                   disabled={!customUnit.trim()}
                 >
-                  <Text style={styles.customApplyText}>Apply</Text>
+                  <Text
+                    style={[
+                      styles.customApplyText,
+                      {
+                        color: customUnit.trim()
+                          ? '#FFFFFF'
+                          : theme.colors.textMuted,
+                      },
+                    ]}
+                  >
+                    Apply
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -285,42 +428,63 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderBottomWidth: 0,
     maxHeight: '82%',
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 28,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
   },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchRow: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 42,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 44,
+    minHeight: 44,
     gap: 8,
-    marginBottom: 14,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     paddingVertical: 0,
   },
   scrollList: {
     flexGrow: 0,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   categorySection: {
     marginBottom: 16,
@@ -328,7 +492,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginBottom: 8,
   },
@@ -359,32 +523,66 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   customSection: {
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    marginBottom: 16,
+  },
+  customSubcopy: {
+    fontSize: 12,
+    marginTop: 2,
+    marginBottom: 10,
   },
   customInputRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     alignItems: 'center',
   },
-  customTextInput: {
+  customInput: {
     flex: 1,
     height: 44,
-    borderRadius: 12,
+    minHeight: 44,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    fontSize: 15,
   },
   customApplyBtn: {
-    height: 44,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    height: 44,
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customApplyText: {
-    color: '#FFFFFF',
-    fontSize: 14,
     fontWeight: '700',
+    fontSize: 14,
+  },
+  notFoundBox: {
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  notFoundText: {
+    fontSize: 13,
+  },
+  applyCustomChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    minHeight: 44,
+  },
+  applyCustomChipText: {
+    fontWeight: '700',
+    fontSize: 13,
   },
 });
