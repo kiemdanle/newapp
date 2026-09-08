@@ -75,22 +75,22 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 
 | # | Phase | Status | Objective |
 |---|-------|--------|-----------|
-| 1 | [Upstream Client Resiliency & Rate-Limit Isolation](./phase-01-upstream-client-resiliency-and-rate-limit-isolation.md) | Todo | Harden `off-client.ts` and `upcitemdb-client.ts` against timeouts, 429s, and formatting mismatches. |
-| 2 | [Service-Level Fallback & Non-Blocking Classification](./phase-02-service-fallback-and-classification.md) | Todo | Refactor `lookup.ts` so upstream downtime falls back to `not_found` with `canCreate: true`. |
-| 3 | [Background Backfill & Barcode Queue](./phase-03-background-backfill-enrichment.md) | Todo | Ensure manually added barcoded items are enqueued for background metadata backfill. |
-| 4 | [Mobile Scanner UI Resilience](./phase-04-mobile-scanner-resilience.md) | Todo | Update mobile scan screen to offer instant manual creation even if connectivity fails. |
-| 5 | [Automated Testing & End-to-End Verification](./phase-05-testing-and-verification.md) | Todo | Validate 429 rate limit tolerance, timeout fallback, 12/13-digit normalization, and APK verification. |
+| 1 | [Upstream Client Resiliency & Rate-Limit Isolation](./phase-01-upstream-client-resiliency-and-rate-limit-isolation.md) | Completed | Harden `off-client.ts` and `upcitemdb-client.ts` against timeouts, 429s, and formatting mismatches. |
+| 2 | [Service-Level Fallback & Non-Blocking Classification](./phase-02-service-fallback-and-classification.md) | Completed | Refactor `lookup.ts` so upstream downtime falls back to `not_found` with `canCreate: true`. |
+| 3 | [Background Backfill & Barcode Queue](./phase-03-background-backfill-enrichment.md) | Completed | Ensure manually added barcoded items are enqueued for background metadata backfill. |
+| 4 | [Mobile Scanner UI Resilience](./phase-04-mobile-scanner-resilience.md) | Completed | Update mobile scan screen to offer instant manual creation even if connectivity fails. |
+| 5 | [Automated Testing & End-to-End Verification](./phase-05-testing-and-verification.md) | In-Progress | Validate 429 rate limit tolerance, timeout fallback, 12/13-digit normalization, and APK verification. |
 
 ---
 
 ## Success Criteria
 
-- [ ] UPCitemdb `429 Too Many Requests` returns `{ status: 'not_found' }` (or skips) without tripping `upcBreaker`.
-- [ ] OpenFoodFacts timeout increased to 3500ms and queries both raw and padded 13-digit barcodes on 12-digit input.
-- [ ] In-store restricted barcodes (`20`–`29`, `02`) bypass external lookups directly to `not_found` with `canCreate: true`.
-- [ ] `lookupProductV2` never returns `temporarily_unavailable` to users who are eligible to create products.
-- [ ] Mobile scan screen allows users to immediately proceed to add the item even if external networks are completely offline.
-- [ ] 100% test pass rate across API and mobile test suites; zero regression to existing product draft workflows.
+- [x] UPCitemdb `429 Too Many Requests` returns `{ status: 'not_found' }` (or skips) without tripping `upcBreaker`.
+- [x] OpenFoodFacts timeout increased to 3500ms; dual 12/13 queries dropped per red-team reconciliation (relies on OpenFoodFacts native server-side read normalization).
+- [x] In-store restricted barcodes (`20`–`29`, `02`) bypass external lookups directly to `not_found` with `canCreate: true`.
+- [x] `lookupProductV2` never returns `temporarily_unavailable` to users who are eligible to create products.
+- [x] Mobile scan screen allows users to immediately proceed to add the item even if external networks are completely offline.
+- [ ] 100% test pass rate across API and mobile test suites (Mobile: 100% 143/143 suites pass; API: targeted 86 tests pass, full suite blocked by pre-existing DB migration state).
 
 ---
 

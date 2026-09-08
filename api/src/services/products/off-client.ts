@@ -21,7 +21,7 @@ async function fetchOff(barcode: string): Promise<ExternalLookupResult> {
   let raw: unknown;
   try {
     raw = await getJson<unknown>(OFF_URL(barcode), {
-      timeoutMs: 1500,
+      timeoutMs: 3500,
       headers: { 'user-agent': 'PantryApp/1.0 (+self-hosted)' },
     });
   } catch (err) {
@@ -42,7 +42,7 @@ async function fetchOff(barcode: string): Promise<ExternalLookupResult> {
 
 export const offBreaker = makeBreaker(fetchOff, {
   name: 'off',
-  timeout: 2000,
+  timeout: 4000,
   errorThresholdPercentage: 50,
   resetTimeout: 30_000,
   volumeThreshold: 5,

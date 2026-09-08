@@ -2,7 +2,7 @@ import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
 import type { ProductLookupV2Response } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
-import { lookupOff } from './off-client.js';
+import { lookupOff, type ExternalLookupResult } from './off-client.js';
 import { lookupUpcitemdb } from './upcitemdb-client.js';
 import type { ExternalProductData } from './mappers.js';
 import { toApiProduct } from './serializer.js';
@@ -45,6 +45,65 @@ async function findLocalExact(input: LookupInput): Promise<ProductWithPhotos | n
   }
   return null;
 }
+/**
+ * Returns true if the barcode is in a GS1 restricted distribution prefix reserved
+ * for in-store / retailer-assigned items (such as variable-weight produce, meat, deli).
+ * These barcodes are never registered in global registries like OpenFoodFacts or UPCitemdb.
+ */
+export function isRestrictedInStoreBarcode(barcode?: string): boolean {
+  if (!barcode) return false;
+  const clean = barcode.trim();
+  if (!/^\d{8,14}$/.test(clean)) return false;
+  // Canonicalize to GTIN-13 representation: pad 12-digit UPC-A with leading zero
+  const gtin13 = clean.length === 12 ? `0${clean}` : clean;
+  // GS1 prefix 200-299 (restricted circulation) or prefix 02 (US retailer variable-measure)
+  return /^(02|2[0-9])\d{6,}$/.test(gtin13);
+}
+
+/**
+ * Concurrently queries OpenFoodFacts and UPCitemdb. Resolves immediately
+ * on the first positive 'found' hit, avoiding blocking on slower timeouts.
+ */
+export async function queryExternalProvidersConcurrently(barcode: string): Promise<{
+  data?: ExternalProductData;
+  anyUnavailable: boolean;
+}> {
+  return new Promise((resolve) => {
+
+  let settled = 0;
+  let anyUnavailable = false;
+  let completed = false;
+
+  const checkProvider = async (
+    lookupFn: (b: string) => Promise<ExternalLookupResult>,
+  ) => {
+    try {
+      const res = await lookupFn(barcode);
+      if (completed) return;
+      if (res.status === 'found') {
+        completed = true;
+        resolve({ data: res.data, anyUnavailable });
+        return;
+      }
+      if (res.status === 'unavailable') {
+        anyUnavailable = true;
+      }
+    } catch {
+      anyUnavailable = true;
+    } finally {
+      settled++;
+      if (settled === 2 && !completed) {
+        resolve({ anyUnavailable });
+      }
+    }
+  };
+
+  void checkProvider(lookupOff);
+  void checkProvider(lookupUpcitemdb);
+
+  });
+}
+
 
 /**
  * True when `input` already resolves to *some* local row, regardless of what
@@ -142,16 +201,17 @@ export async function lookupProduct(input: LookupInput): Promise<LegacyLookupRes
   // QR payloads aren't queryable on OFF/UPC — only barcodes go external.
   if (!input.barcode) return { product: null, privateReservation: false };
 
-  const off = await lookupOff(input.barcode);
-  if (off.status === 'found') {
+  // In-store restricted barcodes are never registered externally.
+  if (isRestrictedInStoreBarcode(input.barcode)) {
+    return { product: null, privateReservation: false };
+  }
+
+  const { data } = await queryExternalProvidersConcurrently(input.barcode);
+  if (data) {
     // Re-classify rather than trust "just persisted": a concurrent private
     // draft can win the race between findLocalExact and this HTTP round trip,
     // and persistExternal deliberately hands that row back unmodified.
-    return legacyResultFor(await persistExternal(off.data));
-  }
-  const upc = await lookupUpcitemdb(input.barcode);
-  if (upc.status === 'found') {
-    return legacyResultFor(await persistExternal(upc.data));
+    return legacyResultFor(await persistExternal(data));
   }
   return { product: null, privateReservation: false };
 }
@@ -208,28 +268,59 @@ export async function lookupProductV2(
   const local = await findLocalExact(input);
   if (local) return classifyLocal(local, actor);
 
+  const canCreate = await isProductCreationEligible(actor);
+
   // QR local miss is conclusive; QR payloads aren't queryable externally.
-  if (!input.barcode) return { outcome: 'not_found', canCreate: await isProductCreationEligible(actor) };
+  if (!input.barcode) return { outcome: 'not_found', canCreate };
 
-  let anyUnavailable = false;
+  // In-store restricted barcodes are never registered externally.
+  if (isRestrictedInStoreBarcode(input.barcode)) {
+    return { outcome: 'not_found', canCreate };
+  }
 
-  const off = await lookupOff(input.barcode);
-  if (off.status === 'found') {
+  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(input.barcode);
+  if (externalHit) {
     // Re-classify: a concurrent private draft/active row can win the race
     // between findLocalExact and this HTTP round trip.
-    return classifyLocal(await persistExternal(off.data), actor);
+    return classifyLocal(await persistExternal(externalHit), actor);
   }
-  if (off.status === 'unavailable') anyUnavailable = true;
 
-  const upc = await lookupUpcitemdb(input.barcode);
-  if (upc.status === 'found') {
-    return classifyLocal(await persistExternal(upc.data), actor);
+  // Fail-open for eligible creators: an external outage or rate limit must NEVER
+  // block an eligible user from creating a draft or adding an item to their pantry.
+  // Only if the user cannot create products do we surface temporarily_unavailable.
+  if (anyUnavailable && !canCreate) {
+    return { outcome: 'temporarily_unavailable' };
   }
-  if (upc.status === 'unavailable') anyUnavailable = true;
 
-  // Unavailability of one source only poisons conclusiveness, not hit-finding: a
-  // found result above always wins. Only when nothing was found do we distinguish
-  // an unavailable source from a fully conclusive miss.
-  if (anyUnavailable) return { outcome: 'temporarily_unavailable' };
-  return { outcome: 'not_found', canCreate: await isProductCreationEligible(actor) };
+  return { outcome: 'not_found', canCreate };
+}
+
+/**
+ * Background backfill lookup for barcodes that missed synchronous lookup.
+ * Concurrently queries external providers and persists hits into Postgres.
+ * Distinguishes conclusive misses from upstream unavailability so background
+ * queue workers can throw retryable errors on outages while completing cleanly on misses.
+ */
+export async function lookupProductForBackfill(barcode: string): Promise<{
+  product: ProductWithPhotos | null;
+  status: 'found' | 'not_found' | 'unavailable';
+}> {
+  const local = await findLocalExact({ barcode });
+  if (local && local.status === 'active') return { product: local, status: 'found' };
+  if (local) return { product: null, status: 'not_found' }; // private/under_review
+
+  // In-store restricted barcodes are never registered in global UPC registries
+  if (isRestrictedInStoreBarcode(barcode)) {
+    return { product: null, status: 'not_found' };
+  }
+
+  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(barcode);
+  if (externalHit) {
+    const persisted = await persistExternal(externalHit);
+    return { product: persisted.status === 'active' ? persisted : null, status: 'found' };
+  }
+  if (anyUnavailable) {
+    return { product: null, status: 'unavailable' };
+  }
+  return { product: null, status: 'not_found' };
 }

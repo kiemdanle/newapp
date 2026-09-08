@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Mobile Scanner UI Resilience & Escape Hatches"
-status: todo
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [2]
@@ -157,9 +157,9 @@ Enhance the mobile scanner interface (`apps/mobile/app/(app)/scan.tsx`) with an 
 ---
 
 ## Success Criteria
-- [ ] The `unavailable` error card renders an "Add to Pantry Manually" button.
-- [ ] In-flight `looking-up` phase renders a "Cancel & Enter Manually" escape hatch.
-- [ ] Monotonic generation counter invalidates stale in-flight lookups so late responses never tear down the manual form.
-- [ ] `AbortSignal` is wired through `apiClient` to cancel in-flight HTTP fetch calls on cancel/timeout.
-- [ ] Scanned barcode is preserved in the local record when adding manually.
-- [ ] All scanner unit tests in `apps/mobile/__tests__/scan.test.tsx` pass.
+- [x] The `unavailable` error card renders an "Add to Pantry Manually" button.
+- [x] In-flight `looking-up` phase renders a "Cancel & Enter Manually" escape hatch.
+- [x] Monotonic generation counter invalidates stale in-flight lookups so late responses never tear down the manual form.
+- [x] `AbortSignal` is wired through `apiClient` to cancel in-flight HTTP fetch calls on cancel/timeout.
+- [ ] Scanned barcode is preserved in the local record (records table has no barcode column; barcode is currently forwarded to createOrResumeDraft for catalog drafts when online; direct offline SQLite storage deferred to schema v6).
+- [x] All scanner unit tests in `apps/mobile/__tests__/routes/scan.test.tsx` pass.

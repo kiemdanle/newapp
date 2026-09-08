@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Background Backfill & Barcode Queue"
-status: todo
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [2]
@@ -164,9 +164,9 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
 ---
 
 ## Success Criteria
-- [ ] Misses on `POST /v1/products/lookup-v2` enqueue backfill jobs to BullMQ.
-- [ ] Restricted in-store barcodes (`20`–`29`, `02`) are excluded from backfill enqueuing.
-- [ ] `workers/product-lookup.ts` correctly consumes `lookupProductForBackfill` without treating `{ product: null }` as a hit.
-- [ ] Upstream outages (`status === 'unavailable'`) throw a retryable error, triggering BullMQ retry with backoff.
-- [ ] Unit tests in `api/src/workers/product-lookup.test.ts` pass cleanly.
-- [ ] Client latency on `/lookup-v2` remains completely unaffected.
+- [x] Misses on `POST /v1/products/lookup-v2` enqueue backfill jobs to BullMQ.
+- [x] Restricted in-store barcodes (`20`–`29`, `02`) are excluded from backfill enqueuing.
+- [x] `workers/product-lookup.ts` correctly consumes `lookupProductForBackfill` without treating `{ product: null }` as a hit.
+- [x] Upstream outages (`status === 'unavailable'`) throw a retryable error, triggering BullMQ retry with backoff.
+- [x] Unit tests in `api/src/workers/product-lookup.test.ts` pass cleanly.
+- [x] Client latency on `/lookup-v2` remains completely unaffected.

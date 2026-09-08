@@ -39,6 +39,8 @@ import { pantryUnitsClientRoute } from './routes/settings/pantry-units.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 import { probeMediaCapabilities } from './services/products/product-image-processor.js';
 import { installMediaFreezePolicy } from './services/products/product-media-freeze.js';
+import { productLookupQueue } from './queues/product-lookup.js';
+import { setLookupBackfillEnqueuer } from './services/products/lookup-backfill.js';
 
 const REDACT_PATHS = [
   'password',
@@ -51,6 +53,21 @@ const REDACT_PATHS = [
 ];
 
 export async function buildServer(): Promise<FastifyInstance> {
+  setLookupBackfillEnqueuer(async (barcode: string, requestedByUserId: string) => {
+    const queue = productLookupQueue();
+    await queue.add(
+      'product-lookup',
+      { barcode, requestedByUserId },
+      {
+        jobId: `backfill__${barcode}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: 100,
+        removeOnFail: 200,
+      },
+    );
+  });
+
   const cfg = getConfig();
   const app: FastifyInstance = Fastify({
     logger: {

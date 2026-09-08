@@ -9,7 +9,7 @@ const { lookupOffMock, lookupUpcitemdbMock } = vi.hoisted(() => ({
 vi.mock('./off-client.js', () => ({ lookupOff: lookupOffMock }));
 vi.mock('./upcitemdb-client.js', () => ({ lookupUpcitemdb: lookupUpcitemdbMock }));
 
-import { lookupProduct, lookupProductV2, persistExternal } from './lookup.js';
+import { lookupProduct, lookupProductV2, persistExternal, isRestrictedInStoreBarcode } from './lookup.js';
 import { getPrisma } from '../../db.js';
 import { makeUser, makeProduct } from '../../../tests/helpers/factories.js';
 
@@ -27,6 +27,21 @@ const FOUND = (overrides: Partial<{ name: string; brand: string | null }> = {}) 
 });
 const NOT_FOUND = { status: 'not_found' as const };
 const UNAVAILABLE = { status: 'unavailable' as const };
+
+describe('isRestrictedInStoreBarcode', () => {
+  it('identifies restricted in-store barcodes correctly', () => {
+    // 12-digit UPC variable weight (pads to 02...):
+    expect(isRestrictedInStoreBarcode('251010537516')).toBe(true);
+    // 13-digit EAN restricted distribution prefixes 20-29:
+    expect(isRestrictedInStoreBarcode('2012345678901')).toBe(true);
+    expect(isRestrictedInStoreBarcode('2999999999999')).toBe(true);
+    // Standard barcodes should return false:
+    expect(isRestrictedInStoreBarcode('5449000000996')).toBe(false);
+    expect(isRestrictedInStoreBarcode('012345678905')).toBe(false);
+    expect(isRestrictedInStoreBarcode('')).toBe(false);
+    expect(isRestrictedInStoreBarcode(undefined)).toBe(false);
+  });
+});
 
 describe('lookupProduct (legacy)', () => {
   beforeEach(() => {
@@ -219,6 +234,50 @@ describe('lookupProductV2', () => {
     const actor = await makeUser();
     const res = await lookupProductV2({ barcode: '5000000000002' }, { id: actor.id, role: 'user' });
     expect(res).toEqual({ outcome: 'not_found', canCreate: false });
+  });
+  it('restricted in-store barcode returns not_found without calling external providers', async () => {
+    const actor = await makeUser();
+    const res = await lookupProductV2({ barcode: '251010537516' }, { id: actor.id, role: 'user' });
+    expect(res.outcome).toBe('not_found');
+    expect(lookupOffMock).not.toHaveBeenCalled();
+    expect(lookupUpcitemdbMock).not.toHaveBeenCalled();
+  });
+
+  it('eligible creator returns not_found with canCreate true even when providers are unavailable (fail-open)', async () => {
+    await getPrisma().setting.update({
+      where: { key: 'product_creation' },
+      data: { value: { mode: 'all' } },
+    });
+    try {
+      lookupOffMock.mockResolvedValue(UNAVAILABLE);
+      lookupUpcitemdbMock.mockResolvedValue(UNAVAILABLE);
+      const actor = await makeUser();
+      const res = await lookupProductV2({ barcode: '5000000000003' }, { id: actor.id, role: 'user' });
+      expect(res).toEqual({ outcome: 'not_found', canCreate: true });
+    } finally {
+      await getPrisma().setting.update({
+        where: { key: 'product_creation' },
+        data: { value: { mode: 'off' } },
+      });
+    }
+  });
+  it('first-hit resolution returns immediately on first found hit without waiting for slow provider', async () => {
+    lookupOffMock.mockResolvedValue(FOUND({ name: 'Fast OFF Product' }));
+    let upcCalled = false;
+    // An unsettled promise proves lookupProductV2 does not wait for the slower provider
+    const neverSettles = new Promise<typeof NOT_FOUND>(() => {});
+    lookupUpcitemdbMock.mockImplementation(() => {
+      upcCalled = true;
+      return neverSettles;
+    });
+
+    const actor = await makeUser();
+    const res = await lookupProductV2({ barcode: '5000000000004' }, { id: actor.id, role: 'user' });
+    expect(res.outcome).toBe('found');
+    if (res.outcome === 'found') {
+      expect(res.product.name).toBe('Fast OFF Product');
+    }
+    expect(upcCalled).toBe(true);
   });
 
   it('a private draft created during the external round trip is never exposed as found', async () => {

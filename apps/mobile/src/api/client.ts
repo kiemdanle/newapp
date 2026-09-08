@@ -3,7 +3,7 @@ import Config from 'react-native-config';
 import { secureStore } from '../auth/secure-store';
 import { ApiError } from './errors';
 // path must NOT include /v1 prefix; client adds it
-export type ApiClientOpts = { headers?: Record<string, string>; skipAuth?: boolean };
+export type ApiClientOpts = { headers?: Record<string, string>; skipAuth?: boolean; signal?: AbortSignal };
 
 interface ApiRequest extends ApiClientOpts {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
@@ -142,6 +142,7 @@ async function doFetch<T>(req: ApiRequest, retrying = false): Promise<T> {
     method: req.method,
     headers,
     body: req.body === undefined ? undefined : isFormData ? (req.body as FormData) : JSON.stringify(req.body),
+    signal: req.signal,
   });
   if (res.status === 401 && !retrying && !req.skipAuth && !req.path.startsWith('/auth/')) {
     const refreshed = await refreshTokensOnce();

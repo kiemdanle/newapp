@@ -1,6 +1,7 @@
 import { getJson, HttpError } from '../../lib/http.js';
 import { makeBreaker } from '../../lib/breaker.js';
 import { register } from '../external/breakers.js';
+import { logger } from '../../logger.js';
 import { mapUpcitemdbProduct } from './mappers.js';
 import type { ExternalLookupResult } from './off-client.js';
 
@@ -12,13 +13,33 @@ const UPC_URL = (barcode: string) =>
 interface UpcItemsPayload {
   items?: unknown[];
 }
+let upcQuotaCooldownUntil = 0;
+
+export function resetUpcQuotaCooldown(): void {
+  upcQuotaCooldownUntil = 0;
+}
+
+export function getUpcQuotaCooldownUntil(): number {
+  return upcQuotaCooldownUntil;
+}
+
 
 async function fetchUpc(barcode: string): Promise<ExternalLookupResult> {
+  if (Date.now() < upcQuotaCooldownUntil) {
+    return { status: 'not_found' };
+  }
   let raw: unknown;
   try {
     raw = await getJson<unknown>(UPC_URL(barcode), { timeoutMs: 2000 });
   } catch (err) {
-    if (err instanceof HttpError && err.status === 404) return { status: 'not_found' };
+    if (err instanceof HttpError) {
+      if (err.status === 404) return { status: 'not_found' };
+      if (err.status === 429) {
+        logger.warn({ barcode }, 'upcitemdb 429 quota reached, cooling down 5m');
+        upcQuotaCooldownUntil = Date.now() + 5 * 60 * 1000;
+        return { status: 'not_found' };
+      }
+    }
     throw err;
   }
   const mapped = mapUpcitemdbProduct(barcode, raw);

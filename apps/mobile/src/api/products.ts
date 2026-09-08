@@ -18,8 +18,9 @@ import type { CoordinatorAdapter } from '../features/products/draft-mutation-coo
  * route to creation) but cannot conflate them with a schema-valid response. */
 export function useProductLookupV2() {
   return useMutation({
-    mutationFn: async (input: { barcode?: string; qr?: string }) => {
-      return await apiClient.post<ProductLookupV2Response>('/products/lookup-v2', input);
+    mutationFn: async (input: { barcode?: string; qr?: string; signal?: AbortSignal }) => {
+      const { signal, ...body } = input;
+      return await apiClient.post<ProductLookupV2Response>('/products/lookup-v2', body, { signal });
     },
   });
 }

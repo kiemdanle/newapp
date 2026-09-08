@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
 import { PRODUCT_LOOKUP_QUEUE, getQueueConnection, type ProductLookupJob } from '../queues/index.js';
 import { logger } from '../logger.js';
+import { lookupProductForBackfill } from '../services/products/lookup.js';
 
 /**
  * Background backfill of a barcode that missed the synchronous lookup path.
@@ -16,29 +17,16 @@ export function startProductLookupWorker(): Worker<ProductLookupJob> {
   const worker = new Worker<ProductLookupJob>(
     PRODUCT_LOOKUP_QUEUE,
     async (job) => {
-      let lookupProduct: ((arg: { barcode: string }) => Promise<{ id: string } | null>) | undefined;
-      try {
-        // Variable specifier defers type resolution; the products service is
-        // owned by a sibling phase and may not be present at type-check time.
-        const specifier = '../services/products/lookup.js';
-        const mod = (await import(/* @vite-ignore */ specifier)) as {
-          lookupProduct?: (arg: { barcode: string }) => Promise<{ id: string } | null>;
-        };
-        lookupProduct = mod.lookupProduct;
-      } catch (err) {
-        logger.warn({ err, barcode: job.data.barcode }, 'product lookup module unavailable');
+      const res = await lookupProductForBackfill(job.data.barcode);
+      if (res.status === 'found' && res.product) {
+        logger.info({ barcode: job.data.barcode, productId: res.product.id }, 'product backfill hit');
         return;
       }
-      if (!lookupProduct) {
-        logger.warn({ barcode: job.data.barcode }, 'product lookup function not exported');
-        return;
+      if (res.status === 'unavailable') {
+        // Throw to trigger BullMQ retry with exponential backoff
+        throw new Error(`Upstream providers unavailable for barcode ${job.data.barcode}`);
       }
-      const product = await lookupProduct({ barcode: job.data.barcode });
-      if (product) {
-        logger.info({ barcode: job.data.barcode, productId: product.id }, 'product backfill hit');
-      } else {
-        logger.info({ barcode: job.data.barcode }, 'product backfill miss');
-      }
+      logger.info({ barcode: job.data.barcode }, 'product backfill miss');
     },
     { connection: getQueueConnection(), concurrency: 2 },
   );

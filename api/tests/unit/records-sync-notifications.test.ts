@@ -35,6 +35,7 @@ describe('syncRecords notification scheduling', () => {
           quantity: 2,
           unit: 'pcs',
           updatedAt: new Date().toISOString(),
+          location: null,
         },
       ],
       deletes: [],

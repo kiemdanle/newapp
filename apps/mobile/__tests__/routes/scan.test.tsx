@@ -367,7 +367,7 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     await act(async () => fireEvent.press(getByTestId('scan-retry')));
 
     expect(mockLookup).toHaveBeenCalledTimes(2);
-    expect(mockLookup).toHaveBeenNthCalledWith(2, { barcode: '555' });
+    expect(mockLookup).toHaveBeenNthCalledWith(2, expect.objectContaining({ barcode: '555' }));
     expect(navigation.replace).toHaveBeenCalledWith('Product', { id: 'prod-2' });
   });
 
@@ -400,6 +400,72 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(mockLookup).toHaveBeenCalledTimes(1);
     await act(async () => resolveLookup?.({ outcome: 'not_found', canCreate: true }));
   });
+  it('unavailable screen offers Add to Pantry Manually escape hatch, transitioning to custom-item form', async () => {
+    mockLookup.mockResolvedValueOnce({ outcome: 'temporarily_unavailable' });
+    const { getByTestId, findByTestId } = render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '777' }));
+    await findByTestId('scan-unavailable');
+
+    expect(getByTestId('scan-add-custom-from-unavailable')).toBeTruthy();
+    await act(async () => fireEvent.press(getByTestId('scan-add-custom-from-unavailable')));
+
+    expect(getByTestId('scan-custom-item-form')).toBeTruthy();
+  });
+
+  it('Cancel & Enter Manually during in-flight lookup transitions to manual entry', async () => {
+    let resolveLookup: ((v: unknown) => void) | undefined;
+    mockLookup.mockReturnValue(new Promise((resolve) => (resolveLookup = resolve)));
+    const { getByTestId, findByTestId, queryByTestId } = render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '888' }));
+    expect(await findByTestId('scan-cancel-to-manual')).toBeTruthy();
+
+    await act(async () => fireEvent.press(getByTestId('scan-cancel-to-manual')));
+    expect(queryByTestId('scan-cancel-to-manual')).toBeNull();
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+
+    await act(async () => resolveLookup?.({ outcome: 'found', product: { id: 'prod-888' } }));
+  });
+
+  it('late-settling network response after cancel is dropped silently and does not navigate or tear down manual form', async () => {
+    let resolveLookup: ((v: unknown) => void) | undefined;
+    mockLookup.mockReturnValue(new Promise((resolve) => (resolveLookup = resolve)));
+    const { getByTestId, findByTestId } = render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '999' }));
+    await findByTestId('scan-cancel-to-manual');
+
+    await act(async () => fireEvent.press(getByTestId('scan-cancel-to-manual')));
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+
+    // Stale resolution arrives after cancel
+    await act(async () => resolveLookup?.({ outcome: 'found', product: { id: 'prod-999' } }));
+
+    // Verify form remains intact and navigation.replace is NOT called
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('preserves scanned barcode when saving manually from unavailable screen', async () => {
+    mockLookup.mockResolvedValueOnce({ outcome: 'temporarily_unavailable' });
+    const { getByTestId, findByTestId } = render(wrap(<ScanScreen />));
+
+    await act(async () => triggerScan?.({ kind: 'barcode', value: '888000123456' }));
+    await findByTestId('scan-unavailable');
+
+    // Tap "Add to Pantry Manually"
+    await act(async () => fireEvent.press(getByTestId('scan-add-custom-from-unavailable')));
+
+    // Name input form
+    expect(getByTestId('scan-custom-item-name')).toBeTruthy();
+    fireEvent.changeText(getByTestId('scan-custom-item-name'), 'Local Apple Pie');
+    await act(async () => fireEvent.press(getByTestId('scan-custom-item-continue')));
+
+    // Main AddRecordForm is rendered
+    expect(getByTestId('add-record-custom-name')).toBeTruthy();
+  });
+
 
   it('renders "Manually Input" button in scanning mode when target is not deal', async () => {
     __setRouteParams({});

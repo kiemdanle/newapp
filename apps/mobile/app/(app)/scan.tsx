@@ -57,6 +57,34 @@ export default function ScanScreen() {
   const lookupInFlightRef = useRef(false);
   const appStateRef = useRef(AppState.currentState);
   const permissionRequestInFlightRef = useRef(false);
+  const lookupGenerationRef = useRef(0);
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
+  const lookupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      lookupGenerationRef.current += 1;
+      if (lookupTimeoutRef.current) {
+        clearTimeout(lookupTimeoutRef.current);
+        lookupTimeoutRef.current = null;
+      }
+      activeAbortControllerRef.current?.abort();
+      activeAbortControllerRef.current = null;
+    };
+  }, []);
+
+  const cancelLookup = useCallback(() => {
+    lookupGenerationRef.current += 1;
+    if (lookupTimeoutRef.current) {
+      clearTimeout(lookupTimeoutRef.current);
+      lookupTimeoutRef.current = null;
+    }
+    activeAbortControllerRef.current?.abort();
+    activeAbortControllerRef.current = null;
+    lookupInFlightRef.current = false;
+    setUi({ phase: 'manual-entry' });
+  }, []);
+
 
   useEffect(() => {
     void check().catch(() => undefined);
@@ -76,12 +104,29 @@ export default function ScanScreen() {
 
   const runLookup = useCallback(
     async (scan: ScanResult) => {
+      lookupGenerationRef.current += 1;
+      const currentGen = lookupGenerationRef.current;
+      activeAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      activeAbortControllerRef.current = controller;
+      if (lookupTimeoutRef.current) {
+        clearTimeout(lookupTimeoutRef.current);
+        lookupTimeoutRef.current = null;
+      }
+      lookupTimeoutRef.current = setTimeout(() => controller.abort(), 8000);
       lookupInFlightRef.current = true;
       setUi({ phase: 'looking-up' });
       try {
-        const result = await lookup.mutateAsync(
-          scan.kind === 'barcode' ? { barcode: scan.value } : { qr: scan.value },
-        );
+        const result = await lookup.mutateAsync({
+          ...(scan.kind === 'barcode' ? { barcode: scan.value } : { qr: scan.value }),
+          signal: controller.signal,
+        });
+        if (lookupTimeoutRef.current) {
+          clearTimeout(lookupTimeoutRef.current);
+          lookupTimeoutRef.current = null;
+        }
+        if (lookupGenerationRef.current !== currentGen) return;
+
         switch (result.outcome) {
           case 'found':
             if (target === 'deal') {
@@ -137,12 +182,20 @@ export default function ScanScreen() {
             return;
         }
       } catch {
-        // Any thrown error — network down, 5xx, timeout — is unavailable,
-        // never a not-found. Upstream/network trouble must never imply the
-        // item doesn't exist.
+        if (lookupTimeoutRef.current) {
+          clearTimeout(lookupTimeoutRef.current);
+          lookupTimeoutRef.current = null;
+        }
+        if (lookupGenerationRef.current !== currentGen) return;
         setUi({ phase: 'unavailable' });
       } finally {
-        lookupInFlightRef.current = false;
+        if (lookupTimeoutRef.current) {
+          clearTimeout(lookupTimeoutRef.current);
+          lookupTimeoutRef.current = null;
+        }
+        if (lookupGenerationRef.current === currentGen) {
+          lookupInFlightRef.current = false;
+        }
       }
     },
     [lookup, navigation, target],
@@ -308,9 +361,19 @@ export default function ScanScreen() {
       ) : null}
 
       {ui.phase === 'looking-up' ? (
-        <View accessibilityLiveRegion="polite" style={[styles.loading, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.text }}>Looking up item…</Text>
+        <View style={{ alignItems: 'center', marginTop: 24, gap: 12 }}>
+          <View accessibilityLiveRegion="polite" style={[styles.loading, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.text }}>Looking up item…</Text>
+          </View>
+          {target !== 'deal' ? (
+            <Button
+              testID="scan-cancel-to-manual"
+              label="Cancel & Enter Manually"
+              variant="ghost"
+              onPress={cancelLookup}
+            />
+          ) : null}
         </View>
       ) : null}
 
@@ -342,6 +405,8 @@ export default function ScanScreen() {
         >
           <AddRecordForm
             productId={null}
+            scannedBarcode={lastScanRef.current?.kind === 'barcode' ? lastScanRef.current.value : undefined}
+            lockedPersonalScope={Boolean(lastScanRef.current?.value)}
             onSaved={() => navigation.replace('Tabs')}
           />
         </KeyboardAwareScrollView>
@@ -388,6 +453,8 @@ export default function ScanScreen() {
             <AddRecordForm
               productId={null}
               customName={customName}
+              scannedBarcode={lastScanRef.current?.kind === 'barcode' ? lastScanRef.current.value : undefined}
+              lockedPersonalScope={Boolean(lastScanRef.current?.value)}
               onSaved={() => navigation.replace('Tabs')}
             />
           </KeyboardAwareScrollView>
@@ -439,6 +506,14 @@ export default function ScanScreen() {
           <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Lookup is temporarily unavailable</Text>
           <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>This isn't a "not found" — please check your connection and try again.</Text>
           <Button testID="scan-retry" label="Retry" onPress={retry} />
+          {target !== 'deal' ? (
+            <Button
+              testID="scan-add-custom-from-unavailable"
+              label="Add to Pantry Manually"
+              variant="outline"
+              onPress={() => setUi({ phase: 'under-review-custom-item' })}
+            />
+          ) : null}
           <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
         </View>
       ) : null}

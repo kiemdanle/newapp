@@ -75,7 +75,7 @@ describe('POST /v1/products/drafts', () => {
     await app.close();
   });
 
-  it('does not offer creation when a source is unavailable (temporarily_unavailable, no draft)', async () => {
+  it('allows draft creation when external sources are unavailable (fail-open for eligible creator)', async () => {
     vi.doMock('../../src/services/products/off-client.js', () => ({
       lookupOff: vi.fn().mockResolvedValue({ status: 'unavailable' }),
     }));
@@ -93,9 +93,9 @@ describe('POST /v1/products/drafts', () => {
       headers: idemHeaders(headers),
       payload: { barcode: '1112223330002' },
     });
-    expect(res.statusCode).toBe(503);
-    expect(res.json().code).toBe('temporarily_unavailable');
-    expect(await getPrisma().product.count()).toBe(before);
+    expect(res.statusCode).toBe(201);
+    expect(res.json().product.barcode).toBe('1112223330002');
+    expect(await getPrisma().product.count()).toBe(before + 1);
     await app.close();
   });
 

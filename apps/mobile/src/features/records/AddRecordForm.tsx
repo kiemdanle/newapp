@@ -29,6 +29,7 @@ interface Props {
    * record is unconditionally created in the signed-in user's personal
    * scope, never a shared household, until the product goes public. */
   lockedPersonalScope?: boolean;
+  scannedBarcode?: string;
 }
 
 const isoRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -41,6 +42,7 @@ export function AddRecordForm({
   onSaved,
   onOpenOcr,
   lockedPersonalScope,
+  scannedBarcode,
 }: Props) {
   const theme = useTheme();
   const { data: product } = useProduct(productId ?? undefined);
@@ -118,12 +120,12 @@ export function AddRecordForm({
     try {
       let finalProductId = productId ?? null;
 
-      // If this is a custom item (no catalog product yet) and the user attached a photo,
-      // create a private product draft and upload the photo so it is permanently stored in cloud media storage
-      if (!finalProductId && photo) {
+      // If this is a custom item (no catalog product yet) and the user attached a photo or has a scanned barcode,
+      // create a private product draft and attach barcode/photo so it is permanently stored in catalog/cloud media
+      if (!finalProductId && (photo || scannedBarcode)) {
         try {
           const draftRes = await createOrResumeDraft.mutateAsync({
-            barcode: null,
+            barcode: scannedBarcode || null,
             qrPayload: null,
           });
           finalProductId = draftRes.product.id;
@@ -135,12 +137,14 @@ export function AddRecordForm({
             category: category.trim() || null,
           });
 
-          const uploadHandle = uploadProductPhoto(
-            { kind: 'draft', productId: draftRes.product.id },
-            { path: photo.path, mime: photo.mime },
-          );
-          await uploadHandle.promise;
-        } catch (uploadErr) {
+          if (photo) {
+            const uploadHandle = uploadProductPhoto(
+              { kind: 'draft', productId: draftRes.product.id },
+              { path: photo.path, mime: photo.mime },
+            );
+            await uploadHandle.promise;
+          }
+        } catch {
           // Non-fatal: if offline, continue with local creation
         }
       }

@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Upstream Client Resiliency & Rate-Limit Isolation"
-status: todo
+status: completed
 priority: P1
 effort: "4h"
 dependencies: []
@@ -121,11 +121,11 @@ Harden the external product lookup clients (`off-client.ts` for OpenFoodFacts an
 ---
 
 ## Success Criteria
-- [ ] OpenFoodFacts calls tolerate up to 3500ms latency without timing out.
-- [ ] 12-digit barcodes query both 12-digit and 13-digit variants in OpenFoodFacts.
-- [ ] UPCitemdb HTTP 429 responses return `{ status: 'not_found' }` without throwing errors into `upcBreaker`.
-- [ ] `upcBreaker` remains closed when 429 occurs, keeping subsequent lookups functional.
-- [ ] All unit tests in `src/services/products/lookup.test.ts` pass cleanly.
+- [x] OpenFoodFacts calls tolerate up to 3500ms latency without timing out.
+- [ ] Dual 12/13 OFF queries dropped per red-team reconciliation; relied on OpenFoodFacts' native server-side read normalization.
+- [x] UPCitemdb HTTP 429 responses return `{ status: 'not_found' }` without throwing errors into `upcBreaker`.
+- [x] `upcBreaker` remains closed when 429 occurs, keeping subsequent lookups functional.
+- [x] All unit tests in `src/services/products/lookup.test.ts` pass cleanly.
 
 ---
 
