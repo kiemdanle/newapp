@@ -7,14 +7,17 @@ import {
   Alert,
   BackHandler,
   ActivityIndicator,
+  Image,
+  Platform,
+  TextInput,
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Review, ReviewRating } from '@expyrico/shared';
-import { Screen } from '../../../../src/components/Screen';
 import { Button } from '../../../../src/components/Button';
-import { TextField } from '../../../../src/components/TextField';
 import { ErrorText } from '../../../../src/components/ErrorText';
+import { KeyboardAwareScrollView } from '../../../../src/components/KeyboardAwareScrollView';
 import { useTheme } from '../../../../src/theme/useTheme';
 import { useSessionStore } from '../../../../src/auth/session-store';
 import { useProduct } from '../../../../src/api/products';
@@ -27,18 +30,22 @@ import {
   isUserOwnReview,
 } from '../../../../src/api/reviews';
 
-const RECOMMENDATION_OPTIONS: {
+interface RecommendationOption {
   value: ReviewRating;
   label: string;
+  sublabel: string;
   icon: string;
   activeBorder: string;
   activeBg: string;
   activeText: string;
   iconColor: string;
-}[] = [
+}
+
+const RECOMMENDATION_OPTIONS: RecommendationOption[] = [
   {
     value: 'buy_again',
     label: 'Buy again',
+    sublabel: 'Top pick',
     icon: 'checkmark-circle',
     activeBorder: '#4BAE8A', // Fresh Sage
     activeBg: '#D6F0E6',     // Mint Mist
@@ -48,6 +55,7 @@ const RECOMMENDATION_OPTIONS: {
   {
     value: 'buy_again_on_sale',
     label: 'Buy on sale',
+    sublabel: 'Worth deal',
     icon: 'pricetag',
     activeBorder: '#F5A623', // Honey
     activeBg: '#FEEFC3',     // Soft Butter
@@ -57,8 +65,9 @@ const RECOMMENDATION_OPTIONS: {
   {
     value: 'wont_buy',
     label: "Won't buy",
+    sublabel: 'Pass on it',
     icon: 'thumbs-down',
-    activeBorder: '#8C8C85', // Pebble (Zero Alert Red)
+    activeBorder: '#8C8C85', // Pebble
     activeBg: '#F0F0ED',     // Stone
     activeText: '#2C2C28',   // Almost Black
     iconColor: '#8C8C85',
@@ -80,6 +89,7 @@ function starsToRating(s: number): ReviewRating {
 
 export default function ProductReview() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const navigation = useNavigation();
   const { id: productId, review: routeReview } = route.params as {
@@ -105,6 +115,7 @@ export default function ProductReview() {
     existingReview?.rating ?? null,
   );
   const [body, setBody] = useState(existingReview?.body ?? '');
+  const [inputFocused, setInputFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [moderationPending, setModerationPending] = useState(false);
   const [isInitialized, setIsInitialized] = useState(Boolean(existingReview));
@@ -130,6 +141,7 @@ export default function ProductReview() {
     setStars(ratingToStars(val));
     setError(null);
   }
+
   // Android hardware back handler with unsaved changes prompt
   useEffect(() => {
     const onBackPress = () => {
@@ -141,12 +153,12 @@ export default function ProductReview() {
   }, [body, rating, existingReview]);
 
   function hasUnsavedChanges() {
-    if (existingReview) {
-      const bodyChanged = body.trim() !== (existingReview.body ?? '');
-      const ratingChanged = rating !== existingReview.rating;
-      return bodyChanged || ratingChanged;
+    if (!existingReview) {
+      return Boolean(rating !== null || body.trim().length > 0);
     }
-    return (rating !== null || body.trim().length > 0);
+    const ratingChanged = rating !== existingReview.rating;
+    const bodyChanged = body.trim() !== (existingReview.body ?? '').trim();
+    return ratingChanged || bodyChanged;
   }
 
   function handleBack() {
@@ -171,22 +183,16 @@ export default function ProductReview() {
       return;
     }
 
-    const trimmedBody = body.trim();
-    // In edit mode: explicit null if emptied, so Postgres clears the comment
-    const finalBody = trimmedBody.length > 0 ? trimmedBody : null;
+    const finalBody = body.trim() ? body.trim() : null;
 
     try {
       if (isEdit && existingReview) {
-        const res = await updateReviewMutation.mutateAsync({
+        await updateReviewMutation.mutateAsync({
           reviewId: existingReview.id,
           productId,
           patch: { rating, body: finalBody },
         });
-        if (res.status === 'hidden') {
-          setModerationPending(true);
-        } else {
-          navigation.goBack();
-        }
+        navigation.goBack();
       } else {
         const res = await createReviewMutation.mutateAsync({
           productId,
@@ -230,19 +236,32 @@ export default function ProductReview() {
 
   if (isLoadingReview && !isInitialized) {
     return (
-      <Screen style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#4BAE8A" />
-      </Screen>
+      <View style={[styles.centerContainer, { backgroundColor: theme.colors.bg }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
     );
   }
 
   if (moderationPending) {
     return (
-      <Screen style={styles.moderationContainer}>
-        <View style={styles.moderationCard}>
-          <Ionicons name="time-outline" size={48} color="#F5A623" />
-          <Text style={styles.moderationTitle}>Review Pending Moderation</Text>
-          <Text style={styles.moderationBody}>
+      <View style={[styles.moderationContainer, { backgroundColor: theme.colors.bg }]}>
+        <View
+          style={[
+            styles.moderationCard,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={[styles.moderationIconBadge, { backgroundColor: '#FEEFC3' }]}>
+            <Ionicons name="time" size={36} color="#F5A623" />
+          </View>
+          <Text style={[styles.moderationTitle, { color: theme.colors.text }]}>
+            Review Pending Moderation
+          </Text>
+          <Text style={[styles.moderationBody, { color: theme.colors.textMuted }]}>
             Your review was submitted and is pending community moderation. It will become
             visible once approved by moderators.
           </Text>
@@ -254,41 +273,132 @@ export default function ProductReview() {
             />
           </View>
         </View>
-      </Screen>
+      </View>
     );
   }
 
   return (
-    <Screen contentContainerStyle={styles.scrollContent}>
-        {/* Navigation Header */}
-        <View style={styles.headerBar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            onPress={handleBack}
-            style={styles.backButton}
-            hitSlop={8}
-          >
-            <Ionicons name="arrow-back" size={24} color="#2C2C28" />
-          </Pressable>
-          <Text style={styles.headerTitle}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      {/* Top Header Bar */}
+      <View
+        style={[
+          styles.headerBar,
+          {
+            backgroundColor: theme.colors.bgElevated,
+            borderBottomColor: theme.colors.border,
+            paddingTop: insets.top + 8,
+          },
+        ]}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={handleBack}
+          style={[styles.backButton, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}
+          hitSlop={8}
+        >
+          <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
+        </Pressable>
+        <View style={styles.headerTitleWrap}>
+          <Text style={[styles.headerEyebrow, { color: theme.colors.primaryDark }]}>
+            COMMUNITY NOTES
+          </Text>
+          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
             {isEdit ? 'Edit your review' : 'Write a review'}
           </Text>
-          <View style={{ width: 44 }} />
+        </View>
+        <View style={{ width: 42 }} />
+      </View>
+
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        extraKeyboardOffset={Platform.OS === 'android' ? 140 : 48}
+      >
+        {/* Product Hero Card */}
+        <View
+          style={[
+            styles.productCard,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={styles.productRow}>
+            {productData?.imageUrl ? (
+              <Image
+                source={{ uri: productData.imageUrl }}
+                style={styles.productImage}
+                resizeMode="cover"
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <View
+                style={[
+                  styles.productPlaceholder,
+                  { backgroundColor: theme.colors.primaryLight },
+                ]}
+              >
+                <Ionicons name="bag-handle-outline" size={26} color={theme.colors.primaryDark} />
+              </View>
+            )}
+            <View style={styles.productInfo}>
+              {productData?.brand ? (
+                <Text style={[styles.productBrand, { color: theme.colors.textMuted }]}>
+                  {productData.brand}
+                </Text>
+              ) : null}
+              <Text
+                style={[styles.productName, { color: theme.colors.text }]}
+                numberOfLines={2}
+              >
+                {productData?.name ?? 'Product'}
+              </Text>
+              {productData?.category ? (
+                <View style={styles.categoryBadgeRow}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: theme.colors.primaryLight },
+                    ]}
+                  >
+                    <Text style={[styles.categoryBadgeText, { color: theme.colors.primaryDark }]}>
+                      {productData.category}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </View>
+          </View>
         </View>
 
-        {/* Product Metadata */}
-        <View style={styles.productCard}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {productData?.name ?? 'Product'}
-          </Text>
-          {productData?.brand ? (
-            <Text style={styles.productBrand}>{productData.brand}</Text>
-          ) : null}
-        </View>
-        {/* 1 to 5 Star Rating Selector */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Rate this product</Text>
+        {/* 1 to 5 Star Rating Selector Card */}
+        <View
+          style={[
+            styles.cardContainer,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="sparkles" size={18} color="#F5A623" />
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
+                Rate this product
+              </Text>
+            </View>
+            <Text style={[styles.requiredBadge, { color: theme.colors.textMuted }]}>
+              Required *
+            </Text>
+          </View>
+
           <View
             style={styles.starRow}
             accessibilityRole="radiogroup"
@@ -304,36 +414,90 @@ export default function ProductReview() {
                   accessibilityLabel={`${starIndex} star${starIndex > 1 ? 's' : ''}`}
                   accessibilityState={{ selected: isFilled }}
                   onPress={() => handleSelectStars(starIndex)}
-                  style={styles.starButton}
+                  style={({ pressed }) => [
+                    styles.starButton,
+                    { transform: [{ scale: pressed ? 1.18 : 1 }] },
+                  ]}
                   hitSlop={6}
                 >
                   <Ionicons
                     name={isFilled ? 'star' : 'star-outline'}
                     size={38}
-                    color={isFilled ? '#F5A623' : '#D0D0CA'}
+                    color={isFilled ? '#F5A623' : theme.scheme === 'dark' ? '#3E3E38' : '#D0D0CA'}
                   />
                 </Pressable>
               );
             })}
           </View>
-          <Text style={styles.starCaption}>
-            {stars === 5
-              ? '5 / 5 · Excellent!'
-              : stars === 4
-                ? '4 / 5 · Great!'
-                : stars === 3
-                  ? '3 / 5 · Good (Worth it on sale)'
-                  : stars === 2
-                    ? '2 / 5 · Fair'
-                    : stars === 1
-                      ? '1 / 5 · Poor'
-                      : 'Tap a star to rate'}
-          </Text>
+
+          <View style={styles.sentimentBadgeContainer}>
+            <View
+              style={[
+                styles.sentimentBadge,
+                {
+                  backgroundColor:
+                    stars >= 4
+                      ? theme.colors.primaryLight
+                      : stars === 3
+                        ? '#FEEFC3'
+                        : theme.scheme === 'dark'
+                          ? 'rgba(255,255,255,0.08)'
+                          : '#F0F0ED',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.starCaption,
+                  {
+                    color:
+                      stars >= 4
+                        ? theme.colors.primaryDark
+                        : stars === 3
+                          ? '#7A4D05'
+                          : theme.colors.text,
+                  },
+                ]}
+              >
+                {stars === 5
+                  ? '5 / 5 · Excellent!'
+                  : stars === 4
+                    ? '4 / 5 · Great!'
+                    : stars === 3
+                      ? '3 / 5 · Good (Worth it on sale)'
+                      : stars === 2
+                        ? '2 / 5 · Fair'
+                        : stars === 1
+                          ? '1 / 5 · Poor'
+                          : 'Tap a star to rate'}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Tri-State Recommendation Selector */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Would you recommend this item?</Text>
+        {/* Tri-State Recommendation Selector Card */}
+        <View
+          style={[
+            styles.cardContainer,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="thumbs-up-outline" size={18} color={theme.colors.primary} />
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
+                Would you recommend this item?
+              </Text>
+            </View>
+            <Text style={[styles.requiredBadge, { color: theme.colors.textMuted }]}>
+              Required *
+            </Text>
+          </View>
+
           <View
             style={styles.radiogroup}
             accessibilityRole="radiogroup"
@@ -348,30 +512,57 @@ export default function ProductReview() {
                   accessibilityLabel={opt.label}
                   accessibilityState={{ selected: isSelected }}
                   onPress={() => handleSelectRecommendation(opt.value)}
-                  style={[
-                    styles.radioPill,
+                  style={({ pressed }) => [
+                    styles.radioCard,
                     {
-                      borderColor: isSelected ? opt.activeBorder : '#E5E5E0',
-                      backgroundColor: isSelected ? opt.activeBg : '#FAFAF8',
+                      borderColor: isSelected ? opt.activeBorder : theme.colors.border,
+                      borderWidth: isSelected ? 2 : 1,
+                      backgroundColor: isSelected
+                        ? opt.activeBg
+                        : theme.scheme === 'dark'
+                          ? 'rgba(255,255,255,0.04)'
+                          : theme.colors.bg,
+                      opacity: pressed ? 0.85 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
                     },
                   ]}
                 >
-                  <Ionicons
-                    name={opt.icon}
-                    size={20}
-                    color={isSelected ? opt.iconColor : '#8C8C85'}
-                    style={{ marginBottom: 4 }}
-                  />
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      {
+                        backgroundColor: isSelected
+                          ? 'rgba(255,255,255,0.65)'
+                          : theme.colors.bgElevated,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={20}
+                      color={isSelected ? opt.iconColor : theme.colors.textMuted}
+                    />
+                  </View>
                   <Text
                     style={[
                       styles.pillLabel,
                       {
-                        color: isSelected ? opt.activeText : '#8C8C85',
-                        fontWeight: isSelected ? '600' : '400',
+                        color: isSelected ? opt.activeText : theme.colors.text,
+                        fontWeight: isSelected ? '700' : '600',
                       },
                     ]}
                   >
                     {opt.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.pillSublabel,
+                      {
+                        color: isSelected ? opt.activeText : theme.colors.textMuted,
+                      },
+                    ]}
+                  >
+                    {opt.sublabel}
                   </Text>
                 </Pressable>
               );
@@ -379,29 +570,63 @@ export default function ProductReview() {
           </View>
         </View>
 
-        {/* Written Review Body */}
-        <View style={styles.sectionContainer}>
-          <TextField
-            label="Your thoughts (optional)"
+        {/* Written Review Body Card */}
+        <View
+          style={[
+            styles.cardContainer,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color={theme.colors.primary} />
+              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
+                Your thoughts (optional)
+              </Text>
+            </View>
+          </View>
+
+          <TextInput
+            accessibilityLabel="Your thoughts (optional)"
+            placeholder="Share what you liked, taste, packaging, value..."
+            placeholderTextColor={theme.colors.textMuted}
             value={body}
             onChangeText={setBody}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
             multiline
             numberOfLines={5}
             maxLength={2000}
-            placeholder="Share what you liked, taste, packaging, value..."
-            placeholderTextColor="#8C8C85"
+            textAlignVertical="top"
+            style={[
+              styles.reviewInput,
+              {
+                color: theme.colors.text,
+                backgroundColor: theme.scheme === 'dark' ? 'rgba(255,255,255,0.04)' : theme.colors.bg,
+                borderColor: inputFocused ? theme.colors.primary : theme.colors.border,
+                borderWidth: inputFocused ? 1.5 : 1,
+                borderRadius: theme.radii.md,
+              },
+            ]}
           />
           <Text style={styles.charCount}>{body.length}/2000</Text>
         </View>
 
         {/* Error Feedback */}
         {error ? (
-          <View style={styles.errorText}>
-            <ErrorText>{error}</ErrorText>
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={18} color={theme.colors.danger} />
+            <View style={{ flex: 1 }}>
+              <ErrorText>{error}</ErrorText>
+            </View>
           </View>
         ) : null}
 
-        {/* Submit CTA */}
+        {/* Submit CTA Bar */}
         <View style={styles.submitContainer}>
           <Button
             testID="review-submit"
@@ -412,7 +637,8 @@ export default function ProductReview() {
             variant="primary"
           />
         </View>
-    </Screen>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 
@@ -423,92 +649,175 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    gap: 16,
   },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerEyebrow: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  productCard: {
+    borderWidth: 1,
+    padding: 16,
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  productImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+  },
+  productPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#2C2C28', // Almost Black
-  },
-  productCard: {
-    backgroundColor: '#FAFAF8', // Warm White
-    borderWidth: 1,
-    borderColor: '#F0F0ED',     // Stone
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-  },
-  productName: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#2C2C28',
+  productInfo: {
+    flex: 1,
+    gap: 2,
   },
   productBrand: {
-    fontSize: 14,
-    color: '#8C8C85', // Pebble
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  categoryBadgeRow: {
+    flexDirection: 'row',
     marginTop: 4,
   },
-  sectionContainer: {
-    marginBottom: 20,
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  cardContainer: {
+    borderWidth: 1,
+    padding: 16,
+    gap: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#2C2C28',
-    marginBottom: 10,
+    fontWeight: '700',
   },
-  radiogroup: {
-    flexDirection: 'row',
-    gap: 8,
+  requiredBadge: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   starRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
     paddingVertical: 8,
   },
   starButton: {
-    minWidth: 48,
-    minHeight: 48,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sentimentBadgeContainer: {
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  sentimentBadge: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   starCaption: {
     fontSize: 13,
-    color: '#8C8C85',
+    fontWeight: '600',
     textAlign: 'center',
-    marginTop: 4,
   },
-  radioPill: {
+  radiogroup: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  radioCard: {
     flex: 1,
-    minHeight: 52, // >= 44pt rule
-    borderWidth: 1.5,
-    borderRadius: 12,
+    minHeight: 84,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 4,
+    gap: 4,
+  },
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
   pillLabel: {
     fontSize: 13,
     textAlign: 'center',
   },
-  textArea: {
-    minHeight: 110,
-    textAlignVertical: 'top',
+  pillSublabel: {
+    fontSize: 11,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  reviewInput: {
+    minHeight: 120,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  charCountText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
   charCount: {
     fontSize: 12,
@@ -516,15 +825,16 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginTop: 4,
   },
-  errorText: {
-    marginBottom: 12,
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
   submitContainer: {
-    marginTop: 8,
-  },
-  submitButton: {
-    minHeight: 48,
-    borderRadius: 12,
+    marginTop: 4,
   },
   moderationContainer: {
     flex: 1,
@@ -533,26 +843,28 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   moderationCard: {
-    backgroundColor: '#FAFAF8',
     borderWidth: 1,
-    borderColor: '#F0F0ED',
-    borderRadius: 16,
     padding: 24,
     alignItems: 'center',
     width: '100%',
+    gap: 12,
+  },
+  moderationIconBadge: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   moderationTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
-    color: '#2C2C28',
-    marginTop: 16,
-    marginBottom: 8,
     textAlign: 'center',
   },
   moderationBody: {
     fontSize: 14,
-    color: '#8C8C85',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
 });
