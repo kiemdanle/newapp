@@ -157,7 +157,11 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // WatermelonDB — native SQLite adapter, mock for Jest
 jest.mock('../src/db/index', () => {
   const EMPTY_OBS = { subscribe: () => ({ unsubscribe: jest.fn() }) };
-  const EMPTY_QUERY = { observe: () => EMPTY_OBS, fetch: () => Promise.resolve([]) };
+  const EMPTY_QUERY = {
+    observe: () => EMPTY_OBS,
+    observeWithColumns: () => EMPTY_OBS,
+    fetch: () => Promise.resolve([]),
+  };
   const recordsCol = {
     query: () => EMPTY_QUERY,
     find: () => Promise.reject(new Error('not found')),

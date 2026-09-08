@@ -55,6 +55,7 @@ describe('PantryScope Store and Query Mechanics', () => {
     it('queries active records without household_id condition when scope is "all"', () => {
       const queryMock = jest.fn().mockReturnValue({
         observe: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
+        observeWithColumns: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
       });
       const recordsCol = {
         query: queryMock,
@@ -76,6 +77,7 @@ describe('PantryScope Store and Query Mechanics', () => {
     it('queries active records constrained to household_id = null when scope is "personal"', () => {
       const queryMock = jest.fn().mockReturnValue({
         observe: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
+        observeWithColumns: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
       });
       const recordsCol = {
         query: queryMock,
@@ -98,6 +100,7 @@ describe('PantryScope Store and Query Mechanics', () => {
     it('queries active records constrained to household_id = householdId when scope is "household"', () => {
       const queryMock = jest.fn().mockReturnValue({
         observe: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
+        observeWithColumns: () => ({ subscribe: () => ({ unsubscribe: jest.fn() }) }),
       });
       const recordsCol = {
         query: queryMock,
