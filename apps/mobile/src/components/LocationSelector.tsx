@@ -68,10 +68,10 @@ export function LocationSelector({
                 {
                   backgroundColor: isSelected
                     ? theme.colors.primary
-                    : theme.colors.bgGlass,
+                    : theme.colors.bgElevated,
                   borderColor: isSelected
                     ? theme.colors.primary
-                    : theme.colors.border,
+                    : theme.colors.neutralMid,
                   opacity: pressed ? 0.82 : 1,
                 },
               ]}
@@ -107,10 +107,10 @@ export function LocationSelector({
             {
               backgroundColor: isFifthPillActive
                 ? theme.colors.primary
-                : theme.colors.bgGlass,
+                : theme.colors.bgElevated,
               borderColor: isFifthPillActive
                 ? theme.colors.primary
-                : theme.colors.border,
+                : theme.colors.neutralMid,
               opacity: pressed ? 0.82 : 1,
             },
           ]}

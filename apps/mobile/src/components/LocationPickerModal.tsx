@@ -37,6 +37,8 @@ export function LocationPickerModal({
   const theme = useTheme();
   const [customInput, setCustomInput] = useState('');
   const [search, setSearch] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [customFocused, setCustomFocused] = useState(false);
 
   if (!visible) return null;
 
@@ -135,8 +137,15 @@ export function LocationPickerModal({
               accessibilityLabel="Close location picker"
               onPress={onClose}
               hitSlop={8}
+              style={[
+                styles.closeBtn,
+                {
+                  backgroundColor: theme.colors.bgGlass,
+                  borderColor: theme.colors.border,
+                },
+              ]}
             >
-              <Ionicons name="close" size={24} color={theme.colors.textMuted} />
+              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
             </Pressable>
           </View>
 
@@ -146,16 +155,24 @@ export function LocationPickerModal({
               style={[
                 styles.searchBar,
                 {
-                  backgroundColor: theme.colors.bg,
-                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.bgElevated,
+                  borderColor: searchFocused
+                    ? theme.colors.primary
+                    : theme.colors.neutralMid,
                 },
               ]}
             >
-              <Ionicons name="search" size={16} color={theme.colors.textMuted} />
+              <Ionicons
+                name="search"
+                size={16}
+                color={searchFocused ? theme.colors.primary : theme.colors.textMuted}
+              />
               <TextInput
                 testID="location-picker-search-input"
                 value={search}
                 onChangeText={setSearch}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
                 maxLength={50}
                 placeholder="Search or enter location (e.g. Spice Rack)..."
                 placeholderTextColor={theme.colors.textMuted}
@@ -189,7 +206,10 @@ export function LocationPickerModal({
                 onPress={handleApplyCustom}
                 style={[
                   styles.applyBtn,
-                  { backgroundColor: theme.colors.primary },
+                  {
+                    backgroundColor: theme.colors.primary,
+                    borderColor: theme.colors.primary,
+                  },
                 ]}
               >
                 <Text style={styles.applyBtnText}>Apply</Text>
@@ -216,7 +236,7 @@ export function LocationPickerModal({
                   accessibilityLabel={`Add custom location ${search.trim()}`}
                   onPress={handleApplyCustom}
                   style={[
-                    styles.locationChip,
+                    styles.applyCustomChip,
                     {
                       backgroundColor: theme.colors.primaryLight,
                       borderColor: theme.colors.primary,
@@ -230,8 +250,8 @@ export function LocationPickerModal({
                   />
                   <Text
                     style={[
-                      styles.chipText,
-                      { color: theme.colors.primaryDark, fontWeight: '700' },
+                      styles.applyCustomChipText,
+                      { color: theme.colors.primaryDark },
                     ]}
                   >
                     Add &quot;{normalizeLocationTitleCase(search)}&quot;
@@ -241,9 +261,23 @@ export function LocationPickerModal({
             )}
 
             {filteredLocations.length === 0 && search.trim().length > 0 && (
-              <View style={styles.notFoundBox}>
-                <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
-                <Text style={[styles.notFoundText, { color: theme.colors.textMuted }]}>
+              <View
+                style={[
+                  styles.notFoundBox,
+                  {
+                    backgroundColor: theme.colors.bgElevated,
+                    borderColor: theme.colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={18}
+                  color={theme.colors.textMuted}
+                />
+                <Text
+                  style={[styles.notFoundText, { color: theme.colors.textMuted }]}
+                >
                   No preset found for &quot;{search}&quot;.
                 </Text>
                 <Pressable
@@ -251,10 +285,21 @@ export function LocationPickerModal({
                   accessibilityRole="button"
                   accessibilityLabel={`Define and use ${search.trim()} as storage location`}
                   onPress={() => handleApplyDefinedLocation(search)}
-                  style={[styles.applyCustomChip, { backgroundColor: theme.colors.primary }]}
+                  style={[
+                    styles.applyCustomChip,
+                    {
+                      backgroundColor: theme.colors.primaryLight,
+                      borderColor: theme.colors.primary,
+                    },
+                  ]}
                 >
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
-                  <Text style={styles.applyCustomChipText}>
+                  <Ionicons name="add" size={16} color={theme.colors.primaryDark} />
+                  <Text
+                    style={[
+                      styles.applyCustomChipText,
+                      { color: theme.colors.primaryDark },
+                    ]}
+                  >
                     Define &quot;{normalizeLocationTitleCase(search)}&quot;
                   </Text>
                 </Pressable>
@@ -284,26 +329,26 @@ export function LocationPickerModal({
                       styles.locationChip,
                       {
                         backgroundColor: isSelected
-                          ? theme.colors.primary
-                          : theme.colors.bg,
+                          ? theme.colors.primaryLight
+                          : theme.colors.bgElevated,
                         borderColor: isSelected
                           ? theme.colors.primary
-                          : theme.colors.border,
-                        opacity: pressed ? 0.8 : 1,
+                          : theme.colors.neutralMid,
+                        opacity: pressed ? 0.82 : 1,
                       },
                     ]}
                   >
                     <Ionicons
                       name={iconName}
                       size={15}
-                      color={isSelected ? '#FFFFFF' : theme.colors.textMuted}
+                      color={isSelected ? theme.colors.primaryDark : theme.colors.textMuted}
                     />
                     <Text
                       style={[
                         styles.chipText,
                         {
-                          color: isSelected ? '#FFFFFF' : theme.colors.text,
-                          fontWeight: isSelected ? '700' : '600',
+                          color: isSelected ? theme.colors.primaryDark : theme.colors.text,
+                          fontWeight: isSelected ? '700' : '500',
                         },
                       ]}
                     >
@@ -315,7 +360,12 @@ export function LocationPickerModal({
             </View>
 
             {/* Dedicated Custom Location Definition Section */}
-            <View style={styles.customSection}>
+            <View
+              style={[
+                styles.customSection,
+                { borderTopColor: theme.colors.border },
+              ]}
+            >
               <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
                 DEFINE CUSTOM LOCATION
               </Text>
@@ -327,6 +377,8 @@ export function LocationPickerModal({
                   testID="location-picker-custom-input"
                   value={customInput}
                   onChangeText={setCustomInput}
+                  onFocus={() => setCustomFocused(true)}
+                  onBlur={() => setCustomFocused(false)}
                   maxLength={50}
                   placeholder="e.g. Wine Cooler, Deep Freezer, Garage..."
                   placeholderTextColor={theme.colors.textMuted}
@@ -334,8 +386,10 @@ export function LocationPickerModal({
                     styles.customInput,
                     {
                       color: theme.colors.text,
-                      backgroundColor: theme.colors.bg,
-                      borderColor: theme.colors.border,
+                      backgroundColor: theme.colors.bgElevated,
+                      borderColor: customFocused
+                        ? theme.colors.primary
+                        : theme.colors.neutralMid,
                     },
                   ]}
                   autoCapitalize="words"
@@ -353,18 +407,38 @@ export function LocationPickerModal({
                     {
                       backgroundColor: customInput.trim()
                         ? theme.colors.primary
-                        : theme.colors.border,
+                        : theme.colors.bgElevated,
+                      borderColor: customInput.trim()
+                        ? theme.colors.primary
+                        : theme.colors.neutralMid,
                     },
                   ]}
                   disabled={!customInput.trim()}
                 >
-                  <Text style={styles.customApplyBtnText}>Apply</Text>
+                  <Text
+                    style={[
+                      styles.customApplyBtnText,
+                      {
+                        color: customInput.trim()
+                          ? '#FFFFFF'
+                          : theme.colors.textMuted,
+                      },
+                    ]}
+                  >
+                    Apply
+                  </Text>
                 </Pressable>
               </View>
             </View>
+
             {/* Clear Location Button */}
             {normalizedCurrent.length > 0 && (
-              <View style={styles.clearSection}>
+              <View
+                style={[
+                  styles.clearSection,
+                  { borderTopColor: theme.colors.border },
+                ]}
+              >
                 <Pressable
                   testID="location-picker-clear-btn"
                   accessibilityRole="button"
@@ -374,8 +448,8 @@ export function LocationPickerModal({
                     styles.clearBtn,
                     {
                       borderColor: theme.colors.danger,
-                      backgroundColor: theme.colors.bgGlass,
-                      opacity: pressed ? 0.8 : 1,
+                      backgroundColor: theme.colors.bgElevated,
+                      opacity: pressed ? 0.82 : 1,
                     },
                   ]}
                 >
@@ -428,12 +502,20 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
   },
   subtitle: {
     fontSize: 12,
     marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchRow: {
     flexDirection: 'row',
@@ -446,22 +528,24 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
-    height: 42,
+    height: 44,
+    minHeight: 44,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     paddingVertical: 0,
   },
   applyBtn: {
     paddingHorizontal: 16,
     minHeight: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -493,8 +577,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 20,
+    paddingVertical: 8,
+    borderRadius: 16,
     borderWidth: 1,
     minHeight: 44,
   },
@@ -505,7 +589,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     paddingTop: 14,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.08)',
   },
   clearBtn: {
     flexDirection: 'row',
@@ -513,7 +596,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     minHeight: 44,
   },
@@ -523,9 +606,8 @@ const styles = StyleSheet.create({
   },
   notFoundBox: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.08)',
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
@@ -539,19 +621,18 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 16,
+    borderWidth: 1,
     minHeight: 44,
   },
   applyCustomChipText: {
-    color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: '700',
+    fontSize: 13,
   },
   customSection: {
     marginTop: 20,
     paddingTop: 16,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0, 0, 0, 0.08)',
   },
   customSubcopy: {
     fontSize: 12,
@@ -567,21 +648,21 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     minHeight: 44,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
-    fontSize: 14,
+    fontSize: 15,
   },
   customApplyBtn: {
     paddingHorizontal: 16,
     height: 44,
     minHeight: 44,
-    borderRadius: 10,
+    borderRadius: 8,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   customApplyBtnText: {
-    color: '#FFFFFF',
     fontWeight: '700',
     fontSize: 14,
   },
