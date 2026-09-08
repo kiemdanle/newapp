@@ -69,8 +69,14 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
 1. **Constants & Utilities (`apps/mobile/src/utils/locations.ts`)**:
    - Define `DEFAULT_TOP_LOCATIONS = ['Fridge', 'Freezer', 'Pantry', 'Counter'] as const`.
    - Define `COMMON_OTHER_LOCATIONS = ['Spice Rack', 'Cupboard', 'Cabinet', 'Basement', 'Cellar', 'Wine Cooler', 'Drawer', 'Office', 'Garage', 'Bar'] as const`.
-   - Helper `normalizeLocation(val?: string | null): string`: trims and normalizes casing for equality checks.
-
+   - Helper `normalizeLocation(val?: string | null): string`: trims and lowercases for internal equality comparisons.
+   - Helper `normalizeLocationTitleCase(val: string): string`: converts input to clean Title Case (e.g. `spice rack` → `Spice Rack`).
+   - Helper `getLocationIcon(location?: string | null): keyof typeof Ionicons.glyphMap`:
+     - `Fridge`: `'thermometer-outline'`
+     - `Freezer`: `'snow-outline'`
+     - `Pantry`: `'basket-outline'`
+     - `Counter`: `'tablet-landscape-outline'`
+     - default/custom: `'cube-outline'`
 2. **LocationPickerModal Component (`apps/mobile/src/components/LocationPickerModal.tsx`)**:
    - Bottom sheet modal using React Native `Modal`, `KeyboardAvoidingView`, and theme styling.
    - Controlled search/custom input with auto-capitalization and "Apply" button.

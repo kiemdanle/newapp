@@ -131,11 +131,24 @@ Add an optional **"Location"** field to pantry item editing (`QuickEditModal`) a
    - *Decision*: **Multi-Select Locations**.
    - *Rationale*: `PantryFilterState` will support `locations?: string[]`. In `PantryFilterModal`, users can toggle multiple storage locations (e.g. `Fridge` + `Freezer`), enabling flexible multi-zone inventory sweeps.
 
+### Validation Interview Decisions (Session 2)
+4. **Offline Sync Conflict Policy (`sync_conflict_policy`)**:
+   - *Decision*: **Standard Scope-Aware LWW**.
+   - *Rationale*: For personal records, client mutations win if `updatedAt` is newer than server; for shared household records, the server remains authoritative, avoiding fragmented household states.
+5. **Location Casing Normalization (`casing_normalization`)**:
+   - *Decision*: **Title Case & Grouped**.
+   - *Rationale*: Custom locations are normalized to Title Case (e.g. `spice rack` → `Spice Rack`) and grouped case-insensitively in `PantryFilterModal` with aggregate counts.
+6. **Card Badge Iconography (`badge_iconography`)**:
+   - *Decision*: **Dynamic Contextual Icons**.
+   - *Rationale*: Display contextual icons on `RecordCard` badges: `snow-outline` for Freezer, `thermometer-outline` for Fridge, `basket-outline` for Pantry, `tablet-landscape-outline` for Counter, and `cube-outline` for custom locations.
+7. **Search Matching Scope (`search_matching_scope`)**:
+   - *Decision*: **Include Location in Search**.
+   - *Rationale*: `matchesPantryQuery` tests `record.location` case-insensitively so typing "fridge" or "pantry" immediately surfaces all items stored there.
+
 ### Whole-Plan Consistency Sweep
 - **Status**: Zero unresolved contradictions.
 - **Propagations**:
-  - Updated Phase 4 (`phase-04-pantry-filtering-and-card-badging.md`) to reflect `locations?: string[]` multi-select in `PantryFilterState`, multi-chip selection in `PantryFilterModal`, and multiple active filter chips in `PantryActiveFilterChips`.
-  - Confirmed Phase 2 (`phase-02-location-selector-components.md`) enforces tap-to-deselect (`onChange(null)`).
-  - Confirmed Phase 3 (`phase-03-form-integrations-quick-edit-and-add.md`) maintains optional `null` persistence.
-
+  - Updated Phase 1 (`phase-01-schema-and-database-migrations.md`) to reflect standard scope-aware LWW for location fields in sync upserts.
+  - Updated Phase 2 (`phase-02-location-selector-components.md`) to include `normalizeLocationTitleCase` helper in `apps/mobile/src/utils/locations.ts`.
+  - Updated Phase 4 (`phase-04-pantry-filtering-and-card-badging.md`) to define contextual icon mapping (`getLocationIcon`) on `RecordCard` and case-insensitive Title Case aggregation in `PantryFilterModal`.
 <!-- slug: mobile-pantry-storage-location-picker-and-filter -->

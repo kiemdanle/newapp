@@ -80,7 +80,7 @@ Empower users to filter their pantry inventory by storage location within `Pantr
 
 3. **PantryFilterModal Location Section (`apps/mobile/src/features/records/PantryFilterModal.tsx`)**:
    - Compute `locationOptions` with `useMemo`:
-     - Aggregate counts for all records with a non-empty `location`.
+     - Aggregate counts for all records with a non-empty `location`, grouping case-insensitively and normalizing display labels to Title Case via `normalizeLocationTitleCase` (e.g. `spice rack` → `Spice Rack`).
      - Merge with `DEFAULT_TOP_LOCATIONS` (`Fridge`, `Freezer`, `Pantry`, `Counter`).
      - Return array `{ name: string, count: number }` sorted with top 4 first, then custom alphabetically.
    - Render "STORAGE LOCATION" section with chips:
@@ -139,7 +139,11 @@ Empower users to filter their pantry inventory by storage location within `Pantr
            borderRadius: theme.radii.pill,
          }}
        >
-         <Ionicons name="cube-outline" size={10} color={theme.colors.textMuted} />
+         <Ionicons
+           name={getLocationIcon(record.location)}
+           size={11}
+           color={theme.colors.textMuted}
+         />
          <Text style={{ color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' }}>
            {record.location}
          </Text>
