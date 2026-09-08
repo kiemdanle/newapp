@@ -14,11 +14,13 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
 
 ## Requirements
 - Functional:
-  - Render a `TextField` labeled `"Brand"` placed immediately below the `"Item Name"` field.
+  - Render a `TextField` labeled `"Brand (optional)"` placed immediately below the `"Item Name"` field.
   - Pre-populate brand from `record.brand`, falling back to `product?.brand` if `record.brand` is unset.
   - If catalog product details load asynchronously after modal mount, automatically populate the brand input unless the user has already typed in it.
+  - If the user clears the brand input to empty, `handleSave` saves `brand: null`, falling back to displaying the catalog `product.brand` on pantry cards.
   - Include `testID="quick-edit-brand-input"` and `autoCapitalize="words"`.
   - On submit, pass `brand: brand.trim() || null` in the `onSave` payload.
+  <!-- Updated: Validation Session 1 - Brand (optional) label and catalog fallback when cleared -->
 - Non-functional:
   - Visual hierarchy: matches Expyrico spacing, typography, colors, and border styling from `TextField`.
   - Touch target compliance: input minHeight $\ge 44\text{ pt}$.
@@ -33,7 +35,7 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
 │ Item Name                                              │
 │ [ Fresh Milk                                         ] │
 │                                                        │
-│ Brand                                                  │ ◄── DIRECTLY BELOW ITEM NAME
+│ Brand (optional)                                         │ ◄── DIRECTLY BELOW ITEM NAME
 │ [ TH True Milk                                       ] │
 │                                                        │
 │ Category                                               │
@@ -98,7 +100,7 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
      {/* Brand */}
      <TextField
        testID="quick-edit-brand-input"
-       label="Brand"
+       label="Brand (optional)"
        value={brand}
        onChangeText={(val) => {
          userEditedBrandRef.current = true;

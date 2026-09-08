@@ -17,7 +17,8 @@ Connect the edited `brand` attribute into all consuming caller components (`Reco
   - In `RecordList.tsx:handleSaveEdit`: forward `patch.brand` to `patchLocalRecord` for in-place edits and `createLocalRecord` for duplicated records.
   - In `record/[id].tsx:handleSaveQuickEdit`: forward `patch.brand` to `patchLocalRecord`.
   - In `RecordCard.tsx`, `PantryGridCard.tsx`, `UseNextHero.tsx`, `PantrySelectModal.tsx`, and `record/[id].tsx`: resolve brand as `record.brand || product?.brand`.
-  - In `filterAndSortRecords.ts:matchesPantryQuery`: check `if (record.brand && record.brand.toLowerCase().includes(q)) return true;`.
+  - In `filterAndSortRecords.ts:matchesPantryQuery`: match `record.brand` (user-edited brand), falling back to catalog product brand lookup if unset.
+  <!-- Updated: Validation Session 1 - Match record.brand || product.brand in search filter -->
 - Non-functional:
   - Clean fallbacks: if `record.brand` is null, catalog `product.brand` displays seamlessly. If both are null, the layout maintains its standard spacing without crashing.
   - Zero performance regression in search: search filter remains instantaneous on 1000+ records.
@@ -74,14 +75,20 @@ Connect the edited `brand` attribute into all consuming caller components (`Reco
      `const brand = record.brand || product?.brand;`
 4. **Search Filter Engine Integration**:
    - In `apps/mobile/src/features/records/filterAndSortRecords.ts:matchesPantryQuery`:
-     Add search match for `record.brand`:
+     Add search match for `record.brand` with fallback to catalog brand:
      ```typescript
      if (record.brand && record.brand.toLowerCase().includes(q)) {
        return true;
      }
+     if (record.productId && productBrandLookup) {
+       const brand = productBrandLookup[record.productId];
+       if (brand && brand.toLowerCase().includes(q)) {
+         return true;
+       }
+     }
      ```
    - In `apps/mobile/src/features/records/filterAndSortRecords.test.ts`:
-     Add test: "matches record when query matches record.brand".
+     Add test: "matches record when query matches record.brand or fallback product brand".
 
 ## Success Criteria
 - [ ] Saving an edited brand in `QuickEditModal` immediately updates `RecordCard` and `PantryGridCard` on screen.

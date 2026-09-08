@@ -88,3 +88,28 @@ When a user edits the brand in `QuickEditModal`, `record.brand` is updated. For 
 - [ ] Pantry search matches on `record.brand`.
 - [ ] Unit tests pass across `QuickEditModal.test.tsx`, `RecordCard.test.tsx`, `filterAndSortRecords.test.ts`, and backend integration tests.
 - [ ] Verified on physical Android device with screenshot evidence showing the Brand field in `QuickEditModal`.
+
+## Validation Log
+
+### Session 1: Critical Decisions Interview (2026-09-08)
+
+#### Questions & User Decisions
+1. **Brand Override & Clear Behavior for Catalog Items**:
+   - **Decision**: *Fallback to catalog brand when cleared*.
+   - **Detail**: Consistent with `customName` and `category` patterns. `record.brand` overrides `product.brand`. If a user clears the field to empty, it saves `brand: null` locally on the record and falls back to displaying the catalog `product.brand`.
+2. **Pantry Search Matching Scope**:
+   - **Decision**: *Match record.brand || product.brand*.
+   - **Detail**: In `filterAndSortRecords.ts:matchesPantryQuery`, the query checks `record.brand` first, and if unset, matches the catalog product's brand.
+3. **Brand Field Labeling in QuickEditModal**:
+   - **Decision**: *'Brand (optional)'*.
+   - **Detail**: The field is labeled `"Brand (optional)"` to match `"Location (optional)"` and clearly communicate that brand is not required to save.
+
+#### Verification Results
+- Claims checked: 10
+- Verified: 10 | Failed: 0 | Unverified: 0
+- Tier: Full (all 5 phases fact-checked against schemas, models, routes, cards, and query engine)
+- Failures: None
+
+### Whole-Plan Consistency Sweep
+- Zero unresolved contradictions across `plan.md` and `phase-*.md` files.
+- Precedence rule `record.brand || product?.brand` consistently applied across local storage, display surfaces, and search matching.
