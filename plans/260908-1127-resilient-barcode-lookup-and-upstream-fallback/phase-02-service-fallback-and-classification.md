@@ -21,9 +21,9 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
 1. **Restricted In-Store Barcode Fast-Path (Prefixes `20`–`29`, `02`)**:
    - Detect GS1 restricted distribution prefixes for variable-weight items (e.g. `251010537516`).
    - If a barcode matches these prefixes and is not found in the local database, immediately return `{ outcome: 'not_found', canCreate: await isProductCreationEligible(actor) }` without making any upstream network calls to OpenFoodFacts or UPCitemdb.
-2. **Parallel Concurrent Upstream Queries**:
-   - Query OpenFoodFacts and UPCitemdb concurrently via `Promise.allSettled` instead of sequential cascading, cutting worst-case scan latency in half.
-   - If either provider finds the product, immediately persist to PostgreSQL and return the classified product.
+2. **True First-Hit Concurrent Upstream Queries**:
+   - Dispatch OpenFoodFacts and UPCitemdb concurrently with immediate first-hit return: as soon as either provider returns `status === 'found'`, resolve immediately without waiting for the slower provider to finish or time out.
+   - If both providers conclude not found or unavailable, resolve after both settle.
 3. **Creator-Centric Fallback (No Dead Ends)**:
    - Check `canCreate = await isProductCreationEligible(actor)`.
    - If `canCreate === true` (user has permission to create products/drafts), an upstream timeout or 429 must **never block them** with `temporarily_unavailable`. Instead, return `{ outcome: 'not_found', canCreate: true }`, allowing them to proceed directly to the "Add New Product" screen.
@@ -115,28 +115,10 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
        return { outcome: 'not_found', canCreate };
      }
 
-     // Query external providers concurrently to cut latency
-     const [offResult, upcResult] = await Promise.allSettled([
-       lookupOff(input.barcode),
-       lookupUpcitemdb(input.barcode),
-     ]);
-
-     let anyUnavailable = false;
-
-     // Prefer OpenFoodFacts if found
-     if (offResult.status === 'fulfilled' && offResult.value.status === 'found') {
-       return classifyLocal(await persistExternal(offResult.value.data), actor);
-     }
-     if (offResult.status === 'rejected' || (offResult.status === 'fulfilled' && offResult.value.status === 'unavailable')) {
-       anyUnavailable = true;
-     }
-
-     // Check UPCitemdb
-     if (upcResult.status === 'fulfilled' && upcResult.value.status === 'found') {
-       return classifyLocal(await persistExternal(upcResult.value.data), actor);
-     }
-     if (upcResult.status === 'rejected' || (upcResult.status === 'fulfilled' && upcResult.value.status === 'unavailable')) {
-       anyUnavailable = true;
+     // Concurrently race for first 'found' hit without waiting for slower provider
+     const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(input.barcode);
+     if (externalHit) {
+       return classifyLocal(await persistExternal(externalHit), actor);
      }
 
      // If the user can create products, never lock them out with a dead-end error.
@@ -146,6 +128,48 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
      }
 
      return { outcome: 'not_found', canCreate };
+   }
+
+   /**
+    * Concurrently queries OpenFoodFacts and UPCitemdb. Resolves immediately
+    * on the first positive 'found' hit, avoiding blocking on slower timeouts.
+    */
+   async function queryExternalProvidersConcurrently(barcode: string): Promise<{
+     data?: ExternalProductData;
+     anyUnavailable: boolean;
+   }> {
+     return new Promise((resolve) => {
+       let settled = 0;
+       let anyUnavailable = false;
+       let completed = false;
+
+       const checkProvider = async (
+         lookupFn: (b: string) => Promise<ExternalLookupResult>,
+       ) => {
+         try {
+           const res = await lookupFn(barcode);
+           if (completed) return;
+           if (res.status === 'found') {
+             completed = true;
+             resolve({ data: res.data, anyUnavailable });
+             return;
+           }
+           if (res.status === 'unavailable') {
+             anyUnavailable = true;
+           }
+         } catch {
+           anyUnavailable = true;
+         } finally {
+           settled++;
+           if (settled === 2 && !completed) {
+             resolve({ anyUnavailable });
+           }
+         }
+       };
+
+       void checkProvider(lookupOff);
+       void checkProvider(lookupUpcitemdb);
+     });
    }
 
 3. **Update Unit Tests in `lookup.test.ts`**:

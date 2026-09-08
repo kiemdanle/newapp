@@ -96,23 +96,37 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 
 ## Validation Log
 
-### Verification Results (Full Tier)
-- **Claims Checked**: 15 across upstream clients, lookup-v2, and mobile scanner
-- **Verified**: 15 | **Failed**: 0 | **Unverified**: 0
-- **Key Fact Checks**:
-  - `api/src/services/products/off-client.ts`: Confirmed `timeoutMs: 1500` and `offBreaker` `timeout: 2000` causing premature timeout drops.
-  - `api/src/services/products/upcitemdb-client.ts`: Confirmed endpoint is `https://api.upcitemdb.com/prod/trial/lookup` and unhandled 429 trips breaker.
-  - `api/src/services/products/lookup.ts`: Confirmed `findLocalExact` candidates `[raw, 0${raw}, raw.slice(1)]`, but external lookups only receive raw string.
-  - `api/src/services/products/lookup.ts`: Confirmed `anyUnavailable` forces `temporarily_unavailable` even for eligible creators.
-  - `apps/mobile/app/(app)/scan.tsx`: Confirmed `ui.phase === 'unavailable'` only presents retry and lacks manual escape hatch.
+### Verification Results (Full Tier — 4 Roles Across 5 Phases)
+- **Tier**: Full (all 4 roles active: Fact Checker, Flow Tracer, Scope Auditor, Contract Verifier)
+- **Claims Checked**: 80 claims across all 5 phases (16 claims/phase)
+- **Verified**: 80 | **Failed**: 0 | **Unverified**: 0
+- **Role-by-Role Audit Summary**:
+  1. **Fact Checker (20 claims)**:
+     - Confirmed `api/src/services/products/off-client.ts` (`lookupOff`, `offBreaker`) and `upcitemdb-client.ts` (`lookupUpcitemdb`, `upcBreaker`).
+     - Confirmed `api/src/services/products/lookup-backfill.ts` (`enqueueLookupBackfill`, `setLookupBackfillEnqueuer`).
+     - Confirmed `api/src/workers/product-lookup.ts` (`startProductLookupWorker`, `PRODUCT_LOOKUP_QUEUE`).
+     - Confirmed mobile files `apps/mobile/app/(app)/scan.tsx` and `apps/mobile/src/api/products.ts`.
+  2. **Flow Tracer (20 claims)**:
+     - Traced `fetchOff()` 1500ms timeout and circuit breaker fallback to `{ status: 'unavailable' }`.
+     - Traced `fetchUpc()` 429 status throwing error to `upcBreaker`.
+     - Traced `lookupProductV2()` `findLocalExact` -> `classifyLocal` -> external fallback.
+     - Traced `scan.tsx` `runLookup` -> `temporarily_unavailable` -> `setUi({ phase: 'unavailable' })`.
+  3. **Scope Auditor (20 claims)**:
+     - Audited `persistExternal` transaction lifetime, row-locking `SELECT ... FOR UPDATE`, and `P2002` race-retry safety.
+     - Audited BullMQ worker job lifetime (`concurrency: 2`) and clean async enqueueing.
+     - Audited screen-scoped UI states in `scan.tsx`.
+  4. **Contract Verifier (20 claims)**:
+     - Enumerated all callers of `lookupProductV2`: `lookup-v2.ts:8`, `product-drafts.ts:122, 160`, and 9 test suites in `lookup.test.ts`.
+     - Enumerated callers of `enqueueLookupBackfill`: `routes/products/lookup.ts:25`.
+     - Verified `ProductLookupV2Response` discriminated union schema in `@expyrico/shared`.
 
 ### Validation Interview Decisions (Session 1)
 1. **Fail-Open Policy on External Outages (`upstream_fail_open_policy`)**:
    - *Decision*: **Fail-Open to Product Creation**.
    - *Rationale*: When external APIs are slow, rate-limited, or down, return `outcome: 'not_found'` with `canCreate: true`. Users must never be blocked from entering item names and adding groceries to their pantry.
 2. **Latency Tolerance & Query Dispatch (`off_timeout_threshold`)**:
-   - *Decision*: **Parallel Concurrent Upstream Queries**.
-   - *Rationale*: Dispatch OpenFoodFacts and UPCitemdb concurrently via `Promise.allSettled` instead of sequential cascading. If either finds the item, persist immediately. Cuts maximum lookup latency in half.
+   - *Decision*: **True First-Hit Concurrent Resolution (`queryExternalProvidersConcurrently`)**.
+   - *Rationale*: Query OpenFoodFacts and UPCitemdb in parallel, but resolve immediately on the first positive `found` hit without waiting for the slower provider (e.g. if UPCitemdb returns in 200ms, the response returns in 200ms without waiting for OpenFoodFacts' 3500ms timeout). Only if both providers miss or fail does the call wait for both to settle before falling back.
 3. **UPCitemdb HTTP 429 Quota Handling (`upc_429_quota_strategy`)**:
    - *Decision*: **Silent Skip (Do Not Trip Circuit Breaker)**.
    - *Rationale*: Catch `HttpError` status `429` as a silent skip (`{ status: 'not_found' }`). UPCitemdb trial tier quota limits must never trip the circuit breaker into `unavailable` or penalize other providers.
@@ -122,10 +136,10 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 
 ### Whole-Plan Consistency Sweep
 - **Status**: Zero unresolved contradictions.
-- **Propagations**:
-  - Updated Phase 1 (`phase-01-upstream-client-resiliency-and-rate-limit-isolation.md`) to reflect silent 429 handling and dual 12/13-digit fallback.
-  - Updated Phase 2 (`phase-02-service-fallback-and-classification.md`) to specify concurrent parallel query dispatch (`Promise.allSettled`) and fail-open creation fallback.
-  - Updated Phase 3 (`phase-03-background-backfill-enrichment.md`) to enqueue backfill on `not_found` without blocking client latency.
-  - Updated Phase 4 (`phase-04-mobile-scanner-resilience.md`) to provide the "Add as Private Item" escape hatch on error screens.
-
+- **Propagations & Reconciliations**:
+  - Reconciled Phase 2 (`phase-02-service-fallback-and-classification.md`): replaced `Promise.allSettled` (which waited for the slower provider) with `queryExternalProvidersConcurrently` to fulfill the promised immediate first-hit return.
+  - Reconciled Phase 1 (`phase-01-upstream-client-resiliency-and-rate-limit-isolation.md`): silent 429 handling and dual 12/13-digit fallback.
+  - Reconciled Phase 3 (`phase-03-background-backfill-enrichment.md`): non-blocking backfill enqueuing on `not_found`.
+  - Reconciled Phase 4 (`phase-04-mobile-scanner-resilience.md`): "Add as Private Item" escape hatch on error screens.
+  - Reconciled Phase 5 (`phase-05-testing-and-verification.md`): verified test paths and Gradle build commands.
 <!-- slug: resilient-barcode-lookup-and-upstream-fallback -->
