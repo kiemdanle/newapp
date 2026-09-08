@@ -291,21 +291,31 @@ export function UnitPickerModal({
                           ]}
                         >
                           <View style={styles.unitCardCopy}>
-                            <Text
-                              style={[
-                                styles.unitKeyText,
-                                {
-                                  color: isSelected
-                                    ? theme.colors.primaryDark
-                                    : theme.colors.text,
-                                  fontWeight: isSelected ? '700' : '600',
-                                },
-                              ]}
-                            >
-                              {u.key}
-                            </Text>
+                            <View style={styles.unitHeaderRow}>
+                              <Text
+                                style={[
+                                  styles.unitKeyText,
+                                  {
+                                    color: isSelected
+                                      ? theme.colors.primaryDark
+                                      : theme.colors.text,
+                                    fontWeight: isSelected ? '700' : '600',
+                                  },
+                                ]}
+                              >
+                                {u.key}
+                              </Text>
+                              {isSelected && (
+                                <Ionicons
+                                  name="checkmark-circle"
+                                  size={12}
+                                  color={theme.colors.primaryDark}
+                                />
+                              )}
+                            </View>
                             <Text
                               numberOfLines={1}
+                              ellipsizeMode="tail"
                               style={[
                                 styles.unitLabelText,
                                 {
@@ -318,13 +328,6 @@ export function UnitPickerModal({
                               {u.label}
                             </Text>
                           </View>
-                          {isSelected && (
-                            <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color={theme.colors.primaryDark}
-                            />
-                          )}
                         </Pressable>
                       );
                     })}
@@ -502,25 +505,36 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   unitCard: {
-    width: '48.5%',
-    flexDirection: 'row',
+    width: '31.3%',
+    flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    justifyContent: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 4,
     borderRadius: 12,
     borderWidth: 1,
-    minHeight: 46,
+    minHeight: 50,
+    height: 50,
   },
   unitCardCopy: {
-    flex: 1,
-    gap: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 2,
+  },
+  unitHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
   },
   unitKeyText: {
-    fontSize: 14,
+    fontSize: 13,
+    textAlign: 'center',
   },
   unitLabelText: {
-    fontSize: 11,
+    fontSize: 10,
+    textAlign: 'center',
   },
   customSection: {
     marginTop: 20,
