@@ -7,6 +7,7 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import {
+  Dimensions,
   ScrollView,
   View,
   KeyboardAvoidingView,
@@ -21,7 +22,6 @@ import {
   type TargetedEvent,
   type KeyboardEvent,
 } from 'react-native';
-
 export interface KeyboardAwareScrollContextValue {
   scrollToInput: (targetOrRef: unknown, extraOffset?: number) => void;
   keyboardHeight: number;
@@ -67,6 +67,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
     useImperativeHandle(ref, () => internalScrollRef.current as ScrollView);
 
     const [keyboardHeight, setKeyboardHeight] = useState(0);
+    const keyboardHeightRef = useRef(0);
     const lastFocusedTargetRef = useRef<number | null>(null);
 
     const scrollTargetIntoView = useCallback(
@@ -79,16 +80,29 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
               offset: number,
               preventNegative: boolean,
             ) => void;
+            _keyboardMetrics?: { screenY: number; height: number };
           }) | null;
-          if (
-            scrollResponder &&
-            typeof scrollResponder.scrollResponderScrollNativeHandleToKeyboard === 'function'
-          ) {
-            scrollResponder.scrollResponderScrollNativeHandleToKeyboard(
-              target,
-              offset,
-              true,
-            );
+          if (scrollResponder) {
+            // React Native's built-in ScrollView on Android never populates _keyboardMetrics
+            // (it only listens to iOS keyboardWillShow). Inject the real keyboard metrics here
+            // so scrollResponderScrollNativeHandleToKeyboard computes the exact target scroll offset!
+            if (keyboardHeightRef.current > 0) {
+              const windowHeight = Dimensions.get('window').height;
+              scrollResponder._keyboardMetrics = {
+                screenY: windowHeight - keyboardHeightRef.current,
+                height: keyboardHeightRef.current,
+              };
+            }
+            if (
+              typeof scrollResponder.scrollResponderScrollNativeHandleToKeyboard ===
+              'function'
+            ) {
+              scrollResponder.scrollResponderScrollNativeHandleToKeyboard(
+                target,
+                offset,
+                true,
+              );
+            }
           }
         }, delay);
       },
@@ -116,6 +130,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
 
       const onShow = (e: KeyboardEvent) => {
         const height = e?.endCoordinates?.height ?? 0;
+        keyboardHeightRef.current = height;
         setKeyboardHeight(height);
         if (lastFocusedTargetRef.current) {
           scrollTargetIntoView(lastFocusedTargetRef.current, 50);
@@ -133,6 +148,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
       };
 
       const onHide = () => {
+        keyboardHeightRef.current = 0;
         setKeyboardHeight(0);
         lastFocusedTargetRef.current = null;
       };

@@ -1,8 +1,10 @@
 // apps/mobile/src/features/deals/DealForm.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from '../../components/KeyboardAwareScrollView';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Deal } from '@expyrico/shared';
 import { useCreateDeal, useDealStores, useUpdateDeal, uploadDealPhoto } from '../../api/deals';
@@ -48,6 +51,38 @@ export function DealForm({ product, existing, onDone }: Props) {
   const update = useUpdateDeal();
   const pending = create.isPending || update.isPending || uploadingPhoto;
   const availableStores = storesQuery.data?.items ?? [];
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldYRef = useRef<Record<string, number>>({});
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const getFieldBorderColor = (fieldKey: string) =>
+    focusedField === fieldKey ? theme.colors.primary : theme.colors.border;
+
+  const scrollToField = (key: string) => {
+    setFocusedField(key);
+    const y = fieldYRef.current[key];
+    if (typeof y === 'number') {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 40), animated: true });
+      }, 80);
+    }
+  };
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        if (focusedField && typeof fieldYRef.current[focusedField] === 'number') {
+          setTimeout(() => {
+            scrollRef.current?.scrollTo({
+              y: Math.max(0, fieldYRef.current[focusedField]! - 40),
+              animated: true,
+            });
+          }, 50);
+        }
+      },
+    );
+    return () => showSub.remove();
+  }, [focusedField]);
 
 
   function handleCameraCapture(pickedList: { path: string; mime?: string }[]) {
@@ -134,12 +169,13 @@ export function DealForm({ product, existing, onDone }: Props) {
   }
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
+      ref={scrollRef}
       style={[styles.container, { backgroundColor: theme.colors.bg }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 160 }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      automaticallyAdjustKeyboardInsets={true}
+      extraKeyboardOffset={Platform.OS === 'android' ? 140 : 48}
     >
       <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.text }]}>
@@ -159,24 +195,31 @@ export function DealForm({ product, existing, onDone }: Props) {
       </View>
 
       {/* Price Field */}
-      <View style={styles.fieldGroup}>
+      <View
+        style={styles.fieldGroup}
+        onLayout={(e) => {
+          fieldYRef.current.price = e.nativeEvent.layout.y;
+        }}
+      >
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
           Deal Price ({currencySymbol}) <Text style={{ color: theme.colors.danger }}>*</Text>
         </Text>
         <TextInput
           accessibilityLabel="price"
           placeholder={currencyCode === 'VND' ? 'e.g. 45000' : 'e.g. 2.99'}
-          placeholderTextColor={theme.colors.textMuted}
           keyboardType="decimal-pad"
           value={price}
           onChangeText={setPrice}
           editable={!pending}
+          onFocus={() => scrollToField('price')}
+          onBlur={() => setFocusedField(null)}
           style={[
             styles.input,
             {
               color: theme.colors.text,
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('price'),
+              borderWidth: focusedField === 'price' ? 1.5 : 1,
               borderRadius: theme.radii.md,
             },
           ]}
@@ -184,23 +227,30 @@ export function DealForm({ product, existing, onDone }: Props) {
       </View>
 
       {/* Store Name Field + Autocomplete Chips */}
-      <View style={styles.fieldGroup}>
+      <View
+        style={styles.fieldGroup}
+        onLayout={(e) => {
+          fieldYRef.current.store = e.nativeEvent.layout.y;
+        }}
+      >
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
           Store Name <Text style={{ color: theme.colors.danger }}>*</Text>
         </Text>
         <TextInput
           accessibilityLabel="store"
           placeholder="Where did you find this deal?"
-          placeholderTextColor={theme.colors.textMuted}
           value={storeName}
           onChangeText={setStoreName}
           editable={!pending}
+          onFocus={() => scrollToField('store')}
+          onBlur={() => setFocusedField(null)}
           style={[
             styles.input,
             {
               color: theme.colors.text,
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('store'),
+              borderWidth: focusedField === 'store' ? 1.5 : 1,
               borderRadius: theme.radii.md,
             },
           ]}
@@ -375,24 +425,31 @@ export function DealForm({ product, existing, onDone }: Props) {
       </View>
 
       {/* Notes / Special Deal Details */}
-      <View style={styles.fieldGroup}>
+      <View
+        style={styles.fieldGroup}
+        onLayout={(e) => {
+          fieldYRef.current.note = e.nativeEvent.layout.y;
+        }}
+      >
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
           Additional Note (Optional)
         </Text>
         <TextInput
           accessibilityLabel="note"
           placeholder="e.g. Clearance section markdown, Buy 1 Get 1 free, etc."
-          placeholderTextColor={theme.colors.textMuted}
           value={note}
           onChangeText={setNote}
           multiline
           editable={!pending}
+          onFocus={() => scrollToField('note')}
+          onBlur={() => setFocusedField(null)}
           style={[
             styles.input,
             {
               color: theme.colors.text,
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('note'),
+              borderWidth: focusedField === 'note' ? 1.5 : 1,
               borderRadius: theme.radii.md,
               minHeight: 88,
               textAlignVertical: 'top',
@@ -445,7 +502,7 @@ export function DealForm({ product, existing, onDone }: Props) {
         onCapture={handleCameraCapture}
         onClose={() => setShowCameraModal(false)}
       />
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 
