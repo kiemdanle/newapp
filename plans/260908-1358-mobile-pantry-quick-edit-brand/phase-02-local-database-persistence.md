@@ -79,8 +79,13 @@ REST API (`/v1/records`, `/v1/records/sync`)
      - In `pushPending`:
        - For record create (`POST /records`): include `brand: rec.brand ?? null` in `body`.
        - For record update (`PATCH /records/:id`): include `brand: rec.brand ?? null` in `patch`.
-     - In `pullSince`:
-       - When mapping incoming server records, update local record `r.brand = remote.brand ?? null`.
+    - In `pullSince`:
+      - Explicitly map `r.brand = ch.brand ?? null` in all 4 mutation branches:
+        1. Conflict overwrite (`apps/mobile/src/db/sync.ts:146-168`)
+        2. Household record overwrite (`apps/mobile/src/db/sync.ts:185-208`)
+        3. Household record create (`apps/mobile/src/db/sync.ts:209-233`)
+        4. Personal record update/create (`apps/mobile/src/db/sync.ts:234-287`)
+      <!-- Updated: Red Team Session 1 - Explicitly map r.brand in all 4 pullSince mutation branches -->
 
 ## Success Criteria
 - [ ] Schema version is 6 and migrations table includes step `toVersion: 6`.

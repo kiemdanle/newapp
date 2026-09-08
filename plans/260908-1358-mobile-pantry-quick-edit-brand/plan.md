@@ -113,3 +113,21 @@ When a user edits the brand in `QuickEditModal`, `record.brand` is updated. For 
 ### Whole-Plan Consistency Sweep
 - Zero unresolved contradictions across `plan.md` and `phase-*.md` files.
 - Precedence rule `record.brand || product?.brand` consistently applied across local storage, display surfaces, and search matching.
+
+## Red Team Review
+
+### Session 1 — 2026-09-08
+**Findings:** 5 (5 accepted, 0 rejected)
+**Severity breakdown:** 1 Critical, 2 High, 2 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Schema allows zero-length strings instead of null (`packages/shared/src/schemas/record.ts:73`) | High | Accept | Phase 1 |
+| 2 | Incomplete sync mapping in `pullSince` across 4 mutation branches (`apps/mobile/src/db/sync.ts:146-287`) | Critical | Accept | Phase 2 |
+| 3 | Duplication flow drops brand on duplicated draft item (`apps/mobile/src/features/records/RecordList.tsx:427-442`) | High | Accept | Phase 4 |
+| 4 | Async network race overwriting user-typed brand (`apps/mobile/src/features/records/QuickEditModal.tsx:82-89`) | Medium | Accept | Phase 3 |
+| 5 | Newline injection from pasted text corrupts card layout (`apps/mobile/src/features/records/PantryGridCard.tsx:477-484`) | Medium | Accept | Phase 3 |
+
+### Whole-Plan Consistency Sweep
+- **Delta**: Enforced `.min(1)` on brand Zod schema; mapped `r.brand = ch.brand ?? null` across all 4 `pullSince` branches; ensured brand retention in `createLocalRecord` duplication path; added newline sanitization in `handleSave`; and guarded async catalog brand hydration with `userEditedBrandRef`.
+- **Contradictions**: 0 unresolved contradictions across all phases.

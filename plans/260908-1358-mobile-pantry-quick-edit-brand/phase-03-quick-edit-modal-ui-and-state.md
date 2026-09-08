@@ -113,9 +113,11 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
 4. **Save Handler**:
    - In `handleSave`:
      ```typescript
+     // Collapse multi-line/newline characters to prevent layout distortion on cards
+     const sanitizedBrand = brand.replace(/[\r\n]+/g, ' ').trim() || null;
      await onSave({
        customName: customName.trim() || null,
-       brand: brand.trim() || null,
+       brand: sanitizedBrand,
        category: category.trim() || null,
        quantity: validQty,
        unit: unit.trim() || 'pcs',
@@ -123,6 +125,7 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
        location: location ? location.trim().slice(0, 50) : null,
      });
      ```
+     <!-- Updated: Red Team Session 1 - Sanitize brand newlines and enforce async race guard -->
 5. **Unit Tests in `QuickEditModal.test.tsx`**:
    - Add test: "renders brand input pre-populated from record.brand".
    - Add test: "falls back to product.brand when record.brand is null".

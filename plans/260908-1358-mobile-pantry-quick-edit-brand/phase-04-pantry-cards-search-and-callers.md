@@ -55,9 +55,9 @@ Connect the edited `brand` attribute into all consuming caller components (`Reco
 ## Implementation Steps
 1. **RecordList Wiring**:
    - In `apps/mobile/src/features/records/RecordList.tsx:handleSaveEdit`:
-     - In duplicate draft branch:
-       `brand: patch.brand !== undefined ? patch.brand : editingRecord.brand,`
-     - In patch branch:
+     - In duplicate draft branch (`createLocalRecord`):
+       `brand: patch.brand !== undefined ? patch.brand : (editingRecord.brand ?? null),`
+       <!-- Updated: Red Team Session 1 - Preserve brand in duplicate draft createLocalRecord -->
        `await patchLocalRecord(editingRecord.id, patch);`
 2. **RecordDetail Wiring**:
    - In `apps/mobile/app/(app)/record/[id].tsx`:

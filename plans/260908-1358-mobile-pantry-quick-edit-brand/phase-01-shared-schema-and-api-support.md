@@ -28,7 +28,7 @@ Client Request (POST/PATCH /v1/records)
    │
    ▼
 recordPatchSchema.parse() / recordCreateSchema.parse()
-   │ validates brand: z.string().trim().max(120).nullable().optional()
+   │ validates brand: z.string().trim().min(1).max(120).nullable().optional()
    ▼
 Prisma Record Model (PostgreSQL record.brand)
    │
@@ -50,9 +50,10 @@ toApiRecord() ──► Serialized response with `brand: string | null`
 ## Implementation Steps
 1. **Shared Zod Schemas**:
    - In `packages/shared/src/schemas/record.ts`:
-     - Add `brand: z.string().max(120).nullable().optional()` to `recordSchema`.
-     - Add `brand: z.string().trim().max(120).nullable().optional()` to `recordCreateBaseSchema`.
-     - Add `brand: z.string().trim().max(120).nullable().optional()` to `recordPatchSchema`.
+     - Add `brand: z.string().min(1).max(120).nullable().optional()` to `recordSchema`.
+     - Add `brand: z.string().trim().min(1).max(120).nullable().optional()` to `recordCreateBaseSchema`.
+     - Add `brand: z.string().trim().min(1).max(120).nullable().optional()` to `recordPatchSchema`.
+     <!-- Updated: Red Team Session 1 - Enforce .min(1) on brand schema to normalize empty strings to null -->
    - Update `packages/shared/src/schemas/record.test.ts` to assert that valid brand strings, `null`, and omission parse correctly.
 2. **Prisma Schema & Generation**:
    - In `api/prisma/schema.prisma`, add `brand String?` to `model Record`.
