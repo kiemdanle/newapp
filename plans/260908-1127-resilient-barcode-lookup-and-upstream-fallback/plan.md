@@ -150,8 +150,8 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 ## Red Team Review
 
 ### Session — 2026-09-08
-**Findings:** 8 consolidated finding groups (8 accepted, 0 rejected)
-**Severity Breakdown:** 0 Critical, 6 High, 2 Medium
+**Findings:** 9 consolidated finding groups (9 accepted, 0 rejected)
+**Severity Breakdown:** 1 Critical, 6 High, 2 Medium
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
@@ -163,6 +163,7 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 | 6 | Photo attachment blocking local save in manual fallback | High | Accept | Phase 4 |
 | 7 | UPCitemdb trial cooldown & Retry-After backoff to avoid quota hammering | Medium | Accept | Phase 1 |
 | 8 | In-store barcode prefix regex normalization precision (GTIN-13) | Medium | Accept | Phase 2 |
+| 9 | In-flight lookup continuation race: late settlement after cancel navigates away | Critical | Accept | Phase 4 |
 
 ### Whole-Plan Consistency Sweep
 - **Status**: Zero unresolved contradictions.
@@ -173,4 +174,5 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
   4. **True Concurrent Resolution**: `lookup.ts` races external providers concurrently via `queryExternalProvidersConcurrently`, returning immediately on the first `found` hit.
   5. **Durable Barcode & Scope**: `scan.tsx` preserves `scannedBarcode` in `AddRecordForm`, honors active scope, applies a 5s client timeout, and renders an in-flight manual escape button.
   6. **Prefix Precision**: `isRestrictedInStoreBarcode` canonicalizes to GTIN-13 before checking prefix `02` or `20-29`.
+  7. **Generation Invalidation & AbortSignal**: `scan.tsx` tracks a monotonic generation counter and active `AbortController`, guarding both try/catch continuations so late network arrivals after cancel/timeout never tear down the user's manual entry form; `apiClient` natively passes `AbortSignal` to `fetch` to cancel in-flight HTTP requests.
 <!-- slug: resilient-barcode-lookup-and-upstream-fallback -->
