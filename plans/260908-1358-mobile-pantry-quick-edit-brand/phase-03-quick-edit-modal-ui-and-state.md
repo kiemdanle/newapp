@@ -133,10 +133,10 @@ Update `QuickEditModal` to introduce a dedicated **Brand** input field positione
    - Add test: "allows clearing brand to null".
 
 ## Success Criteria
-- [ ] `Brand` input is visibly rendered right below `Item Name`.
-- [ ] Pre-populates with `record.brand` or fallback `product.brand`.
-- [ ] User can edit, clear, and submit brand.
-- [ ] All unit tests in `QuickEditModal.test.tsx` pass.
+- [x] `Brand` input is visibly rendered right below `Item Name`.
+- [x] Pre-populates with `record.brand` or fallback `product.brand`.
+- [x] User can edit, clear, and submit brand.
+- [x] All unit tests in `QuickEditModal.test.tsx` pass.
 
 ## Risk Assessment
 - **Risk**: Asynchronous catalog product fetch overwriting user input while modal is open.

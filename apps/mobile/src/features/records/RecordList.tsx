@@ -417,6 +417,7 @@ export function RecordList({
   const handleSaveEdit = useCallback(
     async (patch: {
       customName?: string | null;
+      brand?: string | null;
       category?: string | null;
       quantity: number;
       unit: string;
@@ -428,6 +429,7 @@ export function RecordList({
         await createLocalRecord({
           productId: editingRecord.productId,
           customName: patch.customName !== undefined ? patch.customName : editingRecord.customName,
+          brand: patch.brand !== undefined ? patch.brand : (editingRecord.brand ?? null),
           category: patch.category !== undefined ? patch.category : editingRecord.category,
           expiryDate: patch.expiryDate,
           quantity: patch.quantity,

@@ -31,6 +31,7 @@ interface Props {
   onClose: () => void;
   onSave: (patch: {
     customName?: string | null;
+    brand?: string | null;
     category?: string | null;
     quantity: number;
     unit: string;
@@ -46,6 +47,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   const insets = useSafeAreaInsets();
   const { data: product } = useProduct(record?.productId ?? undefined);
   const [customName, setCustomName] = useState('');
+  const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
@@ -54,6 +56,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const userEditedNameRef = useRef(false);
+  const userEditedBrandRef = useRef(false);
   const userEditedCategoryRef = useRef(false);
   const lastRecordIdRef = useRef<string | null>(null);
 
@@ -61,6 +64,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
     if (!visible || !record) {
       lastRecordIdRef.current = null;
       userEditedNameRef.current = false;
+      userEditedBrandRef.current = false;
       userEditedCategoryRef.current = false;
       return;
     }
@@ -68,11 +72,14 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
     if (lastRecordIdRef.current !== record.id) {
       lastRecordIdRef.current = record.id;
       userEditedNameRef.current = false;
+      userEditedBrandRef.current = false;
       userEditedCategoryRef.current = false;
 
       const initialName = record.customName || productName || product?.name || '';
+      const initialBrand = record.brand || product?.brand || '';
       const initialCat = record.category || product?.category || '';
       setCustomName(initialName);
+      setBrand(initialBrand);
       setCategory(initialCat);
       setQuantity(String(record.quantity ?? 1));
       setUnit(record.unit || 'pcs');
@@ -82,6 +89,9 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
       // Product may have loaded asynchronously after modal opened
       if (!userEditedNameRef.current && !record.customName && !customName && product?.name) {
         setCustomName(product.name);
+      }
+      if (!userEditedBrandRef.current && !record.brand && !brand && product?.brand) {
+        setBrand(product.brand);
       }
       if (!userEditedCategoryRef.current && !record.category && !category && product?.category) {
         setCategory(product.category);
@@ -116,6 +126,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
     try {
       await onSave({
         customName: customName.trim() || null,
+        brand: brand.replace(/[\r\n]+/g, ' ').trim() || null,
         category: category.trim() || null,
         quantity: validQty,
         unit: unit.trim() || 'pcs',
@@ -182,6 +193,18 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
               autoCapitalize="sentences"
             />
 
+            {/* Brand */}
+            <TextField
+              testID="quick-edit-brand-input"
+              label="Brand (optional)"
+              value={brand}
+              onChangeText={(val) => {
+                userEditedBrandRef.current = true;
+                setBrand(val);
+              }}
+              placeholder={product?.brand || 'e.g. Chobani, Heinz, Vinamilk'}
+              autoCapitalize="words"
+            />
             {/* Category */}
             <View style={{ gap: 6 }}>
               <Text style={[styles.label, { color: theme.colors.textMuted }]}>Category</Text>

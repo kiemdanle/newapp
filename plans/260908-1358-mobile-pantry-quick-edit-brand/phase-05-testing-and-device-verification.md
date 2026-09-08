@@ -65,11 +65,11 @@ Execute comprehensive multi-layer automated tests across shared schemas, backend
    - Confirm the item card displays the updated brand.
 
 ## Success Criteria
-- [ ] All automated tests pass with 0 failures.
-- [ ] TypeScript typecheck passes with 0 diagnostics.
-- [ ] APK builds successfully and installs via ADB.
-- [ ] Screencap inspection confirms Brand field is placed directly below Item Name in Quick Edit modal.
-- [ ] Screencap inspection confirms updated brand renders on pantry card after save.
+- [x] All automated tests pass with 0 failures.
+- [x] TypeScript typecheck passes with 0 diagnostics.
+- [x] APK builds successfully and installs via ADB.
+- [x] Screencap inspection confirms Brand field is placed directly below Item Name in Quick Edit modal.
+- [x] Screencap inspection confirms updated brand renders on pantry card after save.
 
 ## Risk Assessment
 - **Risk**: Physical device keyboard obstructing Save button during edit verification.

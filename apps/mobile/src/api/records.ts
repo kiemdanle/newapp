@@ -13,6 +13,7 @@ export interface LocalRecord {
   clientId: string;
   productId: string | null;
   customName: string | null;
+  brand?: string | null;
   category: string | null;
   expiryDate: string;
   quantity: number;
@@ -44,6 +45,7 @@ function toLocal(r: RecordModel): LocalRecord {
     clientId: r.clientId,
     productId: r.productId,
     customName: r.customName,
+    brand: r.brand ?? null,
     category: r.category,
     expiryDate: r.expiryDate,
     quantity: r.quantity,
@@ -63,6 +65,22 @@ function toLocal(r: RecordModel): LocalRecord {
   };
 }
 
+export const RECORD_OBSERVED_COLUMNS = [
+  'custom_name',
+  'brand',
+  'category',
+  'expiry_date',
+  'quantity',
+  'unit',
+  'location',
+  'status',
+  'notes',
+  'photo_url',
+  'price',
+  'store',
+  'household_id',
+] as const;
+
 export function useActiveRecords(): LocalRecord[] {
   const [rows, setRows] = useState<LocalRecord[]>([]);
   const { scope, householdId } = usePantryScope();
@@ -81,7 +99,7 @@ export function useActiveRecords(): LocalRecord[] {
     }
     const sub = col
       .query(...conditions)
-      .observe()
+      .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
       .subscribe((res) => setRows(res.map(toLocal)));
     return () => sub.unsubscribe();
   }, [scope, householdId]);
@@ -99,7 +117,7 @@ export function useAllActiveRecords(): LocalRecord[] {
     ];
     const sub = col
       .query(...conditions)
-      .observe()
+      .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
       .subscribe((res) => setRows(res.map(toLocal)));
     return () => sub.unsubscribe();
   }, []);
@@ -132,7 +150,7 @@ export function usePantryHistoryRecords(
 
     const sub = col
       .query(...conditions, Q.sortBy('updated_at', Q.desc))
-      .observe()
+      .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
       .subscribe((res) => setRows(res.map(toLocal)));
 
     return () => sub.unsubscribe();
@@ -161,6 +179,7 @@ export function useRecord(id: string | undefined): LocalRecord | null {
 export async function createLocalRecord(input: {
   productId?: string | null;
   customName?: string | null;
+  brand?: string | null;
   category?: string | null;
   expiryDate: string;
   quantity: number;
@@ -182,6 +201,7 @@ export async function createLocalRecord(input: {
       r.clientId = clientId;
       r.productId = input.productId ?? null;
       r.customName = input.customName ?? null;
+      r.brand = input.brand ? input.brand.trim().slice(0, 120) : null;
       r.category = input.category ?? null;
       r.expiryDate = input.expiryDate;
       r.purchaseDate = null;
@@ -210,7 +230,7 @@ export async function createLocalRecord(input: {
 export async function patchLocalRecord(
   id: string,
   patch: Partial<
-    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId' | 'location'>
+    Pick<LocalRecord, 'customName' | 'brand' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId' | 'location'>
   >,
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
@@ -218,6 +238,7 @@ export async function patchLocalRecord(
     const rec = await col.find(id);
     await rec.update((r) => {
       if (patch.customName !== undefined) r.customName = patch.customName;
+      if (patch.brand !== undefined) r.brand = patch.brand ? patch.brand.trim().slice(0, 120) : null;
       if (patch.expiryDate !== undefined) r.expiryDate = patch.expiryDate;
       if (patch.quantity !== undefined) r.quantity = patch.quantity;
       if (patch.unit !== undefined) r.unit = patch.unit;

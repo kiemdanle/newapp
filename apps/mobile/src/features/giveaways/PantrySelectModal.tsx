@@ -40,7 +40,7 @@ function PantryItemRow({
   const theme = useTheme();
   const { data: product } = useProduct(record.productId ?? undefined);
   const displayName = record.customName || product?.name || 'Pantry item';
-  const brand = product?.brand;
+  const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
   const imageUrl =
     record.photoUrl ||

@@ -56,5 +56,18 @@ export const migrations = schemaMigrations({
         },
       ],
     },
+    {
+      // v5 → v6: add brand to records
+      toVersion: 6,
+      steps: [
+        {
+          type: 'add_columns' as const,
+          table: 'records',
+          columns: [
+            { name: 'brand', type: 'string', isOptional: true },
+          ],
+        },
+      ],
+    },
   ],
 });

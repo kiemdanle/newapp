@@ -88,10 +88,10 @@ REST API (`/v1/records`, `/v1/records/sync`)
       <!-- Updated: Red Team Session 1 - Explicitly map r.brand in all 4 pullSince mutation branches -->
 
 ## Success Criteria
-- [ ] Schema version is 6 and migrations table includes step `toVersion: 6`.
-- [ ] `LocalRecord` includes `brand: string | null`.
-- [ ] `createLocalRecord` and `patchLocalRecord` correctly set and persist `brand`.
-- [ ] Mobile TypeScript typecheck compiles with zero diagnostics (`npm --prefix apps/mobile run typecheck`).
+- [x] Schema version is 6 and migrations table includes step `toVersion: 6`.
+- [x] `LocalRecord` includes `brand: string | null`.
+- [x] `createLocalRecord` and `patchLocalRecord` correctly set and persist `brand`.
+- [x] Mobile TypeScript typecheck compiles with zero diagnostics (`npm --prefix apps/mobile run typecheck`).
 
 ## Risk Assessment
 - **Risk**: Existing SQLite database on user devices fails to migrate if migrations list is out of sequence.

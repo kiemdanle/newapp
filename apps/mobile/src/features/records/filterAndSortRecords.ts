@@ -33,6 +33,9 @@ export function matchesPantryQuery(
       return true;
     }
   }
+  if (record.brand && record.brand.toLowerCase().includes(q)) {
+    return true;
+  }
   if (record.category && record.category.toLowerCase().includes(q)) {
     return true;
   }

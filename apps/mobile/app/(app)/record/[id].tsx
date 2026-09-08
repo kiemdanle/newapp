@@ -101,7 +101,7 @@ export default function RecordDetail() {
   }
 
   const displayName = record.customName || product?.name || 'Pantry Item';
-  const brand = product?.brand;
+  const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
   const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
   const barcode = product?.barcode;
@@ -273,6 +273,7 @@ export default function RecordDetail() {
   };
   const handleSaveQuickEdit = async (patch: {
     customName?: string | null;
+    brand?: string | null;
     category?: string | null;
     quantity: number;
     unit: string;

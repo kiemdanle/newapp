@@ -68,10 +68,10 @@ toApiRecord() ──► Serialized response with `brand: string | null`
    - Add integration tests in `api/tests/integration/records-routes.test.ts` testing `POST /records` with `brand`, and `PATCH /records/:id` updating `brand`.
 
 ## Success Criteria
-- [ ] `packages/shared` typecheck and vitest pass (`pnpm --filter @expyrico/shared test`).
-- [ ] `api/prisma/schema.prisma` includes `brand String?` and Prisma Client compiles cleanly.
-- [ ] `toApiRecord` outputs `brand` in record responses.
-- [ ] `api` integration tests pass (`npm --prefix api run test:integration -- records-routes.test.ts`).
+- [x] `packages/shared` typecheck and vitest pass (`pnpm --filter @expyrico/shared test`).
+- [x] `api/prisma/schema.prisma` includes `brand String?` and Prisma Client compiles cleanly.
+- [x] `toApiRecord` outputs `brand` in record responses.
+- [x] `api` integration tests pass (`npm --prefix api run test:integration -- records-routes.test.ts`).
 
 ## Risk Assessment
 - **Risk**: Prisma schema change without migration deployment could cause dev database desync.

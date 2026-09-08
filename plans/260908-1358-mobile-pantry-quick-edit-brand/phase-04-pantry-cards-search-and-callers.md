@@ -91,11 +91,11 @@ Connect the edited `brand` attribute into all consuming caller components (`Reco
      Add test: "matches record when query matches record.brand or fallback product brand".
 
 ## Success Criteria
-- [ ] Saving an edited brand in `QuickEditModal` immediately updates `RecordCard` and `PantryGridCard` on screen.
-- [ ] Duplicating an item with an edited brand preserves the brand on the duplicated item.
-- [ ] Item detail screen (`record/[id].tsx`) displays the updated brand.
-- [ ] Searching by the edited brand in `PantrySearchBar` filters and shows the item.
-- [ ] All tests in `filterAndSortRecords.test.ts` pass.
+- [x] Saving an edited brand in `QuickEditModal` immediately updates `RecordCard` and `PantryGridCard` on screen.
+- [x] Duplicating an item with an edited brand preserves the brand on the duplicated item.
+- [x] Item detail screen (`record/[id].tsx`) displays the updated brand.
+- [x] Searching by the edited brand in `PantrySearchBar` filters and shows the item.
+- [x] All tests in `filterAndSortRecords.test.ts` pass.
 
 ## Risk Assessment
 - **Risk**: Stale product brand showing if component does not re-render when local record updates.

@@ -9,6 +9,7 @@ function makeRecord(overrides: Partial<LocalRecord> = {}): LocalRecord {
     clientId: 'client-1',
     productId: overrides.productId ?? null,
     customName: overrides.customName ?? null,
+    brand: overrides.brand ?? null,
     category: overrides.category ?? null,
     expiryDate: overrides.expiryDate ?? '2026-09-10',
     quantity: overrides.quantity ?? 1,
@@ -272,5 +273,15 @@ describe('filterAndSortRecords', () => {
       expect(filtered.length).toBeGreaterThan(0);
       expect(elapsed).toBeLessThan(16); // Must execute within single frame budget
     });
+  });
+
+  it('matches record when query matches record.brand', () => {
+    const records = [
+      makeRecord({ id: 'brand-1', customName: 'Greek Yogurt', brand: 'Chobani' }),
+      makeRecord({ id: 'brand-2', customName: 'Greek Yogurt', brand: 'Fage' }),
+    ];
+    const filtered = filterAndSortRecords(records, { query: 'chobani' });
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.id).toBe('brand-1');
   });
 });

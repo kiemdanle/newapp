@@ -85,6 +85,7 @@ describe('QuickEditModal', () => {
 
     expect(onSave).toHaveBeenCalledWith({
       customName: 'Gala Apples',
+      brand: null,
       category: 'Produce',
       quantity: 5,
       unit: 'pcs',
@@ -299,6 +300,73 @@ describe('QuickEditModal', () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         location: null,
+      }),
+    );
+  });
+
+  it('renders Brand (optional) input pre-populated from record.brand and saves edited brand', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordWithBrand: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-brand',
+      brand: 'Chobani',
+    };
+
+    const { getByTestId, getByDisplayValue } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithBrand}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    expect(getByDisplayValue('Chobani')).toBeTruthy();
+    const brandInput = getByTestId('quick-edit-brand-input');
+    expect(brandInput).toBeTruthy();
+
+    fireEvent.changeText(brandInput, 'Fage Total\nGreek');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        brand: 'Fage Total Greek',
+      }),
+    );
+  });
+
+  it('clearing brand field in QuickEditModal saves brand as null', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordWithBrand: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-brand-clear',
+      brand: 'Vinamilk',
+    };
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithBrand}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    const brandInput = getByTestId('quick-edit-brand-input');
+    fireEvent.changeText(brandInput, '   ');
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        brand: null,
       }),
     );
   });

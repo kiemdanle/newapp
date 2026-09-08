@@ -34,6 +34,7 @@ async function pushPending(): Promise<void> {
           clientId,
           productId: rec.productId,
           customName: rec.customName,
+          brand: rec.brand,
           expiryDate: rec.expiryDate,
           purchaseDate: rec.purchaseDate,
           quantity: rec.quantity,
@@ -60,6 +61,7 @@ async function pushPending(): Promise<void> {
         // UPDATE — PATCH /v1/records/:id
         const patch: Record<string, unknown> = {
           customName: rec.customName,
+          brand: rec.brand,
           expiryDate: rec.expiryDate,
           purchaseDate: rec.purchaseDate,
           quantity: rec.quantity,
@@ -150,6 +152,7 @@ async function pullSince(): Promise<void> {
           r.userId = ch.userId ?? null;
           r.productId = ch.productId;
           r.customName = ch.customName;
+          r.brand = ch.brand ?? null;
           r.expiryDate = ch.expiryDate;
           r.purchaseDate = ch.purchaseDate;
           r.quantity = ch.quantity;
@@ -190,6 +193,7 @@ async function pullSince(): Promise<void> {
             r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
+            r.brand = ch.brand ?? null;
             r.expiryDate = ch.expiryDate;
             r.purchaseDate = ch.purchaseDate;
             r.quantity = ch.quantity;
@@ -214,6 +218,7 @@ async function pullSince(): Promise<void> {
             r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
+            r.brand = ch.brand ?? null;
             r.expiryDate = ch.expiryDate;
             r.purchaseDate = ch.purchaseDate;
             r.quantity = ch.quantity;
@@ -243,6 +248,7 @@ async function pullSince(): Promise<void> {
             r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
+            r.brand = ch.brand ?? null;
             r.expiryDate = ch.expiryDate;
             r.purchaseDate = ch.purchaseDate;
             r.quantity = ch.quantity;
@@ -267,6 +273,7 @@ async function pullSince(): Promise<void> {
             r.userId = ch.userId ?? null;
             r.productId = ch.productId;
             r.customName = ch.customName;
+            r.brand = ch.brand ?? null;
             r.expiryDate = ch.expiryDate;
             r.purchaseDate = ch.purchaseDate;
             r.quantity = ch.quantity;

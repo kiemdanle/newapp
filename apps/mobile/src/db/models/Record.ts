@@ -8,6 +8,7 @@ export class RecordModel extends Model {
   @field('client_id') clientId!: string;
   @field('product_id') productId!: string | null;
   @field('custom_name') customName!: string | null;
+  @field('brand') brand!: string | null;
   @field('category') category!: string | null;
   @field('expiry_date') expiryDate!: string;
   @field('purchase_date') purchaseDate!: string | null;
