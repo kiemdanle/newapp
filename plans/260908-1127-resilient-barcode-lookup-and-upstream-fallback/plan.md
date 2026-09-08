@@ -92,4 +92,40 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 - [ ] Mobile scan screen allows users to immediately proceed to add the item even if external networks are completely offline.
 - [ ] 100% test pass rate across API and mobile test suites; zero regression to existing product draft workflows.
 
+---
+
+## Validation Log
+
+### Verification Results (Full Tier)
+- **Claims Checked**: 15 across upstream clients, lookup-v2, and mobile scanner
+- **Verified**: 15 | **Failed**: 0 | **Unverified**: 0
+- **Key Fact Checks**:
+  - `api/src/services/products/off-client.ts`: Confirmed `timeoutMs: 1500` and `offBreaker` `timeout: 2000` causing premature timeout drops.
+  - `api/src/services/products/upcitemdb-client.ts`: Confirmed endpoint is `https://api.upcitemdb.com/prod/trial/lookup` and unhandled 429 trips breaker.
+  - `api/src/services/products/lookup.ts`: Confirmed `findLocalExact` candidates `[raw, 0${raw}, raw.slice(1)]`, but external lookups only receive raw string.
+  - `api/src/services/products/lookup.ts`: Confirmed `anyUnavailable` forces `temporarily_unavailable` even for eligible creators.
+  - `apps/mobile/app/(app)/scan.tsx`: Confirmed `ui.phase === 'unavailable'` only presents retry and lacks manual escape hatch.
+
+### Validation Interview Decisions (Session 1)
+1. **Fail-Open Policy on External Outages (`upstream_fail_open_policy`)**:
+   - *Decision*: **Fail-Open to Product Creation**.
+   - *Rationale*: When external APIs are slow, rate-limited, or down, return `outcome: 'not_found'` with `canCreate: true`. Users must never be blocked from entering item names and adding groceries to their pantry.
+2. **Latency Tolerance & Query Dispatch (`off_timeout_threshold`)**:
+   - *Decision*: **Parallel Concurrent Upstream Queries**.
+   - *Rationale*: Dispatch OpenFoodFacts and UPCitemdb concurrently via `Promise.allSettled` instead of sequential cascading. If either finds the item, persist immediately. Cuts maximum lookup latency in half.
+3. **UPCitemdb HTTP 429 Quota Handling (`upc_429_quota_strategy`)**:
+   - *Decision*: **Silent Skip (Do Not Trip Circuit Breaker)**.
+   - *Rationale*: Catch `HttpError` status `429` as a silent skip (`{ status: 'not_found' }`). UPCitemdb trial tier quota limits must never trip the circuit breaker into `unavailable` or penalize other providers.
+4. **In-Store Variable-Weight Barcodes (`in_store_barcode_fastpath`)**:
+   - *Decision*: **Fast-Path to Creation (<10ms)**.
+   - *Rationale*: Barcodes beginning with `20`–`29` or `02` (GS1 restricted distribution codes for deli, meat, and weighed produce) never exist in public catalogs. Skip external lookups immediately and return `not_found` with `canCreate: true`.
+
+### Whole-Plan Consistency Sweep
+- **Status**: Zero unresolved contradictions.
+- **Propagations**:
+  - Updated Phase 1 (`phase-01-upstream-client-resiliency-and-rate-limit-isolation.md`) to reflect silent 429 handling and dual 12/13-digit fallback.
+  - Updated Phase 2 (`phase-02-service-fallback-and-classification.md`) to specify concurrent parallel query dispatch (`Promise.allSettled`) and fail-open creation fallback.
+  - Updated Phase 3 (`phase-03-background-backfill-enrichment.md`) to enqueue backfill on `not_found` without blocking client latency.
+  - Updated Phase 4 (`phase-04-mobile-scanner-resilience.md`) to provide the "Add as Private Item" escape hatch on error screens.
+
 <!-- slug: resilient-barcode-lookup-and-upstream-fallback -->

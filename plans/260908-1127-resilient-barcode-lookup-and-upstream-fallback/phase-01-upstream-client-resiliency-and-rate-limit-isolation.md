@@ -11,6 +11,7 @@ dependencies: []
 
 ## Overview
 Harden the external product lookup clients (`off-client.ts` for OpenFoodFacts and `upcitemdb-client.ts` for UPCitemdb) against latency timeouts, trial-tier rate limiting (HTTP 429), and 12/13-digit EAN/UPC-A formatting mismatches.
+<!-- Updated: Validation Session 1 - Silent 429 handling & 12/13-digit fallback -->
 
 ---
 

@@ -11,6 +11,7 @@ dependencies: [1]
 
 ## Overview
 Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement in-store restricted barcode fast-pathing, resilient provider chaining, and non-blocking fallback for product creators when external services are degraded.
+<!-- Updated: Validation Session 1 - Parallel concurrent upstream queries & fail-open classification -->
 
 ---
 
@@ -20,10 +21,9 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
 1. **Restricted In-Store Barcode Fast-Path (Prefixes `20`–`29`, `02`)**:
    - Detect GS1 restricted distribution prefixes for variable-weight items (e.g. `251010537516`).
    - If a barcode matches these prefixes and is not found in the local database, immediately return `{ outcome: 'not_found', canCreate: await isProductCreationEligible(actor) }` without making any upstream network calls to OpenFoodFacts or UPCitemdb.
-2. **Resilient Provider Chaining**:
-   - Query OpenFoodFacts first; if found, persist and classify immediately.
-   - If OpenFoodFacts is unavailable or not found, query UPCitemdb.
-   - If UPCitemdb is found, persist and classify immediately.
+2. **Parallel Concurrent Upstream Queries**:
+   - Query OpenFoodFacts and UPCitemdb concurrently via `Promise.allSettled` instead of sequential cascading, cutting worst-case scan latency in half.
+   - If either provider finds the product, immediately persist to PostgreSQL and return the classified product.
 3. **Creator-Centric Fallback (No Dead Ends)**:
    - Check `canCreate = await isProductCreationEligible(actor)`.
    - If `canCreate === true` (user has permission to create products/drafts), an upstream timeout or 429 must **never block them** with `temporarily_unavailable`. Instead, return `{ outcome: 'not_found', canCreate: true }`, allowing them to proceed directly to the "Add New Product" screen.
@@ -115,19 +115,29 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
        return { outcome: 'not_found', canCreate };
      }
 
+     // Query external providers concurrently to cut latency
+     const [offResult, upcResult] = await Promise.allSettled([
+       lookupOff(input.barcode),
+       lookupUpcitemdb(input.barcode),
+     ]);
+
      let anyUnavailable = false;
 
-     const off = await lookupOff(input.barcode);
-     if (off.status === 'found') {
-       return classifyLocal(await persistExternal(off.data), actor);
+     // Prefer OpenFoodFacts if found
+     if (offResult.status === 'fulfilled' && offResult.value.status === 'found') {
+       return classifyLocal(await persistExternal(offResult.value.data), actor);
      }
-     if (off.status === 'unavailable') anyUnavailable = true;
+     if (offResult.status === 'rejected' || (offResult.status === 'fulfilled' && offResult.value.status === 'unavailable')) {
+       anyUnavailable = true;
+     }
 
-     const upc = await lookupUpcitemdb(input.barcode);
-     if (upc.status === 'found') {
-       return classifyLocal(await persistExternal(upc.data), actor);
+     // Check UPCitemdb
+     if (upcResult.status === 'fulfilled' && upcResult.value.status === 'found') {
+       return classifyLocal(await persistExternal(upcResult.value.data), actor);
      }
-     if (upc.status === 'unavailable') anyUnavailable = true;
+     if (upcResult.status === 'rejected' || (upcResult.status === 'fulfilled' && upcResult.value.status === 'unavailable')) {
+       anyUnavailable = true;
+     }
 
      // If the user can create products, never lock them out with a dead-end error.
      // Fall back to not_found so they can add the item immediately.
@@ -137,7 +147,6 @@ Refactor `lookupProductV2` in `api/src/services/products/lookup.ts` to implement
 
      return { outcome: 'not_found', canCreate };
    }
-   ```
 
 3. **Update Unit Tests in `lookup.test.ts`**:
    - Add test case verifying restricted in-store barcodes bypass external lookups.
