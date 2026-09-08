@@ -9,14 +9,19 @@ const isoDate = z
 
 const locationField = z
   .string()
-  .trim()
-  .max(50)
-  .refine((v) => !/[\x00-\x1F\x7F\u200B-\u200D\uFEFF]/.test(v), {
-    message: 'location contains invalid characters',
-  })
-  .transform((v) => (v.length > 0 ? v : null))
   .nullable()
-  .optional();
+  .optional()
+  .transform((v) => {
+    if (v === null || v === undefined) return null;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  })
+  .refine((v) => v === null || v.length <= 50, {
+    message: 'location cannot exceed 50 characters',
+  })
+  .refine((v) => v === null || !/[\x00-\x1F\x7F\u200B-\u200D\uFEFF]/.test(v), {
+    message: 'location contains invalid characters',
+  });
 
 export const recordSchema = z.object({
   id: z.string().uuid(),

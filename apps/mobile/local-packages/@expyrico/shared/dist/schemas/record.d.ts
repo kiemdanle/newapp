@@ -79,19 +79,19 @@ export declare const recordCreateBaseSchema: z.ZodObject<{
     notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
     /** Assign the record to a household the caller belongs to; absent/null = personal. */
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    location: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string | null, string>>>;
+    location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
     expiryDate: string;
     quantity: number;
     unit: string;
+    location: string | null;
     productId?: string | null | undefined;
     householdId?: string | null | undefined;
     customName?: string | null | undefined;
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
-    location?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
     clientId: string;
@@ -120,19 +120,19 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
     /** Assign the record to a household the caller belongs to; absent/null = personal. */
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    location: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string | null, string>>>;
+    location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
     expiryDate: string;
     quantity: number;
     unit: string;
+    location: string | null;
     productId?: string | null | undefined;
     householdId?: string | null | undefined;
     customName?: string | null | undefined;
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
-    location?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
     clientId: string;
@@ -152,13 +152,13 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     expiryDate: string;
     quantity: number;
     unit: string;
+    location: string | null;
     productId?: string | null | undefined;
     householdId?: string | null | undefined;
     customName?: string | null | undefined;
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
-    location?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
     clientId: string;
@@ -190,8 +190,9 @@ export declare const recordPatchSchema: z.ZodObject<{
     notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
     /** Move a record between personal and a household; enforced server-side. */
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-    location: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string | null, string>>>;
+    location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
 }, "strip", z.ZodTypeAny, {
+    location: string | null;
     householdId?: string | null | undefined;
     customName?: string | null | undefined;
     expiryDate?: string | undefined;
@@ -204,7 +205,6 @@ export declare const recordPatchSchema: z.ZodObject<{
     consumedAt?: string | null | undefined;
     discardedAt?: string | null | undefined;
     discardReason?: string | null | undefined;
-    location?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
     householdId?: string | null | undefined;
@@ -385,7 +385,7 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
         /** Assign the record to a household the caller belongs to; absent/null = personal. */
         householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
-        location: z.ZodOptional<z.ZodNullable<z.ZodEffects<z.ZodEffects<z.ZodString, string, string>, string | null, string>>>;
+        location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
     } & {
         id: z.ZodOptional<z.ZodString>;
         status: z.ZodOptional<z.ZodEnum<["active", "consumed", "discarded", "expired"]>>;
@@ -399,6 +399,7 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         quantity: number;
         unit: string;
         updatedAt: string;
+        location: string | null;
         id?: string | undefined;
         productId?: string | null | undefined;
         householdId?: string | null | undefined;
@@ -410,7 +411,6 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         consumedAt?: string | null | undefined;
         discardedAt?: string | null | undefined;
         discardReason?: string | null | undefined;
-        location?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }, {
         clientId: string;
@@ -440,6 +440,7 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         quantity: number;
         unit: string;
         updatedAt: string;
+        location: string | null;
         id?: string | undefined;
         productId?: string | null | undefined;
         householdId?: string | null | undefined;
@@ -451,7 +452,6 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         consumedAt?: string | null | undefined;
         discardedAt?: string | null | undefined;
         discardReason?: string | null | undefined;
-        location?: string | null | undefined;
         notificationOffsetsDays?: number[] | undefined;
     }[];
     deletes: string[];
