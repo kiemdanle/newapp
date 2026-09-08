@@ -20,6 +20,7 @@ Comprehensive verification covering backend unit tests (UPCitemdb 429 handling, 
 |---|---|---|
 | **Backend Lookup Tests** | `npm --prefix api test -- src/services/products/lookup.test.ts` | All lookup tests pass |
 | **Product Draft Lifecycle** | `npm --prefix api test -- tests/integration/products-draft-lifecycle.test.ts` | All draft creation tests pass |
+| **Product Lookup Worker Tests** | `npm --prefix api test -- src/workers/product-lookup.test.ts` | All worker retry/hit tests pass |
 | **Full API Suite** | `npm --prefix api test` | All test files pass |
 | **API Typecheck** | `npm --prefix api run typecheck` | 0 type errors |
 | **Mobile Scanner Tests** | `npm --prefix apps/mobile test -- __tests__/scan.test.tsx` | All scanner tests pass |
@@ -35,6 +36,7 @@ Comprehensive verification covering backend unit tests (UPCitemdb 429 handling, 
 - Test: `api/src/services/products/lookup.test.ts`
 - Test: `api/tests/integration/products-draft-lifecycle.test.ts`
 - Test: `apps/mobile/__tests__/scan.test.tsx`
+- Test: `api/src/workers/product-lookup.test.ts`
 
 ---
 
@@ -43,7 +45,7 @@ Comprehensive verification covering backend unit tests (UPCitemdb 429 handling, 
 1. **Run Backend Test Suites**:
    - Verify upstream clients and service classification:
      ```bash
-     npm --prefix api test -- src/services/products/lookup.test.ts tests/integration/products-draft-lifecycle.test.ts
+     npm --prefix api test -- src/services/products/lookup.test.ts src/workers/product-lookup.test.ts tests/integration/products-draft-lifecycle.test.ts
      ```
    - Verify full backend test suite and TypeScript:
      ```bash

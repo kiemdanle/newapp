@@ -11,6 +11,7 @@ dependencies: [2]
 
 ## Overview
 Connect `lookup-v2` and manual item creation to the background backfill queue (`enqueueLookupBackfill` / `workers/product-lookup.ts`) so that products missed during synchronous scanning due to transient upstream network latency are asynchronously fetched, enriched, and cached in PostgreSQL for subsequent scans.
+<!-- Updated: Contract Verifier Audit - Worker return contract correction and retryable outage error propagation -->
 
 ---
 
@@ -20,9 +21,19 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
 1. **Queue Enqueue on `lookup-v2` Misses**:
    - In `api/src/routes/products/lookup-v2.ts`, when a barcode lookup yields `not_found`, enqueue the barcode to the background lookup queue (`enqueueLookupBackfill(input.barcode, req.user!.id)`).
    - Do NOT enqueue restricted in-store barcodes (`20`–`29`, `02`) to prevent wasteful background jobs on private retail barcodes.
-2. **Worker Retry & Enrichment**:
-   - In `workers/product-lookup.ts`, ensure the worker retries failed jobs with exponential backoff (BullMQ standard).
-   - When the worker resolves an external product, it calls `persistExternal()` which inserts the active product row in PostgreSQL.
+2. **Worker Return Contract Correction & Retryable Outage Propagation**:
+   - **Root Cause & Contract Bug**: Currently, `lookup.ts:138` returns `LegacyLookupResult` (`{ product: ProductWithPhotos | null; privateReservation: boolean }`), but `workers/product-lookup.ts:19-38` dynamically casts it as `Promise<{ id: string } | null>`. In JavaScript, the wrapper object `{ product: null, privateReservation: false }` is truthy, so every lookup miss is logged as a false hit with `productId: undefined`. Furthermore, `lookupProduct` swallows `unavailable` upstream statuses and returns `{ product: null }`, so transient outages complete successfully as "hits" and BullMQ **never retries**!
+   - **Correction**: Export a dedicated backfill method from `api/src/services/products/lookup.ts`:
+     ```typescript
+     export async function lookupProductForBackfill(barcode: string): Promise<{
+       product: ProductWithPhotos | null;
+       status: 'found' | 'not_found' | 'unavailable';
+     }>
+     ```
+   - In `workers/product-lookup.ts`:
+     * On `status === 'found'`: Log `product backfill hit` with `product.id`, completing the job.
+     * On `status === 'unavailable'`: **Throw a retryable Error** so BullMQ logs the failure and automatically retries the job with exponential backoff!
+     * On `status === 'not_found'`: Log `product backfill miss` and complete the job cleanly without retry.
 
 ### Non-Functional Requirements
 - Enqueuing must be fire-and-forget (`void enqueueLookupBackfill(...)`) so the client HTTP response is never blocked.
@@ -64,7 +75,8 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
 - Modify: `api/src/routes/products/lookup-v2.ts`
 - Modify: `api/src/workers/product-lookup.ts`
 - Modify: `api/src/services/products/lookup-backfill.ts`
-
+- Modify: `api/src/services/products/lookup.ts`
+- Create: `api/src/workers/product-lookup.test.ts`
 ---
 
 ## Implementation Steps
@@ -83,15 +95,54 @@ Connect `lookup-v2` and manual item creation to the background backfill queue (`
      }
      ```
 
-2. **Harden Worker Error Handling in `api/src/workers/product-lookup.ts`**:
-   - Verify worker concurrency and job retention options (`removeOnComplete: 100`, `removeOnFail: 200`).
+2. **Implement `lookupProductForBackfill` in `api/src/services/products/lookup.ts`**:
+   - Re-use `queryExternalProvidersConcurrently(barcode)` to check OpenFoodFacts and UPCitemdb in parallel:
+     ```typescript
+     export async function lookupProductForBackfill(barcode: string): Promise<{
+       product: ProductWithPhotos | null;
+       status: 'found' | 'not_found' | 'unavailable';
+     }> {
+       const local = await findLocalExact({ barcode });
+       if (local && local.status === 'active') return { product: local, status: 'found' };
+       if (local) return { product: null, status: 'not_found' }; // private/under_review
 
-3. **Verify with Integration Tests**:
-   - Add test verifying `lookup-v2` fires `enqueueLookupBackfill` on a clean miss with standard barcode.
+       const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(barcode);
+       if (externalHit) {
+         const persisted = await persistExternal(externalHit);
+         return { product: persisted.status === 'active' ? persisted : null, status: 'found' };
+       }
+       if (anyUnavailable) {
+         return { product: null, status: 'unavailable' };
+       }
+       return { product: null, status: 'not_found' };
+     }
+     ```
 
+3. **Correct Worker Contract and Error Throw in `api/src/workers/product-lookup.ts`**:
+   - Import `lookupProductForBackfill`:
+     ```typescript
+     const res = await lookupProductForBackfill(job.data.barcode);
+     if (res.status === 'found' && res.product) {
+       logger.info({ barcode: job.data.barcode, productId: res.product.id }, 'product backfill hit');
+       return;
+     }
+     if (res.status === 'unavailable') {
+       // Throw to let BullMQ handle retry with exponential backoff
+       throw new Error(`Upstream providers unavailable for barcode ${job.data.barcode}`);
+     }
+     logger.info({ barcode: job.data.barcode }, 'product backfill miss');
+     ```
+
+4. **Add Unit Tests in `api/src/workers/product-lookup.test.ts`**:
+   - Test job completes on `status === 'found'`.
+   - Test job completes without retry on conclusive `status === 'not_found'`.
+   - Test job throws Error on `status === 'unavailable'`, verifying BullMQ retry trigger.
 ---
 
 ## Success Criteria
 - [ ] Misses on `POST /v1/products/lookup-v2` enqueue backfill jobs to BullMQ.
 - [ ] Restricted in-store barcodes (`20`–`29`, `02`) are excluded from backfill enqueuing.
+- [ ] `workers/product-lookup.ts` correctly consumes `lookupProductForBackfill` without treating `{ product: null }` as a hit.
+- [ ] Upstream outages (`status === 'unavailable'`) throw a retryable error, triggering BullMQ retry with backoff.
+- [ ] Unit tests in `api/src/workers/product-lookup.test.ts` pass cleanly.
 - [ ] Client latency on `/lookup-v2` remains completely unaffected.

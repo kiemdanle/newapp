@@ -99,7 +99,9 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 ### Verification Results (Full Tier — 4 Roles Across 5 Phases)
 - **Tier**: Full (all 4 roles active: Fact Checker, Flow Tracer, Scope Auditor, Contract Verifier)
 - **Claims Checked**: 80 claims across all 5 phases (16 claims/phase)
-- **Verified**: 80 | **Failed**: 0 | **Unverified**: 0
+- **Verified**: 79 | **Failed**: 1 | **Unverified**: 0
+- **Failures**:
+  1. `[Contract Verifier] api/src/workers/product-lookup.ts:19-42` — Failed return contract: worker types `lookupProduct` as `Promise<{ id: string } | null>`. In JavaScript, the actual wrapper object `{ product: null, privateReservation: false }` is truthy, so every lookup miss was treated as a false hit with `productId: undefined`. Furthermore, `lookupProduct` swallowed `unavailable` upstream statuses and returned `{ product: null }`, so transient outages completed as "hits" and BullMQ **never retried**. Reconciled in Phase 3 by exporting `lookupProductForBackfill` returning `{ product, status: 'found' | 'not_found' | 'unavailable' }` and throwing a retryable Error on `unavailable`.
 - **Role-by-Role Audit Summary**:
   1. **Fact Checker (20 claims)**:
      - Confirmed `api/src/services/products/off-client.ts` (`lookupOff`, `offBreaker`) and `upcitemdb-client.ts` (`lookupUpcitemdb`, `upcBreaker`).
@@ -137,9 +139,9 @@ The investigation revealed that `temporarily_unavailable` is triggered by three 
 ### Whole-Plan Consistency Sweep
 - **Status**: Zero unresolved contradictions.
 - **Propagations & Reconciliations**:
+  - Reconciled Phase 3 (`phase-03-background-backfill-enrichment.md`): corrected worker return contract bug (`lookupProductForBackfill`), added retryable Error throw on `unavailable`, and added `api/src/workers/product-lookup.test.ts`.
   - Reconciled Phase 2 (`phase-02-service-fallback-and-classification.md`): replaced `Promise.allSettled` (which waited for the slower provider) with `queryExternalProvidersConcurrently` to fulfill the promised immediate first-hit return.
   - Reconciled Phase 1 (`phase-01-upstream-client-resiliency-and-rate-limit-isolation.md`): silent 429 handling and dual 12/13-digit fallback.
-  - Reconciled Phase 3 (`phase-03-background-backfill-enrichment.md`): non-blocking backfill enqueuing on `not_found`.
   - Reconciled Phase 4 (`phase-04-mobile-scanner-resilience.md`): "Add as Private Item" escape hatch on error screens.
-  - Reconciled Phase 5 (`phase-05-testing-and-verification.md`): verified test paths and Gradle build commands.
+  - Reconciled Phase 5 (`phase-05-testing-and-verification.md`): updated verification matrix with `product-lookup.test.ts`.
 <!-- slug: resilient-barcode-lookup-and-upstream-fallback -->
