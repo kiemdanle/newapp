@@ -224,49 +224,7 @@ export default function HomeTab() {
       <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryLight, borderRadius: theme.radii.md }]}><Ionicons name="basket-outline" size={28} color={theme.colors.primaryDark} /></View>
       <Text style={[styles.emptyEyebrow, { color: theme.colors.primaryDark }]}>START FRESH</Text>
       <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Start your pantry</Text>
-      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Scan the first item on your shelf or add produce and fresh goods manually.</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12, justifyContent: 'center' }}>
-        <Pressable
-          testID="home-empty-scan"
-          accessibilityRole="button"
-          accessibilityLabel="Scan an item"
-          onPress={() => navigation.navigate('Scan')}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: theme.colors.primary,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            borderRadius: theme.radii.pill,
-            minHeight: 44,
-          }}
-        >
-          <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Scan item</Text>
-        </Pressable>
-        <Pressable
-          testID="home-empty-manual-add"
-          accessibilityRole="button"
-          accessibilityLabel="Manually Input item"
-          onPress={() => navigation.navigate('Scan', { initialPhase: 'manual' })}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: theme.colors.bgElevated,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            borderRadius: theme.radii.pill,
-            minHeight: 44,
-          }}
-        >
-          <Ionicons name="create-outline" size={18} color={theme.colors.primaryDark} />
-          <Text style={{ color: theme.colors.primaryDark, fontWeight: '700', fontSize: 13 }}>Manually Input</Text>
-        </Pressable>
-      </View>
+      <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Scan the first item on your shelf and we’ll help you use it on time.</Text>
     </View>
   );
 

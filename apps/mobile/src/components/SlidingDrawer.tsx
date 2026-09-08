@@ -155,6 +155,7 @@ export function SlidingDrawer({
     <View
       style={[styles.root, { backgroundColor: theme.colors.bgElevated }]}
       testID="sliding-drawer-root"
+      pointerEvents="box-none"
       {...edgePanResponder.panHandlers}
     >
       {/* Background Drawer Layer */}
