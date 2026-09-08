@@ -133,6 +133,34 @@ sequenceDiagram
   3. **Household Scope Behavior**: *Unlock household scope for active products.*  
      *Rationale*: Once a product is active in the catalog, it is public, so users can add it directly to shared household pantries without being restricted to personal scope.
 
+
+### Session 2 — 2026-09-08
+**Trigger:** Deep validation interview on notification suppression architecture, edge cases, and navigation UX.  
+**Questions asked:** 3
+
+#### Questions & Answers
+1. **[Architecture]** Where should the notification suppression be enforced for auto-approved products?
+   - Options: Backend source in autoApproveProduct | Mobile client filter | Dual-layer suppression
+   - **Answer:** Backend source in autoApproveProduct (Recommended)
+   - **Rationale:** Enforcing at backend source (`autoApproveProduct`) completely eliminates unnecessary outbox records in PostgreSQL, avoids wasting FCM push bandwidth, and cleanly prevents both mobile in-app toasts and system tray notifications.
+2. **[Edge Cases]** If the admin toggles approval policy from 'Require Approval' to 'Auto-Approve', how should already-pending products be treated?
+   - Options: Keep existing pending in moderation | Batch auto-approve existing pending
+   - **Answer:** Keep existing pending in moderation (Recommended)
+   - **Rationale:** Products submitted while approval was required must still receive administrator scrutiny to prevent unvetted backlog items from bypassing moderation. When approved manually, creators will receive the "Product Approved" notification.
+3. **[Mobile UX]** When manual approval occurs and the 'Product Approved' toast is tapped, what screen should open?
+   - Options: Navigate to Product Details screen | Navigate to Pantry list | Just dismiss without navigating
+   - **Answer:** Navigate to Product Details screen (Recommended)
+   - **Rationale:** Maintains current navigation contract in `apps/mobile/src/features/push/handle-notification-open.ts:87` which opens `Product` detail view (`{ id: productId }`).
+
+#### Confirmed Decisions
+- **Suppression Layer**: Suppress exclusively at the backend source in `api/src/services/products/auto-approval.ts`.
+- **Existing Pending Queue**: No retroactive auto-approval; pending items remain in moderation queue until reviewed.
+- **Notification Tap Navigation**: Maintain navigation to Product Details screen on toast tap.
+
+#### Action Items
+- [ ] Remove `enqueueOutbox` with `product_approved` in `autoApproveProduct` (Phase 1).
+- [ ] Ensure no changes to `handleNotificationTap` in `handle-notification-open.ts` so manual approval toasts continue to navigate to the product detail view (Phase 2).
+- [ ] Add regression tests for backend suppression and manual approval notification in `product-approval-policy.test.ts` (Phase 3).
 ### Whole-Plan Consistency Sweep
 - **Stale Terms / Rename Check**: Clean. No renamed endpoints or conflicting terminology.
 - **Contract Alignment**: Backend outbox suppression and mobile post-submission messaging are aligned across all 3 phases.

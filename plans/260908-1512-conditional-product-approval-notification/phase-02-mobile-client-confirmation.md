@@ -84,3 +84,4 @@ This causes the interface in Image #1: even when auto-approved, the screen false
 - **Mitigation**: `product-new.test.tsx:192` tests `expect(await findByTestId('new-product-submitted-message')).toBeTruthy()` which matches the testID regardless of text. We will also add explicit text assertions for both active and pending branches.
 
 <!-- Updated: Validation Session 1 - Confirmed household scope unlock on active products -->
+<!-- Updated: Validation Session 2 - Confirmed toast tap continues navigating to Product Details screen -->

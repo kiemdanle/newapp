@@ -62,3 +62,4 @@ Conversely, when `needsApproval: true`:
 - **Mitigation**: Grep showed no test in `api/tests` currently checks for `product_approved` during auto-approval. We will add a dedicated assertion in integration tests in Phase 3.
 
 <!-- Updated: Validation Session 1 - Confirmed complete suppression of notifications on auto-approval -->
+<!-- Updated: Validation Session 2 - Confirmed backend source suppression in autoApproveProduct without mobile filter requirement -->

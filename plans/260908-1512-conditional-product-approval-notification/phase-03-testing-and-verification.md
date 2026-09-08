@@ -73,3 +73,4 @@ Validates backend notification suppression, manual approval notification deliver
 - **Mitigation**: Verify local API server is running on port 3000 and reverse ADB port forwarding (`adb reverse tcp:3000 tcp:3000`) is active.
 
 <!-- Updated: Validation Session 1 - Confirmed flagged user diverted to pending and outbox assertion on manual approval -->
+<!-- Updated: Validation Session 2 - Confirmed existing pending items require manual approval to emit notification -->
