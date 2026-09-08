@@ -6,7 +6,6 @@ import { getConfig } from '../../config.js';
 import { getRedis } from '../../redis.js';
 import { AppError } from '../../errors.js';
 import { logger } from '../../logger.js';
-import { enqueueOutbox, sweepOutbox } from '../notifications/outbox.js';
 import { toApiProduct } from './serializer.js';
 import { publishProductPhoto } from './product-photos.js';
 import { publicMediaUrl, publicProductPhotoPrefix, removeKeyPrefix } from './product-media-storage.js';
@@ -62,8 +61,8 @@ export async function recordAutoApprovedSubmission(actorId: string): Promise<voi
  * 1. For products with photos: reserves media capacity and publishes all pending photos
  *    under a `publish_public` mutation lease.
  * 2. In a single database transaction, atomically updates product status to 'active',
- *    promotes photos to 'approved', sets position-0 photo as product imageUrl, and enqueues
- *    the 'product_approved' creator notification.
+ *    promotes photos to 'approved', and sets position-0 photo as product imageUrl.
+ *    (Creator notification is omitted on policy auto-approval to avoid redundant alerts.)
  * 3. For zero-photo products: directly activates product without media lease.
  */
 export async function autoApproveProduct(
@@ -108,13 +107,6 @@ export async function autoApproveProduct(
         });
       }
 
-      if (product.createdByUserId) {
-        await enqueueOutbox(tx, {
-          userId: product.createdByUserId,
-          templateKey: 'product_approved',
-          payload: { productId: product.id },
-        });
-      }
 
       const updated = (await tx.product.findUniqueOrThrow({
         where: { id: productId },
@@ -125,7 +117,6 @@ export async function autoApproveProduct(
     });
 
     await recordAutoApprovedSubmission(actorId);
-    sweepOutbox().catch(() => {});
     logger.info({ productId, actorId, publishedPhotos: 0 }, 'product-creation: auto-approved (zero photos)');
     return res;
   }
@@ -196,13 +187,6 @@ export async function autoApproveProduct(
           await tx.product.update({ where: { id: productId }, data: { imageUrl: coverUrl } });
         }
 
-        if (product.createdByUserId) {
-          await enqueueOutbox(tx, {
-            userId: product.createdByUserId,
-            templateKey: 'product_approved',
-            payload: { productId: product.id },
-          });
-        }
 
         const updated = (await tx.product.findUniqueOrThrow({
           where: { id: productId },
@@ -215,7 +199,6 @@ export async function autoApproveProduct(
 
     await reconcileMediaCapacityReservation(reservation.id, totalBytes);
     await recordAutoApprovedSubmission(actorId);
-    sweepOutbox().catch(() => {});
     logger.info({ productId, actorId, publishedPhotos: pendingPhotos.length }, 'product-creation: auto-approved');
     return res;
   } finally {

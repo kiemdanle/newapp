@@ -151,9 +151,11 @@ export default function NewProductScreen() {
   }
 
   // A submission just cleared in this session: continue straight to the
-  // personal-pantry form, locked to personal scope since the product is
-  // still `pending` (private) until an admin approves it.
+  // pantry form. If auto-approved (`active`), publish message is displayed
+  // and household scope is unlocked. If pending or other non-active status,
+  // scope is defensively locked to personal.
   if (submittedProduct) {
+    const isApproved = submittedProduct.status === 'active';
     return (
       <KeyboardAwareScrollView
         style={{ flex: 1, backgroundColor: theme.colors.bg }}
@@ -163,14 +165,16 @@ export default function NewProductScreen() {
       >
         <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
           <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '600' }}>
-            Submitted for review — you can add it to your pantry now.
+            {isApproved
+              ? 'Published to catalog — you can add it to your pantry now.'
+              : 'Submitted for review — you can add it to your pantry now.'}
           </Text>
         </View>
         <AddRecordForm
           productId={submittedProduct.id}
           productName={submittedProduct.name}
           initialCategory={submittedProduct.category}
-          lockedPersonalScope
+          lockedPersonalScope={!isApproved}
           onSaved={async () => {
             await ensurePushTokenRegistered();
             navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });

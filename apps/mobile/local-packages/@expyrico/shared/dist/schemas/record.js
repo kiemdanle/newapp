@@ -40,6 +40,7 @@ export const recordSchema = z.object({
     discardedAt: z.string().datetime().nullable().optional(),
     discardReason: z.string().trim().min(1).max(50).nullable().optional(),
     location: z.string().max(50).nullable().optional(),
+    brand: z.string().max(120).nullable().optional(),
 });
 export const recordCreateBaseSchema = z.object({
     clientId: z.string().uuid(),
@@ -55,6 +56,7 @@ export const recordCreateBaseSchema = z.object({
     /** Assign the record to a household the caller belongs to; absent/null = personal. */
     householdId: z.string().uuid().nullable().optional(),
     location: locationField,
+    brand: z.string().trim().min(1).max(120).nullable().optional(),
 });
 export const recordCreateSchema = recordCreateBaseSchema.refine((v) => Boolean(v.productId) || Boolean(v.customName), { message: 'one of productId | customName is required' });
 export const recordPatchSchema = z.object({
@@ -73,6 +75,7 @@ export const recordPatchSchema = z.object({
     /** Move a record between personal and a household; enforced server-side. */
     householdId: z.string().uuid().nullable().optional(),
     location: locationField,
+    brand: z.string().trim().min(1).max(120).nullable().optional(),
 });
 export const recordListResponseSchema = z.object({
     items: z.array(recordSchema),

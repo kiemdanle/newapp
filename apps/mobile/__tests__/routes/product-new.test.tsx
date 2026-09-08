@@ -175,7 +175,7 @@ describe('<NewProductScreen />', () => {
     expect(getByTestId('draft-submit').props.accessibilityState.disabled).toBe(false);
   });
 
-  it('submitting a no-photo draft flushes metadata, mints a fresh token, clears the local draft mapping, and continues to a personal-scope-locked pantry form', async () => {
+  it('submitting a pending draft continues to a personal-scope-locked pantry form with review notice', async () => {
     __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit' });
     queueFetch(jsonResponse(PRODUCT));
     await AsyncStorage.setItem(
@@ -183,13 +183,14 @@ describe('<NewProductScreen />', () => {
       JSON.stringify({ 'barcode:123': { productId: 'draft-1', identifier: { barcode: '123' }, updatedAt: '2026-01-01T00:00:00Z' } }),
     );
 
-    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    const { findByTestId, getByTestId, findByText } = render(wrap(<NewProductScreen />));
     await findByTestId('draft-name');
 
     queueFetch(jsonResponse({ ...PRODUCT, status: 'pending', version: 2 }));
     fireEvent.press(getByTestId('draft-submit'));
 
     expect(await findByTestId('new-product-submitted-message')).toBeTruthy();
+    expect(await findByText('Submitted for review — you can add it to your pantry now.')).toBeTruthy();
     expect(mockExecuteAssessment).toHaveBeenCalledTimes(1);
     expect(getByTestId('add-record-save')).toBeTruthy();
 
@@ -197,6 +198,26 @@ describe('<NewProductScreen />', () => {
       const stored = await AsyncStorage.getItem('pantry.productDraftIndex.v1.user-1');
       expect(stored).not.toContain('draft-1');
     });
+  });
+
+  it('submitting an auto-approved draft (status: active) displays "Published to catalog" confirmation', async () => {
+    __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit' });
+    queueFetch(jsonResponse(PRODUCT));
+    await AsyncStorage.setItem(
+      'pantry.productDraftIndex.v1.user-1',
+      JSON.stringify({ 'barcode:123': { productId: 'draft-1', identifier: { barcode: '123' }, updatedAt: '2026-01-01T00:00:00Z' } }),
+    );
+
+    const { findByTestId, getByTestId, findByText } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    queueFetch(jsonResponse({ ...PRODUCT, status: 'active', version: 2 }));
+    fireEvent.press(getByTestId('draft-submit'));
+
+    expect(await findByTestId('new-product-submitted-message')).toBeTruthy();
+    expect(await findByText('Published to catalog — you can add it to your pantry now.')).toBeTruthy();
+    expect(mockExecuteAssessment).toHaveBeenCalledTimes(1);
+    expect(getByTestId('add-record-save')).toBeTruthy();
   });
 
   it('target=deal: submitting a draft navigates directly to DealNew with the submitted productId', async () => {

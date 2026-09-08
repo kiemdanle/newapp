@@ -66,6 +66,14 @@ describe('Product Approval Policy: Global & Per-User matrix', () => {
     const inDb = await prisma.product.findUniqueOrThrow({ where: { id: product.id } });
     expect(inDb.status).toBe('active');
     expect(inDb.moderationNotes).toContain('Auto-approved');
+
+    const outboxCount = await prisma.notificationOutbox.count({
+      where: {
+        userId: user.id,
+        templateKey: 'product_approved',
+      },
+    });
+    expect(outboxCount).toBe(0);
   });
 
   it('Scenario B: Diverts to pending when user is flagged for approval despite global auto-approval', async () => {
@@ -168,6 +176,40 @@ describe('Product Approval Policy: Global & Per-User matrix', () => {
     expect(res.statusCode).toBe(200);
     const json = res.json();
     expect(json.requireApproval).toBe(true);
+  });
+
+  it('Scenario F: Enqueues product_approved notification when an admin manually approves a pending product', async () => {
+    const prisma = getPrisma();
+    const admin = await makeUser({ role: 'admin', emailVerified: true });
+    const creator = await makeUser({ role: 'user', emailVerified: true });
+    const adminToken = await issueAccessToken({ sub: admin.id, role: 'admin', tokenVersion: 0 });
+
+    const product = await makeProduct({
+      createdByUserId: creator.id,
+      name: 'Manually Reviewed Item',
+    });
+    await prisma.product.update({ where: { id: product.id }, data: { status: 'pending' } });
+
+    const app = await buildServer();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/admin/products/${product.id}/moderate`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { decision: 'approve', version: 1 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const json = res.json();
+    expect(json.status).toBe('active');
+
+    const outbox = await prisma.notificationOutbox.findFirst({
+      where: {
+        userId: creator.id,
+        templateKey: 'product_approved',
+      },
+    });
+    expect(outbox).not.toBeNull();
+    expect(outbox?.payload).toMatchObject({ productId: product.id });
   });
 
 });
