@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { KeyboardAwareScrollView } from '@/components/KeyboardAwareScrollView';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
@@ -57,6 +59,10 @@ export default function NewGiveawayScreen() {
   const [linkedPantryName, setLinkedPantryName] = useState<string | null>(null);
   const create = useCreateGiveaway();
   const pending = create.isPending || uploadingPhotos;
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const getFieldBorderColor = (fieldKey: string) =>
+    focusedField === fieldKey ? theme.colors.primary : theme.colors.border;
+
 
   function handleCameraCapture(pickedList: PickedPhoto[]) {
     if (pickedList && pickedList.length > 0) {
@@ -195,12 +201,12 @@ export default function NewGiveawayScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardAwareScrollView
       style={[styles.container, { backgroundColor: theme.colors.bg }]}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      automaticallyAdjustKeyboardInsets={true}
+      extraKeyboardOffset={Platform.OS === 'android' ? 140 : 48}
     >
       <View style={styles.header}>
         <Text style={[styles.heading, { color: theme.colors.text }]}>Share an Item</Text>
@@ -369,16 +375,20 @@ export default function NewGiveawayScreen() {
       <View style={styles.fieldGroup}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Item Title *</Text>
         <TextInput
+          testID="giveaway-title-input"
           accessibilityLabel="Giveaway title"
           placeholder="e.g. 2 Unopened boxes of Organic Pasta"
           placeholderTextColor={theme.colors.textMuted}
           value={title}
           onChangeText={setTitle}
+          onFocus={() => setFocusedField('title')}
+          onBlur={() => setFocusedField(null)}
           style={[
             styles.input,
             {
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('title'),
+              borderWidth: focusedField === 'title' ? 1.5 : 1,
               borderRadius: theme.radii.md,
               color: theme.colors.text,
             },
@@ -452,11 +462,14 @@ export default function NewGiveawayScreen() {
             placeholderTextColor={theme.colors.textMuted}
             value={unit}
             onChangeText={setUnit}
+            onFocus={() => setFocusedField('unit')}
+            onBlur={() => setFocusedField(null)}
             style={[
               styles.unitInput,
               {
                 backgroundColor: theme.colors.bgElevated,
-                borderColor: theme.colors.border,
+                borderColor: getFieldBorderColor('unit'),
+                borderWidth: focusedField === 'unit' ? 1.5 : 1,
                 borderRadius: theme.radii.md,
                 color: theme.colors.text,
               },
@@ -487,16 +500,20 @@ export default function NewGiveawayScreen() {
           ) : null}
         </View>
         <TextInput
+          testID="giveaway-location-input"
           accessibilityLabel="Pickup location"
           placeholder="e.g. Downtown near Central Park or Porch Pickup"
           placeholderTextColor={theme.colors.textMuted}
           value={locationText}
           onChangeText={setLocation}
+          onFocus={() => setFocusedField('location')}
+          onBlur={() => setFocusedField(null)}
           style={[
             styles.input,
             {
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('location'),
+              borderWidth: focusedField === 'location' ? 1.5 : 1,
               borderRadius: theme.radii.md,
               color: theme.colors.text,
             },
@@ -570,18 +587,22 @@ export default function NewGiveawayScreen() {
       <View style={styles.fieldGroup}>
         <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description & Notes</Text>
         <TextInput
+          testID="giveaway-description-input"
           accessibilityLabel="Giveaway description"
           placeholder="Expiry date, pickup instructions, allergy details…"
           placeholderTextColor={theme.colors.textMuted}
           value={description}
           onChangeText={setDescription}
+          onFocus={() => setFocusedField('description')}
+          onBlur={() => setFocusedField(null)}
           multiline
           numberOfLines={3}
           style={[
             styles.multilineInput,
             {
               backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              borderColor: getFieldBorderColor('description'),
+              borderWidth: focusedField === 'description' ? 1.5 : 1,
               borderRadius: theme.radii.md,
               color: theme.colors.text,
             },
@@ -614,7 +635,7 @@ export default function NewGiveawayScreen() {
           {pending ? (uploadingPhotos ? 'Uploading Photos…' : 'Posting…') : 'Post Giveaway'}
         </Text>
       </Pressable>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }
 

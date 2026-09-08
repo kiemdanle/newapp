@@ -22,6 +22,7 @@ import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { uploadGiveawayPhoto } from '../../api/giveaways';
+import { KeyboardAwareScrollView } from '../../components/KeyboardAwareScrollView';
 const MAX_PHOTOS = 5;
 
 interface LocalPhotoItem {
@@ -223,12 +224,12 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.formContent}
+            contentContainerStyle={[styles.formContent, { paddingBottom: 80 }]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            automaticallyAdjustKeyboardInsets={true}
+            extraKeyboardOffset={Platform.OS === 'android' ? 120 : 48}
           >
             {/* Photos Section */}
             <View style={styles.fieldGroup}>
@@ -515,7 +516,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
             {error ? (
               <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text>
             ) : null}
-          </ScrollView>
+          </KeyboardAwareScrollView>
 
           {/* Action Buttons */}
           <View style={[styles.footer, { borderTopColor: theme.colors.border }]}>
