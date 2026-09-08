@@ -15,6 +15,11 @@ import type { LocalRecord } from '../../api/records';
 import { useTheme } from '../../theme/useTheme';
 import type { PantryFilterState } from './pantryFilterTypes';
 import { useMyHouseholds } from '../../api/households';
+import {
+  DEFAULT_TOP_LOCATIONS,
+  normalizeLocationTitleCase,
+  getLocationIcon,
+} from '../../utils/locations';
 
 export interface PantryFilterModalProps {
   visible: boolean;
@@ -73,6 +78,26 @@ export function PantryFilterModal({
       (name) => ({ name, count: counts[name] || 0 }),
     );
   }, [records]);
+  const locationOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const record of records) {
+      const loc = record.location?.trim();
+      if (loc) {
+        const titleCased = normalizeLocationTitleCase(loc);
+        counts[titleCased] = (counts[titleCased] || 0) + 1;
+      }
+    }
+
+    const allNames = Array.from(
+      new Set([...DEFAULT_TOP_LOCATIONS, ...Object.keys(counts)]),
+    );
+
+    return allNames.map((name) => ({
+      name,
+      count: counts[name] || 0,
+    }));
+  }, [records]);
+
 
   const handleReset = () => {
     setDraftFilters({
@@ -82,6 +107,7 @@ export function PantryFilterModal({
       inStockOnly: false,
       householdScope: 'all',
       store: undefined,
+      locations: undefined,
     });
   };
 
@@ -306,6 +332,122 @@ export function PantryFilterModal({
                 })}
               </View>
             </View>
+
+            {/* Storage Location Section (Multi-Select) */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
+                  STORAGE LOCATION
+                </Text>
+                {draftFilters.locations && draftFilters.locations.length > 0 ? (
+                  <Pressable
+                    testID="pantry-filter-locations-clear"
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear storage location filter"
+                    onPress={() =>
+                      setDraftFilters((prev) => ({ ...prev, locations: undefined }))
+                    }
+                    hitSlop={6}
+                  >
+                    <Text style={[styles.clearLink, { color: theme.colors.primaryDark }]}>
+                      Clear
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={styles.chipsWrap}>
+                {locationOptions.map((loc) => {
+                  const selectedSet = new Set(
+                    (draftFilters.locations || []).map((l) => l.toLowerCase()),
+                  );
+                  const isSelected = selectedSet.has(loc.name.toLowerCase());
+                  const iconName = getLocationIcon(loc.name);
+
+                  return (
+                    <Pressable
+                      key={loc.name}
+                      testID={`pantry-filter-loc-${loc.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter by location ${loc.name}`}
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() =>
+                        setDraftFilters((prev) => {
+                          const current = prev.locations || [];
+                          const exists = current.some(
+                            (l) => l.toLowerCase() === loc.name.toLowerCase(),
+                          );
+                          const next = exists
+                            ? current.filter(
+                                (l) => l.toLowerCase() !== loc.name.toLowerCase(),
+                              )
+                            : [...current, loc.name];
+                          return {
+                            ...prev,
+                            locations: next.length > 0 ? next : undefined,
+                          };
+                        })
+                      }
+                      style={[
+                        styles.catChip,
+                        {
+                          backgroundColor: isSelected
+                            ? theme.colors.primaryLight
+                            : theme.colors.bgElevated,
+                          borderColor: isSelected
+                            ? theme.colors.primary
+                            : theme.colors.border,
+                          borderRadius: theme.radii.pill,
+                        },
+                      ]}
+                    >
+                      <Ionicons
+                        name={iconName}
+                        size={14}
+                        color={isSelected ? theme.colors.primaryDark : theme.colors.textMuted}
+                      />
+                      <Text
+                        style={[
+                          styles.catChipText,
+                          {
+                            color: isSelected
+                              ? theme.colors.primaryDark
+                              : theme.colors.text,
+                            fontWeight: isSelected ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {loc.name}
+                      </Text>
+                      {loc.count > 0 ? (
+                        <View
+                          style={[
+                            styles.countBadge,
+                            {
+                              backgroundColor: isSelected
+                                ? theme.colors.primary
+                                 : theme.colors.border,
+                             },
+                           ]}
+                         >
+                           <Text
+                             style={[
+                               styles.countBadgeText,
+                               {
+                                 color: isSelected
+                                   ? theme.colors.bgElevated
+                                   : theme.colors.textMuted,
+                               },
+                             ]}
+                           >
+                             {loc.count}
+                           </Text>
+                         </View>
+                       ) : null}
+                     </Pressable>
+                   );
+                 })}
+               </View>
+             </View>
 
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>

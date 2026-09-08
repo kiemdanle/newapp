@@ -124,11 +124,11 @@ Integrate the `LocationSelector` component into pantry item editing (`QuickEditM
    - In `apps/mobile/src/tests/AddRecordForm.test.tsx`:
      - Add test verifying that selecting a location passes `location: 'Fridge'` to `createLocalRecord`.
 ## Success Criteria
-- [ ] `LocationSelector` appears between Unit and Expiry Date in `QuickEditModal`.
-- [ ] Selecting a location in `QuickEditModal` saves to the database.
-- [ ] Leaving location empty or deselecting it saves `location: null`.
-- [ ] `AddRecordForm` creates new items with the chosen location or `null`.
-- [ ] All form unit and integration tests pass.
+- [x] `LocationSelector` appears between Unit and Expiry Date in `QuickEditModal`.
+- [x] Selecting a location in `QuickEditModal` saves to the database.
+- [x] Leaving location empty or deselecting it saves `location: null`.
+- [x] `AddRecordForm` creates new items with the chosen location or `null`.
+- [x] All form unit and integration tests pass.
 
 ## Risk Assessment
 - *Risk*: Modal content height exceeds viewport on smaller screens causing bottom "Save Changes" button to be occluded by the keyboard or viewport edge.

@@ -71,6 +71,7 @@ export async function duplicateRecordRoute(app: FastifyInstance) {
         store: source.store,
         notes: source.notes,
         photoUrl: source.photoUrl,
+        location: source.location ?? null,
         notifyAt,
       },
     });

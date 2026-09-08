@@ -28,6 +28,7 @@ export interface LocalRecord {
   consumedAt?: string | null;
   discardedAt?: string | null;
   discardReason?: string | null;
+  location?: string | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -58,6 +59,7 @@ function toLocal(r: RecordModel): LocalRecord {
     consumedAt: r.consumedAt ? r.consumedAt.toISOString() : null,
     discardedAt: r.discardedAt ? r.discardedAt.toISOString() : null,
     discardReason: r.discardReason ?? null,
+    location: r.location ?? null,
   };
 }
 
@@ -169,6 +171,7 @@ export async function createLocalRecord(input: {
   photoUrl?: string | null;
   householdId?: string | null;
   userId?: string | null;
+  location?: string | null;
 }): Promise<string> {
   const clientId = uuidv4();
   const col = database.get<RecordModel>('records');
@@ -195,6 +198,8 @@ export async function createLocalRecord(input: {
       r.pendingDelete = false;
       r.householdId = input.householdId ?? null;
       r.userId = input.userId ?? null;
+      r.location = input.location ? input.location.trim().slice(0, 50) : null;
+      r.locationDirty = Boolean(input.location);
     });
     newId = created.id;
   });
@@ -205,7 +210,7 @@ export async function createLocalRecord(input: {
 export async function patchLocalRecord(
   id: string,
   patch: Partial<
-    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId'>
+    Pick<LocalRecord, 'customName' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId' | 'location'>
   >,
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
@@ -222,6 +227,10 @@ export async function patchLocalRecord(
       if (patch.category !== undefined) r.category = patch.category;
       if (patch.productId !== undefined) r.productId = patch.productId;
       if (patch.householdId !== undefined) r.householdId = patch.householdId;
+      if (patch.location !== undefined) {
+        r.location = patch.location ? patch.location.trim().slice(0, 50) : null;
+        r.locationDirty = true;
+      }
       r.pendingSync = true;
     });
   });
@@ -300,6 +309,8 @@ export async function markRecordStatusWithQuantity(
         r.consumedAt = status === 'consumed' ? new Date() : null;
         r.discardedAt = status === 'discarded' ? new Date() : null;
         r.discardReason = cleanReason;
+        r.location = rec.location ?? null;
+        r.locationDirty = rec.locationDirty ?? null;
         r.notifyAtJson = '[]';
         r.pendingSync = true;
         r.pendingDelete = false;

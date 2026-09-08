@@ -736,6 +736,7 @@ model Record {
   discardedAt   DateTime?    @map("discarded_at")
   discardReason String?      @map("discard_reason")
   householdId   String?      @map("household_id") @db.Uuid
+  location      String?
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   product   Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)

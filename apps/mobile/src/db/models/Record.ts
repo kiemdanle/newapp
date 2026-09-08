@@ -28,4 +28,6 @@ export class RecordModel extends Model {
   @field('pending_delete') pendingDelete!: boolean;
   @field('household_id') householdId!: string | null;
   @field('user_id') userId!: string | null;
+  @field('location') location!: string | null;
+  @field('location_dirty') locationDirty!: boolean | null;
 }

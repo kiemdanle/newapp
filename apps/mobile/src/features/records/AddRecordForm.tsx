@@ -15,6 +15,7 @@ import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { ScopeSelectorPill } from './ScopeSelectorPill';
 import { UnitSelector } from '../../components/UnitSelector';
+import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
 interface Props {
   productId?: string | null;
@@ -44,6 +45,7 @@ export function AddRecordForm({
   const theme = useTheme();
   const { data: product } = useProduct(productId ?? undefined);
   const lastProductIdRef = useRef(productId);
+  const [location, setLocation] = useState<string | null>(null);
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const hasUserEditedCategoryRef = useRef(false);
   const [itemName, setItemName] = useState(() => customName ?? productName ?? '');
@@ -154,6 +156,7 @@ export function AddRecordForm({
         store: store || null,
         notes: notes || null,
         photoUrl: photo ? photo.path : null,
+        location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
       });
       onSaved(localId);
@@ -407,6 +410,13 @@ export function AddRecordForm({
         onChange={setUnit}
         label="Unit"
         testID="add-record-unit-selector"
+      />
+
+      <LocationSelector
+        value={location}
+        onChange={setLocation}
+        label="Location (optional)"
+        testID="add-record-location-selector"
       />
 
       <View style={{ gap: 6 }}>

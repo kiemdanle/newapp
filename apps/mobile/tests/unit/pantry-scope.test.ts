@@ -161,4 +161,52 @@ describe('PantryScope Store and Query Mechanics', () => {
       expect(triggerSyncSoon).toHaveBeenCalled();
     });
   });
+
+  describe('patchLocalRecord with location', () => {
+    it('updates location, sets locationDirty=true, pendingSync=true, and calls triggerSyncSoon', async () => {
+      const recMock = {
+        location: null as string | null,
+        locationDirty: false as boolean | null,
+        pendingSync: false,
+        update: jest.fn(async (cb: (r: any) => void) => {
+          cb(recMock);
+        }),
+      };
+      const recordsCol = {
+        find: jest.fn().mockResolvedValue(recMock),
+      };
+      jest.spyOn(database, 'get').mockReturnValue(recordsCol as any);
+
+      await patchLocalRecord('rec-1', { location: 'Fridge' });
+
+      expect(recordsCol.find).toHaveBeenCalledWith('rec-1');
+      expect(recMock.update).toHaveBeenCalled();
+      expect(recMock.location).toBe('Fridge');
+      expect(recMock.locationDirty).toBe(true);
+      expect(recMock.pendingSync).toBe(true);
+      expect(triggerSyncSoon).toHaveBeenCalled();
+    });
+
+    it('clears location to null when passed null', async () => {
+      const recMock = {
+        location: 'Freezer' as string | null,
+        locationDirty: false as boolean | null,
+        pendingSync: false,
+        update: jest.fn(async (cb: (r: any) => void) => {
+          cb(recMock);
+        }),
+      };
+      const recordsCol = {
+        find: jest.fn().mockResolvedValue(recMock),
+      };
+      jest.spyOn(database, 'get').mockReturnValue(recordsCol as any);
+
+      await patchLocalRecord('rec-2', { location: null });
+
+      expect(recMock.location).toBeNull();
+      expect(recMock.locationDirty).toBe(true);
+      expect(recMock.pendingSync).toBe(true);
+      expect(triggerSyncSoon).toHaveBeenCalled();
+    });
+  });
 });

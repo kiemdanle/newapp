@@ -17,6 +17,7 @@ export interface PantryFilterState {
   inStockOnly?: boolean;
   householdScope?: 'all' | 'personal' | 'household';
   store?: string;
+  locations?: string[];
 }
 
 export interface PantrySortOptionMeta {

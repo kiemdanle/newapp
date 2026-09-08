@@ -216,6 +216,7 @@ export function RecordList({
       filters.inStockOnly ||
       filters.store ||
       (filters.householdScope && filters.householdScope !== 'all') ||
+      (filters.locations && filters.locations.length > 0) ||
       selectedSort !== 'expiry_asc',
   );
 
@@ -226,6 +227,9 @@ export function RecordList({
     if (filters.inStockOnly) count++;
     if (filters.store) count++;
     if (filters.householdScope && filters.householdScope !== 'all') count++;
+    if (filters.locations && filters.locations.length > 0) {
+      count += filters.locations.length;
+    }
     return count;
   }, [filters]);
 
@@ -256,6 +260,7 @@ export function RecordList({
     filters.inStockOnly,
     filters.store,
     filters.householdScope,
+    filters.locations?.join(','),
     activeSort,
     dayTick,
   ].join(':');
@@ -416,6 +421,7 @@ export function RecordList({
       quantity: number;
       unit: string;
       expiryDate: string;
+      location?: string | null;
     }) => {
       if (!editingRecord) return;
       if (editingRecord.id.startsWith('draft-duplicate-')) {
@@ -432,6 +438,7 @@ export function RecordList({
           photoUrl: editingRecord.photoUrl,
           householdId: editingRecord.householdId,
           userId: editingRecord.userId,
+          location: patch.location !== undefined ? patch.location : editingRecord.location,
         });
       } else {
         await patchLocalRecord(editingRecord.id, patch);
@@ -629,7 +636,20 @@ export function RecordList({
         <PantryActiveFilterChips
           filters={filters}
           searchQuery={searchQuery}
-          onRemoveFilter={(key) => setFilters((prev) => ({ ...prev, [key]: undefined }))}
+          onRemoveFilter={(key, value) =>
+            setFilters((prev) => {
+              if (key === 'locations' && value) {
+                const remaining = prev.locations?.filter(
+                  (l) => l.toLowerCase() !== value.toLowerCase(),
+                );
+                return {
+                  ...prev,
+                  locations: remaining && remaining.length > 0 ? remaining : undefined,
+                };
+              }
+              return { ...prev, [key]: undefined };
+            })
+          }
           onClearSearch={() => setSearchQuery('')}
           onClearAll={handleClearAll}
         />

@@ -42,6 +42,9 @@ export function matchesPantryQuery(
   if (record.store && record.store.toLowerCase().includes(q)) {
     return true;
   }
+  if (record.location && record.location.toLowerCase().includes(q)) {
+    return true;
+  }
   return false;
 }
 
@@ -65,6 +68,16 @@ export function filterAndSortRecords(
         return false;
       }
     }
+    // Storage location filter (multi-select)
+    if (filters.locations && filters.locations.length > 0) {
+      if (!record.location) return false;
+      const locNormalized = record.location.trim().toLowerCase();
+      const match = filters.locations.some(
+        (l) => l.trim().toLowerCase() === locNormalized,
+      );
+      if (!match) return false;
+    }
+
 
     // Expiry status filter
     if (filters.expiryStatus && filters.expiryStatus !== 'all') {

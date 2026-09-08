@@ -3,6 +3,16 @@ export const recordStatusSchema = z.enum(['active', 'consumed', 'discarded', 'ex
 const isoDate = z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
+const locationField = z
+    .string()
+    .trim()
+    .max(50)
+    .refine((v) => !/[\x00-\x1F\x7F\u200B-\u200D\uFEFF]/.test(v), {
+    message: 'location contains invalid characters',
+})
+    .transform((v) => (v.length > 0 ? v : null))
+    .nullable()
+    .optional();
 export const recordSchema = z.object({
     id: z.string().uuid(),
     clientId: z.string().uuid(),
@@ -23,6 +33,7 @@ export const recordSchema = z.object({
     consumedAt: z.string().datetime().nullable(),
     discardedAt: z.string().datetime().nullable().optional(),
     discardReason: z.string().trim().min(1).max(50).nullable().optional(),
+    location: z.string().max(50).nullable().optional(),
 });
 export const recordCreateBaseSchema = z.object({
     clientId: z.string().uuid(),
@@ -37,6 +48,7 @@ export const recordCreateBaseSchema = z.object({
     notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
     /** Assign the record to a household the caller belongs to; absent/null = personal. */
     householdId: z.string().uuid().nullable().optional(),
+    location: locationField,
 });
 export const recordCreateSchema = recordCreateBaseSchema.refine((v) => Boolean(v.productId) || Boolean(v.customName), { message: 'one of productId | customName is required' });
 export const recordPatchSchema = z.object({
@@ -54,6 +66,7 @@ export const recordPatchSchema = z.object({
     notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
     /** Move a record between personal and a household; enforced server-side. */
     householdId: z.string().uuid().nullable().optional(),
+    location: locationField,
 });
 export const recordListResponseSchema = z.object({
     items: z.array(recordSchema),

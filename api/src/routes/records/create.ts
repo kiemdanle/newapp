@@ -67,6 +67,7 @@ export async function createRecordRoute(app: FastifyInstance) {
             photoUrl: input.photoUrl ?? null,
             notifyAt,
             householdId: input.householdId ?? null,
+            location: input.location ? input.location.trim() : null,
           },
         });
 

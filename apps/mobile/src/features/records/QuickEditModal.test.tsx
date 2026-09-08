@@ -89,6 +89,7 @@ describe('QuickEditModal', () => {
       quantity: 5,
       unit: 'pcs',
       expiryDate: '2026-09-01',
+      location: null,
     });
     expect(onClose).toHaveBeenCalled();
   });
@@ -237,5 +238,68 @@ describe('QuickEditModal', () => {
     expect(onSave).not.toHaveBeenCalled();
     // Date picker is opened
     expect(getByTestId('date-picker-done')).toBeTruthy();
+  });
+
+  it('renders LocationSelector, selects location pill, and saves location', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const onClose = jest.fn();
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={onClose}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    expect(getByTestId('quick-edit-location-selector')).toBeTruthy();
+    expect(getByTestId('location-pill-fridge')).toBeTruthy();
+
+    fireEvent.press(getByTestId('location-pill-fridge'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: 'Fridge',
+      }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('tap-to-deselect location pill in QuickEditModal clears location to null', async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordWithLocation: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-loc',
+      location: 'Freezer',
+    };
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithLocation}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Press active Freezer pill to deselect it
+    fireEvent.press(getByTestId('location-pill-freezer'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: null,
+      }),
+    );
   });
 });

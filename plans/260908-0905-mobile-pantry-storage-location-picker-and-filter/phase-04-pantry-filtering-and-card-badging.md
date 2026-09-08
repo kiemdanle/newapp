@@ -164,11 +164,11 @@ Empower users to filter their pantry inventory by storage location within `Pantr
      - Verify rendering of "STORAGE LOCATION" section, multi-selecting location chips, and clearing.
 
 ## Success Criteria
-- [ ] Searching "fridge" returns records whose `location` is "Fridge".
-- [ ] Selecting "Freezer" in `PantryFilterModal` filters records strictly to freezer items.
-- [ ] Active filter chips display `Location: Freezer` with working removal button.
-- [ ] `RecordCard` renders the storage location badge clearly.
-- [ ] All unit tests pass.
+- [x] Searching "fridge" returns records whose `location` is "Fridge".
+- [x] Selecting "Freezer" in `PantryFilterModal` filters records strictly to freezer items.
+- [x] Active filter chips display `Location: Freezer` with working removal button.
+- [x] `RecordCard` renders the storage location badge clearly.
+- [x] All unit tests pass.
 
 ## Risk Assessment
 - *Risk*: A user with 0 records assigned to a location sees all counts at `(0)`.

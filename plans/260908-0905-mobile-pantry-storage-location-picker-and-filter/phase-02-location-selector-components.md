@@ -109,11 +109,11 @@ Develop the reusable `LocationSelector` and `LocationPickerModal` mobile compone
      - Clicking "Clear Location" calls `onSelect(null)`.
 
 ## Success Criteria
-- [ ] `LocationSelector` renders 4 fixed pills + adaptive 5th pill on a single line.
-- [ ] Tapping active pill cleanly deselects it.
-- [ ] `LocationPickerModal` opens with keyboard-friendly text input and preset chips.
-- [ ] Custom locations occupy the 5th pill in active Fresh Sage state.
-- [ ] Touch targets are minimum 44x44pt; test suite passes with 100% assertion coverage.
+- [x] `LocationSelector` renders 4 fixed pills + adaptive 5th pill on a single line.
+- [x] Tapping active pill cleanly deselects it.
+- [x] `LocationPickerModal` opens with keyboard-friendly text input and preset chips.
+- [x] Custom locations occupy the 5th pill in active Fresh Sage state.
+- [x] Touch targets are minimum 44x44pt; test suite passes with 100% assertion coverage.
 
 ## Risk Assessment
 - *Risk*: Long custom location names overflow the 5th pill width on narrow screens.

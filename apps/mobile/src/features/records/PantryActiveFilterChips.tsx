@@ -8,7 +8,7 @@ import type { PantryFilterState } from './pantryFilterTypes';
 export interface PantryActiveFilterChipsProps {
   filters: PantryFilterState;
   searchQuery?: string;
-  onRemoveFilter: (key: keyof PantryFilterState) => void;
+  onRemoveFilter: (key: keyof PantryFilterState, value?: string) => void;
   onClearSearch: () => void;
   onClearAll: () => void;
 }
@@ -99,6 +99,18 @@ export function PantryActiveFilterChips({
       label: `Store: ${filters.store}`,
       onRemove: () => onRemoveFilter('store'),
     });
+  }
+
+  if (filters.locations && filters.locations.length > 0) {
+    for (const loc of filters.locations) {
+      chips.push({
+        id: `location-${loc}`,
+        label: `Location: ${loc}`,
+        color: theme.colors.primaryDark,
+        bg: theme.colors.primaryLight,
+        onRemove: () => onRemoveFilter('locations', loc),
+      });
+    }
   }
 
   if (chips.length === 0) {

@@ -10,6 +10,7 @@ import { formatDate } from '../../utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
+import { getLocationIcon } from '../../utils/locations';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
@@ -287,6 +288,37 @@ export function RecordCard({
                     }}
                   >
                     Personal
+                  </Text>
+                </View>
+              ) : null}
+              {record.location ? (
+                <View
+                  testID={`record-location-badge-${record.id}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    borderWidth: 1,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    borderRadius: theme.radii.pill,
+                  }}
+                >
+                  <Ionicons
+                    name={getLocationIcon(record.location)}
+                    size={10}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text
+                    style={{
+                      color: theme.colors.textMuted,
+                      fontSize: 11,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {record.location}
                   </Text>
                 </View>
               ) : null}

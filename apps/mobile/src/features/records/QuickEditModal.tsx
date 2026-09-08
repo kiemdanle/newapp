@@ -21,6 +21,7 @@ import { Button } from '../../components/Button';
 import { TextField } from '../../components/TextField';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { UnitSelector } from '../../components/UnitSelector';
+import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
 
 interface Props {
@@ -34,6 +35,7 @@ interface Props {
     quantity: number;
     unit: string;
     expiryDate: string;
+    location?: string | null;
   }) => Promise<void>;
 }
 
@@ -48,6 +50,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [expiryDate, setExpiryDate] = useState('');
+  const [location, setLocation] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const userEditedNameRef = useRef(false);
@@ -74,6 +77,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
       setQuantity(String(record.quantity ?? 1));
       setUnit(record.unit || 'pcs');
       setExpiryDate(record.expiryDate || '');
+      setLocation(record.location ?? null);
     } else {
       // Product may have loaded asynchronously after modal opened
       if (!userEditedNameRef.current && !record.customName && !customName && product?.name) {
@@ -116,6 +120,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
         quantity: validQty,
         unit: unit.trim() || 'pcs',
         expiryDate: trimmedExpiry,
+        location: location ? location.trim().slice(0, 50) : null,
       });
       onClose();
     } finally {
@@ -283,6 +288,14 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
             onChange={setUnit}
             label="Unit"
             testID="quick-edit-unit-selector"
+          />
+
+          {/* Location Selector */}
+          <LocationSelector
+            value={location}
+            onChange={setLocation}
+            label="Location (optional)"
+            testID="quick-edit-location-selector"
           />
 
           {/* Expiry Date */}

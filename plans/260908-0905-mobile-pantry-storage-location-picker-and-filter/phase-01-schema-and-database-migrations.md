@@ -123,13 +123,13 @@ Establish the foundational data contracts and storage persistence for the option
        3. Personal records create and update branches (`ch.location`).
      - Ensures household pull creates rows with location preserved, avoiding data drop.
 ## Success Criteria
-- [ ] `packages/shared` tests pass with `location` field validations.
-- [ ] Postgres migration `20260908093000_add_record_location` created and Prisma client regenerated.
-- [ ] WatermelonDB schema compiles with version 5 and includes `location` column.
-- [ ] Migration v4 → v5 defined cleanly without table reconstruction.
-- [ ] `LocalRecord` and `RecordModel` correctly expose and persist `location`.
-- [ ] Record CRUD operations (`createLocalRecord`, `patchLocalRecord`, `markRecordStatusWithQuantity`) retain `location`.
-- [ ] Live sync path (push create/patch + pull conflict, household, and personal create/update) preserves `location`.
+- [x] `packages/shared` tests pass with `location` field validations.
+- [x] Postgres migration `20260908093000_add_record_location` created and Prisma client regenerated.
+- [x] WatermelonDB schema compiles with version 5 and includes `location` column.
+- [x] Migration v4 → v5 defined cleanly without table reconstruction.
+- [x] `LocalRecord` and `RecordModel` correctly expose and persist `location`.
+- [x] Record CRUD operations (`createLocalRecord`, `patchLocalRecord`, `markRecordStatusWithQuantity`) retain `location`.
+- [x] Live sync path (push create/patch + pull conflict, household, and personal create/update) preserves `location`.
 
 ## Risk Assessment
 - *Risk*: WatermelonDB migration failure on devices with existing v4 SQLite databases causing crashes on startup.

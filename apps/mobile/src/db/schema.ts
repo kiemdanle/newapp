@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const mySchema = appSchema({
-  version: 4,
+  version: 5,
   tables: [
     tableSchema({
       name: 'records',
@@ -30,6 +30,8 @@ export const mySchema = appSchema({
         { name: 'pending_delete', type: 'boolean', isIndexed: true },
         { name: 'household_id', type: 'string', isOptional: true },
         { name: 'user_id', type: 'string', isOptional: true },
+        { name: 'location', type: 'string', isOptional: true },
+        { name: 'location_dirty', type: 'boolean', isOptional: true },
       ],
     }),
     tableSchema({

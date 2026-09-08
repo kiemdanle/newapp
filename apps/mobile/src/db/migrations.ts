@@ -42,5 +42,19 @@ export const migrations = schemaMigrations({
         },
       ],
     },
+    {
+      // v4 → v5: add location and location_dirty to records
+      toVersion: 5,
+      steps: [
+        {
+          type: 'add_columns' as const,
+          table: 'records',
+          columns: [
+            { name: 'location', type: 'string', isOptional: true },
+            { name: 'location_dirty', type: 'boolean', isOptional: true },
+          ],
+        },
+      ],
+    },
   ],
 });

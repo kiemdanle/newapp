@@ -137,6 +137,7 @@ export async function syncRecords(
               discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
               discardReason: uStatus === 'discarded' ? (u.discardReason || 'other') : null,
               notifyAt,
+              location: u.location ? u.location.trim() : null,
             },
           });
           if (uStatus === 'active') {
@@ -190,6 +191,7 @@ export async function syncRecords(
               discardedAt: (u.status ?? 'active') === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
               discardReason: (u.status ?? 'active') === 'discarded' ? (u.discardReason || 'other') : null,
               notifyAt,
+              location: u.location ? u.location.trim() : null,
             },
             update: {
               productId: u.productId ?? null,
@@ -205,6 +207,7 @@ export async function syncRecords(
               discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : (existing?.discardedAt ?? new Date())) : null,
               discardReason: uStatus === 'discarded' ? (u.discardReason || existing?.discardReason || 'other') : null,
               notifyAt,
+              ...(u.location !== undefined ? { location: u.location ? u.location.trim() : null } : {}),
             },
           });
           if (uStatus === 'active') {

@@ -136,6 +136,7 @@ export async function patchRecordRoute(app: FastifyInstance) {
             : {}),
           ...(effectiveStatus !== 'active' ? { notifyAt: [] } : reschedule ? { notifyAt: nextNotifyAt } : {}),
           ...(input.householdId !== undefined ? { householdId: input.householdId } : {}),
+          ...(input.location !== undefined ? { location: input.location ? input.location.trim() : null } : {}),
         },
       });
     });

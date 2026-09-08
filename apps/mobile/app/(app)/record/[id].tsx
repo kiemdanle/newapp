@@ -277,6 +277,7 @@ export default function RecordDetail() {
     quantity: number;
     unit: string;
     expiryDate: string;
+    location?: string | null;
   }) => {
     await patchLocalRecord(record.id, patch);
     setShowEditModal(false);

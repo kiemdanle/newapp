@@ -41,6 +41,7 @@ async function pushPending(): Promise<void> {
           notes: rec.notes,
           photoUrl: rec.photoUrl,
         };
+        if (rec.location) body.location = rec.location;
         if (rec.householdId) body.householdId = rec.householdId;
         const res = await apiClient.post<{ id: string }>(
           '/records',
@@ -71,11 +72,15 @@ async function pushPending(): Promise<void> {
         if (rec.consumedAt) patch.consumedAt = rec.consumedAt.toISOString();
         if (rec.discardedAt) patch.discardedAt = rec.discardedAt.toISOString();
         if (rec.discardReason !== undefined && rec.discardReason !== null) patch.discardReason = rec.discardReason;
+        if (rec.locationDirty) patch.location = rec.location ? rec.location.trim() : null;
         await apiClient.patch(`/records/${rec.serverId}`, patch);
         await database.write(async () => {
           await rec.update((r) => {
             if (r.status === patch.status) {
               r.pendingSync = false;
+            }
+            if (patch.location !== undefined) {
+              r.locationDirty = false;
             }
           });
         });
@@ -155,6 +160,8 @@ async function pullSince(): Promise<void> {
           r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
           r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
           r.discardReason = ch.discardReason ?? null;
+          r.location = ch.location ?? null;
+          r.locationDirty = false;
           r.notifyAtJson = JSON.stringify(ch.notifyAt);
           r.pendingSync = false;
           r.pendingDelete = false;
@@ -193,6 +200,8 @@ async function pullSince(): Promise<void> {
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
             r.discardReason = ch.discardReason ?? null;
+            r.location = ch.location ?? null;
+            r.locationDirty = false;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -215,6 +224,8 @@ async function pullSince(): Promise<void> {
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
             r.discardReason = ch.discardReason ?? null;
+            r.location = ch.location ?? null;
+            r.locationDirty = false;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -242,6 +253,8 @@ async function pullSince(): Promise<void> {
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
             r.discardReason = ch.discardReason ?? null;
+            r.location = ch.location ?? null;
+            r.locationDirty = false;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;
@@ -264,6 +277,8 @@ async function pullSince(): Promise<void> {
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
             r.discardReason = ch.discardReason ?? null;
+            r.location = ch.location ?? null;
+            r.locationDirty = false;
             r.notifyAtJson = JSON.stringify(ch.notifyAt);
             r.pendingSync = false;
             r.pendingDelete = false;

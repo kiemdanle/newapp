@@ -12,6 +12,7 @@ import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { PantryGridActionDrawer } from './PantryGridActionDrawer';
 
+import { getLocationIcon } from '../../utils/locations';
 export interface PantryGridCardProps {
   record: LocalRecord;
   onPress: () => void;
@@ -353,6 +354,35 @@ export function PantryGridCard({
                     ]}
                   >
                     Personal
+                  </Text>
+                </View>
+              ) : null}
+              {record.location ? (
+                <View
+                  testID={`record-location-badge-${record.id}`}
+                  style={[
+                    styles.personalBadge,
+                    {
+                      backgroundColor: theme.colors.bgGlass,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radii.pill,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={getLocationIcon(record.location)}
+                    size={10}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.personalBadgeText,
+                      {
+                        color: theme.colors.textMuted,
+                      },
+                    ]}
+                  >
+                    {record.location}
                   </Text>
                 </View>
               ) : null}

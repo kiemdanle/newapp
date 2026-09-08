@@ -25,14 +25,15 @@ function makeRecord(overrides: Partial<LocalRecord> = {}): LocalRecord {
     status: 'active',
     notifyAt: [],
     householdId: overrides.householdId ?? null,
+    location: overrides.location ?? null,
   };
 }
 
 describe('PantryFilterModal', () => {
   const sampleRecords: LocalRecord[] = [
-    makeRecord({ id: 'rec-1', customName: 'Milk', category: 'Dairy', expiryDate: '2026-09-01', quantity: 2 }),
-    makeRecord({ id: 'rec-2', customName: 'Bread', category: 'Bakery', expiryDate: '2026-09-05', quantity: 0 }),
-    makeRecord({ id: 'rec-3', customName: 'Apple', category: 'Produce', expiryDate: '2026-09-10', quantity: 5 }),
+    makeRecord({ id: 'rec-1', customName: 'Milk', category: 'Dairy', expiryDate: '2026-09-01', quantity: 2, location: 'Fridge' }),
+    makeRecord({ id: 'rec-2', customName: 'Bread', category: 'Bakery', expiryDate: '2026-09-05', quantity: 0, location: 'Freezer' }),
+    makeRecord({ id: 'rec-3', customName: 'Apple', category: 'Produce', expiryDate: '2026-09-10', quantity: 5, location: 'Counter' }),
   ];
 
   it('renders modal content when visible', () => {
@@ -51,6 +52,7 @@ describe('PantryFilterModal', () => {
     expect(screen.getByText('Filter Pantry')).toBeTruthy();
     expect(screen.getByText('EXPIRY STATUS')).toBeTruthy();
     expect(screen.getByText('FOOD CATEGORY')).toBeTruthy();
+    expect(screen.getByText('STORAGE LOCATION')).toBeTruthy();
     expect(screen.getByText('AVAILABILITY')).toBeTruthy();
     expect(screen.getByText('Apply')).toBeTruthy();
   });
@@ -227,6 +229,77 @@ describe('PantryFilterModal', () => {
 
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({ householdScope: 'household' }),
+    );
+  });
+
+  it('renders STORAGE LOCATION section with preset and record locations and counts', () => {
+    const screen = renderWithTheme(
+      <PantryFilterModal
+        visible={true}
+        onClose={jest.fn()}
+        filters={{}}
+        onApply={jest.fn()}
+        records={sampleRecords}
+      />,
+      'expyrico',
+    );
+
+    expect(screen.getByText('STORAGE LOCATION')).toBeTruthy();
+    expect(screen.getByTestId('pantry-filter-loc-fridge')).toBeTruthy();
+    expect(screen.getByTestId('pantry-filter-loc-freezer')).toBeTruthy();
+    expect(screen.getByTestId('pantry-filter-loc-pantry')).toBeTruthy();
+    expect(screen.getByTestId('pantry-filter-loc-counter')).toBeTruthy();
+  });
+
+  it('supports multi-selecting locations and applies them', () => {
+    const onApply = jest.fn();
+    const screen = renderWithTheme(
+      <PantryFilterModal
+        visible={true}
+        onClose={jest.fn()}
+        filters={{}}
+        onApply={onApply}
+        records={sampleRecords}
+      />,
+      'expyrico',
+    );
+
+    // Select Fridge and Freezer (multi-select)
+    fireEvent.press(screen.getByTestId('pantry-filter-loc-fridge'));
+    fireEvent.press(screen.getByTestId('pantry-filter-loc-freezer'));
+
+    fireEvent.press(screen.getByTestId('pantry-filter-apply-btn'));
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locations: ['Fridge', 'Freezer'],
+      }),
+    );
+  });
+
+  it('allows clearing selected locations', () => {
+    const onApply = jest.fn();
+    const screen = renderWithTheme(
+      <PantryFilterModal
+        visible={true}
+        onClose={jest.fn()}
+        filters={{ locations: ['Fridge'] }}
+        onApply={onApply}
+        records={sampleRecords}
+      />,
+      'expyrico',
+    );
+
+    const clearBtn = screen.getByTestId('pantry-filter-locations-clear');
+    expect(clearBtn).toBeTruthy();
+    fireEvent.press(clearBtn);
+
+    fireEvent.press(screen.getByTestId('pantry-filter-apply-btn'));
+
+    expect(onApply).toHaveBeenCalledWith(
+      expect.objectContaining({
+        locations: undefined,
+      }),
     );
   });
 });

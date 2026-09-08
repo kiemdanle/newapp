@@ -274,4 +274,26 @@ describe('AddRecordForm', () => {
       }),
     );
   });
+
+  it('saves new item with selected location pill', async () => {
+    const onSaved = jest.fn();
+    const { getByTestId } = render(
+      <AddRecordForm productId="prod-1" productName="Cereal" onSaved={onSaved} />,
+    );
+
+    expect(getByTestId('add-record-location-selector')).toBeTruthy();
+    fireEvent.press(getByTestId('location-pill-pantry'));
+
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-11-01');
+    fireEvent.press(getByTestId('add-record-save'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('local-id-1'));
+    expect(createLocalRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: 'prod-1',
+        location: 'Pantry',
+        expiryDate: '2026-11-01',
+      }),
+    );
+  });
 });

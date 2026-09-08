@@ -20,6 +20,7 @@ function makeRecord(overrides: Partial<LocalRecord> = {}): LocalRecord {
     status: 'active',
     notifyAt: [],
     householdId: overrides.householdId ?? null,
+    location: overrides.location ?? null,
   };
 }
 
@@ -41,6 +42,7 @@ describe('filterAndSortRecords', () => {
       quantity: 2,
       store: 'Trader Joe\'s',
       notes: 'For baking',
+      location: 'Fridge',
     }),
     makeRecord({
       id: 'rec-2',
@@ -49,6 +51,7 @@ describe('filterAndSortRecords', () => {
       expiryDate: '2026-09-05', // Expiring soon
       quantity: 0,
       store: 'Costco',
+      location: 'Freezer',
     }),
     makeRecord({
       id: 'rec-3',
@@ -57,6 +60,7 @@ describe('filterAndSortRecords', () => {
       expiryDate: '2026-09-04', // Expiring soon
       quantity: 6,
       store: 'Whole Foods',
+      location: 'Counter',
     }),
     makeRecord({
       id: 'rec-4',
@@ -65,6 +69,7 @@ describe('filterAndSortRecords', () => {
       expiryDate: '2027-01-01', // Good
       quantity: 4,
       householdId: 'hh-123',
+      location: 'Pantry',
     }),
   ];
 
@@ -111,6 +116,11 @@ describe('filterAndSortRecords', () => {
       const results = filterAndSortRecords(sampleRecords, { query: '   ' });
       expect(results.length).toBe(sampleRecords.length);
     });
+
+    it('matches location case-insensitively', () => {
+      const results = filterAndSortRecords(sampleRecords, { query: 'fridge' });
+      expect(results.map((r) => r.id)).toEqual(['rec-1']);
+    });
   });
 
   describe('category filtering', () => {
@@ -121,6 +131,23 @@ describe('filterAndSortRecords', () => {
 
     it('returns empty when no records match category', () => {
       const results = filterAndSortRecords(sampleRecords, { category: 'Bakery' });
+      expect(results).toEqual([]);
+    });
+  });
+
+  describe('storage location filtering', () => {
+    it('filters by single location case-insensitively', () => {
+      const results = filterAndSortRecords(sampleRecords, { locations: ['fridge'] });
+      expect(results.map((r) => r.id)).toEqual(['rec-1']);
+    });
+
+    it('filters by multiple locations (multi-select)', () => {
+      const results = filterAndSortRecords(sampleRecords, { locations: ['Fridge', 'Freezer'] });
+      expect(results.map((r) => r.id)).toEqual(['rec-1', 'rec-2']);
+    });
+
+    it('returns empty array when no records match locations', () => {
+      const results = filterAndSortRecords(sampleRecords, { locations: ['Wine Cooler'] });
       expect(results).toEqual([]);
     });
   });
