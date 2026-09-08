@@ -207,8 +207,8 @@ export function LocationPickerModal({
                 style={[
                   styles.applyBtn,
                   {
-                    backgroundColor: theme.colors.primary,
-                    borderColor: theme.colors.primary,
+                    backgroundColor: theme.colors.accent,
+                    borderColor: theme.colors.accent,
                   },
                 ]}
               >
@@ -288,16 +288,16 @@ export function LocationPickerModal({
                   style={[
                     styles.applyCustomChip,
                     {
-                      backgroundColor: theme.colors.primaryLight,
-                      borderColor: theme.colors.primary,
+                      backgroundColor: theme.colors.accentLight,
+                      borderColor: theme.colors.accent,
                     },
                   ]}
                 >
-                  <Ionicons name="add" size={16} color={theme.colors.primaryDark} />
+                  <Ionicons name="add" size={16} color={theme.colors.neutralDark} />
                   <Text
                     style={[
                       styles.applyCustomChipText,
-                      { color: theme.colors.primaryDark },
+                      { color: theme.colors.neutralDark },
                     ]}
                   >
                     Define &quot;{normalizeLocationTitleCase(search)}&quot;
@@ -406,10 +406,10 @@ export function LocationPickerModal({
                     styles.customApplyBtn,
                     {
                       backgroundColor: customInput.trim()
-                        ? theme.colors.primary
+                        ? theme.colors.accent
                         : theme.colors.bgElevated,
                       borderColor: customInput.trim()
-                        ? theme.colors.primary
+                        ? theme.colors.accent
                         : theme.colors.neutralMid,
                     },
                   ]}
