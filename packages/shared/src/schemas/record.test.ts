@@ -99,3 +99,49 @@ describe('recordCreateSchema and recordPatchSchema location validation', () => {
     expect(parsed.location).toBeNull();
   });
 });
+
+describe('recordCreateSchema and recordPatchSchema brand validation', () => {
+  const baseCreate = {
+    clientId: '123e4567-e89b-12d3-a456-426614174001',
+    customName: 'Milk',
+    expiryDate: '2099-12-31',
+  };
+
+  it('parses recordCreateSchema with trimmed brand', () => {
+    const parsed = recordCreateSchema.parse({
+      ...baseCreate,
+      brand: '  TH True Milk  ',
+    });
+    expect(parsed.brand).toBe('TH True Milk');
+  });
+
+  it('parses recordCreateSchema with null brand', () => {
+    const parsed = recordCreateSchema.parse({
+      ...baseCreate,
+      brand: null,
+    });
+    expect(parsed.brand).toBeNull();
+  });
+
+  it('parses recordPatchSchema with brand', () => {
+    const parsed = recordPatchSchema.parse({
+      brand: 'Vinamilk',
+    });
+    expect(parsed.brand).toBe('Vinamilk');
+  });
+
+  it('parses recordPatchSchema with null brand', () => {
+    const parsed = recordPatchSchema.parse({
+      brand: null,
+    });
+    expect(parsed.brand).toBeNull();
+  });
+
+  it('rejects brand exceeding 120 characters', () => {
+    expect(() =>
+      recordPatchSchema.parse({
+        brand: 'a'.repeat(121),
+      })
+    ).toThrow();
+  });
+});

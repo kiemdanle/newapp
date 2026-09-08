@@ -342,3 +342,55 @@ describe('DELETE /v1/records/:id', () => {
     await app.close();
   });
 });
+
+describe('brand persistence on /v1/records', () => {
+  it('creates a record with brand and updates brand via PATCH', async () => {
+    const app = await buildServer();
+    const { headers } = await authed();
+    const clientId = randomUUID();
+
+    // Create with brand
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/v1/records',
+      headers: { ...headers, 'Idempotency-Key': clientId },
+      payload: {
+        clientId,
+        customName: 'Greek Yogurt',
+        brand: 'Chobani',
+        expiryDate: '2099-12-31',
+        quantity: 1,
+        unit: 'pcs',
+      },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const created = createRes.json();
+    expect(created.brand).toBe('Chobani');
+
+    // Patch brand to a new value
+    const patchRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/records/${created.id}`,
+      headers,
+      payload: {
+        brand: 'Fage',
+      },
+    });
+    expect(patchRes.statusCode).toBe(200);
+    expect(patchRes.json().brand).toBe('Fage');
+
+    // Clear brand to null
+    const clearRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/records/${created.id}`,
+      headers,
+      payload: {
+        brand: null,
+      },
+    });
+    expect(clearRes.statusCode).toBe(200);
+    expect(clearRes.json().brand).toBeNull();
+
+    await app.close();
+  });
+});

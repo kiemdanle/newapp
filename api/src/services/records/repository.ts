@@ -9,6 +9,7 @@ export function toApiRecord(r: PrismaRecord): ApiRecord {
     productId: r.productId,
     householdId: r.householdId,
     customName: r.customName,
+    brand: r.brand ?? null,
     expiryDate: r.expiryDate.toISOString().slice(0, 10),
     purchaseDate: r.purchaseDate ? r.purchaseDate.toISOString().slice(0, 10) : null,
     quantity: Number(r.quantity),

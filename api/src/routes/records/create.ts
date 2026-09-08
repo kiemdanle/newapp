@@ -59,6 +59,7 @@ export async function createRecordRoute(app: FastifyInstance) {
             clientId: input.clientId,
             productId: input.productId ?? null,
             customName: input.customName ?? null,
+            brand: input.brand ?? null,
             expiryDate: new Date(input.expiryDate),
             purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null,
             quantity: input.quantity,

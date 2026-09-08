@@ -126,6 +126,7 @@ export async function syncRecords(
               householdId: recordHouseholdId,
               productId: u.productId ?? null,
               customName: u.customName ?? null,
+              brand: u.brand ?? null,
               expiryDate: new Date(u.expiryDate),
               purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
               quantity: u.quantity,
@@ -180,6 +181,7 @@ export async function syncRecords(
               clientId: u.clientId,
               productId: u.productId ?? null,
               customName: u.customName ?? null,
+              brand: u.brand ?? null,
               expiryDate: new Date(u.expiryDate),
               purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
               quantity: u.quantity,
@@ -196,6 +198,7 @@ export async function syncRecords(
             update: {
               productId: u.productId ?? null,
               customName: u.customName ?? null,
+              brand: u.brand ?? null,
               expiryDate: new Date(u.expiryDate),
               purchaseDate: u.purchaseDate ? new Date(u.purchaseDate) : null,
               quantity: u.quantity,

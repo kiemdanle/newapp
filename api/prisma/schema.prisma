@@ -718,6 +718,7 @@ model Record {
   userId       String       @map("user_id") @db.Uuid
   productId    String?      @map("product_id") @db.Uuid
   customName   String?      @map("custom_name")
+  brand        String?
   category     String?
   expiryDate   DateTime     @map("expiry_date") @db.Date
   purchaseDate DateTime?    @map("purchase_date") @db.Date

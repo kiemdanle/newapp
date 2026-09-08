@@ -104,6 +104,7 @@ export async function patchRecordRoute(app: FastifyInstance) {
         where: { id },
         data: {
           ...(input.customName !== undefined ? { customName: input.customName } : {}),
+          ...(input.brand !== undefined ? { brand: input.brand } : {}),
           ...(input.expiryDate !== undefined ? { expiryDate: new Date(input.expiryDate) } : {}),
           ...(input.purchaseDate !== undefined
             ? { purchaseDate: input.purchaseDate ? new Date(input.purchaseDate) : null }

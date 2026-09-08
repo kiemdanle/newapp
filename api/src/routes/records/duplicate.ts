@@ -62,6 +62,7 @@ export async function duplicateRecordRoute(app: FastifyInstance) {
         clientId: randomUUID(),
         productId: source.productId,
         customName: source.customName,
+        brand: source.brand,
         category: source.category,
         expiryDate: new Date(body.expiryDate),
         purchaseDate: null,
