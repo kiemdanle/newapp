@@ -25,6 +25,14 @@ export interface UnitPickerModalProps {
 
 const CUSTOM_UNIT_REGEX = /^[a-zA-Z0-9\s/°\-_.]+$/;
 
+function getCategoryIcon(title: string): keyof typeof Ionicons.glyphMap {
+  const t = title.toLowerCase();
+  if (t.includes('package') || t.includes('container')) return 'cube-outline';
+  if (t.includes('metric')) return 'scale-outline';
+  if (t.includes('traditional')) return 'flask-outline';
+  return 'grid-outline';
+}
+
 export function UnitPickerModal({
   visible,
   onClose,
@@ -128,12 +136,12 @@ export function UnitPickerModal({
               style={[
                 styles.closeBtn,
                 {
-                  backgroundColor: theme.colors.bgGlass,
-                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.primaryLight,
+                  borderColor: 'rgba(75, 174, 138, 0.35)',
                 },
               ]}
             >
-              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
+              <Ionicons name="close" size={18} color={theme.colors.primaryDark} />
             </Pressable>
           </View>
 
@@ -146,14 +154,15 @@ export function UnitPickerModal({
                   backgroundColor: theme.colors.bgElevated,
                   borderColor: searchFocused
                     ? theme.colors.primary
-                    : theme.colors.neutralMid,
+                    : 'rgba(75, 174, 138, 0.35)',
+                  borderWidth: searchFocused ? 1.5 : 1,
                 },
               ]}
             >
               <Ionicons
                 name="search"
                 size={16}
-                color={searchFocused ? theme.colors.primary : theme.colors.textMuted}
+                color={searchFocused ? theme.colors.primary : theme.colors.primaryDark}
               />
               <TextInput
                 testID="unit-picker-search-input"
@@ -199,18 +208,18 @@ export function UnitPickerModal({
                 style={[
                   styles.notFoundBox,
                   {
-                    backgroundColor: theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
+                    backgroundColor: 'rgba(214, 240, 230, 0.35)',
+                    borderColor: 'rgba(75, 174, 138, 0.3)',
                   },
                 ]}
               >
                 <Ionicons
                   name="search-outline"
                   size={18}
-                  color={theme.colors.textMuted}
+                  color={theme.colors.primaryDark}
                 />
                 <Text
-                  style={[styles.notFoundText, { color: theme.colors.textMuted }]}
+                  style={[styles.notFoundText, { color: theme.colors.text }]}
                 >
                   No preset unit found for &quot;{search}&quot;.
                 </Text>
@@ -222,16 +231,16 @@ export function UnitPickerModal({
                   style={[
                     styles.applyCustomChip,
                     {
-                      backgroundColor: theme.colors.accentLight,
+                      backgroundColor: theme.colors.accent,
                       borderColor: theme.colors.accent,
                     },
                   ]}
                 >
-                  <Ionicons name="add" size={16} color={theme.colors.neutralDark} />
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
                   <Text
                     style={[
                       styles.applyCustomChipText,
-                      { color: theme.colors.neutralDark },
+                      { color: '#FFFFFF' },
                     ]}
                   >
                     Use &quot;{search.trim().toLowerCase().slice(0, 16)}&quot;
@@ -251,17 +260,21 @@ export function UnitPickerModal({
               });
 
               if (matchingUnits.length === 0) return null;
+              const catIcon = getCategoryIcon(cat.title);
 
               return (
                 <View key={cat.title} style={styles.categorySection}>
-                  <Text
-                    style={[
-                      styles.categoryTitle,
-                      { color: theme.colors.textMuted },
-                    ]}
-                  >
-                    {cat.title}
-                  </Text>
+                  <View style={styles.categoryHeaderRow}>
+                    <Ionicons name={catIcon} size={13} color={theme.colors.primaryDark} />
+                    <Text
+                      style={[
+                        styles.categoryTitle,
+                        { color: theme.colors.primaryDark },
+                      ]}
+                    >
+                      {cat.title}
+                    </Text>
+                  </View>
 
                   <View style={styles.unitGrid}>
                     {matchingUnits.map((u) => {
@@ -282,10 +295,11 @@ export function UnitPickerModal({
                             {
                               backgroundColor: isSelected
                                 ? theme.colors.primaryLight
-                                : theme.colors.bgElevated,
+                                : 'rgba(214, 240, 230, 0.45)',
                               borderColor: isSelected
                                 ? theme.colors.primary
-                                : theme.colors.neutralMid,
+                                : 'rgba(75, 174, 138, 0.28)',
+                              borderWidth: isSelected ? 2 : 1,
                               opacity: pressed ? 0.82 : 1,
                             },
                           ]}
@@ -299,7 +313,7 @@ export function UnitPickerModal({
                                     color: isSelected
                                       ? theme.colors.primaryDark
                                       : theme.colors.text,
-                                    fontWeight: isSelected ? '700' : '600',
+                                    fontWeight: isSelected ? '800' : '700',
                                   },
                                 ]}
                               >
@@ -309,7 +323,7 @@ export function UnitPickerModal({
                                 <Ionicons
                                   name="checkmark-circle"
                                   size={12}
-                                  color={theme.colors.primaryDark}
+                                  color={theme.colors.primary}
                                 />
                               )}
                             </View>
@@ -321,7 +335,8 @@ export function UnitPickerModal({
                                 {
                                   color: isSelected
                                     ? theme.colors.primaryDark
-                                    : theme.colors.textMuted,
+                                    : theme.colors.primaryDark,
+                                  opacity: isSelected ? 1 : 0.85,
                                 },
                               ]}
                             >
@@ -340,17 +355,23 @@ export function UnitPickerModal({
             <View
               style={[
                 styles.customSection,
-                { borderTopColor: theme.colors.border },
+                {
+                  backgroundColor: 'rgba(214, 240, 230, 0.25)',
+                  borderColor: 'rgba(75, 174, 138, 0.25)',
+                },
               ]}
             >
-              <Text
-                style={[
-                  styles.categoryTitle,
-                  { color: theme.colors.textMuted },
-                ]}
-              >
-                DEFINE CUSTOM UNIT
-              </Text>
+              <View style={styles.categoryHeaderRow}>
+                <Ionicons name="sparkles-outline" size={13} color={theme.colors.primaryDark} />
+                <Text
+                  style={[
+                    styles.categoryTitle,
+                    { color: theme.colors.primaryDark },
+                  ]}
+                >
+                  DEFINE CUSTOM UNIT
+                </Text>
+              </View>
               <Text
                 style={[styles.customSubcopy, { color: theme.colors.textMuted }]}
               >
@@ -373,7 +394,8 @@ export function UnitPickerModal({
                       backgroundColor: theme.colors.bgElevated,
                       borderColor: customFocused
                         ? theme.colors.primary
-                        : theme.colors.neutralMid,
+                        : 'rgba(75, 174, 138, 0.35)',
+                      borderWidth: customFocused ? 1.5 : 1,
                     },
                   ]}
                   autoCapitalize="none"
@@ -391,10 +413,10 @@ export function UnitPickerModal({
                     {
                       backgroundColor: customUnit.trim()
                         ? theme.colors.accent
-                        : theme.colors.bgElevated,
+                        : 'rgba(245, 166, 35, 0.15)',
                       borderColor: customUnit.trim()
                         ? theme.colors.accent
-                        : theme.colors.neutralMid,
+                        : 'rgba(245, 166, 35, 0.3)',
                     },
                   ]}
                   disabled={!customUnit.trim()}
@@ -470,8 +492,7 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
+    borderRadius: 10,
     paddingHorizontal: 12,
     height: 44,
     minHeight: 44,
@@ -492,12 +513,17 @@ const styles = StyleSheet.create({
   categorySection: {
     marginBottom: 16,
   },
+  categoryHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
   categoryTitle: {
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    marginBottom: 8,
   },
   unitGrid: {
     flexDirection: 'row',
@@ -512,7 +538,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 4,
     borderRadius: 12,
-    borderWidth: 1,
     minHeight: 50,
     height: 50,
   },
@@ -534,12 +559,14 @@ const styles = StyleSheet.create({
   },
   unitLabelText: {
     fontSize: 10,
+    fontWeight: '600',
     textAlign: 'center',
   },
   customSection: {
-    marginTop: 20,
-    paddingTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    marginTop: 12,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 16,
   },
   customSubcopy: {
@@ -557,7 +584,6 @@ const styles = StyleSheet.create({
     height: 44,
     minHeight: 44,
     borderRadius: 8,
-    borderWidth: 1,
     paddingHorizontal: 12,
     fontSize: 15,
   },
@@ -576,7 +602,7 @@ const styles = StyleSheet.create({
   },
   notFoundBox: {
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     gap: 8,
