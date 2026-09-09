@@ -147,7 +147,7 @@ export function DraftGridCard({
           disabled={isSubmitting}
         >
           <Ionicons name="add" size={15} color="#2A6F54" />
-          <Text style={styles.addBtnText}>+ Add to Pantry</Text>
+          <Text style={styles.addBtnText}>Add to Pantry</Text>
         </Pressable>
       ) : (
         <View style={styles.draftEditNotice}>

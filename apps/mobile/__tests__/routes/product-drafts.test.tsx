@@ -263,4 +263,20 @@ describe('<ProductDraftsScreen />', () => {
 
     expect(navigation.push).toHaveBeenCalledWith('Scan');
   });
+
+  it('renders centered dual-action bottom dock with Manually input and Scan an item', async () => {
+    queueFetch(jsonResponse({ items: [DRAFT_ROW], nextCursor: null }));
+    const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+
+    const manualAction = await findByTestId('drafts-manual-add-action');
+    const scanAction = await findByTestId('drafts-scan-action');
+
+    expect(manualAction).toBeTruthy();
+    expect(scanAction).toBeTruthy();
+    expect(await findByText('Manually input')).toBeTruthy();
+    expect(await findByText('Scan an item')).toBeTruthy();
+
+    fireEvent.press(scanAction);
+    expect(navigation.push).toHaveBeenCalledWith('Scan');
+  });
 });

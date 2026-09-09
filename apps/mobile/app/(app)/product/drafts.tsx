@@ -397,27 +397,73 @@ export default function ProductDraftsScreen() {
         />
       )}
 
-      {/* Floating Action Button (FAB) when drafts list is populated */}
+      {/* Centered Dual-Action Bottom Dock (Manually input + Scan an item) */}
       {items.length > 0 && (
-        <Pressable
-          testID="drafts-fab-btn"
-          accessibilityRole="button"
-          accessibilityLabel="Add new product draft"
-          onPress={handleOpenAddOptions}
-          style={({ pressed }) => [
-            styles.fab,
-            {
-              backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-              shadowColor: '#000',
-              shadowOpacity: 0.2,
-              shadowRadius: 6,
-              shadowOffset: { width: 0, height: 3 },
-            },
-          ]}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-          <Text style={styles.fabText}>New Draft</Text>
-        </Pressable>
+        <View style={styles.bottomDockWrapper} pointerEvents="box-none">
+          <View
+            style={[
+              styles.dualActionWrapper,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            {/* Left button: Manually input */}
+            <Pressable
+              testID="drafts-manual-add-action"
+              accessibilityRole="button"
+              accessibilityLabel="Manually input item"
+              onPress={() => setIsManualModalVisible(true)}
+              style={({ pressed }) => [
+                styles.manualInputButton,
+                {
+                  backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                  borderRightColor: theme.colors.border,
+                  opacity: pressed ? 0.88 : 1,
+                },
+              ]}
+            >
+              <Ionicons
+                name="create-outline"
+                size={18}
+                color={theme.colors.primaryDark}
+                style={styles.actionIcon}
+              />
+              <Text
+                style={[styles.manualInputLabel, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
+                Manually input
+              </Text>
+            </Pressable>
+
+            {/* Right button: Scan an item */}
+            <Pressable
+              testID="drafts-scan-action"
+              accessibilityRole="button"
+              accessibilityLabel="Scan an item"
+              onPress={() => navigation.push('Scan')}
+              style={({ pressed }) => [
+                styles.scanActionButton,
+                {
+                  backgroundColor: '#F5A623',
+                  opacity: pressed ? 0.88 : 1,
+                },
+              ]}
+            >
+              <Ionicons
+                name="scan-outline"
+                size={20}
+                color="#2C2C28"
+                style={styles.actionIcon}
+              />
+              <Text style={[styles.scanActionLabel, { color: '#2C2C28' }]} numberOfLines={1}>
+                Scan an item
+              </Text>
+            </Pressable>
+          </View>
+        </View>
       )}
 
       <ManualCodeEntryModal
@@ -523,21 +569,55 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 10,
   },
-  fab: {
+  bottomDockWrapper: {
     position: 'absolute',
     bottom: 24,
-    right: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  dualActionWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 28,
-    elevation: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  fabText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+  manualInputButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    height: 48,
+    borderRightWidth: 1,
+    gap: 6,
+  },
+  manualInputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  scanActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    height: 48,
+    gap: 6,
+  },
+  scanActionLabel: {
+    fontSize: 13.5,
     fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  actionIcon: {
+    marginRight: -2,
   },
 });
