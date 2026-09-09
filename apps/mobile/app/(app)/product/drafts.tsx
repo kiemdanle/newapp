@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -22,6 +22,11 @@ import { Button } from '../../../src/components/Button';
 import { ManualCodeEntryModal } from '../../../src/components/ManualCodeEntryModal';
 import { DraftPantryAddModal } from '../../../src/features/products/DraftPantryAddModal';
 import { ProductActionModal } from '../../../src/features/products/ProductActionModal';
+import { AddDraftOptionsModal } from '../../../src/features/products/AddDraftOptionsModal';
+import { DraftGridCard } from '../../../src/features/products/DraftGridCard';
+import { DraftsSearchBar } from '../../../src/features/products/DraftsSearchBar';
+import { DraftsSortPills, type DraftSortOption } from '../../../src/features/products/DraftsSortPills';
+import { useUiPreferencesStore } from '../../../src/store/uiPreferencesStore';
 import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
@@ -156,14 +161,45 @@ export default function ProductDraftsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const queryClient = useQueryClient();
+  const viewMode = useUiPreferencesStore((s) => s.draftsViewMode);
+  const setDraftsViewMode = useUiPreferencesStore((s) => s.setDraftsViewMode);
   const [selectedTab, setSelectedTab] = useState<DraftTab>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSort, setSelectedSort] = useState<DraftSortOption>('newest');
   const [selectedPantryProduct, setSelectedPantryProduct] = useState<ProductDraftRow | null>(null);
   const [actionProduct, setActionProduct] = useState<ProductDraftRow | null>(null);
   const [isManualModalVisible, setIsManualModalVisible] = useState(false);
+  const [isAddOptionsVisible, setIsAddOptionsVisible] = useState(false);
   const q = useProductDrafts(selectedTab === 'all' ? 'all' : selectedTab);
   const createOrResumeDraft = useCreateOrResumeDraft();
-  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const rawItems = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  const items = useMemo(() => {
+    let list = rawItems;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      list = list.filter((item) => {
+        const nameMatch = item.name.toLowerCase().includes(query);
+        const barcodeMatch = item.identifier.value.toLowerCase().includes(query);
+        const feedbackMatch = item.moderationFeedback?.toLowerCase().includes(query);
+        return nameMatch || barcodeMatch || feedbackMatch;
+      });
+    }
+
+    const sorted = [...list];
+    if (selectedSort === 'newest') {
+      sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    } else if (selectedSort === 'oldest') {
+      sorted.sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+    } else if (selectedSort === 'name_asc') {
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (selectedSort === 'name_desc') {
+      sorted.sort((a, b) => b.name.localeCompare(a.name));
+    }
+
+    return sorted;
+  }, [rawItems, searchQuery, selectedSort]);
   const lastAddTapRef = useRef(0);
   const refetchRef = useRef(q.refetch);
   refetchRef.current = q.refetch;
@@ -200,33 +236,7 @@ export default function ProductDraftsScreen() {
     }
   };
   const handleOpenAddOptions = () => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ['Scan Barcode / QR Code', 'Enter Code Manually', 'Cancel'],
-          cancelButtonIndex: 2,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 0) {
-            navigation.push('Scan');
-          } else if (buttonIndex === 1) {
-            setIsManualModalVisible(true);
-          }
-        },
-      );
-    } else {
-      Alert.alert('Add Product Draft', 'How would you like to add the product?', [
-        {
-          text: 'Scan Code',
-          onPress: () => navigation.push('Scan'),
-        },
-        {
-          text: 'Enter Manually',
-          onPress: () => setIsManualModalVisible(true),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
+    setIsAddOptionsVisible(true);
   };
 
   const handleManualCodeSubmit = async (code: string, kind: 'barcode' | 'qr') => {
@@ -271,6 +281,20 @@ export default function ProductDraftsScreen() {
           <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add draft</Text>
         </Pressable>
       </View>
+      {/* Search Bar & View Mode Toggle */}
+      <DraftsSearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        viewMode={viewMode}
+        onToggleViewMode={() => void setDraftsViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+      />
+
+      {/* Sort Pills */}
+      <DraftsSortPills
+        selectedSort={selectedSort}
+        onSelectSort={setSelectedSort}
+      />
+
 
       {/* Filter Tabs Bar */}
       <View style={styles.tabBar} accessibilityRole="tablist">
@@ -314,17 +338,28 @@ export default function ProductDraftsScreen() {
         </View>
       ) : (
         <FlatList
+          key={viewMode}
           testID="drafts-list"
           data={items}
+          numColumns={viewMode === 'grid' ? 2 : 1}
+          columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
           keyExtractor={(d) => d.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
-          renderItem={({ item }) => (
-            <DraftRow
-              item={item}
-              onPress={handleRowPress}
-              onAddPress={handleAddDirect}
-            />
-          )}
+          contentContainerStyle={viewMode === 'grid' ? { paddingHorizontal: 15, paddingBottom: 140 } : { paddingHorizontal: 20, paddingBottom: 140 }}
+          renderItem={({ item }) =>
+            viewMode === 'grid' ? (
+              <DraftGridCard
+                item={item}
+                onPress={handleRowPress}
+                onAddPress={handleAddDirect}
+              />
+            ) : (
+              <DraftRow
+                item={item}
+                onPress={handleRowPress}
+                onAddPress={handleAddDirect}
+              />
+            )
+          }
           refreshing={Boolean(q.isRefetching && !q.isFetchingNextPage)}
           onRefresh={() => q?.refetch?.()}
           onEndReached={() => {
@@ -414,6 +449,12 @@ export default function ProductDraftsScreen() {
           queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
         }}
       />
+      <AddDraftOptionsModal
+        visible={isAddOptionsVisible}
+        onClose={() => setIsAddOptionsVisible(false)}
+        onScan={() => navigation.push('Scan')}
+        onManualEntry={() => setIsManualModalVisible(true)}
+      />
     </View>
   );
 }
@@ -439,6 +480,10 @@ const styles = StyleSheet.create({
   headerAddBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
   },
   tabBar: {
     flexDirection: 'row',

@@ -5,10 +5,13 @@ import { apiClient } from '../api/client';
 export type PantryViewMode = 'list' | 'grid';
 
 export const PANTRY_VIEW_MODE_STORAGE_KEY = '@expyrico_pantry_view_mode';
+export const DRAFTS_VIEW_MODE_STORAGE_KEY = '@expyrico_drafts_view_mode';
 
 interface UiPreferencesState {
   pantryViewMode: PantryViewMode;
+  draftsViewMode: PantryViewMode;
   setPantryViewMode: (mode: PantryViewMode) => Promise<void>;
+  setDraftsViewMode: (mode: PantryViewMode) => Promise<void>;
   hydrate: () => Promise<void>;
 }
 
@@ -26,17 +29,32 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
         set({ pantryViewMode: stored });
       }
     })
-    .catch(() => {
-      /* best-effort */
-    });
+    .catch(() => {});
+
+  AsyncStorage.getItem(DRAFTS_VIEW_MODE_STORAGE_KEY)
+    .then((stored) => {
+      if (stored === 'list' || stored === 'grid') {
+        set({ draftsViewMode: stored });
+      }
+    })
+    .catch(() => {});
 
   return {
     pantryViewMode: 'list',
+    draftsViewMode: 'list',
     setPantryViewMode: async (mode: PantryViewMode) => {
       userHasToggledPantryViewMode = true;
       set({ pantryViewMode: mode });
       try {
         await AsyncStorage.setItem(PANTRY_VIEW_MODE_STORAGE_KEY, mode);
+      } catch {
+        /* best-effort */
+      }
+    },
+    setDraftsViewMode: async (mode: PantryViewMode) => {
+      set({ draftsViewMode: mode });
+      try {
+        await AsyncStorage.setItem(DRAFTS_VIEW_MODE_STORAGE_KEY, mode);
       } catch {
         /* best-effort */
       }

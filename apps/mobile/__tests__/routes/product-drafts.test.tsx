@@ -9,6 +9,7 @@ import { navigation } from '../../tests/mocks/react-navigation';
 import { queueFetch, jsonResponse } from '../../tests/mocks/fetch';
 import { useSessionStore } from '../../src/auth/session-store';
 import { __reset } from '../../tests/mocks/react-native-keychain';
+import { useUiPreferencesStore } from '../../src/store/uiPreferencesStore';
 
 function wrap(node: React.ReactNode) {
   return (
@@ -42,6 +43,7 @@ describe('<ProductDraftsScreen />', () => {
   beforeEach(async () => {
     __reset();
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
+    useUiPreferencesStore.setState({ draftsViewMode: 'list' });
     await initThemeStore();
     useSessionStore.setState({ user: { id: 'user-1' } as never, accessToken: 'a', refreshToken: 'r', hydrated: true, pendingAuth: null });
   });
@@ -199,5 +201,66 @@ describe('<ProductDraftsScreen />', () => {
     fireEvent.press(addBtn);
 
     expect(await findByText('Add to Pantry')).toBeTruthy();
+  });
+
+  it('searches and filters drafts by query text', async () => {
+    const rowA = { ...DRAFT_ROW, id: 'row-a', name: 'Almond Milk' };
+    const rowB = { ...DRAFT_ROW, id: 'row-b', name: 'Cashew Butter' };
+    queueFetch(jsonResponse({ items: [rowA, rowB], nextCursor: null }));
+
+    const { findByTestId, queryByText, getByText } = render(wrap(<ProductDraftsScreen />));
+    await findByTestId('draft-row-row-a');
+    expect(getByText('Almond Milk')).toBeTruthy();
+    expect(getByText('Cashew Butter')).toBeTruthy();
+
+    const searchInput = await findByTestId('drafts-search-input');
+    fireEvent.changeText(searchInput, 'Almond');
+
+    expect(getByText('Almond Milk')).toBeTruthy();
+    expect(queryByText('Cashew Butter')).toBeNull();
+  });
+
+  it('switches view mode between list and 2-column grid cards', async () => {
+    const rowA = { ...DRAFT_ROW, id: 'row-grid-1', name: 'Organic Tofu' };
+    queueFetch(jsonResponse({ items: [rowA], nextCursor: null }));
+
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+    expect(await findByTestId('draft-row-row-grid-1')).toBeTruthy();
+
+    const toggleBtn = await findByTestId('drafts-view-mode-toggle-btn');
+    fireEvent.press(toggleBtn);
+
+    expect(await findByTestId('draft-grid-card-row-grid-1')).toBeTruthy();
+  });
+
+  it('sorts drafts alphabetically by Name A-Z', async () => {
+    const rowZ = { ...DRAFT_ROW, id: 'row-z', name: 'Zucchini' };
+    const rowA = { ...DRAFT_ROW, id: 'row-a', name: 'Artichoke' };
+    queueFetch(jsonResponse({ items: [rowZ, rowA], nextCursor: null }));
+
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+    await findByTestId('draft-row-row-z');
+
+    const sortPill = await findByTestId('drafts-sort-pill-name_asc');
+    fireEvent.press(sortPill);
+
+    expect(await findByTestId('draft-row-row-a')).toBeTruthy();
+  });
+
+  it('tapping + Add draft opens the AddDraftOptionsModal with Scan and Manual options', async () => {
+    queueFetch(jsonResponse({ items: [], nextCursor: null }));
+    const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+
+    const addDraftBtn = await findByTestId('drafts-add-header-btn');
+    fireEvent.press(addDraftBtn);
+
+    expect(await findByText('Add Product Draft')).toBeTruthy();
+    expect(await findByText('Scan Barcode / QR Code')).toBeTruthy();
+    expect(await findByText('Enter Code Manually')).toBeTruthy();
+
+    const scanBtn = await findByTestId('add-options-scan-btn');
+    fireEvent.press(scanBtn);
+
+    expect(navigation.push).toHaveBeenCalledWith('Scan');
   });
 });
