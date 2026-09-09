@@ -1,7 +1,6 @@
 ---
 phase: 1
-title: "Shared Schema and API Creator Products Listing"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: []
@@ -55,10 +54,10 @@ Update `@expyrico/shared` validation schemas and the Fastify backend API `listDr
    - Add test proving another user's active product is not listed in drafts.
 
 ## Success Criteria
-- [ ] `packages/shared` tests pass: `npm test` in `packages/shared`.
-- [ ] `GET /v1/products/drafts` returns the user's active products alongside draft and pending rows.
-- [ ] Active products include public thumbnail URLs in the response payload.
-- [ ] API integration tests pass: `npm test -- products-draft-lifecycle.test.ts` in `api`.
+- [x] `packages/shared` tests pass: `npm test` in `packages/shared`.
+- [x] `GET /v1/products/drafts` returns the user's active products alongside draft and pending rows.
+- [x] Active products include public thumbnail URLs in the response payload.
+- [x] API integration tests pass: `npm test -- products-draft-lifecycle.test.ts` in `api`.
 
 ## Risk Assessment
 - **Risk**: Existing client code expecting only unapproved items might show unexpected rows if not prepared.

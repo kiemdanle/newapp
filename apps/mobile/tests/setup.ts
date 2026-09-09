@@ -17,6 +17,12 @@ jest.mock('@react-navigation/native', () => {
     useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, []),
   };
 });
+jest.mock('react-native/Libraries/ActionSheetIOS/ActionSheetIOS', () => ({
+  showActionSheetWithOptions: jest.fn((options, callback) => {
+    // Default to option 1 (View Details) when simulating row press
+    callback?.(1);
+  }),
+}));
 
 
 // Safe area context test shim

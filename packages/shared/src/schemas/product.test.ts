@@ -203,11 +203,10 @@ describe('productDraftsQuerySchema', () => {
     expect(() => productDraftsQuerySchema.parse({ limit: 51 })).toThrow();
   });
 
-  it('accepts only creator-private statuses', () => {
-    for (const status of ['draft', 'pending', 'changes_required']) {
+  it('accepts creator product statuses and all', () => {
+    for (const status of ['draft', 'pending', 'changes_required', 'active', 'all']) {
       expect(productDraftsQuerySchema.parse({ status }).status).toBe(status);
     }
-    expect(() => productDraftsQuerySchema.parse({ status: 'active' })).toThrow();
     expect(() => productDraftsQuerySchema.parse({ status: 'report_hidden' })).toThrow();
   });
 
@@ -262,8 +261,10 @@ describe('productDraftRowSchema and productDraftsPageSchema', () => {
     expect(() => productDraftRowSchema.parse({ ...row, updatedAt: 'not-a-date' })).toThrow();
   });
 
-  it('rejects a non-private status', () => {
-    expect(() => productDraftRowSchema.parse({ ...row, status: 'active' })).toThrow();
+  it('accepts active status and rejects report_hidden or merged_into', () => {
+    expect(productDraftRowSchema.parse({ ...row, status: 'active' }).status).toBe('active');
+    expect(() => productDraftRowSchema.parse({ ...row, status: 'report_hidden' })).toThrow();
+    expect(() => productDraftRowSchema.parse({ ...row, status: 'merged_into' })).toThrow();
   });
 
   it('paginates with a nullable cursor', () => {

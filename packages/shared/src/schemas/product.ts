@@ -207,14 +207,14 @@ export type ProductLookupV2Response = z.infer<typeof productLookupV2ResponseSche
 
 // --- Creator-private drafts --------------------------------------------------------
 
-const PRODUCT_DRAFT_STATUSES = ['draft', 'pending', 'changes_required'] as const;
+const PRODUCT_DRAFT_STATUSES = ['draft', 'pending', 'changes_required', 'active'] as const;
 const productDraftStatusSchema = z.enum(PRODUCT_DRAFT_STATUSES);
 export type ProductDraftStatus = z.infer<typeof productDraftStatusSchema>;
 
 export const productDraftsQuerySchema = z.object({
   cursor: z.string().trim().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
-  status: productDraftStatusSchema.optional(),
+  status: z.union([productDraftStatusSchema, z.literal('all')]).optional(),
 });
 export type ProductDraftsQuery = z.infer<typeof productDraftsQuerySchema>;
 

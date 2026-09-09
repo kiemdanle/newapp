@@ -840,8 +840,8 @@ describe('GET /v1/products/drafts', () => {
     await new Promise((r) => setTimeout(r, 5));
     const p3 = await makeProduct({ createdByUserId: user.id, name: 'Three' });
     await getPrisma().product.update({ where: { id: p3.id }, data: { status: 'pending' } });
-    // Not creator-private — excluded even though owned by the caller.
-    const activeOwn = await makeProduct({ createdByUserId: user.id, name: 'ActiveOwnNotDraft' });
+    // Creator's active product is included in the creator's list
+    const activeOwn = await makeProduct({ createdByUserId: user.id, name: 'ActiveOwn' });
     await getPrisma().product.update({ where: { id: activeOwn.id }, data: { status: 'active' } });
 
     const page1 = await app.inject({
@@ -851,7 +851,7 @@ describe('GET /v1/products/drafts', () => {
     });
     expect(page1.statusCode).toBe(200);
     const body1 = page1.json();
-    expect(body1.items.map((i: { id: string }) => i.id)).toEqual([p3.id, p2.id]);
+    expect(body1.items.map((i: { id: string }) => i.id)).toEqual([activeOwn.id, p3.id]);
     expect(body1.nextCursor).not.toBeNull();
 
     const page2 = await app.inject({
@@ -860,8 +860,17 @@ describe('GET /v1/products/drafts', () => {
       headers,
     });
     const body2 = page2.json();
-    expect(body2.items.map((i: { id: string }) => i.id)).toEqual([p1.id]);
+    expect(body2.items.map((i: { id: string }) => i.id)).toEqual([p2.id, p1.id]);
     expect(body2.nextCursor).toBeNull();
+
+    // Verify status=active returns only the active row
+    const activeRes = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts?status=active',
+      headers,
+    });
+    expect(activeRes.statusCode).toBe(200);
+    expect(activeRes.json().items.map((i: { id: string }) => i.id)).toEqual([activeOwn.id]);
     await app.close();
   });
 

@@ -1,7 +1,6 @@
 ---
 phase: 2
-title: "Mobile Filter Tabs and Status Styling"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: ["1"]
@@ -64,10 +63,10 @@ Enhance `ProductDraftsScreen` with an interactive filter tab bar (`All`, `Active
    - Add unit test verifying tab switching triggers correct query calls and filters rows.
 
 ## Success Criteria
-- [ ] Tabs `All`, `Active`, `In review`, `Drafts` appear and switch filters seamlessly.
-- [ ] Active products display "Catalog Active" in Fresh Sage `#4BAE8A`.
-- [ ] Active products display their cover thumbnails properly.
-- [ ] Mobile tests pass: `npm test -- apps/mobile/__tests__/routes/product-drafts.test.tsx`.
+- [x] Tabs `All`, `Active`, `In review`, `Drafts` appear and switch filters seamlessly.
+- [x] Active products display "Catalog Active" in Fresh Sage `#4BAE8A`.
+- [x] Active products display their cover thumbnails properly.
+- [x] Mobile tests pass: `npm test -- apps/mobile/__tests__/routes/product-drafts.test.tsx`.
 
 ## Risk Assessment
 - **Risk**: Tab switching during refetch could cause state race conditions.

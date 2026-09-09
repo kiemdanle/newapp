@@ -1,7 +1,6 @@
 ---
 phase: 3
-title: "Fast Add To Pantry Flow and Form"
-status: pending
+status: completed
 priority: P1
 effort: "2h"
 dependencies: ["2"]
@@ -83,11 +82,11 @@ Enable fast, single-tap pantry addition from the creator products list. Tapping 
    - Add test verifying draft rows still open the draft editor.
 
 ## Success Criteria
-- [ ] Active and pending rows display an inline "+ Add" button.
-- [ ] Tapping opens the Add to Pantry form pre-populated with the product's name.
-- [ ] Pending products lock the scope to Personal Pantry.
-- [ ] Saving adds the item to the database and invalidates the pantry records query.
-- [ ] Draft and Changes Requested rows still navigate to `ProductNew` editor.
+- [x] Active and pending rows display an inline "+ Add" button.
+- [x] Tapping opens the Add to Pantry form pre-populated with the product's name.
+- [x] Pending products lock the scope to Personal Pantry.
+- [x] Saving adds the item to the database and invalidates the pantry records query.
+- [x] Draft and Changes Requested rows still navigate to `ProductNew` editor.
 
 ## Risk Assessment
 - **Risk**: Adding a pending item with a household scope might fail at the backend API with a 403.

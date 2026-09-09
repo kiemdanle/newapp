@@ -86,12 +86,12 @@ export function usePatchDraft() {
   });
 }
 
-export function useProductDrafts(status?: ProductDraftStatus) {
+export function useProductDrafts(status?: ProductDraftStatus | 'all') {
   return useInfiniteQuery<ProductDraftsPage>({
     queryKey: ['products', 'drafts', status ?? 'all'],
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
-      const statusQs = status ? `status=${status}` : '';
+      const statusQs = status && status !== 'all' ? `status=${status}` : '';
       const cursorQs = pageParam ? `cursor=${pageParam}` : '';
       const qs = [statusQs, cursorQs].filter(Boolean).join('&');
       return apiClient.get<ProductDraftsPage>(`/products/drafts${qs ? `?${qs}` : ''}`);

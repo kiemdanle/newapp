@@ -1,7 +1,7 @@
 ---
 title: "Mobile Creator Product Drafts and Fast Pantry Add"
 description: "Unify unapproved drafts and approved creator products in 'My Product Drafts' with status filters and one-tap pantry addition"
-status: pending
+status: completed
 priority: P1
 effort: "6h"
 tags: ["mobile", "api", "shared", "products", "pantry", "drafts"]
@@ -33,10 +33,10 @@ This plan expands the creator product drafts system across `@expyrico/shared`, t
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Shared Schema and API Creator Products Listing](./phase-01-start.md) | Pending |
-| 2 | [Phase 2: Mobile Filter Tabs and Status Styling](./phase-02-mobile-filter-tabs-and-status-styling.md) | Pending |
-| 3 | [Phase 3: Fast Add To Pantry Flow and Form](./phase-03-fast-add-to-pantry-flow-and-form.md) | Pending |
-| 4 | [Phase 4: Testing Verification and Device Build](./phase-04-testing-verification-and-device-build.md) | Pending |
+| 1 | [Phase 1: Shared Schema and API Creator Products Listing](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Mobile Filter Tabs and Status Styling](./phase-02-mobile-filter-tabs-and-status-styling.md) | Completed |
+| 3 | [Phase 3: Fast Add To Pantry Flow and Form](./phase-03-fast-add-to-pantry-flow-and-form.md) | Completed |
+| 4 | [Phase 4: Testing Verification and Device Build](./phase-04-testing-verification-and-device-build.md) | Completed |
 
 ## Architecture & Data Flow
 

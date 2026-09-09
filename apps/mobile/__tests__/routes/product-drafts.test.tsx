@@ -165,4 +165,38 @@ describe('<ProductDraftsScreen />', () => {
       });
     });
   });
+
+  it('renders filter tabs and switches selected tab', async () => {
+    queueFetch(jsonResponse({ items: [], nextCursor: null }));
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+
+    const activeTab = await findByTestId('drafts-tab-active');
+    expect(activeTab).toBeTruthy();
+
+    queueFetch(jsonResponse({ items: [], nextCursor: null }));
+    fireEvent.press(activeTab);
+
+    expect(await findByTestId('drafts-tab-active')).toBeTruthy();
+  });
+
+  it('renders active rows with Catalog Active badge and inline + Add button', async () => {
+    const activeRow = { ...DRAFT_ROW, id: 'prod-active-1', name: 'Fresh Milk', status: 'active' as const };
+    queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
+    const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+
+    expect(await findByTestId('draft-row-prod-active-1')).toBeTruthy();
+    expect(await findByText('Catalog Active')).toBeTruthy();
+    expect(await findByTestId('draft-add-btn-prod-active-1')).toBeTruthy();
+  });
+
+  it('tapping inline + Add button on active row opens the Add to Pantry modal', async () => {
+    const activeRow = { ...DRAFT_ROW, id: 'prod-active-2', name: 'Almond Butter', status: 'active' as const };
+    queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
+    const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+
+    const addBtn = await findByTestId('draft-add-btn-prod-active-2');
+    fireEvent.press(addBtn);
+
+    expect(await findByText('Add to Pantry')).toBeTruthy();
+  });
 });

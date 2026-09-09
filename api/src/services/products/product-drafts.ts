@@ -1,5 +1,5 @@
 import type { Product, Prisma as PrismaTypes } from '@prisma/client';
-import prismaPkg from '@prisma/client';
+import prismaPkg, { ProductStatus } from '@prisma/client';
 const { Prisma } = prismaPkg;
 import { z } from 'zod';
 import {
@@ -14,13 +14,14 @@ import {
   type ProductDraftsQuery,
   type ProductDraftsPage,
   type ProductDraftRow,
+  type ProductDraftStatus,
   type ProductLookupV2Response,
 } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { logger } from '../../logger.js';
 import { hasLocalMatch, lookupProductV2 } from './lookup.js';
-import { toApiProduct } from './serializer.js';
+import { toApiProduct, toApiProductPhoto } from './serializer.js';
 import { PRODUCT_INCLUDE, type ProductWithPhotos } from './product-visibility.js';
 import { privateProductPhotoRoute } from './product-media-storage.js';
 import { assertProductCreationEligible } from './product-creation-eligibility.js';
@@ -380,18 +381,15 @@ function toDraftRow(product: ProductWithPhotos): ProductDraftRow {
       ? ({ kind: 'barcode', value: product.barcode } as const)
       : ({ kind: 'qr', value: product.qrPayload as string } as const);
   const cover = product.photos[0];
+  const photoDto = cover ? toApiProductPhoto(cover, product.id) : null;
   return {
     id: product.id,
     name: product.name,
     identifier,
-    status: product.status as 'draft' | 'pending' | 'changes_required',
+    status: product.status as ProductDraftStatus,
     version: product.version,
     moderationFeedback: product.moderationNotes,
-    // A draft/changes_required product's cover is always private (approval only
-    // happens on the active transition), so the parent-bound private route applies
-    // unconditionally here — no public-URL branch needed, unlike the general
-    // product photo serializer.
-    cover: cover ? { photoId: cover.id, thumbnailUrl: privateProductPhotoRoute(product.id, cover.id, 'thumb') } : null,
+    cover: photoDto ? { photoId: photoDto.id, thumbnailUrl: photoDto.thumbnailUrl } : null,
     updatedAt: product.updatedAt.toISOString(),
   };
 }
@@ -418,10 +416,16 @@ export async function listDrafts(actorId: string, query: ProductDraftsQuery): Pr
     }
     cursor = parsed.data;
   }
+  const statusFilter: PrismaTypes.EnumProductStatusFilter | ProductStatus =
+    !query.status || query.status === 'all'
+      ? { in: [ProductStatus.draft, ProductStatus.pending, ProductStatus.changes_required, ProductStatus.active] }
+      : query.status === 'draft'
+        ? { in: [ProductStatus.draft, ProductStatus.changes_required] }
+        : (query.status as ProductStatus);
   const rows = await prisma.product.findMany({
     where: {
       createdByUserId: actorId,
-      status: query.status ?? { in: ['draft', 'pending', 'changes_required'] },
+      status: statusFilter,
       ...(cursor
         ? {
             OR: [

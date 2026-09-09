@@ -71,6 +71,13 @@ export function AddRecordForm({
       setItemName(customName);
     }
   }, [customName]);
+  useEffect(() => {
+    if (!expiry && product?.defaultShelfLifeDays) {
+      const d = new Date();
+      d.setDate(d.getDate() + product.defaultShelfLifeDays);
+      setExpiry(d.toISOString().slice(0, 10));
+    }
+  }, [expiry, product?.defaultShelfLifeDays]);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
@@ -384,6 +391,38 @@ export function AddRecordForm({
               </Text>
             </Pressable>
           ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', gap: theme.spacing.xs, marginTop: 4 }}>
+          {[
+            { label: '+3d', days: 3 },
+            { label: '+1w', days: 7 },
+            { label: '+1m', days: 30 },
+            { label: '+3m', days: 90 },
+          ].map((preset) => (
+            <Pressable
+              key={preset.label}
+              accessibilityRole="button"
+              accessibilityLabel={`Set expiry to ${preset.label}`}
+              testID={`add-record-date-preset-${preset.label.replace('+', '')}`}
+              onPress={() => {
+                const d = new Date();
+                d.setDate(d.getDate() + preset.days);
+                setExpiry(d.toISOString().slice(0, 10));
+              }}
+              style={({ pressed }) => ({
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: theme.radii.pill,
+                backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgGlass,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+              })}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.colors.primaryDark }}>
+                {preset.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
       </View>
 

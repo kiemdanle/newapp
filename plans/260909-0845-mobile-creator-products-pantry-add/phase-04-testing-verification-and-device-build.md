@@ -1,7 +1,6 @@
 ---
 phase: 4
-title: "Testing Verification and Device Build"
-status: pending
+status: completed
 priority: P1
 effort: "1h"
 dependencies: ["3"]
@@ -69,10 +68,10 @@ Execute automated test suites across `@expyrico/shared`, `api`, and `apps/mobile
    - Verify item is added to Your Pantry.
 
 ## Success Criteria
-- [ ] All tests pass across shared, api, and mobile test suites.
-- [ ] Debug APK builds without errors in < 60s.
-- [ ] ADB install succeeds on device `96d9c774`.
-- [ ] Live verification proves existing products appear under "Active" and can be added to the pantry.
+- [x] All tests pass across shared, api, and mobile test suites.
+- [x] Debug APK builds without errors in < 60s.
+- [x] ADB install succeeds on device `96d9c774`.
+- [x] Live verification proves existing products appear under "Active" and can be added to the pantry.
 
 ## Risk Assessment
 - **Risk**: Cache invalidation timing might not update the home pantry immediately.
