@@ -1055,4 +1055,101 @@ describe('DELETE /v1/products/drafts/:id', () => {
     expect(photoDb).not.toBeNull();
     await app.close();
   });
+
+  it('deterministic two-transaction concurrency: holding uncommitted draft->pending update blocks discard, then rejects with 409 and preserves product/photos', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const photo = await getPrisma().productPhoto.create({
+      data: {
+        productId: p.id,
+        position: 0,
+        uploadedByUserId: user.id,
+        moderationStatus: 'approved',
+        mimeType: 'image/webp',
+        displayByteSize: 100,
+        displayWidth: 10,
+        displayHeight: 10,
+        thumbnailByteSize: 50,
+        thumbnailWidth: 5,
+        thumbnailHeight: 5,
+        publicStorageKey: `public/products/${p.id}/photo.webp`,
+      },
+    });
+
+    interface PromiseResolvers<T> {
+      promise: Promise<T>;
+      resolve: (value: T | PromiseLike<T>) => void;
+      reject: (reason?: unknown) => void;
+    }
+    function withResolvers<T = void>(): PromiseResolvers<T> {
+      if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers === 'function') {
+        return (Promise as unknown as { withResolvers: <U>() => PromiseResolvers<U> }).withResolvers<T>();
+      }
+      let resolve!: (value: T | PromiseLike<T>) => void;
+      let reject!: (reason?: unknown) => void;
+      const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+      });
+      return { promise, resolve, reject };
+    }
+
+    const txStarted = withResolvers<void>();
+    const allowCommit = withResolvers<void>();
+
+    // Transaction 1: Update product status to 'pending' and hold the transaction open
+    const tx1Promise = getPrisma().$transaction(
+      async (tx) => {
+        await tx.product.update({
+          where: { id: p.id },
+          data: { status: 'pending' },
+        });
+        txStarted.resolve();
+        await allowCommit.promise;
+      },
+      { timeout: 10000 },
+    );
+
+    // Wait until Transaction 1 has acquired the row lock and updated the status
+    await txStarted.promise;
+
+    // Transaction 2: Discard draft request is fired
+    let discardSettled = false;
+    const discardPromise = app
+      .inject({
+        method: 'DELETE',
+        url: `/v1/products/drafts/${p.id}`,
+        headers,
+      })
+      .then((res) => {
+        discardSettled = true;
+        return res;
+      });
+
+    // Genuine clock wait: testing real PostgreSQL FOR UPDATE row-level lock blocking across connections
+    await new Promise((r) => setTimeout(r, 150));
+    expect(discardSettled).toBe(false);
+
+    // Release Transaction 1 to commit
+    allowCommit.resolve();
+    await tx1Promise;
+
+    // Discard unblocks, re-evaluates the committed row under its lock, and rejects with 409
+    const res = await discardPromise;
+    expect(discardSettled).toBe(true);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().title).toBe('This product can no longer be edited as a draft');
+
+    // Product must still exist in DB as pending
+    const pDb = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(pDb.status).toBe('pending');
+
+    // Photo must NOT be deleted
+    const photoDb = await getPrisma().productPhoto.findUnique({ where: { id: photo.id } });
+    expect(photoDb).not.toBeNull();
+
+    await app.close();
+  });
 });
