@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextStyle, type TextInputProps } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
@@ -19,6 +19,7 @@ export function TextField({
   ...rest
 }: TextFieldProps) {
   const theme = useTheme();
+  const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   const isPassword = Boolean(secureTextEntry || showPasswordToggle);
   const [passwordHidden, setPasswordHidden] = useState(true);
@@ -27,9 +28,14 @@ export function TextField({
   const resolvedAutoCorrect = autoCorrect ?? (isPassword ? false : undefined);
   const resolvedSecureTextEntry = isPassword ? passwordHidden : secureTextEntry;
 
+  const handleContainerPress = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <View style={styles.wrap}>
       <Text
+        onPress={handleContainerPress}
         style={[
           styles.label,
           {
@@ -41,7 +47,8 @@ export function TextField({
       >
         {label}
       </Text>
-      <View
+      <Pressable
+        onPress={handleContainerPress}
         style={[
           styles.inputContainer,
           {
@@ -52,6 +59,7 @@ export function TextField({
         ]}
       >
         <TextInput
+          ref={inputRef}
           accessibilityLabel={label}
           placeholderTextColor={theme.colors.textMuted}
           onFocus={(e) => {
@@ -92,7 +100,7 @@ export function TextField({
             />
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
       {error ? (
         <Text style={[styles.error, { color: theme.colors.danger, fontSize: theme.typeRamp.labelMedium.fontSize }]}>
           {error}
