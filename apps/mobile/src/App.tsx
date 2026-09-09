@@ -23,6 +23,7 @@ import { UndoToast } from './components/UndoToast';
 import { useInAppNotificationStore } from './store/inAppNotification';
 import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
+import { Logo } from './components/Logo';
 
 const queryClient = createQueryClient();
 
@@ -69,6 +70,40 @@ function RootApp() {
 
   const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
 
+  if (bootError) {
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8', padding: 24 },
+        ]}
+      >
+        {/* Boot-time palette only: ThemeProvider may not be hydrated yet. */}
+        <Text style={{ color: '#2C2C28', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
+          Unable to start Expyrico
+        </Text>
+        <Text style={{ color: '#8C8C85', marginTop: 8, textAlign: 'center' }}>
+          Please close and reopen the app.
+        </Text>
+      </View>
+    );
+  }
+
+  if (!splashReady) {
+    return (
+      <View
+        style={[
+          StyleSheet.absoluteFillObject,
+          { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' },
+        ]}
+        testID="splash-overlay"
+      >
+        <Logo size={64} />
+        <ActivityIndicator color="#4BAE8A" size="small" style={{ marginTop: 24 }} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <InAppNotificationBanner
@@ -99,32 +134,6 @@ function RootApp() {
         <RootNavigator />
       </NavigationContainer>
       <UndoToast />
-      {bootError ? (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8', padding: 24 },
-          ]}
-        >
-          {/* Boot-time palette only: ThemeProvider may not be hydrated yet. */}
-          <Text style={{ color: '#2C2C28', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
-            Unable to start Expyrico
-          </Text>
-          <Text style={{ color: '#8C8C85', marginTop: 8, textAlign: 'center' }}>
-            Please close and reopen the app.
-          </Text>
-        </View>
-      ) : !splashReady ? (
-        <View
-          style={[
-            StyleSheet.absoluteFillObject,
-            { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FAFAF8' },
-          ]}
-          testID="splash-overlay"
-        >
-          <ActivityIndicator />
-        </View>
-      ) : null}
     </View>
   );
 }

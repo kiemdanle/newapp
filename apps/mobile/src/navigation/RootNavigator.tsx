@@ -43,7 +43,7 @@ export function RootNavigator() {
           onClose={() => setActiveInvitationToken(null)}
         />
       )}
-      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
         {isAuthenticated ? (
           <RootStack.Screen name="App" component={AppNavigator} />
         ) : (
