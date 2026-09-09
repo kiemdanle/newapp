@@ -57,8 +57,11 @@ export function Screen({
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.bg }]}>
-      {keyboardAvoiding && Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+      {keyboardAvoiding ? (
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           {content}
         </KeyboardAvoidingView>
       ) : (

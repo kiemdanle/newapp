@@ -57,7 +57,7 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
       keyboardAvoiding = true,
       keyboardShouldPersistTaps = 'handled',
       keyboardDismissMode = 'on-drag',
-      automaticallyAdjustKeyboardInsets = Platform.OS === 'ios',
+      automaticallyAdjustKeyboardInsets = true,
       ...rest
     },
     ref,
@@ -85,11 +85,15 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
             typeof scrollResponder.scrollResponderScrollNativeHandleToKeyboard ===
               'function'
           ) {
-            scrollResponder.scrollResponderScrollNativeHandleToKeyboard(
-              target,
-              offset,
-              true,
-            );
+            try {
+              scrollResponder.scrollResponderScrollNativeHandleToKeyboard(
+                target,
+                offset,
+                true,
+              );
+            } catch {
+              /* best effort */
+            }
           }
         }, delay);
       },
@@ -215,9 +219,12 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
       </KeyboardAwareScrollContext.Provider>
     );
 
-    if (keyboardAvoiding && Platform.OS === 'ios') {
+    if (keyboardAvoiding) {
       return (
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           {wrappedContent}
         </KeyboardAvoidingView>
       );

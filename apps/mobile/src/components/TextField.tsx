@@ -54,8 +54,14 @@ export function TextField({
         <TextInput
           accessibilityLabel={label}
           placeholderTextColor={theme.colors.textMuted}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={(e) => {
+            setFocused(true);
+            rest.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setFocused(false);
+            rest.onBlur?.(e);
+          }}
           autoCapitalize={resolvedAutoCapitalize}
           autoCorrect={resolvedAutoCorrect}
           secureTextEntry={resolvedSecureTextEntry}
