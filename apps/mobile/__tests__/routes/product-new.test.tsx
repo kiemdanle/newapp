@@ -249,4 +249,26 @@ describe('<NewProductScreen />', () => {
     // Still the editable draft screen — no continuation, nothing discarded.
     expect(getByTestId('draft-name')).toBeTruthy();
   });
+
+  it('submitting a draft shows Close, Done, and Skip buttons that exit the screen', async () => {
+    __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit' });
+    queueFetch(jsonResponse(PRODUCT));
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    queueFetch(jsonResponse({ ...PRODUCT, status: 'active', version: 2 }));
+    fireEvent.press(getByTestId('draft-submit'));
+
+    const closeBtn = await findByTestId('product-submitted-close-btn');
+    const doneBtn = await findByTestId('product-submitted-done-btn');
+    const skipBtn = await findByTestId('product-submitted-skip-btn');
+
+    expect(closeBtn).toBeTruthy();
+    expect(doneBtn).toBeTruthy();
+    expect(skipBtn).toBeTruthy();
+
+    fireEvent.press(skipBtn);
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
 });

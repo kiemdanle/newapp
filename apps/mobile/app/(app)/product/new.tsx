@@ -107,6 +107,16 @@ export default function NewProductScreen() {
       navigation.goBack();
     }
   };
+  const handleExitSubmitted = () => {
+    queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['records'] });
+    if (typeof navigation.canGoBack === 'function' && navigation.canGoBack() === false) {
+      navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
+    } else {
+      navigation.goBack();
+    }
+  };
 
   const createDraft = async () => {
     if (!name.trim()) {
@@ -160,30 +170,80 @@ export default function NewProductScreen() {
   if (submittedProduct) {
     const isApproved = submittedProduct.status === 'active';
     return (
-      <KeyboardAwareScrollView
-        style={{ flex: 1, backgroundColor: theme.colors.bg }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
-        <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-          <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '600' }}>
-            {isApproved
-              ? 'Published to catalog — you can add it to your pantry now.'
-              : 'Submitted for review — you can add it to your pantry now.'}
-          </Text>
+      <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+        {/* Top Navigation Bar */}
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderBottomColor: theme.colors.border,
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <Pressable
+            testID="product-submitted-close-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Close and exit"
+            onPress={handleExitSubmitted}
+            style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+          >
+            <Ionicons name="close" size={20} color={theme.colors.text} />
+          </Pressable>
+          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Add to Pantry</Text>
+          <Pressable
+            testID="product-submitted-done-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Done"
+            onPress={handleExitSubmitted}
+            hitSlop={8}
+          >
+            <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
+          </Pressable>
         </View>
-        <AddRecordForm
-          productId={submittedProduct.id}
-          productName={submittedProduct.name}
-          initialCategory={submittedProduct.category}
-          lockedPersonalScope={!isApproved}
-          onSaved={async () => {
-            await ensurePushTokenRegistered();
-            navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
-          }}
-        />
-      </KeyboardAwareScrollView>
+
+        <KeyboardAwareScrollView
+          style={{ flex: 1, backgroundColor: theme.colors.bg }}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={{ padding: theme.spacing.lg, gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
+              <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>
+                {isApproved
+                  ? 'Published to catalog — you can add it to your pantry now.'
+                  : 'Submitted for review — you can add it to your pantry now.'}
+              </Text>
+            </View>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+              {isApproved
+                ? 'Your product is live in the catalog. You can add it to your pantry now with an expiration date, or skip and add it anytime from My Product Drafts.'
+                : 'Your product is under review. You can add it to your personal pantry now, or skip and add it anytime from My Product Drafts.'}
+            </Text>
+          </View>
+          <AddRecordForm
+            productId={submittedProduct.id}
+            productName={submittedProduct.name}
+            initialCategory={submittedProduct.category}
+            lockedPersonalScope={!isApproved}
+            onSaved={async () => {
+              await ensurePushTokenRegistered();
+              navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
+            }}
+          />
+          <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.sm }}>
+            <Button
+              testID="product-submitted-skip-btn"
+              label="Skip for now"
+              variant="outline"
+              onPress={handleExitSubmitted}
+            />
+          </View>
+        </KeyboardAwareScrollView>
+      </View>
     );
   }
 
@@ -192,42 +252,76 @@ export default function NewProductScreen() {
   // Still private (non-`active`) until approved, so scope stays locked here too.
   if (product && resume === 'pending') {
     return (
-      <KeyboardAwareScrollView
-        style={{ flex: 1, backgroundColor: theme.colors.bg }}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
-        <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
-          <Text style={{ color: theme.colors.textMuted }}>
-            This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your pantry now.'}
-          </Text>
-          <ProductDraftForm initialProduct={product} readOnly />
-          {target === 'deal' ? (
-            <Button
-              testID="use-pending-product-for-deal"
-              label="Use for Deal"
-              icon="arrow-forward"
-              onPress={() => {
-                // @ts-expect-error navigation to DealNew
-                navigation.navigate('DealNew', { productId: product.id });
+      <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
+        {/* Top Navigation Bar */}
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderBottomColor: theme.colors.border,
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <Pressable
+            testID="product-pending-close-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Close and exit"
+            onPress={handleClose}
+            style={[styles.closeBtn, { backgroundColor: theme.colors.bgGlass }]}
+          >
+            <Ionicons name="close" size={20} color={theme.colors.text} />
+          </Pressable>
+          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Product Details</Text>
+          <Pressable
+            testID="product-pending-done-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Done"
+            onPress={handleClose}
+            hitSlop={8}
+          >
+            <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
+          </Pressable>
+        </View>
+
+        <KeyboardAwareScrollView
+          style={{ flex: 1, backgroundColor: theme.colors.bg }}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
+            <Text style={{ color: theme.colors.textMuted }}>
+              This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your pantry now.'}
+            </Text>
+            <ProductDraftForm initialProduct={product} readOnly />
+            {target === 'deal' ? (
+              <Button
+                testID="use-pending-product-for-deal"
+                label="Use for Deal"
+                icon="arrow-forward"
+                onPress={() => {
+                  // @ts-expect-error navigation to DealNew
+                  navigation.navigate('DealNew', { productId: product.id });
+                }}
+              />
+            ) : null}
+          </View>
+          {target !== 'deal' ? (
+            <AddRecordForm
+              productId={product.id}
+              productName={product.name}
+              initialCategory={product.category}
+              lockedPersonalScope
+              onSaved={async () => {
+                await ensurePushTokenRegistered();
+                navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
               }}
             />
           ) : null}
-        </View>
-        {target !== 'deal' ? (
-          <AddRecordForm
-            productId={product.id}
-            productName={product.name}
-            initialCategory={product.category}
-            lockedPersonalScope
-            onSaved={async () => {
-              await ensurePushTokenRegistered();
-              navigation.reset({ index: 0, routes: [{ name: 'Tabs' as never }] });
-            }}
-          />
-        ) : null}
-      </KeyboardAwareScrollView>
+        </KeyboardAwareScrollView>
+      </View>
     );
   }
 
