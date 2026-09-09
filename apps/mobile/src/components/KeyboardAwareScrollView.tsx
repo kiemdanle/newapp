@@ -103,13 +103,36 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
     const scrollToInput = useCallback(
       (targetOrRef: unknown, offset = extraKeyboardOffset) => {
         if (!targetOrRef) return;
-        const target =
-          typeof targetOrRef === 'number'
-            ? targetOrRef
-            : (findNodeHandle(targetOrRef as Parameters<typeof findNodeHandle>[0]) ?? null);
+        let target: number | null = null;
+        if (typeof targetOrRef === 'number') {
+          target = targetOrRef;
+        } else if (
+          targetOrRef &&
+          typeof targetOrRef === 'object' &&
+          'nativeEvent' in targetOrRef &&
+          targetOrRef.nativeEvent &&
+          typeof targetOrRef.nativeEvent === 'object' &&
+          'target' in targetOrRef.nativeEvent &&
+          typeof targetOrRef.nativeEvent.target === 'number'
+        ) {
+          target = targetOrRef.nativeEvent.target;
+        } else if (
+          targetOrRef &&
+          typeof targetOrRef === 'object' &&
+          'target' in targetOrRef &&
+          typeof targetOrRef.target === 'number'
+        ) {
+          target = targetOrRef.target;
+        } else {
+          try {
+            target = findNodeHandle(targetOrRef as Parameters<typeof findNodeHandle>[0]) ?? null;
+          } catch {
+            target = null;
+          }
+        }
         if (target) {
           lastFocusedTargetRef.current = target;
-          scrollTargetIntoView(target, 60, offset);
+          scrollTargetIntoView(target, 40, offset);
         }
       },
       [extraKeyboardOffset, scrollTargetIntoView],
@@ -219,11 +242,11 @@ export const KeyboardAwareScrollView = forwardRef<ScrollView, KeyboardAwareScrol
       </KeyboardAwareScrollContext.Provider>
     );
 
-    if (keyboardAvoiding) {
+    if (keyboardAvoiding && Platform.OS === 'ios') {
       return (
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
         >
           {wrappedContent}
         </KeyboardAvoidingView>

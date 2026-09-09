@@ -104,7 +104,7 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
                       <Text
                         style={[
                           styles.chipText,
-                          { color: isSelected ? theme.colors.primaryFg : theme.colors.text },
+                          { color: isSelected ? '#FFFFFF' : theme.colors.text },
                         ]}
                       >
                         {opt.label}
@@ -133,7 +133,7 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
                   <Text
                     style={[
                       styles.chipText,
-                      { color: hasPhoto ? theme.colors.primaryFg : theme.colors.text },
+                      { color: hasPhoto ? '#FFFFFF' : theme.colors.text },
                     ]}
                   >
                     📷 Has Photo Only
@@ -202,7 +202,7 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
               onPress={handleApply}
               style={[styles.applyBtn, { backgroundColor: theme.colors.primary }]}
             >
-              <Text style={[styles.applyText, { color: theme.colors.primaryFg }]}>
+              <Text style={[styles.applyText, { color: '#FFFFFF' }]}>
                 Apply Filters
               </Text>
             </Pressable>

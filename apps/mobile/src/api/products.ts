@@ -172,3 +172,17 @@ export function useSubmitDraft() {
     },
   });
 }
+
+export function useDiscardDraft() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return await apiClient.delete<{ success: boolean; id: string }>(`/products/drafts/${id}`);
+    },
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['products', id] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}

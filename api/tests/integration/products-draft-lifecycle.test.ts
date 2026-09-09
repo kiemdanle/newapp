@@ -915,3 +915,64 @@ describe('GET /v1/products/drafts', () => {
     await app.close();
   });
 });
+
+describe('DELETE /v1/products/drafts/:id', () => {
+  it("discards the creator's own draft and removes it from the draft list", async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+
+    const deleteRes = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+    });
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.json().success).toBe(true);
+
+    // Verify draft is removed from database
+    const inDb = await getPrisma().product.findUnique({ where: { id: p.id } });
+    expect(inDb).toBeNull();
+
+    // Verify draft is no longer in drafts listing
+    const listRes = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts',
+      headers,
+    });
+    expect(listRes.json().items.some((item: { id: string }) => item.id === p.id)).toBe(false);
+    await app.close();
+  });
+
+  it("refuses to discard someone else's draft", async () => {
+    const app = await buildServer();
+    const { headers } = await authedUser();
+    const otherUser = await makeUser({ emailVerified: true });
+    const p = await makeProduct({ createdByUserId: otherUser.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('refuses to discard an active catalog product', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'active' } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+    });
+    expect(res.statusCode).toBe(409);
+    await app.close();
+  });
+});

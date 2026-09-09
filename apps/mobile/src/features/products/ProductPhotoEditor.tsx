@@ -402,8 +402,28 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
       {pickerError ? <Text style={[styles.pickerErrorText, { color: theme.colors.danger }]}>{pickerError}</Text> : null}
 
       <View style={styles.actionBtnsRow}>
-        <Button testID="photo-take" label="Take photo" icon="camera" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onTakePhoto} />
-        <Button testID="photo-choose" label="Choose photos" icon="images" variant="outline" disabled={remaining === 0 || blockedByConflict} onPress={onChoosePhotos} />
+        <View style={styles.actionBtnWrap}>
+          <Button
+            testID="photo-take"
+            label="Take photo"
+            icon="camera"
+            variant="outline"
+            style={styles.actionBtn}
+            disabled={remaining === 0 || blockedByConflict}
+            onPress={onTakePhoto}
+          />
+        </View>
+        <View style={styles.actionBtnWrap}>
+          <Button
+            testID="photo-choose"
+            label="Choose photos"
+            icon="images"
+            variant="outline"
+            style={styles.actionBtn}
+            disabled={remaining === 0 || blockedByConflict}
+            onPress={onChoosePhotos}
+          />
+        </View>
       </View>
       <MultiPhotoCameraModal
         visible={cameraModalVisible}
@@ -447,11 +467,11 @@ const styles = StyleSheet.create({
   gridRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   photoCard: {
-    width: 98,
-    height: 98,
+    width: 88,
+    height: 88,
     borderWidth: 1.5,
     overflow: 'hidden',
     position: 'relative',
@@ -561,5 +581,15 @@ const styles = StyleSheet.create({
   actionBtnsRow: {
     flexDirection: 'row',
     gap: 10,
+    width: '100%',
+  },
+  actionBtnWrap: {
+    flex: 1,
+  },
+  actionBtn: {
+    width: '100%',
+    paddingHorizontal: 8,
+    height: 48,
+    minHeight: 48,
   },
 });

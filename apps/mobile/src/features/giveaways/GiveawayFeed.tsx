@@ -238,7 +238,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
                   style={[
                     styles.sortText,
                     {
-                      color: selected ? theme.colors.primaryFg : theme.colors.text,
+                      color: selected ? '#FFFFFF' : theme.colors.text,
                       fontWeight: selected ? '700' : '500',
                     },
                   ]}
@@ -389,7 +389,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
                   { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
                 ]}
               >
-                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
                   Retry
                 </Text>
               </Pressable>
@@ -409,7 +409,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
                   { backgroundColor: theme.colors.primary, borderRadius: theme.radii.pill },
                 ]}
               >
-                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
                   Clear filters
                 </Text>
               </Pressable>
@@ -433,7 +433,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
                   },
                 ]}
               >
-                <Text style={[styles.emptyStateActionText, { color: theme.colors.primaryFg }]}>
+                <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
                   + Share the first item
                 </Text>
               </Pressable>

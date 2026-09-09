@@ -24,6 +24,13 @@ import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../produ
 import { uploadGiveawayPhoto } from '../../api/giveaways';
 import { KeyboardAwareScrollView } from '../../components/KeyboardAwareScrollView';
 const MAX_PHOTOS = 5;
+const COMMON_UNITS = ['pcs', 'pack', 'can', 'bottle', 'kg', 'box'] as const;
+const DATE_PRESETS = [
+  { label: '+3d', days: 3 },
+  { label: '+1w', days: 7 },
+  { label: '+2w', days: 14 },
+  { label: '+1m', days: 30 },
+] as const;
 
 interface LocalPhotoItem {
   id: string;
@@ -244,85 +251,142 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                 ) : null}
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.photoList}
-              >
-                {photos.map((item, index) => (
-                  <View
-                    key={item.id}
-                    style={[
-                      styles.photoCard,
+              {photos.length === 0 ? (
+                <View style={styles.emptyPhotoGrid}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Take a photo with camera"
+                    onPress={handleTakePhoto}
+                    style={({ pressed }) => [
+                      styles.photoActionCard,
                       {
-                        borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
-                        backgroundColor: theme.colors.bgElevated,
+                        backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                        borderColor: theme.colors.border,
+                        transform: [{ scale: pressed ? 0.98 : 1 }],
                       },
                     ]}
                   >
-                    <Image
-                      source={{ uri: item.path }}
-                      style={styles.photoImage}
-                      resizeMode="cover"
-                      accessibilityIgnoresInvertColors
-                    />
-                    {index === 0 && (
-                      <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
-                        <Text style={[styles.coverText, { color: theme.colors.primaryFg }]}>Cover</Text>
-                      </View>
-                    )}
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove photo ${index + 1}`}
-                      onPress={() => handleRemovePhoto(item.id)}
-                      style={[styles.removeBtn, { backgroundColor: 'rgba(0,0,0,0.65)' }]}
-                    >
-                      <Ionicons name="close" size={14} color="#FFF" />
-                    </Pressable>
-                  </View>
-                ))}
+                    <View style={[styles.photoIconBadge, { backgroundColor: '#D6F0E6' }]}>
+                      <Ionicons name="camera" size={24} color="#2A6F54" />
+                    </View>
+                    <View style={styles.photoActionTextCol}>
+                      <Text style={[styles.photoActionTitle, { color: theme.colors.text }]}>Take Photo</Text>
+                      <Text style={[styles.photoActionSub, { color: theme.colors.textMuted }]}>
+                        Camera capture
+                      </Text>
+                    </View>
+                  </Pressable>
 
-                {photos.length < MAX_PHOTOS && (
-                  <View style={styles.addPhotoActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Take a photo with camera"
-                      onPress={handleTakePhoto}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Select photo from gallery"
+                    onPress={handleChooseGallery}
+                    style={({ pressed }) => [
+                      styles.photoActionCard,
+                      {
+                        backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                        borderColor: theme.colors.border,
+                        transform: [{ scale: pressed ? 0.98 : 1 }],
+                      },
+                    ]}
+                  >
+                    <View style={[styles.photoIconBadge, { backgroundColor: '#FEEFC3' }]}>
+                      <Ionicons name="images" size={24} color="#D48812" />
+                    </View>
+                    <View style={styles.photoActionTextCol}>
+                      <Text style={[styles.photoActionTitle, { color: theme.colors.text }]}>From Gallery</Text>
+                      <Text style={[styles.photoActionSub, { color: theme.colors.textMuted }]}>
+                        Select multiple
+                      </Text>
+                    </View>
+                  </Pressable>
+                </View>
+              ) : (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.photoList}
+                >
+                  {photos.map((item, index) => (
+                    <View
+                      key={item.id}
                       style={[
-                        styles.addPhotoBtn,
+                        styles.photoCard,
                         {
-                          backgroundColor: theme.colors.bgGlass,
-                          borderColor: theme.colors.border,
-                          borderRadius: theme.radii.md,
+                          borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
+                          backgroundColor: theme.colors.bgElevated,
                         },
                       ]}
                     >
-                      <Ionicons name="camera-outline" size={20} color={theme.colors.primary} />
-                      <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Camera</Text>
-                    </Pressable>
+                      <Image
+                        source={{ uri: item.path }}
+                        style={styles.photoImage}
+                        resizeMode="cover"
+                        accessibilityIgnoresInvertColors
+                      />
+                      {index === 0 && (
+                        <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
+                          <Text style={[styles.coverText, { color: '#FFFFFF' }]}>Cover</Text>
+                        </View>
+                      )}
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove photo ${index + 1}`}
+                        onPress={() => handleRemovePhoto(item.id)}
+                        style={[styles.removeBtn, { backgroundColor: 'rgba(0,0,0,0.65)' }]}
+                      >
+                        <Ionicons name="close" size={14} color="#FFF" />
+                      </Pressable>
+                    </View>
+                  ))}
 
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Select photo from gallery"
-                      onPress={handleChooseGallery}
-                      style={[
-                        styles.addPhotoBtn,
-                        {
-                          backgroundColor: theme.colors.bgGlass,
-                          borderColor: theme.colors.border,
-                          borderRadius: theme.radii.md,
-                        },
-                      ]}
-                    >
-                      <Ionicons name="images-outline" size={20} color={theme.colors.primary} />
-                      <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Gallery</Text>
-                    </Pressable>
-                  </View>
-                )}
-              </ScrollView>
-              <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
-                💡 Tip: Long-press a photo in gallery to select multiple at once, or tap Gallery again to add more.
-              </Text>
+                  {photos.length < MAX_PHOTOS && (
+                    <View style={styles.addPhotoActions}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Take another photo with camera"
+                        onPress={handleTakePhoto}
+                        style={({ pressed }) => [
+                          styles.compactAddPhotoBtn,
+                          {
+                            backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                            borderColor: theme.colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={[styles.compactIconBadge, { backgroundColor: '#D6F0E6' }]}>
+                          <Ionicons name="camera" size={18} color="#2A6F54" />
+                        </View>
+                        <Text style={[styles.compactAddText, { color: theme.colors.text }]}>Camera</Text>
+                      </Pressable>
+
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Add more photos from gallery"
+                        onPress={handleChooseGallery}
+                        style={({ pressed }) => [
+                          styles.compactAddPhotoBtn,
+                          {
+                            backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                            borderColor: theme.colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={[styles.compactIconBadge, { backgroundColor: '#FEEFC3' }]}>
+                          <Ionicons name="images" size={18} color="#D48812" />
+                        </View>
+                        <Text style={[styles.compactAddText, { color: theme.colors.text }]}>Gallery</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+              <View style={styles.photoTipRow}>
+                <Ionicons name="information-circle-outline" size={15} color={theme.colors.primaryDark} />
+                <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
+                  First photo is shown on the community feed. Long-press in gallery to select multiple.
+                </Text>
+              </View>
             </View>
 
             {/* Title Field */}
@@ -401,8 +465,43 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                     },
                   ]}
                 />
+                </View>
+
+                {/* Quick Unit Preset Pills */}
+                <View style={styles.unitPillsRow}>
+                  {COMMON_UNITS.map((u) => {
+                    const isSelected = unit === u;
+                    return (
+                      <Pressable
+                        key={u}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select unit ${u}`}
+                        onPress={() => setUnit(u)}
+                        style={({ pressed }) => [
+                          styles.unitPill,
+                          {
+                            backgroundColor: isSelected ? theme.colors.primaryLight : theme.colors.bgElevated,
+                            borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                            opacity: pressed ? 0.85 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.unitPillText,
+                            {
+                              color: isSelected ? theme.colors.primaryDark : theme.colors.textMuted,
+                              fontWeight: isSelected ? '700' : '500',
+                            },
+                          ]}
+                        >
+                          {u}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
             {/* Location Field */}
             <View style={styles.fieldGroup}>
@@ -475,6 +574,33 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                 </View>
                 <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
               </Pressable>
+
+              {/* Date Preset Chips */}
+              <View style={styles.datePresetsRow}>
+                {DATE_PRESETS.map((p) => (
+                  <Pressable
+                    key={p.label}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Set expiry date to ${p.label}`}
+                    onPress={() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + p.days);
+                      setExpiryDate(d.toISOString().slice(0, 10));
+                    }}
+                    style={({ pressed }) => [
+                      styles.datePresetPill,
+                      {
+                        backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgElevated,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.datePresetText, { color: theme.colors.primaryDark }]}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
 
             <WheelDatePickerModal
@@ -654,22 +780,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  emptyPhotoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 2,
+  },
+  photoActionCard: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  photoIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoActionTextCol: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  photoActionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  photoActionSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
   addPhotoActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  addPhotoBtn: {
-    width: 72,
-    height: 72,
-    borderWidth: 1,
-    borderStyle: 'dashed',
+  compactAddPhotoBtn: {
+    width: 78,
+    height: 88,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 6,
   },
-  addPhotoText: {
+  compactIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactAddText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  photoTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
+  photoTipText: {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   input: {
     borderWidth: 1,
@@ -728,5 +907,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 15,
     height: 48,
+  },
+  unitPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  unitPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  unitPillText: {
+    fontSize: 12,
+  },
+  datePresetsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  datePresetPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  datePresetText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

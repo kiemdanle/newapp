@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Alert, ScrollView, Text, TextInput, View, Pressable, StyleSheet } from 'react-native';
+import { Alert, Platform, ScrollView, Text, TextInput, View, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Product } from '@expyrico/shared';
 import { apiClient } from '../../../src/api/client';
-import { useCreateOrResumeDraft, useProduct } from '../../../src/api/products';
+import { useCreateOrResumeDraft, useDiscardDraft, useProduct } from '../../../src/api/products';
 import { ProductDraftForm } from '../../../src/features/products/ProductDraftForm';
 import { DraftEditor } from '../../../src/features/products/DraftEditor';
 import { AddRecordForm } from '../../../src/features/records/AddRecordForm';
@@ -46,6 +46,7 @@ export default function NewProductScreen() {
   const userId = useSessionStore((s) => s.user?.id);
   const queryClient = useQueryClient();
   const createOrResumeDraft = useCreateOrResumeDraft();
+  const discardDraftMutation = useDiscardDraft();
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -329,10 +330,18 @@ export default function NewProductScreen() {
   // photos, and submit.
   if (product) {
     const discardDraft = async () => {
+      if (productId) {
+        try {
+          await discardDraftMutation.mutateAsync(productId);
+        } catch {
+          // best effort if offline or already gone
+        }
+      }
       if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
       dirtyRef.current = false;
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       navigation.goBack();
     };
 
@@ -383,11 +392,15 @@ export default function NewProductScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerStyle={{ padding: theme.spacing.lg }}
+        <KeyboardAwareScrollView
+          style={[styles.screen, { backgroundColor: theme.colors.bg }]}
+          contentContainerStyle={{
+            padding: theme.spacing.lg,
+            paddingBottom: Math.max(insets.bottom + 80, 120),
+          }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={true}
+          extraKeyboardOffset={Platform.OS === 'android' ? 140 : 60}
         >
           <DraftEditor
             product={product}
@@ -396,7 +409,7 @@ export default function NewProductScreen() {
             onDiscard={discardDraft}
             onSubmitted={handleSubmitted}
           />
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     );
   }

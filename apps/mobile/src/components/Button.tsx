@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
 
@@ -14,6 +14,7 @@ export interface ButtonProps {
   disabled?: boolean;
   testID?: string;
   accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function Button(props: ButtonProps) {
@@ -69,6 +70,7 @@ export function Button(props: ButtonProps) {
         pressed && variant === 'primary' && { opacity: 0.82 },
         pressed && variant === 'secondary' && { backgroundColor: theme.colors.hero },
         pressed && variant === 'danger' && { opacity: 0.82 },
+        props.style,
       ]}
     >
       <View style={styles.row}>
@@ -84,6 +86,8 @@ export function Button(props: ButtonProps) {
               />
             ) : null)}
             <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
               style={[
                 styles.label,
                 {

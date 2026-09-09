@@ -9,9 +9,18 @@ import type { DraftMutationCoordinator } from './draft-mutation-coordinator';
 import { DraftConflictBanner } from './DraftConflictBanner';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
+import { useKeyboardAwareScroll } from '../../components/KeyboardAwareScrollView';
 const NAME_MAX = 200;
 const DESCRIPTION_MAX = 2000;
-
+const SUGGESTED_CATEGORIES = [
+  'Produce',
+  'Dairy',
+  'Bakery',
+  'Pantry',
+  'Meat',
+  'Drinks',
+  'Snacks',
+] as const;
 interface Fields {
   name: string;
   description: string;
@@ -55,6 +64,7 @@ export interface ProductDraftFormProps {
 export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readOnly, hideSaveButton, feedbackBanner, coordinator }: ProductDraftFormProps) {
   const theme = useTheme();
   const patchDraft = usePatchDraft();
+  const keyboardScroll = useKeyboardAwareScroll();
   const [known, setKnown] = useState(initialProduct);
   const [fields, setFields] = useState<Fields>(() => fieldsFrom(initialProduct));
   const [error, setError] = useState<string | null>(null);
@@ -175,35 +185,36 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
         style={[
           styles.identifierCard,
           {
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
+            backgroundColor: '#D6F0E6',
+            borderColor: '#4BAE8A',
             borderRadius: theme.radii.lg,
           },
         ]}
       >
         <View style={styles.identifierLeft}>
-          <View style={[styles.identifierIconWrap, { backgroundColor: theme.colors.primaryLight }]}>
+          <View style={[styles.identifierIconWrap, { backgroundColor: '#4BAE8A' }]}>
             <Ionicons
               name={isIdentifierQr ? 'qr-code-outline' : 'barcode-outline'}
               size={22}
-              color={theme.colors.primaryDark}
+              color="#FFFFFF"
             />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.fieldLabelMicro, { color: theme.colors.textMuted }]}>
+            <Text style={[styles.fieldLabelMicro, { color: '#2A6F54' }]}>
               {isIdentifierQr ? 'SCANNED QR CODE' : 'SCANNED BARCODE'}
             </Text>
             <Text
               testID="draft-identifier"
-              style={[styles.identifierText, { color: theme.colors.text }]}
+              style={[styles.identifierText, { color: '#2A6F54' }]}
               numberOfLines={1}
             >
               {identifierValue}
             </Text>
           </View>
         </View>
-        <View style={[styles.verifiedPill, { backgroundColor: theme.colors.primaryLight }]}>
-          <Text style={[styles.verifiedPillText, { color: theme.colors.primaryDark }]}>Verified</Text>
+        <View style={[styles.verifiedPill, { backgroundColor: '#2A6F54' }]}>
+          <Ionicons name="checkmark-circle" size={13} color="#FFFFFF" style={{ marginRight: 4 }} />
+          <Text style={[styles.verifiedPillText, { color: '#FFFFFF' }]}>Verified</Text>
         </View>
       </View>
 
@@ -221,13 +232,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
       >
         {/* Product Name Field */}
         <View style={styles.fieldGroup}>
-          <View style={styles.labelRow}>
-            <Ionicons name="pricetag-outline" size={15} color={theme.colors.primary} />
-            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Product Name *</Text>
-          </View>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Product Name *</Text>
           <View
             style={[
               styles.inputBox,
+              styles.singleLineBox,
               {
                 backgroundColor: focusedField === 'name' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
                 borderColor: focusedField === 'name' ? theme.colors.primary : theme.colors.border,
@@ -244,7 +253,10 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               style={[styles.textInput, { color: theme.colors.text }]}
               value={fields.name}
               maxLength={NAME_MAX}
-              onFocus={() => setFocusedField('name')}
+              onFocus={(e) => {
+                setFocusedField('name');
+                keyboardScroll?.scrollToInput(e);
+              }}
               onBlur={() => setFocusedField(null)}
               onChangeText={(v) => {
                 const next = { ...fields, name: v };
@@ -257,10 +269,7 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
 
         {/* Description Field */}
         <View style={styles.fieldGroup}>
-          <View style={styles.labelRow}>
-            <Ionicons name="document-text-outline" size={15} color={theme.colors.primary} />
-            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description (optional)</Text>
-          </View>
+          <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Description (optional)</Text>
           <View
             style={[
               styles.inputBox,
@@ -282,7 +291,10 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               value={fields.description}
               maxLength={DESCRIPTION_MAX}
               multiline
-              onFocus={() => setFocusedField('description')}
+              onFocus={(e) => {
+                setFocusedField('description');
+                keyboardScroll?.scrollToInput(e);
+              }}
               onBlur={() => setFocusedField(null)}
               onChangeText={(v) => {
                 const next = { ...fields, description: v };
@@ -299,13 +311,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
         {/* 2-Column Row for Brand & Category */}
         <View style={styles.twoColRow}>
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <View style={styles.labelRow}>
-              <Ionicons name="business-outline" size={14} color={theme.colors.primary} />
-              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Brand</Text>
-            </View>
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Brand (optional)</Text>
             <View
               style={[
                 styles.inputBox,
+                styles.singleLineBox,
                 {
                   backgroundColor: focusedField === 'brand' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
                   borderColor: focusedField === 'brand' ? theme.colors.primary : theme.colors.border,
@@ -321,7 +331,10 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 placeholderTextColor={theme.colors.textMuted}
                 style={[styles.textInput, { color: theme.colors.text }]}
                 value={fields.brand}
-                onFocus={() => setFocusedField('brand')}
+                onFocus={(e) => {
+                  setFocusedField('brand');
+                  keyboardScroll?.scrollToInput(e);
+                }}
                 onBlur={() => setFocusedField(null)}
                 onChangeText={(v) => {
                   const next = { ...fields, brand: v };
@@ -333,13 +346,11 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
           </View>
 
           <View style={[styles.fieldGroup, { flex: 1 }]}>
-            <View style={styles.labelRow}>
-              <Ionicons name="grid-outline" size={14} color={theme.colors.primary} />
-              <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Category</Text>
-            </View>
+            <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Category</Text>
             <View
               style={[
                 styles.inputBox,
+                styles.singleLineBox,
                 {
                   backgroundColor: focusedField === 'category' ? (theme.scheme === 'dark' ? '#202924' : '#FFFFFF') : (theme.scheme === 'dark' ? '#161C18' : '#F6F6F4'),
                   borderColor: focusedField === 'category' ? theme.colors.primary : theme.colors.border,
@@ -347,15 +358,16 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 },
               ]}
             >
-              <TextInput
-                accessibilityLabel="Category"
-                testID="draft-category"
-                editable={!readOnly}
-                placeholder="e.g: Produce, Diary, Bakery, Meat & Seafood, More"
-                placeholderTextColor={theme.colors.textMuted}
-                style={[styles.textInput, { color: theme.colors.text }]}
+            <TextInput
+              accessibilityLabel="Category"
+              testID="draft-category"
+              editable={!readOnly}
+              placeholder="e.g. Dairy"
                 value={fields.category}
-                onFocus={() => setFocusedField('category')}
+                onFocus={(e) => {
+                  setFocusedField('category');
+                  keyboardScroll?.scrollToInput(e);
+                }}
                 onBlur={() => setFocusedField(null)}
                 onChangeText={(v) => {
                   const next = { ...fields, category: v };
@@ -365,6 +377,45 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
               />
             </View>
           </View>
+        </View>
+
+        {/* Quick Category Chips */}
+        <View style={styles.categoryPillsRow}>
+          {SUGGESTED_CATEGORIES.map((cat) => {
+            const isSelected = fields.category.toLowerCase() === cat.toLowerCase();
+            return (
+              <Pressable
+                key={cat}
+                accessibilityRole="button"
+                accessibilityLabel={`Select category ${cat}`}
+                onPress={() => {
+                  const next = { ...fields, category: cat };
+                  setFields(next);
+                  enqueuePatch(next);
+                }}
+                style={({ pressed }) => [
+                  styles.categoryPill,
+                  {
+                    backgroundColor: isSelected ? theme.colors.primaryLight : theme.colors.bgElevated,
+                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryPillText,
+                    {
+                      color: isSelected ? theme.colors.primaryDark : theme.colors.textMuted,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
         {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
@@ -463,13 +514,17 @@ const styles = StyleSheet.create({
     minHeight: 50,
     justifyContent: 'center',
   },
+  singleLineBox: {
+    height: 50,
+  },
   textInput: {
     fontSize: 16,
     paddingVertical: 10,
   },
   multilineBox: {
-    minHeight: 100,
+    minHeight: 110,
     paddingVertical: 10,
+    paddingBottom: 8,
     justifyContent: 'space-between',
   },
   multilineInput: {
@@ -489,5 +544,20 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  categoryPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  categoryPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  categoryPillText: {
+    fontSize: 12,
   },
 });

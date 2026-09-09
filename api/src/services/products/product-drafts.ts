@@ -233,6 +233,31 @@ export async function patchDraft(
   return toApiProduct(updated, { kind: 'privileged' });
 }
 
+export async function discardDraft(
+  actor: DraftActor,
+  productId: string,
+): Promise<{ success: boolean; id: string }> {
+  const prisma = getPrisma();
+  const existing = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { photos: true },
+  });
+  if (!existing) {
+    throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
+  }
+  assertOwnDraftLike(existing, actor.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (existing.photos.length > 0) {
+      await tx.productPhoto.deleteMany({ where: { productId: existing.id } });
+    }
+    await tx.productEdit.deleteMany({ where: { productId: existing.id } });
+    await tx.product.delete({ where: { id: existing.id } });
+  });
+
+  return { success: true, id: productId };
+}
+
 /**
  * Transitions a draft/changes_required product to `pending`. Order matters:
  * eligibility, then the real server-verified abuse assessment, both strictly

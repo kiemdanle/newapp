@@ -131,11 +131,11 @@ export function ClaimList({
                   ]}
                 >
                   {selecting ? (
-                    <ActivityIndicator size="small" color={theme.colors.primaryFg} style={{ marginRight: 6 }} />
+                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 6 }} />
                   ) : (
-                    <Ionicons name="checkmark-outline" size={16} color={theme.colors.primaryFg} style={{ marginRight: 4 }} />
+                    <Ionicons name="checkmark-outline" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
                   )}
-                  <Text style={[styles.selectBtnText, { color: theme.colors.primaryFg }]}>
+                  <Text style={[styles.selectBtnText, { color: '#FFFFFF' }]}>
                     {selecting ? 'Selecting…' : 'Select Recipient'}
                   </Text>
                 </Pressable>

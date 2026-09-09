@@ -125,7 +125,7 @@ export default function MyGiveawaysScreen() {
               style={[
                 styles.tabText,
                 {
-                  color: tab === t ? theme.colors.primaryFg : theme.colors.text,
+                  color: tab === t ? '#FFFFFF' : theme.colors.text,
                   fontWeight: tab === t ? '700' : '500',
                 },
               ]}

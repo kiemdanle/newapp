@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, View, Pressable, StyleSheet } from 'react-native';
+import { Alert, Platform, Text, View, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,7 @@ import { EditEditor } from '../../../../src/features/products/EditEditor';
 import { ProductEditForm } from '../../../../src/features/products/ProductEditForm';
 import { useTheme } from '../../../../src/theme/useTheme';
 import { Screen } from '../../../../src/components/Screen';
+import { KeyboardAwareScrollView } from '../../../../src/components/KeyboardAwareScrollView';
 /**
  * Creator-facing "Suggest an edit" flow for an already-active product. Not
  * gated by `product_creation` mode (plan.md) — any authenticated user may
@@ -147,11 +148,12 @@ export default function ProductEditScreen() {
             <Text style={[styles.doneBtnText, { color: theme.colors.primaryDark }]}>Done</Text>
           </Pressable>
         </View>
-        <ScrollView
-          contentContainerStyle={{ padding: theme.spacing.lg }}
+        <KeyboardAwareScrollView
+          style={{ flex: 1, backgroundColor: theme.colors.bg }}
+          contentContainerStyle={{ padding: theme.spacing.lg, paddingBottom: 140 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          automaticallyAdjustKeyboardInsets={true}
+          extraKeyboardOffset={Platform.OS === 'android' ? 140 : 60}
         >
           <View style={{ gap: theme.spacing.md }}>
             <View
@@ -178,7 +180,7 @@ export default function ProductEditScreen() {
             </View>
             <ProductEditForm initialEdit={edit!} liveProduct={liveProduct} readOnly />
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     );
   }
@@ -210,11 +212,15 @@ export default function ProductEditScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: theme.spacing.lg }}
+      <KeyboardAwareScrollView
+        style={{ flex: 1, backgroundColor: theme.colors.bg }}
+        contentContainerStyle={{
+          padding: theme.spacing.lg,
+          paddingBottom: 140,
+        }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets={true}
+        extraKeyboardOffset={Platform.OS === 'android' ? 140 : 60}
       >
         <EditEditor
           productId={productId}
@@ -233,7 +239,7 @@ export default function ProductEditScreen() {
             ]);
           }}
         />
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

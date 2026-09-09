@@ -62,10 +62,10 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
           </Text>
         </View>
         <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '800' }}>
-          Product Details & Photos
+          Catalog Entry
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
-          Upload photos and adjust metadata before submitting for community catalog review.
+          Add photos and accurate metadata before submitting for community catalog review.
         </Text>
       </View>
 
@@ -91,8 +91,13 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
         coordinator={coordinator}
         onUnsettledChange={setPhotoUnsettled}
       />
-      <DraftSubmitPanel coordinator={coordinator} disabled={photoUnsettled} onSubmitted={onSubmitted} />
-      <Button testID="new-product-discard" label="Discard draft" variant="outline" onPress={onDiscard} />
+      <DraftSubmitPanel
+        coordinator={coordinator}
+        status={product.status}
+        disabled={photoUnsettled}
+        onSubmitted={onSubmitted}
+      />
+      <Button testID="new-product-discard" label="Discard Draft" variant="outline" onPress={onDiscard} />
     </View>
   );
 }

@@ -92,7 +92,7 @@ export function GiveawaySearchBar({
         <Ionicons
           name="options-outline"
           size={20}
-          color={activeFilterCount > 0 ? theme.colors.primaryFg : theme.colors.text}
+          color={activeFilterCount > 0 ? '#FFFFFF' : theme.colors.text}
         />
         {activeFilterCount > 0 && (
           <View style={[styles.badge, { backgroundColor: theme.colors.accent }]}>

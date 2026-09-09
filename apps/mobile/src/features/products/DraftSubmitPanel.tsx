@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Text, View } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
 import { useSubmitDraft } from '../../api/products';
 import { isApiError } from '../../api/errors';
@@ -11,6 +12,7 @@ import { Button } from '../../components/Button';
 
 export interface DraftSubmitPanelProps {
   coordinator: DraftMutationCoordinator<Product>;
+  status?: string;
   /** True while the draft has unsaved metadata text or an in-flight photo
    * upload — submit is disabled until the caller clears this. */
   disabled?: boolean;
@@ -31,7 +33,7 @@ export interface DraftSubmitPanelProps {
  * version conflict) mints a fresh key for any further attempt, since the
  * plugin cached that exact key+body pair.
  */
-export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSubmitPanelProps) {
+export function DraftSubmitPanel({ coordinator, status, disabled, onSubmitted }: DraftSubmitPanelProps) {
   const theme = useTheme();
   const submitDraft = useSubmitDraft();
   const [busy, setBusy] = useState(false);
@@ -101,8 +103,32 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
     }
   };
 
+  const isChangesRequired = status === 'changes_required';
+  const defaultLabel = isChangesRequired ? 'Update' : 'Submit';
+  const busyLabel = isChangesRequired ? 'Updating…' : 'Submitting…';
+  const submitButtonLabel = busy ? busyLabel : retryable ? 'Retry submit' : defaultLabel;
+
   return (
     <View style={{ gap: theme.spacing.sm }}>
+      {/* Draft Auto-save and Submission Notice */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          padding: 12,
+          borderRadius: theme.radii.md,
+          backgroundColor: theme.colors.bgElevated,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+        }}
+      >
+        <Ionicons name="cloud-done-outline" size={18} color={theme.colors.primaryDark} />
+        <Text style={{ flex: 1, color: theme.colors.textMuted, fontSize: 12, lineHeight: 16 }}>
+          Edits are auto-saved to your draft. Tap Submit when you are ready to publish.
+        </Text>
+      </View>
+
       {errorMessage ? (
         <Text testID="draft-submit-error" style={{ color: theme.colors.danger }}>
           {errorMessage}
@@ -110,7 +136,8 @@ export function DraftSubmitPanel({ coordinator, disabled, onSubmitted }: DraftSu
       ) : null}
       <Button
         testID="draft-submit"
-        label={busy ? 'Posting Product…' : retryable ? 'Retry submit' : 'Post New Product'}
+        label={submitButtonLabel}
+        icon="checkmark-circle-outline"
         loading={busy}
         disabled={busy || disabled}
         onPress={submit}

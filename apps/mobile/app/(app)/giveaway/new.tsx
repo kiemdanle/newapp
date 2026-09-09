@@ -18,6 +18,7 @@ import { useCreateGiveaway, uploadGiveawayPhoto } from '@/api/giveaways';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '@/features/products/photo-picker-adapter';
 import { WheelDatePickerModal } from '@/components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '@/components/MultiPhotoCameraModal';
+import { Button } from '@/components/Button';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
 import { formatDate } from '@/utils/country-format';
@@ -25,7 +26,16 @@ import type { AppNavigationProp } from '@/navigation/AppNavigator';
 import type { LocalRecord } from '@/api/records';
 import type { Product } from '@expyrico/shared';
 import { PantrySelectModal } from '@/features/giveaways/PantrySelectModal';
+
 const MAX_PHOTOS = 5;
+const COMMON_UNITS = ['pcs', 'pack', 'can', 'bottle', 'kg', 'box'] as const;
+const DATE_PRESETS = [
+  { label: '+3d', days: 3 },
+  { label: '+1w', days: 7 },
+  { label: '+2w', days: 14 },
+  { label: '+1m', days: 30 },
+] as const;
+
 interface LocalPhotoItem {
   id: string;
   path: string;
@@ -60,9 +70,12 @@ export default function NewGiveawayScreen() {
   const create = useCreateGiveaway();
   const pending = create.isPending || uploadingPhotos;
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const handleSetFocusedField = (field: 'title' | 'unit' | 'location' | 'description' | null) => {
+    setFocusedField(field);
+  };
+
   const getFieldBorderColor = (fieldKey: string) =>
     focusedField === fieldKey ? theme.colors.primary : theme.colors.border;
-
 
   function handleCameraCapture(pickedList: PickedPhoto[]) {
     if (pickedList && pickedList.length > 0) {
@@ -203,43 +216,54 @@ export default function NewGiveawayScreen() {
   return (
     <KeyboardAwareScrollView
       style={[styles.container, { backgroundColor: theme.colors.bg }]}
-      contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
+      contentContainerStyle={[styles.content, { paddingBottom: 80 }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-      extraKeyboardOffset={Platform.OS === 'android' ? 140 : 48}
+      extraKeyboardOffset={Platform.OS === 'android' ? 195 : 100}
     >
       <View style={styles.header}>
-        <Text style={[styles.heading, { color: theme.colors.text }]}>Share an Item</Text>
+        <Text style={[styles.eyebrow, { color: theme.colors.primaryDark }]}>
+          COMMUNITY FOOD SHARING
+        </Text>
+        <Text style={[styles.heading, { color: theme.colors.text }]}>Offer to Neighbors</Text>
         <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-          Give food, pantry staples, or groceries to neighbors nearby.
+          Give food, pantry staples, or groceries to neighbors before they expire.
         </Text>
       </View>
 
-      {/* Pantry Fast-Select Button */}
+      {/* Pantry Fast-Select Hero Card */}
       <Pressable
         testID="select-from-pantry-btn"
         accessibilityRole="button"
-        accessibilityLabel="Select item from pantry"
+        accessibilityLabel="Select an item from your pantry"
         onPress={() => setShowPantryModal(true)}
         style={({ pressed }) => [
-          styles.pantrySelectBtn,
+          styles.pantryHeroCard,
           {
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.primary,
-            borderRadius: theme.radii.md,
-            opacity: pressed ? 0.8 : 1,
+            backgroundColor: pressed ? '#C7EADB' : '#D6F0E6',
+            borderColor: '#4BAE8A',
+            transform: [{ scale: pressed ? 0.985 : 1 }],
           },
         ]}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="cube-outline" size={20} color={theme.colors.primary} />
-          <Text style={[styles.pantrySelectBtnText, { color: theme.colors.primaryDark }]}>
-            📦 Select from Pantry
+        <View style={styles.pantryIconCircle}>
+          <Ionicons name="basket" size={22} color="#FFFFFF" />
+        </View>
+        <View style={styles.pantryHeroTextCol}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.pantryHeroTitle, { color: '#2A6F54' }]}>
+              Select from Your Pantry
+            </Text>
+            <View style={styles.fastAddPill}>
+              <Text style={styles.fastAddPillText}>FAST FILL</Text>
+            </View>
+          </View>
+          <Text style={[styles.pantryHeroSubtitle, { color: '#3A8F6F' }]}>
+            Auto-fills photos, title, quantity, and expiry date
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+        <Ionicons name="chevron-forward" size={18} color="#2A6F54" />
       </Pressable>
-
       {/* Linked Pantry Item Indicator */}
       {selectedRecordId && linkedPantryName ? (
         <View
@@ -247,18 +271,25 @@ export default function NewGiveawayScreen() {
           style={[
             styles.linkedPantryCard,
             {
-              backgroundColor: theme.colors.primaryLight,
+              backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.primary,
               borderRadius: theme.radii.md,
             },
           ]}
         >
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="link-outline" size={16} color={theme.colors.primaryDark} />
-            <Text style={[styles.linkedPantryText, { color: theme.colors.primaryDark }]} numberOfLines={1}>
-              Linked: <Text style={{ fontWeight: '700' }}>{linkedPantryName}</Text>
-              {maxAvailableQty !== null ? ` (${maxAvailableQty} ${unit} in pantry)` : ''}
-            </Text>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={styles.linkIconCircle}>
+              <Ionicons name="link-outline" size={14} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.linkedPantryLabel, { color: theme.colors.textMuted }]}>
+                LINKED PANTRY RECORD
+              </Text>
+              <Text style={[styles.linkedPantryTitle, { color: theme.colors.text }]} numberOfLines={1}>
+                {linkedPantryName}
+                {maxAvailableQty !== null ? ` · ${maxAvailableQty} ${unit} in stock` : ''}
+              </Text>
+            </View>
           </View>
           <Pressable
             testID="unlink-pantry-btn"
@@ -266,8 +297,9 @@ export default function NewGiveawayScreen() {
             accessibilityLabel="Unlink pantry item"
             onPress={handleUnlinkPantryItem}
             hitSlop={8}
+            style={styles.unlinkBtn}
           >
-            <Ionicons name="close-circle" size={18} color={theme.colors.primaryDark} />
+            <Ionicons name="close-circle" size={20} color={theme.colors.textMuted} />
           </Pressable>
         </View>
       ) : null}
@@ -291,85 +323,143 @@ export default function NewGiveawayScreen() {
           ) : null}
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.photoList}
-        >
-          {photos.map((item, index) => (
-            <View
-              key={item.id}
-              style={[
-                styles.photoCard,
+        {photos.length === 0 ? (
+          <View style={styles.emptyPhotoGrid}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo with camera"
+              onPress={handleTakePhoto}
+              style={({ pressed }) => [
+                styles.photoActionCard,
                 {
-                  borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
-                  backgroundColor: theme.colors.bgElevated,
+                  backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 },
               ]}
             >
-              <Image
-                source={{ uri: item.path }}
-                style={styles.photoImage}
-                resizeMode="cover"
-                accessibilityIgnoresInvertColors
-              />
-              {index === 0 && (
-                <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={[styles.coverText, { color: theme.colors.primaryFg }]}>Cover</Text>
-                </View>
-              )}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Remove photo ${index + 1}`}
-                onPress={() => handleRemovePhoto(item.id)}
-                style={[styles.removeBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
-              >
-                <Ionicons name="close" size={14} color="#FFF" />
-              </Pressable>
-            </View>
-          ))}
+              <View style={[styles.photoIconBadge, { backgroundColor: '#D6F0E6' }]}>
+                <Ionicons name="camera" size={24} color="#2A6F54" />
+              </View>
+              <View style={styles.photoActionTextCol}>
+                <Text style={[styles.photoActionTitle, { color: theme.colors.text }]}>Take Photo</Text>
+                <Text style={[styles.photoActionSub, { color: theme.colors.textMuted }]}>
+                  Camera capture
+                </Text>
+              </View>
+            </Pressable>
 
-          {photos.length < MAX_PHOTOS && (
-            <View style={styles.addPhotoActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Take a photo with camera"
-                onPress={handleTakePhoto}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Select photo from gallery"
+              onPress={handleChooseGallery}
+              style={({ pressed }) => [
+                styles.photoActionCard,
+                {
+                  backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+              ]}
+            >
+              <View style={[styles.photoIconBadge, { backgroundColor: '#FEEFC3' }]}>
+                <Ionicons name="images" size={24} color="#D48812" />
+              </View>
+              <View style={styles.photoActionTextCol}>
+                <Text style={[styles.photoActionTitle, { color: theme.colors.text }]}>From Gallery</Text>
+                <Text style={[styles.photoActionSub, { color: theme.colors.textMuted }]}>
+                  Select multiple
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photoList}
+          >
+            {photos.map((item, index) => (
+              <View
+                key={item.id}
                 style={[
-                  styles.addPhotoBtn,
+                  styles.photoCard,
                   {
+                    borderColor: index === 0 ? theme.colors.primary : theme.colors.border,
                     backgroundColor: theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.md,
                   },
                 ]}
               >
-                <Ionicons name="camera-outline" size={22} color={theme.colors.primary} />
-                <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Camera</Text>
-              </Pressable>
+                <Image
+                  source={{ uri: item.path }}
+                  style={styles.photoImage}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
+                />
+                {index === 0 && (
+                  <View style={[styles.coverBadge, { backgroundColor: theme.colors.primary }]}>
+                    <Text style={styles.coverText}>Cover</Text>
+                  </View>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove photo ${index + 1}`}
+                  onPress={() => handleRemovePhoto(item.id)}
+                  style={styles.removeBtn}
+                >
+                  <Ionicons name="close" size={13} color="#FFFFFF" />
+                </Pressable>
+              </View>
+            ))}
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Select photo from gallery"
-                onPress={handleChooseGallery}
-                style={[
-                  styles.addPhotoBtn,
-                  {
-                    backgroundColor: theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
-                    borderRadius: theme.radii.md,
-                  },
-                ]}
-              >
-                <Ionicons name="images-outline" size={22} color={theme.colors.primary} />
-                <Text style={[styles.addPhotoText, { color: theme.colors.text }]}>Gallery</Text>
-              </Pressable>
-            </View>
-          )}
-        </ScrollView>
-        <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
-          💡 Tip: Long-press a photo in gallery to select multiple at once, or tap Gallery again to add more.
-        </Text>
+            {photos.length < MAX_PHOTOS && (
+              <View style={styles.addPhotoActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Take another photo with camera"
+                  onPress={handleTakePhoto}
+                  style={({ pressed }) => [
+                    styles.compactAddPhotoBtn,
+                    {
+                      backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View style={[styles.compactIconBadge, { backgroundColor: '#D6F0E6' }]}>
+                    <Ionicons name="camera" size={18} color="#2A6F54" />
+                  </View>
+                  <Text style={[styles.compactAddText, { color: theme.colors.text }]}>Camera</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Add more photos from gallery"
+                  onPress={handleChooseGallery}
+                  style={({ pressed }) => [
+                    styles.compactAddPhotoBtn,
+                    {
+                      backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <View style={[styles.compactIconBadge, { backgroundColor: '#FEEFC3' }]}>
+                    <Ionicons name="images" size={18} color="#D48812" />
+                  </View>
+                  <Text style={[styles.compactAddText, { color: theme.colors.text }]}>Gallery</Text>
+                </Pressable>
+              </View>
+            )}
+          </ScrollView>
+        )}
+
+        <View style={styles.photoTipRow}>
+          <Ionicons name="information-circle-outline" size={15} color={theme.colors.primaryDark} />
+          <Text style={[styles.photoTipText, { color: theme.colors.textMuted }]}>
+            First photo is shown on the community feed. Long-press in gallery to select multiple.
+          </Text>
+        </View>
       </View>
       {/* Form Fields */}
       <View style={styles.fieldGroup}>
@@ -381,8 +471,8 @@ export default function NewGiveawayScreen() {
           placeholderTextColor={theme.colors.textMuted}
           value={title}
           onChangeText={setTitle}
-          onFocus={() => setFocusedField('title')}
-          onBlur={() => setFocusedField(null)}
+          onFocus={() => handleSetFocusedField('title')}
+          onBlur={() => handleSetFocusedField(null)}
           style={[
             styles.input,
             {
@@ -399,14 +489,16 @@ export default function NewGiveawayScreen() {
 
       {/* Quantity and Unit Controls */}
       <View style={styles.fieldGroup}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={styles.labelRow}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
             Quantity to Give Away *
           </Text>
           {maxAvailableQty !== null ? (
-            <Text style={[styles.stockHint, { color: theme.colors.textMuted }]}>
-              In pantry: {maxAvailableQty} {unit}
-            </Text>
+            <View style={styles.stockHintBadge}>
+              <Text style={styles.stockHintText}>
+                In pantry: {maxAvailableQty} {unit}
+              </Text>
+            </View>
           ) : null}
         </View>
         <View style={styles.quantityRow}>
@@ -462,8 +554,8 @@ export default function NewGiveawayScreen() {
             placeholderTextColor={theme.colors.textMuted}
             value={unit}
             onChangeText={setUnit}
-            onFocus={() => setFocusedField('unit')}
-            onBlur={() => setFocusedField(null)}
+            onFocus={() => handleSetFocusedField('unit')}
+            onBlur={() => handleSetFocusedField(null)}
             style={[
               styles.unitInput,
               {
@@ -476,11 +568,46 @@ export default function NewGiveawayScreen() {
             ]}
           />
         </View>
+
+        {/* Quick Unit Preset Pills */}
+        <View style={styles.unitPillsRow}>
+          {COMMON_UNITS.map((u) => {
+            const isSelected = unit === u;
+            return (
+              <Pressable
+                key={u}
+                accessibilityRole="button"
+                accessibilityLabel={`Select unit ${u}`}
+                onPress={() => setUnit(u)}
+                style={({ pressed }) => [
+                  styles.unitPill,
+                  {
+                    backgroundColor: isSelected ? theme.colors.primaryLight : theme.colors.bgElevated,
+                    borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.unitPillText,
+                    {
+                      color: isSelected ? theme.colors.primaryDark : theme.colors.textMuted,
+                      fontWeight: isSelected ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {u}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
       <View style={styles.fieldGroup}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={styles.labelRow}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Location / Neighborhood *
+            Pickup Location / Neighborhood *
           </Text>
           {profileLocation && locationText !== profileLocation ? (
             <Pressable
@@ -488,15 +615,16 @@ export default function NewGiveawayScreen() {
               accessibilityLabel="Auto-fill location from profile"
               onPress={() => setLocation(profileLocation)}
               hitSlop={8}
+              style={styles.profileLocationBtn}
             >
-              <Text style={{ color: theme.colors.primaryDark, fontSize: 12, fontWeight: '600' }}>
-                📍 Use profile location
-              </Text>
+              <Ionicons name="location-outline" size={13} color={theme.colors.primaryDark} />
+              <Text style={styles.profileLocationBtnText}>Use profile address</Text>
             </Pressable>
           ) : profileLocation && locationText === profileLocation ? (
-            <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '600' }}>
-              ✓ Filled from profile
-            </Text>
+            <View style={styles.profileLocationFilledBadge}>
+              <Ionicons name="checkmark-circle" size={12} color="#3A8F6F" />
+              <Text style={styles.profileLocationFilledText}>From profile</Text>
+            </View>
           ) : null}
         </View>
         <TextInput
@@ -506,8 +634,8 @@ export default function NewGiveawayScreen() {
           placeholderTextColor={theme.colors.textMuted}
           value={locationText}
           onChangeText={setLocation}
-          onFocus={() => setFocusedField('location')}
-          onBlur={() => setFocusedField(null)}
+          onFocus={() => handleSetFocusedField('location')}
+          onBlur={() => handleSetFocusedField(null)}
           style={[
             styles.input,
             {
@@ -522,13 +650,14 @@ export default function NewGiveawayScreen() {
       </View>
       {/* Item Expiry Date Field (Optional) */}
       <View style={styles.fieldGroup}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={styles.labelRow}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Item Expiration / Best-By Date (Optional)
+            Item Expiration Date (Optional)
           </Text>
           {expiryDate ? (
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Clear expiration date"
               onPress={() => setExpiryDate('')}
               hitSlop={8}
             >
@@ -568,6 +697,33 @@ export default function NewGiveawayScreen() {
           </View>
           <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />
         </Pressable>
+
+        {/* Date Preset Chips */}
+        <View style={styles.datePresetsRow}>
+          {DATE_PRESETS.map((p) => (
+            <Pressable
+              key={p.label}
+              accessibilityRole="button"
+              accessibilityLabel={`Set expiry date to ${p.label}`}
+              onPress={() => {
+                const d = new Date();
+                d.setDate(d.getDate() + p.days);
+                setExpiryDate(d.toISOString().slice(0, 10));
+              }}
+              style={({ pressed }) => [
+                styles.datePresetPill,
+                {
+                  backgroundColor: pressed ? theme.colors.primaryLight : theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.datePresetText, { color: theme.colors.primaryDark }]}>
+                {p.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <WheelDatePickerModal
@@ -589,12 +745,12 @@ export default function NewGiveawayScreen() {
         <TextInput
           testID="giveaway-description-input"
           accessibilityLabel="Giveaway description"
-          placeholder="Expiry date, pickup instructions, allergy details…"
+          placeholder="Pickup notes, best time to collect, or allergy details…"
           placeholderTextColor={theme.colors.textMuted}
           value={description}
           onChangeText={setDescription}
-          onFocus={() => setFocusedField('description')}
-          onBlur={() => setFocusedField(null)}
+          onFocus={() => handleSetFocusedField('description')}
+          onBlur={() => handleSetFocusedField(null)}
           multiline
           numberOfLines={3}
           style={[
@@ -611,30 +767,17 @@ export default function NewGiveawayScreen() {
       </View>
       {error ? <Text style={[styles.errorText, { color: theme.colors.danger }]}>{error}</Text> : null}
 
-      {/* Submit Button */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Post Giveaway"
-        onPress={submit}
-        disabled={pending}
-        style={({ pressed }) => [
-          styles.submitBtn,
-          {
-            backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-            borderRadius: theme.radii.pill,
-            opacity: pending ? 0.7 : 1,
-          },
-        ]}
-      >
-        {pending ? (
-          <ActivityIndicator color={theme.colors.primaryFg} style={{ marginRight: 8 }} />
-        ) : (
-          <Ionicons name="gift-outline" size={20} color={theme.colors.primaryFg} style={{ marginRight: 6 }} />
-        )}
-        <Text style={[styles.submitBtnText, { color: theme.colors.primaryFg }]}>
-          {pending ? (uploadingPhotos ? 'Uploading Photos…' : 'Posting…') : 'Post Giveaway'}
-        </Text>
-      </Pressable>
+      {/* Submit CTA Button */}
+      <View style={{ marginTop: 8, paddingBottom: 20 }}>
+        <Button
+          testID="post-giveaway-submit-btn"
+          label={pending ? (uploadingPhotos ? 'Uploading Photos…' : 'Posting Giveaway…') : 'Post Giveaway'}
+          icon="gift-outline"
+          onPress={submit}
+          loading={pending}
+          disabled={pending}
+        />
+      </View>
     </KeyboardAwareScrollView>
   );
 }
@@ -650,6 +793,13 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 4,
+    gap: 2,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   heading: {
     fontSize: 24,
@@ -657,7 +807,166 @@ const styles = StyleSheet.create({
   },
   subheading: {
     fontSize: 13,
-    marginTop: 4,
+    lineHeight: 18,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pantryHeroCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  pantryIconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#4BAE8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pantryHeroTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  pantryHeroTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  pantryHeroSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  fastAddPill: {
+    backgroundColor: '#2A6F54',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  fastAddPillText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  linkedPantryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1.5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  linkIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4BAE8A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  linkedPantryLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  linkedPantryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  unlinkBtn: {
+    padding: 4,
+  },
+  cameraIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#D6F0E6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#D6F0E6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stockHintBadge: {
+    backgroundColor: '#F0F0ED',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  stockHintText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#3A8F6F',
+  },
+  unitPillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  unitPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  unitPillText: {
+    fontSize: 12,
+  },
+  profileLocationBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D6F0E6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  profileLocationBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2A6F54',
+  },
+  profileLocationFilledBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D6F0E6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  profileLocationFilledText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2A6F54',
+  },
+  datePresetsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  datePresetPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  datePresetText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   section: {
     gap: 8,
@@ -705,9 +1014,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   coverText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
+    color: '#FFFFFF',
   },
   removeBtn: {
     position: 'absolute',
@@ -719,22 +1029,75 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  emptyPhotoGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 2,
+  },
+  photoActionCard: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  photoIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoActionTextCol: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  photoActionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  photoActionSub: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
   addPhotoActions: {
     flexDirection: 'row',
     gap: 8,
   },
-  addPhotoBtn: {
-    width: 80,
-    height: 90,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
+  compactAddPhotoBtn: {
+    width: 82,
+    height: 92,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    gap: 6,
   },
-  addPhotoText: {
+  compactIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactAddText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  photoTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+    paddingHorizontal: 2,
+  },
+  photoTipText: {
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   fieldGroup: {
     gap: 6,
@@ -760,51 +1123,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    fontWeight: '600',
-  },
-  submitBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 14,
-    minHeight: 52,
-    marginTop: 8,
-    elevation: 3,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  submitBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  pantrySelectBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  pantrySelectBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  linkedPantryCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  linkedPantryText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  stockHint: {
-    fontSize: 11,
     fontWeight: '600',
   },
   quantityRow: {
