@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -102,10 +102,13 @@ export default function ProductDraftsScreen() {
   const [isManualModalVisible, setIsManualModalVisible] = useState(false);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  const refetchRef = useRef(q.refetch);
+  refetchRef.current = q.refetch;
+
   useFocusEffect(
     useCallback(() => {
-      void q?.refetch?.();
-    }, [q]),
+      void refetchRef.current();
+    }, []),
   );
   const openDraft = (item: ProductDraftRow) => {
     const identifier = item.identifier;

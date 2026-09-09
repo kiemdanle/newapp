@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -116,10 +116,13 @@ export default function Profile() {
   const draftsQuery = useProductDrafts();
   const draftCount = draftsQuery.data?.pages?.flatMap((p) => p.items)?.length ?? 0;
 
+  const refetchDraftsRef = useRef(draftsQuery.refetch);
+  refetchDraftsRef.current = draftsQuery.refetch;
+
   useFocusEffect(
     useCallback(() => {
-      void draftsQuery?.refetch?.();
-    }, [draftsQuery]),
+      void refetchDraftsRef.current();
+    }, []),
   );
   async function onSignOut() {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of Expyrico?', [
