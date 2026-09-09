@@ -975,4 +975,84 @@ describe('DELETE /v1/products/drafts/:id', () => {
     expect(res.statusCode).toBe(409);
     await app.close();
   });
+
+  it('concurrency guard: refuses to discard a product that transitioned to pending and preserves it', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'pending' } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().title).toBe('This product can no longer be edited as a draft');
+
+    // Product must still exist in DB as pending
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(row.status).toBe('pending');
+    await app.close();
+  });
+
+  it('concurrency guard: two racing discard requests resolve cleanly without crash or inconsistency', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+
+    const [res1, res2] = await Promise.all([
+      app.inject({ method: 'DELETE', url: `/v1/products/drafts/${p.id}`, headers }),
+      app.inject({ method: 'DELETE', url: `/v1/products/drafts/${p.id}`, headers }),
+    ]);
+
+    const statuses = [res1.statusCode, res2.statusCode].sort();
+    // Exactly one must succeed with 200, the other must see 404
+    expect(statuses).toEqual([200, 404]);
+
+    const inDb = await getPrisma().product.findUnique({ where: { id: p.id } });
+    expect(inDb).toBeNull();
+    await app.close();
+  });
+
+  it('concurrency guard: rollback prevents photo deletion when product status moves away from draft', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft' } });
+    const photo = await getPrisma().productPhoto.create({
+      data: {
+        productId: p.id,
+        position: 0,
+        uploadedByUserId: user.id,
+        moderationStatus: 'approved',
+        mimeType: 'image/webp',
+        displayByteSize: 100,
+        displayWidth: 10,
+        displayHeight: 10,
+        thumbnailByteSize: 50,
+        thumbnailWidth: 5,
+        thumbnailHeight: 5,
+        publicStorageKey: `public/products/${p.id}/photo.webp`,
+      },
+    });
+
+    // Concurrently transition product to pending
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'pending' } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}`,
+      headers,
+    });
+    expect(res.statusCode).toBe(409);
+
+    // Both product and photo must still exist untouched
+    const pDb = await getPrisma().product.findUnique({ where: { id: p.id } });
+    expect(pDb?.status).toBe('pending');
+    const photoDb = await getPrisma().productPhoto.findUnique({ where: { id: photo.id } });
+    expect(photoDb).not.toBeNull();
+    await app.close();
+  });
 });

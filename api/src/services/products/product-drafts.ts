@@ -233,29 +233,62 @@ export async function patchDraft(
   return toApiProduct(updated, { kind: 'privileged' });
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function discardDraft(
   actor: DraftActor,
   productId: string,
 ): Promise<{ success: boolean; id: string }> {
-  const prisma = getPrisma();
-  const existing = await prisma.product.findUnique({
-    where: { id: productId },
-    include: { photos: true },
-  });
-  if (!existing) {
+  if (!UUID_REGEX.test(productId)) {
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
-  assertOwnDraftLike(existing, actor.id);
 
-  await prisma.$transaction(async (tx) => {
+  const prisma = getPrisma();
+
+  return await prisma.$transaction(async (tx) => {
+    // 1. Acquire row lock first. Serializes against concurrent submitDraft,
+    // autoApproveProduct, or moderation mutations on this product.
+    await tx.$executeRaw`SELECT id FROM products WHERE id = ${productId}::uuid FOR UPDATE`;
+
+    // 2. Fetch fresh, locked product state inside the transaction.
+    const existing = await tx.product.findUnique({
+      where: { id: productId },
+      include: { photos: true },
+    });
+    if (!existing) {
+      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
+    }
+
+    // 3. Re-verify ownership and draft status while holding the row lock.
+    // If a concurrent transaction committed a status change (e.g. to 'pending' or 'active'),
+    // assertOwnDraftLike will reject with 409 Conflict and roll back.
+    assertOwnDraftLike(existing, actor.id);
+
+    // 4. Delete child records (photos and edits) within the transaction.
     if (existing.photos.length > 0) {
       await tx.productPhoto.deleteMany({ where: { productId: existing.id } });
     }
     await tx.productEdit.deleteMany({ where: { productId: existing.id } });
-    await tx.product.delete({ where: { id: existing.id } });
-  });
 
-  return { success: true, id: productId };
+    // 5. Atomic status- and ownership-guarded product deletion.
+    const deleteResult = await tx.product.deleteMany({
+      where: {
+        id: existing.id,
+        createdByUserId: actor.id,
+        status: { in: ['draft', 'changes_required'] },
+      },
+    });
+
+    if (deleteResult.count === 0) {
+      throw new AppError({
+        status: 409,
+        code: ERROR_CODES.CONFLICT,
+        title: 'This product can no longer be edited as a draft',
+      });
+    }
+
+    return { success: true, id: productId };
+  });
 }
 
 /**
