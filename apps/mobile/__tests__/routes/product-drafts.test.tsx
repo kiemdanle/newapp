@@ -84,7 +84,8 @@ describe('<ProductDraftsScreen />', () => {
     const { findByTestId } = render(wrap(<ProductDraftsScreen />));
 
     fireEvent.press(await findByTestId('draft-row-draft-3'));
-
+    const detailsBtn = await findByTestId('action-modal-details-btn');
+    fireEvent.press(detailsBtn);
     expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
       barcode: '123',
       qr: '',

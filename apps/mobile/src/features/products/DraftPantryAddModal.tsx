@@ -33,33 +33,42 @@ export function DraftPantryAddModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.backdrop}
-      >
+      <View style={styles.backdrop}>
+        {/* Full-screen backdrop tap-to-dismiss */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Dismiss modal"
           style={styles.dismissOverlay}
           onPress={onClose}
         />
-        <View
+
+        {/* Modal Card */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[
             styles.modalCard,
             { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
           ]}
         >
+          {/* Drag Handle Bar */}
+          <View style={styles.handleBar}>
+            <View style={styles.handlePill} />
+          </View>
+
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={[styles.title, { color: theme.colors.text }]}>Add to Pantry</Text>
               <Text style={[styles.productName, { color: theme.colors.primaryDark }]} numberOfLines={1}>
                 {product.name}
               </Text>
               {product.status === 'pending' ? (
-                <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>
-                  Awaiting review · Added to your personal pantry
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Ionicons name="time-outline" size={12} color={theme.colors.accent} />
+                  <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>
+                    Awaiting review · Personal pantry only
+                  </Text>
+                </View>
               ) : null}
             </View>
             <Pressable
@@ -77,6 +86,7 @@ export function DraftPantryAddModal({
 
           {/* Form Content */}
           <KeyboardAwareScrollView
+            style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
@@ -94,8 +104,8 @@ export function DraftPantryAddModal({
               }}
             />
           </KeyboardAwareScrollView>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -103,28 +113,42 @@ export function DraftPantryAddModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(44, 44, 40, 0.45)',
     justifyContent: 'flex-end',
   },
   dismissOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
   },
   modalCard: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: 1,
-    maxHeight: '88%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    height: '84%',
     width: '100%',
+    shadowColor: '#2C2C28',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  handleBar: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  handlePill: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D0D0CC',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 4,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
   },
   title: {
     fontSize: 18,
@@ -143,6 +167,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
 });

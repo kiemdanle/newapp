@@ -21,6 +21,7 @@ import { EmptyState } from '../../../src/components/EmptyState';
 import { Button } from '../../../src/components/Button';
 import { ManualCodeEntryModal } from '../../../src/components/ManualCodeEntryModal';
 import { DraftPantryAddModal } from '../../../src/features/products/DraftPantryAddModal';
+import { ProductActionModal } from '../../../src/features/products/ProductActionModal';
 import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
@@ -157,8 +158,8 @@ export default function ProductDraftsScreen() {
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<DraftTab>('all');
   const [selectedPantryProduct, setSelectedPantryProduct] = useState<ProductDraftRow | null>(null);
+  const [actionProduct, setActionProduct] = useState<ProductDraftRow | null>(null);
   const [isManualModalVisible, setIsManualModalVisible] = useState(false);
-
   const q = useProductDrafts(selectedTab === 'all' ? 'all' : selectedTab);
   const createOrResumeDraft = useCreateOrResumeDraft();
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
@@ -193,38 +194,7 @@ export default function ProductDraftsScreen() {
 
   const handleRowPress = (item: ProductDraftRow) => {
     if (item.status === 'active' || item.status === 'pending') {
-      if (Platform.OS === 'ios' && ActionSheetIOS && typeof ActionSheetIOS.showActionSheetWithOptions === 'function') {
-        try {
-          ActionSheetIOS.showActionSheetWithOptions(
-            {
-              title: item.name,
-              options: ['Add to Pantry', 'View Product Details', 'Cancel'],
-              cancelButtonIndex: 2,
-            },
-            (buttonIndex) => {
-              if (buttonIndex === 0) {
-                setSelectedPantryProduct(item);
-              } else if (buttonIndex === 1) {
-                openDraft(item);
-              }
-            },
-          );
-          return;
-        } catch {
-          // Fall through to Alert below
-        }
-      }
-      Alert.alert(item.name, 'What would you like to do with this product?', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'View Details',
-          onPress: () => openDraft(item),
-        },
-        {
-          text: 'Add to Pantry',
-          onPress: () => setSelectedPantryProduct(item),
-        },
-      ]);
+      setActionProduct(item);
     } else {
       openDraft(item);
     }
@@ -298,7 +268,7 @@ export default function ProductDraftsScreen() {
           ]}
         >
           <Ionicons name="add" size={18} color={theme.colors.primaryDark} />
-          <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>+ Add draft</Text>
+          <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add draft</Text>
         </Pressable>
       </View>
 
@@ -419,6 +389,20 @@ export default function ProductDraftsScreen() {
         visible={isManualModalVisible}
         onClose={() => setIsManualModalVisible(false)}
         onSubmit={handleManualCodeSubmit}
+      />
+
+      <ProductActionModal
+        visible={Boolean(actionProduct)}
+        product={actionProduct}
+        onClose={() => setActionProduct(null)}
+        onAddToPantry={(prod) => {
+          setActionProduct(null);
+          setSelectedPantryProduct(prod);
+        }}
+        onViewDetails={(prod) => {
+          setActionProduct(null);
+          openDraft(prod);
+        }}
       />
 
       <DraftPantryAddModal
