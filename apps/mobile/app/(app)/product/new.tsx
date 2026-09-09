@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Alert, ScrollView, Text, TextInput, View, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -43,7 +44,7 @@ export default function NewProductScreen() {
   const insets = useSafeAreaInsets();
   const { barcode, qr, productId: routeProductId, resume, feedback, target } = (route.params ?? {}) as RouteParams;
   const userId = useSessionStore((s) => s.user?.id);
-
+  const queryClient = useQueryClient();
   const createOrResumeDraft = useCreateOrResumeDraft();
   const [createdProductId, setCreatedProductId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -88,6 +89,7 @@ export default function NewProductScreen() {
     }, [navigation]),
   );
   const handleClose = () => {
+    queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
     if (dirtyRef.current) {
       Alert.alert('Discard unsaved changes?', "Your edits to this product haven't been saved.", [
         { text: 'Keep editing', style: 'cancel' },
@@ -128,6 +130,7 @@ export default function NewProductScreen() {
       } catch {
         // Fall through to local state if server patch rejects
       }
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
       setCreatedProductId(created.id);
       if (userId) {
         await saveDraftLocalState(userId, {
@@ -235,6 +238,7 @@ export default function NewProductScreen() {
       if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
       dirtyRef.current = false;
       setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
       navigation.goBack();
     };
 
@@ -242,6 +246,8 @@ export default function NewProductScreen() {
       if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
       dirtyRef.current = false;
       setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
       if (target === 'deal') {
         // @ts-expect-error navigation to DealNew
         navigation.navigate('DealNew', { productId: submitted.id });

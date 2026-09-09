@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { Screen } from '../../../src/components/Screen';
 import { Logo } from '../../../src/components/Logo';
@@ -116,6 +116,11 @@ export default function Profile() {
   const draftsQuery = useProductDrafts();
   const draftCount = draftsQuery.data?.pages?.flatMap((p) => p.items)?.length ?? 0;
 
+  useFocusEffect(
+    useCallback(() => {
+      void draftsQuery?.refetch?.();
+    }, [draftsQuery]),
+  );
   async function onSignOut() {
     Alert.alert('Sign Out', 'Are you sure you want to sign out of Expyrico?', [
       { text: 'Cancel', style: 'cancel' },

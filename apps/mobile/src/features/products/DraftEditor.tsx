@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Text, View } from 'react-native';
 import type { Product } from '@expyrico/shared';
 import { createProductDraftCoordinatorAdapter } from '../../api/products';
@@ -28,6 +29,7 @@ export interface DraftEditorProps {
  */
 export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSubmitted }: DraftEditorProps) {
   const theme = useTheme();
+  const queryClient = useQueryClient();
 
   // One coordinator per product id, not per `product` object identity — a
   // background refetch of the underlying React Query cache must not reset
@@ -36,7 +38,7 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
   if (!coordinatorRef.current || coordinatorRef.current.id !== product.id) {
     coordinatorRef.current = {
       id: product.id,
-      coordinator: createDraftMutationCoordinator(createProductDraftCoordinatorAdapter(product.id), product),
+      coordinator: createDraftMutationCoordinator(createProductDraftCoordinatorAdapter(product.id, queryClient), product),
     };
   }
   const coordinator = coordinatorRef.current.coordinator;

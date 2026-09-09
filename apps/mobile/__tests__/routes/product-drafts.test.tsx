@@ -106,4 +106,63 @@ describe('<ProductDraftsScreen />', () => {
 
     await waitFor(() => expect(getByTestId('draft-row-draft-4')).toBeTruthy());
   });
+
+  it('pull to refresh triggers refetch on FlatList', async () => {
+    queueFetch(jsonResponse({ items: [DRAFT_ROW], nextCursor: null }));
+    const { findByTestId, getByTestId } = render(wrap(<ProductDraftsScreen />));
+
+    await findByTestId('draft-row-draft-1');
+    queueFetch(jsonResponse({ items: [DRAFT_ROW, CHANGES_ROW], nextCursor: null }));
+    fireEvent(getByTestId('drafts-list'), 'refresh');
+
+    await waitFor(() => expect(getByTestId('draft-row-draft-2')).toBeTruthy());
+  });
+
+  it('manual code submission navigates to ProductNew with resume=edit when product status is draft', async () => {
+    queueFetch(jsonResponse({ items: [], nextCursor: null }));
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+
+    const manualBtn = await findByTestId('drafts-empty-manual-btn');
+    fireEvent.press(manualBtn);
+
+    const input = await findByTestId('manual-code-input');
+    fireEvent.changeText(input, '123456789012');
+
+    queueFetch(jsonResponse({ product: { ...DRAFT_ROW, id: 'draft-new-1', status: 'draft' }, resumed: true }));
+    const submitBtn = await findByTestId('manual-code-submit-btn');
+    fireEvent.press(submitBtn);
+
+    await waitFor(() => {
+      expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
+        barcode: '123456789012',
+        qr: '',
+        productId: 'draft-new-1',
+        resume: 'edit',
+      });
+    });
+  });
+
+  it('manual code submission navigates to ProductNew with resume=pending when product status is pending', async () => {
+    queueFetch(jsonResponse({ items: [], nextCursor: null }));
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+
+    const manualBtn = await findByTestId('drafts-empty-manual-btn');
+    fireEvent.press(manualBtn);
+
+    const input = await findByTestId('manual-code-input');
+    fireEvent.changeText(input, '123456789012');
+
+    queueFetch(jsonResponse({ product: { ...DRAFT_ROW, id: 'draft-pending-1', status: 'pending' }, resumed: true }));
+    const submitBtn = await findByTestId('manual-code-submit-btn');
+    fireEvent.press(submitBtn);
+
+    await waitFor(() => {
+      expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
+        barcode: '123456789012',
+        qr: '',
+        productId: 'draft-pending-1',
+        resume: 'pending',
+      });
+    });
+  });
 });

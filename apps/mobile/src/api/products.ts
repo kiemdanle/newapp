@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type {
   Product,
   ProductDraftsPage,
@@ -54,14 +54,19 @@ export function useProduct(id: string | undefined) {
  * the entry point for both a fresh "Create" from a conclusive miss and a
  * `editable_private`/`creator_pending` scan resume. */
 export function useCreateOrResumeDraft() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { barcode?: string | null; qrPayload?: string | null }) => {
       return await apiClient.post<{ product: Product; resumed: boolean }>('/products/drafts', input);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
     },
   });
 }
 
 export function usePatchDraft() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: {
       id: string;
@@ -73,6 +78,10 @@ export function usePatchDraft() {
     }) => {
       const { id, ...body } = input;
       return await apiClient.patch<Product>(`/products/drafts/${id}`, body);
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['products', vars.id] });
     },
   });
 }
@@ -96,16 +105,41 @@ export function useProductDrafts(status?: ProductDraftStatus) {
  * this is the one place that binds the two together, so Task 8's active-
  * revision editor can supply its own adapter against `/product-edits/:id/*`
  * without this module knowing about `ProductEditRow` at all. */
-export function createProductDraftCoordinatorAdapter(productId: string): CoordinatorAdapter<Product> {
+export function createProductDraftCoordinatorAdapter(
+  productId: string,
+  queryClient?: QueryClient,
+): CoordinatorAdapter<Product> {
   const target = { kind: 'draft' as const, productId };
   return {
-    patchMetadata: (id, version, fields) => apiClient.patch<Product>(`/products/drafts/${id}`, { version, ...fields }),
+    patchMetadata: async (id, version, fields) => {
+      const res = await apiClient.patch<Product>(`/products/drafts/${id}`, { version, ...fields });
+      queryClient?.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient?.invalidateQueries({ queryKey: ['products', id] });
+      return res;
+    },
     // No separate "refresh" endpoint exists for a draft — the plain product
     // GET is authoritative for both draft and active rows.
     refetch: (id) => apiClient.get<Product>(`/products/${id}`),
-    uploadPhoto: (photo) => uploadProductPhoto(target, photo),
-    deletePhoto: (photoId) => deleteProductPhoto(target, photoId),
-    orderPhotos: (photoIds) => reorderProductPhotos(target, photoIds),
+    uploadPhoto: (photo) => {
+      const handle = uploadProductPhoto<Product>(target, photo);
+      void handle.promise.then(() => {
+        queryClient?.invalidateQueries({ queryKey: ['products', 'drafts'] });
+        queryClient?.invalidateQueries({ queryKey: ['products', productId] });
+      });
+      return handle;
+    },
+    deletePhoto: async (photoId) => {
+      const res = await deleteProductPhoto<Product>(target, photoId);
+      queryClient?.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient?.invalidateQueries({ queryKey: ['products', productId] });
+      return res;
+    },
+    orderPhotos: async (photoIds) => {
+      const res = await reorderProductPhotos<Product>(target, photoIds);
+      queryClient?.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient?.invalidateQueries({ queryKey: ['products', productId] });
+      return res;
+    },
   };
 }
 
@@ -123,12 +157,18 @@ export interface SubmitDraftInput {
 }
 
 export function useSubmitDraft() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: SubmitDraftInput) => {
       const { id, idempotencyKey, ...body } = input;
       return await apiClient.post<Product>(`/products/drafts/${id}/submit`, body, {
         headers: { 'Idempotency-Key': idempotencyKey },
       });
+    },
+    onSuccess: (_data, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['products', vars.id] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }

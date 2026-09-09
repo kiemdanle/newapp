@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { ProductDraftRow, ProductDraftStatus } from '@expyrico/shared';
 import { useProductDrafts, useCreateOrResumeDraft } from '../../../src/api/products';
 import { PrivateProductImage } from '../../../src/api/product-private-image';
@@ -102,6 +102,11 @@ export default function ProductDraftsScreen() {
   const [isManualModalVisible, setIsManualModalVisible] = useState(false);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
 
+  useFocusEffect(
+    useCallback(() => {
+      void q?.refetch?.();
+    }, [q]),
+  );
   const openDraft = (item: ProductDraftRow) => {
     const identifier = item.identifier;
     navigation.push('ProductNew', {
@@ -144,7 +149,7 @@ export default function ProductDraftsScreen() {
   };
 
   const handleManualCodeSubmit = async (code: string, kind: 'barcode' | 'qr') => {
-    const { product, resumed } = await createOrResumeDraft.mutateAsync({
+    const { product } = await createOrResumeDraft.mutateAsync({
       barcode: kind === 'barcode' ? code : null,
       qrPayload: kind === 'qr' ? code : null,
     });
@@ -153,7 +158,7 @@ export default function ProductDraftsScreen() {
       barcode: kind === 'barcode' ? code : '',
       qr: kind === 'qr' ? code : '',
       productId: product.id,
-      resume: resumed ? 'pending' : 'edit',
+      resume: product.status === 'pending' ? 'pending' : 'edit',
     });
   };
 
@@ -197,6 +202,8 @@ export default function ProductDraftsScreen() {
           keyExtractor={(d) => d.id}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 140 }}
           renderItem={({ item }) => <DraftRow item={item} onPress={openDraft} />}
+          refreshing={Boolean(q.isRefetching && !q.isFetchingNextPage)}
+          onRefresh={() => q?.refetch?.()}
           onEndReached={() => {
             if (q.hasNextPage) q.fetchNextPage();
           }}

@@ -183,7 +183,7 @@ export function AppSyncManager() {
           queryClient.invalidateQueries({ queryKey: ['records'] });
         }
         if (remoteMessage.data?.editId) {
-          queryClient.invalidateQueries({ queryKey: ['product-drafts'] });
+          queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
           queryClient.invalidateQueries({ queryKey: ['products'] });
         }
         const title = remoteMessage.notification?.title || 'Expyrico';

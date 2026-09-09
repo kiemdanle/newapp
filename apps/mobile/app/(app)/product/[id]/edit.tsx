@@ -227,7 +227,7 @@ export default function ProductEditScreen() {
             void ensurePushTokenRegistered();
             queryClient.invalidateQueries({ queryKey: ['products', productId] });
             queryClient.invalidateQueries({ queryKey: ['products'] });
-            queryClient.invalidateQueries({ queryKey: ['product-drafts'] });
+            queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
             Alert.alert('Suggestion Submitted', 'Thank you! Your edits have been sent to our moderators for review.', [
               { text: 'OK', onPress: () => navigation.goBack() },
             ]);
