@@ -100,7 +100,7 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
             </Text>
           ) : null}
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            Added {formattedDate}
+            {formattedDate}
           </Text>
         </View>
         {item.barcode ? (
@@ -118,18 +118,20 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
 
       {/* Right side: status pill + photo & edit badges */}
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        <View
-          style={{
-            backgroundColor: statusConfig.bg,
-            paddingHorizontal: 8,
-            paddingVertical: 4,
-            borderRadius: theme.radii.sm,
-          }}
-        >
-          <Text style={{ color: statusConfig.text, fontSize: 11, fontWeight: '700' }}>
-            {statusConfig.label}
-          </Text>
-        </View>
+        {item.status !== 'active' ? (
+          <View
+            style={{
+              backgroundColor: statusConfig.bg,
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: theme.radii.sm,
+            }}
+          >
+            <Text style={{ color: statusConfig.text, fontSize: 11, fontWeight: '700' }}>
+              {statusConfig.label}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {item.packagingPhotosCount > 0 && (

@@ -188,11 +188,13 @@ export function DraftSwipeableRow({
           </View>
 
           <View style={{ alignItems: 'flex-end', gap: 6 }}>
-            <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
-              <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
-                {statusCfg.label}
-              </Text>
-            </View>
+            {item.status !== 'active' ? (
+              <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
+                <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
+                  {statusCfg.label}
+                </Text>
+              </View>
+            ) : null}
             {canAddToPantry && onAddToPantry ? (
               <Pressable
                 testID={`draft-add-btn-${item.id}`}

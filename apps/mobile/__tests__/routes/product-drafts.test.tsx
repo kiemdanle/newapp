@@ -187,13 +187,13 @@ describe('<ProductDraftsScreen />', () => {
     expect(await findByTestId('drafts-tab-active')).toBeTruthy();
   });
 
-  it('renders active rows with Catalog Active badge and inline + Add button', async () => {
+  it('renders active rows with inline + Add button without redundant badge', async () => {
     const activeRow = { ...DRAFT_ROW, id: 'prod-active-1', name: 'Fresh Milk', status: 'active' as const };
     queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
-    const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+    const { findByTestId, queryByText } = render(wrap(<ProductDraftsScreen />));
 
     expect(await findByTestId('draft-row-prod-active-1')).toBeTruthy();
-    expect(await findByText('Catalog Active')).toBeTruthy();
+    expect(queryByText('Catalog Active')).toBeNull();
     expect(await findByTestId('draft-add-btn-prod-active-1')).toBeTruthy();
   });
 

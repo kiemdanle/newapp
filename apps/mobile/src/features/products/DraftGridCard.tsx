@@ -107,13 +107,15 @@ export function DraftGridCard({
           ]}
         >
       {/* Top Header Row: Status Badge */}
-      <View style={styles.topRow}>
-        <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
-          <Text style={[styles.statusBadgeText, { color: statusCfg.text }]} numberOfLines={1}>
-            {statusCfg.label}
-          </Text>
+      {item.status !== 'active' ? (
+        <View style={styles.topRow}>
+          <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+            <Text style={[styles.statusBadgeText, { color: statusCfg.text }]} numberOfLines={1}>
+              {statusCfg.label}
+            </Text>
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/* Center Product Image */}
       <View style={styles.imageWrapper}>

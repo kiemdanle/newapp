@@ -318,7 +318,7 @@ export default function CommunityContributionsScreen() {
               Community Contributions
             </Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-              Products and packaging photos you've added to the public catalog
+              Products and packaging photos you've shared to the public catalog
             </Text>
           </View>
 
@@ -362,7 +362,7 @@ export default function CommunityContributionsScreen() {
                     {stats.totalContributed}
                   </Text>
                   <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
-                    Total Added
+                    Total
                   </Text>
                 </View>
                 <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
