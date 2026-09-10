@@ -83,7 +83,7 @@ export function DraftGridCard({
       <Swipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
-        friction={2}
+        friction={1}
         overshootRight={false}
         rightThreshold={30}
         onSwipeableWillOpen={() => {

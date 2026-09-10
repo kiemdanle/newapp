@@ -112,18 +112,19 @@ export function DraftSwipeableRow({
   };
 
   return (
-    <View style={styles.container}>
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        friction={2}
-        overshootRight={false}
-        onSwipeableWillOpen={() => {
-          if (swipeableRef.current && onSwipeableWillOpen) {
-            onSwipeableWillOpen(swipeableRef.current);
-          }
-        }}
-      >
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      friction={1}
+      rightThreshold={35}
+      overshootRight={false}
+      containerStyle={styles.container}
+      onSwipeableWillOpen={() => {
+        if (swipeableRef.current && onSwipeableWillOpen) {
+          onSwipeableWillOpen(swipeableRef.current);
+        }
+      }}
+    >
         <Pressable
           testID={`draft-row-${item.id}`}
           accessibilityRole="button"
@@ -215,9 +216,8 @@ export function DraftSwipeableRow({
               </Pressable>
             ) : null}
           </View>
-        </Pressable>
-      </Swipeable>
-    </View>
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -225,7 +225,6 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 8,
     borderRadius: 16,
-    overflow: 'hidden',
   },
   rightActionsRow: {
     flexDirection: 'row',
