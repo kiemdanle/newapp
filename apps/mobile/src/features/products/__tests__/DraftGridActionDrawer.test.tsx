@@ -53,13 +53,13 @@ describe('DraftGridActionDrawer', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('renders Edit, conditional Add, and conditional Delete actions for draft items', () => {
+  it('renders Edit, Add, and Delete actions for draft items', () => {
     const onEdit = jest.fn();
     const onDelete = jest.fn();
-    const onClose = jest.fn();
     const onAddToPantry = jest.fn();
+    const onClose = jest.fn();
 
-    const { getByTestId, queryByTestId, getByText } = renderWithProviders(
+    const { getByTestId, getByText } = renderWithProviders(
       <DraftGridActionDrawer
         item={mockDraftItem}
         onEdit={onEdit}
@@ -71,9 +71,10 @@ describe('DraftGridActionDrawer', () => {
 
     expect(getByText('Edit')).toBeTruthy();
     expect(getByText('Delete')).toBeTruthy();
+    expect(getByText('Add')).toBeTruthy();
     expect(getByTestId('draft-grid-action-edit-grid-draft-1')).toBeTruthy();
     expect(getByTestId('draft-grid-action-delete-grid-draft-1')).toBeTruthy();
-    expect(queryByTestId('draft-grid-action-add-grid-draft-1')).toBeNull();
+    expect(getByTestId('draft-grid-action-add-grid-draft-1')).toBeTruthy();
 
     fireEvent.press(getByTestId('draft-grid-action-edit-grid-draft-1'));
     expect(onClose).toHaveBeenCalled();
@@ -83,23 +84,25 @@ describe('DraftGridActionDrawer', () => {
     expect(onDelete).toHaveBeenCalledWith(mockDraftItem);
   });
 
-  it('renders Add to Pantry for active items and hides Delete', () => {
+  it('renders Edit, Add, and Delete for active items', () => {
     const onAddToPantry = jest.fn();
+    const onDelete = jest.fn();
     const onClose = jest.fn();
 
-    const { getByTestId, queryByTestId, getByText } = renderWithProviders(
+    const { getByTestId, getByText } = renderWithProviders(
       <DraftGridActionDrawer
         item={mockActiveItem}
         onEdit={jest.fn()}
-        onDelete={jest.fn()}
+        onDelete={onDelete}
         onAddToPantry={onAddToPantry}
         onClose={onClose}
       />,
     );
 
     expect(getByText('Add')).toBeTruthy();
+    expect(getByText('Delete')).toBeTruthy();
     expect(getByTestId('draft-grid-action-add-grid-active-1')).toBeTruthy();
-    expect(queryByTestId('draft-grid-action-delete-grid-active-1')).toBeNull();
+    expect(getByTestId('draft-grid-action-delete-grid-active-1')).toBeTruthy();
 
     fireEvent.press(getByTestId('draft-grid-action-add-grid-active-1'));
     expect(onClose).toHaveBeenCalled();

@@ -56,7 +56,7 @@ describe('<ProductDraftsScreen />', () => {
   it('shows an empty state when there are no drafts', async () => {
     queueFetch(jsonResponse({ items: [], nextCursor: null }));
     const { findByText } = render(wrap(<ProductDraftsScreen />));
-    expect(await findByText('No drafts yet')).toBeTruthy();
+    expect(await findByText('No templates yet')).toBeTruthy();
   });
 
   it('renders draft rows with status labels and moderation feedback for changes_required', async () => {
@@ -568,5 +568,37 @@ describe('<ProductDraftsScreen />', () => {
       jest.clearAllTimers();
     });
     jest.useRealTimers();
+  });
+
+  it('universal actions: active and pending items support Delete and draft items support Add to Pantry', async () => {
+    const activeRow = { ...DRAFT_ROW, id: 'active-item-1', name: 'Active Catalog Prod', status: 'active' as const };
+    const pendingRow = { ...DRAFT_ROW, id: 'pending-item-1', name: 'Pending Review Prod', status: 'pending' as const };
+    const draftRow = { ...DRAFT_ROW, id: 'draft-item-1', name: 'Regular Draft Prod', status: 'draft' as const };
+    queueFetch(jsonResponse({ items: [activeRow, pendingRow, draftRow], nextCursor: null }));
+    const { findByTestId, getByTestId, queryByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
+
+    // Active row has Edit, Add, AND Delete
+    expect(await findByTestId(`draft-swipe-edit-${activeRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-add-${activeRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-delete-${activeRow.id}`)).toBeTruthy();
+
+    // Pending row has Edit, Add, AND Delete
+    expect(getByTestId(`draft-swipe-edit-${pendingRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-add-${pendingRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-delete-${pendingRow.id}`)).toBeTruthy();
+
+    // Draft row has Edit, Add, AND Delete
+    expect(getByTestId(`draft-swipe-edit-${draftRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-add-${draftRow.id}`)).toBeTruthy();
+    expect(getByTestId(`draft-swipe-delete-${draftRow.id}`)).toBeTruthy();
+
+    // Tapping delete on active item immediately hides it
+    fireEvent.press(getByTestId(`draft-swipe-delete-${activeRow.id}`));
+    expect(queryByTestId(`draft-row-${activeRow.id}`)).toBeNull();
+    expect(await findByTestId(`draft-undo-btn-${activeRow.id}`)).toBeTruthy();
+
+    // Tapping add on draft item opens modal with Template item label
+    fireEvent.press(getByTestId(`draft-swipe-add-${draftRow.id}`));
+    expect(await findByText('Template item · Personal pantry only')).toBeTruthy();
   });
 });

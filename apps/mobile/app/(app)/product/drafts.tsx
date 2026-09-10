@@ -264,9 +264,9 @@ export default function ProductDraftsScreen() {
       {/* Header Section */}
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>My product drafts</Text>
+          <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>Product Templates</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-            Products you've contributed or are drafting for the catalog.
+            Quick-add templates for frequently purchased products
           </Text>
         </View>
 
@@ -284,7 +284,7 @@ export default function ProductDraftsScreen() {
           ]}
         >
           <Ionicons name="add" size={18} color={theme.colors.primaryDark} />
-          <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add draft</Text>
+          <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add template</Text>
         </Pressable>
       </View>
       {/* Search Bar & View Mode Toggle */}
@@ -386,9 +386,9 @@ export default function ProductDraftsScreen() {
             ) : (
               <View style={styles.emptyContainer}>
                 <EmptyState
-                  icon="document-text-outline"
-                  title={selectedTab === 'active' ? 'No active products' : 'No drafts yet'}
-                  body="Scan a barcode or type code manually to add products to the catalog."
+                  icon="bookmark-outline"
+                  title={selectedTab === 'active' ? 'No active templates' : 'No templates yet'}
+                  body="Scan a barcode or enter code manually to create your quick-add templates."
                 />
                 <View style={styles.emptyActionButtons}>
                   <Button

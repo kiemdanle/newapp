@@ -94,12 +94,12 @@ describe('DraftSwipeableRow', () => {
     expect(onPress).toHaveBeenCalledWith(mockDraftItem);
   });
 
-  it('renders Edit and Delete actions on draft items (Add to Pantry hidden)', () => {
+  it('renders Edit, Add, and Delete actions on draft items', () => {
     const onEdit = jest.fn();
     const onDelete = jest.fn();
     const onAddToPantry = jest.fn();
 
-    const { getByTestId, queryByTestId } = renderWithProviders(
+    const { getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockDraftItem}
         onPress={jest.fn()}
@@ -111,24 +111,28 @@ describe('DraftSwipeableRow', () => {
 
     const editBtn = getByTestId('draft-swipe-edit-draft-item-1');
     const deleteBtn = getByTestId('draft-swipe-delete-draft-item-1');
+    const addBtn = getByTestId('draft-swipe-add-draft-item-1');
 
     expect(editBtn).toBeTruthy();
     expect(deleteBtn).toBeTruthy();
-    expect(queryByTestId('draft-swipe-add-draft-item-1')).toBeNull();
+    expect(addBtn).toBeTruthy();
 
     fireEvent.press(editBtn);
     expect(onEdit).toHaveBeenCalledWith(mockDraftItem);
 
     fireEvent.press(deleteBtn);
     expect(onDelete).toHaveBeenCalledWith(mockDraftItem);
+
+    fireEvent.press(addBtn);
+    expect(onAddToPantry).toHaveBeenCalledWith(mockDraftItem);
   });
 
-  it('renders Edit and Add to Pantry on active items (Delete action hidden)', () => {
+  it('renders Edit, Add, and Delete on active items', () => {
     const onEdit = jest.fn();
     const onDelete = jest.fn();
     const onAddToPantry = jest.fn();
 
-    const { getByTestId, queryByTestId } = renderWithProviders(
+    const { getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockActiveItem}
         onPress={jest.fn()}
@@ -140,45 +144,53 @@ describe('DraftSwipeableRow', () => {
 
     const editBtn = getByTestId('draft-swipe-edit-active-item-1');
     const addBtn = getByTestId('draft-swipe-add-active-item-1');
+    const deleteBtn = getByTestId('draft-swipe-delete-active-item-1');
 
     expect(editBtn).toBeTruthy();
     expect(addBtn).toBeTruthy();
-    expect(queryByTestId('draft-swipe-delete-active-item-1')).toBeNull();
+    expect(deleteBtn).toBeTruthy();
 
     fireEvent.press(addBtn);
     expect(onAddToPantry).toHaveBeenCalledWith(mockActiveItem);
+
+    fireEvent.press(deleteBtn);
+    expect(onDelete).toHaveBeenCalledWith(mockActiveItem);
   });
 
-  it('renders Edit and Add to Pantry on pending items (Delete action hidden)', () => {
+  it('renders Edit, Add, and Delete on pending items', () => {
     const onAddToPantry = jest.fn();
-    const { getByTestId, queryByTestId } = renderWithProviders(
+    const onDelete = jest.fn();
+    const { getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockPendingItem}
         onPress={jest.fn()}
         onEdit={jest.fn()}
-        onDelete={jest.fn()}
+        onDelete={onDelete}
         onAddToPantry={onAddToPantry}
       />,
     );
 
     expect(getByTestId('draft-swipe-add-pending-item-1')).toBeTruthy();
-    expect(queryByTestId('draft-swipe-delete-pending-item-1')).toBeNull();
+    expect(getByTestId('draft-swipe-delete-pending-item-1')).toBeTruthy();
+    expect(getByTestId('draft-swipe-edit-pending-item-1')).toBeTruthy();
   });
 
-  it('renders Delete action on changes_required items (Add to Pantry hidden)', () => {
+  it('renders Edit, Add, and Delete on changes_required items', () => {
     const onDelete = jest.fn();
-    const { getByTestId, queryByTestId } = renderWithProviders(
+    const onAddToPantry = jest.fn();
+    const { getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockChangesItem}
         onPress={jest.fn()}
         onEdit={jest.fn()}
         onDelete={onDelete}
-        onAddToPantry={jest.fn()}
+        onAddToPantry={onAddToPantry}
       />,
     );
 
     expect(getByTestId('draft-swipe-delete-changes-item-1')).toBeTruthy();
-    expect(queryByTestId('draft-swipe-add-changes-item-1')).toBeNull();
+    expect(getByTestId('draft-swipe-add-changes-item-1')).toBeTruthy();
+    expect(getByTestId('draft-swipe-edit-changes-item-1')).toBeTruthy();
 
     fireEvent.press(getByTestId('draft-swipe-delete-changes-item-1'));
     expect(onDelete).toHaveBeenCalledWith(mockChangesItem);

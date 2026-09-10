@@ -48,8 +48,8 @@ export function DraftSwipeableRow({
   const swipeableRef = useRef<Swipeable>(null);
   const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
 
-  const canDelete = item.status === 'draft' || item.status === 'changes_required';
-  const canAddToPantry = item.status === 'active' || item.status === 'pending';
+  const canDelete = true;
+  const canAddToPantry = true;
 
   const renderRightActions = (
     _progress: Animated.AnimatedInterpolation<number>,

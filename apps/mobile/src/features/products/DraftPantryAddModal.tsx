@@ -30,7 +30,7 @@ export function DraftPantryAddModal({
   const theme = useTheme();
 
   if (!product) return null;
-
+  const isCatalogEligible = product.status === 'active' || product.status === 'pending';
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -69,6 +69,13 @@ export function DraftPantryAddModal({
                     Awaiting review · Personal pantry only
                   </Text>
                 </View>
+              ) : !isCatalogEligible ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Ionicons name="bookmark-outline" size={12} color={theme.colors.textMuted} />
+                  <Text style={{ fontSize: 11, color: theme.colors.textMuted, fontWeight: '600' }}>
+                    Template item · Personal pantry only
+                  </Text>
+                </View>
               ) : null}
             </View>
             <Pressable
@@ -95,9 +102,10 @@ export function DraftPantryAddModal({
           >
             <AddRecordForm
               key={product.id}
-              productId={product.id}
-              productName={product.name}
-              lockedPersonalScope={product.status === 'pending'}
+              productId={isCatalogEligible ? product.id : null}
+              productName={isCatalogEligible ? product.name : null}
+              customName={!isCatalogEligible ? product.name : null}
+              lockedPersonalScope={!isCatalogEligible || product.status === 'pending'}
               onSaved={() => {
                 onSaved();
                 onClose();

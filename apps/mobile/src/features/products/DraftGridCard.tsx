@@ -50,7 +50,7 @@ export function DraftGridCard({
   const [cardWidth, setCardWidth] = useState(0);
 
   const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
-  const canAddDirectly = item.status === 'active' || item.status === 'pending';
+  const canAddDirectly = true;
   const isBarcode = item.identifier.kind === 'barcode';
   const identifierValue = item.identifier.value;
 

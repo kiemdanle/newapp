@@ -31,6 +31,7 @@ import FeedbackHubScreen from '../../app/(app)/feedback/index';
 import FeedbackDetailScreen from '../../app/(app)/feedback/[id]';
 import ReviewsHubScreen from '../features/reviews/ReviewsHubScreen';
 import PantryHistoryScreen from '../../app/(app)/pantry/history';
+import CommunityContributionsScreen from '../../app/(app)/profile/contributions';
 export type AppStackParamList = {
   Tabs: NavigatorScreenParams<TabsParamList> | undefined;
   SettingsIndex: undefined;
@@ -75,6 +76,7 @@ export type AppStackParamList = {
   FeedbackDetail: { id: string };
   ReviewsHub: { productId?: string; initialTab?: 'mine' | 'community' } | undefined;
   PantryHistory: undefined;
+  CommunityContributions: undefined;
 };
 
 export type AppNavigationProp = NativeStackNavigationProp<AppStackParamList>;
@@ -102,7 +104,7 @@ export function AppNavigator() {
       {/* Body has no back control; native header provides Navigate up. */}
       <Stack.Screen name="Product" component={ProductScreen} options={{ headerShown: true, title: 'Product Details' }} />
       <Stack.Screen name="ProductNew" component={ProductNewScreen} />
-      <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'My drafts' }} />
+      <Stack.Screen name="ProductDrafts" component={ProductDraftsScreen} options={{ headerShown: true, title: 'Product Templates' }} />
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
       <Stack.Screen name="ProductReviews" component={ProductReviewsScreen} />
       <Stack.Screen name="ProductEdit" component={ProductEditScreen} />
@@ -125,6 +127,7 @@ export function AppNavigator() {
       <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
       <Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />
       <Stack.Screen name="PantryHistory" component={PantryHistoryScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CommunityContributions" component={CommunityContributionsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

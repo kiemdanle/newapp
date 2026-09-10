@@ -61,6 +61,7 @@ export function useCreateOrResumeDraft() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'contributions'] });
     },
   });
 }
@@ -169,6 +170,7 @@ export function useSubmitDraft() {
       queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
       queryClient.invalidateQueries({ queryKey: ['products', vars.id] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'contributions'] });
     },
   });
 }
@@ -196,6 +198,7 @@ export function useDiscardDraft() {
       queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
       queryClient.invalidateQueries({ queryKey: ['products', id] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['me', 'contributions'] });
     },
   });
 }

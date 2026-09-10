@@ -11,6 +11,8 @@ import { useTheme } from '../../../src/theme/useTheme';
 import { useSessionStore } from '../../../src/auth/session-store';
 import { authEndpoints } from '../../../src/api/endpoints';
 import { useProductDrafts } from '../../../src/api/products';
+import { useUserContributions } from '../../../src/api/contributions';
+import { ContributorHeroCard } from '../../../src/features/gamification/ContributorHeroCard';
 
 interface ActionRowProps {
   testID: string;
@@ -115,13 +117,18 @@ export default function Profile() {
 
   const draftsQuery = useProductDrafts();
   const draftCount = draftsQuery.data?.pages?.flatMap((p) => p.items)?.length ?? 0;
+  const contributionsQuery = useUserContributions();
+  const contributionsData = contributionsQuery.data;
 
   const refetchDraftsRef = useRef(draftsQuery.refetch);
   refetchDraftsRef.current = draftsQuery.refetch;
+  const refetchContributionsRef = useRef(contributionsQuery.refetch);
+  refetchContributionsRef.current = contributionsQuery.refetch;
 
   useFocusEffect(
     useCallback(() => {
       void refetchDraftsRef.current();
+      void refetchContributionsRef.current();
     }, []),
   );
   async function onSignOut() {
@@ -341,6 +348,11 @@ export default function Profile() {
         <Text style={[styles.sectionTitle, { color: theme.colors.textMuted }]}>
           COMMUNITY & CONTRIBUTIONS
         </Text>
+        <ContributorHeroCard
+          data={contributionsData}
+          isLoading={contributionsQuery.isLoading}
+        />
+
         <View
           style={[
             styles.groupedCard,
@@ -352,11 +364,43 @@ export default function Profile() {
           ]}
         >
           <ActionRow
+            testID="profile-contributions"
+            accessibilityLabel="Open community contributions"
+            icon="globe-outline"
+            label="Community contributions"
+            subtitle="Products & photos you've added to catalog"
+            onPress={() => navigation.push('CommunityContributions')}
+            badge={
+              contributionsData?.enabled !== false && contributionsData?.progression ? (
+                <View
+                  style={[
+                    styles.countPill,
+                    { backgroundColor: `${contributionsData.progression.colorHex}20` },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.countPillText,
+                      { color: contributionsData.progression.colorHex },
+                    ]}
+                  >
+                    {contributionsData.progression.currentLevel === 0
+                      ? 'New Explorer'
+                      : `Level ${contributionsData.progression.currentLevel}`}
+                  </Text>
+                </View>
+              ) : null
+            }
+          />
+
+          <View style={[styles.rowDivider, { backgroundColor: theme.colors.border }]} />
+
+          <ActionRow
             testID="profile-drafts"
-            accessibilityLabel="Open my product drafts"
-            icon="document-text-outline"
-            label="My product drafts"
-            subtitle="Products awaiting community review"
+            accessibilityLabel="Open product templates"
+            icon="bookmark-outline"
+            label="Product templates"
+            subtitle="Quick-add templates for frequently bought items"
             onPress={() => navigation.push('ProductDrafts')}
             badge={
               draftCount > 0 ? (
@@ -372,7 +416,7 @@ export default function Profile() {
                       { color: theme.colors.primaryDark },
                     ]}
                   >
-                    {draftCount} pending
+                    {draftCount} {draftCount === 1 ? 'item' : 'items'}
                   </Text>
                 </View>
               ) : null

@@ -21,8 +21,8 @@ export function DraftGridActionDrawer({
   onAddToPantry,
   onDelete,
   onClose,
-  canDelete = item.status === 'draft' || item.status === 'changes_required',
-  canAddToPantry = item.status === 'active' || item.status === 'pending',
+  canDelete = true,
+  canAddToPantry = true,
   isProcessing = false,
 }: DraftGridActionDrawerProps) {
   const theme = useTheme();
