@@ -188,8 +188,8 @@ export function DraftSwipeableRow({
       <Swipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
-        friction={1.5}
-        rightThreshold={35}
+        friction={1.2}
+        rightThreshold={25}
         overshootRight={false}
         activeOffsetX={[-10, 10]}
         failOffsetY={[-8, 8]}
@@ -211,7 +211,7 @@ export function DraftSwipeableRow({
             borderRadius: theme.radii.md,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+            backgroundColor: theme.colors.bgElevated,
           })}
         >
           {item.cover ? (
