@@ -5,9 +5,9 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2, 3]
----
-
 # Phase 4: Profile Contributor Card & Next-Level Progress
+
+<!-- Updated: Validation Session 1 - Gamification Flag Hiding & Screen Persistence -->
 
 ## Overview
 

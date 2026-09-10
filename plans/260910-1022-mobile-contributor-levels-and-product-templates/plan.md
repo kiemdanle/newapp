@@ -81,4 +81,24 @@ This plan establishes a complete end-to-end community contribution and progressi
 - [ ] All automated test suites pass across `packages/shared`, `api`, `apps/admin`, and `apps/mobile`.
 - [ ] Debug APK builds cleanly via Gradle and installs via ADB on device `96d9c774`.
 
+## Validation Log
+### Session 1 — 2026-09-10
+**Trigger:** Plan validation interview (`/ak:plan validate`)
+**Questions asked:** 3
+
+#### Verification Results
+- Claims checked: 7
+- Verified: 7 | Failed: 0 | Unverified: 0
+- Tier: Full (all 7 phases verified against codebase contracts)
+
+#### Confirmed Decisions
+1. **[XP & Points Strategy]**: Selected **Strict dynamic recalculation**. Points and contributor level strictly reflect the user's active, non-dismissed contributions. Deleting or dismissing an item recalculates the user's contribution points and level dynamically.
+2. **[Admin Feature Flag Scope]**: Selected **Hide gamification only (Recommended)**. When an admin toggles off "Contributor levels" in the Admin Dashboard, the Contributor Hero Card, medal badges, and progress bar are hidden from profiles, but the "Community Contributions" history screen remains accessible so users can still see products they contributed.
+3. **[Mobile Screen Naming]**: Selected **'Product Templates' (Recommended)**. Renames the quick-add screen to **"Product Templates"** with subtitle *"Quick-add templates for frequently purchased products"* to permanently end confusion with crowdsourced catalog drafts.
+
+### Whole-Plan Consistency Sweep
+- **Decision Delta**: Decisions 1–3 applied across all 7 phase files.
+- **Contradictions Checked**: Status dismissal, XP calculation, admin flag visibility, and screen naming reconciled across all documents.
+- **Unresolved Contradictions**: 0.
+
 <!-- slug: mobile-contributor-levels-and-product-templates -->

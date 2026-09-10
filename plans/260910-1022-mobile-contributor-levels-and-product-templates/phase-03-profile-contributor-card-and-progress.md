@@ -5,9 +5,9 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2]
----
-
 # Phase 3: Backend Contributions API & Template Dismissal
+
+<!-- Updated: Validation Session 1 - Dynamic Recalculation on Template Dismissal -->
 
 ## Overview
 

@@ -5,9 +5,9 @@ status: pending
 priority: P1
 effort: "2h"
 dependencies: [1]
----
-
 # Phase 2: Admin Dashboard Level Editor & Toggle
+
+<!-- Updated: Validation Session 1 - Admin Flag Scope (Hide Gamification Only) -->
 
 ## Overview
 

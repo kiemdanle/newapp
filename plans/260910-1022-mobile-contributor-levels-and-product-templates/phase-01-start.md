@@ -5,14 +5,13 @@ status: pending
 priority: P1
 effort: "1h"
 dependencies: []
----
-
 # Phase 1: Shared Contributor Levels & Seeding
+
+<!-- Updated: Validation Session 1 - Strict Dynamic Recalculation & Product Templates -->
 
 ## Overview
 
-Define the seeded 10-tier community contributor leveling system, badges, points math, and Zod schemas in `@expyrico/shared` so both the backend Fastify API, the Admin Dashboard, and the React Native mobile app share single-source-of-truth gamification logic.
-
+Define the seeded 10-tier community contributor leveling system, badges, points math, and Zod schemas in `@expyrico/shared` so both the backend Fastify API, the Admin Dashboard, and the React Native mobile app share single-source-of-truth gamification logic. Points and level are strictly recalculated dynamically based on active, non-dismissed contributions.
 ## Requirements
 
 ### Functional
