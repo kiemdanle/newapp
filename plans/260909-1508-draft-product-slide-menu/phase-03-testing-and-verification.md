@@ -33,12 +33,11 @@ Comprehensive test coverage and on-device validation for the slide-left action m
     - Action clicks trigger props and close drawer.
   - `product-drafts.test.tsx`:
     - Tests draft listing with `DraftSwipeableRow` and `DraftGridCard`.
-    - Verifies instant deletion hides item into `pendingDiscardIds` and shows Undo toast.
-    - Verifies rapid dual deletion: deleting A then B keeps both hidden in `pendingDiscardIds`.
+    - Verifies instant deletion hides item into `pendingDiscards` and shows Undo toast.
+    - Verifies rapid dual deletion: deleting A at t=0 and B at t=1 keeps both hidden without prematurely dispatching DELETE for A before t=5.
     - Verifies pressing Undo cancels delete and restores item.
-    - Verifies mutation failure triggers rollback: restores item from `pendingDiscardIds` and displays error alert.
+    - Verifies mutation failure triggers rollback: restores item from `pendingDiscards` and displays error alert.
     - Verifies contextual Edit routing by item status.
-- Device Verification:
   - Compile debug APK directly on local Gradle/Android toolchain:
     `cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug`
   - Install to device `96d9c774`:

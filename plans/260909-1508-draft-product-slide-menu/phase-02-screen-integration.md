@@ -27,22 +27,23 @@ Integrate `DraftSwipeableRow` and `DraftGridCard` swipe actions into `ProductDra
   - **Add to Pantry Action (Red Team Finding 1)**:
     - Enabled strictly for `active` and `pending` products (`canAddDirectly`).
     - Sets `selectedPantryProduct(item)` to open `DraftPantryAddModal`.
-  - **Multi-Draft Discard Queue & Atomic Commit (Red Team Findings 3, 4, 5)**:
-    - State: `pendingDiscardIds: Set<string>` (for optimistic list filtering) + `activeUndoToast: { item: ProductDraftRow; timer: NodeJS.Timeout; isCommitting: boolean } | null`.
-    - When an item is deleted:
-      - Add `item.id` to `pendingDiscardIds`.
-      - If another item was currently in the Undo window, immediately mark it as `isCommitting = true`, clear its timer, and dispatch its deletion promise in the background.
-      - Start a new 5-second timer for the current item and show `DraftUndoToast`.
+  - **Multi-Draft Discard Queue & Independent 5-Second Undo Deadlines**:
+    - State: `pendingDiscards: Map<string, { item: ProductDraftRow; timer: NodeJS.Timeout; deadline: number; isCommitting: boolean }>`
+    - Optimistic visibility filter: `items` memo filters out any `pendingDiscards.has(item.id)`.
+    - When an item is deleted (e.g. A at t=0, B at t=1):
+      - Each item receives its own independent 5000ms timer and deadline (`Date.now() + 5000`).
+      - Deleting B does NOT cancel, shorten, or prematurely dispatch A's deletion. A's 5-second Undo window remains intact until t=5.
+      - Toast updates to reflect the active undoable discard (e.g. *"Draft B discarded"*, or stack of undoable items), with **Undo** reversing the most recent discard.
     - When **Undo** is pressed:
-      - If `isCommitting === true`, ignore (atomic commit boundary passed).
-      - Otherwise, clear timer, remove `item.id` from `pendingDiscardIds`, and dismiss toast (restoring item to list).
-    - When timer expires (Commit boundary):
-      - Set `isCommitting = true`.
-      - Dismiss toast.
-      - In `try...catch`, await `discardDraftMutation.mutateAsync(item.id)`.
-      - On Success: remove `item.id` from `pendingDiscardIds`, invalidate query caches.
-      - On Error (Failure Rollback): remove `item.id` from `pendingDiscardIds` (restores card), refetch query (`q.refetch()`), and display `Alert.alert('Discard Failed', error.message)`.
-
+      - Pops the most recent uncommitted item from `pendingDiscards`.
+      - If its `isCommitting === true` (deadline reached), ignore.
+      - Otherwise, clear its timer, remove it from `pendingDiscards`, restoring the card immediately to the list.
+    - When an item's timer expires (at its own t=5):
+      - Atomically mark `entry.isCommitting = true`.
+      - Dismiss the toast if no other active undoable items remain.
+      - In `try...catch`, dispatch `await discardDraftMutation.mutateAsync(entry.item.id)`.
+      - On Success: remove from `pendingDiscards`, invalidate query caches.
+      - On Error (Failure Rollback): remove from `pendingDiscards` (restores card to list), refetch query (`q.refetch()`), and display `Alert.alert('Discard Failed', error.message)`.
 ## UI/UX & Feedback
 - Floating `DraftUndoToast` at bottom of `ProductDraftsScreen`:
   - Dark elevated container `#2C2C28` with soft rounded pill design (`borderRadius: 24`).
