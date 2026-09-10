@@ -12,6 +12,7 @@ import type {
   ProductEditRecoverRequest,
   ProductEditRow,
 } from '@expyrico/shared';
+import type { ContributorLevelsSetting } from '@expyrico/shared';
 import type {
   AdminUserReset2faRequest,
   AdminUserReset2faResponse,
@@ -292,5 +293,11 @@ export async function updateFeedbackStatusAction(
 export async function savePantryUnitsAction(body: { topUnits: string[] }) {
   const result = await serverAdminApi.settings.pantryUnits.patch(body);
   revalidatePath('/settings/pantry-units');
+  return result;
+}
+
+export async function saveContributorLevelsAction(body: ContributorLevelsSetting) {
+  const result = await serverAdminApi.settings.contributorLevels.patch(body);
+  revalidatePath('/settings/contributor-levels');
   return result;
 }

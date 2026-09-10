@@ -52,6 +52,8 @@ import {
   notificationTemplateSchema,
   pantryUnitsSettingsSchema,
   type PantryUnitsSettings,
+  contributorLevelsSettingSchema,
+  type ContributorLevelsSetting,
   adminRowSchema,
   adminDealsListSchema,
   adminDealRowSchema,
@@ -288,6 +290,17 @@ export const serverAdminApi = {
           method: 'PATCH',
           body,
         }).then((r) => pantryUnitsSettingsSchema.parse(r)),
+    },
+    contributorLevels: {
+      get: () =>
+        apiServerFetch('/v1/admin/settings/contributor-levels').then((r) =>
+          contributorLevelsSettingSchema.parse(r),
+        ),
+      patch: (body: ContributorLevelsSetting) =>
+        apiServerFetch('/v1/admin/settings/contributor-levels', {
+          method: 'PATCH',
+          body,
+        }).then((r) => contributorLevelsSettingSchema.parse(r)),
     },
     notificationTemplates: {
       list: () =>
