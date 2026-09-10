@@ -16,7 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ProductDraftRow, ProductDraftStatus } from '@expyrico/shared';
+import type { ProductDraftRow } from '@expyrico/shared';
 import { useProductDrafts, useCreateOrResumeDraft, useDiscardDraft } from '../../../src/api/products';
 import { PrivateProductImage } from '../../../src/api/product-private-image';
 import { EmptyState } from '../../../src/components/EmptyState';
@@ -32,7 +32,6 @@ import { DraftsSearchBar } from '../../../src/features/products/DraftsSearchBar'
 import { DraftsSortPills, type DraftSortOption } from '../../../src/features/products/DraftsSortPills';
 import { useUiPreferencesStore } from '../../../src/store/uiPreferencesStore';
 import { useTheme } from '../../../src/theme/useTheme';
-import { formatDate } from '../../../src/utils/country-format';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 type DraftTab = 'all' | 'active' | 'pending' | 'draft';
@@ -44,15 +43,6 @@ const TABS: Array<{ id: DraftTab; label: string }> = [
   { id: 'draft', label: 'Drafts' },
 ];
 
-const STATUS_CONFIG: Record<ProductDraftStatus, { label: string; text: string; bg: string }> = {
-  active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6' },
-  pending: { label: 'Awaiting review', text: '#B45309', bg: '#FEEFC3' },
-  draft: { label: 'Draft', text: '#8C8C85', bg: '#F0F0ED' },
-  changes_required: { label: 'Changes requested', text: '#E0442A', bg: '#FDE8E8' },
-};
-function formatUpdatedAt(iso: string): string {
-  return formatDate(iso, null, { style: 'medium' });
-}
 
 export default function ProductDraftsScreen() {
   const theme = useTheme();
