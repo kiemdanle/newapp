@@ -18,6 +18,7 @@ Integrate `DraftSwipeableRow` and `DraftGridCard` swipe actions into `ProductDra
 - Functional:
   - List View: Replace inline `DraftRow` in `FlatList` with `DraftSwipeableRow`.
   - Grid View: Connect `onEdit`, `onAddToPantry`, and `onDelete` to `DraftGridCard`.
+  - **Swipe Exclusivity**: Maintain an `activeSwipeableRef` in `ProductDraftsScreen`. When any row or drawer calls `onSwipeableWillOpen(ref)`, immediately close the previous active ref, ensuring at most one item is swiped open at a time.
   - **Edit Action**:
     - Invokes `openDraft(item)` to navigate to `ProductNew` draft editor.
   - **Add to Pantry Action**:

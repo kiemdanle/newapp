@@ -20,6 +20,7 @@ Implement the gesture-driven swipeable components for both List and Grid views:
 - Functional:
   - Sliding an item left reveals **Edit**, **Add to Pantry**, and **Delete** actions.
   - **Status Guard**: The **Delete** action is only rendered or enabled when `item.status === 'draft' || item.status === 'changes_required'`. For `active` or `pending` products, Delete is hidden.
+  - **Swipe Exclusivity**: Supports `onSwipeableWillOpen` callback so the screen can auto-close any other opened swipe row/drawer.
   - Tapping **Edit** calls `onEdit(item)` and auto-closes the swipe row/drawer.
   - Tapping **Add to Pantry** calls `onAddToPantry(item)` and auto-closes the swipe row/drawer.
   - Tapping **Delete** calls `onDelete(item)` and auto-closes the swipe row/drawer.
