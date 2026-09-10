@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   FlatList,
   Pressable,
   StyleSheet,
@@ -59,7 +60,6 @@ export default function CommunityContributionsScreen() {
       console.warn('[contributions] query error:', error);
     }
   }, [error]);
-
   const firstPage = data?.pages[0];
   const stats = firstPage?.stats ?? {
     totalContributed: 0,
@@ -92,8 +92,33 @@ export default function CommunityContributionsScreen() {
           (i.brand && i.brand.toLowerCase().includes(q)),
       );
     }
+
     return list;
   }, [data, activeFilter, searchQuery]);
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [collapsibleHeight, setCollapsibleHeight] = useState(180);
+  const [stickyHeight, setStickyHeight] = useState(136);
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight],
+    outputRange: [0, -collapsibleHeight],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight * 0.7, collapsibleHeight],
+    outputRange: [1, 0.2, 0],
+    extrapolate: 'clamp',
+  });
+
+  const stickyBorderOpacity = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight * 0.8, collapsibleHeight],
+    outputRange: [0, 0.5, 1],
+    extrapolate: 'clamp',
+  });
+
+  const listTopPadding = collapsibleHeight + stickyHeight + 8;
 
   const tabs: { id: FilterTab; label: string }[] = [
     { id: 'all', label: `All (${stats.totalContributed})` },
@@ -103,136 +128,11 @@ export default function CommunityContributionsScreen() {
   if (stats.changesRequested > 0) {
     tabs.push({ id: 'changes_required', label: `Changes (${stats.changesRequested})` });
   }
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      {/* In-Page Header Section */}
-      <View style={styles.header}>
-        <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>
-          Community Contributions
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-          Products and packaging photos you've added to the public catalog
-        </Text>
-      </View>
-
-      {/* Contributor Progression Overview Card */}
-      {enabled && progression ? (
-        <View
-          style={[
-            styles.overviewCard,
-            {
-              backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
-            },
-          ]}
-        >
-          <View style={styles.overviewTopRow}>
-            <ContributorBadgeIcon
-              badgeKey={progression.badgeKey}
-              colorToken={progression.colorToken}
-              size={40}
-            />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text
-                style={[styles.levelTitleText, { color: theme.colors.text }]}
-                numberOfLines={1}
-              >
-                {progression.currentLevel === 0
-                  ? 'Level 0 • New Explorer'
-                  : `Level ${progression.currentLevel} • ${progression.title}`}
-              </Text>
-              <Text style={[styles.pointsSubText, { color: theme.colors.primary }]}>
-                {progression.totalPoints} contributor points earned
-              </Text>
-            </View>
-          </View>
-
-          {/* 3 Metric Pills */}
-          <View style={[styles.metricsRow, { borderTopColor: theme.colors.border }]}>
-            <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: theme.colors.text }]}>
-                {stats.totalContributed}
-              </Text>
-              <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
-                Total Added
-              </Text>
-            </View>
-            <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#3A8F6F' }]}>
-                {stats.activeApproved}
-              </Text>
-              <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
-                Approved
-              </Text>
-            </View>
-            <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
-            <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#F5A623' }]}>
-                {stats.pendingReview}
-              </Text>
-              <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
-                In Review
-              </Text>
-            </View>
-          </View>
-        </View>
-      ) : null}
-
-      {/* Search Bar matching Product Templates */}
-      <DraftsSearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Search your contributions..."
-      />
-
-      {/* Sort Pills matching Product Templates */}
-      <DraftsSortPills
-        selectedSort={selectedSort}
-        onSelectSort={setSelectedSort}
-      />
-
-      {/* Filter Tabs Bar matching Product Templates */}
-      <View style={styles.tabBar} accessibilityRole="tablist">
-        {tabs.map((tab) => {
-          const isActive = activeFilter === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              testID={`contributions-tab-${tab.id}`}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`Filter by ${tab.label}`}
-              onPress={() => setActiveFilter(tab.id)}
-              style={[
-                styles.tabPill,
-                {
-                  backgroundColor: isActive ? theme.colors.primary : theme.colors.bgElevated,
-                  borderColor: isActive ? theme.colors.primary : theme.colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabPillText,
-                  {
-                    color: isActive ? '#FFFFFF' : theme.colors.textMuted,
-                    fontWeight: isActive ? '700' : '500',
-                  },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       {/* Main List / Error / Empty States */}
       {isError ? (
-        <View style={styles.emptyContainer}>
+        <View style={[styles.emptyContainer, { paddingTop: listTopPadding + 20 }]}>
           <View
             style={{
               width: 72,
@@ -270,17 +170,25 @@ export default function CommunityContributionsScreen() {
           </Pressable>
         </View>
       ) : isLoading && !data ? (
-        <View style={styles.loadingContainer}>
+        <View style={[styles.loadingContainer, { paddingTop: listTopPadding + 40 }]}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingTop: listTopPadding },
+          ]}
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
           refreshing={Boolean(isRefetching && !isFetchingNextPage)}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+          scrollEventThrottle={16}
           onEndReached={() => {
             if (hasNextPage && !isFetchingNextPage) {
               void fetchNextPage();
@@ -354,6 +262,170 @@ export default function CommunityContributionsScreen() {
         />
       )}
 
+      {/* Floating Animated Header Container */}
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: theme.colors.bg,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        {/* Collapsible Section: In-page Title + Contributor Overview Card */}
+        <Animated.View
+          style={{ opacity: headerOpacity }}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - collapsibleHeight) > 2) {
+              setCollapsibleHeight(h);
+            }
+          }}
+        >
+          {/* In-Page Header Section */}
+          <View style={styles.header}>
+            <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>
+              Community Contributions
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
+              Products and packaging photos you've added to the public catalog
+            </Text>
+          </View>
+
+          {/* Contributor Progression Overview Card */}
+          {enabled && progression ? (
+            <View
+              style={[
+                styles.overviewCard,
+                {
+                  backgroundColor: theme.colors.bgElevated,
+                  borderColor: theme.colors.border,
+                  borderRadius: theme.radii.lg,
+                },
+              ]}
+            >
+              <View style={styles.overviewTopRow}>
+                <ContributorBadgeIcon
+                  badgeKey={progression.badgeKey}
+                  colorToken={progression.colorToken}
+                  size={40}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text
+                    style={[styles.levelTitleText, { color: theme.colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {progression.currentLevel === 0
+                      ? 'Level 0 • New Explorer'
+                      : `Level ${progression.currentLevel} • ${progression.title}`}
+                  </Text>
+                  <Text style={[styles.pointsSubText, { color: theme.colors.primary }]}>
+                    {progression.totalPoints} contributor points earned
+                  </Text>
+                </View>
+              </View>
+
+              {/* 3 Metric Pills */}
+              <View style={[styles.metricsRow, { borderTopColor: theme.colors.border }]}>
+                <View style={styles.metricItem}>
+                  <Text style={[styles.metricValue, { color: theme.colors.text }]}>
+                    {stats.totalContributed}
+                  </Text>
+                  <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
+                    Total Added
+                  </Text>
+                </View>
+                <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.metricItem}>
+                  <Text style={[styles.metricValue, { color: '#3A8F6F' }]}>
+                    {stats.activeApproved}
+                  </Text>
+                  <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
+                    Approved
+                  </Text>
+                </View>
+                <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
+                <View style={styles.metricItem}>
+                  <Text style={[styles.metricValue, { color: '#F5A623' }]}>
+                    {stats.pendingReview}
+                  </Text>
+                  <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
+                    In Review
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
+        </Animated.View>
+
+        {/* Sticky Controls: Pinned at top once big header collapses */}
+        <Animated.View
+          style={[
+            styles.stickyControls,
+            {
+              backgroundColor: theme.colors.bg,
+              borderBottomColor: theme.colors.border,
+              borderBottomWidth: stickyBorderOpacity,
+            },
+          ]}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - stickyHeight) > 2) {
+              setStickyHeight(h);
+            }
+          }}
+        >
+          {/* Search Bar matching Product Templates */}
+          <DraftsSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search your contributions..."
+          />
+
+          {/* Sort Pills matching Product Templates */}
+          <DraftsSortPills
+            selectedSort={selectedSort}
+            onSelectSort={setSelectedSort}
+          />
+
+          {/* Filter Tabs Bar matching Product Templates */}
+          <View style={styles.tabBar} accessibilityRole="tablist">
+            {tabs.map((tab) => {
+              const isActive = activeFilter === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  testID={`contributions-tab-${tab.id}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`Filter by ${tab.label}`}
+                  onPress={() => setActiveFilter(tab.id)}
+                  style={[
+                    styles.tabPill,
+                    {
+                      backgroundColor: isActive ? theme.colors.primary : theme.colors.bgElevated,
+                      borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabPillText,
+                      {
+                        color: isActive ? '#FFFFFF' : theme.colors.textMuted,
+                        fontWeight: isActive ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+      </Animated.View>
       {/* Floating Bottom Action Dock matching pantry and drafts */}
       <View style={styles.bottomDockWrapper} pointerEvents="box-none">
         <Pressable
@@ -378,6 +450,16 @@ export default function CommunityContributionsScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  stickyControls: {
+    paddingTop: 4,
+  },
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,

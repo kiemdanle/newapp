@@ -3,6 +3,7 @@ import {
   ActionSheetIOS,
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Image,
   Platform,
@@ -258,99 +259,55 @@ export default function ProductDraftsScreen() {
       resume: product.status === 'pending' ? 'pending' : 'edit',
     });
   };
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [collapsibleHeight, setCollapsibleHeight] = useState(72);
+  const [stickyHeight, setStickyHeight] = useState(136);
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight],
+    outputRange: [0, -collapsibleHeight],
+    extrapolate: 'clamp',
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight * 0.7, collapsibleHeight],
+    outputRange: [1, 0.2, 0],
+    extrapolate: 'clamp',
+  });
+
+  const stickyBorderOpacity = scrollY.interpolate({
+    inputRange: [0, collapsibleHeight * 0.8, collapsibleHeight],
+    outputRange: [0, 0.5, 1],
+    extrapolate: 'clamp',
+  });
+
+  const listTopPadding = collapsibleHeight + stickyHeight + 8;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>Product Templates</Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-            Quick-add templates for frequently purchased products
-          </Text>
-        </View>
-
-        <Pressable
-          testID="drafts-add-header-btn"
-          accessibilityRole="button"
-          accessibilityLabel="Add new product draft"
-          onPress={handleOpenAddOptions}
-          style={({ pressed }) => [
-            styles.headerAddBtn,
-            {
-              backgroundColor: theme.colors.primaryLight,
-              opacity: pressed ? 0.75 : 1,
-            },
-          ]}
-        >
-          <Ionicons name="add" size={18} color={theme.colors.primaryDark} />
-          <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add template</Text>
-        </Pressable>
-      </View>
-      {/* Search Bar & View Mode Toggle */}
-      <DraftsSearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        viewMode={viewMode}
-        onToggleViewMode={() => void setDraftsViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-      />
-
-      {/* Sort Pills */}
-      <DraftsSortPills
-        selectedSort={selectedSort}
-        onSelectSort={setSelectedSort}
-      />
-
-
-      {/* Filter Tabs Bar */}
-      <View style={styles.tabBar} accessibilityRole="tablist">
-        {TABS.map((tab) => {
-          const isActive = selectedTab === tab.id;
-          return (
-            <Pressable
-              key={tab.id}
-              testID={`drafts-tab-${tab.id}`}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: isActive }}
-              accessibilityLabel={`Filter by ${tab.label}`}
-              onPress={() => setSelectedTab(tab.id)}
-              style={[
-                styles.tabPill,
-                {
-                  backgroundColor: isActive ? theme.colors.primary : theme.colors.bgElevated,
-                  borderColor: isActive ? theme.colors.primary : theme.colors.border,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tabPillText,
-                  {
-                    color: isActive ? '#FFFFFF' : theme.colors.textMuted,
-                    fontWeight: isActive ? '700' : '500',
-                  },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       {q.isError ? (
-        <View style={{ padding: 20 }}>
+        <View style={{ padding: 20, paddingTop: listTopPadding }}>
           <Text style={{ color: theme.colors.danger }}>Couldn't load your drafts. Pull down or reopen to retry.</Text>
         </View>
       ) : (
-        <FlatList
+        <Animated.FlatList
           key={viewMode}
           testID="drafts-list"
           data={items}
           numColumns={viewMode === 'grid' ? 2 : 1}
           columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
           keyExtractor={(d) => d.id}
-          contentContainerStyle={viewMode === 'grid' ? { paddingHorizontal: 15, paddingBottom: 140 } : { paddingHorizontal: 20, paddingBottom: 140 }}
+          contentContainerStyle={[
+            viewMode === 'grid'
+              ? { paddingHorizontal: 15, paddingBottom: 140 }
+              : { paddingHorizontal: 20, paddingBottom: 140, gap: 10 },
+            { paddingTop: listTopPadding },
+          ]}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+          scrollEventThrottle={16}
           renderItem={({ item }) =>
             viewMode === 'grid' ? (
               <DraftGridCard
@@ -410,6 +367,121 @@ export default function ProductDraftsScreen() {
           ListFooterComponent={q.isFetchingNextPage ? <ActivityIndicator color={theme.colors.primary} /> : null}
         />
       )}
+
+      {/* Floating Animated Header Container */}
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          {
+            backgroundColor: theme.colors.bg,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        {/* Collapsible Big Header: slides up and fades away on scroll */}
+        <Animated.View
+          style={[styles.header, { opacity: headerOpacity }]}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - collapsibleHeight) > 2) {
+              setCollapsibleHeight(h);
+            }
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>Product Templates</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
+              Quick-add templates for frequently purchased products
+            </Text>
+          </View>
+
+          <Pressable
+            testID="drafts-add-header-btn"
+            accessibilityRole="button"
+            accessibilityLabel="Add new product draft"
+            onPress={handleOpenAddOptions}
+            style={({ pressed }) => [
+              styles.headerAddBtn,
+              {
+                backgroundColor: theme.colors.primaryLight,
+                opacity: pressed ? 0.75 : 1,
+              },
+            ]}
+          >
+            <Ionicons name="add" size={18} color={theme.colors.primaryDark} />
+            <Text style={[styles.headerAddBtnText, { color: theme.colors.primaryDark }]}>Add template</Text>
+          </Pressable>
+        </Animated.View>
+
+        {/* Sticky Controls: Pinned at top once big header collapses */}
+        <Animated.View
+          style={[
+            styles.stickyControls,
+            {
+              backgroundColor: theme.colors.bg,
+              borderBottomColor: theme.colors.border,
+              borderBottomWidth: stickyBorderOpacity,
+            },
+          ]}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - stickyHeight) > 2) {
+              setStickyHeight(h);
+            }
+          }}
+        >
+          {/* Search Bar & View Mode Toggle */}
+          <DraftsSearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            viewMode={viewMode}
+            onToggleViewMode={() => void setDraftsViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+          />
+
+          {/* Sort Pills */}
+          <DraftsSortPills
+            selectedSort={selectedSort}
+            onSelectSort={setSelectedSort}
+          />
+
+          {/* Filter Tabs Bar */}
+          <View style={styles.tabBar} accessibilityRole="tablist">
+            {TABS.map((tab) => {
+              const isActive = selectedTab === tab.id;
+              return (
+                <Pressable
+                  key={tab.id}
+                  testID={`drafts-tab-${tab.id}`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`Filter by ${tab.label}`}
+                  onPress={() => setSelectedTab(tab.id)}
+                  style={[
+                    styles.tabPill,
+                    {
+                      backgroundColor: isActive ? theme.colors.primary : theme.colors.bgElevated,
+                      borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tabPillText,
+                      {
+                        color: isActive ? '#FFFFFF' : theme.colors.textMuted,
+                        fontWeight: isActive ? '700' : '500',
+                      },
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </Animated.View>
+      </Animated.View>
 
       {/* Centered Dual-Action Bottom Dock (Manually input + Scan an item) */}
       {items.length > 0 && (
@@ -525,6 +597,16 @@ export default function ProductDraftsScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  stickyControls: {
+    paddingTop: 4,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
