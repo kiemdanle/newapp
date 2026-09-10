@@ -10,11 +10,12 @@ dependencies: [1, 2]
 # Phase 3: Testing & Verification
 
 <!-- Updated: Validation Session 1 - Undo Toast & Dual View Tests -->
+<!-- Updated: Red Team Review Session 1 - Failure Rollback & Multi-Draft Queue Tests -->
 
 ## Overview
 Comprehensive test coverage and on-device validation for the slide-left action menu on product drafts:
 1. Component unit tests for `DraftSwipeableRow` and `DraftGridActionDrawer`.
-2. Integration tests for `ProductDraftsScreen` covering swipe action presses, optimistic deletion, and the Undo toast.
+2. Integration tests for `ProductDraftsScreen` covering swipe action presses, multi-draft discard queue, failure rollback, and the Undo toast.
 3. Assemble Android debug APK via local Gradle toolchain and install via ADB to phone `96d9c774`.
 
 ## Test Plan
@@ -25,15 +26,18 @@ Comprehensive test coverage and on-device validation for the slide-left action m
     - Pressing Edit calls `onEdit`.
     - Pressing Add calls `onAddToPantry`.
     - Pressing Delete calls `onDelete`.
-    - Hides Delete button on active catalog products.
+    - Hides Delete button on active/pending catalog products.
+    - Hides Add to Pantry button on unsubmitted draft/changes_required products.
   - `DraftGridActionDrawer.test.tsx`:
-    - Renders action drawer with Edit, Add to Pantry, and conditional Delete button.
+    - Renders action drawer with Edit, conditional Add to Pantry, and conditional Delete button.
     - Action clicks trigger props and close drawer.
   - `product-drafts.test.tsx`:
     - Tests draft listing with `DraftSwipeableRow` and `DraftGridCard`.
-    - Verifies instant deletion hides item and shows Undo toast.
+    - Verifies instant deletion hides item into `pendingDiscardIds` and shows Undo toast.
+    - Verifies rapid dual deletion: deleting A then B keeps both hidden in `pendingDiscardIds`.
     - Verifies pressing Undo cancels delete and restores item.
-    - Verifies timeout expiry commits `useDiscardDraft` mutation.
+    - Verifies mutation failure triggers rollback: restores item from `pendingDiscardIds` and displays error alert.
+    - Verifies contextual Edit routing by item status.
 - Device Verification:
   - Compile debug APK directly on local Gradle/Android toolchain:
     `cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug`

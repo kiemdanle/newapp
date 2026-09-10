@@ -10,6 +10,7 @@ dependencies: []
 # Phase 1: Swipeable Draft Components
 
 <!-- Updated: Validation Session 1 - Grid View & Status Guard Support -->
+<!-- Updated: Red Team Review Session 1 - Status-Guarded Add to Pantry & Exclusivity -->
 
 ## Overview
 Implement the gesture-driven swipeable components for both List and Grid views:
@@ -19,7 +20,8 @@ Implement the gesture-driven swipeable components for both List and Grid views:
 ## Requirements
 - Functional:
   - Sliding an item left reveals **Edit**, **Add to Pantry**, and **Delete** actions.
-  - **Status Guard**: The **Delete** action is only rendered or enabled when `item.status === 'draft' || item.status === 'changes_required'`. For `active` or `pending` products, Delete is hidden.
+  - **Delete Guard**: The **Delete** action is only rendered when `item.status === 'draft' || item.status === 'changes_required'`. For `active` or `pending` products, Delete is hidden.
+  - **Add to Pantry Guard (Red Team Finding 1)**: The **Add to Pantry** action is only rendered when `item.status === 'active' || item.status === 'pending'`. For unsubmitted `draft` or `changes_required` items, Add to Pantry is hidden (must be submitted/approved before adding to pantry, matching `api/src/services/products/product-visibility.ts:159`).
   - **Swipe Exclusivity**: Supports `onSwipeableWillOpen` callback so the screen can auto-close any other opened swipe row/drawer.
   - Tapping **Edit** calls `onEdit(item)` and auto-closes the swipe row/drawer.
   - Tapping **Add to Pantry** calls `onAddToPantry(item)` and auto-closes the swipe row/drawer.
@@ -37,18 +39,20 @@ export interface DraftSwipeableRowProps {
   item: ProductDraftRow;
   onPress: (item: ProductDraftRow) => void;
   onEdit: (item: ProductDraftRow) => void;
-  onAddToPantry: (item: ProductDraftRow) => void;
-  onDelete: (item: ProductDraftRow) => void;
+  onAddToPantry?: (item: ProductDraftRow) => void;
+  onDelete?: (item: ProductDraftRow) => void;
+  onSwipeableWillOpen?: () => void;
   isSubmitting?: boolean;
 }
 
 export interface DraftGridActionDrawerProps {
   item: ProductDraftRow;
   onEdit: (item: ProductDraftRow) => void;
-  onAddToPantry: (item: ProductDraftRow) => void;
-  onDelete: (item: ProductDraftRow) => void;
+  onAddToPantry?: (item: ProductDraftRow) => void;
+  onDelete?: (item: ProductDraftRow) => void;
   onClose: () => void;
   canDelete?: boolean;
+  canAddToPantry?: boolean;
 }
 ```
 
@@ -60,16 +64,20 @@ export interface DraftGridActionDrawerProps {
 ## Implementation Steps
 1. Create `DraftSwipeableRow.tsx` wrapping the row in `Swipeable`:
    - Compute `canDelete = item.status === 'draft' || item.status === 'changes_required'`.
-   - Render `renderRightActions` with Edit, Add to Pantry, and conditional Delete button.
+   - Compute `canAddToPantry = item.status === 'active' || item.status === 'pending'`.
+   - Render `renderRightActions` with Edit, conditional Add to Pantry, and conditional Delete button.
+   - Hook `onSwipeableWillOpen` to notify parent screen.
 2. Create `DraftGridActionDrawer.tsx` patterned after `PantryGridActionDrawer.tsx`:
    - Header with draft name and close button (`Ionicons name="close"`).
-   - Action buttons: Edit, Add to Pantry, Delete (guarded by `canDelete`).
+   - Circular floating action buttons: Edit, Add to Pantry (conditional), Delete (conditional).
 3. Update `DraftGridCard.tsx`:
    - Wrap grid card in `Swipeable` with `onLayout` tracking card width.
    - Reveal `DraftGridActionDrawer` upon swiping left.
+   - Forward `onSwipeableWillOpen` callback.
 
 ## Success Criteria
 - [ ] Both list rows and grid cards support slide-left swipe gesture.
 - [ ] Actions Edit, Add to Pantry, and Delete render with correct Expyrico styling.
 - [ ] Active and pending catalog items hide the Delete button.
+- [ ] Unsubmitted draft items hide the Add to Pantry button.
 - [ ] All action taps auto-close the drawer/row.
