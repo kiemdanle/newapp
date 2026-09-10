@@ -472,6 +472,7 @@ model Product {
   submittedAt          DateTime?     @map("submitted_at")
   moderatedAt          DateTime?     @map("moderated_at")
   moderatedByUserId    String?       @map("moderated_by_user_id") @db.Uuid
+  isDismissedFromTemplates Boolean       @default(false) @map("is_dismissed_from_templates")
 
   createdBy   User?          @relation("ProductCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   moderatedBy User?          @relation("ProductModerator", fields: [moderatedByUserId], references: [id], onDelete: SetNull)
@@ -485,6 +486,7 @@ model Product {
   giveaways   Giveaway[]
 
   @@index([source, sourceId])
+  @@index([createdByUserId, isDismissedFromTemplates, status])
   @@map("products")
 }
 
@@ -517,6 +519,7 @@ model ProductEdit {
 
   @@index([status, createdAt(sort: Desc)])
   @@index([productId])
+  @@index([submittedBy, status, productId])
   // Partial unique index (one open lifecycle edit per creator/product) is created in
   // migration.sql — Prisma cannot express a partial index in this schema syntax.
   @@map("product_edits")
@@ -553,6 +556,7 @@ model ProductPhoto {
   // constraints) so a reorder transaction can `SET CONSTRAINTS ... DEFERRED` and write
   // the whole target position order in one statement, checked only at commit.
   @@unique([productId, position])
+  @@index([uploadedByUserId, productId])
   @@map("product_photos")
 }
 

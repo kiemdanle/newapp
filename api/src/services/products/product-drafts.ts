@@ -255,16 +255,22 @@ export async function discardDraft(
       where: { id: productId },
       include: { photos: true },
     });
-    if (!existing) {
+    if (!existing || existing.createdByUserId !== actor.id) {
       throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
     }
 
-    // 3. Re-verify ownership and draft status while holding the row lock.
-    // If a concurrent transaction committed a status change (e.g. to 'pending' or 'active'),
-    // assertOwnDraftLike will reject with 409 Conflict and roll back.
-    assertOwnDraftLike(existing, actor.id);
+    // 3. For active or pending catalog products, dismissing removes them from the user's
+    // personal quick-add template list without deleting the public community asset.
+    if (existing.status !== 'draft' && existing.status !== 'changes_required') {
+      await tx.product.update({
+        where: { id: existing.id },
+        data: { isDismissedFromTemplates: true },
+      });
+      return { success: true, id: productId };
+    }
 
-    // 4. Delete child records (photos and edits) within the transaction.
+    // 4. For private unsubmitted drafts / changes_required:
+    // Delete child records (photos and edits) within the transaction.
     if (existing.photos.length > 0) {
       await tx.productPhoto.deleteMany({ where: { productId: existing.id } });
     }
@@ -280,10 +286,9 @@ export async function discardDraft(
     });
 
     if (deleteResult.count === 0) {
-      throw new AppError({
-        status: 409,
-        code: ERROR_CODES.CONFLICT,
-        title: 'This product can no longer be edited as a draft',
+      await tx.product.update({
+        where: { id: existing.id },
+        data: { isDismissedFromTemplates: true },
       });
     }
 
@@ -484,6 +489,7 @@ export async function listDrafts(actorId: string, query: ProductDraftsQuery): Pr
     where: {
       createdByUserId: actorId,
       status: statusFilter,
+      isDismissedFromTemplates: false,
       ...(cursor
         ? {
             OR: [

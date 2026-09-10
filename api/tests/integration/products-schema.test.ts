@@ -676,17 +676,13 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     }
     psql(scratchUrlForPsql, ['-c', 'CREATE EXTENSION IF NOT EXISTS pg_trgm']);
 
-    const migrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+    // Replay pre-Migration A migrations (chronologically before MIGRATION_A1)
+    const preAMigrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
-      .filter(
-        (name) =>
-          ![MIGRATION_A1, MIGRATION_A2, MIGRATION_B, MIGRATION_DEFERRABLE, MIGRATION_IS_LEGACY_DEFAULT_FALSE].includes(
-            name,
-          ),
-      )
+      .filter((name) => name < MIGRATION_A1)
       .sort();
-    for (const name of migrationNames) {
+    for (const name of preAMigrationNames) {
       psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, name, 'migration.sql')]);
     }
 
@@ -731,6 +727,16 @@ describe('upgrade fixture: pre-phase-1 rows survive migration A unchanged', () =
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_A2, 'migration.sql')]);
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_DEFERRABLE, 'migration.sql')]);
     psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, MIGRATION_IS_LEGACY_DEFAULT_FALSE, 'migration.sql')]);
+
+    // Replay all post-Migration A migrations in chronological order up to HEAD
+    const postAMigrationNames = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((name) => name > MIGRATION_IS_LEGACY_DEFAULT_FALSE && name !== MIGRATION_B)
+      .sort();
+    for (const name of postAMigrationNames) {
+      psql(scratchUrlForPsql, ['-f', join(MIGRATIONS_DIR, name, 'migration.sql')]);
+    }
 
     const products = await scratchPrisma.product.findMany({
       where: { id: { in: [productNoCreatorId, productWithCreatorId] } },

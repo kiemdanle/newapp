@@ -33,6 +33,7 @@ function makePrismaProduct(overrides: Partial<Record<string, unknown>> = {}) {
     moderatedByUserId: null,
     createdAt: now,
     updatedAt: now,
+    isDismissedFromTemplates: false,
     photos: [],
     ...overrides,
   };

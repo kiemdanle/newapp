@@ -5,6 +5,9 @@ import {
   moderationSettingsSchema,
   productCreationSettingsSchema,
   pantryUnitsSettingsSchema,
+  contributorLevelsSettingSchema,
+  DEFAULT_CONTRIBUTOR_LEVELS,
+  type ContributorLevelsSetting,
 } from '@expyrico/shared';
 
 export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T): Promise<z.infer<T>> {
@@ -15,6 +18,9 @@ export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T)
     }
     if (key === SETTING_KEYS.PANTRY_UNITS) {
       return schema.parse({ topUnits: ['pcs', 'pack', 'can', 'bottle'] });
+    }
+    if (key === SETTING_KEYS.CONTRIBUTOR_LEVELS) {
+      return schema.parse({ enabled: true, levels: DEFAULT_CONTRIBUTOR_LEVELS });
     }
     throw new Error(`Setting ${key} missing — run seed-admin`);
   }
@@ -41,6 +47,7 @@ export const SETTING_KEYS = {
   MODERATION: 'moderation',
   PRODUCT_CREATION: 'product_creation',
   PANTRY_UNITS: 'pantry_units',
+  CONTRIBUTOR_LEVELS: 'contributor_levels',
 } as const;
 
 export {
@@ -48,4 +55,6 @@ export {
   moderationSettingsSchema,
   productCreationSettingsSchema,
   pantryUnitsSettingsSchema,
+  contributorLevelsSettingSchema,
 };
+export type { ContributorLevelsSetting };

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { ProductStatus } from '@prisma/client';
 import { getPrisma } from '../../src/db.js';
-
 export async function makeUser(
   overrides: Partial<{
     email: string;
@@ -34,6 +34,7 @@ export async function makeProduct(
     sourceId: string;
     defaultShelfLifeDays: number;
     createdByUserId: string;
+    status: ProductStatus | 'draft' | 'pending' | 'active' | 'changes_required' | 'report_hidden' | 'merged_into';
   }> = {},
 ) {
   const prisma = getPrisma();
@@ -47,6 +48,7 @@ export async function makeProduct(
       sourceId: overrides.sourceId ?? null,
       defaultShelfLifeDays: overrides.defaultShelfLifeDays ?? null,
       createdByUserId: overrides.createdByUserId ?? null,
+      ...(overrides.status ? { status: overrides.status as ProductStatus } : {}),
     },
   });
 }

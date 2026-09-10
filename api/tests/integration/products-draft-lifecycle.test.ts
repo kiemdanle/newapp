@@ -961,7 +961,7 @@ describe('DELETE /v1/products/drafts/:id', () => {
     await app.close();
   });
 
-  it('refuses to discard an active catalog product', async () => {
+  it('dismisses an active catalog product from templates without deleting it', async () => {
     const app = await buildServer();
     const { user, headers } = await authedUser();
     const p = await makeProduct({ createdByUserId: user.id });
@@ -972,11 +972,16 @@ describe('DELETE /v1/products/drafts/:id', () => {
       url: `/v1/products/drafts/${p.id}`,
       headers,
     });
-    expect(res.statusCode).toBe(409);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ success: true, id: p.id });
+
+    const inDb = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
+    expect(inDb.status).toBe('active');
+    expect(inDb.isDismissedFromTemplates).toBe(true);
     await app.close();
   });
 
-  it('concurrency guard: refuses to discard a product that transitioned to pending and preserves it', async () => {
+  it('concurrency guard: dismisses a product that transitioned to pending and preserves it', async () => {
     const app = await buildServer();
     const { user, headers } = await authedUser();
     const p = await makeProduct({ createdByUserId: user.id });
@@ -987,12 +992,13 @@ describe('DELETE /v1/products/drafts/:id', () => {
       url: `/v1/products/drafts/${p.id}`,
       headers,
     });
-    expect(res.statusCode).toBe(409);
-    expect(res.json().title).toBe('This product can no longer be edited as a draft');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ success: true, id: p.id });
 
-    // Product must still exist in DB as pending
+    // Product must still exist in DB as pending and marked dismissed
     const row = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
     expect(row.status).toBe('pending');
+    expect(row.isDismissedFromTemplates).toBe(true);
     await app.close();
   });
 
@@ -1046,11 +1052,12 @@ describe('DELETE /v1/products/drafts/:id', () => {
       url: `/v1/products/drafts/${p.id}`,
       headers,
     });
-    expect(res.statusCode).toBe(409);
+    expect(res.statusCode).toBe(200);
 
-    // Both product and photo must still exist untouched
+    // Both product and photo must still exist untouched (dismissed flag set)
     const pDb = await getPrisma().product.findUnique({ where: { id: p.id } });
     expect(pDb?.status).toBe('pending');
+    expect(pDb?.isDismissedFromTemplates).toBe(true);
     const photoDb = await getPrisma().productPhoto.findUnique({ where: { id: photo.id } });
     expect(photoDb).not.toBeNull();
     await app.close();
@@ -1139,13 +1146,12 @@ describe('DELETE /v1/products/drafts/:id', () => {
     // Discard unblocks, re-evaluates the committed row under its lock, and rejects with 409
     const res = await discardPromise;
     expect(discardSettled).toBe(true);
-    expect(res.statusCode).toBe(409);
-    expect(res.json().title).toBe('This product can no longer be edited as a draft');
+    expect(res.statusCode).toBe(200);
 
-    // Product must still exist in DB as pending
+    // Product must still exist in DB as pending and dismissed
     const pDb = await getPrisma().product.findUniqueOrThrow({ where: { id: p.id } });
     expect(pDb.status).toBe('pending');
-
+    expect(pDb.isDismissedFromTemplates).toBe(true);
     // Photo must NOT be deleted
     const photoDb = await getPrisma().productPhoto.findUnique({ where: { id: photo.id } });
     expect(photoDb).not.toBeNull();
