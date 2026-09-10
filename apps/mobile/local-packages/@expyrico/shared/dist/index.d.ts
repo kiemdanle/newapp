@@ -25,4 +25,6 @@ export * from './schemas/household.js';
 export * from './schemas/locale.js';
 export * from './schemas/feedback.js';
 export * from './schemas/admin/feedback.js';
+export * from './gamification/contributor-levels.js';
+export * from './schemas/admin/contributor-levels.js';
 //# sourceMappingURL=index.d.ts.map
