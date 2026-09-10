@@ -43,6 +43,7 @@ export default function CommunityContributionsScreen() {
     isFetchingNextPage,
     isRefetching,
     isError,
+    error,
     fetchNextPage,
     hasNextPage,
     refetch,
@@ -52,6 +53,12 @@ export default function CommunityContributionsScreen() {
     sort: selectedSort,
     limit: 20,
   });
+  useEffect(() => {
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn('[contributions] query error:', error);
+    }
+  }, [error]);
 
   const firstPage = data?.pages[0];
   const stats = firstPage?.stats ?? {
@@ -85,19 +92,8 @@ export default function CommunityContributionsScreen() {
           (i.brand && i.brand.toLowerCase().includes(q)),
       );
     }
-
-    if (selectedSort === 'newest') {
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } else if (selectedSort === 'oldest') {
-      list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    } else if (selectedSort === 'name_asc') {
-      list.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (selectedSort === 'name_desc') {
-      list.sort((a, b) => b.name.localeCompare(a.name));
-    }
-
     return list;
-  }, [data, activeFilter, searchQuery, selectedSort]);
+  }, [data, activeFilter, searchQuery]);
 
   const tabs: { id: FilterTab; label: string }[] = [
     { id: 'all', label: `All (${stats.totalContributed})` },

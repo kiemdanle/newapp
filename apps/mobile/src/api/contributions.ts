@@ -4,6 +4,16 @@ import { apiClient } from './client';
 
 export const CONTRIBUTIONS_QUERY_KEY = ['me', 'contributions'] as const;
 
+function buildQueryString(params: Record<string, string | number | undefined | null>): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+    }
+  }
+  return parts.length > 0 ? `?${parts.join('&')}` : '';
+}
+
 export function useUserContributions(options?: { limit?: number; offset?: number }) {
   const limit = options?.limit ?? 50;
   const offset = options?.offset ?? 0;
@@ -11,11 +21,8 @@ export function useUserContributions(options?: { limit?: number; offset?: number
   return useQuery<UserContributionsResponse>({
     queryKey: [...CONTRIBUTIONS_QUERY_KEY, limit, offset],
     queryFn: async () => {
-      const qs = new URLSearchParams();
-      if (options?.limit !== undefined) qs.set('limit', String(options.limit));
-      if (options?.offset !== undefined) qs.set('offset', String(options.offset));
-      const queryString = qs.toString() ? `?${qs.toString()}` : '';
-      return await apiClient.get<UserContributionsResponse>(`/me/contributions${queryString}`);
+      const qs = buildQueryString({ limit, offset });
+      return await apiClient.get<UserContributionsResponse>(`/me/contributions${qs}`);
     },
     staleTime: 30_000,
   });
@@ -36,13 +43,14 @@ export function useUserContributionsInfinite(options?: {
     queryKey: [...CONTRIBUTIONS_QUERY_KEY, 'infinite', status, q, sort, limit],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
-      const qs = new URLSearchParams();
-      qs.set('offset', String(pageParam));
-      qs.set('limit', String(limit));
-      if (status !== 'all') qs.set('status', status);
-      if (q) qs.set('q', q);
-      if (sort !== 'newest') qs.set('sort', sort);
-      return await apiClient.get<UserContributionsResponse>(`/me/contributions?${qs.toString()}`);
+      const qs = buildQueryString({
+        offset: pageParam as number,
+        limit,
+        status: status !== 'all' ? status : undefined,
+        q: q.trim() || undefined,
+        sort: sort !== 'newest' ? sort : undefined,
+      });
+      return await apiClient.get<UserContributionsResponse>(`/me/contributions${qs}`);
     },
     getNextPageParam: (lastPage) => (lastPage.hasMore ? (lastPage.nextOffset ?? undefined) : undefined),
     staleTime: 30_000,

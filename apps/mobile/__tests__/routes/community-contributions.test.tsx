@@ -211,6 +211,50 @@ describe('CommunityContributionsScreen', () => {
     }
   });
 
+  it('preserves exact server ordering across multiple pages without in-memory re-collation', () => {
+    const page1Item1 = { ...mockContributionsData.items[0]!, id: 'srv-1', name: 'Zeta Product' };
+    const page1Item2 = { ...mockContributionsData.items[1]!, id: 'srv-2', name: 'Alpha Product' };
+    const page2Item1 = { ...mockContributionsData.items[2]!, id: 'srv-3', name: 'Beta Product' };
+
+    (useUserContributionsInfinite as jest.Mock).mockReturnValue({
+      data: {
+        pages: [
+          {
+            ...mockContributionsData,
+            items: [page1Item1, page1Item2],
+            hasMore: true,
+            nextOffset: 2,
+          },
+          {
+            ...mockContributionsData,
+            items: [page2Item1],
+            hasMore: false,
+            nextOffset: null,
+          },
+        ],
+      },
+      isLoading: false,
+      isRefetching: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: jest.fn(),
+      refetch: jest.fn(),
+    });
+
+    const { getAllByRole } = render(<CommunityContributionsScreen />);
+
+    const cards = getAllByRole('button').filter((el) =>
+      el.props.accessibilityLabel?.startsWith('Zeta Product') ||
+      el.props.accessibilityLabel?.startsWith('Alpha Product') ||
+      el.props.accessibilityLabel?.startsWith('Beta Product'),
+    );
+
+    expect(cards).toHaveLength(3);
+    expect(cards[0]!.props.accessibilityLabel).toContain('Zeta Product');
+    expect(cards[1]!.props.accessibilityLabel).toContain('Alpha Product');
+    expect(cards[2]!.props.accessibilityLabel).toContain('Beta Product');
+  });
+
   it('renders empty state when there are no contributions', () => {
     (useUserContributionsInfinite as jest.Mock).mockReturnValue({
       data: {
