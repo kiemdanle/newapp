@@ -1,7 +1,7 @@
 ---
 title: "Slide Left Action Menu for Product Drafts"
 description: "Implement slide-left swipe gesture on draft product items to reveal quick action menu: Edit, Delete, and Add to Pantry, matching the pantry view UX pattern across both List and Grid views."
-status: pending
+status: in_progress
 priority: P1
 effort: "4h"
 tags: [mobile, ui, gestures, drafts, pantry]
@@ -53,21 +53,21 @@ Replicate the pantry view's intuitive slide-left swipe interaction (`react-nativ
 
 | # | Phase | Status | Summary |
 |---|-------|--------|---------|
-| 1 | [Phase 1: Swipeable Draft Components](./phase-01-start.md) | Pending | Extract and implement `DraftSwipeableRow.tsx` and `DraftGridActionDrawer.tsx` with Expyrico styling and status-guarded action buttons. |
-| 2 | [Phase 2: Screen Integration & Undo Toast Handlers](./phase-02-screen-integration.md) | Pending | Wire Edit routing, Add to Pantry status guard, multi-draft discard queue, and atomic commit transition with failure rollback in `ProductDraftsScreen`. |
-| 3 | [Phase 3: Testing & Verification](./phase-03-testing-and-verification.md) | Pending | Add unit tests for swipe actions, multi-draft discard queue, error rollback, and on-device validation. |
+| 1 | [Phase 1: Swipeable Draft Components](./phase-01-start.md) | Completed | Extract and implement `DraftSwipeableRow.tsx` and `DraftGridActionDrawer.tsx` with Expyrico styling and status-guarded action buttons. |
+| 2 | [Phase 2: Screen Integration & Undo Toast Handlers](./phase-02-screen-integration.md) | Completed | Wire Edit routing, Add to Pantry status guard, multi-draft discard queue, and atomic commit transition with failure rollback in `ProductDraftsScreen`. |
+| 3 | [Phase 3: Testing & Verification](./phase-03-testing-and-verification.md) | In Progress | Add unit tests for swipe actions, multi-draft discard queue, error rollback, and local Gradle APK assembly (pending hardware device attachment for on-device gesture check). |
 
 ## Success Criteria
-- [ ] Swiping left on any product draft in List View smoothly reveals Edit, Add to Pantry, and Delete actions.
-- [ ] Swiping left on any product draft in Grid View smoothly reveals `DraftGridActionDrawer` with action buttons.
-- [ ] Tapping **Edit** contextually navigates: active $\rightarrow$ `/product/:id/edit`, pending $\rightarrow$ view details, draft/changes $\rightarrow$ `ProductNew`.
-- [ ] Tapping **Add to Pantry** (active/pending only) opens `DraftPantryAddModal` for that draft with pre-filled product details.
-- [ ] Tapping **Delete** (draft/changes only) immediately hides the item via `pendingDiscardIds`, displays 5-second Undo toast, and commits backend deletion upon expiration.
-- [ ] Tapping **Undo** cancels the deletion and restores the draft immediately.
-- [ ] Multiple rapid deletions keep all deleting items hidden in `pendingDiscardIds` without resurrecting previous items.
-- [ ] Server errors or status conflicts trigger rollback: item is restored to list and error alert is shown.
-- [ ] Actions automatically close the swipeable row upon activation.
-
+- [x] Swiping left on any product draft in List View smoothly reveals Edit, Add to Pantry, and Delete actions.
+- [x] Swiping left on any product draft in Grid View smoothly reveals `DraftGridActionDrawer` with action buttons.
+- [x] Tapping **Edit** contextually navigates: active $\rightarrow$ `/product/:id/edit`, pending $\rightarrow$ view details, draft/changes $\rightarrow$ `ProductNew`.
+- [x] Tapping **Add to Pantry** (active/pending only) opens `DraftPantryAddModal` for that draft with pre-filled product details.
+- [x] Tapping **Delete** (draft/changes only) immediately hides the item via `pendingDiscardIds`, displays 5-second Undo toast, and commits backend deletion upon expiration.
+- [x] Tapping **Undo** cancels the deletion and restores the draft immediately.
+- [x] Multiple rapid deletions keep all deleting items hidden in `pendingDiscardIds` without resurrecting previous items.
+- [x] Server errors or status conflicts trigger rollback: item is restored to list and error alert is shown.
+- [ ] All Jest test suites pass in `apps/mobile` (pre-existing failures documented: NewGiveawayScreen, GiveawayQuickEditModal, sign-in/welcome snapshots).
+- [ ] Smooth physical swipe gesture confirmed on phone in both List and Grid view modes.
 ## Validation Log
 <!-- Updated: Validation Session 1 - User Decisions -->
 ### User Interview Decisions

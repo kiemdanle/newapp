@@ -78,7 +78,13 @@ jest.mock('react-native-gesture-handler/Swipeable', () => {
   const React = require('react');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { View } = require('react-native');
-  return React.forwardRef((props: { renderRightActions?: () => React.ReactNode; children?: React.ReactNode }, _ref: unknown) => {
+  return React.forwardRef((props: { renderRightActions?: () => React.ReactNode; children?: React.ReactNode }, ref: React.Ref<unknown>) => {
+    React.useImperativeHandle(ref, () => ({
+      close: jest.fn(),
+      openLeft: jest.fn(),
+      openRight: jest.fn(),
+      reset: jest.fn(),
+    }));
     return React.createElement(
       View,
       { testID: 'swipeable-container' },

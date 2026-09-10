@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Image,
   Platform,
@@ -7,16 +7,21 @@ import {
   Text,
   View,
 } from 'react-native';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { ProductDraftRow, ProductDraftStatus } from '@expyrico/shared';
 import { useTheme } from '../../theme/useTheme';
 import { PrivateProductImage } from '../../api/product-private-image';
 import { formatDate } from '../../utils/country-format';
+import { DraftGridActionDrawer } from './DraftGridActionDrawer';
 
 export interface DraftGridCardProps {
   item: ProductDraftRow;
   onPress: (item: ProductDraftRow) => void;
-  onAddPress: (item: ProductDraftRow) => void;
+  onEdit?: (item: ProductDraftRow) => void;
+  onAddPress?: (item: ProductDraftRow) => void;
+  onDelete?: (item: ProductDraftRow) => void;
+  onSwipeableWillOpen?: (ref: Swipeable) => void;
   isSubmitting?: boolean;
 }
 
@@ -34,30 +39,73 @@ function formatUpdatedAt(iso: string): string {
 export function DraftGridCard({
   item,
   onPress,
+  onEdit,
   onAddPress,
+  onDelete,
+  onSwipeableWillOpen,
   isSubmitting,
 }: DraftGridCardProps) {
   const theme = useTheme();
+  const swipeableRef = useRef<Swipeable>(null);
+  const [cardWidth, setCardWidth] = useState(0);
+
   const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
   const canAddDirectly = item.status === 'active' || item.status === 'pending';
   const isBarcode = item.identifier.kind === 'barcode';
   const identifierValue = item.identifier.value;
 
-  return (
-    <Pressable
-      testID={`draft-grid-card-${item.id}`}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ${statusCfg.label}`}
-      onPress={() => onPress(item)}
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radii.md,
-        },
+  const renderRightActions = () => (
+    <View
+      style={[
+        styles.actionDrawerWrapper,
+        { width: cardWidth > 0 ? cardWidth : 160 },
       ]}
     >
+      <DraftGridActionDrawer
+        item={item}
+        onEdit={onEdit ?? onPress}
+        onAddToPantry={onAddPress}
+        onDelete={onDelete}
+        onClose={() => swipeableRef.current?.close()}
+        isProcessing={isSubmitting}
+      />
+    </View>
+  );
+
+  return (
+    <View
+      style={styles.container}
+      onLayout={(e) => {
+        const { width } = e.nativeEvent.layout;
+        if (width > 0) setCardWidth(width);
+      }}
+    >
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        friction={2}
+        overshootRight={false}
+        rightThreshold={30}
+        onSwipeableWillOpen={() => {
+          if (swipeableRef.current && onSwipeableWillOpen) {
+            onSwipeableWillOpen(swipeableRef.current);
+          }
+        }}
+      >
+        <Pressable
+          testID={`draft-grid-card-${item.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.name}, ${statusCfg.label}`}
+          onPress={() => onPress(item)}
+          style={({ pressed }) => [
+            styles.card,
+            {
+              backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.md,
+            },
+          ]}
+        >
       {/* Top Header Row: Status Badge */}
       <View style={styles.topRow}>
         <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
@@ -134,7 +182,7 @@ export function DraftGridCard({
           accessibilityLabel={`Add ${item.name} to pantry`}
           onPress={(e) => {
             e?.stopPropagation?.();
-            onAddPress(item);
+            onAddPress?.(item);
           }}
           style={({ pressed }) => [
             styles.addBtn,
@@ -156,14 +204,26 @@ export function DraftGridCard({
           </Text>
         </View>
       )}
-    </Pressable>
+        </Pressable>
+      </Swipeable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
+  container: {
     flex: 1,
     margin: 5,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  actionDrawerWrapper: {
+    height: '100%',
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  card: {
+    flex: 1,
     borderWidth: 1,
     padding: 12,
     justifyContent: 'space-between',

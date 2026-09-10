@@ -171,12 +171,12 @@ export const productLookupV2ResponseSchema = z.discriminatedUnion('outcome', [
     productLookupV2TemporarilyUnavailableOutcomeSchema,
 ]);
 // --- Creator-private drafts --------------------------------------------------------
-const PRODUCT_DRAFT_STATUSES = ['draft', 'pending', 'changes_required'];
+const PRODUCT_DRAFT_STATUSES = ['draft', 'pending', 'changes_required', 'active'];
 const productDraftStatusSchema = z.enum(PRODUCT_DRAFT_STATUSES);
 export const productDraftsQuerySchema = z.object({
     cursor: z.string().trim().min(1).optional(),
     limit: z.coerce.number().int().min(1).max(50).default(20),
-    status: productDraftStatusSchema.optional(),
+    status: z.union([productDraftStatusSchema, z.literal('all')]).optional(),
 });
 const productDraftIdentifierSchema = z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('barcode'), value: z.string().min(1) }).strict(),

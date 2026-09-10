@@ -21,6 +21,6 @@ export function problemResponse(code: string, status: number, title = 'Error'): 
 export function queueFetch(...responses: Response[]) {
   const fn = jest.fn();
   for (const r of responses) fn.mockResolvedValueOnce(r);
-  (globalThis as any).fetch = fn;
+  globalThis.fetch = fn as unknown as typeof fetch;
   return fn;
 }

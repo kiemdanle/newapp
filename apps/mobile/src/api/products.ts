@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import type {
   Product,
   ProductDraftsPage,
@@ -180,6 +180,19 @@ export function useDiscardDraft() {
       return await apiClient.delete<{ success: boolean; id: string }>(`/products/drafts/${id}`);
     },
     onSuccess: (_data, id) => {
+      queryClient.setQueriesData<InfiniteData<ProductDraftsPage>>(
+        { queryKey: ['products', 'drafts'] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              items: page.items.filter((item) => item.id !== id),
+            })),
+          };
+        },
+      );
       queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
       queryClient.invalidateQueries({ queryKey: ['products', id] });
       queryClient.invalidateQueries({ queryKey: ['products'] });

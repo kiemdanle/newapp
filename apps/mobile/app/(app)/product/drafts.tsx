@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -12,10 +12,11 @@ import {
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProductDraftRow, ProductDraftStatus } from '@expyrico/shared';
-import { useProductDrafts, useCreateOrResumeDraft } from '../../../src/api/products';
+import { useProductDrafts, useCreateOrResumeDraft, useDiscardDraft } from '../../../src/api/products';
 import { PrivateProductImage } from '../../../src/api/product-private-image';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Button } from '../../../src/components/Button';
@@ -24,6 +25,8 @@ import { DraftPantryAddModal } from '../../../src/features/products/DraftPantryA
 import { ProductActionModal } from '../../../src/features/products/ProductActionModal';
 import { AddDraftOptionsModal } from '../../../src/features/products/AddDraftOptionsModal';
 import { DraftGridCard } from '../../../src/features/products/DraftGridCard';
+import { DraftSwipeableRow } from '../../../src/features/products/DraftSwipeableRow';
+import { DraftUndoToast, type PendingDiscardEntry } from '../../../src/features/products/DraftUndoToast';
 import { DraftsSearchBar } from '../../../src/features/products/DraftsSearchBar';
 import { DraftsSortPills, type DraftSortOption } from '../../../src/features/products/DraftsSortPills';
 import { useUiPreferencesStore } from '../../../src/store/uiPreferencesStore';
@@ -50,113 +53,6 @@ function formatUpdatedAt(iso: string): string {
   return formatDate(iso, null, { style: 'medium' });
 }
 
-interface DraftRowProps {
-  item: ProductDraftRow;
-  onPress: (item: ProductDraftRow) => void;
-  onAddPress: (item: ProductDraftRow) => void;
-  isSubmitting?: boolean;
-}
-
-function DraftRow({ item, onPress, onAddPress, isSubmitting }: DraftRowProps) {
-  const theme = useTheme();
-  const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
-  const canAddDirectly = item.status === 'active' || item.status === 'pending';
-
-  return (
-    <Pressable
-      testID={`draft-row-${item.id}`}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ${statusCfg.label}`}
-      onPress={() => onPress(item)}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.md,
-        padding: theme.spacing.md,
-        borderRadius: theme.radii.md,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
-        marginBottom: theme.spacing.sm,
-      })}
-    >
-      {item.cover ? (
-        item.cover.thumbnailUrl.startsWith('http') ? (
-          <Image
-            testID="draft-row-cover"
-            source={{ uri: item.cover.thumbnailUrl }}
-            style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
-          />
-        ) : (
-          <PrivateProductImage
-            testID="draft-row-cover"
-            target={{ kind: 'draft', productId: item.id }}
-            photoId={item.cover.photoId}
-            variant="thumb"
-            style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
-          />
-        )
-      ) : (
-        <View
-          testID="draft-row-cover-placeholder"
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: theme.radii.sm,
-            backgroundColor: theme.colors.bgGlass,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="cube-outline" size={24} color={theme.colors.textMuted} />
-        </View>
-      )}
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-          Updated {formatUpdatedAt(item.updatedAt)}
-        </Text>
-        {item.status === 'changes_required' && item.moderationFeedback ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 12 }} numberOfLines={2}>
-            {item.moderationFeedback}
-          </Text>
-        ) : null}
-      </View>
-      <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
-          <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
-            {statusCfg.label}
-          </Text>
-        </View>
-        {canAddDirectly ? (
-          <Pressable
-            testID={`draft-add-btn-${item.id}`}
-            accessibilityRole="button"
-            accessibilityLabel={`Add ${item.name} to pantry`}
-            onPress={(e) => {
-              e?.stopPropagation?.();
-              onAddPress(item);
-            }}
-            style={({ pressed }) => [
-              styles.inlineAddBtn,
-              {
-                backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-                opacity: isSubmitting ? 0.6 : 1,
-              },
-            ]}
-            disabled={isSubmitting}
-          >
-            <Ionicons name="add" size={14} color="#FFFFFF" />
-            <Text style={styles.inlineAddBtnText}>Add</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </Pressable>
-  );
-}
-
 export default function ProductDraftsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
@@ -172,10 +68,26 @@ export default function ProductDraftsScreen() {
   const [isAddOptionsVisible, setIsAddOptionsVisible] = useState(false);
   const q = useProductDrafts(selectedTab === 'all' ? 'all' : selectedTab);
   const createOrResumeDraft = useCreateOrResumeDraft();
+  const discardDraftMutation = useDiscardDraft();
+  const discardDraftMutationRef = useRef(discardDraftMutation);
+  discardDraftMutationRef.current = discardDraftMutation;
+
+  // Multi-draft discard queue with independent 5-second timers
+  const [pendingDiscards, setPendingDiscards] = useState<Map<string, PendingDiscardEntry>>(new Map());
+  const activeSwipeableRef = useRef<Swipeable | null>(null);
+  const pendingDiscardsRef = useRef(pendingDiscards);
+  pendingDiscardsRef.current = pendingDiscards;
+  const handleSwipeableWillOpen = useCallback((ref: Swipeable) => {
+    if (activeSwipeableRef.current && activeSwipeableRef.current !== ref) {
+      activeSwipeableRef.current.close();
+    }
+    activeSwipeableRef.current = ref;
+  }, []);
+
   const rawItems = q.data?.pages.flatMap((p) => p.items) ?? [];
 
   const items = useMemo(() => {
-    let list = rawItems;
+    let list = rawItems.filter((item) => !pendingDiscards.has(item.id));
 
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
@@ -199,7 +111,101 @@ export default function ProductDraftsScreen() {
     }
 
     return sorted;
-  }, [rawItems, searchQuery, selectedSort]);
+  }, [rawItems, pendingDiscards, searchQuery, selectedSort]);
+  // Timer cleanup on unmount: flush any pending discards that were not undone
+  useEffect(() => {
+    return () => {
+      pendingDiscardsRef.current.forEach((entry) => {
+        clearTimeout(entry.timer);
+        if (!entry.isCommitting) {
+          entry.isCommitting = true;
+          void discardDraftMutationRef.current.mutateAsync(entry.item.id).catch((err: unknown) => {
+            const msg = err instanceof Error ? err.message : 'Could not discard draft';
+            Alert.alert('Discard Failed', msg);
+            void queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+          });
+        }
+      });
+    };
+  }, [queryClient]);
+  const handleEdit = useCallback(
+    (item: ProductDraftRow) => {
+      if (item.status === 'active') {
+        navigation.push('ProductEdit', { id: item.id });
+      } else if (item.status === 'pending') {
+        setActionProduct(item);
+      } else {
+        openDraft(item);
+      }
+    },
+    [navigation],
+  );
+
+  const handleDeleteDraft = useCallback(
+    (item: ProductDraftRow) => {
+      const timer = setTimeout(async () => {
+        // Mark as committing
+        setPendingDiscards((prev) => {
+          const next = new Map(prev);
+          const current = next.get(item.id);
+          if (current) {
+            next.set(item.id, { ...current, isCommitting: true });
+          }
+          pendingDiscardsRef.current = next;
+          return next;
+        });
+
+        try {
+          await discardDraftMutation.mutateAsync(item.id);
+          setPendingDiscards((prev) => {
+            const next = new Map(prev);
+            next.delete(item.id);
+            pendingDiscardsRef.current = next;
+            return next;
+          });
+        } catch (err: unknown) {
+          // Failure rollback: restore item from pendingDiscards and notify
+          setPendingDiscards((prev) => {
+            const next = new Map(prev);
+            next.delete(item.id);
+            pendingDiscardsRef.current = next;
+            return next;
+          });
+          void q.refetch();
+          const msg = err instanceof Error ? err.message : 'Could not discard draft';
+          Alert.alert('Discard Failed', msg);
+        }
+      }, 5000);
+      setPendingDiscards((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(item.id);
+        if (existing) {
+          clearTimeout(existing.timer);
+        }
+        next.set(item.id, {
+          item,
+          timer,
+          deadline: Date.now() + 5000,
+          isCommitting: false,
+        });
+        pendingDiscardsRef.current = next;
+        return next;
+      });
+    },
+    [discardDraftMutation, q],
+  );
+  const handleUndo = useCallback((id: string) => {
+    setPendingDiscards((prev) => {
+      const next = new Map(prev);
+      const entry = next.get(id);
+      if (entry && !entry.isCommitting) {
+        clearTimeout(entry.timer);
+        next.delete(id);
+      }
+      pendingDiscardsRef.current = next;
+      return next;
+    });
+  }, []);
   const lastAddTapRef = useRef(0);
   const refetchRef = useRef(q.refetch);
   refetchRef.current = q.refetch;
@@ -350,13 +356,21 @@ export default function ProductDraftsScreen() {
               <DraftGridCard
                 item={item}
                 onPress={handleRowPress}
+                onEdit={handleEdit}
                 onAddPress={handleAddDirect}
+                onDelete={handleDeleteDraft}
+                onSwipeableWillOpen={handleSwipeableWillOpen}
+                isSubmitting={discardDraftMutation.isPending}
               />
             ) : (
-              <DraftRow
+              <DraftSwipeableRow
                 item={item}
                 onPress={handleRowPress}
-                onAddPress={handleAddDirect}
+                onEdit={handleEdit}
+                onAddToPantry={handleAddDirect}
+                onDelete={handleDeleteDraft}
+                onSwipeableWillOpen={handleSwipeableWillOpen}
+                isSubmitting={discardDraftMutation.isPending}
               />
             )
           }
@@ -501,6 +515,11 @@ export default function ProductDraftsScreen() {
         onScan={() => navigation.push('Scan')}
         onManualEntry={() => setIsManualModalVisible(true)}
       />
+
+      <DraftUndoToast
+        entries={Array.from(pendingDiscards.values())}
+        onUndo={handleUndo}
+      />
     </View>
   );
 }
@@ -545,19 +564,6 @@ const styles = StyleSheet.create({
   },
   tabPillText: {
     fontSize: 13,
-  },
-  inlineAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  inlineAddBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
   emptyContainer: {
     paddingTop: 20,

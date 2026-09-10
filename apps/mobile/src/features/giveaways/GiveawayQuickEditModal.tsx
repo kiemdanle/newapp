@@ -845,11 +845,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 2,
   },
-  photoTipText: {
-    flex: 1,
-    fontSize: 11.5,
-    lineHeight: 16,
-  },
   input: {
     borderWidth: 1,
     paddingHorizontal: 14,

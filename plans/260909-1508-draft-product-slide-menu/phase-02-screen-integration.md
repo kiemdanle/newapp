@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Screen Integration & Undo Toast Handlers"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: [1]
@@ -66,9 +66,9 @@ Integrate `DraftSwipeableRow` and `DraftGridCard` swipe actions into `ProductDra
 3. Pass handlers to `renderItem` for both `DraftSwipeableRow` and `DraftGridCard`.
 
 ## Success Criteria
-- [ ] Swiping left and tapping Edit contextually routes by status.
-- [ ] Swiping left and tapping Add opens `DraftPantryAddModal` for active/pending items.
-- [ ] Swiping left and tapping Delete immediately hides the item in `pendingDiscardIds`.
-- [ ] Rapid multiple deletions keep all deleting items hidden without resurrecting earlier ones.
-- [ ] Tapping Undo cancels deletion and restores the draft.
-- [ ] Deletion network failures cleanly roll back and restore the item with an error Alert.
+- [x] Swiping left and tapping Edit contextually routes by status.
+- [x] Swiping left and tapping Add opens `DraftPantryAddModal` for active/pending items.
+- [x] Swiping left and tapping Delete immediately hides the item in `pendingDiscardIds`.
+- [x] Rapid multiple deletions keep all deleting items hidden without resurrecting earlier ones.
+- [x] Tapping Undo cancels deletion and restores the draft.
+- [x] Deletion network failures cleanly roll back and restore the item with an error Alert.

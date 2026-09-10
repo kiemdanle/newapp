@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Swipeable Draft Components"
-status: pending
+status: completed
 priority: P1
 effort: "1.5h"
 dependencies: []
@@ -76,8 +76,8 @@ export interface DraftGridActionDrawerProps {
    - Forward `onSwipeableWillOpen` callback.
 
 ## Success Criteria
-- [ ] Both list rows and grid cards support slide-left swipe gesture.
-- [ ] Actions Edit, Add to Pantry, and Delete render with correct Expyrico styling.
-- [ ] Active and pending catalog items hide the Delete button.
-- [ ] Unsubmitted draft items hide the Add to Pantry button.
-- [ ] All action taps auto-close the drawer/row.
+- [x] Both list rows and grid cards support slide-left swipe gesture.
+- [x] Actions Edit, Add to Pantry, and Delete render with correct Expyrico styling.
+- [x] Active and pending catalog items hide the Delete button.
+- [x] Unsubmitted draft items hide the Add to Pantry button.
+- [x] All action taps auto-close the drawer/row.

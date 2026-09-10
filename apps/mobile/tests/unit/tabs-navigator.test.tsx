@@ -62,7 +62,7 @@ jest.mock('../../src/api/giveaways', () => ({
 
 // Mock products
 jest.mock('../../src/api/products', () => ({
-  useProductDrafts: () => ({ data: { pages: [] } }),
+  useProductDrafts: () => ({ data: { pages: [] }, refetch: jest.fn() }),
   useProduct: () => ({ data: null, isLoading: false }),
 }));
 

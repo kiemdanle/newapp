@@ -1103,18 +1103,18 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
     retryAfterSeconds?: number | undefined;
 }>]>;
 export type ProductLookupV2Response = z.infer<typeof productLookupV2ResponseSchema>;
-declare const productDraftStatusSchema: z.ZodEnum<["draft", "pending", "changes_required"]>;
+declare const productDraftStatusSchema: z.ZodEnum<["draft", "pending", "changes_required", "active"]>;
 export type ProductDraftStatus = z.infer<typeof productDraftStatusSchema>;
 export declare const productDraftsQuerySchema: z.ZodObject<{
     cursor: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
-    status: z.ZodOptional<z.ZodEnum<["draft", "pending", "changes_required"]>>;
+    status: z.ZodOptional<z.ZodUnion<[z.ZodEnum<["draft", "pending", "changes_required", "active"]>, z.ZodLiteral<"all">]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "draft" | "pending" | "changes_required" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "all" | undefined;
     cursor?: string | undefined;
 }, {
-    status?: "draft" | "pending" | "changes_required" | undefined;
+    status?: "draft" | "pending" | "changes_required" | "active" | "all" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
 }>;
@@ -1161,7 +1161,7 @@ export declare const productDraftRowSchema: z.ZodObject<{
         value: string;
         kind: "qr";
     }>]>;
-    status: z.ZodEnum<["draft", "pending", "changes_required"]>;
+    status: z.ZodEnum<["draft", "pending", "changes_required", "active"]>;
     version: z.ZodNumber;
     moderationFeedback: z.ZodNullable<z.ZodString>;
     cover: z.ZodNullable<z.ZodObject<{
@@ -1177,7 +1177,7 @@ export declare const productDraftRowSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required";
+    status: "draft" | "pending" | "changes_required" | "active";
     name: string;
     version: number;
     updatedAt: string;
@@ -1195,7 +1195,7 @@ export declare const productDraftRowSchema: z.ZodObject<{
     } | null;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required";
+    status: "draft" | "pending" | "changes_required" | "active";
     name: string;
     version: number;
     updatedAt: string;
@@ -1236,7 +1236,7 @@ export declare const productDraftsPageSchema: z.ZodObject<{
             value: string;
             kind: "qr";
         }>]>;
-        status: z.ZodEnum<["draft", "pending", "changes_required"]>;
+        status: z.ZodEnum<["draft", "pending", "changes_required", "active"]>;
         version: z.ZodNumber;
         moderationFeedback: z.ZodNullable<z.ZodString>;
         cover: z.ZodNullable<z.ZodObject<{
@@ -1252,7 +1252,7 @@ export declare const productDraftsPageSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strict", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required";
+        status: "draft" | "pending" | "changes_required" | "active";
         name: string;
         version: number;
         updatedAt: string;
@@ -1270,7 +1270,7 @@ export declare const productDraftsPageSchema: z.ZodObject<{
         } | null;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required";
+        status: "draft" | "pending" | "changes_required" | "active";
         name: string;
         version: number;
         updatedAt: string;
@@ -1291,7 +1291,7 @@ export declare const productDraftsPageSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required";
+        status: "draft" | "pending" | "changes_required" | "active";
         name: string;
         version: number;
         updatedAt: string;
@@ -1312,7 +1312,7 @@ export declare const productDraftsPageSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required";
+        status: "draft" | "pending" | "changes_required" | "active";
         name: string;
         version: number;
         updatedAt: string;

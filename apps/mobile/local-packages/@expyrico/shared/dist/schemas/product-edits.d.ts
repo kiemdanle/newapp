@@ -76,10 +76,10 @@ export declare const productEditRowSchema: z.ZodObject<{
         sourceProductPhotoId?: string | null | undefined;
     }[];
     updatedAt: string;
+    moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
-    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }, {
@@ -99,10 +99,10 @@ export declare const productEditRowSchema: z.ZodObject<{
         sourceProductPhotoId?: string | null | undefined;
     }[];
     updatedAt: string;
+    moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
-    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }>;
@@ -227,11 +227,11 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         sourceProductPhotoId?: string | null | undefined;
     }[];
     updatedAt: string;
+    moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
-    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
@@ -259,11 +259,11 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         sourceProductPhotoId?: string | null | undefined;
     }[];
     updatedAt: string;
+    moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
-    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Testing & Verification"
-status: pending
+status: in_progress
 priority: P1
 effort: "1h"
 dependencies: [1, 2]
@@ -50,7 +50,7 @@ Comprehensive test coverage and on-device validation for the slide-left action m
 - Modify: `apps/mobile/__tests__/routes/product-drafts.test.tsx`
 
 ## Success Criteria
-- [ ] All Jest test suites pass in `apps/mobile`.
-- [ ] No regression in existing product draft routes or pantry tests.
-- [ ] Android APK builds successfully.
+- [ ] All Jest test suites pass in `apps/mobile` (pre-existing failures documented: NewGiveawayScreen, GiveawayQuickEditModal, and sign-in/welcome snapshots).
+- [x] No regression in existing product draft routes or pantry tests.
+- [x] Android APK builds successfully.
 - [ ] Smooth physical swipe gesture confirmed on phone in both List and Grid view modes.
