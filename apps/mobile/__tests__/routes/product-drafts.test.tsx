@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Animated, StyleSheet } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import ProductDraftsScreen from '../../app/(app)/product/drafts';
@@ -603,6 +603,7 @@ describe('<ProductDraftsScreen />', () => {
   });
 
   it('synchronizes scroll state and resets header translation when switching view mode from scrolled state', async () => {
+    const setValueSpy = jest.spyOn(Animated.Value.prototype, 'setValue');
     const row1 = { ...DRAFT_ROW, id: 'row-scroll-1', name: 'Scroll Item 1' };
     const row2 = { ...DRAFT_ROW, id: 'row-scroll-2', name: 'Scroll Item 2' };
     queueFetch(jsonResponse({ items: [row1, row2], nextCursor: null }));
@@ -611,7 +612,7 @@ describe('<ProductDraftsScreen />', () => {
 
     const list = await findByTestId('drafts-list');
 
-    // Simulate scrolling down by 150px (collapsing the big header)
+    // Simulate scrolling down by 150px
     fireEvent.scroll(list, {
       nativeEvent: {
         contentOffset: { y: 150 },
@@ -620,11 +621,16 @@ describe('<ProductDraftsScreen />', () => {
       },
     });
 
+    setValueSpy.mockClear();
+
     // Toggle view mode to grid while scrolled
     const toggleBtn = await findByTestId('drafts-view-mode-toggle-btn');
     fireEvent.press(toggleBtn);
 
-    // Grid view renders and header state is synchronized without leaving blank gap
+    // Verifies that scrollY was explicitly reset to 0 to synchronize with the new list
+    expect(setValueSpy).toHaveBeenCalledWith(0);
     expect(await findByTestId('draft-grid-card-row-scroll-1')).toBeTruthy();
+
+    setValueSpy.mockRestore();
   });
 });

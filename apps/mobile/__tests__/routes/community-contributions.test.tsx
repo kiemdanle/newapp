@@ -1,4 +1,5 @@
 import React from 'react';
+import { Animated } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import CommunityContributionsScreen from '../../app/(app)/profile/contributions';
 import { useUserContributionsInfinite } from '../../src/api/contributions';
@@ -253,6 +254,42 @@ describe('CommunityContributionsScreen', () => {
     expect(cards[0]!.props.accessibilityLabel).toContain('Zeta Product');
     expect(cards[1]!.props.accessibilityLabel).toContain('Alpha Product');
     expect(cards[2]!.props.accessibilityLabel).toContain('Beta Product');
+  });
+
+  it('synchronizes scroll state and resets header translation during scrolled -> search -> loaded sequence', () => {
+    jest.useFakeTimers();
+    const setValueSpy = jest.spyOn(Animated.Value.prototype, 'setValue');
+    try {
+      const { getByPlaceholderText, getByTestId } = render(<CommunityContributionsScreen />);
+
+      const list = getByTestId('contributions-list');
+
+      // 1. Simulate user scrolling down by 250px (collapsing the header)
+      fireEvent.scroll(list, {
+        nativeEvent: {
+          contentOffset: { y: 250 },
+          contentSize: { height: 2000, width: 400 },
+          layoutMeasurement: { height: 600, width: 400 },
+        },
+      });
+
+      setValueSpy.mockClear();
+
+      // 2. User searches for 'Oat' while collapsed
+      const searchInput = getByPlaceholderText('Search your contributions...');
+      fireEvent.changeText(searchInput, 'Oat');
+
+      // 3. Advance past 300ms debounce
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      // 4. Verifies that scrollY was explicitly reset to 0 to synchronize header and list
+      expect(setValueSpy).toHaveBeenCalledWith(0);
+    } finally {
+      setValueSpy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 
   it('renders empty state when there are no contributions', () => {

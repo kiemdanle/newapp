@@ -31,6 +31,8 @@ export default function CommunityContributionsScreen() {
   const [selectedSort, setSelectedSort] = useState<DraftSortOption>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<FlatList<CommunityContributionRow>>(null);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -61,6 +63,11 @@ export default function CommunityContributionsScreen() {
       console.warn('[contributions] query error:', error);
     }
   }, [error]);
+
+  useEffect(() => {
+    scrollY.setValue(0);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [debouncedQuery, scrollY]);
   const firstPage = data?.pages[0];
   const stats = firstPage?.stats ?? {
     totalContributed: 0,
@@ -97,8 +104,6 @@ export default function CommunityContributionsScreen() {
     return list;
   }, [data, activeFilter, searchQuery]);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const listRef = useRef<FlatList<CommunityContributionRow>>(null);
   const [collapsibleHeight, setCollapsibleHeight] = useState(180);
   const [stickyHeight, setStickyHeight] = useState(136);
 
@@ -197,6 +202,7 @@ export default function CommunityContributionsScreen() {
       ) : (
         <Animated.FlatList
           ref={listRef as unknown as React.RefObject<FlatList<CommunityContributionRow>>}
+          testID="contributions-list"
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
@@ -286,6 +292,7 @@ export default function CommunityContributionsScreen() {
 
       {/* Floating Animated Header Container */}
       <Animated.View
+        testID="contributions-header-container"
         style={[
           styles.headerContainer,
           {

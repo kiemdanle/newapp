@@ -279,6 +279,15 @@ export default function ProductDraftsScreen() {
     [scrollY],
   );
 
+  const handleSearchChange = useCallback(
+    (text: string) => {
+      scrollY.setValue(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setSearchQuery(text);
+    },
+    [scrollY],
+  );
+
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, collapsibleHeight],
     outputRange: [0, -collapsibleHeight],
@@ -386,6 +395,7 @@ export default function ProductDraftsScreen() {
 
       {/* Floating Animated Header Container */}
       <Animated.View
+        testID="drafts-header-container"
         style={[
           styles.headerContainer,
           {
@@ -448,7 +458,7 @@ export default function ProductDraftsScreen() {
           {/* Search Bar & View Mode Toggle */}
           <DraftsSearchBar
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchChange}
             viewMode={viewMode}
             onToggleViewMode={handleToggleViewMode}
           />
@@ -458,7 +468,6 @@ export default function ProductDraftsScreen() {
             selectedSort={selectedSort}
             onSelectSort={setSelectedSort}
           />
-
           {/* Filter Tabs Bar */}
           <View style={styles.tabBar} accessibilityRole="tablist">
             {TABS.map((tab) => {
