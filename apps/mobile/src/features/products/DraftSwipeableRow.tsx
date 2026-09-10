@@ -186,37 +186,13 @@ export function DraftSwipeableRow({
             ) : null}
           </View>
 
-          <View style={{ alignItems: 'flex-end', gap: 6 }}>
-            {statusCfg ? (
-              <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
-                <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
-                  {statusCfg.label}
-                </Text>
-              </View>
-            ) : null}
-            {canAddToPantry && onAddToPantry ? (
-              <Pressable
-                testID={`draft-add-btn-${item.id}`}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${item.name} to pantry`}
-                onPress={(e) => {
-                  e?.stopPropagation?.();
-                  onAddToPantry(item);
-                }}
-                style={({ pressed }) => [
-                  styles.inlineAddBtn,
-                  {
-                    backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
-                    opacity: isSubmitting ? 0.6 : 1,
-                  },
-                ]}
-                disabled={isSubmitting}
-              >
-                <Ionicons name="add" size={14} color="#FFFFFF" />
-                <Text style={styles.inlineAddBtnText}>Add</Text>
-              </Pressable>
-            ) : null}
-          </View>
+          {statusCfg ? (
+            <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
+              <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
+                {statusCfg.label}
+              </Text>
+            </View>
+          ) : null}
       </Pressable>
     </Swipeable>
   );
@@ -247,18 +223,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textAlign: 'center',
-  },
-  inlineAddBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  inlineAddBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

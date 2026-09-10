@@ -187,22 +187,23 @@ describe('<ProductDraftsScreen />', () => {
     expect(await findByTestId('drafts-tab-active')).toBeTruthy();
   });
 
-  it('renders active rows with inline + Add button without redundant badge', async () => {
+  it('renders active rows cleanly without inline Add button or redundant badge', async () => {
     const activeRow = { ...DRAFT_ROW, id: 'prod-active-1', name: 'Fresh Milk', status: 'active' as const };
     queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
-    const { findByTestId, queryByText } = render(wrap(<ProductDraftsScreen />));
+    const { findByTestId, queryByText, queryByTestId } = render(wrap(<ProductDraftsScreen />));
 
     expect(await findByTestId('draft-row-prod-active-1')).toBeTruthy();
     expect(queryByText('Catalog Active')).toBeNull();
-    expect(await findByTestId('draft-add-btn-prod-active-1')).toBeTruthy();
+    expect(queryByTestId('draft-add-btn-prod-active-1')).toBeNull();
+    expect(await findByTestId('draft-swipe-add-prod-active-1')).toBeTruthy();
   });
 
-  it('tapping inline + Add button on active row opens the Add to Pantry modal', async () => {
+  it('swiping and tapping Add action on active row opens the Add to Pantry modal', async () => {
     const activeRow = { ...DRAFT_ROW, id: 'prod-active-2', name: 'Almond Butter', status: 'active' as const };
     queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
     const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
 
-    const addBtn = await findByTestId('draft-add-btn-prod-active-2');
+    const addBtn = await findByTestId('draft-swipe-add-prod-active-2');
     fireEvent.press(addBtn);
 
     expect(await findByText('Add to Pantry')).toBeTruthy();
