@@ -91,6 +91,6 @@ Replicate the pantry view's intuitive slide-left swipe interaction (`react-nativ
 
 ### Whole-Plan Consistency Sweep
 - **Decision Delta**: Findings 1–5 applied across all phases.
-- **Deadline Independence Reconciled**: Discard queue preserves each item's independent 5-second deadline without premature flushing when subsequent deletions occur (verified by Phase 3 t=1 deletion test guaranteeing no dispatch before t=5).
+- **Deadline Independence & Item-Addressed Undo Reconciled**: Discard queue preserves each item's independent 5-second deadline with item-addressed `undo(id)` controls in `DraftUndoToast` (verified by Phase 3 test: undoing A@t=4 restores A while B@t=1 remains pending and dispatches DELETE at t=6).
 - **Contradictions Checked**: Status guards (Add to pantry vs Delete), routing paths, queue states, and failure rollbacks reconciled across all documents.
 - **Unresolved Contradictions**: 0.

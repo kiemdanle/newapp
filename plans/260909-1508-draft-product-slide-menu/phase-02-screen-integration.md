@@ -33,24 +33,25 @@ Integrate `DraftSwipeableRow` and `DraftGridCard` swipe actions into `ProductDra
     - When an item is deleted (e.g. A at t=0, B at t=1):
       - Each item receives its own independent 5000ms timer and deadline (`Date.now() + 5000`).
       - Deleting B does NOT cancel, shorten, or prematurely dispatch A's deletion. A's 5-second Undo window remains intact until t=5.
-      - Toast updates to reflect the active undoable discard (e.g. *"Draft B discarded"*, or stack of undoable items), with **Undo** reversing the most recent discard.
-    - When **Undo** is pressed:
-      - Pops the most recent uncommitted item from `pendingDiscards`.
-      - If its `isCommitting === true` (deadline reached), ignore.
-      - Otherwise, clear its timer, remove it from `pendingDiscards`, restoring the card immediately to the list.
+      - `DraftUndoToast` renders item-addressed rows for each pending discard currently within its 5-second window, displaying each item's name alongside an explicit, dedicated **Undo** button bound to `handleUndo(id)`.
+    - **Item-Addressed Undo Operation (`handleUndo(id: string)`)**:
+      - Retrieves `entry = pendingDiscards.get(id)`.
+      - If `!entry` or `entry.isCommitting === true` (deadline passed), ignore.
+      - Otherwise, clears that specific entry's timer, removes `id` from `pendingDiscards`, and immediately restores that item to the displayed list.
+      - Any other pending discards (e.g. item B) remain in `pendingDiscards` with their independent timers running unperturbed.
     - When an item's timer expires (at its own t=5):
       - Atomically mark `entry.isCommitting = true`.
-      - Dismiss the toast if no other active undoable items remain.
+      - If no other active undoable entries remain, dismiss the toast.
       - In `try...catch`, dispatch `await discardDraftMutation.mutateAsync(entry.item.id)`.
       - On Success: remove from `pendingDiscards`, invalidate query caches.
       - On Error (Failure Rollback): remove from `pendingDiscards` (restores card to list), refetch query (`q.refetch()`), and display `Alert.alert('Discard Failed', error.message)`.
 ## UI/UX & Feedback
 - Floating `DraftUndoToast` at bottom of `ProductDraftsScreen`:
-  - Dark elevated container `#2C2C28` with soft rounded pill design (`borderRadius: 24`).
-  - White text with item name.
-  - Accent Honey `#F5A623` "Undo" touchable text with bold weight.
-  - Smooth slide-up entrance and fade-out animation.
-
+  - Dark elevated container `#2C2C28` with soft rounded card/pill design (`borderRadius: 20`, padding: 12).
+  - Item-addressed rows for each pending discard:
+    - Left: White text with truncated draft name (`numberOfLines={1}`).
+    - Right: Dedicated Accent Honey `#F5A623` "Undo" touchable button (`testID="draft-undo-btn-${item.id}"`) with bold weight.
+  - Smooth slide-up entrance and individual row exit animations.
 ## Related Code Files
 - Create: `apps/mobile/src/features/products/DraftUndoToast.tsx`
 - Modify: `apps/mobile/app/(app)/product/drafts.tsx`

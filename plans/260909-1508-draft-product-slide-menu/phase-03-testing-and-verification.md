@@ -35,7 +35,7 @@ Comprehensive test coverage and on-device validation for the slide-left action m
     - Tests draft listing with `DraftSwipeableRow` and `DraftGridCard`.
     - Verifies instant deletion hides item into `pendingDiscards` and shows Undo toast.
     - Verifies rapid dual deletion: deleting A at t=0 and B at t=1 keeps both hidden without prematurely dispatching DELETE for A before t=5.
-    - Verifies pressing Undo cancels delete and restores item.
+    - Verifies item-addressed Undo: when A@t=0 and B@t=1 are both pending, tapping Undo specifically for A at t=4 restores A immediately, while B remains pending and dispatches DELETE at t=6.
     - Verifies mutation failure triggers rollback: restores item from `pendingDiscards` and displays error alert.
     - Verifies contextual Edit routing by item status.
   - Compile debug APK directly on local Gradle/Android toolchain:
