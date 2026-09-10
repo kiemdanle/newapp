@@ -5,17 +5,20 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
-import { Screen } from '../../../src/components/Screen';
 import { useTheme } from '../../../src/theme/useTheme';
 import { useUserContributionsInfinite } from '../../../src/api/contributions';
 import { ContributedProductCard } from '../../../src/features/gamification/ContributedProductCard';
 import { ContributorBadgeIcon } from '../../../src/features/gamification/ContributorBadgeIcon';
+import { DraftsSearchBar } from '../../../src/features/products/DraftsSearchBar';
+import {
+  DraftsSortPills,
+  type DraftSortOption,
+} from '../../../src/features/products/DraftsSortPills';
 
 type FilterTab = 'all' | 'active' | 'pending' | 'changes_required';
 
@@ -23,6 +26,7 @@ export default function CommunityContributionsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [selectedSort, setSelectedSort] = useState<DraftSortOption>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
 
@@ -48,9 +52,21 @@ export default function CommunityContributionsScreen() {
     limit: 20,
   });
 
+  const firstPage = data?.pages[0];
+  const stats = firstPage?.stats ?? {
+    totalContributed: 0,
+    activeApproved: 0,
+    pendingReview: 0,
+    changesRequested: 0,
+    editsApproved: 0,
+  };
+  const progression = firstPage?.progression;
+  const enabled = firstPage?.enabled ?? true;
+
   const items = useMemo(() => {
     const raw = data?.pages.flatMap((page) => page.items) ?? [];
-    let list = raw;
+    let list = [...raw];
+
     if (activeFilter === 'active') {
       list = list.filter((i) => i.status === 'active');
     } else if (activeFilter === 'pending') {
@@ -58,6 +74,7 @@ export default function CommunityContributionsScreen() {
     } else if (activeFilter === 'changes_required') {
       list = list.filter((i) => i.status === 'changes_required');
     }
+
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
@@ -67,64 +84,69 @@ export default function CommunityContributionsScreen() {
           (i.brand && i.brand.toLowerCase().includes(q)),
       );
     }
+
+    if (selectedSort === 'newest') {
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (selectedSort === 'oldest') {
+      list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else if (selectedSort === 'name_asc') {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (selectedSort === 'name_desc') {
+      list.sort((a, b) => b.name.localeCompare(a.name));
+    }
+
     return list;
-  }, [data, activeFilter, searchQuery]);
+  }, [data, activeFilter, searchQuery, selectedSort]);
 
-  const firstPage = data?.pages[0];
-  const stats = firstPage?.stats ?? {
-    totalContributed: 0,
-    activeApproved: 0,
-    pendingReview: 0,
-    changesRequested: 0,
-    editsApproved: 0,
-  };
-
-  const progression = firstPage?.progression;
-  const enabled = firstPage?.enabled ?? true;
+  const tabs: { id: FilterTab; label: string }[] = [
+    { id: 'all', label: `All (${stats.totalContributed})` },
+    { id: 'active', label: `Approved (${stats.activeApproved})` },
+    { id: 'pending', label: `In Review (${stats.pendingReview})` },
+  ];
+  if (stats.changesRequested > 0) {
+    tabs.push({ id: 'changes_required', label: `Changes (${stats.changesRequested})` });
+  }
 
   return (
-    <Screen style={styles.screen}>
-      {/* Top Header */}
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={[styles.backButton, { backgroundColor: theme.colors.bgGlass }]}
-          hitSlop={8}
-          accessibilityLabel="Go back"
-        >
-          <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
-        </Pressable>
-        <View style={styles.headerTitles}>
-          <Text style={[styles.headerTitle, { color: theme.colors.text }]}>
-            Community Contributions
-          </Text>
-          <Text style={[styles.headerSubtitle, { color: theme.colors.textMuted }]}>
-            Products and packaging photos you've added to the public catalog
-          </Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      {/* In-Page Header Section */}
+      <View style={styles.header}>
+        <Text style={{ color: theme.colors.text, fontSize: 24, fontWeight: '700' }}>
+          Community Contributions
+        </Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
+          Products and packaging photos you've added to the public catalog
+        </Text>
       </View>
 
-      {/* Summary Bento Banner */}
+      {/* Contributor Progression Overview Card */}
       {enabled && progression ? (
         <View
           style={[
-            styles.bentoBanner,
-            { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
+            styles.overviewCard,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.lg,
+            },
           ]}
         >
-          <View style={styles.bentoHeader}>
+          <View style={styles.overviewTopRow}>
             <ContributorBadgeIcon
               badgeKey={progression.badgeKey}
               colorToken={progression.colorToken}
-              size={36}
+              size={40}
             />
-            <View style={styles.bentoHeaderText}>
-              <Text style={[styles.bentoLevelTitle, { color: theme.colors.text }]}>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text
+                style={[styles.levelTitleText, { color: theme.colors.text }]}
+                numberOfLines={1}
+              >
                 {progression.currentLevel === 0
-                  ? 'New Explorer'
+                  ? 'Level 0 • New Explorer'
                   : `Level ${progression.currentLevel} • ${progression.title}`}
               </Text>
-              <Text style={[styles.bentoPointsSub, { color: theme.colors.primary }]}>
+              <Text style={[styles.pointsSubText, { color: theme.colors.primary }]}>
                 {progression.totalPoints} contributor points earned
               </Text>
             </View>
@@ -142,7 +164,7 @@ export default function CommunityContributionsScreen() {
             </View>
             <View style={[styles.metricDivider, { backgroundColor: theme.colors.border }]} />
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: '#4BAE8A' }]}>
+              <Text style={[styles.metricValue, { color: '#3A8F6F' }]}>
                 {stats.activeApproved}
               </Text>
               <Text style={[styles.metricLabel, { color: theme.colors.textMuted }]}>
@@ -162,118 +184,89 @@ export default function CommunityContributionsScreen() {
         </View>
       ) : null}
 
-      {/* Search Input */}
-      <View style={styles.searchContainer}>
-        <View
-          style={[
-            styles.searchBar,
-            { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-          ]}
-        >
-          <Ionicons name="search" size={18} color={theme.colors.textMuted} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search your contributions..."
-            placeholderTextColor={theme.colors.textMuted}
-            style={[styles.searchInput, { color: theme.colors.text }]}
-            clearButtonMode="while-editing"
-          />
-        </View>
-      </View>
+      {/* Search Bar matching Product Templates */}
+      <DraftsSearchBar
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="Search your contributions..."
+      />
 
-      {/* Filter Segmented Chips */}
-      <View style={styles.filterChipsRow}>
-        <Pressable
-          onPress={() => setActiveFilter('all')}
-          style={[
-            styles.filterChip,
-            activeFilter === 'all'
-              ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-              : { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              { color: activeFilter === 'all' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            All ({stats.totalContributed})
-          </Text>
-        </Pressable>
+      {/* Sort Pills matching Product Templates */}
+      <DraftsSortPills
+        selectedSort={selectedSort}
+        onSelectSort={setSelectedSort}
+      />
 
-        <Pressable
-          onPress={() => setActiveFilter('active')}
-          style={[
-            styles.filterChip,
-            activeFilter === 'active'
-              ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-              : { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              { color: activeFilter === 'active' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            Approved ({stats.activeApproved})
-          </Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setActiveFilter('pending')}
-          style={[
-            styles.filterChip,
-            activeFilter === 'pending'
-              ? { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary }
-              : { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text
-            style={[
-              styles.filterChipText,
-              { color: activeFilter === 'pending' ? '#FFFFFF' : theme.colors.text },
-            ]}
-          >
-            In Review ({stats.pendingReview})
-          </Text>
-        </Pressable>
-
-        {stats.changesRequested > 0 && (
-          <Pressable
-            onPress={() => setActiveFilter('changes_required')}
-            style={[
-              styles.filterChip,
-              activeFilter === 'changes_required'
-                ? { backgroundColor: '#E0442A', borderColor: '#E0442A' }
-                : { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border },
-            ]}
-          >
-            <Text
+      {/* Filter Tabs Bar matching Product Templates */}
+      <View style={styles.tabBar} accessibilityRole="tablist">
+        {tabs.map((tab) => {
+          const isActive = activeFilter === tab.id;
+          return (
+            <Pressable
+              key={tab.id}
+              testID={`contributions-tab-${tab.id}`}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={`Filter by ${tab.label}`}
+              onPress={() => setActiveFilter(tab.id)}
               style={[
-                styles.filterChipText,
-                { color: activeFilter === 'changes_required' ? '#FFFFFF' : theme.colors.text },
+                styles.tabPill,
+                {
+                  backgroundColor: isActive ? theme.colors.primary : theme.colors.bgElevated,
+                  borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                },
               ]}
             >
-              Changes ({stats.changesRequested})
-            </Text>
-          </Pressable>
-        )}
+              <Text
+                style={[
+                  styles.tabPillText,
+                  {
+                    color: isActive ? '#FFFFFF' : theme.colors.textMuted,
+                    fontWeight: isActive ? '700' : '500',
+                  },
+                ]}
+              >
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      {/* Contributions List */}
+      {/* Main List / Error / Empty States */}
       {isError ? (
         <View style={styles.emptyContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color={theme.colors.danger} />
-          <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Unable to load contributions</Text>
-          <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
-            Check your network connection and try again.
-          </Text>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: theme.colors.bgElevated,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <Ionicons name="alert-circle-outline" size={32} color={theme.colors.danger} />
+          </View>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+              Unable to load contributions
+            </Text>
+            <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
+              Check your network connection and try again.
+            </Text>
+          </View>
           <Pressable
             onPress={() => void refetch()}
-            style={[styles.emptyActionButton, { backgroundColor: theme.colors.primary }]}
+            style={({ pressed }) => [
+              styles.emptyActionButton,
+              {
+                backgroundColor: theme.colors.primary,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
           >
             <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
             <Text style={styles.emptyActionText}>Retry</Text>
@@ -320,186 +313,202 @@ export default function CommunityContributionsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="sparkles-outline" size={48} color={theme.colors.textMuted} />
-              <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-                {searchQuery ? 'No matching contributions' : 'No contributions yet'}
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
-                {searchQuery
-                  ? 'Try searching by a different product name or barcode.'
-                  : 'Add a new product or upload photos to earn your Level 1 Novice Scout badge!'}
-              </Text>
+              <View
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 36,
+                  backgroundColor: theme.colors.bgElevated,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.colors.border,
+                }}
+              >
+                <Ionicons name="sparkles-outline" size={32} color={theme.colors.primary} />
+              </View>
+              <View style={{ alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+                  {searchQuery ? 'No matching contributions' : 'No contributions yet'}
+                </Text>
+                <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
+                  {searchQuery
+                    ? 'Try searching by a different product name or barcode.'
+                    : 'Add a new product or upload photos to earn your Level 1 Novice Scout badge!'}
+                </Text>
+              </View>
               {!searchQuery && (
                 <Pressable
                   onPress={() => navigation.push('Scan')}
-                  style={[styles.emptyActionButton, { backgroundColor: '#F5A623' }]}
+                  style={({ pressed }) => [
+                    styles.emptyActionButton,
+                    {
+                      backgroundColor: theme.colors.primary,
+                      opacity: pressed ? 0.8 : 1,
+                    },
+                  ]}
                 >
-                  <Ionicons name="scan-outline" size={18} color="#2C2C28" />
-                  <Text style={[styles.emptyActionText, { color: '#2C2C28' }]}>Scan or Add Product</Text>
+                  <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyActionText}>Scan or Add Product</Text>
                 </Pressable>
               )}
             </View>
           }
         />
       )}
-    </Screen>
+
+      {/* Floating Bottom Action Dock matching pantry and drafts */}
+      <View style={styles.bottomDockWrapper} pointerEvents="box-none">
+        <Pressable
+          testID="contributions-bottom-scan"
+          accessibilityRole="button"
+          accessibilityLabel="Scan to contribute product"
+          onPress={() => navigation.push('Scan')}
+          style={({ pressed }) => [
+            styles.bottomDock,
+            {
+              backgroundColor: theme.colors.primary,
+              opacity: pressed ? 0.85 : 1,
+            },
+          ]}
+        >
+          <Ionicons name="barcode-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.bottomDockText}>Scan to contribute</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitles: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  headerSubtitle: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  bentoBanner: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 18,
+  overviewCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
     borderWidth: 1,
-    overflow: 'hidden',
-  },
-  bentoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
+    padding: 16,
     gap: 12,
   },
-  bentoHeaderText: {
-    flex: 1,
+  overviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  bentoLevelTitle: {
-    fontSize: 15,
+  levelTitleText: {
+    fontSize: 16,
     fontWeight: '700',
   },
-  bentoPointsSub: {
+  pointsSubText: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: 1,
+    marginTop: 2,
   },
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    paddingVertical: 10,
+    paddingTop: 12,
   },
   metricItem: {
     flex: 1,
     alignItems: 'center',
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
   metricLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
-    marginTop: 1,
+    marginTop: 2,
   },
   metricDivider: {
     width: 1,
     height: 24,
   },
-  searchContainer: {
-    paddingHorizontal: 16,
-    marginTop: 12,
-  },
-  searchBar: {
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    height: 40,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
     gap: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    paddingVertical: 0,
-  },
-  filterChipsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginTop: 10,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 12,
+  tabPill: {
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1,
   },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
+  tabPillText: {
+    fontSize: 13,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 140,
+    gap: 10,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 40,
+    paddingTop: 80,
   },
   emptyContainer: {
+    paddingTop: 40,
+    paddingHorizontal: 24,
+    gap: 16,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingTop: 48,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    marginTop: 12,
+    textAlign: 'center',
   },
   emptySubtitle: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 6,
+    fontSize: 13,
     lineHeight: 18,
+    textAlign: 'center',
+    maxWidth: 280,
   },
   emptyActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 12,
-    marginTop: 16,
+    borderRadius: 20,
+    marginTop: 8,
   },
   emptyActionText: {
+    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  bottomDockWrapper: {
+    position: 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  bottomDock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  bottomDockText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

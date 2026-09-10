@@ -11,8 +11,8 @@ import { useTheme } from '../../theme/useTheme';
 export interface DraftsSearchBarProps {
   value: string;
   onChangeText: (text: string) => void;
-  viewMode: 'list' | 'grid';
-  onToggleViewMode: () => void;
+  viewMode?: 'list' | 'grid';
+  onToggleViewMode?: () => void;
   placeholder?: string;
 }
 
@@ -72,9 +72,9 @@ export function DraftsSearchBar({
       </View>
 
       {/* View Mode Toggle Button */}
-      <Pressable
+      {onToggleViewMode ? (
+        <Pressable
         testID="drafts-view-mode-toggle-btn"
-        accessibilityRole="button"
         accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
         onPress={onToggleViewMode}
         style={({ pressed }) => [
@@ -91,7 +91,8 @@ export function DraftsSearchBar({
           size={20}
           color={theme.colors.text}
         />
-      </Pressable>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

@@ -127,7 +127,7 @@ export function AppNavigator() {
       <Stack.Screen name="Household" component={HouseholdScreen} options={{ headerShown: true, title: 'Household' }} />
       <Stack.Screen name="ReviewsHub" component={ReviewsHubScreen} options={{ headerShown: true, title: 'Reviews' }} />
       <Stack.Screen name="PantryHistory" component={PantryHistoryScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="CommunityContributions" component={CommunityContributionsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="CommunityContributions" component={CommunityContributionsScreen} options={{ headerShown: true, title: 'Community Contributions' }} />
     </Stack.Navigator>
   );
 }
