@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -20,6 +20,7 @@ import {
   DraftsSortPills,
   type DraftSortOption,
 } from '../../../src/features/products/DraftsSortPills';
+import type { CommunityContributionRow } from '@expyrico/shared';
 
 type FilterTab = 'all' | 'active' | 'pending' | 'changes_required';
 
@@ -97,8 +98,27 @@ export default function CommunityContributionsScreen() {
   }, [data, activeFilter, searchQuery]);
 
   const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<FlatList<CommunityContributionRow>>(null);
   const [collapsibleHeight, setCollapsibleHeight] = useState(180);
   const [stickyHeight, setStickyHeight] = useState(136);
+
+  const handleSelectFilter = useCallback(
+    (tabId: FilterTab) => {
+      scrollY.setValue(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setActiveFilter(tabId);
+    },
+    [scrollY],
+  );
+
+  const handleSelectSort = useCallback(
+    (sort: DraftSortOption) => {
+      scrollY.setValue(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setSelectedSort(sort);
+    },
+    [scrollY],
+  );
 
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, collapsibleHeight],
@@ -128,6 +148,7 @@ export default function CommunityContributionsScreen() {
   if (stats.changesRequested > 0) {
     tabs.push({ id: 'changes_required', label: `Changes (${stats.changesRequested})` });
   }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       {/* Main List / Error / Empty States */}
@@ -175,6 +196,7 @@ export default function CommunityContributionsScreen() {
         </View>
       ) : (
         <Animated.FlatList
+          ref={listRef as unknown as React.RefObject<FlatList<CommunityContributionRow>>}
           data={items}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
@@ -186,7 +208,7 @@ export default function CommunityContributionsScreen() {
           refreshing={Boolean(isRefetching && !isFetchingNextPage)}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false },
+            { useNativeDriver: true },
           )}
           scrollEventThrottle={16}
           onEndReached={() => {
@@ -360,13 +382,11 @@ export default function CommunityContributionsScreen() {
         </Animated.View>
 
         {/* Sticky Controls: Pinned at top once big header collapses */}
-        <Animated.View
+        <View
           style={[
             styles.stickyControls,
             {
               backgroundColor: theme.colors.bg,
-              borderBottomColor: theme.colors.border,
-              borderBottomWidth: stickyBorderOpacity,
             },
           ]}
           onLayout={(e) => {
@@ -386,7 +406,7 @@ export default function CommunityContributionsScreen() {
           {/* Sort Pills matching Product Templates */}
           <DraftsSortPills
             selectedSort={selectedSort}
-            onSelectSort={setSelectedSort}
+            onSelectSort={handleSelectSort}
           />
 
           {/* Filter Tabs Bar matching Product Templates */}
@@ -400,7 +420,7 @@ export default function CommunityContributionsScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isActive }}
                   accessibilityLabel={`Filter by ${tab.label}`}
-                  onPress={() => setActiveFilter(tab.id)}
+                  onPress={() => handleSelectFilter(tab.id)}
                   style={[
                     styles.tabPill,
                     {
@@ -424,7 +444,18 @@ export default function CommunityContributionsScreen() {
               );
             })}
           </View>
-        </Animated.View>
+
+          {/* Dedicated 1px Hairline Separator animated with native opacity */}
+          <Animated.View
+            style={[
+              styles.stickyBorder,
+              {
+                backgroundColor: theme.colors.border,
+                opacity: stickyBorderOpacity,
+              },
+            ]}
+          />
+        </View>
       </Animated.View>
       {/* Floating Bottom Action Dock matching pantry and drafts */}
       <View style={styles.bottomDockWrapper} pointerEvents="box-none">
@@ -459,6 +490,10 @@ const styles = StyleSheet.create({
   },
   stickyControls: {
     paddingTop: 4,
+  },
+  stickyBorder: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
   },
   header: {
     paddingHorizontal: 20,

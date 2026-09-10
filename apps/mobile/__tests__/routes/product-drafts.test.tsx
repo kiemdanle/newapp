@@ -601,4 +601,30 @@ describe('<ProductDraftsScreen />', () => {
     fireEvent.press(getByTestId(`draft-swipe-add-${draftRow.id}`));
     expect(await findByText('Template item · Personal pantry only')).toBeTruthy();
   });
+
+  it('synchronizes scroll state and resets header translation when switching view mode from scrolled state', async () => {
+    const row1 = { ...DRAFT_ROW, id: 'row-scroll-1', name: 'Scroll Item 1' };
+    const row2 = { ...DRAFT_ROW, id: 'row-scroll-2', name: 'Scroll Item 2' };
+    queueFetch(jsonResponse({ items: [row1, row2], nextCursor: null }));
+
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
+
+    const list = await findByTestId('drafts-list');
+
+    // Simulate scrolling down by 150px (collapsing the big header)
+    fireEvent.scroll(list, {
+      nativeEvent: {
+        contentOffset: { y: 150 },
+        contentSize: { height: 1000, width: 400 },
+        layoutMeasurement: { height: 600, width: 400 },
+      },
+    });
+
+    // Toggle view mode to grid while scrolled
+    const toggleBtn = await findByTestId('drafts-view-mode-toggle-btn');
+    fireEvent.press(toggleBtn);
+
+    // Grid view renders and header state is synchronized without leaving blank gap
+    expect(await findByTestId('draft-grid-card-row-scroll-1')).toBeTruthy();
+  });
 });

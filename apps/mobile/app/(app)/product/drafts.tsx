@@ -260,8 +260,24 @@ export default function ProductDraftsScreen() {
     });
   };
   const scrollY = useRef(new Animated.Value(0)).current;
+  const listRef = useRef<FlatList<ProductDraftRow>>(null);
   const [collapsibleHeight, setCollapsibleHeight] = useState(72);
   const [stickyHeight, setStickyHeight] = useState(136);
+
+  const handleToggleViewMode = useCallback(() => {
+    scrollY.setValue(0);
+    const next = viewMode === 'grid' ? 'list' : 'grid';
+    void setDraftsViewMode(next);
+  }, [viewMode, setDraftsViewMode, scrollY]);
+
+  const handleSelectTab = useCallback(
+    (tabId: DraftTab) => {
+      scrollY.setValue(0);
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      setSelectedTab(tabId);
+    },
+    [scrollY],
+  );
 
   const headerTranslateY = scrollY.interpolate({
     inputRange: [0, collapsibleHeight],
@@ -282,7 +298,6 @@ export default function ProductDraftsScreen() {
   });
 
   const listTopPadding = collapsibleHeight + stickyHeight + 8;
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       {q.isError ? (
@@ -291,6 +306,7 @@ export default function ProductDraftsScreen() {
         </View>
       ) : (
         <Animated.FlatList
+          ref={listRef as unknown as React.RefObject<FlatList<ProductDraftRow>>}
           key={viewMode}
           testID="drafts-list"
           data={items}
@@ -305,7 +321,7 @@ export default function ProductDraftsScreen() {
           ]}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false },
+            { useNativeDriver: true },
           )}
           scrollEventThrottle={16}
           renderItem={({ item }) =>
@@ -415,13 +431,11 @@ export default function ProductDraftsScreen() {
         </Animated.View>
 
         {/* Sticky Controls: Pinned at top once big header collapses */}
-        <Animated.View
+        <View
           style={[
             styles.stickyControls,
             {
               backgroundColor: theme.colors.bg,
-              borderBottomColor: theme.colors.border,
-              borderBottomWidth: stickyBorderOpacity,
             },
           ]}
           onLayout={(e) => {
@@ -436,7 +450,7 @@ export default function ProductDraftsScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
             viewMode={viewMode}
-            onToggleViewMode={() => void setDraftsViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            onToggleViewMode={handleToggleViewMode}
           />
 
           {/* Sort Pills */}
@@ -456,7 +470,7 @@ export default function ProductDraftsScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: isActive }}
                   accessibilityLabel={`Filter by ${tab.label}`}
-                  onPress={() => setSelectedTab(tab.id)}
+                  onPress={() => handleSelectTab(tab.id)}
                   style={[
                     styles.tabPill,
                     {
@@ -480,7 +494,18 @@ export default function ProductDraftsScreen() {
               );
             })}
           </View>
-        </Animated.View>
+
+          {/* Dedicated 1px Hairline Separator animated with native opacity */}
+          <Animated.View
+            style={[
+              styles.stickyBorder,
+              {
+                backgroundColor: theme.colors.border,
+                opacity: stickyBorderOpacity,
+              },
+            ]}
+          />
+        </View>
       </Animated.View>
 
       {/* Centered Dual-Action Bottom Dock (Manually input + Scan an item) */}
@@ -606,6 +631,10 @@ const styles = StyleSheet.create({
   },
   stickyControls: {
     paddingTop: 4,
+  },
+  stickyBorder: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
