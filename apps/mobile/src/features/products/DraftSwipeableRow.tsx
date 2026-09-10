@@ -24,8 +24,7 @@ export interface DraftSwipeableRowProps {
   isSubmitting?: boolean;
 }
 
-const STATUS_CONFIG: Record<ProductDraftStatus, { label: string; text: string; bg: string }> = {
-  active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6' },
+const STATUS_CONFIG: Partial<Record<ProductDraftStatus, { label: string; text: string; bg: string }>> = {
   pending: { label: 'Awaiting review', text: '#8C8C85', bg: '#F0F0ED' },
   draft: { label: 'Draft', text: '#8C8C85', bg: '#F0F0ED' },
   changes_required: { label: 'Changes requested', text: '#2C2C28', bg: '#FEEFC3' },
@@ -46,7 +45,7 @@ export function DraftSwipeableRow({
 }: DraftSwipeableRowProps) {
   const theme = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
-  const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
+  const statusCfg = STATUS_CONFIG[item.status];
 
   const canDelete = true;
   const canAddToPantry = true;
@@ -128,11 +127,7 @@ export function DraftSwipeableRow({
         <Pressable
           testID={`draft-row-${item.id}`}
           accessibilityRole="button"
-          accessibilityLabel={
-            item.status !== 'active'
-              ? `${item.name}, ${statusCfg.label}`
-              : item.name
-          }
+          accessibilityLabel={statusCfg ? `${item.name}, ${statusCfg.label}` : item.name}
           onPress={() => onPress(item)}
           style={({ pressed }) => ({
             flexDirection: 'row',
@@ -192,7 +187,7 @@ export function DraftSwipeableRow({
           </View>
 
           <View style={{ alignItems: 'flex-end', gap: 6 }}>
-            {item.status !== 'active' ? (
+            {statusCfg ? (
               <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
                 <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
                   {statusCfg.label}

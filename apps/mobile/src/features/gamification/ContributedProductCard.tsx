@@ -10,11 +10,9 @@ export interface ContributedProductCardProps {
   onPress?: () => void;
 }
 
-const STATUS_CONFIG: Record<
-  CommunityContributionRow['status'],
-  { label: string; text: string; bg: string }
+const STATUS_CONFIG: Partial<
+  Record<CommunityContributionRow['status'], { label: string; text: string; bg: string }>
 > = {
-  active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6' },
   pending: { label: 'Awaiting review', text: '#8C8C85', bg: '#F0F0ED' },
   changes_required: { label: 'Changes requested', text: '#2C2C28', bg: '#FEEFC3' },
   report_hidden: { label: 'Under review', text: '#8C8C85', bg: '#F0F0ED' },
@@ -36,18 +34,14 @@ function formatDate(isoString: string): string {
 
 export function ContributedProductCard({ item, onPress }: ContributedProductCardProps) {
   const theme = useTheme();
-  const statusConfig = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
+  const statusConfig = STATUS_CONFIG[item.status];
   const formattedDate = formatDate(item.createdAt);
 
   return (
     <Pressable
       testID={`contributed-card-${item.id}`}
       accessibilityRole="button"
-      accessibilityLabel={
-        item.status !== 'active'
-          ? `${item.name}, ${statusConfig.label}`
-          : item.name
-      }
+      accessibilityLabel={statusConfig ? `${item.name}, ${statusConfig.label}` : item.name}
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -122,7 +116,7 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
 
       {/* Right side: status pill + photo & edit badges */}
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        {item.status !== 'active' ? (
+        {statusConfig ? (
           <View
             style={{
               backgroundColor: statusConfig.bg,

@@ -25,8 +25,7 @@ export interface DraftGridCardProps {
   isSubmitting?: boolean;
 }
 
-const STATUS_CONFIG: Record<ProductDraftStatus, { label: string; text: string; bg: string }> = {
-  active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6' },
+const STATUS_CONFIG: Partial<Record<ProductDraftStatus, { label: string; text: string; bg: string }>> = {
   pending: { label: 'Awaiting review', text: '#8C8C85', bg: '#F0F0ED' },
   draft: { label: 'Draft', text: '#8C8C85', bg: '#F0F0ED' },
   changes_required: { label: 'Changes requested', text: '#2C2C28', bg: '#FEEFC3' },
@@ -49,7 +48,7 @@ export function DraftGridCard({
   const swipeableRef = useRef<Swipeable>(null);
   const [cardWidth, setCardWidth] = useState(0);
 
-  const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.draft;
+  const statusCfg = STATUS_CONFIG[item.status];
   const canAddDirectly = true;
   const isBarcode = item.identifier.kind === 'barcode';
   const identifierValue = item.identifier.value;
@@ -95,11 +94,7 @@ export function DraftGridCard({
         <Pressable
           testID={`draft-grid-card-${item.id}`}
           accessibilityRole="button"
-          accessibilityLabel={
-            item.status !== 'active'
-              ? `${item.name}, ${statusCfg.label}`
-              : item.name
-          }
+          accessibilityLabel={statusCfg ? `${item.name}, ${statusCfg.label}` : item.name}
           onPress={() => onPress(item)}
           style={({ pressed }) => [
             styles.card,
@@ -111,7 +106,7 @@ export function DraftGridCard({
           ]}
         >
       {/* Top Header Row: Status Badge */}
-      {item.status !== 'active' ? (
+      {statusCfg ? (
         <View style={styles.topRow}>
           <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
             <Text style={[styles.statusBadgeText, { color: statusCfg.text }]} numberOfLines={1}>
