@@ -30,22 +30,19 @@ This plan establishes a complete end-to-end community contribution and progressi
    - **"Community Contributions" Screen**: Dedicated history listing all products the user has contributed to the community catalog (`active`, `pending`, `changes_required`, `report_hidden`), showing review statuses and timestamps.
    - **"Product Templates" Screen**: Redesigned template restocker where **every single item** features slide-left **Edit**, **Add to Pantry**, and **Delete** (where deleting dismisses the item from the user's template list without deleting public catalog products).
 
----
-
-## Seeded Default Contributor Levels (Google Maps Local Guides Model)
-
-| Level | Badge Icon | Level Title | Products Req. | Total Points | Unlocks & Community Perks |
-|:---:|:---:|:---|:---:|:---:|:---|
-| **Lv. 1** | 🌱 Seedling | **Novice Scout** | 1 product | 10 pts | Unlocks "Community Contributions" section in profile |
-| **Lv. 2** | 🥉 Bronze Star | **Junior Contributor** | 3 products | 30 pts | Bronze profile badge, community contributor flair |
-| **Lv. 3** | 🥉 Bronze Star+ | **Active Contributor** | 7 products | 70 pts | Priority review queue in admin moderation |
-| **Lv. 4** | 🥈 Silver Star | **Pantry Scout** | 15 products | 150 pts | Silver badge, special contributor spotlight tag |
-| **Lv. 5** | 🥈 Silver Star+ | **Catalog Explorer** | 30 products | 300 pts | Direct edit suggestion rights, Explorer profile border |
-| **Lv. 6** | 🥇 Gold Star | **Senior Contributor** | 60 products | 600 pts | Gold badge, Community Hero tag on public giveaways/deals |
-| **Lv. 7** | 🥇 Gold Star+ | **Catalog Pioneer** | 120 products | 1,200 pts | Catalog Pioneer profile banner, boosted review weight |
-| **Lv. 8** | 💎 Emerald Gem | **Master Contributor** | 250 products | 2,500 pts | Emerald badge, featured in Monthly Community Leaderboard |
-| **Lv. 9** | 👑 Sapphire Crown | **Catalog Legend** | 500 products | 5,000 pts | Sapphire Crown medal, exclusive beta features & tester role |
-| **Lv. 10** | 🌟 Diamond Starburst | **Expyrico Champion** | 1,000+ products | 10,000 pts | Animated golden starburst badge, permanent Hall of Fame |
+| Level | Badge Icon | Level Title | Products Req. | Total Points | Badge Color Token | Unlocks & Community Perks |
+|:---:|:---:|:---|:---:|:---:|:---|:---|
+| **Lv. 0** | 🌱 Seedling | **New Explorer** | 0 products | 0 pts | `pebble` (`#8C8C85`) | Initial unranked state; progress to Level 1 |
+| **Lv. 1** | 🌱 Seedling | **Novice Scout** | 1 product | 10 pts | `fresh_sage` (`#4BAE8A`) | Unlocks "Community Contributions" section in profile |
+| **Lv. 2** | 🥉 Bronze Star | **Junior Contributor** | 3 products | 30 pts | `honey` (`#F5A623`) | Bronze profile badge, community contributor flair |
+| **Lv. 3** | 🥉 Bronze Star+ | **Active Contributor** | 7 products | 70 pts | `honey` (`#F5A623`) | Priority review queue in admin moderation |
+| **Lv. 4** | 🥈 Silver Star | **Pantry Scout** | 15 products | 150 pts | `pebble` (`#8C8C85`) | Silver badge, special contributor spotlight tag |
+| **Lv. 5** | 🥈 Silver Star+ | **Catalog Explorer** | 30 products | 300 pts | `pebble` (`#8C8C85`) | Direct edit suggestion rights, Explorer profile border |
+| **Lv. 6** | 🥇 Gold Star | **Senior Contributor** | 60 products | 600 pts | `honey` (`#F5A623`) | Gold badge, Community Hero tag on public giveaways/deals |
+| **Lv. 7** | 🥇 Gold Star+ | **Catalog Pioneer** | 120 products | 1,200 pts | `fresh_sage` (`#4BAE8A`) | Catalog Pioneer profile banner, boosted review weight |
+| **Lv. 8** | 💎 Emerald Gem | **Master Contributor** | 250 products | 2,500 pts | `deep_sage` (`#3A8F6F`) | Emerald badge, featured in Monthly Community Leaderboard |
+| **Lv. 9** | 👑 Sapphire Crown | **Catalog Legend** | 500 products | 5,000 pts | `almost_black` (`#2C2C28`) | Sapphire Crown medal, exclusive beta features & tester role |
+| **Lv. 10** | 🌟 Diamond Starburst | **Expyrico Champion** | 1,000+ products | 10,000 pts | `deep_sage` (`#3A8F6F`) | Animated golden starburst badge, permanent Hall of Fame |
 
 ### Point Formula
 * **Add new product (name + barcode/QR)**: +10 pts
@@ -99,6 +96,30 @@ This plan establishes a complete end-to-end community contribution and progressi
 ### Whole-Plan Consistency Sweep
 - **Decision Delta**: Decisions 1–3 applied across all 7 phase files.
 - **Contradictions Checked**: Status dismissal, XP calculation, admin flag visibility, and screen naming reconciled across all documents.
+- **Unresolved Contradictions**: 0.
+
+## Red Team Review
+### Session 1 — 2026-09-10
+**Reviewers:** Security Adversary, Failure Mode Analyst, Assumption Destroyer, Scope & Complexity Critic
+**Findings:** 10 (10 accepted, 0 rejected)
+**Severity breakdown:** 0 Critical, 8 High, 2 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Route mount URL mismatch: mount `/v1/me/contributions` under `meRoutes` | High | Accept | Phase 3 |
+| 2 | Cross-user XP isolation: template dismissal must not revoke other users' photo/edit credits | High | Accept | Phase 3 |
+| 3 | Universal Add contract: unsubmitted draft templates create named custom records to prevent sync failure | High | Accept | Phase 6 |
+| 4 | Live ladder transport: `GET /v1/me/contributions` returns active `levels` array for mobile roadmap | High | Accept | Phase 3, Phase 4 |
+| 5 | `getSetting` fallback: return seeded default levels for missing key without throwing | High | Accept | Phase 2 |
+| 6 | Ladder monotonicity: Zod validation enforces strictly ascending points and distinct level tiers | High | Accept | Phase 1, Phase 2 |
+| 7 | Unranked Level 0: define Level 0 (0 pts, progress 0/10) for new contributors | Medium | Accept | Phase 1, Phase 4 |
+| 8 | Database index: add compound index on `products(createdByUserId, isDismissedFromTemplates, status)` | Medium | Accept | Phase 3 |
+| 9 | Profile cache invalidation: invalidate `['me', 'contributions']` on template dismiss or addition | High | Accept | Phase 4, Phase 6 |
+| 10 | Strict Expyrico palette: constrain badge colors to approved palette tokens (`fresh_sage`, `deep_sage`, `honey`, `pebble`, `almost_black`) | High | Accept | Phase 1, Phase 2 |
+
+### Whole-Plan Consistency Sweep
+- **Decision Delta**: Findings 1–10 applied across all 7 phase files.
+- **Contradictions Checked**: Route mounts (`/v1/me/contributions`), cross-user XP independence, offline sync validity, palette tokens, and Level 0 states reconciled across all documents.
 - **Unresolved Contradictions**: 0.
 
 <!-- slug: mobile-contributor-levels-and-product-templates -->

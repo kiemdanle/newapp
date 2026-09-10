@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "1h"
 dependencies: [1, 2, 3, 4, 5, 6]
+---
+
 # Phase 7: Comprehensive Testing, Build & Device Verification
 
 <!-- Updated: Validation Session 1 - Testing, Build & Device Verification -->
+<!-- Updated: Red Team Review Session 1 - Security & Concurrency Verification -->
 
 ## Overview
 
@@ -16,9 +19,10 @@ Execute comprehensive unit, integration, and UI tests across `@expyrico/shared`,
 ## Test Plan
 
 1. **Shared Gamification Tests (`packages/shared`)**:
-   - Verify `computeContributorProgression` across all 10 level boundaries (0 pts, 10 pts, 30 pts, 150 pts, 2500 pts, 10000 pts) against default tiers.
-   - Verify calculation against custom admin tiers and bonus points.
-
+   - Verify `computeContributorProgression` across all 10 level boundaries against default tiers.
+   - Verify Level 0 (Unranked) calculation for 0-point users (`0/10 pts` to Level 1).
+   - Verify Zod schema rejects non-monotonic point thresholds and non-Expyrico badge color tokens.
+   - Verify calculation against custom admin tiers.
 2. **Admin Dashboard Tests (`apps/admin` & `api`)**:
    - `GET /v1/admin/settings/contributor-levels`: Returns default or persisted levels.
    - `PATCH /v1/admin/settings/contributor-levels`: Updates tiers, verifies schema validation, and writes audit log.
@@ -29,10 +33,11 @@ Execute comprehensive unit, integration, and UI tests across `@expyrico/shared`,
    - `DELETE /v1/products/drafts/:id`:
      - Discarding an unsubmitted draft hard-deletes the row.
      - Discarding an active product marks `isDismissedFromTemplates = true` without deleting catalog product.
+     - Cross-user XP isolation: User A dismissing a product does NOT revoke User B's photo/edit points.
+   - Universal Add offline sync: Adding an unsubmitted draft template to pantry records creates a named custom record (`customName = item.name`, `productId = null`) that synchronizes cleanly without 403 `assertProductUse` rejection.
    - Mobile `ContributorHeroCard.test.tsx`: Tests level pill, medal icon, progress bar percentage, and roadmap modal trigger.
    - Mobile `community-contributions.test.tsx`: Tests catalog contributions list, review status badges, and search.
-   - Mobile `product-drafts.test.tsx`: Tests that Edit, Add, and Delete are available on all templates and that deletion hides the template with Undo toast.
-
+   - Mobile `product-drafts.test.tsx`: Tests that Edit, Add, and Delete are available on all templates, that deletion hides template with Undo toast, and invalidates `['me', 'contributions']`.
 4. **Android Build & On-Device Verification**:
    - Compile APK with local Gradle:
      `cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug`

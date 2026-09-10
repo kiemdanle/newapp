@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [3]
+---
+
 # Phase 6: Fast-Add Product Templates & Swipe Actions
 
 <!-- Updated: Validation Session 1 - Fast-Add Product Templates & Swipe Actions -->
+<!-- Updated: Red Team Review Session 1 - Universal Add Named Record Contract & Cache Invalidation -->
 
 ## Overview
 
@@ -23,6 +26,7 @@ Update the "Product Drafts" screen to serve its true purpose as **"Product Templ
    - Swiping left on **any item** reveals:
      - **Edit** (Honey `#F5A623`, icon `create-outline`): Contextual edit navigation.
      - **Add to Pantry** (Fresh Sage `#4BAE8A`, icon `basket-outline`): Opens `DraftPantryAddModal` for 1-tap restocking with expiry and location options.
+       - *Universal Add Contract*: For `active` or `pending` products, attaches `productId = item.id`. For private `draft` or `changes_required` items, saves as an independent named custom record (`customName = item.name`, `productId = null`), completely avoiding backend 403 `assertProductUse` rejections during offline synchronization.
      - **Delete** (Alert Red `#E0442A`, icon `trash-outline`): Removes the template from the user's list.
    - Set `canDelete = true` for all template rows!
    - Set `canAddToPantry = true` for all templates!
@@ -35,7 +39,7 @@ Update the "Product Drafts" screen to serve its true purpose as **"Product Templ
        - Dispatches `discardDraftMutation.mutateAsync(item.id)`.
        - On the backend, active catalog products are marked `isDismissedFromTemplates = true` (removed from template query, but preserved in community catalog).
        - Private unsubmitted drafts are hard-deleted.
-4. **1-Tap Direct Add Button**:
+       - Successful deletion invalidates `['me', 'contributions']` in addition to `['products', 'drafts']`, keeping profile level progress perfectly in sync.
    - Card face retains the inline `+ Add` button for 1-tap instant pantry addition.
 
 ## Related Code Files

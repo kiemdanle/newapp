@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2]
+---
+
 # Phase 3: Backend Contributions API & Template Dismissal
 
 <!-- Updated: Validation Session 1 - Dynamic Recalculation on Template Dismissal -->
+<!-- Updated: Red Team Review Session 1 - Route Mount /v1/me, Live Ladder Transport & Cross-User Isolation -->
 
 ## Overview
 
@@ -20,13 +23,16 @@ Implement `GET /v1/me/contributions` which computes the caller's contributor lev
    - Authenticated route (`onRequest: app.requireAuth`).
    - Fetches active contributor levels setting from `getSetting(SETTING_KEYS.CONTRIBUTOR_LEVELS, ...)`.
    - If `enabled === false`: returns `{ enabled: false, items: [...] }` so clients hide gamification while preserving contribution history.
-   - Queries user's catalog contributions:
-     - `product` rows where `createdByUserId = req.user.id` (including `active`, `pending`, `changes_required`, `report_hidden`, `merged_into`).
-     - Photos count: `productPhoto` count where `uploadedByUserId = req.user.id`.
-     - Edits count: `productEdit` count where `submittedBy = req.user.id && status = 'approved'`.
-   - Computes progression via `computeContributorProgression(stats, setting.levels)`.
+   - **Strict XP-Eligible Stats Query** (for Level & XP progression calculation):
+     - Only counts non-dismissed, active catalog contributions by caller: `createdByUserId = req.user.id && isDismissedFromTemplates = false && status = 'active'`.
+     - Packaging photos uploaded by caller on active products: `productPhoto` count where `uploadedByUserId = req.user.id && product.status = 'active'`. (Crucial: unaffected by the original creator's personal template dismissal, preventing cross-user XP revocation).
+     - Approved edits submitted by caller on active products: `productEdit` count where `submittedBy = req.user.id && status = 'approved' && product.status = 'active'`. (Crucial: unaffected by creator template dismissal).
+   - **Full Contribution History Query** (for Community Contributions list view):
+     - Queries all products ever contributed by caller: `createdByUserId = req.user.id` (including `active`, `pending`, `changes_required`, `report_hidden`, `merged_into`), regardless of `isDismissedFromTemplates`.
+   - Computes progression via `computeContributorProgression(xpStats, setting.levels)`.
    - Returns:
-     - `enabled`: boolean
+     - `enabled`: boolean (active admin toggle)
+     - `levels`: ContributorLevelTier[] (the live active 10-tier ladder from admin settings so mobile roadmap is always in sync)
      - `progression`: ContributorProgression (level, badge, points, progressPercent, nextLevel, productsToNextLevel).
      - `stats`: `{ totalContributed, activeApproved, pendingReview, changesRequested, editsApproved }`.
      - `items`: Paginated array of contributed product cards with thumbnail, barcode, status, and creation date.
@@ -46,10 +52,10 @@ Implement `GET /v1/me/contributions` which computes the caller's contributor lev
 ## Related Code Files
 - Modify: `api/prisma/schema.prisma`
 - Create: `api/prisma/migrations/20260910110000_add_product_dismissed_from_templates/migration.sql`
-- Create: `api/src/services/products/contributions.ts`
-- Create: `api/src/routes/products/contributions.ts`
+- Create: `api/src/routes/me/contributions.ts`
+- Modify: `api/src/routes/me/index.ts`
+- Modify: `api/src/services/products/contributions.ts`
 - Modify: `api/src/services/products/product-drafts.ts`
-- Modify: `api/src/routes/products/index.ts`
 - Create: `api/tests/integration/user-contributions-and-dismissal.test.ts`
 
 ## Implementation Steps
@@ -61,11 +67,12 @@ Implement `GET /v1/me/contributions` which computes the caller's contributor lev
 6. Write integration tests covering:
    - Contributor points and level calculation for user with products and photos.
    - Respecting admin `enabled: false` flag.
-   - Discarding an unsubmitted draft (hard delete).
-   - Discarding an active product (sets `isDismissedFromTemplates: true`, product still exists in catalog).
+   - Discarding an unsubmitted draft (hard delete) and verifying points update.
+   - Discarding an active product (sets `isDismissedFromTemplates: true`, product still exists in catalog, points and level dynamically decrease).
 
 ## Success Criteria
 - [ ] `GET /v1/me/contributions` returns computed level, badge, and contributed product list.
 - [ ] Deleting an active product template sets `isDismissedFromTemplates: true` and succeeds without 409 Conflict.
 - [ ] Active products marked dismissed no longer appear in `listDrafts`, but remain accessible in public lookup and pantry records.
+- [ ] Dismissing an active product immediately recalculates and decreases contributor points/level.
 - [ ] All API integration tests pass cleanly.

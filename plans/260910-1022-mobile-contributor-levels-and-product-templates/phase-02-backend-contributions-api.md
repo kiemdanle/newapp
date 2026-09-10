@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "2h"
 dependencies: [1]
+---
+
 # Phase 2: Admin Dashboard Level Editor & Toggle
 
 <!-- Updated: Validation Session 1 - Admin Flag Scope (Hide Gamification Only) -->
+<!-- Updated: Red Team Review Session 1 - getSetting Fallback & Palette Token Picker -->
 
 ## Overview
 
@@ -18,10 +21,10 @@ Build the Admin Dashboard page under **Settings > Contributor levels** (`apps/ad
 ### Admin API Endpoints
 - `GET /v1/admin/settings/contributor-levels`:
   - Returns `contributorLevelsSettingSchema`: `{ enabled: boolean, levels: ContributorLevelTier[] }`.
-  - If no setting row exists in DB: returns `{ enabled: true, levels: DEFAULT_CONTRIBUTOR_LEVELS }`.
+  - Fallback in `getSetting`: if no setting row exists in DB, `getSetting(SETTING_KEYS.CONTRIBUTOR_LEVELS, ...)` returns `{ enabled: true, levels: DEFAULT_CONTRIBUTOR_LEVELS }` without throwing.
 - `PATCH /v1/admin/settings/contributor-levels`:
   - Authenticated admin only (`onRequest: app.requireAuth`, role: `admin`).
-  - Validates body against `contributorLevelsSettingSchema`.
+  - Validates body against `contributorLevelsSettingSchema` (enforcing ascending points and Expyrico palette tokens).
   - Persists to `Setting` table under key `SETTING_KEYS.CONTRIBUTOR_LEVELS`.
   - Records an audit log entry in `AdminAuditLog` (`settings.contributor_levels.update`).
 
@@ -40,7 +43,7 @@ Build the Admin Dashboard page under **Settings > Contributor levels** (`apps/ad
        - **Products Required**: number input (e.g. 1).
        - **Points Required**: number input (e.g. 10).
        - **Badge Icon**: dropdown selector (`seedling`, `bronze_star`, `silver_star`, `gold_star`, `emerald_gem`, `sapphire_crown`, `diamond_starburst`).
-       - **Badge Color**: color input with quick Expyrico palette chips (`#4BAE8A`, `#D97706`, `#64748B`, `#F5A623`, `#3A8F6F`, `#2563EB`, `#7C3AED`).
+       - **Badge Color**: Expyrico palette token selector (`fresh_sage`, `deep_sage`, `mint_mist`, `honey`, `soft_butter`, `pebble`, `almost_black`) with live visual color chip preview. Free-form arbitrary hex inputs are rejected by server schema validation.
        - **Perks / Unlocks Description**: text input.
    - **Action Buttons**:
      - **"Reset to Recommended Defaults"**: Restores the 10 seeded default levels into the form.

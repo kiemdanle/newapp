@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [3, 4]
+---
+
 # Phase 5: Community Contributions Screen
 
 <!-- Updated: Validation Session 1 - Product Templates Naming & Universal Swipe Actions -->
+<!-- Updated: Red Team Review Session 1 - Full Contributor Activity Coverage -->
 
 ## Overview
 
@@ -17,7 +20,7 @@ Build the dedicated **"Community Contributions"** screen (`apps/mobile/app/(app)
 
 ### Functional
 1. **Screen Layout**:
-   - Header with back button, screen title **"Community Contributions"**, and subtitle *"Products and packaging photos you've added to the public catalog."*
+   - Header with back button, screen title **"Community Contributions"**, and subtitle *"Products, packaging photos, and edits you've contributed to the public catalog."*
    - Summary Bento Banner:
      - Top level chip: e.g. `🥈 Level 4 Contributor`.
      - 3 key stats: `Total: 15` | `Approved: 12` | `Pending: 3`.

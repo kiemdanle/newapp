@@ -5,44 +5,46 @@ status: pending
 priority: P1
 effort: "1h"
 dependencies: []
+---
+
 # Phase 1: Shared Contributor Levels & Seeding
 
 <!-- Updated: Validation Session 1 - Strict Dynamic Recalculation & Product Templates -->
+<!-- Updated: Red Team Review Session 1 - Expyrico Palette Tokens & Monotonicity Refinement -->
 
 ## Overview
 
 Define the seeded 10-tier community contributor leveling system, badges, points math, and Zod schemas in `@expyrico/shared` so both the backend Fastify API, the Admin Dashboard, and the React Native mobile app share single-source-of-truth gamification logic. Points and level are strictly recalculated dynamically based on active, non-dismissed contributions.
 ## Requirements
-
-### Functional
 - Define `DEFAULT_CONTRIBUTOR_LEVELS`: 10 seeded default tiers:
-  - Lv 1: Novice Scout (1 prod, 10 pts, Seedling, `#4BAE8A`)
-  - Lv 2: Junior Contributor (3 prods, 30 pts, Bronze Star, `#D97706`)
-  - Lv 3: Active Contributor (7 prods, 70 pts, Bronze Star+, `#D97706`)
-  - Lv 4: Pantry Scout (15 prods, 150 pts, Silver Star, `#64748B`)
-  - Lv 5: Catalog Explorer (30 prods, 300 pts, Silver Star+, `#64748B`)
-  - Lv 6: Senior Contributor (60 prods, 600 pts, Gold Star, `#F5A623`)
-  - Lv 7: Catalog Pioneer (120 prods, 1200 pts, Gold Star+, `#F5A623`)
-  - Lv 8: Master Contributor (250 prods, 2500 pts, Emerald Gem, `#3A8F6F`)
-  - Lv 9: Catalog Legend (500 prods, 5000 pts, Sapphire Crown, `#2563EB`)
-  - Lv 10: Expyrico Champion (1000 prods, 10000 pts, Diamond Starburst, `#7C3AED`)
+  - Lv 1: Novice Scout (1 prod, 10 pts, Seedling, `fresh_sage`)
+  - Lv 2: Junior Contributor (3 prods, 30 pts, Bronze Star, `honey`)
+  - Lv 3: Active Contributor (7 prods, 70 pts, Bronze Star+, `honey`)
+  - Lv 4: Pantry Scout (15 prods, 150 pts, Silver Star, `pebble`)
+  - Lv 5: Catalog Explorer (30 prods, 300 pts, Silver Star+, `pebble`)
+  - Lv 6: Senior Contributor (60 prods, 600 pts, Gold Star, `honey`)
+  - Lv 7: Catalog Pioneer (120 prods, 1200 pts, Gold Star+, `fresh_sage`)
+  - Lv 8: Master Contributor (250 prods, 2500 pts, Emerald Gem, `deep_sage`)
+  - Lv 9: Catalog Legend (500 prods, 5000 pts, Sapphire Crown, `almost_black`)
+  - Lv 10: Expyrico Champion (1000 prods, 10000 pts, Diamond Starburst, `deep_sage`)
+- Define `expyricoBadgeColorTokenSchema`: `z.enum(['fresh_sage', 'deep_sage', 'mint_mist', 'honey', 'soft_butter', 'pebble', 'almost_black'])`.
 - Define `contributorLevelsSettingSchema`:
   - `enabled: z.boolean().default(true)`
-  - `levels: z.array(contributorLevelTierSchema).min(1)`
+  - `levels: z.array(contributorLevelTierSchema).min(1).superRefine(...)`:
+    - Refinement enforces strictly ascending `minPoints` (e.g. tier[i+1].minPoints > tier[i].minPoints).
+    - Refinement enforces ascending `productsReq` and unique level numbers (1..N).
+    - Refinement enforces badge colors belong strictly to `expyricoBadgeColorTokenSchema`.
 - Implement `computeContributorProgression(stats, customLevels?)`:
-  - Input: `{ productsCount: number, photosCount?: number, approvedCount?: number, editsCount?: number }`, optional custom levels list from admin settings.
-  - Output:
-    - `currentLevel`: 1..N
-    - `title`: string
-    - `badgeKey`: string
-    - `totalPoints`: number
-    - `nextLevel`: number | null
-    - `nextLevelTitle`: string | null
-    - `nextLevelPoints`: number | null
-    - `pointsToNextLevel`: number
-    - `productsToNextLevel`: number
-    - `progressPercent`: number (0..100)
-- Export Zod schemas:
+  - Unranked support: if `totalPoints < levels[0].minPoints`, returns `currentLevel: 0`, `title: "New Explorer"`, `badgeKey: "seedling"`, `nextLevel: 1`, and `progressPercent: Math.round((totalPoints / levels[0].minPoints) * 100)`.
+- Colors strictly mapped to Expyrico palette tokens:
+  - `fresh_sage`: `#4BAE8A`
+  - `deep_sage`: `#3A8F6F`
+  - `mint_mist`: `#D6F0E6`
+  - `honey`: `#F5A623`
+  - `soft_butter`: `#FEEFC3`
+  - `pebble`: `#8C8C85`
+  - `almost_black`: `#2C2C28`
+  - *(Off-palette arbitrary hex colors are rejected by schema validation)*
   - `contributorBadgeKeySchema`: Enum of badge icon identifiers.
   - `contributorLevelTierSchema`: Schema for an individual level tier.
   - `contributorLevelsSettingSchema`: Full admin settings schema.

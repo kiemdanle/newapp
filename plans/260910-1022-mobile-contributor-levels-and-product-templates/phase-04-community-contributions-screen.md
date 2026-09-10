@@ -5,9 +5,12 @@ status: pending
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2, 3]
+---
+
 # Phase 4: Profile Contributor Card & Next-Level Progress
 
 <!-- Updated: Validation Session 1 - Gamification Flag Hiding & Screen Persistence -->
+<!-- Updated: Red Team Review Session 1 - Live Ladder & Cache Invalidation -->
 
 ## Overview
 
@@ -29,8 +32,11 @@ Design and implement the gamified Contributor Level Card in `profile.tsx`, displ
        - Fill bar: Fresh Sage `#4BAE8A` transitioning to Honey `#F5A623`.
        - Animated width interpolation based on `progressPercent`.
      - Motivational subtitle:
-       - `"12 more products to Level 5 Catalog Explorer!"`
+       - If Level 0 (Unranked): `"0 / 10 pts • Add your first product to reach Level 1!"`
+       - If Level 1..9: `"12 more products to Level 5 Catalog Explorer!"`
        - If at Level 10: `"🏆 Maximum Level Reached • Expyrico Champion"`.
+   - **Live Ladder Integration**: Renders the exact `levels` array delivered dynamically by `useUserContributions()` (no hardcoded tier values in modal).
+   - **Cache Invalidation**: Hook invalidates `['me', 'contributions']` on screen focus and whenever a template is added or dismissed.
    - **Tap Affordance**: Tapping the card opens `ContributorLevelRoadmapModal`.
 
 2. **Roadmap Modal (`ContributorLevelRoadmapModal.tsx`)**:
