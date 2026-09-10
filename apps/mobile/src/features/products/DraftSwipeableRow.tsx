@@ -107,10 +107,10 @@ export function DraftSwipeableRow({
               style={{ color: theme.colors.text, fontWeight: '700', fontSize: 13 }}
               numberOfLines={1}
             >
-              {item.name} · Actions
+              {item.name}
             </Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1}>
-              {statusCfg ? `Status: ${statusCfg.label}` : `Updated ${formatUpdatedAt(item.updatedAt)}`}
+              {statusCfg ? statusCfg.label : `Updated ${formatUpdatedAt(item.updatedAt)}`}
             </Text>
           </View>
         </Pressable>
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   actionBtn: {
-    width: 60,
+    width: 54,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,

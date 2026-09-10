@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert, Animated, StyleSheet } from 'react-native';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import ProductDraftsScreen from '../../app/(app)/product/drafts';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
@@ -61,13 +61,15 @@ describe('<ProductDraftsScreen />', () => {
 
   it('renders draft rows with status labels and moderation feedback for changes_required', async () => {
     queueFetch(jsonResponse({ items: [DRAFT_ROW, CHANGES_ROW], nextCursor: null }));
-    const { findByTestId, getByText } = render(wrap(<ProductDraftsScreen />));
+    const { findByTestId } = render(wrap(<ProductDraftsScreen />));
 
-    expect(await findByTestId('draft-row-draft-1')).toBeTruthy();
-    expect(getByText('Frozen peas')).toBeTruthy();
-    expect(getByText('Draft')).toBeTruthy();
-    expect(getByText('Changes requested')).toBeTruthy();
-    expect(getByText('Please add a clearer name')).toBeTruthy();
+    const draftRow = within(await findByTestId('draft-row-draft-1'));
+    const changesRow = within(await findByTestId('draft-row-draft-2'));
+
+    expect(draftRow.getByText('Frozen peas')).toBeTruthy();
+    expect(draftRow.getByText('Draft')).toBeTruthy();
+    expect(changesRow.getByText('Changes requested')).toBeTruthy();
+    expect(changesRow.getByText('Please add a clearer name')).toBeTruthy();
   });
 
   it('draft/changes_required rows open the editor with resume=edit and the row feedback', async () => {
@@ -214,15 +216,17 @@ describe('<ProductDraftsScreen />', () => {
     const rowB = { ...DRAFT_ROW, id: 'row-b', name: 'Cashew Butter' };
     queueFetch(jsonResponse({ items: [rowA, rowB], nextCursor: null }));
 
-    const { findByTestId, queryByText, getByText } = render(wrap(<ProductDraftsScreen />));
-    await findByTestId('draft-row-row-a');
-    expect(getByText('Almond Milk')).toBeTruthy();
-    expect(getByText('Cashew Butter')).toBeTruthy();
+    const { findByTestId, queryByText } = render(wrap(<ProductDraftsScreen />));
+    const rowACard = within(await findByTestId('draft-row-row-a'));
+    const rowBCard = within(await findByTestId('draft-row-row-b'));
+    expect(rowACard.getByText('Almond Milk')).toBeTruthy();
+    expect(rowBCard.getByText('Cashew Butter')).toBeTruthy();
 
     const searchInput = await findByTestId('drafts-search-input');
     fireEvent.changeText(searchInput, 'Almond');
 
-    expect(getByText('Almond Milk')).toBeTruthy();
+    const filteredCard = within(await findByTestId('draft-row-row-a'));
+    expect(filteredCard.getByText('Almond Milk')).toBeTruthy();
     expect(queryByText('Cashew Butter')).toBeNull();
   });
 

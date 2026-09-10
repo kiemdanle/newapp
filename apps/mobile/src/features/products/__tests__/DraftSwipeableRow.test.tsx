@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import { DraftSwipeableRow } from '../DraftSwipeableRow';
 import type { ProductDraftRow } from '@expyrico/shared';
 import { ThemeProvider } from '../../../theme/ThemeProvider';
@@ -54,7 +54,7 @@ describe('DraftSwipeableRow', () => {
     const onPress = jest.fn();
     const onEdit = jest.fn();
 
-    const { getByText, getByTestId } = renderWithProviders(
+    const { getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockDraftItem}
         onPress={onPress}
@@ -62,13 +62,14 @@ describe('DraftSwipeableRow', () => {
       />,
     );
 
-    expect(getByText('Organic Milk')).toBeTruthy();
-    expect(getByText('Draft')).toBeTruthy();
+    const row = within(getByTestId('draft-row-draft-item-1'));
+    expect(row.getByText('Organic Milk')).toBeTruthy();
+    expect(row.getByText('Draft')).toBeTruthy();
     expect(getByTestId('draft-row-cover-placeholder')).toBeTruthy();
   });
 
   it('renders moderation feedback when changes_required', () => {
-    const { getByText } = renderWithProviders(
+    const { getByText, getByTestId } = renderWithProviders(
       <DraftSwipeableRow
         item={mockChangesItem}
         onPress={jest.fn()}
@@ -76,7 +77,8 @@ describe('DraftSwipeableRow', () => {
       />,
     );
 
-    expect(getByText('Changes requested')).toBeTruthy();
+    const row = within(getByTestId('draft-row-changes-item-1'));
+    expect(row.getByText('Changes requested')).toBeTruthy();
     expect(getByText('Please provide clearer ingredient label photo')).toBeTruthy();
   });
 
