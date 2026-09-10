@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -45,18 +46,19 @@ export function DraftSwipeableRow({
   const theme = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const statusCfg = STATUS_CONFIG[item.status];
-  const [rowWidth, setRowWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
+  const rowWidth = Math.max(windowWidth - 32, 280);
 
   const canDelete = true;
   const canAddToPantry = true;
 
-  const renderRightActions = () => {
+  const renderRightActions = useCallback(() => {
     return (
       <View
         style={[
           styles.actionDrawer,
           {
-            width: rowWidth > 0 ? rowWidth : '100%',
+            width: rowWidth,
             backgroundColor: theme.colors.bgElevated,
             borderColor: theme.colors.border,
           },
@@ -167,22 +169,30 @@ export function DraftSwipeableRow({
         </View>
       </View>
     );
-  };
+  }, [
+    item,
+    rowWidth,
+    statusCfg,
+    theme,
+    onPress,
+    onEdit,
+    onAddToPantry,
+    onDelete,
+    canAddToPantry,
+    canDelete,
+    isSubmitting,
+  ]);
 
   return (
-    <View
-      style={styles.container}
-      onLayout={(e) => {
-        const { width } = e.nativeEvent.layout;
-        if (width > 0) setRowWidth(width);
-      }}
-    >
+    <View style={styles.container}>
       <Swipeable
         ref={swipeableRef}
         renderRightActions={renderRightActions}
-        friction={1}
+        friction={1.5}
         rightThreshold={35}
         overshootRight={false}
+        activeOffsetX={[-10, 10]}
+        failOffsetY={[-8, 8]}
         onSwipeableWillOpen={() => {
           if (swipeableRef.current && onSwipeableWillOpen) {
             onSwipeableWillOpen(swipeableRef.current);
@@ -191,7 +201,6 @@ export function DraftSwipeableRow({
       >
         <Pressable
           testID={`draft-row-${item.id}`}
-          accessibilityRole="button"
           accessibilityLabel={statusCfg ? `${item.name}, ${statusCfg.label}` : item.name}
           onPress={() => onPress(item)}
           style={({ pressed }) => ({
