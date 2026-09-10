@@ -43,7 +43,11 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
     <Pressable
       testID={`contributed-card-${item.id}`}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ${statusConfig.label}`}
+      accessibilityLabel={
+        item.status !== 'active'
+          ? `${item.name}, ${statusConfig.label}`
+          : item.name
+      }
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
@@ -100,7 +104,7 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
             </Text>
           ) : null}
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            {formattedDate}
+            Added {formattedDate}
           </Text>
         </View>
         {item.barcode ? (

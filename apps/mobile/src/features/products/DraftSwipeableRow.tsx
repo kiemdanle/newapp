@@ -128,7 +128,11 @@ export function DraftSwipeableRow({
         <Pressable
           testID={`draft-row-${item.id}`}
           accessibilityRole="button"
-          accessibilityLabel={`${item.name}, ${statusCfg.label}`}
+          accessibilityLabel={
+            item.status !== 'active'
+              ? `${item.name}, ${statusCfg.label}`
+              : item.name
+          }
           onPress={() => onPress(item)}
           style={({ pressed }) => ({
             flexDirection: 'row',

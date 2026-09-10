@@ -95,7 +95,11 @@ export function DraftGridCard({
         <Pressable
           testID={`draft-grid-card-${item.id}`}
           accessibilityRole="button"
-          accessibilityLabel={`${item.name}, ${statusCfg.label}`}
+          accessibilityLabel={
+            item.status !== 'active'
+              ? `${item.name}, ${statusCfg.label}`
+              : item.name
+          }
           onPress={() => onPress(item)}
           style={({ pressed }) => [
             styles.card,
