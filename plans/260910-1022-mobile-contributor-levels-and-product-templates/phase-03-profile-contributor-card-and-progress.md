@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Backend Contributions API & Template Dismissal"
-status: pending
+status: complete
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2]

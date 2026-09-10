@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Profile Contributor Card & Next-Level Progress"
-status: pending
+status: complete
 priority: P1
 effort: "1.5h"
 dependencies: [1, 2, 3]

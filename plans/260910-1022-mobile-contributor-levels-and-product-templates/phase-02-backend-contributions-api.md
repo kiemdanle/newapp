@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Admin Dashboard Level Editor & Toggle"
-status: pending
+status: complete
 priority: P1
 effort: "2h"
 dependencies: [1]

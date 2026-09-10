@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Community Contributions Screen"
-status: pending
+status: complete
 priority: P1
 effort: "1.5h"
 dependencies: [3, 4]

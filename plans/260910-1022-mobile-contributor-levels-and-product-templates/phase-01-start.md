@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Shared Contributor Levels & Seeding"
-status: pending
+status: complete
 priority: P1
 effort: "1h"
 dependencies: []

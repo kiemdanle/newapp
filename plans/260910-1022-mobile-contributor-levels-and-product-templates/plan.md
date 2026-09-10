@@ -1,7 +1,7 @@
 ---
 title: "Community Contributor Levels, Admin Level Editor & Product Templates"
 description: "Introduce a Google Maps Local Guides-style 10-tier community contributor ranking and leveling system with seeded defaults, customizable and toggleable via the Admin Dashboard, separate 'My Contributed Products' from personal 'Product Templates', and enable full Edit/Add/Delete slide-left actions across all templates."
-status: pending
+status: in_progress
 priority: P1
 effort: "8h"
 tags: [mobile, admin, api, shared, gamification, contributor-levels, profile, templates, pantry]
@@ -56,27 +56,27 @@ This plan establishes a complete end-to-end community contribution and progressi
 
 | # | Phase | Status | Summary |
 |---|-------|--------|---------|
-| 1 | [Phase 1: Shared Contributor Levels & Seeding](./phase-01-start.md) | Pending | Define seeded 10-tier levels, Zod schemas, progression formula, and admin setting schemas in `@expyrico/shared`. |
-| 2 | [Phase 2: Admin Dashboard Level Editor & Toggle](./phase-02-backend-contributions-api.md) | Pending | Build Settings > Contributor levels page in `apps/admin` with master toggle, 10-tier editor, and audit logging. |
-| 3 | [Phase 3: Backend Contributions API & Template Dismissal](./phase-03-profile-contributor-card-and-progress.md) | Pending | Implement `GET /v1/me/contributions` reading admin-configured levels, and add `isDismissedFromTemplates` to allow deleting templates safely. |
-| 4 | [Phase 4: Profile Contributor Card & Next-Level Progress](./phase-04-community-contributions-screen.md) | Pending | Add Hero Contributor card, progress bar to next level, and 10-level Roadmap modal in `profile.tsx` (gated by admin toggle). |
-| 5 | [Phase 5: Community Contributions Screen](./phase-05-fast-add-product-templates-and-swipe-menu.md) | Pending | Build `CommunityContributionsScreen` listing all contributed catalog products with review statuses and timestamps. |
-| 6 | [Phase 6: Fast-Add Product Templates & Swipe Actions](./phase-06-testing-and-verification.md) | Pending | Unify Product Templates screen so every item reveals Edit, Add to Pantry, and Delete (dismissal) actions on swipe-left. |
-| 7 | [Phase 7: Testing, Build & Device Verification](./phase-07-admin-dashboard-feature-flag-toggle.md) | Pending | Unit & integration tests across shared/admin/api/mobile, local Gradle APK build, and ADB install & check on device `96d9c774`. |
+| 1 | [Phase 1: Shared Contributor Levels & Seeding](./phase-01-start.md) | Complete | Define seeded 10-tier levels, Zod schemas, progression formula, and admin setting schemas in `@expyrico/shared`. |
+| 2 | [Phase 2: Admin Dashboard Level Editor & Toggle](./phase-02-backend-contributions-api.md) | Complete | Build Settings > Contributor levels page in `apps/admin` with master toggle, 10-tier editor, and audit logging. |
+| 3 | [Phase 3: Backend Contributions API & Template Dismissal](./phase-03-profile-contributor-card-and-progress.md) | Complete | Implement `GET /v1/me/contributions` reading admin-configured levels, and add `isDismissedFromTemplates` to allow deleting templates safely. |
+| 4 | [Phase 4: Profile Contributor Card & Next-Level Progress](./phase-04-community-contributions-screen.md) | Complete | Add Hero Contributor card, progress bar to next level, and 10-level Roadmap modal in `profile.tsx` (gated by admin toggle). |
+| 5 | [Phase 5: Community Contributions Screen](./phase-05-fast-add-product-templates-and-swipe-menu.md) | Complete | Build `CommunityContributionsScreen` listing all contributed catalog products with review statuses and timestamps. |
+| 6 | [Phase 6: Fast-Add Product Templates & Swipe Actions](./phase-06-testing-and-verification.md) | Complete | Re-orient template screen to personal quick-add restocker with universal slide-left Edit, Add to Pantry, and Delete actions. |
+| 7 | [Phase 7: Testing, Build & Device Verification](./phase-07-admin-dashboard-feature-flag-toggle.md) | In progress | Unit & integration tests across shared/admin/api/mobile, local Gradle APK build, and ADB install & check on device `96d9c774` (contributor card pending API deployment). |
 
 ## Success Criteria
 
-- [ ] `@expyrico/shared` exports seeded `DEFAULT_CONTRIBUTOR_LEVELS`, `computeContributorProgression`, and admin settings schemas.
-- [ ] Admin dashboard under **Settings > Contributor levels** provides a master enable/disable toggle and an interactive editor for all 10 levels.
-- [ ] Admins can edit titles, points, badge icons, and colors, or reset to recommended defaults, with full audit logging.
-- [ ] `GET /v1/me/contributions` returns computed contributor level, total points, next level progress, and contributed catalog products.
-- [ ] User profile (`profile.tsx`) features an interactive Contributor Level card with medal icon, title, and animated progress bar to next level (hidden when disabled by admin).
-- [ ] Tapping the Contributor card opens the `ContributorLevelRoadmapModal` showcasing all 10 levels and unlocked perks.
-- [ ] "Community Contributions" screen displays all user-created catalog items with status badges (`Catalog Active`, `Awaiting Review`, `Changes Requested`).
-- [ ] "Product Templates" screen allows fast pantry re-adds and reveals **Edit**, **Add to Pantry**, and **Delete** on **every** item.
-- [ ] Deleting an active template removes it from the user's template list without deleting or breaking the public community catalog product.
-- [ ] All automated test suites pass across `packages/shared`, `api`, `apps/admin`, and `apps/mobile`.
-- [ ] Debug APK builds cleanly via Gradle and installs via ADB on device `96d9c774`.
+- [x] `@expyrico/shared` exports seeded `DEFAULT_CONTRIBUTOR_LEVELS`, `computeContributorProgression`, and admin settings schemas.
+- [x] Admin dashboard under **Settings > Contributor levels** provides a master enable/disable toggle and an interactive editor for all 10 levels.
+- [x] Admins can edit titles, points, badge icons, and colors, or reset to recommended defaults, with full audit logging.
+- [x] `GET /v1/me/contributions` returns computed contributor level, total points, next level progress, and contributed catalog products.
+- [x] User profile (`profile.tsx`) features an interactive Contributor Level card with medal icon, title, and animated progress bar to next level (hidden when disabled by admin).
+- [x] Tapping the Contributor card opens the `ContributorLevelRoadmapModal` showcasing all 10 levels and unlocked perks.
+- [x] "Community Contributions" screen displays all user-created catalog items with status badges (`Catalog Active`, `Awaiting Review`, `Changes Requested`).
+- [x] "Product Templates" screen allows fast pantry re-adds and reveals **Edit**, **Add to Pantry**, and **Delete** on **every** item.
+- [x] Deleting an active template removes it from the user's template list without deleting or breaking the public community catalog product.
+- [ ] All automated test suites pass across `packages/shared`, `api`, `apps/admin`, and `apps/mobile` (scoped feature suites pass 100%; mobile has 4 pre-existing non-scoped failures).
+- [x] Debug APK builds cleanly via Gradle and installs via ADB on device `96d9c774`.
 
 ## Validation Log
 ### Session 1 — 2026-09-10

@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Fast-Add Product Templates & Swipe Actions"
-status: pending
+status: complete
 priority: P1
 effort: "1.5h"
 dependencies: [3]

@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "Comprehensive Testing, Build & Device Verification"
-status: pending
+status: in_progress
 priority: P1
 effort: "1h"
 dependencies: [1, 2, 3, 4, 5, 6]
@@ -52,8 +52,8 @@ Execute comprehensive unit, integration, and UI tests across `@expyrico/shared`,
 
 ## Success Criteria
 
-- [ ] All tests pass across `packages/shared`, `api`, `apps/admin`, and `apps/mobile`.
-- [ ] No regression in existing pantry, barcode scan, or review routes.
-- [ ] Workspace typecheck passes cleanly across all packages (`turbo run typecheck`).
-- [ ] Android debug APK builds and installs cleanly on device `96d9c774`.
-- [ ] Visual screenshots verify the contributor level card, contributions list, and template slide-left menu on device.
+- [ ] All tests pass across `packages/shared`, `api`, `apps/admin`, and `apps/mobile` (scoped feature suites pass 100%; mobile has 4 pre-existing non-scoped failures).
+- [x] No regression in existing pantry, barcode scan, or review routes.
+- [x] Workspace typecheck passes cleanly across all packages (`turbo run typecheck`).
+- [x] Android debug APK builds and installs cleanly on device `96d9c774`.
+- [ ] Visual screenshots verify the contributor level card, contributions list, and template slide-left menu on device (template swipe menu verified on device 96d9c774; contributor card pending remote API deployment).
