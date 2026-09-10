@@ -15,8 +15,8 @@ const STATUS_CONFIG: Record<
   { label: string; text: string; bg: string }
 > = {
   active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6' },
-  pending: { label: 'Awaiting review', text: '#B45309', bg: '#FEEFC3' },
-  changes_required: { label: 'Changes requested', text: '#E0442A', bg: '#FDE8E8' },
+  pending: { label: 'Awaiting review', text: '#8C8C85', bg: '#F0F0ED' },
+  changes_required: { label: 'Changes requested', text: '#2C2C28', bg: '#FEEFC3' },
   report_hidden: { label: 'Under review', text: '#8C8C85', bg: '#F0F0ED' },
   merged_into: { label: 'Merged', text: '#8C8C85', bg: '#F0F0ED' },
   draft: { label: 'Draft', text: '#8C8C85', bg: '#F0F0ED' },

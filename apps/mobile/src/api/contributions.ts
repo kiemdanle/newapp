@@ -24,14 +24,16 @@ export function useUserContributions(options?: { limit?: number; offset?: number
 export function useUserContributionsInfinite(options?: {
   status?: 'all' | 'active' | 'pending' | 'changes_required';
   q?: string;
+  sort?: 'newest' | 'oldest' | 'name_asc' | 'name_desc';
   limit?: number;
 }) {
   const status = options?.status ?? 'all';
   const q = options?.q?.trim() ?? '';
+  const sort = options?.sort ?? 'newest';
   const limit = Math.min(100, Math.max(1, options?.limit ?? 20));
 
   return useInfiniteQuery<UserContributionsResponse>({
-    queryKey: [...CONTRIBUTIONS_QUERY_KEY, 'infinite', status, q, limit],
+    queryKey: [...CONTRIBUTIONS_QUERY_KEY, 'infinite', status, q, sort, limit],
     initialPageParam: 0,
     queryFn: async ({ pageParam = 0 }) => {
       const qs = new URLSearchParams();
@@ -39,6 +41,7 @@ export function useUserContributionsInfinite(options?: {
       qs.set('limit', String(limit));
       if (status !== 'all') qs.set('status', status);
       if (q) qs.set('q', q);
+      if (sort !== 'newest') qs.set('sort', sort);
       return await apiClient.get<UserContributionsResponse>(`/me/contributions?${qs.toString()}`);
     },
     getNextPageParam: (lastPage) => (lastPage.hasMore ? (lastPage.nextOffset ?? undefined) : undefined),

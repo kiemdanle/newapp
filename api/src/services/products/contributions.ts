@@ -15,6 +15,7 @@ export interface UserContributionsQuery {
   offset?: number | undefined;
   status?: 'all' | 'active' | 'pending' | 'changes_required' | undefined;
   q?: string | undefined;
+  sort?: 'newest' | 'oldest' | 'name_asc' | 'name_desc' | undefined;
 }
 
 export async function getUserContributions(
@@ -126,7 +127,14 @@ export async function getUserContributions(
           },
         },
       },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      orderBy:
+        options?.sort === 'oldest'
+          ? [{ createdAt: 'asc' as const }, { id: 'asc' as const }]
+          : options?.sort === 'name_asc'
+            ? [{ name: 'asc' as const }, { id: 'asc' as const }]
+            : options?.sort === 'name_desc'
+              ? [{ name: 'desc' as const }, { id: 'desc' as const }]
+              : [{ createdAt: 'desc' as const }, { id: 'desc' as const }],
       take: limit + 1,
       skip: offset,
     }),

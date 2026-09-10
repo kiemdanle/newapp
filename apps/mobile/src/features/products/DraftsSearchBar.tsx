@@ -74,9 +74,10 @@ export function DraftsSearchBar({
       {/* View Mode Toggle Button */}
       {onToggleViewMode ? (
         <Pressable
-        testID="drafts-view-mode-toggle-btn"
-        accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
-        onPress={onToggleViewMode}
+          testID="drafts-view-mode-toggle-btn"
+          accessibilityRole="button"
+          accessibilityLabel={viewMode === 'grid' ? 'Switch to list view' : 'Switch to grid view'}
+          onPress={onToggleViewMode}
         style={({ pressed }) => [
           styles.toggleBtn,
           {

@@ -352,6 +352,68 @@ describe('User Contributions & Template Dismissal API', () => {
     const sBody = searchRes.json();
     expect(sBody.items).toHaveLength(1);
     expect(sBody.items[0].name).toBe('Special Vintage Tea');
+    await app.close();
+  });
+
+  it('supports server-side pagination-aware sorting (oldest, name_asc, newest) across >20 items', async () => {
+    const app = await buildServer();
+    const user = await makeUser();
+    const headers = await authHeaders(user.id);
+    const prisma = getPrisma();
+
+    // Create 25 items with alphabetical names and distinct dates
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const baseTime = new Date('2026-01-01T00:00:00.000Z').getTime();
+    const data = Array.from({ length: 25 }, (_, i) => ({
+      name: `Product ${alphabet[i]} Item`,
+      createdByUserId: user.id,
+      status: 'active' as const,
+      source: 'user' as const,
+      createdAt: new Date(baseTime + i * 86400000), // Day 0 to 24
+    }));
+    await prisma.product.createMany({ data });
+
+    // 1. Sort name_asc page 1 (limit 10)
+    const nameAscP1 = await app.inject({
+      method: 'GET',
+      url: '/v1/me/contributions?limit=10&offset=0&sort=name_asc',
+      headers,
+    });
+    expect(nameAscP1.statusCode).toBe(200);
+    const p1Items = nameAscP1.json().items;
+    expect(p1Items).toHaveLength(10);
+    expect(p1Items[0].name).toBe('Product A Item');
+    expect(p1Items[9].name).toBe('Product J Item');
+
+    // Sort name_asc page 2 (limit 10, offset 10) - must continue from K to T
+    const nameAscP2 = await app.inject({
+      method: 'GET',
+      url: '/v1/me/contributions?limit=10&offset=10&sort=name_asc',
+      headers,
+    });
+    expect(nameAscP2.statusCode).toBe(200);
+    const p2Items = nameAscP2.json().items;
+    expect(p2Items).toHaveLength(10);
+    expect(p2Items[0].name).toBe('Product K Item');
+    expect(p2Items[9].name).toBe('Product T Item');
+
+    // 2. Sort oldest page 1 (limit 10) - must start with Day 0 (A)
+    const oldestP1 = await app.inject({
+      method: 'GET',
+      url: '/v1/me/contributions?limit=10&offset=0&sort=oldest',
+      headers,
+    });
+    expect(oldestP1.statusCode).toBe(200);
+    expect(oldestP1.json().items[0].name).toBe('Product A Item');
+
+    // 3. Sort newest page 1 (limit 10) - must start with Day 24 (Y)
+    const newestP1 = await app.inject({
+      method: 'GET',
+      url: '/v1/me/contributions?limit=10&offset=0&sort=newest',
+      headers,
+    });
+    expect(newestP1.statusCode).toBe(200);
+    expect(newestP1.json().items[0].name).toBe('Product Y Item');
 
     await app.close();
   });

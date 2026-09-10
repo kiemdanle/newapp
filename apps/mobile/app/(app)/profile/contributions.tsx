@@ -49,6 +49,7 @@ export default function CommunityContributionsScreen() {
   } = useUserContributionsInfinite({
     status: activeFilter,
     q: debouncedQuery,
+    sort: selectedSort,
     limit: 20,
   });
 
