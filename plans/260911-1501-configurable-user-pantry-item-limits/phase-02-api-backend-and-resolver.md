@@ -65,23 +65,30 @@ Implement the backend settings store, in-memory caching with TTL and invalidatio
         ```
         This serializes concurrent double-cancellations immediately. If status is already `'cancelled'`, `assertTransition` rejects the second request without touching quota or record locks.
      2. Re-verify `giverUserId === actorId` and `status === 'claimed' && recordId`.
-     3. **Discover Linked Record Metadata**:
+     3. **Discover Linked Record Ownership**:
         ```sql
-        SELECT id, user_id AS "userId", household_id AS "householdId", quantity::float, status
+        SELECT id, user_id AS "userId", household_id AS "householdId"
         FROM records WHERE id = ${giveaway.recordId}::uuid
         ```
         Explicitly project `user_id AS "userId"` to prevent undefined property errors (Advisory Finding F03).
-     4. **User Quota & Household Lock (Before Record Row Lock)**:
-        If `linkedRecord.status === 'consumed' && linkedRecord.quantity === 0`:
-        - Acquire `lockUserPantryQuota(tx, linkedRecord.userId)`.
-        - If household, acquire `lockHouseholdRow(tx, linkedRecord.householdId)`.
-        - Call `assertCanAddPantryItems(linkedRecord.userId, 1, tx)`. If at capacity, throw 409 `ITEM_LIMIT_REACHED` so transaction rolls back cleanly, keeping giveaway in `claimed` state and record in `consumed` state.
-     5. **Record Row Lock Last**:
+     4. **Acquire Owner Quota & Household Lock Unconditionally (Before Record Row Lock)**:
+        - Acquire `await lockUserPantryQuota(tx, linkedRecordMeta.userId)`.
+        - If household: acquire `await lockHouseholdRow(tx, linkedRecordMeta.householdId)`.
+        Acquiring owner quota unconditionally before taking the record row lock guarantees that no concurrent transaction for this owner can interleave, consume items, or create replacement items while cancellation is deciding.
+     5. **Record Row Lock & Locked State Classification**:
         ```sql
         SELECT id, quantity::float, status FROM records WHERE id = ${giveaway.recordId}::uuid FOR UPDATE
         ```
-        Restore record (`quantity: restoreQty, status: 'active', consumedAt: null`) and update giveaway to `'cancelled'`.
-        This sequence preserves global lock order (Giveaway -> Quota -> Household -> Record) and is completely deadlock-free with PATCH (which only locks Quota -> Household -> Record and never locks giveaways).
+        Under the exclusive record lock, classify the fresh transition:
+        - **Reactivation Branch** (`freshRecord.status === 'consumed' && freshRecord.quantity === 0`):
+          This is a positive active-count transition (+1 active item).
+          Call `assertCanAddPantryItems(linkedRecordMeta.userId, 1, tx)`. If at capacity, throw 409 `ITEM_LIMIT_REACHED` so transaction rolls back cleanly, keeping giveaway in `claimed` state and record in `consumed` state.
+          If allowed, reactivate record: `status: 'active', quantity: restoreQty, consumedAt: null`.
+        - **Active Increment Branch** (`freshRecord.status === 'active'`):
+          Item is already active (quota-neutral, +0 active items).
+          Increment existing quantity: `quantity: freshRecord.quantity + restoreQty` (retains existing active inventory, never overwriting active quantity).
+     6. Update giveaway status to `'cancelled'`.
+     This sequence preserves global lock order (Giveaway -> Quota -> Household -> Record) and is completely deadlock-free with PATCH (which only locks Quota -> Household -> Record and never locks giveaways).
 8. **Deterministic Composite Cursor Delta Sync & HTTP Response Adapter (`sync.ts`)**:
    - Update `SyncOutcome` in `api/src/services/records/sync.ts` to include:
      ```typescript
@@ -211,9 +218,12 @@ Implement the backend settings store, in-memory caching with TTL and invalidatio
    - When status is updated: lock in transaction, re-read row, compute `isBecomingActive`. If true, assert quota for `quotaOwnerId`.
 7. **Update `giveaways/cancel.ts`**:
    - Lock giveaway row first via `FOR UPDATE`, re-verifying giver authorization and transition state.
-   - Query record metadata with `user_id AS "userId"`.
-   - If consumed with quantity 0, acquire `lockUserPantryQuota` and `lockHouseholdRow` (if household), and assert quota before taking record `FOR UPDATE` lock.
-   - Restore inventory and update giveaway to cancelled; quota rejection rolls back both.
+   - Query record ownership with `user_id AS "userId"`.
+   - Unconditionally acquire `lockUserPantryQuota` (and `lockHouseholdRow` if household).
+   - Lock record row via `FOR UPDATE` and classify transition from locked row:
+     - If consumed and quantity 0: assert quota, then reactivate (`status = 'active', quantity = restoreQty, consumedAt = null`); quota rejection rolls back both giveaway and record.
+     - If active: increment quantity (`quantity = freshRecord.quantity + restoreQty`), no quota assertion needed.
+   - Update giveaway to cancelled.
 8. **Update `sync.ts` (Service and Route)**:
    - In `api/src/services/records/sync.ts`: Add `nextCursor` and `hasMore` to `SyncOutcome`. Combine cursor seek and visibility via `AND: [seekCondition, visibilityCondition]`.
    - In `api/src/routes/records/sync.ts`: Pass `nextCursor` and `hasMore` to HTTP response.

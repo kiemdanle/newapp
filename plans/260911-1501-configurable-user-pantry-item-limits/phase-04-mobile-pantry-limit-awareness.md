@@ -56,21 +56,16 @@ Equip the mobile React Native app with real-time pantry limit awareness and offl
      - Prune `syncQuotaErrorsStore` upon successful sync or local deletion.
    - **Record Card Sync Error Badge (`RecordCard.tsx`)**:
      - If record `clientId` is in `syncQuotaErrorsStore`, render amber warning chip: *"Saved locally — server capacity reached. Free space to sync."* (Advisory Finding F16).
-6. **Deterministic Composite Cursor Delta Sync Drainage & Resumable Checkpointing in `pullSince()`**:
-   - **No Arbitrary Page Limit**: Accounts with tens of thousands of historical or shared household records (which are not bounded by the active pantry quota) must drain completely without looping.
-   - **Resumable Drainage Checkpointing (`pantry.resumableSync.v1`)**:
-     - Persist active drainage state in AsyncStorage under key `pantry.resumableSync.v1`:
-       `{ cursor: { updatedAt: string; id: string }, initialServerTime: string }`
-     - If sync was previously interrupted (app killed, connection dropped), resume drainage from the persisted cursor and retain `initialServerTime`.
-     - Each page applied updates `pantry.resumableSync.v1` with `res.nextCursor`.
-     - When all pages are completely drained (`hasMore === false`):
-       1. Advance checkpoint: `await saveLastSync(new Date(initialServerTime))`.
-       2. Clear resumable checkpoint: `await removeItem('pantry.resumableSync.v1')`.
+6. **Deterministic Composite Cursor Delta Sync Drainage in `pullSince()`**:
+   - **No Arbitrary Page Limit**: Accounts with tens of thousands of historical or shared household records (which are not bounded by the active pantry quota) must drain completely without looping or stopping at an artificial page ceiling.
+   - **Uncapped Non-Persistent In-Memory Drainage Loop**:
+     - Drainage state is maintained strictly in function memory during `pullSince()`, requiring no global AsyncStorage keys and completely eliminating cross-account cursor leakage or stale cursor resumption after account sign-out / database reset (Advisory Review Blocker).
+     - If a network interruption occurs mid-drainage, the next sync simply restarts from `lastSyncAt`. Because WatermelonDB record processing is fully idempotent (keyed by `client_id`), re-applying previously received pages is 100% safe and conflict-free.
+     - Checkpoint `saveLastSync(new Date(initialServerTime))` is advanced **ONLY AFTER** all pages drain completely without error (`hasMore === false`).
    - **Implementation Structure**:
      ```typescript
-     const resumable = await loadResumableSync(); // { cursor, initialServerTime }
-     let cursor = resumable?.cursor ?? null;
-     let initialServerTime = resumable?.initialServerTime ?? null;
+     let cursor: { updatedAt: string; id: string } | null = null;
+     let initialServerTime: string | null = null;
      let hasMore = true;
 
      while (hasMore) {
@@ -85,20 +80,15 @@ Equip the mobile React Native app with real-time pantry limit awareness and offl
        }
        await applySyncChanges(res.changes, res.deletedIds, res.conflicts);
        if (res.hasMore && (!res.nextCursor || (cursor && res.nextCursor.id === cursor.id && res.nextCursor.updatedAt === cursor.updatedAt))) {
-         // Non-advancing cursor protocol error: clear resumable state and abort without advancing lastSync!
-         await clearResumableSync();
+         // Non-advancing cursor protocol error: abort without advancing lastSync!
          throw new Error('Sync protocol error: non-advancing cursor received');
        }
        cursor = res.nextCursor ?? null;
        hasMore = Boolean(res.hasMore && cursor);
-       if (hasMore && cursor) {
-         await saveResumableSync({ cursor, initialServerTime });
-       }
      }
      // Advance checkpoint ONLY AFTER all pages are completely drained without error:
      if (!hasMore && initialServerTime) {
        await saveLastSync(new Date(initialServerTime));
-       await clearResumableSync();
      }
      ```
    - **Preserve Quota-Rejected Local Writes on Pull**: In `applySyncChanges`, do NOT let a server pull overwrite a pending local restore if `syncQuotaErrorsStore.has(ch.clientId)`. Only `scope_changed` forces overwrite; `item_limit_reached` retains local pending row with error badge (Advisory Findings F01, F07, F12).
@@ -171,12 +161,8 @@ runSync()
    - In `AddRecordForm.tsx`, pass `userId: currentUserId` into `createLocalRecord`.
    - Render warning banner at 90% and blocking banner at 100%.
 4. **Refactor `pushPending()` & `pullSince()` in `sync.ts`**:
-   - Execute `deletes` first.
-   - Query surviving dirty rows (`pending_delete = false`).
-   - Isolate 409 `item_limit_reached` on both `POST` and `PATCH`.
-   - Add composite cursor loop in `pullSince()` using `nextCursor` while `hasMore === true`, with resumable AsyncStorage state (`pantry.resumableSync.v1`).
-   - Advance checkpoint `saveLastSync(initialServerTime)` and clear resumable state only when `hasMore === false`.
-5. **Write Unit & Resilience Tests in `sync-quota-resilience.test.ts`**:
+   - Add uncapped composite cursor loop in `pullSince()` using `nextCursor` while `hasMore === true`, maintaining cursor state in-memory.
+   - Advance checkpoint `saveLastSync(initialServerTime)` only when `hasMore === false` has been reached cleanly.
    - Test disjoint workset: offline create then delete does not POST destroyed model.
    - Test PATCH restoration 409 isolation: rejected restore does not abort subsequent consumption updates or `pullSince`.
    - Test offline quota overflow followed by delete and successful retry.
@@ -193,6 +179,6 @@ runSync()
 - [ ] Offline creates and edits followed by offline deletion do not crash with destroyed model errors.
 - [ ] 409 quota errors on both POST and PATCH are isolated and never wedge the sync loop.
 - [ ] Delta synchronization drains deterministically over equal-timestamp page boundaries without dropping rows or imposing an arbitrary page cap.
-- [ ] Interrupted multi-page synchronization resumes from the persisted cursor checkpoint instead of restarting from the beginning.
+- [ ] In-memory drainage prevents cross-account cursor leakage or stale resumption after sign-out / database reset.
 - [ ] Incomplete delta drainage does not advance `lastSync` checkpoint.
 - [ ] All Jest unit and resilience tests pass in `apps/mobile`.
