@@ -123,14 +123,6 @@ export async function createOrResumeDraft(
   const outcome = await lookupProductV2(identifierInput, { id: actor.id, role: 'user' });
 
   if (outcome.outcome === 'editable_private') {
-    if (input.name && !outcome.product.name.trim()) {
-      const updated = await getPrisma().product.update({
-        where: { id: outcome.product.id },
-        data: { name: input.name.trim(), version: { increment: 1 } },
-        include: PRODUCT_INCLUDE,
-      });
-      return { product: toApiProduct(updated, { kind: 'privileged' }), resumed: true };
-    }
     return { product: outcome.product, resumed: true };
   }
   if (outcome.outcome !== 'not_found') {

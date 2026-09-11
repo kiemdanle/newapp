@@ -271,4 +271,93 @@ describe('<NewProductScreen />', () => {
     fireEvent.press(skipBtn);
     expect(navigation.goBack).toHaveBeenCalled();
   });
+
+  it('dirty untitled draft: prompts with alert on back navigation instead of silently deleting', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    __setRouteParams({ productId: 'draft-empty-1', resume: 'edit' });
+    queueFetch(jsonResponse({ ...PRODUCT, id: 'draft-empty-1', name: '' }));
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+    fireEvent.changeText(getByTestId('draft-name'), 'Brand New Name');
+
+    const beforeRemoveCall = (navigation.addListener as jest.Mock).mock.calls.find(([event]) => event === 'beforeRemove');
+    expect(beforeRemoveCall).toBeTruthy();
+    const preventDefault = jest.fn();
+    beforeRemoveCall![1]({ preventDefault, data: { action: {} } });
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Discard unsaved changes?',
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts/draft-empty-1'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('dirty untitled draft: close button prompts with alert instead of silently deleting', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    __setRouteParams({ productId: 'draft-empty-1', resume: 'edit' });
+    queueFetch(jsonResponse({ ...PRODUCT, id: 'draft-empty-1', name: '' }));
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+    fireEvent.changeText(getByTestId('draft-name'), 'Fresh changes');
+
+    fireEvent.press(getByTestId('product-new-close-btn'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Discard unsaved changes?',
+      expect.any(String),
+      expect.any(Array),
+    );
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts/draft-empty-1'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('clean untitled draft with existing photos is preserved on exit without silent deletion', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    __setRouteParams({ productId: 'draft-photo-1', resume: 'edit' });
+    queueFetch(
+      jsonResponse({
+        ...PRODUCT,
+        id: 'draft-photo-1',
+        name: '',
+        photos: [{ id: 'ph-1', position: 0, publicUrl: 'http://cdn/ph1.jpg' }],
+      }),
+    );
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    fireEvent.press(getByTestId('product-new-close-btn'));
+
+    expect(navigation.goBack).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts/draft-photo-1'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('clean untitled draft without photos discards placeholder and handles failed DELETE gracefully', async () => {
+    __setRouteParams({ productId: 'draft-clean-1', resume: 'edit' });
+    queueFetch(jsonResponse({ ...PRODUCT, id: 'draft-clean-1', name: '', photos: [] }));
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    // Mock DELETE failure
+    queueFetch(problemResponse('internal_error', 500, 'Server error'));
+
+    // Should not throw or crash
+    fireEvent.press(getByTestId('product-new-close-btn'));
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
 });

@@ -69,45 +69,54 @@ export default function NewProductScreen() {
   useFocusEffect(
     useCallback(() => {
       const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
-        if (productId && product && product.status === 'draft' && !product.name.trim()) {
-          void discardDraftMutation.mutateAsync(productId).catch(() => {});
-          if (userId) void removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+        if (dirtyRef.current) {
+          e.preventDefault();
+          Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
+            { text: 'Keep editing', style: 'cancel' },
+            {
+              text: 'Discard',
+              style: 'destructive',
+              onPress: async () => {
+                const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
+                if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
+                  try {
+                    await discardDraftMutation.mutateAsync(productId);
+                  } catch {
+                    // best effort
+                  }
+                  const effBarcode = barcode || product.barcode || null;
+                  const effQr = qr || product.qrPayload || null;
+                  if (userId && (effBarcode || effQr)) {
+                    void removeDraftLocalState(userId, { barcode: effBarcode, qr: effQr });
+                  }
+                }
+                dirtyRef.current = false;
+                setDirty(false);
+                // @ts-expect-error — same generic-NavigationProp gap as above.
+                navigation.dispatch(e.data.action);
+              },
+            },
+          ]);
           return;
         }
-        if (!dirtyRef.current) return;
-        e.preventDefault();
-        Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
-          { text: 'Keep editing', style: 'cancel' },
-          {
-            text: 'Discard',
-            style: 'destructive',
-            onPress: () => {
-              dirtyRef.current = false;
-              setDirty(false);
-              // @ts-expect-error — same generic-NavigationProp gap as above.
-              navigation.dispatch(e.data.action);
-            },
-          },
-        ]);
+
+        // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on back navigation.
+        const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
+        if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
+          void discardDraftMutation.mutateAsync(productId).catch(() => {});
+          const effBarcode = barcode || product.barcode || null;
+          const effQr = qr || product.qrPayload || null;
+          if (userId && (effBarcode || effQr)) {
+            void removeDraftLocalState(userId, { barcode: effBarcode, qr: effQr });
+          }
+        }
       });
       return unsubscribe;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigation, productId, product, discardDraftMutation, userId, barcode, qr]),
   );
-  const handleClose = async () => {
+  const handleClose = () => {
     queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
-    if (productId && product && product.status === 'draft' && !product.name.trim()) {
-      try {
-        await discardDraftMutation.mutateAsync(productId);
-      } catch {
-        // best effort
-      }
-      if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
-      dirtyRef.current = false;
-      setDirty(false);
-      navigation.goBack();
-      return;
-    }
     if (dirtyRef.current) {
       Alert.alert('Discard unsaved changes?', "Your edits to this product haven't been saved.", [
         { text: 'Keep editing', style: 'cancel' },
@@ -115,13 +124,18 @@ export default function NewProductScreen() {
           text: 'Discard',
           style: 'destructive',
           onPress: async () => {
-            if (productId && product && product.status === 'draft' && !product.name.trim()) {
+            const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
+            if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
               try {
                 await discardDraftMutation.mutateAsync(productId);
               } catch {
                 // best effort
               }
-              if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+              const effBarcode = barcode || product.barcode || null;
+              const effQr = qr || product.qrPayload || null;
+              if (userId && (effBarcode || effQr)) {
+                void removeDraftLocalState(userId, { barcode: effBarcode, qr: effQr });
+              }
             }
             dirtyRef.current = false;
             setDirty(false);
@@ -130,6 +144,16 @@ export default function NewProductScreen() {
         },
       ]);
     } else {
+      // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on exit.
+      const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
+      if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
+        void discardDraftMutation.mutateAsync(productId).catch(() => {});
+        const effBarcode = barcode || product.barcode || null;
+        const effQr = qr || product.qrPayload || null;
+        if (userId && (effBarcode || effQr)) {
+          void removeDraftLocalState(userId, { barcode: effBarcode, qr: effQr });
+        }
+      }
       navigation.goBack();
     }
   };
