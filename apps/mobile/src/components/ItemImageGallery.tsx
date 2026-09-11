@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Dimensions,
   Image,
   LayoutChangeEvent,
@@ -68,21 +67,9 @@ export function ItemImageGallery({
   }, [photos.length, activeIndex]);
 
   const canAddMore = Boolean(onAddPhoto && photos.length < maxPhotos);
-
   const handleDeletePress = () => {
     if (!onDeletePhoto) return;
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to remove this photo from this item?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDeletePhoto(activeIndex),
-        },
-      ],
-    );
+    onDeletePhoto(activeIndex);
   };
 
   if (!photos || photos.length === 0) {

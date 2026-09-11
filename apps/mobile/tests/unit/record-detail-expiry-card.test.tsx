@@ -204,8 +204,7 @@ describe('RecordDetail Expiry Card', () => {
     expect(changeCoverBtn).toBeTruthy();
   });
 
-  it('allows deleting active photo with confirmation alert in RecordDetail', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
+  it('allows deleting active photo with bespoke DeletePhotoConfirmModal in RecordDetail', () => {
     (recordsApi.useRecord as jest.Mock).mockReturnValue({
       id: 'test-record-1',
       serverId: 'srv-1',
@@ -232,26 +231,20 @@ describe('RecordDetail Expiry Card', () => {
     expect(deleteBtn).toBeTruthy();
 
     fireEvent.press(deleteBtn);
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Delete Photo',
-      expect.stringContaining('Are you sure you want to remove this photo'),
-      expect.any(Array),
-    );
+
+    // Bespoke confirmation modal is displayed
+    expect(screen.getByTestId('delete-photo-confirm-modal')).toBeTruthy();
+    expect(screen.getByText('Delete Photo?')).toBeTruthy();
 
     // Confirm deletion
-    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
-    const confirmBtn = buttons.find((b) => b.text === 'Delete');
-    confirmBtn?.onPress?.();
+    fireEvent.press(screen.getByTestId('delete-photo-confirm-btn'));
 
     expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
       localPhotos: ['/path/photo2.jpg'],
     });
-
-    alertSpy.mockRestore();
   });
 
-  it('renders Change cover button and triggers cover photo replacement prompt', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
+  it('renders Change cover button and opens bespoke PhotoSourcePickerModal', () => {
     (recordsApi.useRecord as jest.Mock).mockReturnValue({
       id: 'test-record-1',
       serverId: 'srv-1',
@@ -279,12 +272,12 @@ describe('RecordDetail Expiry Card', () => {
     expect(screen.getByText('Change cover')).toBeTruthy();
 
     fireEvent.press(changeCoverBtn);
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Change Cover Photo',
-      'Choose how you want to update this photo',
-      expect.any(Array),
-    );
-    alertSpy.mockRestore();
+
+    // Bespoke PhotoSourcePickerModal is opened with camera and gallery options
+    expect(screen.getByTestId('photo-source-picker-modal')).toBeTruthy();
+    expect(screen.getByText('Change Cover Photo')).toBeTruthy();
+    expect(screen.getByTestId('photo-source-take-photo-btn')).toBeTruthy();
+    expect(screen.getByTestId('photo-source-gallery-btn')).toBeTruthy();
   });
 
   it('allows making non-cover photo the cover via Make cover button', () => {
@@ -357,20 +350,17 @@ describe('RecordDetail Expiry Card', () => {
     });
 
     renderWithTheme(<RecordDetail />, 'expyrico');
-
     const deleteBtn = screen.getByTestId('gallery-delete-photo');
     expect(deleteBtn).toBeTruthy();
 
     fireEvent.press(deleteBtn);
-    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
-    const confirmBtn = buttons.find((b) => b.text === 'Delete');
-    confirmBtn?.onPress?.();
+    expect(screen.getByTestId('delete-photo-confirm-modal')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('delete-photo-confirm-btn'));
 
     // Saves empty localPhotos for this item, preserving shared catalog product
     expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
       localPhotos: [],
       photoUrl: null,
     });
-    alertSpy.mockRestore();
   });
 });

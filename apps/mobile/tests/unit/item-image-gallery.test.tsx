@@ -90,7 +90,7 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
     expect(handleAdd).toHaveBeenCalledTimes(1);
   });
 
-  it('renders Delete button and triggers onDeletePhoto after confirmation alert', () => {
+  it('renders Delete button and delegates to onDeletePhoto handler without native Alert', () => {
     const handleDelete = jest.fn();
     const alertSpy = jest.spyOn(Alert, 'alert');
 
@@ -104,17 +104,7 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
     expect(deleteBtn).toBeTruthy();
 
     fireEvent.press(deleteBtn);
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Delete Photo',
-      expect.stringContaining('Are you sure you want to remove this photo'),
-      expect.any(Array),
-    );
-
-    // Trigger the destructive action from the alert buttons
-    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
-    const deleteConfirm = buttons.find((b) => b.text === 'Delete');
-    deleteConfirm?.onPress?.();
-
+    expect(alertSpy).not.toHaveBeenCalled();
     expect(handleDelete).toHaveBeenCalledWith(0);
     alertSpy.mockRestore();
   });

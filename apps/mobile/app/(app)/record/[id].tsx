@@ -18,6 +18,9 @@ import { useActiveGiveawaysForRecord } from '../../../src/api/giveaways';
 import { useUndoToastStore } from '../../../src/store/undoToast';
 import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
 import { DiscardReasonModal } from '../../../src/components/DiscardReasonModal';
+import { PhotoSourcePickerModal } from '../../../src/components/PhotoSourcePickerModal';
+import { DeletePhotoConfirmModal } from '../../../src/components/DeletePhotoConfirmModal';
+import { PhotoLimitModal } from '../../../src/components/PhotoLimitModal';
 import type { Household } from '@expyrico/shared';
 import { useProduct } from '../../../src/api/products';
 import { useSessionStore } from '../../../src/auth/session-store';
@@ -58,6 +61,13 @@ export default function RecordDetail() {
   const [pendingReplaceIndex, setPendingReplaceIndex] = useState<number | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [photoSourceModal, setPhotoSourceModal] = useState<{
+    visible: boolean;
+    mode: 'cover' | 'add' | 'replace';
+    index: number;
+  }>({ visible: false, mode: 'add', index: 0 });
+  const [deleteTargetIndex, setDeleteTargetIndex] = useState<number | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   const { data: householdsData } = useMyHouseholds();
   const households = householdsData?.items ?? [];
   const { data: activeGiveaways } = useActiveGiveawaysForRecord(record?.id, record?.serverId);
@@ -234,30 +244,11 @@ export default function RecordDetail() {
   };
 
   const handleChangeCover = (index: number = 0) => {
-    const title = index === 0 ? 'Change Cover Photo' : 'Replace Photo';
-    Alert.alert(title, 'Choose how you want to update this photo', [
-      {
-        text: 'Take Photo',
-        onPress: () => {
-          setPendingReplaceIndex(index);
-          setShowCameraModal(true);
-        },
-      },
-      {
-        text: 'Choose from Gallery',
-        onPress: async () => {
-          try {
-            const picked = await choosePhotos(1);
-            if (picked.length > 0 && picked[0]) {
-              await replacePhotoAt(index, picked[0]);
-            }
-          } catch (err) {
-            handlePhotoPickerError(err, 'gallery');
-          }
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setPhotoSourceModal({
+      visible: true,
+      mode: index === 0 ? 'cover' : 'replace',
+      index,
+    });
   };
 
   const handleSetCover = async (index: number) => {
@@ -270,42 +261,28 @@ export default function RecordDetail() {
 
   const handleAddPhoto = () => {
     if (displayedPhotos.length >= 5) {
-      Alert.alert('Photo Limit Reached', 'You can attach up to 5 photos per item. Remove an existing photo to add a new one.', [{ text: 'OK' }]);
+      setShowLimitModal(true);
       return;
     }
-    Alert.alert('Add Item Photo', 'Choose how you want to add a photo', [
-      {
-        text: 'Take Photo',
-        onPress: () => {
-          setPendingReplaceIndex(null);
-          setShowCameraModal(true);
-        },
-      },
-      {
-        text: 'Choose from Gallery',
-        onPress: async () => {
-          try {
-            const remaining = 5 - displayedPhotos.length;
-            if (remaining <= 0) return;
-            const picked = await choosePhotos(remaining);
-            if (picked.length > 0) {
-              await savePhotosToRecord(picked);
-            }
-          } catch (err) {
-            handlePhotoPickerError(err, 'gallery');
-          }
-        },
-      },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    setPhotoSourceModal({
+      visible: true,
+      mode: 'add',
+      index: 0,
+    });
   };
 
   const handlePickPhoto = () => handleChangeCover(0);
 
-  const handleDeletePhoto = async (index: number) => {
-    if (index < 0 || index >= displayedPhotos.length) return;
-    const photoToDelete = displayedPhotos[index];
-    const updated = displayedPhotos.filter((_, i) => i !== index);
+  const handleDeletePhoto = (index: number) => {
+    setDeleteTargetIndex(index);
+  };
+
+  const executeDeletePhoto = async () => {
+    if (deleteTargetIndex === null || deleteTargetIndex < 0 || deleteTargetIndex >= displayedPhotos.length) return;
+    const idx = deleteTargetIndex;
+    setDeleteTargetIndex(null);
+    const photoToDelete = displayedPhotos[idx];
+    const updated = displayedPhotos.filter((_, i) => i !== idx);
     if (record.photoUrl === photoToDelete || updated.length === 0) {
       await patchLocalRecord(record.id, {
         localPhotos: updated,
@@ -315,6 +292,30 @@ export default function RecordDetail() {
       await patchLocalRecord(record.id, {
         localPhotos: updated,
       });
+    }
+  };
+
+  const handleChooseGalleryFromModal = async () => {
+    if (photoSourceModal.mode === 'add') {
+      try {
+        const remaining = 5 - displayedPhotos.length;
+        if (remaining <= 0) return;
+        const picked = await choosePhotos(remaining);
+        if (picked.length > 0) {
+          await savePhotosToRecord(picked);
+        }
+      } catch (err) {
+        handlePhotoPickerError(err, 'gallery');
+      }
+    } else {
+      try {
+        const picked = await choosePhotos(1);
+        if (picked.length > 0 && picked[0]) {
+          await replacePhotoAt(photoSourceModal.index, picked[0]);
+        }
+      } catch (err) {
+        handlePhotoPickerError(err, 'gallery');
+      }
     }
   };
   const handleSaveQuickEdit = async (patch: {
@@ -835,6 +836,44 @@ export default function RecordDetail() {
         onClose={() => setShowDiscardReasonModal(false)}
         onSelectReason={handleSelectDiscardReason}
       />
+      {/* Bespoke Photo Source Picker Bottom Sheet */}
+      <PhotoSourcePickerModal
+        visible={photoSourceModal.visible}
+        title={
+          photoSourceModal.mode === 'cover'
+            ? 'Change Cover Photo'
+            : photoSourceModal.mode === 'replace'
+              ? 'Replace Photo'
+              : 'Add Item Photo'
+        }
+        subtitle={
+          photoSourceModal.mode === 'cover'
+            ? 'Select a new photo to represent this pantry item'
+            : photoSourceModal.mode === 'replace'
+              ? 'Update this photo with a new capture or upload'
+              : 'Snap or choose photos to attach to this item (up to 5)'
+        }
+        onClose={() => setPhotoSourceModal((prev) => ({ ...prev, visible: false }))}
+        onTakePhoto={() => {
+          setPendingReplaceIndex(photoSourceModal.mode === 'add' ? null : photoSourceModal.index);
+          setShowCameraModal(true);
+        }}
+        onChooseGallery={handleChooseGalleryFromModal}
+      />
+
+      {/* Bespoke Delete Photo Confirmation Modal */}
+      <DeletePhotoConfirmModal
+        visible={deleteTargetIndex !== null}
+        onClose={() => setDeleteTargetIndex(null)}
+        onConfirmDelete={executeDeletePhoto}
+      />
+
+      {/* Photo Limit Reached Modal */}
+      <PhotoLimitModal
+        visible={showLimitModal}
+        maxPhotos={5}
+        onClose={() => setShowLimitModal(false)}
+      />
     </View>
   );
 }
@@ -1218,11 +1257,15 @@ export function RecordLocationRow({
       >
         <Pressable
           testID="reassign-modal-backdrop"
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss pantry move dialog"
           style={styles.modalBackdrop}
           onPress={() => setModalVisible(false)}
         >
           <Pressable
             testID="reassign-modal-card"
+            accessibilityRole="none"
+            accessible={false}
             style={[
               styles.modalCard,
               {
