@@ -90,6 +90,7 @@ export interface ProductRow {
   brand: string | null;
   category: string | null;
   imageUrl: string | null;
+  defaultShelfLifeDays?: number | null;
   source: 'off' | 'upcitemdb' | 'user';
   status: 'draft' | 'pending' | 'changes_required' | 'active' | 'report_hidden' | 'merged_into';
   version: number;

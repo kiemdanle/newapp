@@ -74,6 +74,23 @@ export async function handleProducts(method: string, url: string, req: IncomingM
     if (!p) return { status: 404, body: { code: 'not_found' } };
     return { status: 200, body: fullProductWithReviewsDto(p) };
   }
+  // --- Photo upload (admin upload to product) ---
+  const photoUpload = path.match(/^\/v1\/products\/([^/]+)\/photos$/);
+  if (method === 'POST' && photoUpload) {
+    const p = store.products.find((x) => x.id === photoUpload[1]);
+    if (!p) return { status: 404, body: { code: 'not_found' } };
+    const newPhoto = {
+      id: `photo-uploaded-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      position: p.photos.length,
+      thumbnailUrl: `/public-media/${p.id}/thumb-${Date.now()}.webp`,
+      displayUrl: `/public-media/${p.id}/display-${Date.now()}.webp`,
+      moderationStatus: 'approved' as const,
+    };
+    p.photos.push(newPhoto);
+    p.version += 1;
+    return { status: 201, body: fullProductDto(p) };
+  }
+
 
   // --- Photo reorder (admin bypasses ownership) ---
   const photoOrder = path.match(/^\/v1\/products\/([^/]+)\/photos\/order$/);

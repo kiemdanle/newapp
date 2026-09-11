@@ -658,4 +658,41 @@ describe('admin direct photo management — audit and version bump', () => {
     expect(logs).toHaveLength(0);
     await app.close();
   });
+
+  it('compensates public bytes and returns 409 if active product has reached max photos', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const owner = await makeUserForAdmin();
+    const product = await getPrisma().product.create({ data: { barcode: `bc-${randomUUID()}`, name: 'Active Full', source: 'user', createdByUserId: owner.id, status: 'active' } });
+
+    // Seed 5 photos to hit MAX_PHOTOS_PER_PRODUCT
+    for (let i = 0; i < 5; i++) {
+      await getPrisma().productPhoto.create({
+        data: {
+          productId: product.id,
+          position: i,
+          uploadedByUserId: owner.id,
+          moderationStatus: 'approved',
+          mimeType: 'image/webp',
+          displayByteSize: 100,
+          displayWidth: 100,
+          displayHeight: 100,
+          thumbnailByteSize: 50,
+          thumbnailWidth: 50,
+          thumbnailHeight: 50,
+          publicStorageKey: `public/products/${product.id}/photo-${i}`,
+        },
+      });
+    }
+
+    const uploadRes = await app.inject({
+      method: 'POST',
+      url: `/v1/products/${product.id}/photos`,
+      headers: { ...headers, 'content-type': `multipart/form-data; boundary=${CORRECTION_BOUNDARY}` },
+      payload: multipartBody([{ name: 'file', filename: 'extra.jpg', contentType: 'image/jpeg', content: await correctionJpegBytes() }]),
+    });
+    expect(uploadRes.statusCode).toBe(409);
+    expect(uploadRes.json().code).toBe('photo_limit_reached');
+    await app.close();
+  });
 });

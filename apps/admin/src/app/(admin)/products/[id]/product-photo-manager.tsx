@@ -27,11 +27,9 @@ interface Photo {
   thumbnailUrl: string;
   displayUrl: string;
 }
-
-const MAX_PHOTOS = 10;
+const MAX_PHOTOS = 5;
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 export function ProductPhotoManager({ productId, photos }: { productId: string; photos: Photo[] }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +94,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
     // Filter and validate MIME types
     const invalidTypes = files.filter((f) => !ALLOWED_MIME_TYPES.includes(f.type));
     if (invalidTypes.length > 0) {
-      setErr(`Unsupported file type(s). Only JPEG, PNG, and WebP images are allowed.`);
+      setErr(`Unsupported file type(s). Only JPEG and PNG images are allowed.`);
       return;
     }
 
@@ -178,19 +176,16 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
           </Button>
         )}
       </div>
-
-      {/* Hidden Native File Input */}
       <input
         ref={fileInputRef}
         type="file"
         multiple
-        accept="image/jpeg,image/png,image/webp"
+        accept="image/jpeg,image/png"
         className="hidden"
         onChange={(e) => {
           if (e.target.files) handleFiles(e.target.files);
         }}
       />
-
       {/* Upload Dropzone */}
       {order.length < MAX_PHOTOS && (
         <div
@@ -230,7 +225,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                 Drag &amp; drop product images here, or <span className="text-primary underline">browse</span>
               </p>
               <p className="text-[11px] text-neutral-mid">
-                Supports WebP, JPEG, PNG up to 5 MB each. ({MAX_PHOTOS - order.length} slots remaining)
+                Supports JPEG and PNG up to 5 MB each. ({MAX_PHOTOS - order.length} slots remaining)
               </p>
             </div>
           )}
@@ -241,7 +236,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
       {order.length === 0 ? (
         <div className="flex flex-col items-center justify-center p-8 rounded-2xl border border-dashed border-neutral-200 text-neutral-mid text-xs">
           <ImageIcon size={28} className="mb-2 text-neutral-mid/50" />
-          <span>No photos attached to this product catalog entry.</span>
+          <span>No photos.</span>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -256,7 +251,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={resolveAdminPhotoUrl('product', productId, photo, 'thumb')}
-                  alt={`Photo ${i + 1}`}
+                  alt={i === 0 ? 'Cover photo' : `Photo ${i + 1}`}
                   className="h-full w-full object-cover"
                 />
                 <span
@@ -292,7 +287,8 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                       disabled={pending || uploading || i === 0}
                       onClick={() => move(i, -1)}
                       className="h-7 w-7 p-0 rounded-lg"
-                      title="Move earlier in order"
+                      title="Move photo earlier"
+                      aria-label="Move photo earlier"
                     >
                       <ArrowUp size={13} />
                     </Button>
@@ -302,7 +298,8 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                       disabled={pending || uploading || i === order.length - 1}
                       onClick={() => move(i, 1)}
                       className="h-7 w-7 p-0 rounded-lg"
-                      title="Move later in order"
+                      title="Move photo later"
+                      aria-label="Move photo later"
                     >
                       <ArrowDown size={13} />
                     </Button>
@@ -313,7 +310,8 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                     disabled={pending || uploading}
                     onClick={() => remove(photo.id)}
                     className="h-7 w-7 p-0 rounded-lg text-red-600 hover:bg-red-50"
-                    title="Delete this photo"
+                    title="Remove photo"
+                    aria-label="Remove photo"
                   >
                     <Trash2 size={13} />
                   </Button>

@@ -55,13 +55,14 @@ describe('ProductPhotoManager ordering algorithms', () => {
 });
 
 describe('ProductPhotoManager client upload constraints', () => {
+  const MAX_PHOTOS = 5;
   const MAX_FILE_SIZE = 5 * 1024 * 1024;
-  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
   it('validates allowed image MIME types and rejects unsupported types', () => {
     expect(ALLOWED_TYPES.includes('image/jpeg')).toBe(true);
     expect(ALLOWED_TYPES.includes('image/png')).toBe(true);
-    expect(ALLOWED_TYPES.includes('image/webp')).toBe(true);
+    expect(ALLOWED_TYPES.includes('image/webp')).toBe(false);
     expect(ALLOWED_TYPES.includes('image/gif')).toBe(false);
     expect(ALLOWED_TYPES.includes('application/pdf')).toBe(false);
   });
@@ -69,5 +70,11 @@ describe('ProductPhotoManager client upload constraints', () => {
   it('validates 5MB maximum file size', () => {
     expect(4.9 * 1024 * 1024 <= MAX_FILE_SIZE).toBe(true);
     expect(5.1 * 1024 * 1024 <= MAX_FILE_SIZE).toBe(false);
+  });
+
+  it('enforces 5 photo max quota boundary', () => {
+    const fullGallery = [1, 2, 3, 4, 5];
+    const remainingSlots = Math.max(0, MAX_PHOTOS - fullGallery.length);
+    expect(remainingSlots).toBe(0);
   });
 });

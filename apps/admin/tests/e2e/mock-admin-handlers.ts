@@ -63,6 +63,7 @@ function productRow(p: ProductRow) {
     brand: p.brand,
     category: p.category,
     imageUrl: p.imageUrl,
+    defaultShelfLifeDays: p.defaultShelfLifeDays ?? null,
     source: p.source,
     status: p.status,
     version: p.version,
@@ -392,7 +393,14 @@ export async function handleAdmin(
       if (typeof body.name === 'string') p.name = body.name;
       if ('brand' in body) p.brand = (body.brand as string | null) ?? null;
       if ('category' in body) p.category = (body.category as string | null) ?? null;
-      p.version += 1;
+      if ('description' in body) p.description = (body.description as string | null) ?? null;
+      if ('barcode' in body) {
+        if (p.barcode !== null && (body.barcode === null || body.barcode === '')) {
+          return { status: 400, body: { code: 'validation_error', title: 'Cannot clear existing barcode' } };
+        }
+        p.barcode = (body.barcode as string | null) ?? null;
+      }
+      if ('defaultShelfLifeDays' in body) p.defaultShelfLifeDays = (body.defaultShelfLifeDays as number | null) ?? null;
       return { status: 200, body: productRow(p) };
     }
   }

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -64,6 +64,44 @@ export function ProductActions({
     form.description !== baseline.description ||
     form.barcode !== baseline.barcode ||
     form.defaultShelfLifeDays !== baseline.defaultShelfLifeDays;
+
+  useEffect(() => {
+    setVersion(initialVersion);
+    const nextBaseline = {
+      name: initialName,
+      brand: initialBrand ?? '',
+      category: initialCategory ?? '',
+      description: initialDescription ?? '',
+      barcode: initialBarcode ?? '',
+      defaultShelfLifeDays:
+        initialDefaultShelfLifeDays !== null && initialDefaultShelfLifeDays !== undefined
+          ? String(initialDefaultShelfLifeDays)
+          : '',
+    };
+    setBaseline(nextBaseline);
+
+    setForm((current) => {
+      const wasDirty =
+        current.name !== baseline.name ||
+        current.brand !== baseline.brand ||
+        current.category !== baseline.category ||
+        current.description !== baseline.description ||
+        current.barcode !== baseline.barcode ||
+        current.defaultShelfLifeDays !== baseline.defaultShelfLifeDays;
+      return wasDirty ? current : nextBaseline;
+    });
+
+    setConflict(false);
+    setErr(null);
+  }, [
+    initialVersion,
+    initialName,
+    initialBrand,
+    initialCategory,
+    initialDescription,
+    initialBarcode,
+    initialDefaultShelfLifeDays,
+  ]);
 
   function run<T>(fn: () => Promise<ActionResult<T>>, confirmText?: string, onSuccess?: (data?: T) => void) {
     if (confirmText && !window.confirm(confirmText)) return;
@@ -283,6 +321,8 @@ export function ProductActions({
               Product Name <span className="text-destructive">*</span>
             </Label>
             <Input
+              id="name"
+              aria-label="Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="h-11 rounded-xl"
@@ -377,11 +417,12 @@ export function ProductActions({
             <Button
               size="default"
               disabled={pending || !isDirty}
+              aria-label="Save changes"
               className="rounded-xl shadow-xs gap-1.5 font-semibold"
               onClick={handleSave}
             >
               <Check size={16} />
-              <span>{pending ? 'Saving…' : 'Save Changes'}</span>
+              <span>{pending ? 'Saving…' : 'Save changes'}</span>
             </Button>
 
             {isDirty && (

@@ -166,19 +166,93 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
   const root = getConfig().media.root;
   const photoId = randomUUID();
   const variantId = randomUUID();
+
+  const preProduct = await prisma.product.findUnique({
+    where: { id: input.productId },
+    select: { id: true, status: true },
+  });
+  if (!preProduct) notFound();
+
+  const isAdminOnActive = actor.role === 'admin' && preProduct.status === 'active';
+
+  if (isAdminOnActive) {
+    const publicationId = randomUUID();
+    const publicPrefix = publicProductPhotoPrefix(input.productId, publicationId);
+
+    return withMediaMutationLease('publish_public', async () => {
+      const intent = await prisma.$transaction((tx) =>
+        prepareMediaOperation(tx, { operation: 'publish_public', keys: [publicPrefix] }),
+      );
+
+      const tempKey = `quarantine/${randomUUID()}-generated`;
+      await ensureAndWriteVariantFiles(root, tempKey, input.processed);
+      await assertMediaCapacityReservationLive(input.capacityReservationId);
+
+      try {
+        await promoteKeyPrefix(root, tempKey, publicPrefix);
+      } catch (err) {
+        await removeKeyPrefix(root, tempKey).catch(() => {});
+        throw err;
+      }
+
+      await renewMediaOperationLease(intent.id, intent.leaseOwner);
+
+      try {
+        const updated = await prisma.$transaction(async (tx) => {
+          const product = await assertPhotoMutable(actor, input.productId, tx);
+          const currentCount = await tx.productPhoto.count({ where: { productId: input.productId } });
+          if (currentCount >= MAX_PHOTOS_PER_PRODUCT) {
+            throw new AppError({
+              status: 409,
+              code: 'photo_limit_reached',
+              title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+            });
+          }
+          await tx.productPhoto.create({
+            data: {
+              id: photoId,
+              productId: input.productId,
+              position: currentCount,
+              uploadedByUserId: actor.id,
+              moderationStatus: 'approved',
+              mimeType: 'image/webp',
+              displayByteSize: input.processed.display.bytes,
+              displayWidth: input.processed.display.width,
+              displayHeight: input.processed.display.height,
+              thumbnailByteSize: input.processed.thumb.bytes,
+              thumbnailWidth: input.processed.thumb.width,
+              thumbnailHeight: input.processed.thumb.height,
+              privateStorageKey: null,
+              publicStorageKey: publicPrefix,
+            },
+          });
+          await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+          await completeMediaOperation(tx, intent.id, intent.leaseOwner);
+          await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId, approved: true } }, input.requestMeta);
+          return loadProductWithPhotos(tx, input.productId);
+        });
+        return toApiProduct(updated, actor);
+      } catch (err) {
+        await removeKeyPrefix(root, publicPrefix).catch(() => {});
+        if (err instanceof MediaOperationFencedError) {
+          throw new AppError({
+            status: 409,
+            code: ERROR_CODES.CONFLICT,
+            title: 'This upload lost a race with cleanup recovery; please retry',
+          });
+        }
+        throw err;
+      }
+    }).finally(() => releaseMediaCapacityReservation(input.capacityReservationId));
+  }
+
   const prefix = privateProductPhotoPrefix(input.productId, photoId, variantId);
 
   return withMediaMutationLease('promote_private', async () => {
     const intent = await prisma.$transaction((tx) => prepareMediaOperation(tx, { operation: 'promote_private', keys: [prefix] }));
 
-    // Write the already-generated variant buffers to a temp location, then promote
-    // (rename) the whole pair into its final key as one atomic filesystem operation.
     const tempKey = `quarantine/${randomUUID()}-generated`;
     await ensureAndWriteVariantFiles(root, tempKey, input.processed);
-
-    // Same gate `publishProductPhoto`/`publishProductEditPhoto` already apply
-    // before their first byte copy — private promotion writes final bytes too,
-    // and had no capacity-liveness check of its own until now.
     await assertMediaCapacityReservationLive(input.capacityReservationId);
 
     try {
@@ -188,11 +262,6 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
       throw err;
     }
 
-    // Renew the lease right before the reference transaction — bytes are already on
-    // disk, so this is the window `completeMediaOperation`'s fencing protects: if the
-    // transaction below is slow (e.g. `FOR UPDATE` contention) and the lease expires
-    // first, a recovery sweep could claim and delete these bytes before the reference
-    // commits. Cheap insurance for a normally-fast path.
     await renewMediaOperationLease(intent.id, intent.leaseOwner);
 
     try {
@@ -206,23 +275,13 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
             title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
           });
         }
-        const isAdminOnActive = actor.role === 'admin' && product.status === 'active';
-        let publicStorageKey: string | null = null;
-        let privateStorageKey: string | null = prefix;
-        if (isAdminOnActive) {
-          const publicationId = randomUUID();
-          publicStorageKey = publicProductPhotoPrefix(input.productId, publicationId);
-          privateStorageKey = null;
-          await copyKeyPrefix(root, prefix, publicStorageKey);
-          await removeKeyPrefix(root, prefix).catch(() => {});
-        }
         await tx.productPhoto.create({
           data: {
             id: photoId,
             productId: input.productId,
             position: currentCount,
             uploadedByUserId: actor.id,
-            moderationStatus: isAdminOnActive ? 'approved' : 'pending',
+            moderationStatus: 'pending',
             mimeType: 'image/webp',
             displayByteSize: input.processed.display.bytes,
             displayWidth: input.processed.display.width,
@@ -230,22 +289,17 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
             thumbnailByteSize: input.processed.thumb.bytes,
             thumbnailWidth: input.processed.thumb.width,
             thumbnailHeight: input.processed.thumb.height,
-            privateStorageKey,
-            publicStorageKey,
+            privateStorageKey: prefix,
+            publicStorageKey: null,
           },
         });
         await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
         await completeMediaOperation(tx, intent.id, intent.leaseOwner);
-        await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId, approved: isAdminOnActive } }, input.requestMeta);
+        await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId, approved: false } }, input.requestMeta);
         return loadProductWithPhotos(tx, input.productId);
       });
       return toApiProduct(updated, actor);
     } catch (err) {
-      // Compensate promptly; outbox recovery is the durable backstop if this itself
-      // fails (the intent was never completed, so its lease will expire and a later
-      // sweep will find and remove the unreferenced key). Removes the whole photoId
-      // directory (not just the variant-uuid leaf) since this photoId was freshly
-      // generated for this attempt alone — never leaves an empty parent behind.
       await removeKeyPrefix(root, privateProductPhotoDir(input.productId, photoId)).catch(() => {});
       if (err instanceof MediaOperationFencedError) {
         throw new AppError({
