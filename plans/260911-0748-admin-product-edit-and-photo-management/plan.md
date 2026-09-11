@@ -1,7 +1,7 @@
 ---
 title: "Admin Product Management: Direct Edits and Photo Uploads"
 description: "Enable administrators to perform comprehensive product catalog edits (name, brand, category, description, barcode, shelf life) and direct photo management (upload, set cover, reorder, delete) in the admin console."
-status: pending
+status: completed
 priority: P1
 effort: "2d"
 tags: ["admin", "products", "media", "catalog", "photos", "schema"]
@@ -65,11 +65,11 @@ The backend Fastify API already has photo endpoints (`POST /v1/products/:id/phot
 
 | # | Phase | Status | Effort | Dependencies |
 |---|-------|--------|--------|--------------|
-| 1 | [Phase 1: Schema and API Contracts for Product Edits](./phase-01-start.md) | Pending | 3h | [] |
-| 2 | [Phase 2: Admin API Client & Upload Foundation](./phase-02-admin-api-client-upload-foundation.md) | Pending | 2h | [Phase 1] |
-| 3 | [Phase 3: Product Core Details Edit Form](./phase-03-product-core-details-edit-form.md) | Pending | 3h | [Phase 1, Phase 2] |
-| 4 | [Phase 4: Photo Upload & Cover Management](./phase-04-photo-upload-cover-management.md) | Pending | 4h | [Phase 2] |
-| 5 | [Phase 5: Integration Verification & Testing](./phase-05-integration-verification-testing.md) | Pending | 2h | [Phase 3, Phase 4] |
+| 1 | [Phase 1: Schema and API Contracts for Product Edits](./phase-01-start.md) | Completed | 3h | [] |
+| 2 | [Phase 2: Admin API Client & Upload Foundation](./phase-02-admin-api-client-upload-foundation.md) | Completed | 2h | [Phase 1] |
+| 3 | [Phase 3: Product Core Details Edit Form](./phase-03-product-core-details-edit-form.md) | Completed | 3h | [Phase 1, Phase 2] |
+| 4 | [Phase 4: Photo Upload & Cover Management](./phase-04-photo-upload-cover-management.md) | Completed | 4h | [Phase 2] |
+| 5 | [Phase 5: Integration Verification & Testing](./phase-05-integration-verification-testing.md) | Completed | 2h | [Phase 3, Phase 4] |
 
 ## Key Risks & Mitigations
 
@@ -83,15 +83,15 @@ The backend Fastify API already has photo endpoints (`POST /v1/products/:id/phot
 
 ## Success Criteria
 
-- [ ] Admin can edit `name`, `brand`, `category`, `description`, `barcode`, and `defaultShelfLifeDays` from `/products/[id]` and changes persist in PostgreSQL.
-- [ ] Barcodes cannot be cleared to empty/null if already set on the product.
-- [ ] Admin can upload photos sequentially via drag-and-drop or file picker with live progress indicator.
-- [ ] Admin-uploaded photos on active products are auto-approved and published to public storage immediately.
-- [ ] Admin can set any gallery photo as the primary cover photo with a single click ("Set as Cover").
-- [ ] Admin can reorder and delete photos with instant visual feedback and atomic audit logging.
-- [ ] All forms and controls adhere strictly to the Expyrico color palette (`#4BAE8A`, `#3A8F6F`, `#F5A623`, `#FAFAF8`, `#2C2C28`, `#E0442A`).
-- [ ] All monorepo typechecks pass with 0 errors (`pnpm turbo run typecheck`).
-- [ ] Unit and integration tests pass across `packages/shared`, `api`, and `apps/admin`.
+- [x] Admin can edit `name`, `brand`, `category`, `description`, `barcode`, and `defaultShelfLifeDays` from `/products/[id]` and changes persist in PostgreSQL.
+- [x] Barcodes cannot be cleared to empty/null if already set on the product.
+- [x] Admin can upload photos sequentially via drag-and-drop or file picker with live progress indicator.
+- [x] Admin-uploaded photos on active products are auto-approved and published to public storage immediately.
+- [x] Admin can set any gallery photo as the primary cover photo with a single click ("Set as Cover").
+- [x] Admin can reorder and delete photos with instant visual feedback and atomic audit logging.
+- [x] All forms and controls adhere strictly to the Expyrico color palette (`#4BAE8A`, `#3A8F6F`, `#F5A623`, `#FAFAF8`, `#2C2C28`, `#E0442A`).
+- [x] All monorepo typechecks pass with 0 errors (`pnpm turbo run typecheck`).
+- [x] Unit and integration tests pass across `packages/shared`, `api`, and `apps/admin`.
 
 ## Validation Log
 

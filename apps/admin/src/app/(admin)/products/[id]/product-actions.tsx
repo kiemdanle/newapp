@@ -7,14 +7,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { patchProductAction, moderateProductAction } from '@/lib/actions';
 import { actionErrorMessage, isConflictCode, type ActionResult } from '@/lib/action-result';
-import { ShieldCheck, Edit, Check, AlertCircle, RefreshCw, Send, X } from 'lucide-react';
+import { ShieldCheck, Edit, Check, AlertCircle, RefreshCw, Send, X, RotateCcw } from 'lucide-react';
 
 export function ProductActions({
   id,
-  version,
-  name,
-  brand,
-  category,
+  version: initialVersion,
+  name: initialName,
+  brand: initialBrand,
+  category: initialCategory,
+  description: initialDescription,
+  barcode: initialBarcode,
+  defaultShelfLifeDays: initialDefaultShelfLifeDays,
   status,
   priorFeedback,
 }: {
@@ -23,21 +26,46 @@ export function ProductActions({
   name: string;
   brand: string | null;
   category: string | null;
+  description?: string | null;
+  barcode?: string | null;
+  defaultShelfLifeDays?: number | null;
   status: string;
   priorFeedback: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [version, setVersion] = useState(initialVersion);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
-  const [form, setForm] = useState({ name, brand: brand ?? '', category: category ?? '' });
+
+  const [baseline, setBaseline] = useState({
+    name: initialName,
+    brand: initialBrand ?? '',
+    category: initialCategory ?? '',
+    description: initialDescription ?? '',
+    barcode: initialBarcode ?? '',
+    defaultShelfLifeDays:
+      initialDefaultShelfLifeDays !== null && initialDefaultShelfLifeDays !== undefined
+        ? String(initialDefaultShelfLifeDays)
+        : '',
+  });
+
+  const [form, setForm] = useState(baseline);
   const [requestingChanges, setRequestingChanges] = useState(false);
   const [moderationNotes, setModerationNotes] = useState('');
   const needsModeration = status === 'pending';
   const awaitingResubmission = status === 'changes_required';
 
-  function run(fn: () => Promise<ActionResult<unknown>>, confirmText?: string, onSuccess?: () => void) {
+  const isDirty =
+    form.name !== baseline.name ||
+    form.brand !== baseline.brand ||
+    form.category !== baseline.category ||
+    form.description !== baseline.description ||
+    form.barcode !== baseline.barcode ||
+    form.defaultShelfLifeDays !== baseline.defaultShelfLifeDays;
+
+  function run<T>(fn: () => Promise<ActionResult<T>>, confirmText?: string, onSuccess?: (data?: T) => void) {
     if (confirmText && !window.confirm(confirmText)) return;
     setErr(null);
     setMsg(null);
@@ -46,12 +74,80 @@ export function ProductActions({
       const result = await fn();
       if (result.ok) {
         setMsg('Saved.');
-        onSuccess?.();
+        onSuccess?.(result.data);
         return;
       }
       setErr(actionErrorMessage(result));
       if (isConflictCode(result.code)) setConflict(true);
     });
+  }
+
+  function validate(): string | null {
+    if (!form.name.trim()) {
+      return 'Product name is required.';
+    }
+    // Barcode policy: once set, cannot be cleared to empty/null
+    if (baseline.barcode && !form.barcode.trim()) {
+      return 'Existing barcode cannot be removed once set.';
+    }
+    if (form.defaultShelfLifeDays.trim()) {
+      const parsed = Number(form.defaultShelfLifeDays.trim());
+      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3650) {
+        return 'Default shelf life must be a whole number between 1 and 3650 days.';
+      }
+    }
+    return null;
+  }
+
+  function handleSave() {
+    const validationError = validate();
+    if (validationError) {
+      setErr(validationError);
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      name: form.name.trim(),
+      brand: form.brand.trim() || null,
+      category: form.category.trim() || null,
+      description: form.description.trim() || null,
+    };
+
+    if (form.barcode.trim()) {
+      payload.barcode = form.barcode.trim();
+    }
+
+    if (form.defaultShelfLifeDays.trim()) {
+      payload.defaultShelfLifeDays = parseInt(form.defaultShelfLifeDays.trim(), 10);
+    } else {
+      payload.defaultShelfLifeDays = null;
+    }
+
+    run(
+      () => patchProductAction(id, version, payload),
+      undefined,
+      (updatedProduct) => {
+        if (updatedProduct && typeof updatedProduct === 'object' && 'version' in updatedProduct) {
+          const v = (updatedProduct as { version: number }).version;
+          setVersion(v);
+        }
+        setBaseline({ ...form });
+      },
+    );
+  }
+
+  function formatShelfLifeHelper(daysStr: string) {
+    const days = parseInt(daysStr.trim(), 10);
+    if (!days || isNaN(days) || days <= 0) return null;
+    if (days >= 365) {
+      const years = (days / 365).toFixed(1).replace('.0', '');
+      return `≈ ${years} year${years === '1' ? '' : 's'}`;
+    }
+    if (days >= 30) {
+      const months = Math.round(days / 30);
+      return `≈ ${months} month${months === 1 ? '' : 's'}`;
+    }
+    return null;
   }
 
   return (
@@ -122,18 +218,19 @@ export function ProductActions({
                 onClick={() =>
                   run(
                     () => moderateProductAction(id, 'approve', version),
-                    'Approve this submission? It publishes to the live catalog immediately.',
+                    'Approve and publish this product to the live catalog?',
+                    () => router.refresh(),
                   )
                 }
               >
                 <Check size={16} />
-                <span>Approve submission</span>
+                <span>Approve & publish to catalog</span>
               </Button>
               <Button
-                variant="accent"
+                variant="outline"
                 size="default"
                 disabled={pending}
-                className="rounded-xl font-semibold shadow-xs"
+                className="rounded-xl"
                 onClick={() => setRequestingChanges(true)}
               >
                 Request changes
@@ -159,26 +256,42 @@ export function ProductActions({
       )}
 
       {/* Edit Details Form */}
-      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card space-y-5">
-        <div className="flex items-center gap-2">
-          <Edit className="h-5 w-5 text-primary" />
-          <h2 className="text-base font-bold text-neutral-dark font-display">
-            Direct Catalog Edits
-          </h2>
+      <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Edit className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-base font-bold text-neutral-dark font-display">
+                Direct Catalog Edits
+              </h2>
+              <p className="text-xs text-neutral-mid">
+                Update core metadata for this product entry. All modifications are version-tracked and audited.
+              </p>
+            </div>
+          </div>
+          {isDirty && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+              Unsaved changes
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-1.5">
+          {/* Product Name */}
+          <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
-              Product Name
+              Product Name <span className="text-destructive">*</span>
             </Label>
             <Input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="h-11 rounded-xl"
+              placeholder="e.g. Khẩu trang Kenko 5D"
             />
           </div>
-          <div className="space-y-1.5">
+
+          {/* Brand */}
+          <div className="space-y-1.5 md:col-span-1">
             <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
               Brand
             </Label>
@@ -186,9 +299,12 @@ export function ProductActions({
               value={form.brand}
               onChange={(e) => setForm({ ...form, brand: e.target.value })}
               className="h-11 rounded-xl"
+              placeholder="e.g. Kenko"
             />
           </div>
-          <div className="space-y-1.5">
+
+          {/* Category */}
+          <div className="space-y-1.5 md:col-span-1">
             <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
               Category
             </Label>
@@ -196,29 +312,93 @@ export function ProductActions({
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
               className="h-11 rounded-xl"
+              placeholder="e.g. Personal Care"
+            />
+          </div>
+
+          {/* Barcode */}
+          <div className="space-y-1.5 md:col-span-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
+                Barcode / EAN
+              </Label>
+              {baseline.barcode && (
+                <span className="text-[10px] text-neutral-mid">Cannot be cleared once set</span>
+              )}
+            </div>
+            <Input
+              value={form.barcode}
+              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              className="h-11 rounded-xl font-mono"
+              placeholder="e.g. 8936012345678"
+            />
+          </div>
+
+          {/* Default Shelf Life */}
+          <div className="space-y-1.5 md:col-span-1">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
+                Shelf Life (Days)
+              </Label>
+              {formatShelfLifeHelper(form.defaultShelfLifeDays) && (
+                <span className="text-[10px] text-primary font-medium">
+                  {formatShelfLifeHelper(form.defaultShelfLifeDays)}
+                </span>
+              )}
+            </div>
+            <Input
+              type="number"
+              min="1"
+              max="3650"
+              value={form.defaultShelfLifeDays}
+              onChange={(e) => setForm({ ...form, defaultShelfLifeDays: e.target.value })}
+              className="h-11 rounded-xl"
+              placeholder="e.g. 365"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="space-y-1.5 md:col-span-3">
+            <Label className="text-xs font-semibold uppercase tracking-wider text-neutral-mid">
+              Product Description
+            </Label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={4}
+              className="w-full rounded-2xl border border-input bg-transparent px-3 py-2.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-neutral-mid/60 leading-relaxed resize-y"
+              placeholder="Detailed product specification, ingredients, usage instructions, or packaging notes…"
             />
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-neutral-100">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-neutral-100">
+          <div className="flex flex-wrap items-center gap-3">
             <Button
               size="default"
-              disabled={pending}
-              className="rounded-xl shadow-xs gap-1.5"
-              onClick={() =>
-                run(() =>
-                  patchProductAction(id, version, {
-                    name: form.name,
-                    brand: form.brand.trim() || null,
-                    category: form.category.trim() || null,
-                  }),
-                )
-              }
+              disabled={pending || !isDirty}
+              className="rounded-xl shadow-xs gap-1.5 font-semibold"
+              onClick={handleSave}
             >
               <Check size={16} />
-              <span>{pending ? 'Saving…' : 'Save core details'}</span>
+              <span>{pending ? 'Saving…' : 'Save Changes'}</span>
             </Button>
+
+            {isDirty && (
+              <Button
+                variant="outline"
+                size="default"
+                disabled={pending}
+                className="rounded-xl gap-1.5 text-neutral-mid hover:text-neutral-dark"
+                onClick={() => {
+                  setForm(baseline);
+                  setErr(null);
+                }}
+              >
+                <RotateCcw size={14} />
+                <span>Reset</span>
+              </Button>
+            )}
 
             {status === 'active' && (
               <Button
@@ -266,7 +446,7 @@ export function ProductActions({
                 onClick={() => router.refresh()}
               >
                 <RefreshCw size={14} />
-                <span>Refresh</span>
+                <span>Refresh latest</span>
               </Button>
             )}
           </div>

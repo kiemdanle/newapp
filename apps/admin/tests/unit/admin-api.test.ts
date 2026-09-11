@@ -97,6 +97,23 @@ describe('apiServerFetch / ApiError', () => {
       code: 'unknown_error',
     });
   });
+
+  it('handles FormData payloads without forcing application/json content-type', async () => {
+    const formData = new FormData();
+    formData.append('file', new Blob(['fake image'], { type: 'image/jpeg' }), 'test.jpg');
+
+    let capturedHeaders: Record<string, string> = {};
+    let capturedBody: unknown;
+    global.fetch = vi.fn(async (_url, init) => {
+      capturedHeaders = (init as RequestInit).headers as Record<string, string>;
+      capturedBody = (init as RequestInit).body;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await apiServerFetch('/v1/products/abc/photos', { method: 'POST', body: formData });
+    expect(capturedHeaders['content-type']).toBeUndefined();
+    expect(capturedBody).toBe(formData);
+  });
 });
 
 describe('serverAdminApi.users password operations', () => {

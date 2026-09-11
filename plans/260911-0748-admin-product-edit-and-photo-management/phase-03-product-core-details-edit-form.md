@@ -118,12 +118,12 @@ Redesign and expand the product editing interface in `apps/admin/src/app/(admin)
    - Add unit tests verifying form renders all fields, blocks clearing an existing barcode, triggers `patchProductAction` with complete payload, and handles validation errors.
 
 ## Success Criteria
-- [ ] Admin can view and edit Name, Brand, Category, Barcode, Shelf Life, and Description in the form.
-- [ ] Saving updates the database record and revalidates the admin page.
-- [ ] Existing barcodes cannot be cleared to empty/null.
-- [ ] Leaving optional fields empty stores `null` in the database.
-- [ ] Concurrent edits trigger version conflict notice with reload button.
-- [ ] UI is fully styled in Expyrico palette with responsive layout.
+- [x] Admin can view and edit Name, Brand, Category, Barcode, Shelf Life, and Description in the form.
+- [x] Saving updates the database record and revalidates the admin page.
+- [x] Existing barcodes cannot be cleared to empty/null.
+- [x] Leaving optional fields empty stores `null` in the database.
+- [x] Concurrent edits trigger version conflict notice with reload button.
+- [x] UI is fully styled in Expyrico palette with responsive layout.
 
 ## Risk Assessment
 - **Risk:** Admin accidentally clears required `name` field or existing barcode.

@@ -130,13 +130,13 @@ Upgrade `ProductPhotoManager` in `apps/admin/src/app/(admin)/products/[id]/produ
      - Deletion triggers confirmation and executes remove action.
 
 ## Success Criteria
-- [ ] Admin can upload multiple photos via file picker or drag-and-drop.
-- [ ] Uploads run sequentially with clear item-by-item progress.
-- [ ] Client validation prevents uploading files larger than 5MB or invalid MIME types.
-- [ ] Uploading attaches photos, Sharp processes them to WebP, and gallery updates seamlessly.
-- [ ] Admin can click "Set as Cover" to promote any photo to position 0.
-- [ ] Existing photo deletion and reorder work reliably.
-- [ ] Design matches Expyrico color requirements.
+- [x] Admin can upload multiple photos via file picker or drag-and-drop.
+- [x] Uploads run sequentially with clear item-by-item progress.
+- [x] Client validation prevents uploading files larger than 5MB or invalid MIME types.
+- [x] Uploading attaches photos, Sharp processes them to WebP, and gallery updates seamlessly.
+- [x] Admin can click "Set as Cover" to promote any photo to position 0.
+- [x] Existing photo deletion and reorder work reliably.
+- [x] Design matches Expyrico color requirements.
 
 ## Risk Assessment
 - **Risk:** Admin navigates away while multi-file upload is in flight.

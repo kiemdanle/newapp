@@ -174,6 +174,11 @@ export const serverAdminApi = {
     // `checkPhotoMutablePolicy` explicitly grants the admin role a bypass of the
     // ownership check, and audit-logs the mutation when the caller is an admin.
     photos: {
+      upload: (productId: string, formData: FormData) =>
+        apiServerFetch(`/v1/products/${productId}/photos`, {
+          method: 'POST',
+          body: formData,
+        }).then((r) => productSchema.parse(r)),
       reorder: (productId: string, photoIds: string[]) =>
         apiServerFetch(`/v1/products/${productId}/photos/order`, {
           method: 'PATCH',

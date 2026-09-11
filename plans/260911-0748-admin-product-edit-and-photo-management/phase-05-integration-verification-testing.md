@@ -64,10 +64,10 @@ Perform end-to-end verification, typechecking, and automated test execution acro
 5. Inspect `git diff` to verify only requested files are modified, no orphaned code exists, and Expyrico design rules are honored.
 
 ## Success Criteria
-- [ ] All automated test suites pass without failures or unhandled rejections.
-- [ ] TypeScript compiler passes across `@expyrico/shared`, `api`, `apps/admin`.
-- [ ] Admin audit logging is fully verified for all product updates and photo actions.
-- [ ] Working tree is clean and ready for review.
+- [x] All automated test suites pass without failures or unhandled rejections.
+- [x] TypeScript compiler passes across `@expyrico/shared`, `api`, `apps/admin`.
+- [x] Admin audit logging is fully verified for all product updates and photo actions.
+- [x] Working tree is clean and ready for review.
 
 ## Risk Assessment
 - **Risk:** Type mismatch between Next.js Server Actions serialization and fastify responses.

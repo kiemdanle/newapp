@@ -561,6 +561,47 @@ describe('admin direct correction — field patch', () => {
     const unhide = await app.inject({ method: 'PATCH', url: `/v1/admin/products/${p.id}`, headers, payload: { version: hidden.version, status: 'active' } });
     expect(unhide.statusCode).toBe(200);
   });
+
+  it('updates description and barcode, rejects duplicates with 409, and prevents clearing an existing barcode with 400', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const p1 = await getPrisma().product.create({ data: { name: 'Product 1', barcode: `bc-${randomUUID()}`, source: 'off', status: 'active' } });
+    const p2 = await getPrisma().product.create({ data: { name: 'Product 2', barcode: `bc-${randomUUID()}`, source: 'off', status: 'active' } });
+
+    // 1. Successful update of description and barcode
+    const newBarcode = `bc-updated-${randomUUID()}`;
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/${p1.id}`,
+      headers,
+      payload: { version: p1.version, description: 'Updated detailed description', barcode: newBarcode },
+    });
+    expect(res.statusCode).toBe(200);
+    const updated = await getPrisma().product.findUniqueOrThrow({ where: { id: p1.id } });
+    expect(updated.description).toBe('Updated detailed description');
+    expect(updated.barcode).toBe(newBarcode);
+
+    // 2. Reject duplicate barcode with 409
+    const dupRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/${p1.id}`,
+      headers,
+      payload: { version: updated.version, barcode: p2.barcode },
+    });
+    expect(dupRes.statusCode).toBe(409);
+    expect(dupRes.json().code).toBe('conflict');
+
+    // 3. Reject clearing an existing barcode with 400
+    const clearRes = await app.inject({
+      method: 'PATCH',
+      url: `/v1/admin/products/${p1.id}`,
+      headers,
+      payload: { version: updated.version, barcode: null },
+    });
+    expect(clearRes.statusCode).toBe(400);
+    expect(clearRes.json().code).toBe('validation_error');
+    await app.close();
+  });
 });
 
 describe('admin direct photo management — audit and version bump', () => {
@@ -586,6 +627,11 @@ describe('admin direct photo management — audit and version bump', () => {
     expect(afterAdd.version).toBe(versionBefore + 1);
 
     const photoId = uploadRes.json().photos[0].id as string;
+    const photoRow = await getPrisma().productPhoto.findUniqueOrThrow({ where: { id: photoId } });
+    expect(photoRow.moderationStatus).toBe('approved');
+    expect(photoRow.publicStorageKey).toBeTruthy();
+    expect(photoRow.privateStorageKey).toBeNull();
+
     const deleteRes = await app.inject({ method: 'DELETE', url: `/v1/products/${product.id}/photos/${photoId}`, headers });
     expect(deleteRes.statusCode).toBe(200);
     const removeLog = await getPrisma().adminAuditLog.findFirstOrThrow({ where: { adminId: admin.id, targetId: product.id, action: 'product.photo.remove' } });

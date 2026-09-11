@@ -36,11 +36,15 @@ export async function apiServerFetch<T>(path: string, opts: ApiOptions = {}): Pr
   const cookieStore = await cookies();
   const access = cookieStore.get(COOKIE_NAMES.access)?.value;
 
+  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
   const headers: Record<string, string> = {
     accept: 'application/json',
-    'content-type': 'application/json',
+    ...(isFormData ? {} : { 'content-type': 'application/json' }),
     ...(opts.headers ?? {}),
   };
+  if (isFormData) {
+    delete headers['content-type'];
+  }
   if (access && !headers.authorization) headers.authorization = `Bearer ${access}`;
 
   const init: RequestInit = {
@@ -48,8 +52,9 @@ export async function apiServerFetch<T>(path: string, opts: ApiOptions = {}): Pr
     headers,
     cache: 'no-store',
   };
-  if (opts.body !== undefined) init.body = JSON.stringify(opts.body);
-
+  if (opts.body !== undefined) {
+    init.body = isFormData ? (opts.body as FormData) : JSON.stringify(opts.body);
+  }
   const res = await fetch(`${env.apiBaseUrl}${path}`, init);
 
   if (!res.ok) {

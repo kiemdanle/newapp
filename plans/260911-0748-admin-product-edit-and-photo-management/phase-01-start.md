@@ -77,12 +77,12 @@ adminProductsPatchRoute
    - Add test case verifying attempt to clear an existing barcode returns 400 validation error.
 
 ## Success Criteria
-- [ ] `adminProductPatchSchema.parse({ version: 1, description: 'New description', barcode: '8934567890123' })` passes validation.
-- [ ] PATCH `/v1/admin/products/:id` successfully persists `description` and `barcode`.
-- [ ] PATCH `/v1/admin/products/:id` attempting to clear existing barcode returns 400 Bad Request.
-- [ ] PATCH `/v1/admin/products/:id` with duplicate barcode returns 409 Conflict with descriptive message.
-- [ ] `pnpm --filter @expyrico/shared test` passes.
-- [ ] `pnpm --filter @expyrico/api test` passes.
+- [x] `adminProductPatchSchema.parse({ version: 1, description: 'New description', barcode: '8934567890123' })` passes validation.
+- [x] PATCH `/v1/admin/products/:id` successfully persists `description` and `barcode`.
+- [x] PATCH `/v1/admin/products/:id` attempting to clear existing barcode returns 400 Bad Request.
+- [x] PATCH `/v1/admin/products/:id` with duplicate barcode returns 409 Conflict with descriptive message.
+- [x] `pnpm --filter @expyrico/shared test` passes.
+- [x] `pnpm --filter @expyrico/api test` passes.
 
 ## Risk Assessment
 - **Risk:** Prisma throws database-level `P2002` if a race condition occurs on barcode uniqueness.

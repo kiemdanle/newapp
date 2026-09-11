@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adminProductModerateRequestSchema,
   adminProductEditResolveSchema,
+  adminProductPatchSchema,
   productEditRecoverRequestSchema,
 } from '@expyrico/shared';
 import { actionErrorMessage } from '@/lib/action-result';
@@ -81,5 +82,29 @@ describe('exact decision values enforced by the shared contracts the actions sen
         ],
       }),
     ).toThrow();
+  });
+});
+
+describe('adminProductPatchSchema payload validation for direct catalog edits', () => {
+  it('validates a complete product edit payload with all fields', () => {
+    const validPayload = {
+      version: 2,
+      name: 'Khẩu trang Kenko 5D',
+      brand: 'Kenko',
+      category: 'Personal Care',
+      description: 'High-filtration 5D protective mask',
+      barcode: '8936012345678',
+      defaultShelfLifeDays: 730,
+    };
+    const parsed = adminProductPatchSchema.parse(validPayload);
+    expect(parsed.name).toBe('Khẩu trang Kenko 5D');
+    expect(parsed.description).toBe('High-filtration 5D protective mask');
+    expect(parsed.barcode).toBe('8936012345678');
+    expect(parsed.defaultShelfLifeDays).toBe(730);
+  });
+
+  it('rejects invalid defaultShelfLifeDays values', () => {
+    expect(() => adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: -5 })).toThrow();
+    expect(() => adminProductPatchSchema.parse({ version: 1, defaultShelfLifeDays: 5000 })).toThrow();
   });
 });

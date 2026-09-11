@@ -206,13 +206,23 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
             title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
           });
         }
+        const isAdminOnActive = actor.role === 'admin' && product.status === 'active';
+        let publicStorageKey: string | null = null;
+        let privateStorageKey: string | null = prefix;
+        if (isAdminOnActive) {
+          const publicationId = randomUUID();
+          publicStorageKey = publicProductPhotoPrefix(input.productId, publicationId);
+          privateStorageKey = null;
+          await copyKeyPrefix(root, prefix, publicStorageKey);
+          await removeKeyPrefix(root, prefix).catch(() => {});
+        }
         await tx.productPhoto.create({
           data: {
             id: photoId,
             productId: input.productId,
             position: currentCount,
             uploadedByUserId: actor.id,
-            moderationStatus: 'pending',
+            moderationStatus: isAdminOnActive ? 'approved' : 'pending',
             mimeType: 'image/webp',
             displayByteSize: input.processed.display.bytes,
             displayWidth: input.processed.display.width,
@@ -220,12 +230,13 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
             thumbnailByteSize: input.processed.thumb.bytes,
             thumbnailWidth: input.processed.thumb.width,
             thumbnailHeight: input.processed.thumb.height,
-            privateStorageKey: prefix,
+            privateStorageKey,
+            publicStorageKey,
           },
         });
         await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
         await completeMediaOperation(tx, intent.id, intent.leaseOwner);
-        await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId } }, input.requestMeta);
+        await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId, approved: isAdminOnActive } }, input.requestMeta);
         return loadProductWithPhotos(tx, input.productId);
       });
       return toApiProduct(updated, actor);

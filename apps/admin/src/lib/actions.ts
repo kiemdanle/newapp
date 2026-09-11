@@ -170,6 +170,15 @@ export async function recoverProductEditAction(
 }
 
 // --- Product photos (direct admin correction of a live product's own photo set) ---
+export async function uploadProductPhotoAction(
+  productId: string,
+  formData: FormData,
+): Promise<ActionResult<Product>> {
+  const result = await runAction(() => serverAdminApi.products.photos.upload(productId, formData));
+  if (result.ok) revalidatePath(`/products/${productId}`);
+  return result;
+}
+
 export async function reorderProductPhotosAction(
   productId: string,
   photoIds: string[],

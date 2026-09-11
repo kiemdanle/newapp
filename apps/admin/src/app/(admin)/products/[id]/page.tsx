@@ -127,6 +127,9 @@ export default async function ProductDetailPage({
             name={p.name}
             brand={p.brand}
             category={p.category}
+            description={p.description ?? null}
+            barcode={p.barcode ?? null}
+            defaultShelfLifeDays={p.defaultShelfLifeDays ?? null}
             status={p.status}
             priorFeedback={p.moderationNotes ?? null}
           />

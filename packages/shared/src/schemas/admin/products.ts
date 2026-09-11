@@ -84,6 +84,8 @@ export const adminProductPatchSchema = z.object({
   name: z.string().min(1).optional(),
   brand: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  barcode: z.string().nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
   defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
   status: adminProductDirectStatusSchema.optional(),

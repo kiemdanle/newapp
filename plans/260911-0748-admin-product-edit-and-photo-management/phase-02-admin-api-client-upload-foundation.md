@@ -106,11 +106,11 @@ Fastify: photoUploadRoute -> addProductPhoto
 5. Add unit test in `apps/admin/tests/unit/` testing `apiServerFetch` with `FormData` to ensure `content-type` is unset and `FormData` is passed through untouched.
 
 ## Success Criteria
-- [ ] `apiServerFetch` sends `FormData` with native boundary to Fastify without `JSON.stringify` or conflicting headers.
-- [ ] `uploadProductPhotoAction` successfully uploads a test image and returns a valid `Product` schema result.
-- [ ] Photos uploaded by admin on active products have `moderationStatus === 'approved'` and public CDN URLs.
-- [ ] Next.js path cache for `/products/[id]` is revalidated upon upload.
-- [ ] Unit tests pass in `apps/admin`.
+- [x] `apiServerFetch` sends `FormData` with native boundary to Fastify without `JSON.stringify` or conflicting headers.
+- [x] `uploadProductPhotoAction` successfully uploads a test image and returns a valid `Product` schema result.
+- [x] Photos uploaded by admin on active products have `moderationStatus === 'approved'` and public CDN URLs.
+- [x] Next.js path cache for `/products/[id]` is revalidated upon upload.
+- [x] Unit tests pass in `apps/admin`.
 
 ## Risk Assessment
 - **Risk:** Fastify rejects upload if Next.js node-fetch wraps `FormData` in an incompatible format or sets extra headers.

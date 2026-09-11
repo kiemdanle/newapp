@@ -48,19 +48,57 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
       }
     }
 
-    const after = await prisma.$transaction(async (tx) => {
-      const result = await tx.product.updateMany({
-        where: { id, version: input.version },
-        data: {
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.brand !== undefined ? { brand: input.brand } : {}),
-          ...(input.category !== undefined ? { category: input.category } : {}),
-          ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
-          ...(input.defaultShelfLifeDays !== undefined ? { defaultShelfLifeDays: input.defaultShelfLifeDays } : {}),
-          ...(input.status !== undefined ? { status: input.status } : {}),
-          version: { increment: 1 },
-        },
+    // Barcode policy: once set, cannot be cleared to empty/null
+    if (before.barcode !== null && (input.barcode === null || (input.barcode !== undefined && input.barcode.trim() === ''))) {
+      throw new AppError({
+        status: 400,
+        code: ERROR_CODES.VALIDATION,
+        title: 'Cannot clear an existing barcode from a product',
       });
+    }
+
+    const targetBarcode = input.barcode !== undefined ? (input.barcode ? input.barcode.trim() : null) : undefined;
+    if (targetBarcode !== undefined && targetBarcode !== null && targetBarcode !== before.barcode) {
+      const existing = await prisma.product.findFirst({
+        where: { barcode: targetBarcode, id: { not: id } },
+        select: { id: true, name: true },
+      });
+      if (existing) {
+        throw new AppError({
+          status: 409,
+          code: ERROR_CODES.CONFLICT,
+          title: `Barcode is already assigned to product "${existing.name}"`,
+        });
+      }
+    }
+
+    const after = await prisma.$transaction(async (tx) => {
+      let result;
+      try {
+        result = await tx.product.updateMany({
+          where: { id, version: input.version },
+          data: {
+            ...(input.name !== undefined ? { name: input.name } : {}),
+            ...(input.brand !== undefined ? { brand: input.brand } : {}),
+            ...(input.category !== undefined ? { category: input.category } : {}),
+            ...(input.description !== undefined ? { description: input.description } : {}),
+            ...(targetBarcode !== undefined ? { barcode: targetBarcode } : {}),
+            ...(input.imageUrl !== undefined ? { imageUrl: input.imageUrl } : {}),
+            ...(input.defaultShelfLifeDays !== undefined ? { defaultShelfLifeDays: input.defaultShelfLifeDays } : {}),
+            ...(input.status !== undefined ? { status: input.status } : {}),
+            version: { increment: 1 },
+          },
+        });
+      } catch (err: unknown) {
+        if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+          throw new AppError({
+            status: 409,
+            code: ERROR_CODES.CONFLICT,
+            title: 'Barcode is already assigned to another product',
+          });
+        }
+        throw err;
+      }
       if (result.count === 0) {
         const current = await tx.product.findUnique({ where: { id }, select: { version: true } });
         throw new AppError({

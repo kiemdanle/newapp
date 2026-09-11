@@ -318,6 +318,19 @@ describe('adminProductPatchSchema — I5: status restricted at the schema bounda
     expect(adminProductPatchSchema.parse({ version: 1, status: 'active' })).toEqual({ version: 1, status: 'active' });
   });
 
+  it('accepts description and barcode updates including nullable values', () => {
+    expect(adminProductPatchSchema.parse({ version: 1, description: 'Test description', barcode: '8934567890123' })).toEqual({
+      version: 1,
+      description: 'Test description',
+      barcode: '8934567890123',
+    });
+    expect(adminProductPatchSchema.parse({ version: 1, description: null, barcode: null })).toEqual({
+      version: 1,
+      description: null,
+      barcode: null,
+    });
+  });
+
   it('rejects every lifecycle status that has real publication/merge invariants before the request ever reaches the service layer', () => {
     for (const status of ['pending', 'draft', 'changes_required', 'merged_into']) {
       expect(() => adminProductDirectStatusSchema.parse(status)).toThrow();
