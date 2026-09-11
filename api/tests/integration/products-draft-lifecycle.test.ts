@@ -74,6 +74,32 @@ describe('POST /v1/products/drafts', () => {
     expect(row.name).toBe('');
     await app.close();
   });
+  it('creates a new draft with initial name when provided', async () => {
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    vi.doMock('../../src/services/products/upcitemdb-client.js', () => ({
+      lookupUpcitemdb: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    vi.resetModules();
+    const { buildServer: build2 } = await import('../../src/server.js');
+    const app = await build2();
+    const { user, headers } = await authedUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode: '1112223330009', name: 'Fresh Coconut Water' },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.resumed).toBe(false);
+    expect(body.product.name).toBe('Fresh Coconut Water');
+    const row = await getPrisma().product.findUniqueOrThrow({ where: { id: body.product.id } });
+    expect(row.createdByUserId).toBe(user.id);
+    expect(row.name).toBe('Fresh Coconut Water');
+    await app.close();
+  });
 
   it('allows draft creation when external sources are unavailable (fail-open for eligible creator)', async () => {
     vi.doMock('../../src/services/products/off-client.js', () => ({

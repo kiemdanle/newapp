@@ -57,7 +57,7 @@ export default async function ProductDetailPage({
               )}
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-neutral-dark font-display tracking-tight">
-              {p.name}
+              {p.name || <span className="italic text-neutral-mid">(Untitled product)</span>}
             </h1>
             <p className="text-sm text-neutral-mid font-medium">
               {p.brand ? <span>{p.brand}</span> : <span className="text-neutral-mid/60">No brand specified</span>}

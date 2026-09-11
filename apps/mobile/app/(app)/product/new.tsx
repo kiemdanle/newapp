@@ -69,6 +69,11 @@ export default function NewProductScreen() {
   useFocusEffect(
     useCallback(() => {
       const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
+        if (productId && product && product.status === 'draft' && !product.name.trim()) {
+          void discardDraftMutation.mutateAsync(productId).catch(() => {});
+          if (userId) void removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+          return;
+        }
         if (!dirtyRef.current) return;
         e.preventDefault();
         Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
@@ -87,17 +92,37 @@ export default function NewProductScreen() {
       });
       return unsubscribe;
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [navigation]),
+    }, [navigation, productId, product, discardDraftMutation, userId, barcode, qr]),
   );
-  const handleClose = () => {
+  const handleClose = async () => {
     queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
+    if (productId && product && product.status === 'draft' && !product.name.trim()) {
+      try {
+        await discardDraftMutation.mutateAsync(productId);
+      } catch {
+        // best effort
+      }
+      if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+      dirtyRef.current = false;
+      setDirty(false);
+      navigation.goBack();
+      return;
+    }
     if (dirtyRef.current) {
       Alert.alert('Discard unsaved changes?', "Your edits to this product haven't been saved.", [
         { text: 'Keep editing', style: 'cancel' },
         {
           text: 'Discard',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            if (productId && product && product.status === 'draft' && !product.name.trim()) {
+              try {
+                await discardDraftMutation.mutateAsync(productId);
+              } catch {
+                // best effort
+              }
+              if (userId) await removeDraftLocalState(userId, { barcode: barcode || null, qr: qr || null });
+            }
             dirtyRef.current = false;
             setDirty(false);
             navigation.goBack();
@@ -126,11 +151,14 @@ export default function NewProductScreen() {
     }
     setCreateError(null);
     try {
-      const payload = barcode
-        ? { barcode: barcode.trim() }
-        : qr
-          ? { qrPayload: qr.trim() }
-          : { barcode: undefined };
+      const payload = {
+        ...(barcode
+          ? { barcode: barcode.trim() }
+          : qr
+            ? { qrPayload: qr.trim() }
+            : { barcode: undefined }),
+        name: name.trim(),
+      };
       const { product: created } = await createOrResumeDraft.mutateAsync(payload);
       // Patch the initial name entered by the user
       try {

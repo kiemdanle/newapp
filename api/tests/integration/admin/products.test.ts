@@ -19,6 +19,41 @@ describe('GET /v1/admin/products', () => {
     expect(res.json().items.every((p: { status: string }) => p.status === 'pending')).toBe(true);
     await app.close();
   });
+  it('excludes drafts by default when no status filter is provided', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const draftBarcode = `BC-DRAFT-${Date.now()}`;
+    const activeBarcode = `BC-ACTIVE-${Date.now()}`;
+    await prisma.product.createMany({
+      data: [
+        { name: '', source: 'user', status: 'draft', barcode: draftBarcode },
+        { name: 'Active Juice', source: 'off', status: 'active', barcode: activeBarcode },
+      ],
+    });
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/products', headers });
+    expect(res.statusCode).toBe(200);
+    const items = res.json().items;
+    expect(items.some((p: { barcode: string }) => p.barcode === draftBarcode)).toBe(false);
+    expect(items.some((p: { barcode: string }) => p.barcode === activeBarcode)).toBe(true);
+    await app.close();
+  });
+
+  it('includes drafts when status=draft is explicitly requested and provides fallback for empty name', async () => {
+    const app = await buildServer();
+    const { headers } = await makeAdmin();
+    const prisma = getPrisma();
+    const draftBarcode = `BC-DRAFT-EXP-${Date.now()}`;
+    await prisma.product.create({
+      data: { name: '', source: 'user', status: 'draft', barcode: draftBarcode },
+    });
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/products?status=draft', headers });
+    expect(res.statusCode).toBe(200);
+    const draftItem = res.json().items.find((p: { barcode: string }) => p.barcode === draftBarcode);
+    expect(draftItem).toBeDefined();
+    expect(draftItem.name).toBe('(Untitled product)');
+    await app.close();
+  });
 });
 
 describe('GET /v1/admin/products/:id', () => {

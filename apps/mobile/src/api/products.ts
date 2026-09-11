@@ -56,7 +56,7 @@ export function useProduct(id: string | undefined) {
 export function useCreateOrResumeDraft() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { barcode?: string | null; qrPayload?: string | null }) => {
+    mutationFn: async (input: { barcode?: string | null; qrPayload?: string | null; name?: string }) => {
       return await apiClient.post<{ product: Product; resumed: boolean }>('/products/drafts', input);
     },
     onSuccess: () => {

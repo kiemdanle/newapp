@@ -41,7 +41,7 @@ export default async function ProductsPage({
               href={`/products/${p.id}`}
               className="font-semibold text-neutral-dark hover:text-primary transition-colors line-clamp-1"
             >
-              {p.name}
+              {p.name || <span className="italic text-neutral-mid">(Untitled product)</span>}
             </Link>
             {p.brand && <p className="text-xs text-neutral-mid truncate">{p.brand}</p>}
           </div>
@@ -136,6 +136,7 @@ export default async function ProductsPage({
             { value: 'active', label: 'Active' },
             { value: 'pending', label: 'Pending' },
             { value: 'merged_into', label: 'Merged' },
+            { value: 'draft', label: 'Draft' },
           ]}
         />
         <SelectFilter

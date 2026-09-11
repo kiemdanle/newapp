@@ -15,7 +15,7 @@ type AdminProductWithPhotos = ProductWithPhotos & {
 
 function toRow(p: AdminProductWithPhotos) {
   return {
-    id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name, description: p.description,
+    id: p.id, barcode: p.barcode, qrPayload: p.qrPayload, name: p.name || '(Untitled product)', description: p.description,
     brand: p.brand, category: p.category, imageUrl: p.imageUrl, defaultShelfLifeDays: p.defaultShelfLifeDays, source: p.source as 'off' | 'upcitemdb' | 'user',
     status: p.status as 'active' | 'pending' | 'merged_into', version: p.version,
     mergedIntoProductId: p.mergedIntoProductId, isCommunityEligible: p.isCommunityEligible,
@@ -41,7 +41,11 @@ export async function adminProductsListRoute(app: FastifyInstance) {
   app.get('/', async (req) => {
     const q = adminProductsQuerySchema.parse(req.query);
     const where: Prisma.ProductWhereInput = {};
-    if (q.status) where.status = q.status;
+    if (q.status) {
+      where.status = q.status;
+    } else {
+      where.status = { not: 'draft' };
+    }
     if (q.source) where.source = q.source;
     if (q.q) where.OR = [
       { name: { contains: q.q, mode: 'insensitive' } },
