@@ -1,11 +1,11 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
+  Animated,
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -46,232 +46,159 @@ export function DraftSwipeableRow({
   const theme = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
   const statusCfg = STATUS_CONFIG[item.status];
-  const { width: windowWidth } = useWindowDimensions();
-  const rowWidth = Math.max(windowWidth - 32, 280);
 
   const canDelete = true;
   const canAddToPantry = true;
 
-  const renderRightActions = useCallback(() => {
+  const renderRightActions = (
+    _progress: Animated.AnimatedInterpolation<number>,
+    _dragX: Animated.AnimatedInterpolation<number>,
+  ) => {
     return (
-      <View
-        style={[
-          styles.actionDrawer,
-          {
-            width: rowWidth,
-            backgroundColor: theme.colors.bgElevated,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        {/* Left Side: Product thumbnail + Name + Status */}
+      <View style={styles.rightActionsRow}>
+        {/* Edit Action */}
         <Pressable
-          style={styles.drawerLeft}
+          testID={`draft-swipe-edit-${item.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Edit ${item.name}`}
           onPress={() => {
             swipeableRef.current?.close();
-            onPress(item);
+            onEdit(item);
           }}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.accent }]}
         >
-          {item.cover ? (
-            item.cover.thumbnailUrl.startsWith('http') ? (
-              <Image
-                source={{ uri: item.cover.thumbnailUrl }}
-                style={{ width: 40, height: 40, borderRadius: theme.radii.sm }}
-              />
-            ) : (
-              <PrivateProductImage
-                target={{ kind: 'draft', productId: item.id }}
-                photoId={item.cover.photoId}
-                style={{ width: 40, height: 40, borderRadius: theme.radii.sm }}
-                variant="thumb"
-              />
-            )
-          ) : (
-            <View
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: theme.radii.sm,
-                backgroundColor: theme.colors.bg,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}
-            >
-              <Ionicons name="cube-outline" size={20} color={theme.colors.textMuted} />
-            </View>
-          )}
-
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text
-              testID={`draft-drawer-title-${item.id}`}
-              style={{ color: theme.colors.text, fontWeight: '700', fontSize: 13 }}
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1}>
-              {statusCfg ? statusCfg.label : `Updated ${formatUpdatedAt(item.updatedAt)}`}
-            </Text>
-          </View>
+          <Ionicons name="create-outline" size={20} color={theme.colors.neutralDark} />
+          <Text style={[styles.actionBtnText, { color: theme.colors.neutralDark }]}>Edit</Text>
         </Pressable>
 
-        {/* Right Side: Edit, Add, Delete actions */}
-        <View style={styles.drawerRightActions}>
+        {/* Add to Pantry Action */}
+        {canAddToPantry && onAddToPantry ? (
           <Pressable
-            testID={`draft-swipe-edit-${item.id}`}
+            testID={`draft-swipe-add-${item.id}`}
             accessibilityRole="button"
-            accessibilityLabel={`Edit ${item.name}`}
+            accessibilityLabel={`Add ${item.name} to pantry`}
             onPress={() => {
               swipeableRef.current?.close();
-              onEdit(item);
+              onAddToPantry(item);
             }}
-            style={[styles.actionBtn, { backgroundColor: theme.colors.accent }]}
+            style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
+            disabled={isSubmitting}
           >
-            <Ionicons name="create-outline" size={18} color={theme.colors.neutralDark} />
-            <Text style={[styles.actionBtnText, { color: theme.colors.neutralDark }]}>Edit</Text>
+            <Ionicons name="basket-outline" size={20} color={theme.colors.neutralDark} />
+            <Text style={[styles.actionBtnText, { color: theme.colors.neutralDark }]}>Add</Text>
           </Pressable>
+        ) : null}
 
-          {canAddToPantry && onAddToPantry ? (
-            <Pressable
-              testID={`draft-swipe-add-${item.id}`}
-              accessibilityRole="button"
-              accessibilityLabel={`Add ${item.name} to pantry`}
-              onPress={() => {
-                swipeableRef.current?.close();
-                onAddToPantry(item);
-              }}
-              style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
-              disabled={isSubmitting}
-            >
-              <Ionicons name="basket-outline" size={18} color={theme.colors.neutralDark} />
-              <Text style={[styles.actionBtnText, { color: theme.colors.neutralDark }]}>Add</Text>
-            </Pressable>
-          ) : null}
-
-          {canDelete && onDelete ? (
-            <Pressable
-              testID={`draft-swipe-delete-${item.id}`}
-              accessibilityRole="button"
-              accessibilityLabel={`Delete ${item.name}`}
-              onPress={() => {
-                swipeableRef.current?.close();
-                onDelete(item);
-              }}
-              style={[styles.actionBtn, { backgroundColor: theme.colors.danger }]}
-              disabled={isSubmitting}
-            >
-              <Ionicons name="trash-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.actionBtnText}>Delete</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        {/* Delete Action */}
+        {canDelete && onDelete ? (
+          <Pressable
+            testID={`draft-swipe-delete-${item.id}`}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${item.name}`}
+            onPress={() => {
+              swipeableRef.current?.close();
+              onDelete(item);
+            }}
+            style={[styles.actionBtn, { backgroundColor: theme.colors.danger }]}
+            disabled={isSubmitting}
+          >
+            <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+            <Text style={styles.actionBtnText}>Delete</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
-  }, [
-    item,
-    rowWidth,
-    statusCfg,
-    theme,
-    onPress,
-    onEdit,
-    onAddToPantry,
-    onDelete,
-    canAddToPantry,
-    canDelete,
-    isSubmitting,
-  ]);
+  };
 
   return (
-    <View style={styles.container}>
-      <Swipeable
-        ref={swipeableRef}
-        renderRightActions={renderRightActions}
-        friction={1.2}
-        rightThreshold={25}
-        overshootRight={false}
-        activeOffsetX={[-10, 10]}
-        failOffsetY={[-8, 8]}
-        onSwipeableWillOpen={() => {
-          if (swipeableRef.current && onSwipeableWillOpen) {
-            onSwipeableWillOpen(swipeableRef.current);
-          }
-        }}
-      >
-        <Pressable
-          testID={`draft-row-${item.id}`}
-          accessibilityLabel={statusCfg ? `${item.name}, ${statusCfg.label}` : item.name}
-          onPress={() => onPress(item)}
-          style={({ pressed }) => ({
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      friction={1}
+      rightThreshold={35}
+      containerStyle={styles.container}
+      onSwipeableWillOpen={() => {
+        if (swipeableRef.current && onSwipeableWillOpen) {
+          onSwipeableWillOpen(swipeableRef.current);
+        }
+      }}
+    >
+      <Pressable
+        testID={`draft-row-${item.id}`}
+        accessibilityLabel={statusCfg ? `${item.name}, ${statusCfg.label}` : item.name}
+        onPress={() => onPress(item)}
+        style={({ pressed }) => [
+          {
             flexDirection: 'row',
             alignItems: 'center',
             gap: theme.spacing.md,
             padding: theme.spacing.md,
             borderRadius: theme.radii.md,
+            backgroundColor: theme.colors.bgElevated,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            backgroundColor: theme.colors.bgElevated,
-          })}
-        >
-          {item.cover ? (
-            item.cover.thumbnailUrl.startsWith('http') ? (
-              <Image
-                testID="draft-row-cover"
-                source={{ uri: item.cover.thumbnailUrl }}
-                style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
-              />
-            ) : (
-              <PrivateProductImage
-                testID="draft-row-cover"
-                target={{ kind: 'draft', productId: item.id }}
-                photoId={item.cover.photoId}
-                style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
-                variant="thumb"
-              />
-            )
+            opacity: pressed ? 0.88 : 1,
+          },
+        ]}
+      >
+        {item.cover ? (
+          item.cover.thumbnailUrl.startsWith('http') ? (
+            <Image
+              testID="draft-row-cover"
+              source={{ uri: item.cover.thumbnailUrl }}
+              style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
+            />
           ) : (
-            <View
-              testID="draft-row-cover-placeholder"
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: theme.radii.sm,
-                backgroundColor: theme.colors.bg,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}
-            >
-              <Ionicons name="cube-outline" size={24} color={theme.colors.textMuted} />
-            </View>
-          )}
-
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-              Updated {formatUpdatedAt(item.updatedAt)}
-            </Text>
-            {item.status === 'changes_required' && item.moderationFeedback ? (
-              <Text style={{ color: theme.colors.danger, fontSize: 12 }} numberOfLines={1}>
-                {item.moderationFeedback}
-              </Text>
-            ) : null}
+            <PrivateProductImage
+              testID="draft-row-cover"
+              target={{ kind: 'draft', productId: item.id }}
+              photoId={item.cover.photoId}
+              style={{ width: 48, height: 48, borderRadius: theme.radii.sm }}
+              variant="thumb"
+            />
+          )
+        ) : (
+          <View
+            testID="draft-row-cover-placeholder"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: theme.radii.sm,
+              backgroundColor: theme.colors.bg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: theme.colors.border,
+            }}
+          >
+            <Ionicons name="cube-outline" size={24} color={theme.colors.textMuted} />
           </View>
+        )}
 
-          {statusCfg ? (
-            <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
-              <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
-                {statusCfg.label}
-              </Text>
-            </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+            Updated {formatUpdatedAt(item.updatedAt)}
+          </Text>
+          {item.status === 'changes_required' && item.moderationFeedback ? (
+            <Text style={{ color: theme.colors.danger, fontSize: 12 }} numberOfLines={1}>
+              {item.moderationFeedback}
+            </Text>
           ) : null}
-        </Pressable>
-      </Swipeable>
-    </View>
+        </View>
+
+        {statusCfg ? (
+          <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
+            <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
+              {statusCfg.label}
+            </Text>
+          </View>
+        ) : null}
+      </Pressable>
+    </Swipeable>
   );
 }
 
@@ -280,30 +207,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 16,
   },
-  actionDrawer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  drawerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingLeft: 14,
-    paddingRight: 8,
-    height: '100%',
-  },
-  drawerRightActions: {
+  rightActionsRow: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    height: '100%',
+    marginLeft: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   actionBtn: {
-    width: 54,
+    width: 66,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
