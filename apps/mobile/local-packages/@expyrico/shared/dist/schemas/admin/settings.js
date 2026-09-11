@@ -55,4 +55,28 @@ export const pantryUnitsSettingsSchema = z.object({
         .refine((units) => new Set(units.map((u) => u.toLowerCase())).size === 4, 'Top units must all be distinct')
         .default(['pcs', 'pack', 'can', 'bottle']),
 });
+export const photoLimitsSettingsSchema = z.object({
+    maxProductPhotos: z
+        .number()
+        .int('Maximum product photos must be an integer')
+        .min(1, 'At least 1 product photo must be allowed')
+        .max(20, 'Maximum allowed product photos is 20')
+        .default(5),
+    maxPantryItemPhotos: z
+        .number()
+        .int('Maximum pantry item photos must be an integer')
+        .min(1, 'At least 1 pantry item photo must be allowed')
+        .max(20, 'Maximum allowed pantry item photos is 20')
+        .default(5),
+});
+export const DEFAULT_PHOTO_LIMITS = {
+    maxProductPhotos: 5,
+    maxPantryItemPhotos: 5,
+};
+export const PHOTO_COMPRESSION_CONFIG = {
+    maxDimensionPx: 1920,
+    qualitySteps: [0.82, 0.72, 0.70],
+    qualityFloor: 0.70,
+    maxFileBytes: 1 * 1024 * 1024, // 1,048,576 bytes (1 MB)
+};
 //# sourceMappingURL=settings.js.map

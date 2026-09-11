@@ -31,6 +31,7 @@ import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
 import { Button } from '../../../src/components/Button';
 import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
+import { usePhotoLimits } from '../../../src/utils/photo-limits';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
@@ -68,6 +69,7 @@ export default function RecordDetail() {
   }>({ visible: false, mode: 'add', index: 0 });
   const [deleteTargetIndex, setDeleteTargetIndex] = useState<number | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const { maxPantryItemPhotos } = usePhotoLimits();
   const { data: householdsData } = useMyHouseholds();
   const households = householdsData?.items ?? [];
   const { data: activeGiveaways } = useActiveGiveawaysForRecord(record?.id, record?.serverId);
@@ -217,7 +219,7 @@ export default function RecordDetail() {
     await patchLocalRecord(record.id, { quantity: newQty });
   };
   const savePhotosToRecord = async (newPhotos: PickedPhoto[]) => {
-    const availableSlots = Math.max(0, 5 - displayedPhotos.length);
+    const availableSlots = Math.max(0, maxPantryItemPhotos - displayedPhotos.length);
     if (availableSlots <= 0) return;
 
     const acceptedPhotos = newPhotos.slice(0, availableSlots);
@@ -260,7 +262,7 @@ export default function RecordDetail() {
   };
 
   const handleAddPhoto = () => {
-    if (displayedPhotos.length >= 5) {
+    if (displayedPhotos.length >= maxPantryItemPhotos) {
       setShowLimitModal(true);
       return;
     }
@@ -366,7 +368,7 @@ export default function RecordDetail() {
             onDeletePhoto={handleDeletePhoto}
             onChangeCover={handleChangeCover}
             onSetCover={handleSetCover}
-            maxPhotos={5}
+            maxPhotos={maxPantryItemPhotos}
             floatingAction={{
               icon: 'camera-outline',
               label: 'Change',
@@ -816,7 +818,7 @@ export default function RecordDetail() {
       />
       <MultiPhotoCameraModal
         visible={showCameraModal}
-        maxPhotos={Math.max(1, 5 - displayedPhotos.length)}
+        maxPhotos={Math.max(1, maxPantryItemPhotos - displayedPhotos.length)}
         title="Item Photos"
         onCapture={handleCameraCapture}
         onClose={() => setShowCameraModal(false)}
@@ -871,7 +873,7 @@ export default function RecordDetail() {
       {/* Photo Limit Reached Modal */}
       <PhotoLimitModal
         visible={showLimitModal}
-        maxPhotos={5}
+        maxPhotos={maxPantryItemPhotos}
         onClose={() => setShowLimitModal(false)}
       />
     </View>

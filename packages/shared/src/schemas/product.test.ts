@@ -341,16 +341,20 @@ describe('productDraftPatchRequestSchema', () => {
 });
 
 describe('productDraftReorderRequestSchema', () => {
-  it('accepts one to five unique ordered photo ids', () => {
+  it('accepts one to twenty unique ordered photo ids', () => {
     const ids = [randomUUID(), randomUUID(), randomUUID()];
     expect(productDraftReorderRequestSchema.parse({ photoIds: ids })).toEqual({ photoIds: ids });
+    const six = Array.from({ length: 6 }, () => randomUUID());
+    expect(productDraftReorderRequestSchema.parse({ photoIds: six })).toEqual({ photoIds: six });
+    const twenty = Array.from({ length: 20 }, () => randomUUID());
+    expect(productDraftReorderRequestSchema.parse({ photoIds: twenty })).toEqual({ photoIds: twenty });
   });
 
-  it('rejects duplicate ids and more than five entries', () => {
+  it('rejects duplicate ids and more than twenty entries', () => {
     const id = randomUUID();
     expect(() => productDraftReorderRequestSchema.parse({ photoIds: [id, id] })).toThrow();
-    const six = Array.from({ length: 6 }, () => randomUUID());
-    expect(() => productDraftReorderRequestSchema.parse({ photoIds: six })).toThrow();
+    const twentyOne = Array.from({ length: 21 }, () => randomUUID());
+    expect(() => productDraftReorderRequestSchema.parse({ photoIds: twentyOne })).toThrow();
     expect(() => productDraftReorderRequestSchema.parse({ photoIds: [] })).toThrow();
   });
 });

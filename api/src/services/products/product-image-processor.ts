@@ -13,7 +13,7 @@ import { readHeicProbeFixture } from './__fixtures__/heic-probe-sample.js';
 type SharpInstance = ReturnType<typeof sharp>;
 type SharpMetadata = Awaited<ReturnType<SharpInstance['metadata']>>;
 
-const SOURCE_FORMATS = ['jpeg', 'png', 'heif'] as const;
+const SOURCE_FORMATS = ['jpeg', 'png', 'heif', 'webp'] as const;
 type SourceFormat = (typeof SOURCE_FORMATS)[number];
 
 function unsupportedMediaType(detail: string): never {
@@ -172,6 +172,7 @@ const FORMAT_TO_MIME: Record<SourceFormat, string> = {
   jpeg: 'image/jpeg',
   png: 'image/png',
   heif: 'image/heic',
+  webp: 'image/webp',
 };
 
 async function encodeVariant(
@@ -181,19 +182,32 @@ async function encodeVariant(
   maxBytes: number,
   quality: number,
 ): Promise<ProcessedVariant> {
-  const { data, info } = await pipeline
-    .clone()
-    .resize(maxDimensionPx, maxDimensionPx, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality })
-    .toBuffer({ resolveWithObject: true });
-  if (data.length > maxBytes) {
-    processingFailed(
-      422,
-      'image_too_complex',
-      `generated ${variant} exceeds the maximum allowed output size after compression`,
-    );
+  const QUALITY_STEPS = [quality, 72, 70] as const;
+  let lastResult: { data: Buffer; info: { width: number; height: number; size: number } } | null = null;
+
+  for (const q of QUALITY_STEPS) {
+    const { data, info } = await pipeline
+      .clone()
+      .resize(maxDimensionPx, maxDimensionPx, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: q })
+      .toBuffer({ resolveWithObject: true });
+    lastResult = { data, info };
+    if (data.length <= maxBytes) {
+      return {
+        variant,
+        buffer: data,
+        width: info.width,
+        height: info.height,
+        bytes: data.length,
+      };
+    }
   }
-  return { variant, buffer: data, width: info.width, height: info.height, bytes: data.length };
+
+  processingFailed(
+    422,
+    'image_too_complex',
+    `generated ${variant} exceeds the maximum allowed output size after compression (best effort was ${Math.round((lastResult?.data.length ?? 0) / 1024)} KB at quality 70)`,
+  );
 }
 
 /**

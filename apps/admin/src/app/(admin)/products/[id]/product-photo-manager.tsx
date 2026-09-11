@@ -9,6 +9,7 @@ import {
 } from '@/lib/actions';
 import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
 import { resolveAdminPhotoUrl } from '@/lib/admin-media';
+import { compressImageForUpload } from '@/lib/image-compression';
 import {
   Image as ImageIcon,
   ArrowUp,
@@ -27,10 +28,17 @@ interface Photo {
   thumbnailUrl: string;
   displayUrl: string;
 }
-const MAX_PHOTOS = 5;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
-export function ProductPhotoManager({ productId, photos }: { productId: string; photos: Photo[] }) {
+const MAX_RAW_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB raw input ceiling
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+export function ProductPhotoManager({
+  productId,
+  photos,
+  maxPhotos = 5,
+}: {
+  productId: string;
+  photos: Photo[];
+  maxPhotos?: number;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -101,36 +109,44 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
     // Filter and validate MIME types
     const invalidTypes = files.filter((f) => !ALLOWED_MIME_TYPES.includes(f.type));
     if (invalidTypes.length > 0) {
-      setErr(`Unsupported file type(s). Only JPEG and PNG images are allowed.`);
+      setErr('Unsupported file type(s). Only JPEG, PNG, and WebP images are allowed.');
       return;
     }
 
-    // Filter and validate file size (5MB)
-    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    // Filter and validate file size (25MB raw ceiling)
+    const oversized = files.filter((f) => f.size > MAX_RAW_FILE_SIZE_BYTES);
     if (oversized.length > 0) {
-      setErr(`Some images exceed the maximum allowed size of 5 MB.`);
+      setErr('Some images exceed the maximum allowed raw size of 25 MB.');
       return;
     }
 
     // Check available photo slots
-    const availableSlots = MAX_PHOTOS - order.length;
+    const availableSlots = maxPhotos - order.length;
     if (availableSlots <= 0) {
-      setErr(`Maximum limit of ${MAX_PHOTOS} photos reached for this product.`);
+      setErr(`Maximum limit of ${maxPhotos} photos reached for this product.`);
       return;
     }
 
     const filesToUpload = files.slice(0, availableSlots);
     if (files.length > availableSlots) {
-      setErr(`Only ${availableSlots} more photo(s) can be added (max ${MAX_PHOTOS}).`);
+      setErr(`Only ${availableSlots} more photo(s) can be added (max ${maxPhotos}).`);
     }
-
     setUploading(true);
     let latestPhotos: Photo[] = order;
 
     try {
+      // Pass 1: In-browser background auto-compression
+      const compressedFiles: File[] = [];
       for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i]!;
-        setUploadProgress(`Uploading photo ${i + 1} of ${filesToUpload.length}…`);
+        setUploadProgress(`Compressing photo ${i + 1} of ${filesToUpload.length}…`);
+        const compressed = await compressImageForUpload(filesToUpload[i]!);
+        compressedFiles.push(compressed);
+      }
+
+      // Pass 2: Sequential upload to server
+      for (let i = 0; i < compressedFiles.length; i++) {
+        const file = compressedFiles[i]!;
+        setUploadProgress(`Uploading photo ${i + 1} of ${compressedFiles.length}…`);
 
         const formData = new FormData();
         formData.append('file', file);
@@ -171,7 +187,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
           <ImageIcon className="h-5 w-5 text-primary" />
           <div>
             <h2 className="text-base font-bold text-neutral-dark font-display">
-              Photo Gallery Manager ({order.length} / {MAX_PHOTOS})
+              Photo Gallery Manager ({order.length} / {maxPhotos})
             </h2>
             <p className="text-xs text-neutral-mid">
               Position 0 serves as the primary catalog cover image. Reorder or click &quot;Set as Cover&quot; to change.
@@ -179,7 +195,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
           </div>
         </div>
 
-        {order.length < MAX_PHOTOS && (
+        {order.length < maxPhotos && (
           <Button
             size="sm"
             disabled={pending || uploading}
@@ -202,7 +218,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
         }}
       />
       {/* Upload Dropzone */}
-      {order.length < MAX_PHOTOS && (
+      {order.length < maxPhotos && (
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -240,7 +256,7 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
                 Drag &amp; drop product images here, or <span className="text-primary underline">browse</span>
               </p>
               <p className="text-[11px] text-neutral-mid">
-                Supports JPEG and PNG up to 5 MB each. ({MAX_PHOTOS - order.length} slots remaining)
+                Supports JPEG, PNG, and WebP up to 25 MB raw (auto-compressed to &lt; 1 MB). ({maxPhotos - order.length} slots remaining)
               </p>
             </div>
           )}

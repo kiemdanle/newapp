@@ -62,7 +62,7 @@ export async function saveRecordLocalPhotos(clientId: string, paths: string[]): 
   if (!paths || paths.length === 0) {
     delete map[clientId];
   } else {
-    map[clientId] = paths.slice(0, 5);
+    map[clientId] = paths.slice(0, 20);
   }
   memoryCache = { ...map };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));

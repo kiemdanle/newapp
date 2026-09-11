@@ -16,9 +16,9 @@ import ImagePicker from 'react-native-image-crop-picker';
 // Client-side resize/compression is advisory only (per plan.md's global
 // constraints): the server independently enforces the real 10 MiB / decode
 // limits, this just avoids uploading obviously-oversized bytes.
-const MAX_DIMENSION = 1600;
+const MAX_DIMENSION = 1920;
 const JPEG_QUALITY = 0.82;
-const ADVISORY_MAX_BYTES = 10 * 1024 * 1024;
+const ADVISORY_MAX_BYTES = 1 * 1024 * 1024;
 
 export interface PickedPhoto {
   path: string;
@@ -34,7 +34,7 @@ export interface PickedPhoto {
 export class PhotoTooLargeError extends Error {
   readonly sizeBytes: number;
   constructor(sizeBytes: number) {
-    super(`Selected photo is ${(sizeBytes / (1024 * 1024)).toFixed(1)} MB, over the 10 MB limit`);
+    super(`Selected photo is ${(sizeBytes / (1024 * 1024)).toFixed(1)} MB, over the 1.0 MB limit`);
     this.name = 'PhotoTooLargeError';
     this.sizeBytes = sizeBytes;
   }

@@ -63,7 +63,7 @@ export const productDescriptionValueSchema = z
 // than `.url()`-validated absolute URLs. Phase 3 owns their real derivation.
 export const productPhotoSchema = z.object({
     id: z.string().uuid(),
-    position: z.number().int().min(0).max(4),
+    position: z.number().int().min(0).max(19),
     thumbnailUrl: z.string().min(1),
     displayUrl: z.string().min(1),
 });
@@ -207,11 +207,13 @@ export const productDraftCreateRequestSchema = z
     .object({
     barcode: barcodeField.nullable().optional(),
     qrPayload: qrField.nullable().optional(),
+    name: z.string().trim().min(1).max(200).optional(),
 })
     .strict()
     .transform((v) => ({
     barcode: v.barcode ?? undefined,
     qrPayload: v.qrPayload ?? undefined,
+    name: v.name?.trim() || undefined,
 }))
     .refine((v) => Boolean(v.barcode) !== Boolean(v.qrPayload), {
     message: 'exactly one of barcode | qrPayload is required',
@@ -229,7 +231,7 @@ export const productDraftPatchRequestSchema = z
     .strict();
 export const productDraftReorderRequestSchema = z
     .object({
-    photoIds: z.array(z.string().uuid()).min(1).max(5),
+    photoIds: z.array(z.string().uuid()).min(1).max(20),
 })
     .strict()
     .refine((v) => new Set(v.photoIds).size === v.photoIds.length, {

@@ -20,6 +20,7 @@ import {
   renewMediaOperationLease,
 } from './product-media-outbox.js';
 import { assertMediaCapacityReservationLive, releaseMediaCapacityReservation } from './product-media-capacity.js';
+import { getPhotoLimits } from '../admin/settings.js';
 import type { ProcessedVariants } from './product-image-processor.js';
 import {
   copyKeyPrefix,
@@ -111,11 +112,12 @@ export async function assertPhotoMutablePreCheck(actor: ProductActor, productId:
   });
   if (!product) notFound();
   checkPhotoMutablePolicy(actor, product);
-  if (product._count.photos >= MAX_PHOTOS_PER_PRODUCT) {
+  const limits = await getPhotoLimits();
+  if (product._count.photos >= limits.maxProductPhotos) {
     throw new AppError({
       status: 409,
       code: 'photo_limit_reached',
-      title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+      title: `A product may have at most ${limits.maxProductPhotos} photos`,
     });
   }
 }
@@ -213,11 +215,12 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
         const updated = await prisma.$transaction(async (tx) => {
           const product = await assertPhotoMutable(actor, input.productId, tx);
           const currentCount = await tx.productPhoto.count({ where: { productId: input.productId } });
-          if (currentCount >= MAX_PHOTOS_PER_PRODUCT) {
+          const limits = await getPhotoLimits();
+          if (currentCount >= limits.maxProductPhotos) {
             throw new AppError({
               status: 409,
               code: 'photo_limit_reached',
-              title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+              title: `A product may have at most ${limits.maxProductPhotos} photos`,
             });
           }
           await tx.productPhoto.create({
@@ -283,11 +286,12 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
       const updated = await prisma.$transaction(async (tx) => {
         const product = await assertPhotoMutable(actor, input.productId, tx);
         const currentCount = await tx.productPhoto.count({ where: { productId: input.productId } });
-        if (currentCount >= MAX_PHOTOS_PER_PRODUCT) {
+        const limits = await getPhotoLimits();
+        if (currentCount >= limits.maxProductPhotos) {
           throw new AppError({
             status: 409,
             code: 'photo_limit_reached',
-            title: `A product may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+            title: `A product may have at most ${limits.maxProductPhotos} photos`,
           });
         }
         await tx.productPhoto.create({
@@ -595,9 +599,20 @@ async function assertEditPhotoMutable(actor: ProductActor, editId: string, tx: P
 }
 
 export async function assertEditPhotoMutablePreCheck(actor: ProductActor, editId: string): Promise<void> {
-  const edit = await getPrisma().productEdit.findUnique({ where: { id: editId }, select: { id: true, status: true, submittedBy: true } });
+  const edit = await getPrisma().productEdit.findUnique({
+    where: { id: editId },
+    select: { id: true, status: true, submittedBy: true, _count: { select: { photos: true } } },
+  });
   if (!edit) notFound();
   checkEditPhotoMutablePolicy(actor, edit);
+  const limits = await getPhotoLimits();
+  if (edit._count.photos >= limits.maxProductPhotos) {
+    throw new AppError({
+      status: 409,
+      code: 'photo_limit_reached',
+      title: `A revision may have at most ${limits.maxProductPhotos} photos`,
+    });
+  }
 }
 
 async function loadEditWithPhotos(tx: PrismaTypes.TransactionClient, editId: string) {
@@ -648,11 +663,12 @@ export async function addProductEditPhoto(actor: ProductActor, input: AddProduct
       const updated = await prisma.$transaction(async (tx) => {
         const edit = await assertEditPhotoMutable(actor, input.editId, tx);
         const currentCount = await tx.productEditPhoto.count({ where: { productEditId: input.editId } });
-        if (currentCount >= MAX_PHOTOS_PER_PRODUCT) {
+        const limits = await getPhotoLimits();
+        if (currentCount >= limits.maxProductPhotos) {
           throw new AppError({
             status: 409,
             code: 'photo_limit_reached',
-            title: `A revision may have at most ${MAX_PHOTOS_PER_PRODUCT} photos`,
+            title: `A revision may have at most ${limits.maxProductPhotos} photos`,
           });
         }
         await tx.productEditPhoto.create({

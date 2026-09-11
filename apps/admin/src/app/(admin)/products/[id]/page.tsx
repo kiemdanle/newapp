@@ -15,7 +15,10 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const p = await serverAdminApi.products.get(id);
+  const [p, photoLimits] = await Promise.all([
+    serverAdminApi.products.get(id),
+    serverAdminApi.settings.photoLimits.get().catch(() => ({ maxProductPhotos: 5, maxPantryItemPhotos: 5 })),
+  ]);
   const isMerged = p.status === 'merged_into';
 
   return (
@@ -119,7 +122,7 @@ export default async function ProductDetailPage({
       {/* Detail Panels */}
       {!isMerged && (
         <div className="space-y-8">
-          <ProductPhotoManager productId={p.id} photos={p.photos ?? []} />
+          <ProductPhotoManager productId={p.id} photos={p.photos ?? []} maxPhotos={photoLimits.maxProductPhotos} />
 
           <ProductActions
             id={p.id}

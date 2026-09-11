@@ -42,7 +42,7 @@ describe('takePhoto', () => {
 
     expect(result).toEqual({ path: '/tmp/photo.jpg', width: 1600, height: 1200, mime: 'image/jpeg', size: 500_000 });
     expect(openCameraMock).toHaveBeenCalledWith(
-      expect.objectContaining({ forceJpg: true, compressImageMaxWidth: 1600, compressImageMaxHeight: 1600, compressImageQuality: 0.82 }),
+      expect.objectContaining({ forceJpg: true, compressImageMaxWidth: 1920, compressImageMaxHeight: 1920, compressImageQuality: 0.82 }),
     );
   });
 
@@ -58,9 +58,8 @@ describe('takePhoto', () => {
     await expect(takePhoto()).rejects.toThrow('camera unavailable');
   });
 
-  it('throws PhotoTooLargeError when the compressed result is still over 10 MB', async () => {
-    openCameraMock.mockResolvedValue(image({ size: 11 * 1024 * 1024 }) as never);
-
+  it('throws PhotoTooLargeError when the compressed result is still over 1 MB', async () => {
+    openCameraMock.mockResolvedValue(image({ size: 1.2 * 1024 * 1024 }) as never);
     await expect(takePhoto()).rejects.toBeInstanceOf(PhotoTooLargeError);
   });
 
@@ -136,8 +135,8 @@ describe('choosePhotos', () => {
     await expect(choosePhotos(5)).resolves.toEqual([]);
   });
 
-  it('rejects the whole batch if any selected photo is still over 10 MB', async () => {
-    openPickerMock.mockResolvedValue([image(), image({ path: '/tmp/big.jpg', size: 12 * 1024 * 1024 })] as never);
+  it('rejects the whole batch if any selected photo is still over 1 MB', async () => {
+    openPickerMock.mockResolvedValue([image(), image({ path: '/tmp/big.jpg', size: 1.2 * 1024 * 1024 })] as never);
 
     await expect(choosePhotos(5)).rejects.toBeInstanceOf(PhotoTooLargeError);
   });

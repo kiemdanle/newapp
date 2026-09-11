@@ -38,9 +38,18 @@ describe('productEditPhotoSchema', () => {
     expect(productEditPhotoSchema.parse(staged).retained).toBe(false);
   });
 
-  it('rejects a position outside 0..4', () => {
+  it('accepts positions within 0..19 and rejects outside', () => {
+    expect(
+      productEditPhotoSchema.parse({ id: randomUUID(), position: 5, retained: true, thumbnailUrl: '/a', displayUrl: '/b' }).position,
+    ).toBe(5);
+    expect(
+      productEditPhotoSchema.parse({ id: randomUUID(), position: 19, retained: true, thumbnailUrl: '/a', displayUrl: '/b' }).position,
+    ).toBe(19);
     expect(() =>
-      productEditPhotoSchema.parse({ id: randomUUID(), position: 5, retained: true, thumbnailUrl: '/a', displayUrl: '/b' }),
+      productEditPhotoSchema.parse({ id: randomUUID(), position: -1, retained: true, thumbnailUrl: '/a', displayUrl: '/b' }),
+    ).toThrow();
+    expect(() =>
+      productEditPhotoSchema.parse({ id: randomUUID(), position: 20, retained: true, thumbnailUrl: '/a', displayUrl: '/b' }),
     ).toThrow();
   });
 });
@@ -224,10 +233,16 @@ describe('productEditMetadataPatchRequestSchema', () => {
 });
 
 describe('productEditPhotoReorderRequestSchema', () => {
-  it('rejects duplicate ids and accepts a valid unique set', () => {
+  it('rejects duplicate ids and accepts a valid unique set up to 20', () => {
     const id = randomUUID();
     expect(() => productEditPhotoReorderRequestSchema.parse({ photoIds: [id, id] })).toThrow();
     expect(productEditPhotoReorderRequestSchema.parse({ photoIds: [id] })).toEqual({ photoIds: [id] });
+    const six = Array.from({ length: 6 }, () => randomUUID());
+    expect(productEditPhotoReorderRequestSchema.parse({ photoIds: six })).toEqual({ photoIds: six });
+    const twenty = Array.from({ length: 20 }, () => randomUUID());
+    expect(productEditPhotoReorderRequestSchema.parse({ photoIds: twenty })).toEqual({ photoIds: twenty });
+    const twentyOne = Array.from({ length: 21 }, () => randomUUID());
+    expect(() => productEditPhotoReorderRequestSchema.parse({ photoIds: twentyOne })).toThrow();
   });
 });
 

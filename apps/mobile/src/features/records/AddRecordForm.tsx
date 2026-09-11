@@ -17,6 +17,7 @@ import { ScopeSelectorPill } from './ScopeSelectorPill';
 import { UnitSelector } from '../../components/UnitSelector';
 import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
+import { usePhotoLimits } from '../../utils/photo-limits';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -95,6 +96,7 @@ export function AddRecordForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const { maxPantryItemPhotos, maxProductPhotos } = usePhotoLimits();
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
@@ -152,7 +154,8 @@ export function AddRecordForm({
             category: category.trim() || null,
           });
 
-          for (const p of photos) {
+          const draftPhotosToUpload = photos.slice(0, maxProductPhotos);
+          for (const p of draftPhotosToUpload) {
             const uploadHandle = uploadProductPhoto(
               { kind: 'draft', productId: draftRes.product.id },
               { path: p.path, mime: p.mime },
@@ -218,7 +221,11 @@ export function AddRecordForm({
   ];
   const onCameraCapture = (pickedList: PickedPhoto[]) => {
     if (pickedList && pickedList.length > 0) {
-      setPhotos((prev) => [...prev, ...pickedList].slice(0, 5));
+      setPhotos((prev) => {
+        const availableSlots = Math.max(0, maxPantryItemPhotos - prev.length);
+        if (availableSlots <= 0) return prev;
+        return [...prev, ...pickedList.slice(0, availableSlots)];
+      });
     }
   };
 
@@ -229,10 +236,15 @@ export function AddRecordForm({
 
   const onChoosePhotos = async () => {
     try {
-      const remaining = Math.max(1, 5 - photos.length);
+      const remaining = Math.max(0, maxPantryItemPhotos - photos.length);
+      if (remaining <= 0) return;
       const picked = await choosePhotos(remaining);
       if (picked.length > 0) {
-        setPhotos((prev) => [...prev, ...picked].slice(0, 5));
+        setPhotos((prev) => {
+          const availableSlots = Math.max(0, maxPantryItemPhotos - prev.length);
+          if (availableSlots <= 0) return prev;
+          return [...prev, ...picked.slice(0, availableSlots)];
+        });
       }
     } catch (err) {
       const msg = handlePhotoPickerError(err, 'gallery');
@@ -277,7 +289,7 @@ export function AddRecordForm({
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item photos (optional)</Text>
           {photos.length > 0 ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{photos.length}/5 photos</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{photos.length}/{maxPantryItemPhotos} photos</Text>
           ) : null}
         </View>
         {photos.length > 0 ? (
@@ -317,7 +329,7 @@ export function AddRecordForm({
                   </Pressable>
                 </View>
               ))}
-              {photos.length < 5 ? (
+              {photos.length < maxPantryItemPhotos ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Add more photos"
@@ -341,7 +353,7 @@ export function AddRecordForm({
                 </Pressable>
               ) : null}
             </ScrollView>
-            {photos.length < 5 ? (
+            {photos.length < maxPantryItemPhotos ? (
               <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
                 <Button
                   testID="add-record-take-photo"
@@ -687,7 +699,7 @@ export function AddRecordForm({
       </Pressable>
       <MultiPhotoCameraModal
         visible={showCameraModal}
-        maxPhotos={Math.max(1, 5 - photos.length)}
+        maxPhotos={Math.max(1, maxPantryItemPhotos - photos.length)}
         title="Item Photos"
         onCapture={onCameraCapture}
         onClose={() => setShowCameraModal(false)}

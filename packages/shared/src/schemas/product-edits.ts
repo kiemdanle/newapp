@@ -11,7 +11,7 @@ import { productEditStatusSchema, adminUserSummarySchema } from './admin/product
 export const productEditPhotoSchema = z.object({
   id: z.string().uuid(),
   sourceProductPhotoId: z.string().uuid().nullable().optional(),
-  position: z.number().int().min(0).max(4),
+  position: z.number().int().min(0).max(19),
   retained: z.boolean(),
   thumbnailUrl: z.string().min(1),
   displayUrl: z.string().min(1),
@@ -62,7 +62,7 @@ export type ProductEditMetadataPatchRequest = z.infer<typeof productEditMetadata
 
 export const productEditPhotoReorderRequestSchema = z
   .object({
-    photoIds: z.array(z.string().uuid()).min(1).max(5),
+    photoIds: z.array(z.string().uuid()).min(1).max(20),
   })
   .strict()
   .refine((v) => new Set(v.photoIds).size === v.photoIds.length, {

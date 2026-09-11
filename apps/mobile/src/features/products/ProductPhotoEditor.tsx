@@ -7,6 +7,7 @@ import { PrivateProductImage, type PrivateMediaTarget } from '../../api/product-
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
+import { usePhotoLimits } from '../../utils/photo-limits';
 
 const MAX_PHOTOS = 5;
 
@@ -44,6 +45,7 @@ export interface ProductPhotoEditorProps<T extends CoordinatedEntity> {
    * submit flow (Task 7) must block while this is true, since the coordinator
    * only serializes mutations it knows about, not a queue entry that hasn't
    * been enqueued yet. */
+  maxPhotos?: number;
   onUnsettledChange?: (unsettled: boolean) => void;
 }
 
@@ -54,7 +56,9 @@ export interface ProductPhotoEditorProps<T extends CoordinatedEntity> {
  * this component only manages the queue of local-vs-uploaded entries and
  * their interaction with the serialized mutation coordinator.
  */
-export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordinator, onUnsettledChange }: ProductPhotoEditorProps<T>) {
+export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordinator, onUnsettledChange, maxPhotos }: ProductPhotoEditorProps<T>) {
+  const { maxProductPhotos } = usePhotoLimits();
+  const effectiveMaxPhotos = maxPhotos ?? maxProductPhotos;
   const theme = useTheme();
   const [, forceRerender] = useState(0);
   const [localQueue, setLocalQueue] = useState<LocalPhotoEntry[]>([]);
@@ -75,7 +79,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   const visibleLocalQueue = localQueue.filter((e) => e.uploadedPhotoId === null);
   const uploadedLocalCount = localQueue.filter((e) => e.status !== 'failed' && e.uploadedPhotoId === null).length;
   const totalCount = serverPhotos.length + uploadedLocalCount;
-  const remaining = Math.max(0, MAX_PHOTOS - totalCount);
+  const remaining = Math.max(0, effectiveMaxPhotos - totalCount);
   const hasUnsettled = localQueue.some((e) => e.status === 'pending' || e.status === 'uploading');
   // A photo op the coordinator rejects while a conflict is open must
   // never be attempted in the first place — read fresh each render (same
@@ -246,7 +250,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
           <Text style={[styles.titleText, { color: theme.colors.text }]}>Product Photos</Text>
         </View>
         <Text accessibilityLiveRegion="polite" style={[styles.countText, { color: theme.colors.textMuted }]}>
-          {totalCount}/{MAX_PHOTOS} photos{remaining === 0 ? ' — limit reached' : ''}
+          {totalCount}/{effectiveMaxPhotos} photos{remaining === 0 ? ' — limit reached' : ''}
         </Text>
       </View>
 

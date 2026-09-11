@@ -383,13 +383,17 @@ export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
     brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     category: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    description: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodNullable<z.ZodString>, string | null, string | null>, string | null, string | null>, string | null, string | null>>;
+    barcode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     imageUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     defaultShelfLifeDays: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     status: z.ZodOptional<z.ZodEnum<["active", "report_hidden"]>>;
 }, "strip", z.ZodTypeAny, {
     version: number;
     status?: "active" | "report_hidden" | undefined;
+    barcode?: string | null | undefined;
     name?: string | undefined;
+    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
@@ -397,7 +401,9 @@ export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
 }, {
     version: number;
     status?: "active" | "report_hidden" | undefined;
+    barcode?: string | null | undefined;
     name?: string | undefined;
+    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
@@ -405,7 +411,9 @@ export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
 }>, {
     version: number;
     status?: "active" | "report_hidden" | undefined;
+    barcode?: string | null | undefined;
     name?: string | undefined;
+    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;
@@ -413,7 +421,9 @@ export declare const adminProductPatchSchema: z.ZodEffects<z.ZodObject<{
 }, {
     version: number;
     status?: "active" | "report_hidden" | undefined;
+    barcode?: string | null | undefined;
     name?: string | undefined;
+    description?: string | null | undefined;
     brand?: string | null | undefined;
     category?: string | null | undefined;
     imageUrl?: string | null | undefined;

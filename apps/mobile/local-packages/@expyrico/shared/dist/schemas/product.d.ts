@@ -1335,24 +1335,31 @@ export type ProductDraftsPage = z.infer<typeof productDraftsPageSchema>;
 export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
     barcode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     qrPayload: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    name: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
+    name?: string | undefined;
 }, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
+    name?: string | undefined;
 }>, {
     barcode: string | undefined;
     qrPayload: string | undefined;
+    name: string | undefined;
 }, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
+    name?: string | undefined;
 }>, {
     barcode: string | undefined;
     qrPayload: string | undefined;
+    name: string | undefined;
 }, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
+    name?: string | undefined;
 }>;
 export type ProductDraftCreateRequest = z.infer<typeof productDraftCreateRequestSchema>;
 export declare const productDraftPatchRequestSchema: z.ZodObject<{

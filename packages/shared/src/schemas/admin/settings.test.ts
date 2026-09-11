@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { productCreationSettingsSchema } from './settings.js';
+import {
+  productCreationSettingsSchema,
+  photoLimitsSettingsSchema,
+  DEFAULT_PHOTO_LIMITS,
+  PHOTO_COMPRESSION_CONFIG,
+} from './settings.js';
 
 describe('productCreationSettingsSchema', () => {
   it('accepts off, internal, and all modes', () => {
@@ -26,5 +31,43 @@ describe('productCreationSettingsSchema', () => {
       mode: 'all',
       requireApproval: true,
     });
+  });
+});
+
+describe('photoLimitsSettingsSchema & PHOTO_COMPRESSION_CONFIG', () => {
+  it('applies default limits when empty object is passed', () => {
+    expect(photoLimitsSettingsSchema.parse({})).toEqual({
+      maxProductPhotos: 5,
+      maxPantryItemPhotos: 5,
+    });
+    expect(DEFAULT_PHOTO_LIMITS).toEqual({
+      maxProductPhotos: 5,
+      maxPantryItemPhotos: 5,
+    });
+  });
+
+  it('accepts valid photo limits between 1 and 20', () => {
+    expect(photoLimitsSettingsSchema.parse({ maxProductPhotos: 1, maxPantryItemPhotos: 20 })).toEqual({
+      maxProductPhotos: 1,
+      maxPantryItemPhotos: 20,
+    });
+    expect(photoLimitsSettingsSchema.parse({ maxProductPhotos: 10, maxPantryItemPhotos: 8 })).toEqual({
+      maxProductPhotos: 10,
+      maxPantryItemPhotos: 8,
+    });
+  });
+
+  it('rejects photo limits below 1 or above 20', () => {
+    expect(() => photoLimitsSettingsSchema.parse({ maxProductPhotos: 0 })).toThrow(/At least 1 product photo/);
+    expect(() => photoLimitsSettingsSchema.parse({ maxPantryItemPhotos: 21 })).toThrow(/Maximum allowed pantry item photos is 20/);
+    expect(() => photoLimitsSettingsSchema.parse({ maxProductPhotos: -5 })).toThrow();
+    expect(() => photoLimitsSettingsSchema.parse({ maxProductPhotos: 2.5 })).toThrow(/must be an integer/);
+  });
+
+  it('exports standard photo compression config with strict bounded ladder', () => {
+    expect(PHOTO_COMPRESSION_CONFIG.maxDimensionPx).toBe(1920);
+    expect(PHOTO_COMPRESSION_CONFIG.qualityFloor).toBe(0.7);
+    expect(PHOTO_COMPRESSION_CONFIG.qualitySteps).toEqual([0.82, 0.72, 0.7]);
+    expect(PHOTO_COMPRESSION_CONFIG.maxFileBytes).toBe(1024 * 1024);
   });
 });

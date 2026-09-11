@@ -136,8 +136,8 @@ export function MultiPhotoCameraModal({
         const rawPath = photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`;
         const newPhoto: PickedPhoto = {
           path: rawPath,
-          width: photo.width || 1600,
-          height: photo.height || 1200,
+          width: photo.width || 1920,
+          height: photo.height || 1440,
           mime: 'image/jpeg',
           size: 500_000,
         };
@@ -150,8 +150,8 @@ export function MultiPhotoCameraModal({
         // Fallback for testing environments / mock camera
         const mockPhoto: PickedPhoto = {
           path: `/tmp/camera-shot-${Date.now()}-${capturedPhotos.length + 1}.jpg`,
-          width: 1600,
-          height: 1200,
+          width: 1920,
+          height: 1440,
           mime: 'image/jpeg',
           size: 450_000,
         };

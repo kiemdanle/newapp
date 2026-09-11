@@ -133,7 +133,7 @@ export type ProductEditStatus = z.infer<typeof productEditStatusSchema>;
 // module scope.
 const adminProductEditCoverPhotoSchema = z.object({
   id: z.string().uuid(),
-  position: z.number().int().min(0).max(4),
+  position: z.number().int().min(0).max(19),
   retained: z.boolean(),
   thumbnailUrl: z.string().min(1),
   displayUrl: z.string().min(1),
@@ -216,7 +216,7 @@ const productEditRecoverRequestUnionSchema = z.discriminatedUnion('action', [
       action: z.literal('rebase'),
       editVersion: z.number().int().min(1),
       productVersion: z.number().int().min(1),
-      desiredPhotoOrder: z.array(productEditRecoverDesiredEntrySchema).max(5),
+      desiredPhotoOrder: z.array(productEditRecoverDesiredEntrySchema).max(20),
       notes: z.string().trim().min(1).max(2000).optional(),
     })
     .strict(),

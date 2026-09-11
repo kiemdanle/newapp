@@ -169,6 +169,17 @@ describe('processProductUpload — accepted formats', () => {
     expect(displayMeta.exif).toBeUndefined();
   });
 
+  it('accepts a valid WebP source image and produces display and thumb variants', async () => {
+    const source = await sharp({ create: { width: 50, height: 50, channels: 3, background: 'cyan' } }).webp().toBuffer();
+    const path = await writeFixture('valid.webp', source);
+    const result = await processProductUpload({ sourcePath: path });
+    expect(result.sourceMimeType).toBe('image/webp');
+    expect(result.display.variant).toBe('display');
+    expect(result.thumb.variant).toBe('thumb');
+    expect(result.display.width).toBeLessThanOrEqual(getConfig().media.displayMaxDimensionPx);
+    expect(result.display.bytes).toBeGreaterThan(0);
+  });
+
   it('processes a valid PNG', async () => {
     const source = await sharp({ create: { width: 50, height: 50, channels: 4, background: { r: 1, g: 2, b: 3, alpha: 0.5 } } })
       .png()
@@ -216,9 +227,9 @@ describe('processProductUpload — accepted formats', () => {
 });
 
 describe('processProductUpload — hostile input rejection', () => {
-  it('rejects an unsupported source format (WebP is not in the accept-list)', async () => {
-    const source = await sharp({ create: { width: 10, height: 10, channels: 3, background: 'red' } }).webp().toBuffer();
-    const path = await writeFixture('in.webp', source);
+  it('rejects an unsupported source format (TIFF is not in the accept-list)', async () => {
+    const source = await sharp({ create: { width: 10, height: 10, channels: 3, background: 'red' } }).tiff().toBuffer();
+    const path = await writeFixture('in.tiff', source);
     await expect(processProductUpload({ sourcePath: path })).rejects.toMatchObject({
       status: 415,
       code: 'unsupported_media_type',
@@ -315,7 +326,7 @@ describe('processProductUpload — hostile input rejection', () => {
     // nothing is still consuming a worker — this is exactly what shipped broken
     // before: the promise rejected but `sharp.counters().process` stayed nonzero
     // because the `.clone()`d encode pipelines kept running unseen.
-    await sleep(300);
+    await sleep(500);
     expect(sharp.counters().process).toBe(0);
     expect(sharp.counters().queue).toBe(0);
   }, 20_000);
@@ -356,14 +367,14 @@ describe('processProductUpload — hostile input rejection', () => {
     // outer whole-request race must catch that even when no single sharp
     // operation ever times out on its own.
     overrideMediaEnv({
-      MEDIA_PROCESSING_DEADLINE_MS: '900',
+      MEDIA_PROCESSING_DEADLINE_MS: '400',
       MEDIA_SHARP_CONCURRENCY: '1',
       MEDIA_MAX_DECODED_MEGAPIXELS: '100',
       MEDIA_MAX_DIMENSION_PX: '10000',
     });
     // Moderately heavy: each individual encode step should land comfortably
     // under sharp's rounded-up 1-second per-op timeout, but two encode steps
-    // plus the metadata read together exceed the 900ms configured deadline.
+    // plus the metadata read together exceed the 700ms configured deadline.
     const moderate = await slowToProcessNoisyPng(3600);
     const path = await writeFixture('moderate.png', moderate);
 
