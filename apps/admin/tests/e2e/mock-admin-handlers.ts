@@ -401,6 +401,7 @@ export async function handleAdmin(
         p.barcode = (body.barcode as string | null) ?? null;
       }
       if ('defaultShelfLifeDays' in body) p.defaultShelfLifeDays = (body.defaultShelfLifeDays as number | null) ?? null;
+      p.version += 1;
       return { status: 200, body: productRow(p) };
     }
   }

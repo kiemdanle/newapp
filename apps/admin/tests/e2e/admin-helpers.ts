@@ -25,12 +25,16 @@ export async function resetStore(request: APIRequestContext): Promise<void> {
 export async function loginAsAdmin(page: Page): Promise<void> {
   await page.goto('/login');
   await page.getByLabel('Email').fill(E2E_ADMIN_ENROLLED.email);
-  await page.getByLabel('Password').fill(E2E_ADMIN_ENROLLED.password);
+  await page.getByLabel('Password', { exact: true }).fill(E2E_ADMIN_ENROLLED.password);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   const code = authenticator.generate(E2E_ADMIN_ENROLLED.totpSecret);
-  await page.getByLabel('Authenticator code').fill(code);
-  await page.getByRole('button', { name: 'Verify' }).click();
-
+  for (let i = 0; i < 6; i++) {
+    await page.getByLabel(`Digit ${i + 1} of 6`).fill(code[i]!);
+  }
+  const verifyBtn = page.getByRole('button', { name: 'Verify & Continue' });
+  if (await verifyBtn.isVisible()) {
+    await verifyBtn.click().catch(() => {});
+  }
   await page.waitForURL(`http://localhost:${ADMIN_PORT}/`, { timeout: 15_000 });
 }

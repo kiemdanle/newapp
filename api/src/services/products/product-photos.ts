@@ -29,6 +29,7 @@ import {
   privateProductPhotoDir,
   privateProductPhotoPrefix,
   promoteKeyPrefix,
+  publicMediaUrl,
   publicProductPhotoPrefix,
   removeKeyPrefix,
   variantFileKey,
@@ -152,6 +153,17 @@ async function auditIfAdmin(
   );
 }
 
+async function syncProductCoverImageUrl(tx: PrismaTypes.TransactionClient, productId: string): Promise<void> {
+  const coverPhoto = await tx.productPhoto.findFirst({
+    where: { productId, position: 0 },
+    select: { publicStorageKey: true },
+  });
+  const imageUrl = coverPhoto?.publicStorageKey
+    ? publicMediaUrl(getConfig().media.publicBaseUrl, coverPhoto.publicStorageKey, 'display')
+    : null;
+  await tx.product.update({ where: { id: productId }, data: { imageUrl } });
+}
+
 /**
  * Attaches a newly processed photo to a product: commits a prepared outbox intent,
  * physically promotes the generated variant files into their final private key,
@@ -227,6 +239,9 @@ export async function addProductPhoto(actor: ProductActor, input: AddProductPhot
             },
           });
           await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+          if (currentCount === 0) {
+            await syncProductCoverImageUrl(tx, input.productId);
+          }
           await completeMediaOperation(tx, intent.id, intent.leaseOwner);
           await auditIfAdmin(tx, actor, 'product.photo.add', input.productId, { after: { photoId, approved: true } }, input.requestMeta);
           return loadProductWithPhotos(tx, input.productId);
@@ -368,6 +383,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
       }
 
       await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+      await syncProductCoverImageUrl(tx, input.productId);
 
       const key = photo.privateStorageKey ?? photo.publicStorageKey;
       if (key) {
@@ -377,7 +393,7 @@ export async function removeProductPhoto(actor: ProductActor, input: RemoveProdu
         });
       }
 
-      await auditIfAdmin(tx, actor, 'product.photo.remove', input.productId, { before: { photoId: photo.id } }, input.requestMeta);
+      await auditIfAdmin(tx, actor, 'product.photo.remove', input.productId, { after: { photoId: input.photoId } }, input.requestMeta);
       return loadProductWithPhotos(tx, input.productId);
     });
     return toApiProduct(updated, actor);
@@ -421,6 +437,7 @@ export async function reorderProductPhotos(actor: ProductActor, input: ReorderPr
       await tx.productPhoto.update({ where: { id }, data: { position } });
     }
     await tx.product.update({ where: { id: product.id }, data: { version: { increment: 1 } } });
+    await syncProductCoverImageUrl(tx, input.productId);
     await auditIfAdmin(tx, actor, 'product.photo.reorder', input.productId, { after: { photoIds: input.photoIds } }, input.requestMeta);
     return loadProductWithPhotos(tx, input.productId);
   });

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { cursorQuerySchema, cursorPageSchema } from './common.js';
-import { productStatusSchema, productPhotoSchema } from '../product.js';
+import { productStatusSchema, productPhotoSchema, productDescriptionValueSchema } from '../product.js';
 
 // Reuses the public product lifecycle so admin tooling can never drift from the states
 // products actually go through.
@@ -79,13 +79,20 @@ export const adminProductDirectStatusSchema = z.enum(['active', 'report_hidden']
 // correction is optimistic-concurrency-guarded like every other Phase 4 write,
 // not applied blind. Excluded from the "at least one field" count below since
 // it's a concurrency token, not itself an editable field.
+const barcodePatchField = z
+  .string()
+  .trim()
+  .min(6)
+  .max(64)
+  .regex(/^[A-Za-z0-9\-_.:]+$/, 'barcode must be alphanumeric');
+
 export const adminProductPatchSchema = z.object({
   version: z.number().int().min(1),
   name: z.string().min(1).optional(),
   brand: z.string().nullable().optional(),
   category: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  barcode: z.string().nullable().optional(),
+  description: productDescriptionValueSchema.optional(),
+  barcode: barcodePatchField.nullable().optional(),
   imageUrl: z.string().url().nullable().optional(),
   defaultShelfLifeDays: z.number().int().min(1).max(3650).nullable().optional(),
   status: adminProductDirectStatusSchema.optional(),

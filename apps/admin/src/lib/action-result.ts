@@ -39,6 +39,9 @@ export function isConflictCode(code: string): boolean {
  * again.
  */
 export function actionErrorMessage(result: Extract<ActionResult<unknown>, { ok: false }>): string {
+  if (result.code === 'barcode_conflict') {
+    return result.detail ?? 'This barcode is already assigned to another product.';
+  }
   if (result.code === 'edit_base_stale') {
     return 'The live product changed since this revision was based on it. Refresh to review the current version — recovery (rebase/supersede) is the next step.';
   }

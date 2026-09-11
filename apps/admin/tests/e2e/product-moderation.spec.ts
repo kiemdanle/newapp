@@ -217,6 +217,40 @@ test.describe('direct catalog edits and photo management', () => {
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Saved.')).toBeVisible();
   });
+
+  test('reconciles non-overlapping concurrent metadata edits without losing uncommitted user text', async ({ page }) => {
+    await loginAsAdmin(page);
+    await page.goto(`/products/${FIXTURE.activeProductId}`);
+
+    // 1. Admin A starts editing the Name field
+    const nameInput = page.getByLabel('Name');
+    await nameInput.fill('Name Edited by Admin A');
+
+    // 2. Admin B concurrently updates Brand on the server via PATCH
+    const patchRes = await page.request.patch(`${MOCK_API}/v1/admin/products/${FIXTURE.activeProductId}`, {
+      headers: { authorization: `Bearer ${ACCESS_TOKEN}`, 'content-type': 'application/json' },
+      data: { version: 1, brand: 'Brand Updated by Admin B' },
+    });
+    expect(patchRes.status()).toBe(200);
+
+    // 3. Admin A attempts to save and hits version conflict
+    await page.getByRole('button', { name: 'Save changes' }).click();
+
+    // 4. Stale version conflict prompt appears
+    const refreshBtn = page.getByRole('button', { name: 'Refresh latest' });
+    await expect(refreshBtn).toBeVisible();
+
+    // 5. Admin A clicks "Refresh latest"
+    await refreshBtn.click();
+
+    // 6. Admin A's name edit is preserved AND Admin B's brand update is adopted in the form
+    await expect(nameInput).toHaveValue('Name Edited by Admin A');
+    await expect(page.getByPlaceholder('e.g. Kenko')).toHaveValue('Brand Updated by Admin B');
+
+    // 7. Admin A can now save safely without overwriting Admin B's brand
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByText('Saved.')).toBeVisible();
+  });
 });
 
 test.describe('merged product identity', () => {

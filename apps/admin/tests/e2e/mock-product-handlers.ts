@@ -12,6 +12,7 @@
 // nonexistent one, never revealing which case it was.
 
 import type { IncomingMessage } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { ACCESS_TOKEN } from './mock-api-constants';
 import { store, MOCK_IMAGE_BYTES, fullProductDto, fullProductWithReviewsDto } from './mock-store';
 
@@ -80,7 +81,7 @@ export async function handleProducts(method: string, url: string, req: IncomingM
     const p = store.products.find((x) => x.id === photoUpload[1]);
     if (!p) return { status: 404, body: { code: 'not_found' } };
     const newPhoto = {
-      id: `photo-uploaded-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: randomUUID(),
       position: p.photos.length,
       thumbnailUrl: `/public-media/${p.id}/thumb-${Date.now()}.webp`,
       displayUrl: `/public-media/${p.id}/display-${Date.now()}.webp`,

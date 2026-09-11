@@ -38,6 +38,8 @@ export function ProductActions({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [userEditedFields, setUserEditedFields] = useState<Set<string>>(new Set());
+  const [overlappingConflicts, setOverlappingConflicts] = useState<string[]>([]);
 
   const [baseline, setBaseline] = useState({
     name: initialName,
@@ -57,16 +59,25 @@ export function ProductActions({
   const needsModeration = status === 'pending';
   const awaitingResubmission = status === 'changes_required';
 
-  const isDirty =
-    form.name !== baseline.name ||
-    form.brand !== baseline.brand ||
-    form.category !== baseline.category ||
-    form.description !== baseline.description ||
-    form.barcode !== baseline.barcode ||
-    form.defaultShelfLifeDays !== baseline.defaultShelfLifeDays;
+  const isDirty = userEditedFields.size > 0;
+
+  function updateField(key: keyof typeof form, value: string) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    setUserEditedFields((prev) => {
+      const next = new Set(prev);
+      if (value !== baseline[key]) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+    setOverlappingConflicts((prev) => prev.filter((f) => f !== key));
+  }
 
   useEffect(() => {
-    setVersion(initialVersion);
+    if (initialVersion === version) return;
+
     const nextBaseline = {
       name: initialName,
       brand: initialBrand ?? '',
@@ -78,21 +89,34 @@ export function ProductActions({
           ? String(initialDefaultShelfLifeDays)
           : '',
     };
-    setBaseline(nextBaseline);
 
-    setForm((current) => {
-      const wasDirty =
-        current.name !== baseline.name ||
-        current.brand !== baseline.brand ||
-        current.category !== baseline.category ||
-        current.description !== baseline.description ||
-        current.barcode !== baseline.barcode ||
-        current.defaultShelfLifeDays !== baseline.defaultShelfLifeDays;
-      return wasDirty ? current : nextBaseline;
+    const detectedOverlaps: string[] = [];
+    const mergedForm = { ...form };
+
+    (Object.keys(nextBaseline) as (keyof typeof nextBaseline)[]).forEach((key) => {
+      const serverChanged = nextBaseline[key] !== baseline[key];
+      const userChanged = userEditedFields.has(key);
+
+      if (serverChanged && userChanged) {
+        detectedOverlaps.push(key);
+      } else if (serverChanged && !userChanged) {
+        mergedForm[key] = nextBaseline[key];
+      }
     });
 
-    setConflict(false);
-    setErr(null);
+    setVersion(initialVersion);
+    setBaseline(nextBaseline);
+    setForm(mergedForm);
+
+    if (detectedOverlaps.length > 0) {
+      setOverlappingConflicts(detectedOverlaps);
+      setErr(`Concurrent edit conflict on: ${detectedOverlaps.join(', ')}. Please review before saving.`);
+      setConflict(true);
+    } else {
+      setOverlappingConflicts([]);
+      setConflict(false);
+      setErr(null);
+    }
   }, [
     initialVersion,
     initialName,
@@ -101,6 +125,10 @@ export function ProductActions({
     initialDescription,
     initialBarcode,
     initialDefaultShelfLifeDays,
+    version,
+    baseline,
+    form,
+    userEditedFields,
   ]);
 
   function run<T>(fn: () => Promise<ActionResult<T>>, confirmText?: string, onSuccess?: (data?: T) => void) {
@@ -128,9 +156,19 @@ export function ProductActions({
     if (baseline.barcode && !form.barcode.trim()) {
       return 'Existing barcode cannot be removed once set.';
     }
+    if (form.barcode.trim()) {
+      const bc = form.barcode.trim();
+      if (bc.length < 6 || bc.length > 64 || !/^[A-Za-z0-9\-_.:]+$/.test(bc)) {
+        return 'Barcode must be between 6 and 64 alphanumeric characters.';
+      }
+    }
     if (form.defaultShelfLifeDays.trim()) {
-      const parsed = Number(form.defaultShelfLifeDays.trim());
-      if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3650) {
+      const trimmed = form.defaultShelfLifeDays.trim();
+      if (!/^\d+$/.test(trimmed)) {
+        return 'Default shelf life must be a whole number between 1 and 3650 days.';
+      }
+      const parsed = parseInt(trimmed, 10);
+      if (parsed < 1 || parsed > 3650) {
         return 'Default shelf life must be a whole number between 1 and 3650 days.';
       }
     }
@@ -138,6 +176,10 @@ export function ProductActions({
   }
 
   function handleSave() {
+    if (overlappingConflicts.length > 0) {
+      setErr(`Please resolve concurrent conflict on: ${overlappingConflicts.join(', ')} before saving.`);
+      return;
+    }
     const validationError = validate();
     if (validationError) {
       setErr(validationError);
@@ -170,6 +212,8 @@ export function ProductActions({
           setVersion(v);
         }
         setBaseline({ ...form });
+        setUserEditedFields(new Set());
+        setOverlappingConflicts([]);
       },
     );
   }
@@ -324,7 +368,7 @@ export function ProductActions({
               id="name"
               aria-label="Name"
               value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              onChange={(e) => updateField('name', e.target.value)}
               className="h-11 rounded-xl"
               placeholder="e.g. Khẩu trang Kenko 5D"
             />
@@ -337,7 +381,7 @@ export function ProductActions({
             </Label>
             <Input
               value={form.brand}
-              onChange={(e) => setForm({ ...form, brand: e.target.value })}
+              onChange={(e) => updateField('brand', e.target.value)}
               className="h-11 rounded-xl"
               placeholder="e.g. Kenko"
             />
@@ -350,7 +394,7 @@ export function ProductActions({
             </Label>
             <Input
               value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              onChange={(e) => updateField('category', e.target.value)}
               className="h-11 rounded-xl"
               placeholder="e.g. Personal Care"
             />
@@ -368,7 +412,7 @@ export function ProductActions({
             </div>
             <Input
               value={form.barcode}
-              onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+              onChange={(e) => updateField('barcode', e.target.value)}
               className="h-11 rounded-xl font-mono"
               placeholder="e.g. 8936012345678"
             />
@@ -391,7 +435,7 @@ export function ProductActions({
               min="1"
               max="3650"
               value={form.defaultShelfLifeDays}
-              onChange={(e) => setForm({ ...form, defaultShelfLifeDays: e.target.value })}
+              onChange={(e) => updateField('defaultShelfLifeDays', e.target.value)}
               className="h-11 rounded-xl"
               placeholder="e.g. 365"
             />
@@ -404,7 +448,7 @@ export function ProductActions({
             </Label>
             <textarea
               value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              onChange={(e) => updateField('description', e.target.value)}
               rows={4}
               className="w-full rounded-2xl border border-input bg-transparent px-3 py-2.5 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-neutral-mid/60 leading-relaxed resize-y"
               placeholder="Detailed product specification, ingredients, usage instructions, or packaging notes…"
@@ -433,6 +477,8 @@ export function ProductActions({
                 className="rounded-xl gap-1.5 text-neutral-mid hover:text-neutral-dark"
                 onClick={() => {
                   setForm(baseline);
+                  setUserEditedFields(new Set());
+                  setOverlappingConflicts([]);
                   setErr(null);
                 }}
               >

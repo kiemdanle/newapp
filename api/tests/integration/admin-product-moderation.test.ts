@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { mkdtemp, rm, readdir } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetConfigForTests } from '../../src/config.js';
@@ -589,7 +589,7 @@ describe('admin direct correction — field patch', () => {
       payload: { version: updated.version, barcode: p2.barcode },
     });
     expect(dupRes.statusCode).toBe(409);
-    expect(dupRes.json().code).toBe('conflict');
+    expect(dupRes.json().code).toBe('barcode_conflict');
 
     // 3. Reject clearing an existing barcode with 400
     const clearRes = await app.inject({
@@ -625,7 +625,7 @@ describe('admin direct photo management — audit and version bump', () => {
 
     const afterAdd = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
     expect(afterAdd.version).toBe(versionBefore + 1);
-
+    expect(afterAdd.imageUrl).toBeTruthy();
     const photoId = uploadRes.json().photos[0].id as string;
     const photoRow = await getPrisma().productPhoto.findUniqueOrThrow({ where: { id: photoId } });
     expect(photoRow.moderationStatus).toBe('approved');
@@ -636,6 +636,8 @@ describe('admin direct photo management — audit and version bump', () => {
     expect(deleteRes.statusCode).toBe(200);
     const removeLog = await getPrisma().adminAuditLog.findFirstOrThrow({ where: { adminId: admin.id, targetId: product.id, action: 'product.photo.remove' } });
     expect(removeLog).toBeTruthy();
+    const afterDelete = await getPrisma().product.findUniqueOrThrow({ where: { id: product.id } });
+    expect(afterDelete.imageUrl).toBeNull();
     await app.close();
   });
 
@@ -659,40 +661,38 @@ describe('admin direct photo management — audit and version bump', () => {
     await app.close();
   });
 
-  it('compensates public bytes and returns 409 if active product has reached max photos', async () => {
+  it('compensates public bytes and rolls back if the reference transaction fails after writing public bytes', async () => {
     const app = await buildServer();
     const { headers } = await makeAdmin();
     const owner = await makeUserForAdmin();
-    const product = await getPrisma().product.create({ data: { barcode: `bc-${randomUUID()}`, name: 'Active Full', source: 'user', createdByUserId: owner.id, status: 'active' } });
+    const product = await getPrisma().product.create({
+      data: { barcode: `bc-${randomUUID()}`, name: 'Active Crash Test', source: 'user', createdByUserId: owner.id, status: 'active' },
+    });
 
-    // Seed 5 photos to hit MAX_PHOTOS_PER_PRODUCT
-    for (let i = 0; i < 5; i++) {
-      await getPrisma().productPhoto.create({
-        data: {
-          productId: product.id,
-          position: i,
-          uploadedByUserId: owner.id,
-          moderationStatus: 'approved',
-          mimeType: 'image/webp',
-          displayByteSize: 100,
-          displayWidth: 100,
-          displayHeight: 100,
-          thumbnailByteSize: 50,
-          thumbnailWidth: 50,
-          thumbnailHeight: 50,
-          publicStorageKey: `public/products/${product.id}/photo-${i}`,
-        },
-      });
-    }
+    writeAuditLogSpy.mockImplementationOnce(async () => {
+      throw new Error('Simulated DB audit crash after public promotion');
+    });
 
     const uploadRes = await app.inject({
       method: 'POST',
       url: `/v1/products/${product.id}/photos`,
       headers: { ...headers, 'content-type': `multipart/form-data; boundary=${CORRECTION_BOUNDARY}` },
-      payload: multipartBody([{ name: 'file', filename: 'extra.jpg', contentType: 'image/jpeg', content: await correctionJpegBytes() }]),
+      payload: multipartBody([{ name: 'file', filename: 'fail.jpg', contentType: 'image/jpeg', content: await correctionJpegBytes() }]),
     });
-    expect(uploadRes.statusCode).toBe(409);
-    expect(uploadRes.json().code).toBe('photo_limit_reached');
+
+    expect(uploadRes.statusCode).toBe(500);
+
+    const count = await getPrisma().productPhoto.count({ where: { productId: product.id } });
+    expect(count).toBe(0);
+
+    const productPublicDir = resolve(root, 'public', 'products', product.id);
+    const subdirs = await readdir(productPublicDir);
+    expect(subdirs).toHaveLength(0);
+    const intent = await getPrisma().mediaOperationOutbox.findFirst({
+      where: { operation: 'publish_public', status: 'prepared' },
+    });
+    expect(intent).toBeTruthy();
+
     await app.close();
   });
 });

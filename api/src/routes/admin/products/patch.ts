@@ -37,6 +37,15 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
     const before = await prisma.product.findUnique({ where: { id } });
     if (!before) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
 
+    if (before.version !== input.version) {
+      throw new AppError({
+        status: 409,
+        code: ERROR_CODES.VERSION_CONFLICT,
+        title: 'This product was changed since you last loaded it',
+        currentVersion: before.version,
+      });
+    }
+
     if (input.status !== undefined && input.status !== before.status) {
       const allowed = ALLOWED_DIRECT_STATUS_TRANSITIONS[before.status] ?? [];
       if (!allowed.includes(input.status)) {
@@ -66,14 +75,15 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
       if (existing) {
         throw new AppError({
           status: 409,
-          code: ERROR_CODES.CONFLICT,
-          title: `Barcode is already assigned to product "${existing.name}"`,
+          code: 'barcode_conflict',
+          title: 'Barcode conflict',
+          detail: `Barcode is already assigned to product "${existing.name}"`,
         });
       }
     }
 
     const after = await prisma.$transaction(async (tx) => {
-      let result;
+      let result: { count: number };
       try {
         result = await tx.product.updateMany({
           where: { id, version: input.version },
@@ -93,8 +103,9 @@ export async function adminProductsPatchRoute(app: FastifyInstance) {
         if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
           throw new AppError({
             status: 409,
-            code: ERROR_CODES.CONFLICT,
-            title: 'Barcode is already assigned to another product',
+            code: 'barcode_conflict',
+            title: 'Barcode conflict',
+            detail: 'Barcode is already assigned to another product',
           });
         }
         throw err;
