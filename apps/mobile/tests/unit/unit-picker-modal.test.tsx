@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, within } from '@testing-library/react-native';
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import { UnitPickerModal } from '../../src/components/UnitPickerModal';
 
@@ -20,6 +20,36 @@ describe('UnitPickerModal', () => {
     expect(getByTestId('unit-option-box')).toBeTruthy();
     expect(getByText('Select Unit')).toBeTruthy();
   });
+  it('only displays description for abbreviation units and omits description for full-text units (box, bag)', () => {
+    const { getByTestId } = renderWithTheme(
+      <UnitPickerModal
+        visible
+        onClose={jest.fn()}
+        onSelect={jest.fn()}
+        currentUnit="pcs"
+      />,
+      'expyrico',
+    );
+
+    // Full text units (box, bag) show only their key text, no duplicate description
+    const boxCard = getByTestId('unit-option-box');
+    expect(within(boxCard).getByText('box')).toBeTruthy();
+    expect(within(boxCard).queryByText('Box')).toBeNull();
+
+    const bagCard = getByTestId('unit-option-bag');
+    expect(within(bagCard).getByText('bag')).toBeTruthy();
+    expect(within(bagCard).queryByText('Bag')).toBeNull();
+
+    // Abbreviation units (kg, oz) show both key and description
+    const kgCard = getByTestId('unit-option-kg');
+    expect(within(kgCard).getByText('kg')).toBeTruthy();
+    expect(within(kgCard).getByText('Kilogram')).toBeTruthy();
+
+    const ozCard = getByTestId('unit-option-oz');
+    expect(within(ozCard).getByText('oz')).toBeTruthy();
+    expect(within(ozCard).getByText('Ounce')).toBeTruthy();
+  });
+
 
   it('renders with cohesive dark theme styling in expyricoDark', () => {
     const { getByTestId, getByText } = renderWithTheme(

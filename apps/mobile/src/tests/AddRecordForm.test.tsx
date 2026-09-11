@@ -287,7 +287,7 @@ describe('AddRecordForm', () => {
     );
 
     expect(getByTestId('add-record-location-selector')).toBeTruthy();
-    fireEvent.press(getByTestId('location-pill-pantry'));
+    fireEvent.press(getByTestId('location-pill-fridge'));
 
     fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-11-01');
     fireEvent.press(getByTestId('add-record-save'));
@@ -296,7 +296,7 @@ describe('AddRecordForm', () => {
     expect(createLocalRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: 'prod-1',
-        location: 'Pantry',
+        location: 'Fridge',
         expiryDate: '2026-11-01',
       }),
     );

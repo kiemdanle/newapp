@@ -18,6 +18,8 @@ describe('LocationPickerModal', () => {
     expect(getByTestId('location-picker-modal')).toBeTruthy();
     expect(getByTestId('location-picker-search-input')).toBeTruthy();
     expect(getByTestId('location-picker-chip-spice-rack')).toBeTruthy();
+    expect(getByTestId('location-picker-chip-pantry')).toBeTruthy();
+    expect(getByTestId('location-picker-chip-counter')).toBeTruthy();
     expect(getByText('Storage Location')).toBeTruthy();
   });
   it('renders with cohesive dark theme styling in expyricoDark', () => {

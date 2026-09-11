@@ -4,21 +4,22 @@ import { renderWithTheme } from '../helpers/renderWithTheme';
 import { LocationSelector } from '../../src/components/LocationSelector';
 
 describe('LocationSelector', () => {
-  it('renders top 4 fixed pills (Fridge, Freezer, Pantry, Counter) and More pill in 1 row', () => {
-    const { getByTestId, getByText } = renderWithTheme(
+  it('renders top 2 visible pills (Fridge, Freezer) and More pill in 1 row without truncation', () => {
+    const { getByTestId, queryByTestId, getByText } = renderWithTheme(
       <LocationSelector value="Fridge" onChange={jest.fn()} />,
       'expyrico',
     );
 
     expect(getByTestId('location-pill-fridge')).toBeTruthy();
     expect(getByTestId('location-pill-freezer')).toBeTruthy();
-    expect(getByTestId('location-pill-pantry')).toBeTruthy();
-    expect(getByTestId('location-pill-counter')).toBeTruthy();
     expect(getByTestId('location-pill-more')).toBeTruthy();
+
+    // Pantry and Counter are now inside the More modal, not crowded in the top row
+    expect(queryByTestId('location-pill-pantry')).toBeNull();
+    expect(queryByTestId('location-pill-counter')).toBeNull();
+
     expect(getByText('Fridge')).toBeTruthy();
     expect(getByText('Freezer')).toBeTruthy();
-    expect(getByText('Pantry')).toBeTruthy();
-    expect(getByText('Counter')).toBeTruthy();
     expect(getByText('More')).toBeTruthy();
   });
 
@@ -44,16 +45,38 @@ describe('LocationSelector', () => {
     expect(handleChange).toHaveBeenCalledWith(null);
   });
 
-  it('displays custom location on the 5th pill in active highlight state', () => {
+  it('displays Pantry and Counter on the adaptive More pill in active highlight state', () => {
+    const { getByTestId: getPantryTestId, getByText: getPantryText } = renderWithTheme(
+      <LocationSelector value="Pantry" onChange={jest.fn()} />,
+      'expyrico',
+    );
+
+    const pantryPill = getPantryTestId('location-pill-more');
+    expect(pantryPill).toBeTruthy();
+    expect(getPantryText('Pantry')).toBeTruthy();
+    expect(pantryPill.props.accessibilityState.selected).toBe(true);
+
+    const { getByTestId: getCounterTestId, getByText: getCounterText } = renderWithTheme(
+      <LocationSelector value="Counter" onChange={jest.fn()} />,
+      'expyrico',
+    );
+
+    const counterPill = getCounterTestId('location-pill-more');
+    expect(counterPill).toBeTruthy();
+    expect(getCounterText('Counter')).toBeTruthy();
+    expect(counterPill.props.accessibilityState.selected).toBe(true);
+  });
+
+  it('displays custom location on the adaptive More pill in active highlight state', () => {
     const { getByTestId, getByText } = renderWithTheme(
       <LocationSelector value="Spice Rack" onChange={jest.fn()} />,
       'expyrico',
     );
 
-    const fifthPill = getByTestId('location-pill-more');
-    expect(fifthPill).toBeTruthy();
+    const morePill = getByTestId('location-pill-more');
+    expect(morePill).toBeTruthy();
     expect(getByText('Spice Rack')).toBeTruthy();
-    expect(fifthPill.props.accessibilityState.selected).toBe(true);
+    expect(morePill.props.accessibilityState.selected).toBe(true);
   });
 
   it('opens LocationPickerModal when 5th pill is tapped', () => {
@@ -64,5 +87,32 @@ describe('LocationSelector', () => {
 
     fireEvent.press(getByTestId('location-pill-more'));
     expect(getByTestId('location-picker-modal')).toBeTruthy();
+  });
+
+  it('renders cohesive dark theme styles under expyricoDark', () => {
+    const { getByTestId } = renderWithTheme(
+      <LocationSelector value="Fridge" onChange={jest.fn()} />,
+      'expyricoDark',
+    );
+
+    const fridgePill = getByTestId('location-pill-fridge');
+    expect(fridgePill.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: '#4BAE8A', // primary
+          borderColor: '#4BAE8A',
+        }),
+      ]),
+    );
+
+    const freezerPill = getByTestId('location-pill-freezer');
+    expect(freezerPill.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: '#1F342C', // bgGlass in dark mode
+          borderColor: '#2D3A34',     // border in dark mode
+        }),
+      ]),
+    );
   });
 });

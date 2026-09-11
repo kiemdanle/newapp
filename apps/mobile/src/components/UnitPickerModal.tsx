@@ -283,6 +283,7 @@ export function UnitPickerModal({
                   <View style={styles.unitGrid}>
                     {matchingUnits.map((u) => {
                       const isSelected = normalizedCurrent === u.key.toLowerCase();
+                      const isAbbreviation = u.key.trim().toLowerCase() !== u.label.trim().toLowerCase();
                       return (
                         <Pressable
                           key={u.key}
@@ -318,6 +319,7 @@ export function UnitPickerModal({
                                       ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
                                       : theme.colors.text,
                                     fontWeight: isSelected ? '800' : '700',
+                                    fontSize: isAbbreviation ? 13 : 14,
                                   },
                                 ]}
                               >
@@ -331,21 +333,23 @@ export function UnitPickerModal({
                                 />
                               )}
                             </View>
-                            <Text
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={[
-                                styles.unitLabelText,
-                                {
-                                  color: isSelected
-                                    ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
-                                    : theme.colors.textMuted,
-                                  opacity: isSelected ? 1 : 0.85,
-                                },
-                              ]}
-                            >
-                              {u.label}
-                            </Text>
+                            {isAbbreviation ? (
+                              <Text
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={[
+                                  styles.unitLabelText,
+                                  {
+                                    color: isSelected
+                                      ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
+                                      : theme.colors.textMuted,
+                                    opacity: isSelected ? 1 : 0.85,
+                                  },
+                                ]}
+                              >
+                                {u.label}
+                              </Text>
+                            ) : null}
                           </View>
                         </Pressable>
                       );

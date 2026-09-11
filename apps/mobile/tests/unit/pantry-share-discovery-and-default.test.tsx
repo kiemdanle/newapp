@@ -69,7 +69,7 @@ describe('Pantry Share Discovery CTA and Default Household Mode', () => {
 
     const { getByTestId, getByText } = renderWithClient(<HomeTab />);
 
-    expect(getByText('Your pantry')).toBeTruthy();
+    expect(getByText('Pantry')).toBeTruthy();
     const shareBtn = getByTestId('home-share-pantry-btn');
     expect(shareBtn).toBeTruthy();
 

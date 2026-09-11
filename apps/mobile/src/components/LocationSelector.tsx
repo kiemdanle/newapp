@@ -24,16 +24,16 @@ export function LocationSelector({
   testID = 'location-selector',
 }: LocationSelectorProps) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const [modalVisible, setModalVisible] = useState(false);
 
   const normalizedValue = normalizeLocation(value);
-  const isTop4 = DEFAULT_TOP_LOCATIONS.some(
+  const isTopLocation = DEFAULT_TOP_LOCATIONS.some(
     (loc) => loc.toLowerCase() === normalizedValue,
   );
 
-  const isFifthPillActive = Boolean(normalizedValue && !isTop4);
-  const fifthPillLabel = isFifthPillActive && value ? value : 'More';
-
+  const isAdaptivePillActive = Boolean(normalizedValue && !isTopLocation);
+  const adaptivePillLabel = isAdaptivePillActive && value ? value : 'More';
   const handlePillPress = (loc: string) => {
     if (normalizedValue === loc.toLowerCase()) {
       // Tap-to-deselect: clear back to null
@@ -52,7 +52,7 @@ export function LocationSelector({
       ) : null}
 
       <View style={styles.pillsRow}>
-        {/* Top 4 Quick-Tap Pills */}
+        {/* Top Quick-Tap Pills (Fridge, Freezer) */}
         {DEFAULT_TOP_LOCATIONS.map((loc) => {
           const isSelected = normalizedValue === loc.toLowerCase();
           return (
@@ -68,11 +68,15 @@ export function LocationSelector({
                 {
                   backgroundColor: isSelected
                     ? theme.colors.primary
-                    : theme.colors.bgGlass,
+                    : isDark
+                      ? theme.colors.bgGlass
+                      : theme.colors.bgElevated,
                   borderColor: isSelected
                     ? theme.colors.primary
-                    : theme.colors.border,
-                  opacity: pressed ? 0.82 : 1,
+                    : isDark
+                      ? theme.colors.border
+                      : 'rgba(44, 44, 40, 0.08)',
+                  opacity: pressed ? 0.85 : 1,
                 },
               ]}
             >
@@ -91,27 +95,30 @@ export function LocationSelector({
             </Pressable>
           );
         })}
-
-        {/* 5th Adaptive Pill ("More ▾" / "${value} ▾") */}
+        {/* Adaptive More Pill ("More ▾" / "${value} ▾") */}
         <Pressable
           testID="location-pill-more"
           accessibilityRole="button"
           accessibilityLabel={
-            isFifthPillActive ? `Selected location ${value}` : 'More locations'
+            isAdaptivePillActive ? `Selected location ${value}` : 'More locations'
           }
-          accessibilityState={{ selected: isFifthPillActive }}
+          accessibilityState={{ selected: isAdaptivePillActive }}
           onPress={() => setModalVisible(true)}
           style={({ pressed }) => [
             styles.pill,
-            styles.fifthPill,
+            styles.adaptivePill,
             {
-              backgroundColor: isFifthPillActive
+              backgroundColor: isAdaptivePillActive
                 ? theme.colors.primary
-                : theme.colors.bgGlass,
-              borderColor: isFifthPillActive
+                : isDark
+                  ? theme.colors.bgGlass
+                  : theme.colors.bgElevated,
+              borderColor: isAdaptivePillActive
                 ? theme.colors.primary
-                : theme.colors.border,
-              opacity: pressed ? 0.82 : 1,
+                : isDark
+                  ? theme.colors.border
+                  : 'rgba(44, 44, 40, 0.08)',
+              opacity: pressed ? 0.85 : 1,
             },
           ]}
         >
@@ -121,17 +128,17 @@ export function LocationSelector({
             style={[
               styles.pillText,
               {
-                color: isFifthPillActive ? '#FFFFFF' : theme.colors.textMuted,
-                fontWeight: isFifthPillActive ? '700' : '600',
+                color: isAdaptivePillActive ? '#FFFFFF' : theme.colors.textMuted,
+                fontWeight: isAdaptivePillActive ? '700' : '600',
               },
             ]}
           >
-            {fifthPillLabel}
+            {adaptivePillLabel}
           </Text>
           <Ionicons
             name="chevron-down"
-            size={12}
-            color={isFifthPillActive ? '#FFFFFF' : theme.colors.textMuted}
+            size={13}
+            color={isAdaptivePillActive ? '#FFFFFF' : theme.colors.textMuted}
             style={styles.chevron}
           />
         </Pressable>
@@ -160,7 +167,7 @@ const styles = StyleSheet.create({
   },
   pillsRow: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
   },
   pill: {
     flex: 1,
@@ -170,17 +177,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
-  fifthPill: {
+  adaptivePill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
+    gap: 4,
+    paddingHorizontal: 8,
   },
   pillText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   chevron: {
     marginTop: 1,

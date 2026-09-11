@@ -4,13 +4,13 @@ import type Ionicons from 'react-native-vector-icons/Ionicons';
 export const DEFAULT_TOP_LOCATIONS = [
   'Fridge',
   'Freezer',
-  'Pantry',
-  'Counter',
 ] as const;
 
 export type DefaultTopLocation = (typeof DEFAULT_TOP_LOCATIONS)[number];
 
 export const COMMON_OTHER_LOCATIONS = [
+  'Pantry',
+  'Counter',
   'Spice Rack',
   'Cupboard',
   'Cabinet',

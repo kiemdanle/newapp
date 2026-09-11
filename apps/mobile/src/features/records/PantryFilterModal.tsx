@@ -91,7 +91,7 @@ export function PantryFilterModal({
     }
 
     const allNames = Array.from(
-      new Set([...DEFAULT_TOP_LOCATIONS, ...Object.keys(counts)]),
+      new Set([...DEFAULT_TOP_LOCATIONS, 'Pantry', 'Counter', ...Object.keys(counts)]),
     );
 
     return allNames.map((name) => ({

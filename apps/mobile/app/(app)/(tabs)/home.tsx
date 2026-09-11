@@ -71,10 +71,7 @@ export default function HomeTab() {
           <Logo size={28} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.greeting, { color: theme.colors.text }]} numberOfLines={1}>
-              Your pantry
-            </Text>
-            <Text style={[styles.headerSubcopy, { color: theme.colors.textMuted }]} numberOfLines={1}>
-              Use what&apos;s expiring first.
+              Pantry
             </Text>
           </View>
         </View>

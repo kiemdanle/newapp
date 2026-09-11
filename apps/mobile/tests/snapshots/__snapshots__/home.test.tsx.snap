@@ -236,23 +236,7 @@ exports[`home in expyrico snapshot 1`] = `
                                 ]
                               }
                             >
-                              Your pantry
-                            </Text>
-                            <Text
-                              numberOfLines={1}
-                              style={
-                                [
-                                  {
-                                    "fontSize": 13,
-                                    "marginTop": 2,
-                                  },
-                                  {
-                                    "color": "#8C8C85",
-                                  },
-                                ]
-                              }
-                            >
-                              Use what's expiring first.
+                              Pantry
                             </Text>
                           </View>
                         </View>
@@ -705,23 +689,7 @@ exports[`home in expyrico snapshot 1`] = `
                                   ]
                                 }
                               >
-                                Your pantry
-                              </Text>
-                              <Text
-                                numberOfLines={1}
-                                style={
-                                  [
-                                    {
-                                      "fontSize": 13,
-                                      "marginTop": 2,
-                                    },
-                                    {
-                                      "color": "#8C8C85",
-                                    },
-                                  ]
-                                }
-                              >
-                                Use what's expiring first.
+                                Pantry
                               </Text>
                             </View>
                           </View>
@@ -1273,23 +1241,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                                 ]
                               }
                             >
-                              Your pantry
-                            </Text>
-                            <Text
-                              numberOfLines={1}
-                              style={
-                                [
-                                  {
-                                    "fontSize": 13,
-                                    "marginTop": 2,
-                                  },
-                                  {
-                                    "color": "#B7BDB7",
-                                  },
-                                ]
-                              }
-                            >
-                              Use what's expiring first.
+                              Pantry
                             </Text>
                           </View>
                         </View>
@@ -1742,23 +1694,7 @@ exports[`home in expyricoDark snapshot 1`] = `
                                   ]
                                 }
                               >
-                                Your pantry
-                              </Text>
-                              <Text
-                                numberOfLines={1}
-                                style={
-                                  [
-                                    {
-                                      "fontSize": 13,
-                                      "marginTop": 2,
-                                    },
-                                    {
-                                      "color": "#B7BDB7",
-                                    },
-                                  ]
-                                }
-                              >
-                                Use what's expiring first.
+                                Pantry
                               </Text>
                             </View>
                           </View>

@@ -1,13 +1,11 @@
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import Home from '../../app/(app)/(tabs)/home';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual('react-native-safe-area-context'),
   useSafeAreaInsets: jest.fn(() => ({ top: 0, right: 0, bottom: 0, left: 0 })),
 }));
 
-const mockUseSafeAreaInsets = useSafeAreaInsets as jest.Mock;
 
 describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
   it('snapshot', () => {
@@ -18,7 +16,7 @@ describe.each(['expyrico', 'expyricoDark'] as const)('home in %s', (theme) => {
     const screen = renderWithTheme(<Home />, theme);
 
     expect(screen.getByText('Start your pantry')).toBeTruthy();
-    expect(screen.getByText('Your pantry')).toBeTruthy();
+    expect(screen.getByText('Pantry')).toBeTruthy();
   });
 
   it('keeps the pantry list scrollable', () => {
