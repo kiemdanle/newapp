@@ -35,6 +35,25 @@ export function normalizePhotoUri(uri: string | null | undefined): string | null
   }
   return trimmed;
 }
+export function parsePhotoUris(raw: string | null | undefined): string[] {
+  if (!raw || typeof raw !== 'string') return [];
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => normalizePhotoUri(item))
+          .filter((u): u is string => Boolean(u));
+      }
+    } catch {
+      // fallback to single uri if not json
+    }
+  }
+  const single = normalizePhotoUri(trimmed);
+  return single ? [single] : [];
+}
 /**
  * Universal product image thumbnail component that seamlessly resolves:
  * 1. Local or public photo URLs (from record.photoUrl or product.imageUrl).
@@ -55,7 +74,7 @@ export function ProductThumbnail({
 
   // Candidate sources in order of preference
   const rawCandidates: Array<string | null | undefined> = [
-    photoUrl,
+    ...parsePhotoUris(photoUrl),
     firstPhoto?.displayUrl,
     firstPhoto?.thumbnailUrl,
     product?.imageUrl,

@@ -30,6 +30,7 @@ interface Props {
    * scope, never a shared household, until the product goes public. */
   lockedPersonalScope?: boolean;
   scannedBarcode?: string;
+  scannedExpiry?: string | null;
 }
 
 const isoRe = /^\d{4}-\d{2}-\d{2}$/;
@@ -43,6 +44,7 @@ export function AddRecordForm({
   onOpenOcr,
   lockedPersonalScope,
   scannedBarcode,
+  scannedExpiry,
 }: Props) {
   const theme = useTheme();
   const { data: product } = useProduct(productId ?? undefined);
@@ -78,6 +80,11 @@ export function AddRecordForm({
       setExpiry(d.toISOString().slice(0, 10));
     }
   }, [expiry, product?.defaultShelfLifeDays]);
+  useEffect(() => {
+    if (scannedExpiry) {
+      setExpiry(scannedExpiry);
+    }
+  }, [scannedExpiry]);
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('pcs');
   const [notes, setNotes] = useState('');
@@ -87,7 +94,7 @@ export function AddRecordForm({
   const [showMore, setShowMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const createOrResumeDraft = useCreateOrResumeDraft();
@@ -127,9 +134,16 @@ export function AddRecordForm({
     try {
       let finalProductId = productId ?? null;
 
-      // If this is a custom item (no catalog product yet) and the user attached a photo or has a scanned barcode,
+      // If this is a custom item (no catalog product yet) and the user attached photos or has a scanned barcode,
       // create a private product draft and attach barcode/photo so it is permanently stored in catalog/cloud media
-      if (!finalProductId && (photo || scannedBarcode)) {
+      let storedPhotoUrl: string | null = null;
+      if (photos.length > 1) {
+        storedPhotoUrl = JSON.stringify(photos.map((p) => p.path));
+      } else if (photos.length === 1 && photos[0]) {
+        storedPhotoUrl = photos[0].path;
+      }
+
+      if (!finalProductId && (photos.length > 0 || scannedBarcode)) {
         try {
           const draftRes = await createOrResumeDraft.mutateAsync({
             barcode: scannedBarcode || null,
@@ -144,10 +158,10 @@ export function AddRecordForm({
             category: category.trim() || null,
           });
 
-          if (photo) {
+          for (const p of photos) {
             const uploadHandle = uploadProductPhoto(
               { kind: 'draft', productId: draftRes.product.id },
-              { path: photo.path, mime: photo.mime },
+              { path: p.path, mime: p.mime },
             );
             await uploadHandle.promise;
           }
@@ -166,7 +180,7 @@ export function AddRecordForm({
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
-        photoUrl: photo ? photo.path : null,
+        photoUrl: storedPhotoUrl,
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
       });
@@ -208,8 +222,8 @@ export function AddRecordForm({
     },
   ];
   const onCameraCapture = (pickedList: PickedPhoto[]) => {
-    if (pickedList && pickedList.length > 0 && pickedList[0]) {
-      setPhoto(pickedList[0]);
+    if (pickedList && pickedList.length > 0) {
+      setPhotos((prev) => [...prev, ...pickedList].slice(0, 5));
     }
   };
 
@@ -220,14 +234,20 @@ export function AddRecordForm({
 
   const onChoosePhotos = async () => {
     try {
-      const picked = await choosePhotos(1);
-      if (picked.length > 0 && picked[0]) setPhoto(picked[0]);
+      const remaining = Math.max(1, 5 - photos.length);
+      const picked = await choosePhotos(remaining);
+      if (picked.length > 0) {
+        setPhotos((prev) => [...prev, ...picked].slice(0, 5));
+      }
     } catch (err) {
       const msg = handlePhotoPickerError(err, 'gallery');
       if (msg) setError(msg);
     }
   };
 
+  const handleRemovePhoto = (index: number) => {
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
   return (
     <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
       {!productId ? (
@@ -259,37 +279,91 @@ export function AddRecordForm({
 
       {/* Item Photo Section */}
       <View style={{ gap: 6 }}>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item photo (optional)</Text>
-        {photo ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ position: 'relative', width: 68, height: 68 }}>
-              <Image
-                testID="add-record-photo-preview"
-                source={{ uri: photo.path.startsWith('/') ? `file://${photo.path}` : photo.path }}
-                style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
-                accessibilityIgnoresInvertColors
-              />
-              <Pressable
-                testID="add-record-photo-remove"
-                accessibilityRole="button"
-                accessibilityLabel="Remove photo"
-                onPress={() => setPhoto(null)}
-                style={{
-                  position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  backgroundColor: theme.colors.danger,
-                  borderRadius: 11,
-                  width: 22,
-                  height: 22,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Ionicons name="close" size={14} color="#FFFFFF" />
-              </Pressable>
-            </View>
-            <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: '600' }}>Photo attached</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item photos (optional)</Text>
+          {photos.length > 0 ? (
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{photos.length}/5 photos</Text>
+          ) : null}
+        </View>
+        {photos.length > 0 ? (
+          <View style={{ gap: 10 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {photos.map((p, index) => (
+                <View key={`${p.path}-${index}`} style={{ position: 'relative', width: 68, height: 68 }}>
+                  <Image
+                    testID={index === 0 ? 'add-record-photo-preview' : `add-record-photo-preview-${index}`}
+                    source={{ uri: p.path.startsWith('/') ? `file://${p.path}` : p.path }}
+                    style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
+                    accessibilityIgnoresInvertColors
+                  />
+                  <Pressable
+                    testID={index === 0 ? 'add-record-photo-remove' : `add-record-photo-remove-${index}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove photo ${index + 1}`}
+                    onPress={() => handleRemovePhoto(index)}
+                    style={{
+                      position: 'absolute',
+                      top: -6,
+                      right: -6,
+                      backgroundColor: theme.colors.danger,
+                      borderRadius: 11,
+                      width: 22,
+                      height: 22,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Ionicons name="close" size={14} color="#FFFFFF" />
+                  </Pressable>
+                </View>
+              ))}
+              {photos.length < 5 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Add more photos"
+                  testID="add-record-add-more-photos"
+                  onPress={onChoosePhotos}
+                  style={{
+                    width: 68,
+                    height: 68,
+                    borderRadius: theme.radii.md,
+                    borderWidth: 1.5,
+                    borderStyle: 'dashed',
+                    borderColor: isDark ? theme.colors.border : theme.colors.primary,
+                    backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                  }}
+                >
+                  <Ionicons name="add" size={20} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
+                  <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? theme.colors.primary : theme.colors.primaryDark }}>Add</Text>
+                </Pressable>
+              ) : null}
+            </ScrollView>
+            {photos.length < 5 ? (
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <Button
+                  testID="add-record-take-photo"
+                  label="Take photo"
+                  icon="camera"
+                  variant="outline"
+                  onPress={onTakePhoto}
+                />
+                <Button
+                  testID="add-record-choose-photo"
+                  label="Choose photo"
+                  icon="images"
+                  variant="outline"
+                  onPress={onChoosePhotos}
+                />
+              </View>
+            ) : null}
           </View>
         ) : (
           <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
@@ -618,8 +692,8 @@ export function AddRecordForm({
       </Pressable>
       <MultiPhotoCameraModal
         visible={showCameraModal}
-        maxPhotos={1}
-        title="Item Photo"
+        maxPhotos={Math.max(1, 5 - photos.length)}
+        title="Item Photos"
         onCapture={onCameraCapture}
         onClose={() => setShowCameraModal(false)}
       />

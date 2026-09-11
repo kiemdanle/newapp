@@ -358,8 +358,10 @@ describe('<NewProductScreen />', () => {
     queueFetch(problemResponse('internal_error', 500, 'Server error'));
 
     // Should not throw or crash
-    fireEvent.press(getByTestId('product-new-close-btn'));
-    expect(navigation.goBack).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.press(getByTestId('product-new-close-btn'));
+    });
+    await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
   });
   it('clean untitled draft without photos: back navigation calls DELETE with emptyOnly=true and expectedVersion', async () => {
     __setRouteParams({ productId: 'draft-clean-back-1', resume: 'edit', barcode: '123' });
@@ -377,14 +379,15 @@ describe('<NewProductScreen />', () => {
     const preventDefault = jest.fn();
 
     await act(async () => {
-      latestBeforeRemove[1]({ preventDefault, data: { action: {} } });
+      await latestBeforeRemove[1]({ preventDefault, data: { action: { type: 'GO_BACK' } } });
     });
 
-    expect(preventDefault).not.toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('/products/drafts/draft-clean-back-1?emptyOnly=true&expectedVersion=1'),
       expect.objectContaining({ method: 'DELETE' }),
     );
+    expect(navigation.dispatch).toHaveBeenCalledWith({ type: 'GO_BACK' });
   });
 
   it('PATCH settling while discard alert is open: choosing Discard sends emptyOnly and expectedVersion', async () => {

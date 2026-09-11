@@ -1,3 +1,5 @@
+import { getWirePhotoUrl } from '../db/sync';
+
 // apps/mobile/src/__tests__/sync-household.test.ts
 // Unit-level tests for the sync split-conflict-policy decision logic.
 // Extracted as pure functions so they can be tested without a live WatermelonDB.
@@ -115,6 +117,29 @@ describe('sync split conflict policy — pure logic', () => {
 
     it('does not destroy personal records on 403', () => {
       expect(shouldRecoverFromPushError(403, false)).toBe(false);
+    });
+  });
+
+  describe('getWirePhotoUrl (wire sanitization for server record contract)', () => {
+    it('returns public https URL directly', () => {
+      expect(getWirePhotoUrl('https://cdn.expyrico.app/photos/item1.jpg')).toBe('https://cdn.expyrico.app/photos/item1.jpg');
+    });
+
+    it('returns null for local device file paths so server validation does not fail', () => {
+      expect(getWirePhotoUrl('/data/user/0/com.expyrico/files/photo.jpg')).toBeNull();
+      expect(getWirePhotoUrl('file:///var/mobile/Containers/Data/photo.jpg')).toBeNull();
+    });
+
+    it('returns first remote URL from JSON array if present, else null for local path array', () => {
+      expect(getWirePhotoUrl(JSON.stringify(['https://cdn.expyrico.app/1.jpg', 'https://cdn.expyrico.app/2.jpg']))).toBe('https://cdn.expyrico.app/1.jpg');
+      expect(getWirePhotoUrl(JSON.stringify(['/local/photo1.jpg', '/local/photo2.jpg']))).toBeNull();
+    });
+
+    it('returns null for null, undefined, or empty string', () => {
+      expect(getWirePhotoUrl(null)).toBeNull();
+      expect(getWirePhotoUrl(undefined)).toBeNull();
+      expect(getWirePhotoUrl('')).toBeNull();
+      expect(getWirePhotoUrl('   ')).toBeNull();
     });
   });
 });

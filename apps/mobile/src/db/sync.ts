@@ -19,6 +19,28 @@ export async function runSync(): Promise<void> {
     syncing = false;
   }
 }
+export function getWirePhotoUrl(raw: string | null | undefined): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        const first = parsed.find(
+          (item): item is string =>
+            typeof item === 'string' &&
+            (item.startsWith('http://') || item.startsWith('https://')),
+        );
+        if (first) return first;
+      }
+    } catch {}
+  }
+  return null;
+}
+
 
 async function pushPending(): Promise<void> {
   const recordsCol = database.get<RecordModel>('records');
@@ -40,7 +62,7 @@ async function pushPending(): Promise<void> {
           quantity: rec.quantity,
           unit: rec.unit,
           notes: rec.notes,
-          photoUrl: rec.photoUrl,
+          photoUrl: getWirePhotoUrl(rec.photoUrl),
         };
         if (rec.location) body.location = rec.location;
         if (rec.householdId) body.householdId = rec.householdId;
@@ -67,7 +89,7 @@ async function pushPending(): Promise<void> {
           quantity: rec.quantity,
           unit: rec.unit,
           notes: rec.notes,
-          photoUrl: rec.photoUrl,
+          photoUrl: getWirePhotoUrl(rec.photoUrl),
           status: rec.status,
         };
         if (rec.householdId !== undefined) patch.householdId = rec.householdId;
@@ -158,7 +180,7 @@ async function pullSince(): Promise<void> {
           r.quantity = ch.quantity;
           r.unit = ch.unit;
           r.notes = ch.notes;
-          r.photoUrl = ch.photoUrl;
+          r.photoUrl = ch.photoUrl || r.photoUrl;
           r.status = ch.status;
           r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
           r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -199,7 +221,7 @@ async function pullSince(): Promise<void> {
             r.quantity = ch.quantity;
             r.unit = ch.unit;
             r.notes = ch.notes;
-            r.photoUrl = ch.photoUrl;
+            r.photoUrl = ch.photoUrl || r.photoUrl;
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;

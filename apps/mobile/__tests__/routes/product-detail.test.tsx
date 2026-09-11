@@ -14,9 +14,21 @@ import { __reset } from '../../tests/mocks/react-native-keychain';
 // no bearing on the "Suggest an edit" affordance this file actually tests —
 // mocked at the component boundary, matching this repo's established
 // pattern for a heavy subtree the test in question never needs to render.
-jest.mock('../../src/features/expiry/OcrCamera', () => ({
-  OcrCamera: () => null,
-}));
+jest.mock('../../src/features/expiry/OcrCamera', () => {
+  const { Pressable, Text, View } = require('react-native');
+  return {
+    OcrCamera: ({ onCancel, onParsed }: { onCancel: () => void; onParsed: (iso: string) => void }) => (
+      <View testID="mock-ocr-camera">
+        <Pressable testID="mock-ocr-cancel" onPress={onCancel}>
+          <Text>Cancel OCR</Text>
+        </Pressable>
+        <Pressable testID="mock-ocr-parse" onPress={() => onParsed('2026-11-20')}>
+          <Text>Parse OCR</Text>
+        </Pressable>
+      </View>
+    ),
+  };
+});
 jest.mock('../../src/features/push/registerPushToken', () => ({
   ensurePushTokenRegistered: jest.fn().mockResolvedValue(undefined),
 }));
@@ -191,5 +203,38 @@ describe('<ProductDetail /> — Suggest an edit', () => {
 
     fireEvent.press(starsRow);
     expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'p1' });
+  });
+  it('preserves AddRecordForm state when OCR camera is opened and canceled, and automatically prefills scanned date when parsed', async () => {
+    queueFetch(jsonResponse(PRODUCT));
+    const { findByTestId, getByTestId, queryByTestId } = render(wrap(<ProductDetail />));
+
+    // Fill in notes in AddRecordForm
+    const notesInput = await findByTestId('add-record-notes');
+    fireEvent.changeText(notesInput, 'Fresh batch from market');
+    expect(notesInput.props.value).toBe('Fresh batch from market');
+
+    // Open OCR camera
+    const scanDateBtn = getByTestId('add-record-ocr');
+    fireEvent.press(scanDateBtn);
+
+    // OCR Camera is visible in modal
+    expect(getByTestId('mock-ocr-camera')).toBeTruthy();
+
+    // Cancel OCR
+    fireEvent.press(getByTestId('mock-ocr-cancel'));
+
+    // OCR camera is gone, AddRecordForm was NOT unmounted and retained notes
+    expect(queryByTestId('mock-ocr-camera')).toBeNull();
+    expect(getByTestId('add-record-notes').props.value).toBe('Fresh batch from market');
+
+    // Now open again and parse date
+    fireEvent.press(scanDateBtn);
+    expect(getByTestId('mock-ocr-camera')).toBeTruthy();
+    fireEvent.press(getByTestId('mock-ocr-parse'));
+
+    // Modal is closed, date is prefilled in AddRecordForm, notes are still preserved
+    expect(queryByTestId('mock-ocr-camera')).toBeNull();
+    expect(getByTestId('add-record-expiry-input').props.value).toBe('2026-11-20');
+    expect(getByTestId('add-record-notes').props.value).toBe('Fresh batch from market');
   });
 });

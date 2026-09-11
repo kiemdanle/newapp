@@ -40,6 +40,7 @@ export function UnitPickerModal({
   currentUnit,
 }: UnitPickerModalProps) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const [search, setSearch] = useState('');
   const [customUnit, setCustomUnit] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -136,12 +137,12 @@ export function UnitPickerModal({
               style={[
                 styles.closeBtn,
                 {
-                  backgroundColor: theme.colors.primaryLight,
-                  borderColor: 'rgba(75, 174, 138, 0.35)',
+                  backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
+                  borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.35)',
                 },
               ]}
             >
-              <Ionicons name="close" size={18} color={theme.colors.primaryDark} />
+              <Ionicons name="close" size={18} color={isDark ? theme.colors.text : theme.colors.primaryDark} />
             </Pressable>
           </View>
 
@@ -151,10 +152,12 @@ export function UnitPickerModal({
               style={[
                 styles.searchBar,
                 {
-                  backgroundColor: theme.colors.bgElevated,
+                  backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.bgElevated,
                   borderColor: searchFocused
                     ? theme.colors.primary
-                    : 'rgba(75, 174, 138, 0.35)',
+                    : isDark
+                      ? theme.colors.border
+                      : 'rgba(75, 174, 138, 0.35)',
                   borderWidth: searchFocused ? 1.5 : 1,
                 },
               ]}
@@ -162,9 +165,10 @@ export function UnitPickerModal({
               <Ionicons
                 name="search"
                 size={16}
-                color={searchFocused ? theme.colors.primary : theme.colors.primaryDark}
+                color={searchFocused ? theme.colors.primary : (isDark ? theme.colors.textMuted : theme.colors.primaryDark)}
               />
               <TextInput
+                accessibilityLabel="Search units"
                 testID="unit-picker-search-input"
                 value={search}
                 onChangeText={setSearch}
@@ -208,15 +212,15 @@ export function UnitPickerModal({
                 style={[
                   styles.notFoundBox,
                   {
-                    backgroundColor: 'rgba(214, 240, 230, 0.35)',
-                    borderColor: 'rgba(75, 174, 138, 0.3)',
+                    backgroundColor: isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.35)',
+                    borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.3)',
                   },
                 ]}
               >
                 <Ionicons
                   name="search-outline"
                   size={18}
-                  color={theme.colors.primaryDark}
+                  color={isDark ? theme.colors.primary : theme.colors.primaryDark}
                 />
                 <Text
                   style={[styles.notFoundText, { color: theme.colors.text }]}
@@ -236,11 +240,11 @@ export function UnitPickerModal({
                     },
                   ]}
                 >
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Ionicons name="add" size={16} color="#2C2C28" />
                   <Text
                     style={[
                       styles.applyCustomChipText,
-                      { color: '#FFFFFF' },
+                      { color: '#2C2C28' },
                     ]}
                   >
                     Use &quot;{search.trim().toLowerCase().slice(0, 16)}&quot;
@@ -265,11 +269,11 @@ export function UnitPickerModal({
               return (
                 <View key={cat.title} style={styles.categorySection}>
                   <View style={styles.categoryHeaderRow}>
-                    <Ionicons name={catIcon} size={13} color={theme.colors.primaryDark} />
+                    <Ionicons name={catIcon} size={13} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
                     <Text
                       style={[
                         styles.categoryTitle,
-                        { color: theme.colors.primaryDark },
+                        { color: isDark ? theme.colors.primary : theme.colors.primaryDark },
                       ]}
                     >
                       {cat.title}
@@ -294,11 +298,11 @@ export function UnitPickerModal({
                             styles.unitCard,
                             {
                               backgroundColor: isSelected
-                                ? theme.colors.primaryLight
-                                : 'rgba(214, 240, 230, 0.45)',
+                                ? (isDark ? 'rgba(75, 174, 138, 0.22)' : theme.colors.primaryLight)
+                                : (isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.35)'),
                               borderColor: isSelected
                                 ? theme.colors.primary
-                                : 'rgba(75, 174, 138, 0.28)',
+                                : (isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.28)'),
                               borderWidth: isSelected ? 2 : 1,
                               opacity: pressed ? 0.82 : 1,
                             },
@@ -311,7 +315,7 @@ export function UnitPickerModal({
                                   styles.unitKeyText,
                                   {
                                     color: isSelected
-                                      ? theme.colors.primaryDark
+                                      ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
                                       : theme.colors.text,
                                     fontWeight: isSelected ? '800' : '700',
                                   },
@@ -334,8 +338,8 @@ export function UnitPickerModal({
                                 styles.unitLabelText,
                                 {
                                   color: isSelected
-                                    ? theme.colors.primaryDark
-                                    : theme.colors.primaryDark,
+                                    ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
+                                    : theme.colors.textMuted,
                                   opacity: isSelected ? 1 : 0.85,
                                 },
                               ]}
@@ -356,17 +360,17 @@ export function UnitPickerModal({
               style={[
                 styles.customSection,
                 {
-                  backgroundColor: 'rgba(214, 240, 230, 0.25)',
-                  borderColor: 'rgba(75, 174, 138, 0.25)',
+                  backgroundColor: isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.25)',
+                  borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.25)',
                 },
               ]}
             >
               <View style={styles.categoryHeaderRow}>
-                <Ionicons name="sparkles-outline" size={13} color={theme.colors.primaryDark} />
+                <Ionicons name="sparkles-outline" size={13} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
                 <Text
                   style={[
                     styles.categoryTitle,
-                    { color: theme.colors.primaryDark },
+                    { color: isDark ? theme.colors.primary : theme.colors.primaryDark },
                   ]}
                 >
                   DEFINE CUSTOM UNIT
@@ -379,6 +383,7 @@ export function UnitPickerModal({
               </Text>
               <View style={styles.customInputRow}>
                 <TextInput
+                  accessibilityLabel="Custom unit name"
                   testID="unit-picker-custom-input"
                   value={customUnit}
                   onChangeText={setCustomUnit}
@@ -391,10 +396,12 @@ export function UnitPickerModal({
                     styles.customInput,
                     {
                       color: theme.colors.text,
-                      backgroundColor: theme.colors.bgElevated,
+                      backgroundColor: isDark ? theme.colors.bgElevated : '#FFFFFF',
                       borderColor: customFocused
                         ? theme.colors.primary
-                        : 'rgba(75, 174, 138, 0.35)',
+                        : isDark
+                          ? theme.colors.border
+                          : 'rgba(75, 174, 138, 0.35)',
                       borderWidth: customFocused ? 1.5 : 1,
                     },
                   ]}
@@ -413,10 +420,10 @@ export function UnitPickerModal({
                     {
                       backgroundColor: customUnit.trim()
                         ? theme.colors.accent
-                        : 'rgba(245, 166, 35, 0.15)',
+                        : (isDark ? 'rgba(245, 166, 35, 0.12)' : 'rgba(245, 166, 35, 0.15)'),
                       borderColor: customUnit.trim()
                         ? theme.colors.accent
-                        : 'rgba(245, 166, 35, 0.3)',
+                        : (isDark ? 'rgba(245, 166, 35, 0.25)' : 'rgba(245, 166, 35, 0.3)'),
                     },
                   ]}
                   disabled={!customUnit.trim()}
@@ -426,7 +433,7 @@ export function UnitPickerModal({
                       styles.customApplyText,
                       {
                         color: customUnit.trim()
-                          ? '#FFFFFF'
+                          ? '#2C2C28'
                           : theme.colors.textMuted,
                       },
                     ]}

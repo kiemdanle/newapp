@@ -20,6 +20,60 @@ describe('LocationPickerModal', () => {
     expect(getByTestId('location-picker-chip-spice-rack')).toBeTruthy();
     expect(getByText('Storage Location')).toBeTruthy();
   });
+  it('renders with cohesive dark theme styling in expyricoDark', () => {
+    const { getByTestId } = renderWithTheme(
+      <LocationPickerModal
+        visible
+        onClose={jest.fn()}
+        onSelect={jest.fn()}
+        currentLocation="Fridge"
+      />,
+      'expyricoDark',
+    );
+
+    const sheet = getByTestId('location-picker-modal');
+    expect(sheet.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: '#191F1B',
+          borderColor: '#2D3A34',
+        }),
+      ]),
+    );
+
+    // Selected chip (Fridge)
+    const selectedChip = getByTestId('location-picker-chip-fridge');
+    expect(selectedChip.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: 'rgba(75, 174, 138, 0.22)',
+          borderColor: '#4BAE8A',
+        }),
+      ]),
+    );
+
+    // Unselected chip (Pantry)
+    const unselectedChip = getByTestId('location-picker-chip-pantry');
+    expect(unselectedChip.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: '#1F342C',
+          borderColor: '#2D3A34',
+        }),
+      ]),
+    );
+
+    // Clear location button
+    const clearBtn = getByTestId('location-picker-clear-btn');
+    expect(clearBtn.props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          backgroundColor: 'rgba(224, 68, 42, 0.14)',
+          borderColor: 'rgba(224, 68, 42, 0.45)',
+        }),
+      ]),
+    );
+  });
 
   it('selects preset chip and calls onSelect with Title Case and onClose', () => {
     const handleSelect = jest.fn();

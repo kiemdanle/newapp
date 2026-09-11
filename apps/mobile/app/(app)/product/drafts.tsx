@@ -17,7 +17,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProductDraftRow } from '@expyrico/shared';
-import { useProductDrafts, useCreateOrResumeDraft, useDiscardDraft } from '../../../src/api/products';
+import { useProductDrafts, useDiscardDraft } from '../../../src/api/products';
 import { PrivateProductImage } from '../../../src/api/product-private-image';
 import { EmptyState } from '../../../src/components/EmptyState';
 import { Button } from '../../../src/components/Button';
@@ -58,7 +58,6 @@ export default function ProductDraftsScreen() {
   const [isManualModalVisible, setIsManualModalVisible] = useState(false);
   const [isAddOptionsVisible, setIsAddOptionsVisible] = useState(false);
   const q = useProductDrafts(selectedTab === 'all' ? 'all' : selectedTab);
-  const createOrResumeDraft = useCreateOrResumeDraft();
   const discardDraftMutation = useDiscardDraft();
   const discardDraftMutationRef = useRef(discardDraftMutation);
   discardDraftMutationRef.current = discardDraftMutation;
@@ -75,10 +74,10 @@ export default function ProductDraftsScreen() {
     activeSwipeableRef.current = ref;
   }, []);
 
-  const rawItems = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const rawItems = (q.data?.pages.flatMap((p) => p?.items ?? []) ?? []).filter(Boolean);
 
   const items = useMemo(() => {
-    let list = rawItems.filter((item) => !pendingDiscards.has(item.id));
+    let list = rawItems.filter((item) => Boolean(item && item.id && !pendingDiscards.has(item.id)));
 
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
@@ -236,17 +235,17 @@ export default function ProductDraftsScreen() {
     setIsAddOptionsVisible(true);
   };
 
-  const handleManualCodeSubmit = async (code: string, kind: 'barcode' | 'qr') => {
-    const { product } = await createOrResumeDraft.mutateAsync({
-      barcode: kind === 'barcode' ? code : null,
-      qrPayload: kind === 'qr' ? code : null,
-    });
-
+  const handleManualCodeSubmit = (code: string, kind: 'barcode' | 'qr') => {
+    // Do NOT create the products row here. Scanning or typing a code only
+    // opens the editor's STEP 1 (name entry, no productId); the server row is
+    // created later by NewProductScreen.createDraft() when the user taps
+    // Continue/Save. Eagerly creating here is what produced empty-name orphan
+    // drafts whenever the user backed out before typing a name.
+    // If a draft already exists for this code, createOrResumeDraft (called on
+    // save) resumes it idempotently, so no resume lookup is needed up front.
     navigation.push('ProductNew', {
       barcode: kind === 'barcode' ? code : '',
       qr: kind === 'qr' ? code : '',
-      productId: product.id,
-      resume: product.status === 'pending' ? 'pending' : 'edit',
     });
   };
   const scrollY = useRef(new Animated.Value(0)).current;

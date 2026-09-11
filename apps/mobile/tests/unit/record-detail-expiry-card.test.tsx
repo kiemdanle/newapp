@@ -1,3 +1,5 @@
+import { Alert } from 'react-native';
+import { fireEvent } from '@testing-library/react-native';
 import React from 'react';
 import { screen } from '@testing-library/react-native';
 import RecordDetail from '../../app/(app)/record/[id]';
@@ -161,5 +163,46 @@ describe('RecordDetail Expiry Card', () => {
 
     expect(screen.getByTestId('record-mark-discarded')).toBeTruthy();
     expect(screen.getByText('Mark as discarded')).toBeTruthy();
+  });
+
+  it('alerts Photo Limit Reached and blocks adding when record already has 5 photos', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    const fivePhotos = [
+      '/path/photo1.jpg',
+      '/path/photo2.jpg',
+      '/path/photo3.jpg',
+      '/path/photo4.jpg',
+      '/path/photo5.jpg',
+    ];
+    (recordsApi.useRecord as jest.Mock).mockReturnValue({
+      id: 'test-record-1',
+      serverId: 'srv-1',
+      clientId: 'cli-1',
+      productId: null,
+      customName: 'Apples',
+      category: 'Produce',
+      expiryDate: '2026-10-01',
+      quantity: 5,
+      unit: 'pcs',
+      price: null,
+      store: null,
+      notes: null,
+      photoUrl: JSON.stringify(fivePhotos),
+      status: 'active',
+      notifyAt: [],
+      householdId: null,
+    });
+
+    renderWithTheme(<RecordDetail />, 'expyrico');
+
+    const changeBtn = screen.getByLabelText('Change photo');
+    fireEvent.press(changeBtn);
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Photo Limit Reached',
+      expect.stringContaining('You can attach up to 5 photos per item'),
+      expect.any(Array),
+    );
+    alertSpy.mockRestore();
   });
 });

@@ -68,7 +68,7 @@ export default function NewProductScreen() {
   // just runs the effect once), so this only ever showed up on review.
   useFocusEffect(
     useCallback(() => {
-      const unsubscribe = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
+      const unsubscribe = navigation.addListener('beforeRemove', async (e: { preventDefault: () => void; data: { action: unknown } }) => {
         if (dirtyRef.current) {
           e.preventDefault();
           Alert.alert("Discard unsaved changes?", "Your edits to this product haven't been saved.", [
@@ -105,23 +105,35 @@ export default function NewProductScreen() {
         }
 
         // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on back navigation.
+        // preventDefault + await: the component unmounts on back, and React
+        // Query cancels a pending mutation on unmount — so the DELETE must be
+        // awaited BEFORE dispatching the navigation action or it never fires.
         const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
         if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
-          void discardDraftMutation
-            .mutateAsync({ id: productId, emptyOnly: true, expectedVersion: product.version })
-            .catch(() => {});
+          e.preventDefault();
+          try {
+            await discardDraftMutation.mutateAsync({
+              id: productId,
+              emptyOnly: true,
+              expectedVersion: product.version,
+            });
+          } catch {
+            // best effort
+          }
           const effBarcode = barcode || product.barcode || null;
           const effQr = qr || product.qrPayload || null;
           if (userId && (effBarcode || effQr)) {
             void removeDraftLocalState(userId, { barcode: effBarcode, qr: effQr });
           }
+          // @ts-expect-error — same generic-NavigationProp gap as above.
+          navigation.dispatch(e.data.action);
         }
       });
       return unsubscribe;
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [navigation, productId, product, discardDraftMutation, userId, barcode, qr]),
   );
-  const handleClose = () => {
+  const handleClose = async () => {
     queryClient.invalidateQueries({ queryKey: ['products', 'drafts'] });
     if (dirtyRef.current) {
       Alert.alert('Discard unsaved changes?', "Your edits to this product haven't been saved.", [
@@ -156,10 +168,19 @@ export default function NewProductScreen() {
     } else {
       // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on exit.
       const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
+      // Await the DELETE before goBack: goBack unmounts this screen and React
+      // Query cancels a pending mutation on unmount, so a fire-and-forget
+      // mutateAsync would never reach the server.
       if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
-        void discardDraftMutation
-          .mutateAsync({ id: productId, emptyOnly: true, expectedVersion: product.version })
-          .catch(() => {});
+        try {
+          await discardDraftMutation.mutateAsync({
+            id: productId,
+            emptyOnly: true,
+            expectedVersion: product.version,
+          });
+        } catch {
+          // best effort
+        }
         const effBarcode = barcode || product.barcode || null;
         const effQr = qr || product.qrPayload || null;
         if (userId && (effBarcode || effQr)) {

@@ -128,7 +128,7 @@ describe('<ProductDraftsScreen />', () => {
     await waitFor(() => expect(getByTestId('draft-row-draft-2')).toBeTruthy());
   });
 
-  it('manual code submission navigates to ProductNew with resume=edit when product status is draft', async () => {
+  it('manual code submission opens the editor without creating a products row (deferred create on Save)', async () => {
     queueFetch(jsonResponse({ items: [], nextCursor: null }));
     const { findByTestId } = render(wrap(<ProductDraftsScreen />));
 
@@ -138,42 +138,57 @@ describe('<ProductDraftsScreen />', () => {
     const input = await findByTestId('manual-code-input');
     fireEvent.changeText(input, '123456789012');
 
-    queueFetch(jsonResponse({ product: { ...DRAFT_ROW, id: 'draft-new-1', status: 'draft' }, resumed: true }));
+    const fetchSpy = jest.spyOn(global, 'fetch');
     const submitBtn = await findByTestId('manual-code-submit-btn');
-    fireEvent.press(submitBtn);
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
 
     await waitFor(() => {
+      // No productId/resume: the editor opens at STEP 1 (name entry) and the
+      // products row is only created when the user taps Continue/Save.
       expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
         barcode: '123456789012',
         qr: '',
-        productId: 'draft-new-1',
-        resume: 'edit',
       });
     });
+    // Crucially, no eager draft creation request was issued at entry time.
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
-  it('manual code submission navigates to ProductNew with resume=pending when product status is pending', async () => {
+  it('manual QR submission opens the editor with the qr param and no products row', async () => {
     queueFetch(jsonResponse({ items: [], nextCursor: null }));
     const { findByTestId } = render(wrap(<ProductDraftsScreen />));
 
     const manualBtn = await findByTestId('drafts-empty-manual-btn');
     fireEvent.press(manualBtn);
 
-    const input = await findByTestId('manual-code-input');
-    fireEvent.changeText(input, '123456789012');
+    // Switch to QR mode
+    const qrTab = await findByTestId('toggle-qr-btn');
+    fireEvent.press(qrTab);
 
-    queueFetch(jsonResponse({ product: { ...DRAFT_ROW, id: 'draft-pending-1', status: 'pending' }, resumed: true }));
+    const input = await findByTestId('manual-code-input');
+    fireEvent.changeText(input, 'https://qr.product.info/xyz');
+
+    const fetchSpy = jest.spyOn(global, 'fetch');
     const submitBtn = await findByTestId('manual-code-submit-btn');
-    fireEvent.press(submitBtn);
+    await act(async () => {
+      fireEvent.press(submitBtn);
+    });
 
     await waitFor(() => {
       expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
-        barcode: '123456789012',
-        qr: '',
-        productId: 'draft-pending-1',
-        resume: 'pending',
+        barcode: '',
+        qr: 'https://qr.product.info/xyz',
       });
     });
+    expect(fetchSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts'),
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('renders filter tabs and switches selected tab', async () => {

@@ -108,8 +108,23 @@ export default function RecordDetail() {
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
   const catalogProductId = record.productId || product?.id;
+  let recordPhotos: string[] = [];
+  if (record.photoUrl) {
+    if (record.photoUrl.startsWith('[') && record.photoUrl.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(record.photoUrl);
+        if (Array.isArray(parsed)) {
+          recordPhotos = parsed.filter((u): u is string => typeof u === 'string' && Boolean(u));
+        }
+      } catch {
+        recordPhotos = [record.photoUrl];
+      }
+    } else {
+      recordPhotos = [record.photoUrl];
+    }
+  }
   const photoList = [
-    record.photoUrl,
+    ...recordPhotos,
     product?.imageUrl,
     ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
   ].filter(Boolean) as string[];
@@ -205,21 +220,32 @@ export default function RecordDetail() {
     const newQty = Math.max(1, record.quantity + delta);
     await patchLocalRecord(record.id, { quantity: newQty });
   };
-  const savePhotoToRecord = async (photo: PickedPhoto) => {
-    // 1. Immediately update local record for instant UI feedback
-    await patchLocalRecord(record.id, { photoUrl: photo.path });
+  const savePhotosToRecord = async (newPhotos: PickedPhoto[]) => {
+    const existingPaths = recordPhotos;
+    const availableSlots = Math.max(0, 5 - existingPaths.length);
+    if (availableSlots <= 0) return;
 
-    // 2. If record is linked to a draft/pending product, upload photo directly
+    const acceptedPhotos = newPhotos.slice(0, availableSlots);
+    if (acceptedPhotos.length === 0) return;
+
+    const combined = [...existingPaths, ...acceptedPhotos.map((p) => p.path)];
+    const storedPhotoUrl = combined.length > 1 ? JSON.stringify(combined) : (combined[0] ?? null);
+    // 1. Immediately update local record for instant UI feedback
+    await patchLocalRecord(record.id, { photoUrl: storedPhotoUrl });
+
+    // 2. If record is linked to a draft/pending product, upload accepted photos directly
     if (product && (product.status === 'draft' || product.status === 'changes_required')) {
       try {
-        const uploadHandle = uploadProductPhoto(
-          { kind: 'draft', productId: product.id },
-          { path: photo.path, mime: photo.mime },
-        );
-        await uploadHandle.promise;
+        for (const photo of acceptedPhotos) {
+          const uploadHandle = uploadProductPhoto(
+            { kind: 'draft', productId: product.id },
+            { path: photo.path, mime: photo.mime },
+          );
+          await uploadHandle.promise;
+        }
       } catch {}
     } else if (!product && !record.productId) {
-      // 3. If record is a custom item without product ID, create a private draft and upload photo to server
+      // 3. If record is a custom item without product ID, create a private draft and upload accepted photos
       try {
         const draftRes = await createOrResumeDraft.mutateAsync({
           barcode: barcode || null,
@@ -231,23 +257,29 @@ export default function RecordDetail() {
           name: displayName,
           category: record.category || null,
         });
-        const uploadHandle = uploadProductPhoto(
-          { kind: 'draft', productId: draftRes.product.id },
-          { path: photo.path, mime: photo.mime },
-        );
-        await uploadHandle.promise;
+        for (const photo of acceptedPhotos) {
+          const uploadHandle = uploadProductPhoto(
+            { kind: 'draft', productId: draftRes.product.id },
+            { path: photo.path, mime: photo.mime },
+          );
+          await uploadHandle.promise;
+        }
         await patchLocalRecord(record.id, { productId: draftRes.product.id });
       } catch {}
     }
   };
 
   const handleCameraCapture = async (photos: PickedPhoto[]) => {
-    if (photos.length > 0 && photos[0]) {
-      await savePhotoToRecord(photos[0]);
+    if (photos.length > 0) {
+      await savePhotosToRecord(photos);
     }
   };
 
   const handlePickPhoto = () => {
+    if (recordPhotos.length >= 5) {
+      Alert.alert('Photo Limit Reached', 'You can attach up to 5 photos per item. Remove an existing photo to add a new one.', [{ text: 'OK' }]);
+      return;
+    }
     Alert.alert('Item Photo', 'Choose how you want to add a photo', [
       {
         text: 'Take Photo',
@@ -259,9 +291,11 @@ export default function RecordDetail() {
         text: 'Choose from Gallery',
         onPress: async () => {
           try {
-            const picked = await choosePhotos(1);
-            if (picked.length > 0 && picked[0]) {
-              await savePhotoToRecord(picked[0]);
+            const remaining = 5 - recordPhotos.length;
+            if (remaining <= 0) return;
+            const picked = await choosePhotos(remaining);
+            if (picked.length > 0) {
+              await savePhotosToRecord(picked);
             }
           } catch (err) {
             handlePhotoPickerError(err, 'gallery');
@@ -764,8 +798,8 @@ export default function RecordDetail() {
       />
       <MultiPhotoCameraModal
         visible={showCameraModal}
-        maxPhotos={1}
-        title="Item Photo"
+        maxPhotos={Math.max(1, 5 - recordPhotos.length)}
+        title="Item Photos"
         onCapture={handleCameraCapture}
         onClose={() => setShowCameraModal(false)}
       />

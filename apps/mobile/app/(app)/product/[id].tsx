@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Modal } from 'react-native';
 import { KeyboardAwareScrollView } from '../../../src/components/KeyboardAwareScrollView';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -54,17 +54,6 @@ export default function ProductDetail() {
     );
   }
 
-  if (showOcr) {
-    return (
-      <OcrCamera
-        onCancel={() => setShowOcr(false)}
-        onParsed={(iso) => {
-          setPrefillDate(iso);
-          setShowOcr(false);
-        }}
-      />
-    );
-  }
 
   const photoList = [
     data.imageUrl,
@@ -73,8 +62,9 @@ export default function ProductDetail() {
   const uniquePhotos = Array.from(new Set(photoList));
 
   return (
-    <KeyboardAwareScrollView
-      style={{ flex: 1, backgroundColor: theme.colors.bg }}
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <KeyboardAwareScrollView
+        style={{ flex: 1 }}
       contentContainerStyle={{ paddingBottom: 80 }}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
@@ -174,6 +164,7 @@ export default function ProductDetail() {
         productId={data.id}
         productName={data.name}
         initialCategory={data.category}
+        scannedExpiry={prefillDate}
         onOpenOcr={() => setShowOcr(true)}
         onSaved={async () => {
           await ensurePushTokenRegistered();
@@ -190,5 +181,19 @@ export default function ProductDetail() {
       ) : null}
       <ProductReviewsSection product={data} />
     </KeyboardAwareScrollView>
+      <Modal
+        visible={showOcr}
+        animationType="slide"
+        onRequestClose={() => setShowOcr(false)}
+      >
+        <OcrCamera
+          onCancel={() => setShowOcr(false)}
+          onParsed={(iso) => {
+            setPrefillDate(iso);
+            setShowOcr(false);
+          }}
+        />
+      </Modal>
+    </View>
   );
 }

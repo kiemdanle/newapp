@@ -9,6 +9,11 @@ jest.mock('../api/records', () => ({
   createLocalRecord: jest.fn().mockResolvedValue('local-id-1'),
   useActiveRecords: () => [],
 }));
+const mockChoosePhotos = jest.fn();
+jest.mock('../features/products/photo-picker-adapter', () => ({
+  choosePhotos: (...args: unknown[]) => mockChoosePhotos(...args),
+  handlePhotoPickerError: jest.fn(),
+}));
 
 interface MockProduct {
   id: string;
@@ -83,7 +88,7 @@ describe('AddRecordForm', () => {
     mockMyHouseholds.mockReturnValue({ data: { items: [{ id: 'hh-1', name: 'Our kitchen' }] } });
 
     const onSaved = jest.fn();
-    const { getByTestId, queryByTestId, queryByText } = render(
+    const { getByTestId, queryByTestId } = render(
       <AddRecordForm productName="Milk" productId="p-1" onSaved={onSaved} lockedPersonalScope />,
     );
 
@@ -293,6 +298,63 @@ describe('AddRecordForm', () => {
         productId: 'prod-1',
         location: 'Pantry',
         expiryDate: '2026-11-01',
+      }),
+    );
+  });
+  it('automatically sets expiry date when scannedExpiry prop is supplied', async () => {
+    const { getByTestId } = render(
+      <AddRecordForm
+        productId="prod-1"
+        productName="Milk"
+        onSaved={jest.fn()}
+        scannedExpiry="2026-12-25"
+      />,
+    );
+
+    expect(getByTestId('add-record-expiry-input').props.value).toBe('2026-12-25');
+  });
+
+  it('supports selecting multiple photos, previewing them with count, and removing individual photos', async () => {
+    const onSaved = jest.fn();
+    mockChoosePhotos.mockResolvedValueOnce([
+      { path: '/local/photo1.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
+      { path: '/local/photo2.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
+    ]);
+
+    const { getByTestId, getByText, findByTestId } = render(
+      <AddRecordForm productId="prod-1" productName="Apples" onSaved={onSaved} />,
+    );
+
+    // Tap Choose Photo
+    fireEvent.press(getByTestId('add-record-choose-photo'));
+    await waitFor(() => expect(mockChoosePhotos).toHaveBeenCalledWith(5));
+
+    // Both photos are rendered
+    expect(await findByTestId('add-record-photo-preview')).toBeTruthy();
+    expect(getByTestId('add-record-photo-preview-1')).toBeTruthy();
+    expect(getByText('2/5 photos')).toBeTruthy();
+
+    // Remove first photo
+    fireEvent.press(getByTestId('add-record-photo-remove'));
+    expect(getByText('1/5 photos')).toBeTruthy();
+
+    // Add second batch
+    mockChoosePhotos.mockResolvedValueOnce([
+      { path: '/local/photo3.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
+    ]);
+    fireEvent.press(getByTestId('add-record-add-more-photos'));
+    await waitFor(() => expect(mockChoosePhotos).toHaveBeenCalledWith(4));
+    expect(getByText('2/5 photos')).toBeTruthy();
+
+    // Save and verify stored JSON array
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-10-31');
+    fireEvent.press(getByTestId('add-record-save'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('local-id-1'));
+    expect(createLocalRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: 'prod-1',
+        photoUrl: JSON.stringify(['/local/photo2.jpg', '/local/photo3.jpg']),
       }),
     );
   });

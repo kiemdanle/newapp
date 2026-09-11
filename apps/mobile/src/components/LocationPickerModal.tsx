@@ -35,6 +35,7 @@ export function LocationPickerModal({
   currentLocation,
 }: LocationPickerModalProps) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const [customInput, setCustomInput] = useState('');
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -140,12 +141,12 @@ export function LocationPickerModal({
               style={[
                 styles.closeBtn,
                 {
-                  backgroundColor: theme.colors.primaryLight,
-                  borderColor: 'rgba(75, 174, 138, 0.35)',
+                  backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
+                  borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.35)',
                 },
               ]}
             >
-              <Ionicons name="close" size={18} color={theme.colors.primaryDark} />
+              <Ionicons name="close" size={18} color={isDark ? theme.colors.text : theme.colors.primaryDark} />
             </Pressable>
           </View>
 
@@ -155,10 +156,12 @@ export function LocationPickerModal({
               style={[
                 styles.searchBar,
                 {
-                  backgroundColor: theme.colors.bgElevated,
+                  backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.bgElevated,
                   borderColor: searchFocused
                     ? theme.colors.primary
-                    : 'rgba(75, 174, 138, 0.35)',
+                    : isDark
+                      ? theme.colors.border
+                      : 'rgba(75, 174, 138, 0.35)',
                   borderWidth: searchFocused ? 1.5 : 1,
                 },
               ]}
@@ -166,9 +169,10 @@ export function LocationPickerModal({
               <Ionicons
                 name="search"
                 size={16}
-                color={searchFocused ? theme.colors.primary : theme.colors.primaryDark}
+                color={searchFocused ? theme.colors.primary : (isDark ? theme.colors.textMuted : theme.colors.primaryDark)}
               />
               <TextInput
+                accessibilityLabel="Search or enter location"
                 testID="location-picker-search-input"
                 value={search}
                 onChangeText={setSearch}
@@ -213,7 +217,7 @@ export function LocationPickerModal({
                   },
                 ]}
               >
-                <Text style={styles.applyBtnText}>Apply</Text>
+                <Text style={[styles.applyBtnText, { color: '#2C2C28' }]}>Apply</Text>
               </Pressable>
             )}
           </View>
@@ -227,9 +231,9 @@ export function LocationPickerModal({
             {isCustomMatch && (
               <View style={styles.customMatchSection}>
                 <View style={styles.categoryHeaderRow}>
-                  <Ionicons name="pricetag-outline" size={13} color={theme.colors.primaryDark} />
+                  <Ionicons name="pricetag-outline" size={13} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
                   <Text
-                    style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}
+                    style={[styles.sectionTitle, { color: isDark ? theme.colors.primary : theme.colors.primaryDark }]}
                   >
                     CUSTOM LOCATION
                   </Text>
@@ -250,12 +254,12 @@ export function LocationPickerModal({
                   <Ionicons
                     name="add-circle-outline"
                     size={16}
-                    color="#FFFFFF"
+                    color="#2C2C28"
                   />
                   <Text
                     style={[
                       styles.applyCustomChipText,
-                      { color: '#FFFFFF' },
+                      { color: '#2C2C28' },
                     ]}
                   >
                     Add &quot;{normalizeLocationTitleCase(search)}&quot;
@@ -269,15 +273,15 @@ export function LocationPickerModal({
                 style={[
                   styles.notFoundBox,
                   {
-                    backgroundColor: 'rgba(214, 240, 230, 0.35)',
-                    borderColor: 'rgba(75, 174, 138, 0.3)',
+                    backgroundColor: isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.35)',
+                    borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.3)',
                   },
                 ]}
               >
                 <Ionicons
                   name="search-outline"
                   size={18}
-                  color={theme.colors.primaryDark}
+                  color={isDark ? theme.colors.primary : theme.colors.primaryDark}
                 />
                 <Text
                   style={[styles.notFoundText, { color: theme.colors.text }]}
@@ -297,11 +301,11 @@ export function LocationPickerModal({
                     },
                   ]}
                 >
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Ionicons name="add" size={16} color="#2C2C28" />
                   <Text
                     style={[
                       styles.applyCustomChipText,
-                      { color: '#FFFFFF' },
+                      { color: '#2C2C28' },
                     ]}
                   >
                     Define &quot;{normalizeLocationTitleCase(search)}&quot;
@@ -311,9 +315,9 @@ export function LocationPickerModal({
             )}
 
             <View style={styles.categoryHeaderRow}>
-              <Ionicons name="navigate-outline" size={13} color={theme.colors.primaryDark} />
+              <Ionicons name="navigate-outline" size={13} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
               <Text
-                style={[styles.sectionTitle, { color: theme.colors.primaryDark }]}
+                style={[styles.sectionTitle, { color: isDark ? theme.colors.primary : theme.colors.primaryDark }]}
               >
                 PRESET LOCATIONS
               </Text>
@@ -336,11 +340,11 @@ export function LocationPickerModal({
                       styles.locationChip,
                       {
                         backgroundColor: isSelected
-                          ? theme.colors.primaryLight
-                          : 'rgba(214, 240, 230, 0.45)',
+                          ? (isDark ? 'rgba(75, 174, 138, 0.22)' : theme.colors.primaryLight)
+                          : (isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.35)'),
                         borderColor: isSelected
                           ? theme.colors.primary
-                          : 'rgba(75, 174, 138, 0.28)',
+                          : (isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.28)'),
                         borderWidth: isSelected ? 2 : 1,
                         opacity: pressed ? 0.82 : 1,
                       },
@@ -349,14 +353,14 @@ export function LocationPickerModal({
                     <Ionicons
                       name={iconName}
                       size={15}
-                      color={isSelected ? theme.colors.primaryDark : theme.colors.primaryDark}
+                      color={isSelected ? (isDark ? theme.colors.primary : theme.colors.primaryDark) : (isDark ? theme.colors.textMuted : theme.colors.primaryDark)}
                     />
                     <Text
                       style={[
                         styles.chipText,
                         {
                           color: isSelected
-                            ? theme.colors.primaryDark
+                            ? (isDark ? theme.colors.primary : theme.colors.primaryDark)
                             : theme.colors.text,
                           fontWeight: isSelected ? '800' : '600',
                         },
@@ -381,17 +385,17 @@ export function LocationPickerModal({
               style={[
                 styles.customSection,
                 {
-                  backgroundColor: 'rgba(214, 240, 230, 0.25)',
-                  borderColor: 'rgba(75, 174, 138, 0.25)',
+                  backgroundColor: isDark ? theme.colors.bgGlass : 'rgba(214, 240, 230, 0.25)',
+                  borderColor: isDark ? theme.colors.border : 'rgba(75, 174, 138, 0.25)',
                 },
               ]}
             >
               <View style={styles.categoryHeaderRow}>
-                <Ionicons name="sparkles-outline" size={13} color={theme.colors.primaryDark} />
+                <Ionicons name="sparkles-outline" size={13} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
                 <Text
                   style={[
                     styles.sectionTitle,
-                    { color: theme.colors.primaryDark },
+                    { color: isDark ? theme.colors.primary : theme.colors.primaryDark },
                   ]}
                 >
                   DEFINE CUSTOM LOCATION
@@ -404,6 +408,7 @@ export function LocationPickerModal({
               </Text>
               <View style={styles.customInputRow}>
                 <TextInput
+                  accessibilityLabel="Custom storage location"
                   testID="location-picker-custom-input"
                   value={customInput}
                   onChangeText={setCustomInput}
@@ -416,10 +421,12 @@ export function LocationPickerModal({
                     styles.customInput,
                     {
                       color: theme.colors.text,
-                      backgroundColor: theme.colors.bgElevated,
+                      backgroundColor: isDark ? theme.colors.bgElevated : '#FFFFFF',
                       borderColor: customFocused
                         ? theme.colors.primary
-                        : 'rgba(75, 174, 138, 0.35)',
+                        : isDark
+                          ? theme.colors.border
+                          : 'rgba(75, 174, 138, 0.35)',
                       borderWidth: customFocused ? 1.5 : 1,
                     },
                   ]}
@@ -438,10 +445,10 @@ export function LocationPickerModal({
                     {
                       backgroundColor: customInput.trim()
                         ? theme.colors.accent
-                        : 'rgba(245, 166, 35, 0.15)',
+                        : (isDark ? 'rgba(245, 166, 35, 0.12)' : 'rgba(245, 166, 35, 0.15)'),
                       borderColor: customInput.trim()
                         ? theme.colors.accent
-                        : 'rgba(245, 166, 35, 0.3)',
+                        : (isDark ? 'rgba(245, 166, 35, 0.25)' : 'rgba(245, 166, 35, 0.3)'),
                     },
                   ]}
                   disabled={!customInput.trim()}
@@ -451,7 +458,7 @@ export function LocationPickerModal({
                       styles.customApplyBtnText,
                       {
                         color: customInput.trim()
-                          ? '#FFFFFF'
+                          ? '#2C2C28'
                           : theme.colors.textMuted,
                       },
                     ]}
@@ -473,8 +480,8 @@ export function LocationPickerModal({
                   style={({ pressed }) => [
                     styles.clearBtn,
                     {
-                      borderColor: 'rgba(224, 68, 42, 0.35)',
-                      backgroundColor: 'rgba(224, 68, 42, 0.08)',
+                      borderColor: isDark ? 'rgba(224, 68, 42, 0.45)' : 'rgba(224, 68, 42, 0.35)',
+                      backgroundColor: isDark ? 'rgba(224, 68, 42, 0.14)' : 'rgba(224, 68, 42, 0.08)',
                       opacity: pressed ? 0.82 : 1,
                     },
                   ]}
