@@ -354,7 +354,7 @@ describe('AddRecordForm', () => {
     expect(createLocalRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: 'prod-1',
-        photoUrl: JSON.stringify(['/local/photo2.jpg', '/local/photo3.jpg']),
+        localPhotos: ['/local/photo2.jpg', '/local/photo3.jpg'],
       }),
     );
   });

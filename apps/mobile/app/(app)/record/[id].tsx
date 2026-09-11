@@ -227,9 +227,8 @@ export default function RecordDetail() {
     if (acceptedPhotos.length === 0) return;
 
     const combined = [...existingPaths, ...acceptedPhotos.map((p) => p.path)];
-    const storedPhotoUrl = combined.length > 1 ? JSON.stringify(combined) : (combined[0] ?? null);
-    // 1. Immediately update local record for instant UI feedback
-    await patchLocalRecord(record.id, { photoUrl: storedPhotoUrl });
+    // 1. Immediately update local record attachments for instant UI feedback
+    await patchLocalRecord(record.id, { localPhotos: combined });
 
     // 2. If record is linked to a draft/pending product, upload accepted photos directly
     if (product && (product.status === 'draft' || product.status === 'changes_required')) {

@@ -136,12 +136,6 @@ export function AddRecordForm({
 
       // If this is a custom item (no catalog product yet) and the user attached photos or has a scanned barcode,
       // create a private product draft and attach barcode/photo so it is permanently stored in catalog/cloud media
-      let storedPhotoUrl: string | null = null;
-      if (photos.length > 1) {
-        storedPhotoUrl = JSON.stringify(photos.map((p) => p.path));
-      } else if (photos.length === 1 && photos[0]) {
-        storedPhotoUrl = photos[0].path;
-      }
 
       if (!finalProductId && (photos.length > 0 || scannedBarcode)) {
         try {
@@ -180,7 +174,7 @@ export function AddRecordForm({
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
-        photoUrl: storedPhotoUrl,
+        photoUrl: null,
         localPhotos: photos.map((p) => p.path),
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,

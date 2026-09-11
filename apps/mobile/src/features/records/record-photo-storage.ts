@@ -9,6 +9,26 @@ let memoryCache: AttachmentsMap = {};
 let loadPromise: Promise<AttachmentsMap> | null = null;
 let initialized = false;
 
+type StorageListener = () => void;
+const listeners = new Set<StorageListener>();
+
+export function subscribeRecordPhotoStorage(listener: StorageListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyListeners() {
+  for (const listener of listeners) {
+    try {
+      listener();
+    } catch {
+      // subscriber error ignored
+    }
+  }
+}
+
 async function loadAttachments(): Promise<AttachmentsMap> {
   if (initialized) return memoryCache;
   if (loadPromise) return loadPromise;
@@ -21,6 +41,7 @@ async function loadAttachments(): Promise<AttachmentsMap> {
     } finally {
       initialized = true;
       loadPromise = null;
+      notifyListeners();
     }
     return memoryCache;
   })();
@@ -45,6 +66,7 @@ export async function saveRecordLocalPhotos(clientId: string, paths: string[]): 
   }
   memoryCache = { ...map };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+  notifyListeners();
 }
 
 export async function removeRecordLocalPhotos(clientId: string): Promise<void> {
@@ -52,6 +74,7 @@ export async function removeRecordLocalPhotos(clientId: string): Promise<void> {
   delete map[clientId];
   memoryCache = { ...map };
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+  notifyListeners();
 }
 
 export function useRecordLocalPhotos(clientId?: string | null): string[] {
@@ -75,3 +98,6 @@ export function useRecordLocalPhotos(clientId?: string | null): string[] {
 
   return photos;
 }
+
+// Eagerly initialize hydration from AsyncStorage on module load
+void loadAttachments();

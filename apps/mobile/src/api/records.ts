@@ -2,6 +2,7 @@ import {
   saveRecordLocalPhotos,
   getRecordLocalPhotosSync,
   removeRecordLocalPhotos,
+  subscribeRecordPhotoStorage,
 } from '../features/records/record-photo-storage';
 import { useEffect, useState } from 'react';
 import { Q } from '@nozbe/watermelondb';
@@ -112,11 +113,23 @@ export function useActiveRecords(): LocalRecord[] {
     } else if (scope === 'household' && householdId) {
       conditions.push(Q.where('household_id', householdId));
     }
+    let currentModels: RecordModel[] = [];
     const sub = col
       .query(...conditions)
       .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
-      .subscribe((res) => setRows(res.map(toLocal)));
-    return () => sub.unsubscribe();
+      .subscribe((res) => {
+        currentModels = res;
+        setRows(res.map(toLocal));
+      });
+    const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentModels.length > 0) {
+        setRows(currentModels.map(toLocal));
+      }
+    });
+    return () => {
+      sub.unsubscribe();
+      unsubStorage();
+    };
   }, [scope, householdId]);
   return rows;
 }
@@ -130,11 +143,23 @@ export function useAllActiveRecords(): LocalRecord[] {
       Q.where('status', 'active'),
       Q.where('pending_delete', false),
     ];
+    let currentModels: RecordModel[] = [];
     const sub = col
       .query(...conditions)
       .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
-      .subscribe((res) => setRows(res.map(toLocal)));
-    return () => sub.unsubscribe();
+      .subscribe((res) => {
+        currentModels = res;
+        setRows(res.map(toLocal));
+      });
+    const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentModels.length > 0) {
+        setRows(currentModels.map(toLocal));
+      }
+    });
+    return () => {
+      sub.unsubscribe();
+      unsubStorage();
+    };
   }, []);
   return rows;
 }
@@ -182,11 +207,23 @@ export function useRecord(id: string | undefined): LocalRecord | null {
       return;
     }
     const col = database.get<RecordModel>('records');
+    let currentModel: RecordModel | null = null;
     const sub = col.findAndObserve(id).subscribe(
-      (r) => setRow(r ? toLocal(r) : null),
+      (r) => {
+        currentModel = r;
+        setRow(r ? toLocal(r) : null);
+      },
       () => setRow(null),
     );
-    return () => sub.unsubscribe();
+    const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentModel) {
+        setRow(toLocal(currentModel));
+      }
+    });
+    return () => {
+      sub.unsubscribe();
+      unsubStorage();
+    };
   }, [id]);
   return row;
 }
@@ -220,25 +257,27 @@ export async function createLocalRecord(input: {
     const raw = input.photoUrl.trim();
     if (raw.startsWith('http://') || raw.startsWith('https://')) {
       serverPhotoUrl = raw;
-    } else if (raw.startsWith('[') && raw.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          for (const item of parsed) {
-            if (typeof item === 'string') {
-              if (item.startsWith('http://') || item.startsWith('https://')) {
-                if (!serverPhotoUrl) serverPhotoUrl = item;
-              } else {
-                localPhotoPaths.push(item);
+    } else if (!input.localPhotos) {
+      if (raw.startsWith('[') && raw.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            for (const item of parsed) {
+              if (typeof item === 'string') {
+                if (item.startsWith('http://') || item.startsWith('https://')) {
+                  if (!serverPhotoUrl) serverPhotoUrl = item;
+                } else {
+                  localPhotoPaths.push(item);
+                }
               }
             }
           }
+        } catch {
+          localPhotoPaths.push(raw);
         }
-      } catch {
+      } else {
         localPhotoPaths.push(raw);
       }
-    } else {
-      localPhotoPaths.push(raw);
     }
   }
 
