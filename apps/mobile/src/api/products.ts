@@ -178,10 +178,20 @@ export function useSubmitDraft() {
 export function useDiscardDraft() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      return await apiClient.delete<{ success: boolean; id: string }>(`/products/drafts/${id}`);
+    mutationFn: async (input: string | { id: string; emptyOnly?: boolean; expectedVersion?: number }) => {
+      const id = typeof input === 'string' ? input : input.id;
+      const params = new URLSearchParams();
+      if (typeof input === 'object') {
+        if (input.emptyOnly) params.set('emptyOnly', 'true');
+        if (input.expectedVersion !== undefined) params.set('expectedVersion', String(input.expectedVersion));
+      }
+      const qs = params.toString();
+      return await apiClient.delete<{ success: boolean; id: string; deleted?: boolean }>(
+        `/products/drafts/${id}${qs ? `?${qs}` : ''}`,
+      );
     },
-    onSuccess: (_data, id) => {
+    onSuccess: (_data, vars) => {
+      const id = typeof vars === 'string' ? vars : vars.id;
       queryClient.setQueriesData<InfiniteData<ProductDraftsPage>>(
         { queryKey: ['products', 'drafts'] },
         (old) => {

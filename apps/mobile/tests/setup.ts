@@ -14,7 +14,7 @@ jest.mock('@react-navigation/native', () => {
     // The real useFocusEffect needs a NavigationContext a bare `render()`
     // (no NavigationContainer) never provides. Screens tested in isolation
     // are always "focused" for the test's purposes, so just run the effect.
-    useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, []),
+    useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect),
   };
 });
 jest.mock('react-native/Libraries/ActionSheetIOS/ActionSheetIOS', () => ({

@@ -282,10 +282,11 @@ describe('<NewProductScreen />', () => {
     await findByTestId('draft-name');
     fireEvent.changeText(getByTestId('draft-name'), 'Brand New Name');
 
-    const beforeRemoveCall = (navigation.addListener as jest.Mock).mock.calls.find(([event]) => event === 'beforeRemove');
-    expect(beforeRemoveCall).toBeTruthy();
+    const beforeRemoveCalls = (navigation.addListener as jest.Mock).mock.calls.filter(([event]) => event === 'beforeRemove');
+    expect(beforeRemoveCalls.length).toBeGreaterThan(0);
+    const latestBeforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1];
     const preventDefault = jest.fn();
-    beforeRemoveCall![1]({ preventDefault, data: { action: {} } });
+    latestBeforeRemove[1]({ preventDefault, data: { action: {} } });
 
     expect(preventDefault).toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledWith(
@@ -358,6 +359,66 @@ describe('<NewProductScreen />', () => {
 
     // Should not throw or crash
     fireEvent.press(getByTestId('product-new-close-btn'));
+    expect(navigation.goBack).toHaveBeenCalled();
+  });
+  it('clean untitled draft without photos: back navigation calls DELETE with emptyOnly=true and expectedVersion', async () => {
+    __setRouteParams({ productId: 'draft-clean-back-1', resume: 'edit', barcode: '123' });
+    const fetchMock = queueFetch(
+      jsonResponse({ ...PRODUCT, id: 'draft-clean-back-1', name: '', photos: [], version: 1 }),
+      jsonResponse({ success: true, id: 'draft-clean-back-1', deleted: true }),
+    );
+
+    const { findByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+
+    const beforeRemoveCalls = (navigation.addListener as jest.Mock).mock.calls.filter(([event]) => event === 'beforeRemove');
+    expect(beforeRemoveCalls.length).toBeGreaterThan(0);
+    const latestBeforeRemove = beforeRemoveCalls[beforeRemoveCalls.length - 1];
+    const preventDefault = jest.fn();
+
+    await act(async () => {
+      latestBeforeRemove[1]({ preventDefault, data: { action: {} } });
+    });
+
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts/draft-clean-back-1?emptyOnly=true&expectedVersion=1'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('PATCH settling while discard alert is open: choosing Discard sends emptyOnly and expectedVersion', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch');
+    __setRouteParams({ productId: 'draft-race-1', resume: 'edit', barcode: '123' });
+    queueFetch(jsonResponse({ ...PRODUCT, id: 'draft-race-1', name: '', photos: [], version: 1 }));
+    let alertButtons: any[] = [];
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {
+      alertButtons = buttons || [];
+    });
+
+    const { findByTestId, getByTestId } = render(wrap(<NewProductScreen />));
+    await findByTestId('draft-name');
+    fireEvent.changeText(getByTestId('draft-name'), 'Concurrent Saved Name');
+
+    // Trigger close which opens the Discard alert
+    fireEvent.press(getByTestId('product-new-close-btn'));
+
+    expect(alertButtons.length).toBe(2);
+    const discardBtn = alertButtons.find((b) => b.text === 'Discard');
+    expect(discardBtn).toBeTruthy();
+
+    // Mock the backend response when emptyOnly is checked (settled mutation rejects delete)
+    const deleteMock = queueFetch(jsonResponse({ success: true, id: 'draft-race-1', deleted: false }));
+
+    await act(async () => {
+      await discardBtn.onPress();
+    });
+
+    // Verify it sent emptyOnly=true and expectedVersion=1
+    expect(deleteMock).toHaveBeenCalledWith(
+      expect.stringContaining('/products/drafts/draft-race-1?emptyOnly=true&expectedVersion=1'),
+      expect.objectContaining({ method: 'DELETE' }),
+    );
     expect(navigation.goBack).toHaveBeenCalled();
   });
 });

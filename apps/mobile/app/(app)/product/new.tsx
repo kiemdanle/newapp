@@ -80,7 +80,11 @@ export default function NewProductScreen() {
                 const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
                 if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
                   try {
-                    await discardDraftMutation.mutateAsync(productId);
+                    await discardDraftMutation.mutateAsync({
+                      id: productId,
+                      emptyOnly: true,
+                      expectedVersion: product.version,
+                    });
                   } catch {
                     // best effort
                   }
@@ -103,7 +107,9 @@ export default function NewProductScreen() {
         // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on back navigation.
         const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
         if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
-          void discardDraftMutation.mutateAsync(productId).catch(() => {});
+          void discardDraftMutation
+            .mutateAsync({ id: productId, emptyOnly: true, expectedVersion: product.version })
+            .catch(() => {});
           const effBarcode = barcode || product.barcode || null;
           const effQr = qr || product.qrPayload || null;
           if (userId && (effBarcode || effQr)) {
@@ -127,7 +133,11 @@ export default function NewProductScreen() {
             const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
             if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
               try {
-                await discardDraftMutation.mutateAsync(productId);
+                await discardDraftMutation.mutateAsync({
+                  id: productId,
+                  emptyOnly: true,
+                  expectedVersion: product.version,
+                });
               } catch {
                 // best effort
               }
@@ -147,7 +157,9 @@ export default function NewProductScreen() {
       // Not dirty. If this is an untitled draft without any photos, clean up the empty placeholder on exit.
       const hasPhotos = Boolean(product?.photos && product.photos.length > 0);
       if (productId && product && product.status === 'draft' && !product.name.trim() && !hasPhotos) {
-        void discardDraftMutation.mutateAsync(productId).catch(() => {});
+        void discardDraftMutation
+          .mutateAsync({ id: productId, emptyOnly: true, expectedVersion: product.version })
+          .catch(() => {});
         const effBarcode = barcode || product.barcode || null;
         const effQr = qr || product.qrPayload || null;
         if (userId && (effBarcode || effQr)) {

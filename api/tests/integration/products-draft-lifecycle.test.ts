@@ -1028,6 +1028,40 @@ describe('DELETE /v1/products/drafts/:id', () => {
     await app.close();
   });
 
+  it('emptyOnly: deletes an untouched empty draft when expectedVersion matches', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft', name: '', version: 1 } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}?emptyOnly=true&expectedVersion=1`,
+      headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ success: true, id: p.id, deleted: true });
+    expect(await getPrisma().product.findUnique({ where: { id: p.id } })).toBeNull();
+    await app.close();
+  });
+
+  it('emptyOnly: skips deletion when draft has been named or version bumped concurrently', async () => {
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const p = await makeProduct({ createdByUserId: user.id });
+    await getPrisma().product.update({ where: { id: p.id }, data: { status: 'draft', name: 'Saved Name', version: 2 } });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/v1/products/drafts/${p.id}?emptyOnly=true&expectedVersion=1`,
+      headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ success: true, id: p.id, deleted: false });
+    expect(await getPrisma().product.findUnique({ where: { id: p.id } })).not.toBeNull();
+    await app.close();
+  });
+
   it('concurrency guard: two racing discard requests resolve cleanly without crash or inconsistency', async () => {
     const app = await buildServer();
     const { user, headers } = await authedUser();

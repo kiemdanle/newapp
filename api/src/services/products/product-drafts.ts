@@ -236,7 +236,8 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export async function discardDraft(
   actor: DraftActor,
   productId: string,
-): Promise<{ success: boolean; id: string }> {
+  options?: { emptyOnly?: boolean | undefined; expectedVersion?: number | undefined },
+): Promise<{ success: boolean; id: string; deleted?: boolean }> {
   if (!UUID_REGEX.test(productId)) {
     throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
   }
@@ -257,6 +258,17 @@ export async function discardDraft(
       throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Draft not found' });
     }
 
+    // 2b. Atomic empty/unmodified check: when emptyOnly is requested (used for cleaning up
+    // untouched placeholder drafts on exit), verify under the row lock that no concurrent PATCH
+    // has set a name, no photo upload has completed, and the version matches.
+    if (options?.emptyOnly) {
+      const hasName = Boolean(existing.name && existing.name.trim() !== '');
+      const hasPhotos = existing.photos.length > 0;
+      const versionMismatch = options.expectedVersion !== undefined && existing.version !== options.expectedVersion;
+      if (hasName || hasPhotos || versionMismatch) {
+        return { success: true, id: productId, deleted: false };
+      }
+    }
     // 3. For active or pending catalog products, dismissing removes them from the user's
     // personal quick-add template list without deleting the public community asset.
     if (existing.status !== 'draft' && existing.status !== 'changes_required') {
@@ -290,7 +302,7 @@ export async function discardDraft(
       });
     }
 
-    return { success: true, id: productId };
+    return { success: true, id: productId, deleted: true };
   });
 }
 

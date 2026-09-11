@@ -65,7 +65,7 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   // component re-renders whenever it changes by re-reading getState()
   // after every mutation completes (no external store/subscription needed
   // for a component with this narrow a lifetime).
-  const serverPhotos = coordinator.getState().photos;
+  const serverPhotos = coordinator.getState().photos ?? [];
   // Local entries the coordinator has already confirmed uploaded are dropped
   // from render entirely — the server thumbnail above is now the only
   // representation; the local entry's own file was already deleted by
