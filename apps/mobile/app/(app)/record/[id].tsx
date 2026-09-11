@@ -26,7 +26,6 @@ import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../../../src/features/records/expiryStatus';
 import { QuickEditModal } from '../../../src/features/records/QuickEditModal';
-import { ProductThumbnail } from '../../../src/components/ProductThumbnail';
 import { Button } from '../../../src/components/Button';
 import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../../../src/features/products/photo-picker-adapter';
@@ -103,7 +102,6 @@ export default function RecordDetail() {
   const displayName = record.customName || product?.name || 'Pantry Item';
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
-  const imageUrl = record.photoUrl || product?.imageUrl || (product?.photos && (product.photos[0]?.displayUrl || product.photos[0]?.thumbnailUrl)) || null;
   const barcode = product?.barcode;
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
@@ -243,7 +241,9 @@ export default function RecordDetail() {
           );
           await uploadHandle.promise;
         }
-      } catch {}
+      } catch {
+        // non-fatal upload failure
+      }
     } else if (!product && !record.productId) {
       // 3. If record is a custom item without product ID, create a private draft and upload accepted photos
       try {
@@ -265,7 +265,9 @@ export default function RecordDetail() {
           await uploadHandle.promise;
         }
         await patchLocalRecord(record.id, { productId: draftRes.product.id });
-      } catch {}
+      } catch {
+        // non-fatal upload failure
+      }
     }
   };
 

@@ -181,6 +181,7 @@ export function AddRecordForm({
         store: store || null,
         notes: notes || null,
         photoUrl: storedPhotoUrl,
+        localPhotos: photos.map((p) => p.path),
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
       });

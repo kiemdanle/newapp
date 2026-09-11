@@ -1,3 +1,8 @@
+import {
+  saveRecordLocalPhotos,
+  getRecordLocalPhotosSync,
+  removeRecordLocalPhotos,
+} from '../features/records/record-photo-storage';
 import { useEffect, useState } from 'react';
 import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
@@ -30,6 +35,7 @@ export interface LocalRecord {
   discardedAt?: string | null;
   discardReason?: string | null;
   location?: string | null;
+  localPhotos?: string[] | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -39,6 +45,14 @@ function toLocal(r: RecordModel): LocalRecord {
   } catch {
     notifyAt = [];
   }
+  const localAttachments = getRecordLocalPhotosSync(r.clientId);
+  const effectivePhotoUrl =
+    localAttachments.length > 0
+      ? localAttachments.length > 1
+        ? JSON.stringify(localAttachments)
+        : localAttachments[0]
+      : r.photoUrl;
+
   return {
     id: r.id,
     serverId: r.serverId,
@@ -53,7 +67,8 @@ function toLocal(r: RecordModel): LocalRecord {
     price: r.price,
     store: r.store,
     notes: r.notes,
-    photoUrl: r.photoUrl,
+    photoUrl: effectivePhotoUrl ?? null,
+    localPhotos: localAttachments,
     status: r.status,
     notifyAt,
     householdId: r.householdId ?? null,
@@ -188,11 +203,49 @@ export async function createLocalRecord(input: {
   store?: string | null;
   notes?: string | null;
   photoUrl?: string | null;
+  localPhotos?: string[] | null;
   householdId?: string | null;
   userId?: string | null;
   location?: string | null;
 }): Promise<string> {
   const clientId = uuidv4();
+  let serverPhotoUrl: string | null = null;
+  const localPhotoPaths: string[] = [];
+
+  if (input.localPhotos && input.localPhotos.length > 0) {
+    localPhotoPaths.push(...input.localPhotos);
+  }
+
+  if (input.photoUrl) {
+    const raw = input.photoUrl.trim();
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      serverPhotoUrl = raw;
+    } else if (raw.startsWith('[') && raw.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (typeof item === 'string') {
+              if (item.startsWith('http://') || item.startsWith('https://')) {
+                if (!serverPhotoUrl) serverPhotoUrl = item;
+              } else {
+                localPhotoPaths.push(item);
+              }
+            }
+          }
+        }
+      } catch {
+        localPhotoPaths.push(raw);
+      }
+    } else {
+      localPhotoPaths.push(raw);
+    }
+  }
+
+  if (localPhotoPaths.length > 0) {
+    await saveRecordLocalPhotos(clientId, localPhotoPaths);
+  }
+
   const col = database.get<RecordModel>('records');
   let newId = '';
   await database.write(async () => {
@@ -210,7 +263,7 @@ export async function createLocalRecord(input: {
       r.price = input.price ?? null;
       r.store = input.store ?? null;
       r.notes = input.notes ?? null;
-      r.photoUrl = input.photoUrl ?? null;
+      r.photoUrl = serverPhotoUrl;
       r.status = 'active';
       r.notifyAtJson = '[]';
       r.consumedAt = null;
@@ -231,11 +284,54 @@ export async function patchLocalRecord(
   id: string,
   patch: Partial<
     Pick<LocalRecord, 'customName' | 'brand' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId' | 'location'>
-  >,
+  > & { localPhotos?: string[] | null },
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
   await database.write(async () => {
     const rec = await col.find(id);
+    let serverPhotoUrl: string | null | undefined = patch.photoUrl;
+    const localPhotoPaths: string[] = [];
+
+    if (patch.localPhotos !== undefined) {
+      if (patch.localPhotos && patch.localPhotos.length > 0) {
+        localPhotoPaths.push(...patch.localPhotos);
+      }
+      await saveRecordLocalPhotos(rec.clientId, localPhotoPaths);
+    } else if (patch.photoUrl !== undefined) {
+      if (!patch.photoUrl) {
+        await removeRecordLocalPhotos(rec.clientId);
+        serverPhotoUrl = null;
+      } else {
+        const raw = patch.photoUrl.trim();
+        if (raw.startsWith('http://') || raw.startsWith('https://')) {
+          serverPhotoUrl = raw;
+        } else if (raw.startsWith('[') && raw.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              for (const item of parsed) {
+                if (typeof item === 'string') {
+                  if (item.startsWith('http://') || item.startsWith('https://')) {
+                    if (!serverPhotoUrl) serverPhotoUrl = item;
+                  } else {
+                    localPhotoPaths.push(item);
+                  }
+                }
+              }
+            }
+          } catch {
+            localPhotoPaths.push(raw);
+          }
+          await saveRecordLocalPhotos(rec.clientId, localPhotoPaths);
+          serverPhotoUrl = serverPhotoUrl && (serverPhotoUrl.startsWith('http://') || serverPhotoUrl.startsWith('https://')) ? serverPhotoUrl : null;
+        } else {
+          localPhotoPaths.push(raw);
+          await saveRecordLocalPhotos(rec.clientId, localPhotoPaths);
+          serverPhotoUrl = null;
+        }
+      }
+    }
+
     await rec.update((r) => {
       if (patch.customName !== undefined) r.customName = patch.customName;
       if (patch.brand !== undefined) r.brand = patch.brand ? patch.brand.trim().slice(0, 120) : null;
@@ -244,7 +340,7 @@ export async function patchLocalRecord(
       if (patch.unit !== undefined) r.unit = patch.unit;
       if (patch.notes !== undefined) r.notes = patch.notes;
       if (patch.status !== undefined) r.status = patch.status;
-      if (patch.photoUrl !== undefined) r.photoUrl = patch.photoUrl;
+      if (serverPhotoUrl !== undefined) r.photoUrl = serverPhotoUrl;
       if (patch.category !== undefined) r.category = patch.category;
       if (patch.productId !== undefined) r.productId = patch.productId;
       if (patch.householdId !== undefined) r.householdId = patch.householdId;
@@ -410,6 +506,7 @@ export async function deleteLocalRecord(id: string): Promise<void> {
   const col = database.get<RecordModel>('records');
   await database.write(async () => {
     const rec = await col.find(id);
+    await removeRecordLocalPhotos(rec.clientId);
     await rec.update((r) => {
       r.pendingDelete = true;
     });

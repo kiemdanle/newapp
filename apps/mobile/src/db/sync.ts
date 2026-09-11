@@ -1,3 +1,4 @@
+import { removeRecordLocalPhotos } from '../features/records/record-photo-storage';
 import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from './index';
@@ -36,7 +37,9 @@ export function getWirePhotoUrl(raw: string | null | undefined): string | null {
         );
         if (first) return first;
       }
-    } catch {}
+    } catch {
+      // ignore invalid json
+    }
   }
   return null;
 }
@@ -142,6 +145,7 @@ async function pushPending(): Promise<void> {
       }
     }
     await database.write(async () => {
+      await removeRecordLocalPhotos(rec.clientId);
       await rec.destroyPermanently();
     });
   }
@@ -180,7 +184,7 @@ async function pullSince(): Promise<void> {
           r.quantity = ch.quantity;
           r.unit = ch.unit;
           r.notes = ch.notes;
-          r.photoUrl = ch.photoUrl || r.photoUrl;
+          r.photoUrl = ch.photoUrl;
           r.status = ch.status;
           r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
           r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -221,7 +225,7 @@ async function pullSince(): Promise<void> {
             r.quantity = ch.quantity;
             r.unit = ch.unit;
             r.notes = ch.notes;
-            r.photoUrl = ch.photoUrl || r.photoUrl;
+            r.photoUrl = ch.photoUrl;
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
