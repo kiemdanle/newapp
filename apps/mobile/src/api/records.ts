@@ -188,14 +188,25 @@ export function usePantryHistoryRecords(
       conditions.push(Q.where('household_id', householdId));
     }
 
+    let currentModels: RecordModel[] = [];
     const sub = col
       .query(...conditions, Q.sortBy('updated_at', Q.desc))
       .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
-      .subscribe((res) => setRows(res.map(toLocal)));
+      .subscribe((res) => {
+        currentModels = res;
+        setRows(res.map(toLocal));
+      });
+    const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentModels.length > 0) {
+        setRows(currentModels.map(toLocal));
+      }
+    });
 
-    return () => sub.unsubscribe();
+    return () => {
+      sub.unsubscribe();
+      unsubStorage();
+    };
   }, [filter, scope, householdId]);
-
   return rows;
 }
 
@@ -447,8 +458,14 @@ export async function markRecordStatusWithQuantity(
         r.pendingSync = true;
       });
 
+      const historyClientId = uuidv4();
+      const sourcePhotos = getRecordLocalPhotosSync(rec.clientId);
+      if (sourcePhotos.length > 0) {
+        await saveRecordLocalPhotos(historyClientId, sourcePhotos);
+      }
+
       const historyRec = await col.create((r) => {
-        r.clientId = uuidv4();
+        r.clientId = historyClientId;
         r.productId = rec.productId;
         r.customName = rec.customName;
         r.category = rec.category;
@@ -511,6 +528,7 @@ export async function restoreLocalRecord(
             }
             p.pendingSync = true;
           });
+          await removeRecordLocalPhotos(rec.clientId);
           await rec.destroyPermanently();
           mergedBackToParent = true;
           finalId = parentRec.id;

@@ -14,7 +14,12 @@ import {
   getRecordLocalPhotos,
   saveRecordLocalPhotos,
 } from '../../src/features/records/record-photo-storage';
-import { createLocalRecord, deleteLocalRecord } from '../../src/api/records';
+import {
+  createLocalRecord,
+  deleteLocalRecord,
+  markRecordStatusWithQuantity,
+  restoreLocalRecord,
+} from '../../src/api/records';
 interface MockRecordRow {
   id: string;
   clientId?: string;
@@ -257,5 +262,50 @@ describe('Record Photo Storage & Sync Contract', () => {
     expect(reloaded).toEqual([...localPhotos, '/local/cold/3.jpg']);
 
     unsubscribe();
+  });
+
+  it('preserves local attachments across split -> history -> undo lifecycle', async () => {
+    const localPhotos = ['/local/split/1.jpg', '/local/split/2.jpg'];
+    const localId = await createLocalRecord({
+      customName: 'Apples',
+      expiryDate: '2026-11-20',
+      quantity: 5,
+      unit: 'pcs',
+      localPhotos,
+    });
+
+    const parentRec = mockRecordsStore.get(localId);
+    expect(parentRec).toBeDefined();
+    if (!parentRec || !parentRec.clientId) throw new Error('Parent record not found');
+    expect(await getRecordLocalPhotos(parentRec.clientId)).toEqual(localPhotos);
+
+    // Partially consume 2 of 5 apples (creates split history entry)
+    const splitResult = await markRecordStatusWithQuantity(localId, 'consumed', 2);
+    expect(splitResult.isSplit).toBe(true);
+    expect(splitResult.parentId).toBe(localId);
+
+    const historyRec = mockRecordsStore.get(splitResult.affectedId);
+    expect(historyRec).toBeDefined();
+    if (!historyRec || !historyRec.clientId) throw new Error('History record not found');
+
+    // History record inherits the local photo attachments
+    const historyPhotos = await getRecordLocalPhotos(historyRec.clientId);
+    expect(historyPhotos).toEqual(localPhotos);
+
+    // Undo the partial consumption
+    const undoResult = await restoreLocalRecord(splitResult.affectedId, [], {
+      isSplit: true,
+      parentId: localId,
+      quantity: 2,
+    });
+    expect(undoResult.mergedBackToParent).toBe(true);
+
+    // History record local attachment key is cleaned up
+    const cleanedPhotos = await getRecordLocalPhotos(historyRec.clientId);
+    expect(cleanedPhotos).toHaveLength(0);
+
+    // Parent record still has its local photos intact
+    const parentPhotosAfterUndo = await getRecordLocalPhotos(parentRec.clientId);
+    expect(parentPhotosAfterUndo).toEqual(localPhotos);
   });
 });
