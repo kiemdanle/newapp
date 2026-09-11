@@ -72,23 +72,22 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
     expect(getByText('No item photo')).toBeTruthy();
   });
 
-  it('renders Add photo button and thumb-add button when onAddPhoto is provided and capacity remains', () => {
+  it('renders thumb-add button when onAddPhoto is provided and capacity remains, and omits add button inside photo', () => {
     const handleAdd = jest.fn();
-    const { getByTestId } = render(
+    const { getByTestId, queryByTestId } = render(
       <ThemeProvider>
         <ItemImageGallery photos={photos} onAddPhoto={handleAdd} maxPhotos={5} />
       </ThemeProvider>,
     );
 
-    const addBtn = getByTestId('gallery-add-photo');
-    expect(addBtn).toBeTruthy();
-    fireEvent.press(addBtn);
-    expect(handleAdd).toHaveBeenCalledTimes(1);
+    // No add button placed inside the photo
+    expect(queryByTestId('gallery-add-photo')).toBeNull();
 
+    // Add button is rendered in the thumbnail strip
     const thumbAddBtn = getByTestId('gallery-thumb-add-btn');
     expect(thumbAddBtn).toBeTruthy();
     fireEvent.press(thumbAddBtn);
-    expect(handleAdd).toHaveBeenCalledTimes(2);
+    expect(handleAdd).toHaveBeenCalledTimes(1);
   });
 
   it('renders Delete button and triggers onDeletePhoto after confirmation alert', () => {

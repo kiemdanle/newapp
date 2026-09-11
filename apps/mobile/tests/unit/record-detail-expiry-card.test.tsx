@@ -5,6 +5,7 @@ import { screen } from '@testing-library/react-native';
 import RecordDetail from '../../app/(app)/record/[id]';
 import { renderWithTheme } from '../helpers/renderWithTheme';
 import * as recordsApi from '../../src/api/records';
+import * as productsApi from '../../src/api/products';
 import type { User } from '@expyrico/shared';
 import { useSessionStore } from '../../src/auth/session-store';
 
@@ -165,8 +166,7 @@ describe('RecordDetail Expiry Card', () => {
     expect(screen.getByText('Mark as discarded')).toBeTruthy();
   });
 
-  it('alerts Photo Limit Reached and blocks adding when record already has 5 photos', () => {
-    const alertSpy = jest.spyOn(Alert, 'alert');
+  it('hides add-photo thumbnail button and blocks adding when record already has 5 photos', () => {
     const fivePhotos = [
       '/path/photo1.jpg',
       '/path/photo2.jpg',
@@ -188,6 +188,7 @@ describe('RecordDetail Expiry Card', () => {
       store: null,
       notes: null,
       photoUrl: JSON.stringify(fivePhotos),
+      localPhotos: fivePhotos,
       status: 'active',
       notifyAt: [],
       householdId: null,
@@ -195,15 +196,12 @@ describe('RecordDetail Expiry Card', () => {
 
     renderWithTheme(<RecordDetail />, 'expyrico');
 
-    const changeBtn = screen.getByLabelText('Change photo');
-    fireEvent.press(changeBtn);
+    // Add photo button in thumbnail strip is cleanly hidden when capacity reaches 5
+    expect(screen.queryByTestId('gallery-thumb-add-btn')).toBeNull();
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      'Photo Limit Reached',
-      expect.stringContaining('You can attach up to 5 photos per item'),
-      expect.any(Array),
-    );
-    alertSpy.mockRestore();
+    // But Change cover button is available so user can still update/replace the cover photo
+    const changeCoverBtn = screen.getByTestId('gallery-change-cover-btn');
+    expect(changeCoverBtn).toBeTruthy();
   });
 
   it('allows deleting active photo with confirmation alert in RecordDetail', () => {
@@ -247,9 +245,132 @@ describe('RecordDetail Expiry Card', () => {
 
     expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
       localPhotos: ['/path/photo2.jpg'],
-      photoUrl: JSON.stringify(['/path/photo1.jpg', '/path/photo2.jpg']),
     });
 
+    alertSpy.mockRestore();
+  });
+
+  it('renders Change cover button and triggers cover photo replacement prompt', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    (recordsApi.useRecord as jest.Mock).mockReturnValue({
+      id: 'test-record-1',
+      serverId: 'srv-1',
+      clientId: 'cli-1',
+      productId: null,
+      customName: 'Apples',
+      category: 'Produce',
+      expiryDate: '2026-10-01',
+      quantity: 5,
+      unit: 'pcs',
+      price: null,
+      store: null,
+      notes: null,
+      localPhotos: ['/path/photo1.jpg', '/path/photo2.jpg'],
+      photoUrl: null,
+      status: 'active',
+      notifyAt: [],
+      householdId: null,
+    });
+
+    renderWithTheme(<RecordDetail />, 'expyrico');
+
+    const changeCoverBtn = screen.getByTestId('gallery-change-cover-btn');
+    expect(changeCoverBtn).toBeTruthy();
+    expect(screen.getByText('Change cover')).toBeTruthy();
+
+    fireEvent.press(changeCoverBtn);
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Change Cover Photo',
+      'Choose how you want to update this photo',
+      expect.any(Array),
+    );
+    alertSpy.mockRestore();
+  });
+
+  it('allows making non-cover photo the cover via Make cover button', () => {
+    (recordsApi.useRecord as jest.Mock).mockReturnValue({
+      id: 'test-record-1',
+      serverId: 'srv-1',
+      clientId: 'cli-1',
+      productId: null,
+      customName: 'Apples',
+      category: 'Produce',
+      expiryDate: '2026-10-01',
+      quantity: 5,
+      unit: 'pcs',
+      price: null,
+      store: null,
+      notes: null,
+      localPhotos: ['/path/photo1.jpg', '/path/photo2.jpg'],
+      photoUrl: null,
+      status: 'active',
+      notifyAt: [],
+      householdId: null,
+    });
+
+    renderWithTheme(<RecordDetail />, 'expyrico');
+
+    // Tap thumbnail 2 to make it the active photo
+    fireEvent.press(screen.getByTestId('giveaway-thumb-1'));
+
+    // Make cover button appears for photo at index 1
+    const makeCoverBtn = screen.getByTestId('gallery-set-cover-btn');
+    expect(makeCoverBtn).toBeTruthy();
+    expect(screen.getByText('Make cover')).toBeTruthy();
+
+    fireEvent.press(makeCoverBtn);
+    expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
+      localPhotos: ['/path/photo2.jpg', '/path/photo1.jpg'],
+    });
+  });
+
+  it('allows deleting catalog-only photo as item-scoped removal without mutating shared catalog media', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    (recordsApi.useRecord as jest.Mock).mockReturnValue({
+      id: 'test-record-1',
+      serverId: 'srv-1',
+      clientId: 'cli-1',
+      productId: 'catalog-prod-1',
+      customName: 'Organic Milk',
+      category: 'Dairy',
+      expiryDate: '2026-10-01',
+      quantity: 1,
+      unit: 'bottle',
+      price: null,
+      store: null,
+      notes: null,
+      localPhotos: undefined, // No local customizations yet
+      photoUrl: null,
+      status: 'active',
+      notifyAt: [],
+      householdId: null,
+    });
+
+    // Product has catalog photo
+    (productsApi.useProduct as jest.Mock).mockReturnValue({
+      data: {
+        id: 'catalog-prod-1',
+        name: 'Organic Milk',
+        imageUrl: 'https://cdn.expyrico.app/catalog/milk.png',
+        photos: [],
+      },
+    });
+
+    renderWithTheme(<RecordDetail />, 'expyrico');
+
+    const deleteBtn = screen.getByTestId('gallery-delete-photo');
+    expect(deleteBtn).toBeTruthy();
+
+    fireEvent.press(deleteBtn);
+    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
+    const confirmBtn = buttons.find((b) => b.text === 'Delete');
+    confirmBtn?.onPress?.();
+
+    // Saves empty localPhotos for this item, preserving shared catalog product
+    expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
+      localPhotos: [],
+      photoUrl: null,
+    });
     alertSpy.mockRestore();
   });
 });

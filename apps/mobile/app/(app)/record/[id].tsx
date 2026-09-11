@@ -19,8 +19,7 @@ import { useUndoToastStore } from '../../../src/store/undoToast';
 import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
 import { DiscardReasonModal } from '../../../src/components/DiscardReasonModal';
 import type { Household } from '@expyrico/shared';
-import { useProduct, useCreateOrResumeDraft, usePatchDraft } from '../../../src/api/products';
-import { uploadProductPhoto } from '../../../src/api/product-photo-upload';
+import { useProduct } from '../../../src/api/products';
 import { useSessionStore } from '../../../src/auth/session-store';
 import { useTheme } from '../../../src/theme/useTheme';
 import { formatDate } from '../../../src/utils/country-format';
@@ -55,11 +54,10 @@ export default function RecordDetail() {
   const insets = useSafeAreaInsets();
   const { id } = useRoute().params as { id: string };
   const record = useRecord(id);
-  const [showCameraModal, setShowCameraModal] = useState(false);
   const { data: product } = useProduct(record?.productId ?? undefined);
+  const [pendingReplaceIndex, setPendingReplaceIndex] = useState<number | null>(null);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const createOrResumeDraft = useCreateOrResumeDraft();
-  const patchDraft = usePatchDraft();
   const { data: householdsData } = useMyHouseholds();
   const households = householdsData?.items ?? [];
   const { data: activeGiveaways } = useActiveGiveawaysForRecord(record?.id, record?.serverId);
@@ -106,26 +104,17 @@ export default function RecordDetail() {
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
   const catalogProductId = record.productId || product?.id;
-  const recordPhotos = record.localPhotos && record.localPhotos.length > 0
-    ? record.localPhotos
+  const hasCustomizedPhotos = record.localPhotos !== undefined && record.localPhotos !== null;
+  const displayedPhotos: string[] = hasCustomizedPhotos
+    ? record.localPhotos!
     : (() => {
-        if (!record.photoUrl) return [];
-        if (record.photoUrl.startsWith('[') && record.photoUrl.endsWith(']')) {
-          try {
-            const parsed = JSON.parse(record.photoUrl);
-            if (Array.isArray(parsed)) return parsed.filter((u): u is string => typeof u === 'string' && Boolean(u));
-          } catch {
-            // fallback to single photoUrl
-          }
-        }
-        return [record.photoUrl];
+        const fallbackList = [
+          record.photoUrl,
+          product?.imageUrl,
+          ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
+        ].filter(Boolean) as string[];
+        return Array.from(new Set(fallbackList));
       })();
-  const photoList = [
-    ...recordPhotos,
-    product?.imageUrl,
-    ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
-  ].filter(Boolean) as string[];
-  const uniquePhotos = Array.from(new Set(photoList));
   const handleInitiateMark = (status: 'consumed' | 'discarded') => {
     if (activeGiveaways && activeGiveaways.length > 0) {
       Alert.alert(
@@ -218,71 +207,39 @@ export default function RecordDetail() {
     await patchLocalRecord(record.id, { quantity: newQty });
   };
   const savePhotosToRecord = async (newPhotos: PickedPhoto[]) => {
-    const existingPaths = recordPhotos;
-    const availableSlots = Math.max(0, 5 - existingPaths.length);
+    const availableSlots = Math.max(0, 5 - displayedPhotos.length);
     if (availableSlots <= 0) return;
 
     const acceptedPhotos = newPhotos.slice(0, availableSlots);
     if (acceptedPhotos.length === 0) return;
 
-    const combined = [...existingPaths, ...acceptedPhotos.map((p) => p.path)];
-    // 1. Immediately update local record attachments for instant UI feedback
+    const combined = [...displayedPhotos, ...acceptedPhotos.map((p) => p.path)];
     await patchLocalRecord(record.id, { localPhotos: combined });
+  };
 
-    // 2. If record is linked to a draft/pending product, upload accepted photos directly
-    if (product && (product.status === 'draft' || product.status === 'changes_required')) {
-      try {
-        for (const photo of acceptedPhotos) {
-          const uploadHandle = uploadProductPhoto(
-            { kind: 'draft', productId: product.id },
-            { path: photo.path, mime: photo.mime },
-          );
-          await uploadHandle.promise;
-        }
-      } catch {
-        // non-fatal upload failure
-      }
-    } else if (!product && !record.productId) {
-      // 3. If record is a custom item without product ID, create a private draft and upload accepted photos
-      try {
-        const draftRes = await createOrResumeDraft.mutateAsync({
-          barcode: barcode || null,
-          qrPayload: null,
-        });
-        await patchDraft.mutateAsync({
-          id: draftRes.product.id,
-          version: draftRes.product.version,
-          name: displayName,
-          category: record.category || null,
-        });
-        for (const photo of acceptedPhotos) {
-          const uploadHandle = uploadProductPhoto(
-            { kind: 'draft', productId: draftRes.product.id },
-            { path: photo.path, mime: photo.mime },
-          );
-          await uploadHandle.promise;
-        }
-        await patchLocalRecord(record.id, { productId: draftRes.product.id });
-      } catch {
-        // non-fatal upload failure
-      }
-    }
+  const replacePhotoAt = async (index: number, newPhoto: PickedPhoto) => {
+    const updated = displayedPhotos.map((p, i) => (i === index ? newPhoto.path : p));
+    await patchLocalRecord(record.id, { localPhotos: updated });
   };
 
   const handleCameraCapture = async (photos: PickedPhoto[]) => {
-    if (photos.length > 0) {
+    const firstPhoto = photos[0];
+    if (!firstPhoto) return;
+    if (pendingReplaceIndex !== null) {
+      await replacePhotoAt(pendingReplaceIndex, firstPhoto);
+      setPendingReplaceIndex(null);
+    } else {
       await savePhotosToRecord(photos);
     }
   };
-  const handleAddPhoto = () => {
-    if (recordPhotos.length >= 5) {
-      Alert.alert('Photo Limit Reached', 'You can attach up to 5 photos per item. Remove an existing photo to add a new one.', [{ text: 'OK' }]);
-      return;
-    }
-    Alert.alert('Item Photo', 'Choose how you want to add a photo', [
+
+  const handleChangeCover = (index: number = 0) => {
+    const title = index === 0 ? 'Change Cover Photo' : 'Replace Photo';
+    Alert.alert(title, 'Choose how you want to update this photo', [
       {
         text: 'Take Photo',
         onPress: () => {
+          setPendingReplaceIndex(index);
           setShowCameraModal(true);
         },
       },
@@ -290,7 +247,45 @@ export default function RecordDetail() {
         text: 'Choose from Gallery',
         onPress: async () => {
           try {
-            const remaining = 5 - recordPhotos.length;
+            const picked = await choosePhotos(1);
+            if (picked.length > 0 && picked[0]) {
+              await replacePhotoAt(index, picked[0]);
+            }
+          } catch (err) {
+            handlePhotoPickerError(err, 'gallery');
+          }
+        },
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleSetCover = async (index: number) => {
+    if (index <= 0 || index >= displayedPhotos.length) return;
+    const targetPhoto = displayedPhotos[index];
+    if (!targetPhoto) return;
+    const reordered: string[] = [targetPhoto, ...displayedPhotos.filter((_, i) => i !== index)];
+    await patchLocalRecord(record.id, { localPhotos: reordered });
+  };
+
+  const handleAddPhoto = () => {
+    if (displayedPhotos.length >= 5) {
+      Alert.alert('Photo Limit Reached', 'You can attach up to 5 photos per item. Remove an existing photo to add a new one.', [{ text: 'OK' }]);
+      return;
+    }
+    Alert.alert('Add Item Photo', 'Choose how you want to add a photo', [
+      {
+        text: 'Take Photo',
+        onPress: () => {
+          setPendingReplaceIndex(null);
+          setShowCameraModal(true);
+        },
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: async () => {
+          try {
+            const remaining = 5 - displayedPhotos.length;
             if (remaining <= 0) return;
             const picked = await choosePhotos(remaining);
             if (picked.length > 0) {
@@ -305,25 +300,21 @@ export default function RecordDetail() {
     ]);
   };
 
-  const handlePickPhoto = handleAddPhoto;
+  const handlePickPhoto = () => handleChangeCover(0);
 
   const handleDeletePhoto = async (index: number) => {
-    const photoToDelete = uniquePhotos[index];
-    if (!photoToDelete) return;
-
-    // 1. Remove from local attachments if present
-    const nextLocalPhotos = recordPhotos.filter((p) => p !== photoToDelete);
-    if (nextLocalPhotos.length !== recordPhotos.length) {
+    if (index < 0 || index >= displayedPhotos.length) return;
+    const photoToDelete = displayedPhotos[index];
+    const updated = displayedPhotos.filter((_, i) => i !== index);
+    if (record.photoUrl === photoToDelete || updated.length === 0) {
       await patchLocalRecord(record.id, {
-        localPhotos: nextLocalPhotos,
-        photoUrl: nextLocalPhotos.length === 0 ? null : (record.photoUrl === photoToDelete ? null : record.photoUrl),
+        localPhotos: updated,
+        photoUrl: null,
       });
-      return;
-    }
-
-    // 2. If it was stored in record.photoUrl directly
-    if (record.photoUrl === photoToDelete) {
-      await patchLocalRecord(record.id, { photoUrl: null, localPhotos: [] });
+    } else {
+      await patchLocalRecord(record.id, {
+        localPhotos: updated,
+      });
     }
   };
   const handleSaveQuickEdit = async (patch: {
@@ -364,19 +355,21 @@ export default function RecordDetail() {
         automaticallyAdjustKeyboardInsets={true}
       >
         {/* Hero Photo / Add Photo Card */}
-        {uniquePhotos.length > 0 ? (
+        {displayedPhotos.length > 0 ? (
           <ItemImageGallery
-            photos={uniquePhotos}
+            photos={displayedPhotos}
             title={displayName || 'Pantry Item'}
             placeholderIcon="basket-outline"
             placeholderText="No photo attached"
             onAddPhoto={handleAddPhoto}
             onDeletePhoto={handleDeletePhoto}
+            onChangeCover={handleChangeCover}
+            onSetCover={handleSetCover}
             maxPhotos={5}
             floatingAction={{
               icon: 'camera-outline',
               label: 'Change',
-              onPress: handleAddPhoto,
+              onPress: () => handleChangeCover(0),
               accessibilityLabel: 'Change photo',
             }}
           />
@@ -787,7 +780,7 @@ export default function RecordDetail() {
             label="Restore to Pantry"
             icon="refresh-outline"
             variant="primary"
-            onPress={() => void handleRestore()}
+            onPress={handleRestore}
           />
         ) : (
           <View style={styles.actionRow}>
@@ -822,7 +815,7 @@ export default function RecordDetail() {
       />
       <MultiPhotoCameraModal
         visible={showCameraModal}
-        maxPhotos={Math.max(1, 5 - recordPhotos.length)}
+        maxPhotos={Math.max(1, 5 - displayedPhotos.length)}
         title="Item Photos"
         onCapture={handleCameraCapture}
         onClose={() => setShowCameraModal(false)}

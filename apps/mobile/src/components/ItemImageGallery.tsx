@@ -32,6 +32,8 @@ export interface ItemImageGalleryProps {
   };
   onAddPhoto?: () => void;
   onDeletePhoto?: (activeIndex: number) => void;
+  onChangeCover?: (activeIndex: number) => void;
+  onSetCover?: (index: number) => void;
   maxPhotos?: number;
 }
 
@@ -45,6 +47,8 @@ export function ItemImageGallery({
   floatingAction,
   onAddPhoto,
   onDeletePhoto,
+  onChangeCover,
+  onSetCover,
   maxPhotos = 5,
 }: ItemImageGalleryProps) {
   const theme = useTheme();
@@ -188,46 +192,68 @@ export function ItemImageGallery({
           </Pressable>
         )}
 
-        {/* Floating Action (Add Photo or custom Action) */}
-        {onAddPhoto && canAddMore ? (
-          <Pressable
-            testID="gallery-add-photo"
-            accessibilityRole="button"
-            accessibilityLabel="Add more photos"
-            onPress={onAddPhoto}
-            style={[
-              styles.floatingActionBtn,
-              {
-                backgroundColor: theme.colors.bgGlass,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <Ionicons name="add" size={16} color={theme.colors.text} />
-            <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
-              Add photo
-            </Text>
-          </Pressable>
-        ) : floatingAction ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={floatingAction.accessibilityLabel}
-            onPress={floatingAction.onPress}
-            style={[
-              styles.floatingActionBtn,
-              {
-                backgroundColor: theme.colors.bgGlass,
-                borderColor: theme.colors.border,
-              },
-            ]}
-          >
-            <Ionicons name={floatingAction.icon} size={15} color={theme.colors.text} />
-            <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
-              {floatingAction.label}
-            </Text>
-          </Pressable>
-        ) : null}
+        {/* Floating Actions Row (Change Cover / Replace, Make Cover, Add Photo) */}
+        <View style={styles.floatingActionRow}>
+          {onChangeCover ? (
+            <Pressable
+              testID="gallery-change-cover-btn"
+              accessibilityRole="button"
+              accessibilityLabel={activeIndex === 0 ? 'Change cover photo' : 'Replace photo'}
+              onPress={() => onChangeCover(activeIndex)}
+              style={[
+                styles.floatingActionBtn,
+                {
+                  backgroundColor: theme.colors.bgGlass,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons name="camera-outline" size={15} color={theme.colors.text} />
+              <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
+                {activeIndex === 0 ? 'Change cover' : 'Replace photo'}
+              </Text>
+            </Pressable>
+          ) : floatingAction ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={floatingAction.accessibilityLabel}
+              onPress={floatingAction.onPress}
+              style={[
+                styles.floatingActionBtn,
+                {
+                  backgroundColor: theme.colors.bgGlass,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Ionicons name={floatingAction.icon} size={15} color={theme.colors.text} />
+              <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
+                {floatingAction.label}
+              </Text>
+            </Pressable>
+          ) : null}
 
+          {onSetCover && activeIndex > 0 && (
+            <Pressable
+              testID="gallery-set-cover-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Make this photo the cover"
+              onPress={() => onSetCover(activeIndex)}
+              style={[
+                styles.floatingActionBtn,
+                {
+                  backgroundColor: theme.colors.bgGlass,
+                  borderColor: theme.colors.primary,
+                },
+              ]}
+            >
+              <Ionicons name="star-outline" size={15} color={theme.colors.primary} />
+              <Text style={[styles.floatingActionText, { color: theme.colors.primary }]}>
+                Make cover
+              </Text>
+            </Pressable>
+          )}
+        </View>
         {/* Expand Fullscreen Hint Button */}
         <Pressable
           accessibilityRole="button"
@@ -407,19 +433,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 5,
   },
-  floatingActionBtn: {
+  floatingActionRow: {
     position: 'absolute',
     bottom: 12,
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
+    zIndex: 5,
+  },
+  floatingActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     minHeight: 44,
     borderRadius: 20,
     borderWidth: 1,
-    zIndex: 5,
   },
   floatingActionText: {
     fontSize: 12,
