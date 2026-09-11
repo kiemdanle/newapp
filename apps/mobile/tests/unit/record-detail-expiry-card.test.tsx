@@ -205,4 +205,51 @@ describe('RecordDetail Expiry Card', () => {
     );
     alertSpy.mockRestore();
   });
+
+  it('allows deleting active photo with confirmation alert in RecordDetail', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    (recordsApi.useRecord as jest.Mock).mockReturnValue({
+      id: 'test-record-1',
+      serverId: 'srv-1',
+      clientId: 'cli-1',
+      productId: null,
+      customName: 'Apples',
+      category: 'Produce',
+      expiryDate: '2026-10-01',
+      quantity: 5,
+      unit: 'pcs',
+      price: null,
+      store: null,
+      notes: null,
+      photoUrl: JSON.stringify(['/path/photo1.jpg', '/path/photo2.jpg']),
+      localPhotos: ['/path/photo1.jpg', '/path/photo2.jpg'],
+      status: 'active',
+      notifyAt: [],
+      householdId: null,
+    });
+
+    renderWithTheme(<RecordDetail />, 'expyrico');
+
+    const deleteBtn = screen.getByTestId('gallery-delete-photo');
+    expect(deleteBtn).toBeTruthy();
+
+    fireEvent.press(deleteBtn);
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Delete Photo',
+      expect.stringContaining('Are you sure you want to remove this photo'),
+      expect.any(Array),
+    );
+
+    // Confirm deletion
+    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
+    const confirmBtn = buttons.find((b) => b.text === 'Delete');
+    confirmBtn?.onPress?.();
+
+    expect(recordsApi.patchLocalRecord).toHaveBeenCalledWith('test-record-1', {
+      localPhotos: ['/path/photo2.jpg'],
+      photoUrl: JSON.stringify(['/path/photo1.jpg', '/path/photo2.jpg']),
+    });
+
+    alertSpy.mockRestore();
+  });
 });

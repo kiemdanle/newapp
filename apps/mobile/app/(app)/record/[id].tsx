@@ -106,21 +106,20 @@ export default function RecordDetail() {
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
   const catalogProductId = record.productId || product?.id;
-  let recordPhotos: string[] = [];
-  if (record.photoUrl) {
-    if (record.photoUrl.startsWith('[') && record.photoUrl.endsWith(']')) {
-      try {
-        const parsed = JSON.parse(record.photoUrl);
-        if (Array.isArray(parsed)) {
-          recordPhotos = parsed.filter((u): u is string => typeof u === 'string' && Boolean(u));
+  const recordPhotos = record.localPhotos && record.localPhotos.length > 0
+    ? record.localPhotos
+    : (() => {
+        if (!record.photoUrl) return [];
+        if (record.photoUrl.startsWith('[') && record.photoUrl.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(record.photoUrl);
+            if (Array.isArray(parsed)) return parsed.filter((u): u is string => typeof u === 'string' && Boolean(u));
+          } catch {
+            // fallback to single photoUrl
+          }
         }
-      } catch {
-        recordPhotos = [record.photoUrl];
-      }
-    } else {
-      recordPhotos = [record.photoUrl];
-    }
-  }
+        return [record.photoUrl];
+      })();
   const photoList = [
     ...recordPhotos,
     product?.imageUrl,
@@ -275,8 +274,7 @@ export default function RecordDetail() {
       await savePhotosToRecord(photos);
     }
   };
-
-  const handlePickPhoto = () => {
+  const handleAddPhoto = () => {
     if (recordPhotos.length >= 5) {
       Alert.alert('Photo Limit Reached', 'You can attach up to 5 photos per item. Remove an existing photo to add a new one.', [{ text: 'OK' }]);
       return;
@@ -305,6 +303,28 @@ export default function RecordDetail() {
       },
       { text: 'Cancel', style: 'cancel' },
     ]);
+  };
+
+  const handlePickPhoto = handleAddPhoto;
+
+  const handleDeletePhoto = async (index: number) => {
+    const photoToDelete = uniquePhotos[index];
+    if (!photoToDelete) return;
+
+    // 1. Remove from local attachments if present
+    const nextLocalPhotos = recordPhotos.filter((p) => p !== photoToDelete);
+    if (nextLocalPhotos.length !== recordPhotos.length) {
+      await patchLocalRecord(record.id, {
+        localPhotos: nextLocalPhotos,
+        photoUrl: nextLocalPhotos.length === 0 ? null : (record.photoUrl === photoToDelete ? null : record.photoUrl),
+      });
+      return;
+    }
+
+    // 2. If it was stored in record.photoUrl directly
+    if (record.photoUrl === photoToDelete) {
+      await patchLocalRecord(record.id, { photoUrl: null, localPhotos: [] });
+    }
   };
   const handleSaveQuickEdit = async (patch: {
     customName?: string | null;
@@ -350,10 +370,13 @@ export default function RecordDetail() {
             title={displayName || 'Pantry Item'}
             placeholderIcon="basket-outline"
             placeholderText="No photo attached"
+            onAddPhoto={handleAddPhoto}
+            onDeletePhoto={handleDeletePhoto}
+            maxPhotos={5}
             floatingAction={{
               icon: 'camera-outline',
               label: 'Change',
-              onPress: handlePickPhoto,
+              onPress: handleAddPhoto,
               accessibilityLabel: 'Change photo',
             }}
           />

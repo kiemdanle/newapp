@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   LayoutChangeEvent,
@@ -29,6 +30,9 @@ export interface ItemImageGalleryProps {
     onPress: () => void;
     accessibilityLabel: string;
   };
+  onAddPhoto?: () => void;
+  onDeletePhoto?: (activeIndex: number) => void;
+  maxPhotos?: number;
 }
 
 const INITIAL_HERO_WIDTH = Math.min(Dimensions.get('window').width - 32, 540);
@@ -39,6 +43,9 @@ export function ItemImageGallery({
   placeholderIcon = 'image-outline',
   placeholderText = 'No photos available',
   floatingAction,
+  onAddPhoto,
+  onDeletePhoto,
+  maxPhotos = 5,
 }: ItemImageGalleryProps) {
   const theme = useTheme();
   const heroScrollRef = useRef<ScrollView>(null);
@@ -55,6 +62,24 @@ export function ItemImageGallery({
       setActiveIndex(photos.length - 1);
     }
   }, [photos.length, activeIndex]);
+
+  const canAddMore = Boolean(onAddPhoto && photos.length < maxPhotos);
+
+  const handleDeletePress = () => {
+    if (!onDeletePhoto) return;
+    Alert.alert(
+      'Delete Photo',
+      'Are you sure you want to remove this photo from this item?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => onDeletePhoto(activeIndex),
+        },
+      ],
+    );
+  };
 
   if (!photos || photos.length === 0) {
     return (
@@ -150,8 +175,40 @@ export function ItemImageGallery({
           ))}
         </ScrollView>
 
-        {/* Floating Action (e.g. Change Photo) */}
-        {floatingAction && (
+        {/* Floating Delete Button (deletes active photo with confirmation) */}
+        {onDeletePhoto && (
+          <Pressable
+            testID="gallery-delete-photo"
+            accessibilityRole="button"
+            accessibilityLabel={`Delete photo ${activeIndex + 1} of ${photos.length}`}
+            onPress={handleDeletePress}
+            style={styles.deleteBadge}
+          >
+            <Ionicons name="trash-outline" size={17} color="#FFFFFF" />
+          </Pressable>
+        )}
+
+        {/* Floating Action (Add Photo or custom Action) */}
+        {onAddPhoto && canAddMore ? (
+          <Pressable
+            testID="gallery-add-photo"
+            accessibilityRole="button"
+            accessibilityLabel="Add more photos"
+            onPress={onAddPhoto}
+            style={[
+              styles.floatingActionBtn,
+              {
+                backgroundColor: theme.colors.bgGlass,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="add" size={16} color={theme.colors.text} />
+            <Text style={[styles.floatingActionText, { color: theme.colors.text }]}>
+              Add photo
+            </Text>
+          </Pressable>
+        ) : floatingAction ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={floatingAction.accessibilityLabel}
@@ -169,7 +226,7 @@ export function ItemImageGallery({
               {floatingAction.label}
             </Text>
           </Pressable>
-        )}
+        ) : null}
 
         {/* Expand Fullscreen Hint Button */}
         <Pressable
@@ -192,7 +249,7 @@ export function ItemImageGallery({
       </View>
 
       {/* Thumbnails Row (Tap thumbnail to change active hero photo) */}
-      {photos.length > 1 && (
+      {(photos.length > 1 || canAddMore) && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -231,6 +288,27 @@ export function ItemImageGallery({
               </Pressable>
             );
           })}
+          {/* Add photo dashed card in thumbnails row */}
+          {canAddMore && (
+            <Pressable
+              testID="gallery-thumb-add-btn"
+              accessibilityRole="button"
+              accessibilityLabel="Add another photo"
+              onPress={onAddPhoto}
+              style={[
+                styles.thumbCard,
+                styles.thumbAddCard,
+                {
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.bgGlass,
+                  borderRadius: theme.radii.sm,
+                },
+              ]}
+            >
+              <Ionicons name="add" size={20} color={theme.colors.primary} />
+              <Text style={[styles.thumbAddText, { color: theme.colors.primary }]}>Add</Text>
+            </Pressable>
+          )}
         </ScrollView>
       )}
 
@@ -263,6 +341,7 @@ function GalleryImageItem({
       source={{ uri: sourceUri }}
       style={style}
       resizeMode={resizeMode}
+      accessibilityIgnoresInvertColors
     />
   );
 }
@@ -299,6 +378,20 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
+  },
+  deleteBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 36,
+    height: 36,
+    minHeight: 44,
+    minWidth: 44,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
   },
   expandBadge: {
     position: 'absolute',
@@ -341,6 +434,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     zIndex: 5,
+  },
+  thumbAddCard: {
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  thumbAddText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   counterText: {
     color: '#FFFFFF',

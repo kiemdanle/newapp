@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { ItemImageGallery } from '../../src/components/ItemImageGallery';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
@@ -33,7 +34,7 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
   });
 
   it('taps thumbnail to switch the active photo in the hero view', () => {
-    const { getByText, getByTestId, getByLabelText } = render(
+    const { getByText, getByTestId } = render(
       <ThemeProvider>
         <ItemImageGallery photos={photos} title="Greek Yogurt" />
       </ThemeProvider>,
@@ -69,5 +70,53 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
     );
 
     expect(getByText('No item photo')).toBeTruthy();
+  });
+
+  it('renders Add photo button and thumb-add button when onAddPhoto is provided and capacity remains', () => {
+    const handleAdd = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <ItemImageGallery photos={photos} onAddPhoto={handleAdd} maxPhotos={5} />
+      </ThemeProvider>,
+    );
+
+    const addBtn = getByTestId('gallery-add-photo');
+    expect(addBtn).toBeTruthy();
+    fireEvent.press(addBtn);
+    expect(handleAdd).toHaveBeenCalledTimes(1);
+
+    const thumbAddBtn = getByTestId('gallery-thumb-add-btn');
+    expect(thumbAddBtn).toBeTruthy();
+    fireEvent.press(thumbAddBtn);
+    expect(handleAdd).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders Delete button and triggers onDeletePhoto after confirmation alert', () => {
+    const handleDelete = jest.fn();
+    const alertSpy = jest.spyOn(Alert, 'alert');
+
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <ItemImageGallery photos={photos} onDeletePhoto={handleDelete} />
+      </ThemeProvider>,
+    );
+
+    const deleteBtn = getByTestId('gallery-delete-photo');
+    expect(deleteBtn).toBeTruthy();
+
+    fireEvent.press(deleteBtn);
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Delete Photo',
+      expect.stringContaining('Are you sure you want to remove this photo'),
+      expect.any(Array),
+    );
+
+    // Trigger the destructive action from the alert buttons
+    const buttons = alertSpy.mock.calls[0]?.[2] as Array<{ text: string; onPress?: () => void }>;
+    const deleteConfirm = buttons.find((b) => b.text === 'Delete');
+    deleteConfirm?.onPress?.();
+
+    expect(handleDelete).toHaveBeenCalledWith(0);
+    alertSpy.mockRestore();
   });
 });
