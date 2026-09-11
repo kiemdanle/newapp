@@ -352,7 +352,7 @@ export function ProductActions({
             </div>
           </div>
           {isDirty && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#FEEFC3] border border-[#F5A623]/60 px-2.5 py-0.5 text-xs font-semibold text-[#2C2C28]">
               Unsaved changes
             </span>
           )}
@@ -492,7 +492,7 @@ export function ProductActions({
                 variant="destructive"
                 size="default"
                 disabled={pending}
-                className="rounded-xl"
+                className="rounded-xl bg-[#E0442A] text-white hover:bg-[#E0442A]/90"
                 onClick={() =>
                   run(
                     () => patchProductAction(id, version, { status: 'report_hidden' }),
@@ -523,8 +523,8 @@ export function ProductActions({
           </div>
 
           <div className="flex items-center gap-2">
-            {msg && <span className="text-xs font-semibold text-emerald-700">{msg}</span>}
-            {err && <span className="text-xs font-semibold text-destructive">{err}</span>}
+            {msg && <span className="text-xs font-semibold text-[#3A8F6F]">{msg}</span>}
+            {err && <span className="text-xs font-semibold text-[#E0442A]">{err}</span>}
             {conflict && (
               <Button
                 variant="outline"

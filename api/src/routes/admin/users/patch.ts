@@ -21,6 +21,9 @@ export async function adminUsersPatchRoute(app: FastifyInstance) {
         ...(input.firstName !== undefined ? { firstName: input.firstName } : {}),
         ...(input.lastName !== undefined ? { lastName: input.lastName } : {}),
         ...(input.requireProductApproval !== undefined ? { requireProductApproval: input.requireProductApproval } : {}),
+        ...((input.role !== undefined && input.role !== before.role) || (input.status !== undefined && input.status !== before.status)
+          ? { tokenVersion: { increment: 1 } }
+          : {}),
       },
     });
     if ((input.status && input.status !== 'active') || (input.role && input.role !== 'admin')) {

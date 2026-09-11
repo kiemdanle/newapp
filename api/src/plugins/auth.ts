@@ -44,6 +44,7 @@ const authPluginImpl: FastifyPluginAsync = async (app: FastifyInstance) => {
     if (req.user.tokenVersion !== user.tokenVersion) {
       throw new AppError({ status: 401, code: ERROR_CODES.UNAUTHORIZED, title: 'Unauthorized' });
     }
+    req.user.role = user.role;
   });
 
   app.decorate('requireAdmin', async (req: FastifyRequest, reply: FastifyReply) => {

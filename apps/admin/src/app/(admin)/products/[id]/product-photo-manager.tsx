@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useTransition } from 'react';
+import { useState, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,13 +42,17 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   function persistOrder(next: Photo[]) {
+    const previousOrder = [...order];
     setOrder(next);
     setErr(null);
     setConflict(false);
     startTransition(async () => {
       const photoIds = next.map((p) => p.id);
       const res = await reorderProductPhotosAction(productId, photoIds);
-      if (!res.ok) {
+      if (res.ok && res.data && Array.isArray(res.data.photos)) {
+        setOrder([...res.data.photos].sort((a, b) => a.position - b.position));
+      } else if (!res.ok) {
+        setOrder(previousOrder);
         setErr(actionErrorMessage(res));
         if (isConflictCode(res.code)) setConflict(true);
       }
@@ -73,13 +77,16 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
 
   function remove(photoId: string) {
     if (!window.confirm('Delete this photo from the product?')) return;
+    const previousOrder = [...order];
+    setOrder((prev) => prev.filter((p) => p.id !== photoId));
     setErr(null);
     setConflict(false);
     startTransition(async () => {
       const res = await removeProductPhotoAction(productId, photoId);
-      if (res.ok) {
-        setOrder((prev) => prev.filter((p) => p.id !== photoId));
-      } else {
+      if (res.ok && res.data && Array.isArray(res.data.photos)) {
+        setOrder([...res.data.photos].sort((a, b) => a.position - b.position));
+      } else if (!res.ok) {
+        setOrder(previousOrder);
         setErr(actionErrorMessage(res));
         if (isConflictCode(res.code)) setConflict(true);
       }
@@ -138,6 +145,8 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
           break;
         }
       }
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : 'Network error during upload. Please retry.');
     } finally {
       setUploading(false);
       setUploadProgress(null);
@@ -147,6 +156,12 @@ export function ProductPhotoManager({ productId, photos }: { productId: string; 
       router.refresh();
     }
   }
+
+  useEffect(() => {
+    if (!uploading && !pending) {
+      setOrder([...photos].sort((a, b) => a.position - b.position));
+    }
+  }, [photos, uploading, pending]);
 
   return (
     <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card space-y-6">
