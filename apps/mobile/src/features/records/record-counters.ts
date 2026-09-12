@@ -23,14 +23,33 @@ export function useMyActiveRecordCount(): number {
       Q.where('pending_delete', false),
       userClause,
     );
+    if (typeof query?.observeCount === 'function') {
+      const sub = query.observeCount().subscribe((c: number) => {
+        setCount(c);
+      });
+      return () => {
+        sub?.unsubscribe?.();
+      };
+    }
 
-    const sub = query.observeCount().subscribe((c) => {
-      setCount(c);
-    });
+    if (typeof query?.observe === 'function') {
+      const sub = query.observe().subscribe((records: RecordModel[]) => {
+        setCount(Array.isArray(records) ? records.length : 0);
+      });
+      return () => {
+        sub?.unsubscribe?.();
+      };
+    }
 
-    return () => {
-      sub.unsubscribe();
-    };
+    if (typeof query?.fetch === 'function') {
+      let isMounted = true;
+      query.fetch().then((records: RecordModel[]) => {
+        if (isMounted) setCount(Array.isArray(records) ? records.length : 0);
+      }).catch(() => {});
+      return () => {
+        isMounted = false;
+      };
+    }
   }, [currentUserId]);
 
   return count;

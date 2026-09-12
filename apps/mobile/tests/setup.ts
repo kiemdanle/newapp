@@ -172,6 +172,7 @@ jest.mock('../src/db/index', () => {
   const EMPTY_QUERY = {
     observe: () => EMPTY_OBS,
     observeWithColumns: () => EMPTY_OBS,
+    observeCount: () => EMPTY_OBS,
     fetch: () => Promise.resolve([]),
   };
   const recordsCol = {

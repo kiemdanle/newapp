@@ -220,6 +220,12 @@ async function applySyncChanges(
   const recordsCol = database.get<RecordModel>('records');
 
   await database.write(async () => {
+    for (const c of conflicts ?? []) {
+      if (c.reason === 'item_limit_reached') {
+        syncQuotaErrorsStore.add(c.clientId);
+      }
+    }
+
     // 1. Handle scope-change conflicts: force-overwrite local rows from the
     //    echoed server change so the client adopts the new householdId.
     const conflictClientIds = new Set((conflicts ?? []).map((c) => c.clientId));

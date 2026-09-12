@@ -12,6 +12,7 @@ import { triggerSyncSoon } from '../db/triggers';
 import { usePantryScope } from '../store/pantryScope';
 import { apiClient } from './client';
 import { runSync } from '../db/sync';
+import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 
 export interface LocalRecord {
   id: string; // watermelon id
@@ -564,6 +565,7 @@ export async function deleteLocalRecord(id: string): Promise<void> {
   await database.write(async () => {
     const rec = await col.find(id);
     await removeRecordLocalPhotos(rec.clientId);
+    syncQuotaErrorsStore.remove(rec.clientId);
     await rec.update((r) => {
       r.pendingDelete = true;
     });

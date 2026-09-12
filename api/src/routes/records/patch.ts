@@ -115,6 +115,7 @@ export async function patchRecordRoute(app: FastifyInstance) {
       if (!freshRecord) {
         throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
       }
+      await assertCanWriteRecord(freshRecord, userId, tx);
 
       // 4. Assert quota on positive active transition
       const isTransitioningToActive = input.status === 'active' && freshRecord.status !== 'active';

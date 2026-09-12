@@ -165,8 +165,13 @@ export async function syncRecords(
           await lockUserPantryQuota(tx, ownerId);
 
           const freshRecord = await tx.record.findUnique({ where: { clientId: u.clientId } });
-          if (freshRecord && freshRecord.updatedAt >= clientUpdatedAt) {
-            return;
+          if (freshRecord) {
+            if (freshRecord.userId !== userId) {
+              return;
+            }
+            if (freshRecord.updatedAt >= clientUpdatedAt) {
+              return;
+            }
           }
 
           const isBecomingActive = uStatus === 'active' && freshRecord?.status !== 'active';

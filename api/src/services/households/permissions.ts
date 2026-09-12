@@ -71,6 +71,7 @@ export type RecordWriteScope = 'personal_owner' | 'household_member';
 export async function assertCanWriteRecord(
   record: Pick<Record, 'id' | 'userId' | 'householdId'>,
   callerId: string,
+  tx?: Prisma.TransactionClient | PrismaClient,
 ): Promise<RecordWriteScope> {
   if (record.householdId === null) {
     // Personal record — only the owner may touch it. 404 to never leak existence.
@@ -80,7 +81,7 @@ export async function assertCanWriteRecord(
     return 'personal_owner';
   }
   // Household record — any member of that household may write it.
-  await assertMember(record.householdId, callerId);
+  await assertMember(record.householdId, callerId, tx);
   return 'household_member';
 }
 
