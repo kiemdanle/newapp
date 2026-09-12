@@ -115,4 +115,56 @@ NEW STREAMLINED TARGET:
 - [ ] Full automated test suite passes across API, mobile, admin, and shared packages.
 - [ ] Verified on physical Android device via local Gradle build and ADB.
 
+## Validation Log
+
+### Session 1 — 2026-09-12
+**Trigger:** Post-plan validation interview to confirm review rating format, star granularity, legacy column deprecation, and submission requirements.
+**Questions asked:** 4
+
+### Verification Results
+- Claims checked: 10
+- Verified: 10 | Failed: 0 | Unverified: 0
+- Tier: Standard
+- Key verified anchors:
+  - `api/prisma/schema.prisma` defines `stars Int` on `Review` and `averageRating Decimal` on `Product`.
+  - Migration `20260912180000_add_review_stars_and_product_average_rating` deployed and verified on PostgreSQL.
+  - `@expyrico/shared` exports `reviewStarsSchema = z.number().int().min(1).max(5)`.
+  - `api/src/services/reviews/product-tallies.ts` recomputes `averageRating` and `ratingCount`.
+  - `apps/mobile/app/(app)/product/[id]/review.tsx` renders 1-to-5 star selector only.
+  - `ReviewCard.tsx` and `MyReviewCard.tsx` render star indicators with zero recommendation badges.
+  - `ProductReviewsSection.tsx` and `reviews.tsx` display average star scores and star filter pills (`All`, `5★`..`1★`).
+  - `apps/admin/src/app/(admin)/reviews/` displays and filters reviews by 1-5 star ratings.
+
+#### Questions & Answers
+
+1. **[Architecture / Aggregate Rating Format]** How should the aggregate product rating be presented on Product Details and review lists?
+   - Options: Decimal average + count (e.g. 4.5 ★ • 24 ratings) (Recommended) | Full 5-bar star histogram distribution | Rounded visual stars only
+   - **Answer:** Decimal average + count (e.g. 4.5 ★ • 24 ratings)
+   - **Rationale:** High clarity and information density, keeping the screen light and uncluttered while giving users exact scores.
+
+2. **[Architecture / Star Granularity]** What rating granularity should be allowed when users submit a review?
+   - Options: Integer stars (1 to 5) for submission, fractional for averages (Recommended) | Half-star ratings (0.5 increments) | Binary rating mapped to stars
+   - **Answer:** Integer stars (1 to 5) for submission, fractional for averages
+   - **Rationale:** Discrete integer stars ensure simple, frictionless mobile touch targets (44dp+), while aggregate product ratings display fractional averages with 1 decimal place.
+
+3. **[Database / Legacy Enum Deprecation]** How should the legacy 'rating' column (buy_again, on_sale, wont_buy) be managed in the database?
+   - Options: Keep rating nullable for backward compatibility (Recommended) | Drop legacy rating column in future cleanup | Maintain rating via DB trigger
+   - **Answer:** Keep rating nullable for backward compatibility
+   - **Rationale:** Keeps the transition safe and non-breaking for existing database consumers and historical data, while new records write to `stars`.
+
+4. **[Requirements / Rating Requirement]** What are the mandatory submission requirements for writing a product review?
+   - Options: Mandatory stars (1-5), optional comment (Recommended) | Both stars and comment mandatory | Either stars or comment
+   - **Answer:** Mandatory stars (1-5), optional comment
+   - **Rationale:** Minimizes submission friction so users can quickly rate products in seconds, while still providing an optional 2000-character comment field.
+
+#### Confirmed Decisions
+- **Review Submission:** Mandatory integer star rating (`1..5`) with optional written comment.
+- **Aggregate Presentation:** Numeric average with 1 decimal place (e.g. `4.3 ★`) + total rating count.
+- **Schema Strategy:** `stars Int` on `Review` as primary source of truth, with `rating` retained as nullable for backwards compatibility.
+- **Review Filters:** Horizontal star filter pills (`All`, `5★`, `4★`, `3★`, `2★`, `1★`).
+
+### Whole-Plan Consistency Sweep
+- Zero unresolved contradictions across all phases.
+- Verified full alignment across database, shared contracts, mobile UI, and admin console.
+
 <!-- slug: remove-buy-again-option-keep-star-reviews -->
