@@ -222,7 +222,7 @@ export default function ProductReview() {
           {
             backgroundColor: theme.colors.bgElevated,
             borderBottomColor: theme.colors.border,
-            paddingTop: insets.top + 8,
+            paddingTop: insets.top + 4,
           },
         ]}
       >
@@ -243,15 +243,15 @@ export default function ProductReview() {
             {isEdit ? 'Edit your review' : 'Write a review'}
           </Text>
         </View>
-        <View style={{ width: 42 }} />
+        <View style={{ width: 36 }} />
       </View>
 
       <KeyboardAwareScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 16 }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        extraKeyboardOffset={Platform.OS === 'android' ? 140 : 48}
+        extraKeyboardOffset={Platform.OS === 'android' ? 40 : 20}
       >
         {/* Product Hero Card */}
         <View
@@ -260,7 +260,7 @@ export default function ProductReview() {
             {
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
+              borderRadius: 12,
             },
           ]}
         >
@@ -291,7 +291,7 @@ export default function ProductReview() {
                   { backgroundColor: theme.colors.primaryLight },
                 ]}
               >
-                <Ionicons name="bag-handle-outline" size={26} color={theme.colors.primaryDark} />
+                <Ionicons name="bag-handle-outline" size={20} color={theme.colors.primaryDark} />
               </View>
             )}
             <View style={styles.productInfo}>
@@ -331,7 +331,7 @@ export default function ProductReview() {
             {
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
+              borderRadius: 12,
             },
           ]}
         >
@@ -364,13 +364,13 @@ export default function ProductReview() {
                   onPress={() => handleSelectStars(starIndex)}
                   style={({ pressed }) => [
                     styles.starButton,
-                    { transform: [{ scale: pressed ? 1.18 : 1 }] },
+                    { transform: [{ scale: pressed ? 1.15 : 1 }] },
                   ]}
                   hitSlop={6}
                 >
                   <Ionicons
                     name={isFilled ? 'star' : 'star-outline'}
-                    size={38}
+                    size={30}
                     color={isFilled ? '#F5A623' : theme.scheme === 'dark' ? '#3E3E38' : '#D0D0CA'}
                   />
                 </Pressable>
@@ -430,7 +430,7 @@ export default function ProductReview() {
             {
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
+              borderRadius: 12,
             },
           ]}
         >
@@ -451,8 +451,7 @@ export default function ProductReview() {
             onChangeText={setBody}
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
-            multiline
-            numberOfLines={5}
+            numberOfLines={3}
             maxLength={2000}
             textAlignVertical="top"
             style={[
@@ -488,6 +487,7 @@ export default function ProductReview() {
             loading={isSubmitting}
             disabled={isSubmitting}
             variant="primary"
+            style={{ height: 46, minHeight: 46 }}
           />
         </View>
       </KeyboardAwareScrollView>
@@ -502,22 +502,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 16,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 8,
   },
   headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 6,
     borderBottomWidth: 1,
   },
   backButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -527,68 +527,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerEyebrow: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     marginTop: 1,
   },
   productCard: {
     borderWidth: 1,
-    padding: 16,
+    padding: 8,
   },
   productRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 10,
   },
   productImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
   },
   productPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   productInfo: {
     flex: 1,
-    gap: 2,
+    gap: 1,
   },
   productBrand: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   productName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    lineHeight: 22,
+    lineHeight: 18,
   },
   categoryBadgeRow: {
     flexDirection: 'row',
-    marginTop: 4,
+    marginTop: 2,
   },
   categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   categoryBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   cardContainer: {
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -596,63 +597,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionLabel: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '700',
   },
   requiredBadge: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   starRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 8,
+    gap: 8,
+    paddingVertical: 2,
   },
   starButton: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sentimentBadgeContainer: {
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 0,
   },
   sentimentBadge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
   },
   starCaption: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },
   reviewInput: {
-    minHeight: 120,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    minHeight: 64,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   charCount: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#8C8C85',
     textAlign: 'right',
-    marginTop: 4,
+    marginTop: 2,
   },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   submitContainer: {
-    marginTop: 4,
+    marginTop: 2,
+    marginBottom: 4,
   },
   moderationContainer: {
     flex: 1,
