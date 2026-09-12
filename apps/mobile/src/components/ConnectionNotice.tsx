@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   retryButton: {
-    height: 52,
+    minHeight: 52,
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',

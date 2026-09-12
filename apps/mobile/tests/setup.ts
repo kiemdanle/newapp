@@ -199,4 +199,12 @@ jest.mock('../src/db/triggers', () => ({
   stopSyncTriggers: jest.fn(),
 }));
 
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true }),
+  addEventListener: jest.fn(() => jest.fn()),
+}));
+beforeEach(() => {
+  const { useConnectionStore } = require('../src/store/connectionStore');
+  useConnectionStore.setState({ status: 'ready', clientOnline: true, serverReady: true, initialized: true });
+});
 // Secure storage mock is provided by moduleNameMapper -> tests/mocks/react-native-keychain.ts

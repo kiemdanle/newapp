@@ -25,7 +25,8 @@ import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
 import { Logo } from './components/Logo';
 import { initConnectionMonitoring, useConnectionStore } from './store/connectionStore';
-import { ConnectionNotice } from './components/ConnectionNotice';
+import { OfflineTopBanner } from './components/OfflineTopBanner';
+import { ConnectionNoticeModal } from './components/ConnectionNoticeModal';
 const queryClient = createQueryClient();
 
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
@@ -57,8 +58,6 @@ function RootApp() {
   const [bootError, setBootError] = useState<string | null>(null);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
-  const connectionStatus = useConnectionStore((s) => s.status);
-  const connectionInitialized = useConnectionStore((s) => s.initialized);
   const activeNotification = useInAppNotificationStore((s) => s.current);
   const dismissNotification = useInAppNotificationStore((s) => s.dismiss);
 
@@ -76,7 +75,7 @@ function RootApp() {
     };
   }, []);
 
-  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated && connectionInitialized);
+  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
 
 
   if (bootError) {
@@ -120,6 +119,7 @@ function RootApp() {
         onPress={(data) => void handleNotificationTap(data)}
         onDismiss={dismissNotification}
       />
+      <OfflineTopBanner />
       <NavigationContainer
         ref={navigationRef}
         theme={{
@@ -143,7 +143,7 @@ function RootApp() {
         <RootNavigator />
       </NavigationContainer>
       <UndoToast />
-      {connectionStatus !== 'ready' && <ConnectionNotice />}
+      <ConnectionNoticeModal />
     </View>
   );
 }

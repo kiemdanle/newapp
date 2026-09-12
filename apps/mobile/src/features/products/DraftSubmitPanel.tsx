@@ -9,7 +9,7 @@ import { newIdempotencyKey } from '../../lib/idempotency';
 import type { DraftMutationCoordinator } from './draft-mutation-coordinator';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
-
+import { useConnectionGuardStore } from '../../store/connectionGuardStore';
 export interface DraftSubmitPanelProps {
   coordinator: DraftMutationCoordinator<Product>;
   status?: string;
@@ -49,6 +49,9 @@ export function DraftSubmitPanel({ coordinator, status, disabled, onSubmitted }:
   const submitInFlightRef = useRef(false);
 
   const submit = async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Submit Product', () => void submit())) {
+      return;
+    }
     if (submitInFlightRef.current) return;
     submitInFlightRef.current = true;
     setBusy(true);

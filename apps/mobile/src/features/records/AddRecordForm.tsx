@@ -20,6 +20,8 @@ import { STANDARD_CATEGORIES } from './PantryFilterModal';
 import { usePhotoLimits } from '../../utils/photo-limits';
 import { usePantryLimits } from '../../utils/pantry-limits';
 import { useMyActiveRecordCount } from './record-counters';
+import { useConnectionGuardStore } from '../../store/connectionGuardStore';
+
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -125,6 +127,9 @@ export function AddRecordForm({
   });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
   const save = async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Add Pantry Item', () => void save())) {
+      return;
+    }
     if (isAtCapacity) {
       Alert.alert(
         'Pantry Limit Reached',

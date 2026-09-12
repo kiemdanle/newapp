@@ -8,7 +8,7 @@ import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
 import { usePhotoLimits } from '../../utils/photo-limits';
-
+import { useConnectionGuardStore } from '../../store/connectionGuardStore';
 const MAX_PHOTOS = 5;
 
 type LocalPhotoStatus = 'pending' | 'uploading' | 'failed' | 'uploaded';
@@ -160,11 +160,17 @@ export function ProductPhotoEditor<T extends CoordinatedEntity>({ target, coordi
   }, [addPhoto]);
 
   const onTakePhoto = useCallback(() => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Upload Product Photos', () => onTakePhoto())) {
+      return;
+    }
     setPickerError(null);
     setCameraModalVisible(true);
   }, []);
 
   const onChoosePhotos = useCallback(async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Upload Product Photos', () => void onChoosePhotos())) {
+      return;
+    }
     setPickerError(null);
     try {
       const picked = await choosePhotos(remaining);

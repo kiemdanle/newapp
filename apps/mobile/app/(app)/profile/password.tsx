@@ -15,7 +15,7 @@ import { meEndpoints } from '../../../src/api/endpoints';
 import { TextField } from '../../../src/components/TextField';
 import { Button } from '../../../src/components/Button';
 import { useTheme } from '../../../src/theme/useTheme';
-
+import { useConnectionGuardStore } from '../../../src/store/connectionGuardStore';
 export default function PasswordScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
@@ -42,6 +42,9 @@ export default function PasswordScreen() {
   const canSubmit = hasMinLength && isMatching && isCurrentValid;
 
   const handlePasswordSubmit = async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Change Password', () => void handlePasswordSubmit())) {
+      return;
+    }
     if (hasPassword && !currentPassword) {
       setErrorMessage('Please enter your current password.');
       return;

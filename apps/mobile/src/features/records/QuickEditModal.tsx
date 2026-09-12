@@ -23,7 +23,7 @@ import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { UnitSelector } from '../../components/UnitSelector';
 import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
-
+import { useConnectionGuardStore } from '../../store/connectionGuardStore';
 interface Props {
   visible: boolean;
   record: LocalRecord | null;
@@ -114,6 +114,9 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   };
 
   const handleSave = async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Edit Pantry Item', () => void handleSave())) {
+      return;
+    }
     const trimmedExpiry = expiryDate.trim();
     if (!trimmedExpiry) {
       setShowDatePicker(true);

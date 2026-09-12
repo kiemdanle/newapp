@@ -10,6 +10,8 @@ import { DraftConflictBanner } from './DraftConflictBanner';
 import { useTheme } from '../../theme/useTheme';
 import { Button } from '../../components/Button';
 import { useKeyboardAwareScroll } from '../../components/KeyboardAwareScrollView';
+import { useConnectionGuardStore } from '../../store/connectionGuardStore';
+
 const NAME_MAX = 200;
 const DESCRIPTION_MAX = 2000;
 const SUGGESTED_CATEGORIES = [
@@ -107,6 +109,9 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
   }, [coordinator]);
 
   const save = async () => {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Save Product Draft', () => void save())) {
+      return;
+    }
     if (!fields.name.trim()) {
       setError('Name is required');
       return;

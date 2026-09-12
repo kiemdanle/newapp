@@ -64,10 +64,10 @@ This plan introduces a strict **Dual-Layer Connection Guard**:
 
 | # | Phase | Status |
 |---|-------|--------|
-| 1 | [Phase 1: Dual-Layer Connection & Server Health Engine](./phase-01-start.md) | In Progress |
-| 2 | [Phase 2: Facebook-Style Connection Loss Notice & App-Level Gating](./phase-02-facebook-style-connection-loss-notice-and-gating.md) | Pending |
-| 3 | [Phase 3: Post-Reconnection State Synchronization, Lifecycle Triggers & Verification](./phase-03-post-reconnection-sync-and-verification.md) | Pending |
-
+| 1 | [Phase 1: Dual-Layer Connection & Server Health Engine](./phase-01-start.md) | Completed |
+| 2 | [Phase 2: Facebook-Style Connection Loss Notice & App-Level Gating](./phase-02-facebook-style-connection-loss-notice-and-gating.md) | Completed |
+| 3 | [Phase 3: Post-Reconnection State Synchronization, Lifecycle Triggers & Verification](./phase-03-post-reconnection-sync-and-verification.md) | Completed |
+| 4 | [Phase 4: Action-Scoped Server Validation Guard & Modal Notice](./phase-04-action-scoped-server-validation-guard-and-modal-notice.md) | In Progress |
 ## Success Criteria
 
 - [ ] App blocks interaction on boot if device has no internet or Expyrico server is unreachable.
