@@ -63,12 +63,12 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
     prisma.review.count({ where: { createdAt: { gte: since }, status: 'hidden' } }),
     prisma.review.groupBy({
       by: ['rating'],
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, status: 'visible' },
       _count: { _all: true },
     }),
     prisma.review.groupBy({
       by: ['stars'],
-      where: { createdAt: { gte: since } },
+      where: { createdAt: { gte: since }, status: 'visible' },
       _count: { _all: true },
     }),
   ]);
