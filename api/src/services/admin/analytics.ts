@@ -58,7 +58,7 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
     WHERE created_at >= ${since}
     GROUP BY day ORDER BY day ASC
   `;
-  const [allInWindow, autoFlagged, byRating] = await Promise.all([
+  const [allInWindow, autoFlagged, byRating, byStars] = await Promise.all([
     prisma.review.count({ where: { createdAt: { gte: since } } }),
     prisma.review.count({ where: { createdAt: { gte: since }, status: 'hidden' } }),
     prisma.review.groupBy({
@@ -66,7 +66,21 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
       where: { createdAt: { gte: since } },
       _count: { _all: true },
     }),
+    prisma.review.groupBy({
+      by: ['stars'],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+    }),
   ]);
+  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const row of byStars) {
+    if (row.stars >= 1 && row.stars <= 5) {
+      starCounts[row.stars] = row._count._all;
+    }
+  }
+  const totalStarsCount = Object.values(starCounts).reduce((a, b) => a + b, 0);
+  const starPct = (n: number) => (totalStarsCount === 0 ? 0 : Math.round((n / totalStarsCount) * 100));
+
   const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
   for (const row of byRating) if (row.rating && row.rating in tally) tally[row.rating as keyof typeof tally] = row._count._all;
   const ratingCount = tally.buy_again + tally.buy_again_on_sale + tally.wont_buy;
@@ -78,6 +92,13 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
     buyAgainPct: pct(tally.buy_again),
     buyAgainOnSalePct: pct(tally.buy_again_on_sale),
     wontBuyPct: pct(tally.wont_buy),
+    starDistribution: {
+      '5': starPct(starCounts[5] ?? 0),
+      '4': starPct(starCounts[4] ?? 0),
+      '3': starPct(starCounts[3] ?? 0),
+      '2': starPct(starCounts[2] ?? 0),
+      '1': starPct(starCounts[1] ?? 0),
+    },
     ratingCount,
   };
 }

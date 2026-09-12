@@ -27,6 +27,7 @@ export async function searchProducts(q: string, limit: number): Promise<Product[
       buy_again_count         AS "buyAgainCount",
       buy_again_on_sale_count AS "buyAgainOnSaleCount",
       wont_buy_count          AS "wontBuyCount",
+      average_rating          AS "averageRating",
       rating_count            AS "ratingCount",
       review_count            AS "reviewCount",
       created_by_user_id      AS "createdByUserId",

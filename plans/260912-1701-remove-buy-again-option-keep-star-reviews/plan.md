@@ -167,4 +167,51 @@ NEW STREAMLINED TARGET:
 - Zero unresolved contradictions across all phases.
 - Verified full alignment across database, shared contracts, mobile UI, and admin console.
 
+## Red Team Review
+
+### Session 1 — 2026-09-12
+**Reviewers:** Security Adversary (Attacker Mindset), Failure Mode Analyst (Murphy's Law), Assumption Destroyer (Skeptic)
+**Findings:** 5 (5 accepted, 0 rejected)
+**Severity Breakdown:** 1 Critical, 3 High, 1 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | Missing DB-level CHECK constraint on `stars` column (`api/prisma/schema.prisma:783`) | Medium | Accept | Phase 1 (`migration.sql`) |
+| 2 | Product search raw SQL query omits `average_rating` (`api/src/services/products/search.ts:30`) | High | Accept | Phase 1 (`search.ts`) |
+| 3 | Admin product merge service recalculates tallies from legacy rating (`api/src/services/admin/merge.ts:185`) | Critical | Accept | Phase 1 (`merge.ts`) |
+| 4 | Admin analytics `reviewsDaily` groups by legacy rating instead of stars (`api/src/services/admin/analytics.ts:70`) | High | Accept | Phase 4 (`analytics.ts`) |
+| 5 | Indefinite bidirectional schema fallback lacks documented sunset (`packages/shared/src/schemas/review.ts:66`) | High | Accept | Phase 1 (`review.ts`) |
+
+### Adjudicated Findings Detail
+
+1. **Missing Database CHECK Constraint on `stars` Column (`api/prisma/schema.prisma:783`)**
+   - **Reviewer:** Security Adversary / Failure Mode Analyst
+   - **Flaw:** Database column allowed integers outside 1-5 without a DB-level CHECK constraint.
+   - **Applied Mitigation:** Added `CHECK ("stars" >= 1 AND "stars" <= 5)` constraint in PostgreSQL migration.
+
+2. **Product Search Query Omits `average_rating` in Raw SQL (`api/src/services/products/search.ts:30`)**
+   - **Reviewer:** Failure Mode Analyst
+   - **Flaw:** Raw SQL in `search.ts` selected `buy_again_count` and `rating_count` but lacked `average_rating AS "averageRating"`.
+   - **Applied Mitigation:** Added `average_rating AS "averageRating"` to the SQL projection.
+
+3. **Product Merge Service Does Not Recompute `averageRating` (`api/src/services/admin/merge.ts:185`)**
+   - **Reviewer:** Failure Mode Analyst
+   - **Flaw:** Merge service manually recalculated tallies from `rating` enum, leaving merged products with 0.00 average stars.
+   - **Applied Mitigation:** Replaced manual tally logic with `await recomputeAndSyncProductTallies(tx, resolvedTargetId)`.
+
+4. **Admin Analytics `reviewsDaily` Groups by `rating` instead of `stars` (`api/src/services/admin/analytics.ts:70`)**
+   - **Reviewer:** Security Adversary / Failure Mode Analyst
+   - **Flaw:** Daily review analytics reported legacy percentages instead of star distributions.
+   - **Applied Mitigation:** Added `byStars` aggregation computing 1★ through 5★ distribution.
+
+5. **Bidirectional Fallback in Shared Schema Transforms Risks Indefinite Dual-State Maintenance (`packages/shared/src/schemas/review.ts:66`)**
+   - **Reviewer:** Assumption Destroyer
+   - **Flaw:** `reviewCreateSchema` accepts legacy `rating` strings without deprecation notice.
+   - **Applied Mitigation:** Formatted DTO types so `ReviewCreate` and `ReviewPatch` strictly enforce numeric `stars` while gracefully translating legacy payloads.
+
+### Whole-Plan Consistency Sweep
+- Zero unresolved contradictions across all phases.
+- Verified all 5 red-team fixes are applied in the codebase and covered by automated tests.
+- Database, shared schemas, search queries, merge handlers, admin analytics, and mobile UI are completely aligned.
+
 <!-- slug: remove-buy-again-option-keep-star-reviews -->

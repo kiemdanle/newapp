@@ -3,6 +3,7 @@ import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { writeAuditLog } from '../audit/log.js';
 import { resolveCanonicalProduct, PRODUCT_INCLUDE, type ProductActor } from '../products/product-visibility.js';
+import { recomputeAndSyncProductTallies } from '../reviews/product-tallies.js';
 
 export interface MergeRequestMeta {
   requestId?: string | undefined;
@@ -182,19 +183,6 @@ export async function mergeProducts(
     // silently dropping out of moderation views.
     await tx.report.updateMany({ where: { targetType: 'product', targetId: { in: sourceIds } }, data: { targetId: resolvedTargetId } });
 
-    const byRating = await tx.review.groupBy({
-      by: ['rating'],
-      where: { productId: resolvedTargetId, status: 'visible' },
-      _count: { _all: true },
-    });
-    const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 } as Record<string, number>;
-    for (const row of byRating) if (row.rating) tally[row.rating] = row._count._all;
-    const newBuyAgainCount = tally.buy_again!;
-    const newBuyAgainOnSaleCount = tally.buy_again_on_sale!;
-    const newWontBuyCount = tally.wont_buy!;
-    const newRatingCount = newBuyAgainCount + newBuyAgainOnSaleCount + newWontBuyCount;
-    const newReviewCount = await tx.review.count({ where: { productId: resolvedTargetId, status: 'visible', body: { not: null } } });
-
     if (barcodePlan.clearSourceIds.length > 0) {
       await tx.product.updateMany({ where: { id: { in: barcodePlan.clearSourceIds } }, data: { barcode: null } });
     }
@@ -209,15 +197,12 @@ export async function mergeProducts(
       data: {
         barcode: barcodePlan.newTargetValue,
         qrPayload: qrPlan.newTargetValue,
-        reviewCount: newReviewCount,
-        ratingCount: newRatingCount,
-        buyAgainCount: newBuyAgainCount,
-        buyAgainOnSaleCount: newBuyAgainOnSaleCount,
-        wontBuyCount: newWontBuyCount,
         version: { increment: 1 },
       },
     });
 
+    await recomputeAndSyncProductTallies(tx, resolvedTargetId);
+    const updatedTarget = await tx.product.findUniqueOrThrow({ where: { id: resolvedTargetId } });
     await writeAuditLog(
       {
         adminId: actor.id,
@@ -245,11 +230,11 @@ export async function mergeProducts(
       targetId: resolvedTargetId,
       movedRecords: movedRec.count,
       movedReviews: movedRev.count,
-      newReviewCount,
-      newRatingCount,
-      newBuyAgainCount,
-      newBuyAgainOnSaleCount,
-      newWontBuyCount,
+      newReviewCount: updatedTarget.reviewCount,
+      newRatingCount: updatedTarget.ratingCount,
+      newBuyAgainCount: updatedTarget.buyAgainCount,
+      newBuyAgainOnSaleCount: updatedTarget.buyAgainOnSaleCount,
+      newWontBuyCount: updatedTarget.wontBuyCount,
     };
   });
 }

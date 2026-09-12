@@ -11,3 +11,6 @@ UPDATE "reviews" SET "stars" = 1 WHERE "rating" = 'wont_buy';
 
 -- AlterTable products add average_rating column
 ALTER TABLE "products" ADD COLUMN IF NOT EXISTS "average_rating" DECIMAL(3, 2) NOT NULL DEFAULT 0.00;
+
+-- Add CHECK constraint on stars (1 to 5)
+ALTER TABLE "reviews" ADD CONSTRAINT "reviews_stars_check" CHECK ("stars" >= 1 AND "stars" <= 5);
