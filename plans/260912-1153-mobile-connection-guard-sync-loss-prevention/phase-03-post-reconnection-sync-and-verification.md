@@ -57,12 +57,12 @@ Wire automatic data reconciliation into the reconnection lifecycle so that trans
 5. Build and install Android APK on physical device, capturing screenshots of the disconnected notice and post-reconnection active state.
 
 ## Success Criteria
-- [ ] Recovering from disconnected state automatically triggers `runSync()` without requiring app restart.
-- [ ] React Query caches refresh fresh data upon reconnection.
-- [ ] AppState transition to `active` immediately verifies backend connectivity.
-- [ ] All unit, component, and integration tests pass.
-- [ ] Clean Android Gradle build and installation on connected device (`96d9c774`).
-- [ ] Live device screencap confirms Facebook-style connection loss notice when network is disabled, and clean dismissal when network is restored.
+- [x] Recovering from disconnected state automatically triggers `runSync()` without requiring app restart.
+- [x] React Query caches refresh fresh data upon reconnection.
+- [x] AppState transition to `active` immediately verifies backend connectivity.
+- [x] All unit, component, and integration tests pass.
+- [x] Clean Android Gradle build and installation on connected device (`96d9c774`).
+- [x] Live device screencap confirms Facebook-style connection loss notice when network is disabled, and clean dismissal when network is restored.
 
 ## Risk Assessment
 - **Risk**: Repeated rapid connection state flips (e.g. driving through a tunnel) causing a thundering herd of sync calls.

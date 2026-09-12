@@ -195,6 +195,8 @@ jest.mock('../src/db/index', () => {
 });
 jest.mock('../src/db/triggers', () => ({
   triggerSyncSoon: jest.fn(),
+  startSyncTriggers: jest.fn(),
+  stopSyncTriggers: jest.fn(),
 }));
 
 // Secure storage mock is provided by moduleNameMapper -> tests/mocks/react-native-keychain.ts

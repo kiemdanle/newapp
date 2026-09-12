@@ -54,11 +54,11 @@ Implement the core network reachability and server readiness verification servic
 4. Write unit tests for `connection-service.ts` and `connectionStore.ts` with mock NetInfo and mock fetch responses.
 
 ## Success Criteria
-- [ ] `evaluateConnection()` accurately identifies online + server ready as `ready`.
-- [ ] `evaluateConnection()` accurately distinguishes between device offline (`offline`) and backend down (`server_unreachable`).
-- [ ] Health probe aborts and fails safely after 4 seconds on unresponsive networks.
-- [ ] Zustand store reflects immediate updates during manual retries.
-- [ ] Unit tests pass for all connection scenarios (online, offline, server down, server timeout).
+- [x] `evaluateConnection()` accurately identifies online + server ready as `ready`.
+- [x] `evaluateConnection()` accurately distinguishes between device offline (`offline`) and backend down (`server_unreachable`).
+- [x] Health probe aborts and fails safely after 4 seconds on unresponsive networks.
+- [x] Zustand store reflects immediate updates during manual retries.
+- [x] Unit tests pass for all connection scenarios (online, offline, server down, server timeout).
 
 ## Risk Assessment
 - **Risk**: Unstable or slow mobile cell connections (e.g. 3G/Edge) timing out on `/health`.

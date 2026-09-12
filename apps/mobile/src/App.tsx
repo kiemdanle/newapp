@@ -24,7 +24,8 @@ import { useInAppNotificationStore } from './store/inAppNotification';
 import messaging from '@react-native-firebase/messaging';
 import { RootNavigator } from './navigation/RootNavigator';
 import { Logo } from './components/Logo';
-
+import { initConnectionMonitoring, useConnectionStore } from './store/connectionStore';
+import { ConnectionNotice } from './components/ConnectionNotice';
 const queryClient = createQueryClient();
 
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
@@ -56,19 +57,27 @@ function RootApp() {
   const [bootError, setBootError] = useState<string | null>(null);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
+  const connectionStatus = useConnectionStore((s) => s.status);
+  const connectionInitialized = useConnectionStore((s) => s.initialized);
   const activeNotification = useInAppNotificationStore((s) => s.current);
   const dismissNotification = useInAppNotificationStore((s) => s.dismiss);
 
   useEffect(() => {
     wireApiClient();
+    const cleanupMonitoring = initConnectionMonitoring();
     Promise.all([
       initThemeStore(),
       hydrateSession(),
       imageDiskCache.hydrate().catch(() => {}),
     ]).catch((e) => setBootError(String(e)));
+
+    return () => {
+      cleanupMonitoring();
+    };
   }, []);
 
-  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
+  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated && connectionInitialized);
+
 
   if (bootError) {
     return (
@@ -134,6 +143,7 @@ function RootApp() {
         <RootNavigator />
       </NavigationContainer>
       <UndoToast />
+      {connectionStatus !== 'ready' && <ConnectionNotice />}
     </View>
   );
 }
@@ -146,6 +156,15 @@ export function AppSyncManager() {
   useEffect(() => {
     if (!accessToken) return;
     startSyncTriggers();
+
+    // On reconnect, invalidate React Query cache to refresh remote feeds
+    let prevStatus = useConnectionStore.getState().status;
+    const unsubConnection = useConnectionStore.subscribe((state) => {
+      if (state.status === 'ready' && prevStatus !== 'ready') {
+        void queryClient.invalidateQueries();
+      }
+      prevStatus = state.status;
+    });
     void ensurePushTokenRegistered(user?.id).catch((error) => {
       console.warn('Failed to register FCM token', error);
     });
@@ -232,6 +251,7 @@ export function AppSyncManager() {
         unsubMessage?.();
         unsubOpened?.();
       } catch {}
+      unsubConnection();
       stopSyncTriggers();
     };
   }, [accessToken, user?.id]);

@@ -60,12 +60,12 @@ Design and build a polished, Facebook-style full-screen connection loss notice c
 3. Write Jest component tests verifying rendering, dark/light theme tokens, diagnostic messages, and "Try Again" interaction.
 
 ## Success Criteria
-- [ ] User cannot access pantry, drafts, or profile screens when app is opened in airplane mode.
-- [ ] Facebook-style connection loss notice appears cleanly with correct theme colors.
-- [ ] Diagnostic status shows "No Internet Connection" when Wi-Fi/data is off.
-- [ ] Diagnostic status shows "Server Unreachable" when internet is active but API is blocked or offline.
-- [ ] "Try Again" button triggers `retry()` and displays a loading spinner during re-evaluation.
-- [ ] Component unit tests pass with full snapshot and interaction coverage.
+- [x] User cannot access pantry, drafts, or profile screens when app is opened in airplane mode.
+- [x] Facebook-style connection loss notice appears cleanly with correct theme colors.
+- [x] Diagnostic status shows "No Internet Connection" when Wi-Fi/data is off.
+- [x] Diagnostic status shows "Server Unreachable" when internet is active but API is blocked or offline.
+- [x] "Try Again" button triggers `retry()` and displays a loading spinner during re-evaluation.
+- [x] Component unit tests pass with full snapshot and interaction coverage.
 
 ## Risk Assessment
 - **Risk**: Flash of connection notice during normal app startup on fast networks.
