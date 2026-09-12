@@ -37,6 +37,7 @@ function product(overrides: Partial<Product> = {}): Product {
     buyAgainCount: 0,
     buyAgainOnSaleCount: 0,
     wontBuyCount: 0,
+    averageRating: 0,
     ratingCount: 0,
     reviewCount: 0,
     status: 'draft',

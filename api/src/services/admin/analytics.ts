@@ -68,7 +68,7 @@ export async function reviewsDaily(range: '7d' | '30d' | '90d') {
     }),
   ]);
   const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 };
-  for (const row of byRating) tally[row.rating] = row._count._all;
+  for (const row of byRating) if (row.rating && row.rating in tally) tally[row.rating as keyof typeof tally] = row._count._all;
   const ratingCount = tally.buy_again + tally.buy_again_on_sale + tally.wont_buy;
   const pct = (n: number) => (ratingCount === 0 ? 0 : Math.round((n / ratingCount) * 100));
   return {

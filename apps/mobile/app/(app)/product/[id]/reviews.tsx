@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { Review, ReviewRating } from '@expyrico/shared';
+import type { Review } from '@expyrico/shared';
 import { Screen } from '../../../../src/components/Screen';
 import { ProductThumbnail } from '../../../../src/components/ProductThumbnail';
 import { ReviewCard } from '../../../../src/features/reviews/ReviewCard';
@@ -35,7 +36,7 @@ export default function ProductReviewsScreen() {
   const { id: productId } = route.params as { id: string };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedRating, setSelectedRating] = useState<ReviewRating | 'all'>('all');
+  const [selectedStar, setSelectedStar] = useState<number | 'all'>('all');
   const [sort, setSort] = useState<'score' | 'new'>('score');
 
   const { data: product, isLoading: isLoadingProduct } = useProduct(productId);
@@ -71,8 +72,11 @@ export default function ProductReviewsScreen() {
   // Client-side search and rating filter
   const reviews = useMemo(() => {
     return allReviews.filter((r) => {
-      if (selectedRating !== 'all' && r.rating !== selectedRating) {
-        return false;
+      if (selectedStar !== 'all') {
+        const itemStars = r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1);
+        if (itemStars !== selectedStar) {
+          return false;
+        }
       }
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
@@ -82,7 +86,7 @@ export default function ProductReviewsScreen() {
       }
       return true;
     });
-  }, [allReviews, selectedRating, searchQuery]);
+  }, [allReviews, selectedStar, searchQuery]);
 
   const existingReview =
     myReview ??
@@ -291,76 +295,72 @@ export default function ProductReviewsScreen() {
                   ) : null}
                 </View>
 
-                {/* Rating Sentiment Breakdown Bar */}
+                {/* Star Filter Pills Bar */}
                 <View
                   style={[
                     styles.breakdownRow,
                     { borderTopColor: theme.colors.border },
                   ]}
                 >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Filter buy again"
-                    onPress={() => setSelectedRating(selectedRating === 'buy_again' ? 'all' : 'buy_again')}
-                    style={[
-                      styles.breakdownItem,
-                      selectedRating === 'buy_again' && [
-                        styles.breakdownItemActive,
-                        { backgroundColor: theme.colors.primaryLight },
-                      ],
-                    ]}
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}
                   >
-                    <Text style={[styles.breakdownCount, { color: theme.colors.primaryDark }]}>
-                      {buyAgain}
-                    </Text>
-                    <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                      Buy again
-                    </Text>
-                  </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Filter all stars"
+                      onPress={() => setSelectedStar('all')}
+                      style={[
+                        styles.starFilterPill,
+                        {
+                          backgroundColor: selectedStar === 'all' ? theme.colors.primaryLight : 'transparent',
+                          borderColor: selectedStar === 'all' ? theme.colors.primary : theme.colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.starFilterText,
+                          { color: selectedStar === 'all' ? theme.colors.primaryDark : theme.colors.textMuted },
+                        ]}
+                      >
+                        All ({totalRatings})
+                      </Text>
+                    </Pressable>
 
-                  <Text style={[styles.breakdownDot, { color: theme.colors.textMuted }]}>·</Text>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Filter on sale"
-                    onPress={() => setSelectedRating(selectedRating === 'buy_again_on_sale' ? 'all' : 'buy_again_on_sale')}
-                    style={[
-                      styles.breakdownItem,
-                      selectedRating === 'buy_again_on_sale' && [
-                        styles.breakdownItemActive,
-                        { backgroundColor: theme.colors.accentLight },
-                      ],
-                    ]}
-                  >
-                    <Text style={[styles.breakdownCount, { color: theme.colors.accent }]}>
-                      {buySale}
-                    </Text>
-                    <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                      On sale
-                    </Text>
-                  </Pressable>
-
-                  <Text style={[styles.breakdownDot, { color: theme.colors.textMuted }]}>·</Text>
-
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Filter won't buy"
-                    onPress={() => setSelectedRating(selectedRating === 'wont_buy' ? 'all' : 'wont_buy')}
-                    style={[
-                      styles.breakdownItem,
-                      selectedRating === 'wont_buy' && [
-                        styles.breakdownItemActive,
-                        { backgroundColor: theme.colors.neutralLight },
-                      ],
-                    ]}
-                  >
-                    <Text style={[styles.breakdownCount, { color: theme.colors.textMuted }]}>
-                      {wontBuy}
-                    </Text>
-                    <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                      Won't buy
-                    </Text>
-                  </Pressable>
+                    {[5, 4, 3, 2, 1].map((s) => {
+                      const count = allReviews.filter(
+                        (r) => (r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1)) === s,
+                      ).length;
+                      const isActive = selectedStar === s;
+                      return (
+                        <Pressable
+                          key={s}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Filter ${s} stars`}
+                          onPress={() => setSelectedStar(isActive ? 'all' : s)}
+                          style={[
+                            styles.starFilterPill,
+                            {
+                              backgroundColor: isActive ? theme.colors.primaryLight : 'transparent',
+                              borderColor: isActive ? theme.colors.primary : theme.colors.border,
+                            },
+                          ]}
+                        >
+                          <Ionicons name="star" size={12} color="#F5A623" style={{ marginRight: 3 }} />
+                          <Text
+                            style={[
+                              styles.starFilterText,
+                              { color: isActive ? theme.colors.primaryDark : theme.colors.text },
+                            ]}
+                          >
+                            {s} ({count})
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
                 </View>
               </View>
 
@@ -506,16 +506,16 @@ export default function ProductReviewsScreen() {
                 </View>
 
                 {/* Clear Active Filter if set */}
-                {selectedRating !== 'all' ? (
+                {selectedStar !== 'all' ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Clear filter"
-                    onPress={() => setSelectedRating('all')}
+                    onPress={() => setSelectedStar('all')}
                     style={[styles.clearFilterChip, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}
                     hitSlop={8}
                   >
                     <Text style={[styles.clearFilterText, { color: theme.colors.text }]}>
-                      Clear filter ✕
+                      Clear filter ({selectedStar}★) ✕
                     </Text>
                   </Pressable>
                 ) : null}
@@ -545,14 +545,14 @@ export default function ProductReviewsScreen() {
                   style={{ marginBottom: 8 }}
                 />
                 <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-                  {searchQuery.trim() || selectedRating !== 'all'
+                  {searchQuery.trim() || selectedStar !== 'all'
                     ? 'No matching reviews found'
                     : 'No written reviews yet'}
                 </Text>
                 <Text
                   style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}
                 >
-                  {searchQuery.trim() || selectedRating !== 'all'
+                  {searchQuery.trim() || selectedStar !== 'all'
                     ? 'Try clearing the search query or rating filter.'
                     : 'Be the first to share your thoughts on this item!'}
                 </Text>
@@ -680,26 +680,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 10,
   },
-  breakdownItem: {
+  starFilterPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
   },
-  breakdownItemActive: {
-    borderRadius: 8,
-  },
-  breakdownCount: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginRight: 4,
-  },
-  breakdownLabel: {
+  starFilterText: {
     fontSize: 12,
-  },
-  breakdownDot: {
-    marginHorizontal: 4,
+    fontWeight: '600',
   },
   ctaRow: {
     marginBottom: 12,

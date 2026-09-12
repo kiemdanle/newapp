@@ -43,10 +43,10 @@ const mockProductStale: Product = {
   isCommunityEligible: true,
   version: 1,
   photos: [],
-  // Stale server tallies: 1 buy_again (5.0) from previous review creation
   buyAgainCount: 1,
   buyAgainOnSaleCount: 0,
   wontBuyCount: 0,
+  averageRating: 3.0,
   ratingCount: 1,
   reviewCount: 1,
   createdAt: '2026-09-01T00:00:00.000Z',
@@ -57,6 +57,7 @@ const mockProductStale: Product = {
 const mockUpdatedReview: Review = {
   id: 'rev-dan-1',
   productId: 'prod-101',
+  stars: 3,
   rating: 'buy_again_on_sale',
   body: 'Vẻy delicious and gôd for health',
   helpfulCount: 2,
@@ -106,23 +107,20 @@ describe('ProductReviewsScreen (Dedicated Reviews Page)', () => {
       isFetchingNextPage: false,
     });
 
-    const { getByText, queryByText } = render(<ProductReviewsScreen />);
-
+    const { getByText, getAllByText, queryByText } = render(<ProductReviewsScreen />);
     // Screen title
     expect(getByText('Product Reviews')).toBeTruthy();
     expect(getByText('Vinamilk Sữa chua ít đường')).toBeTruthy();
 
     // Must show 3.0 and 60% score, NOT 5.0 or 100%
-    expect(getByText('3.0')).toBeTruthy();
+    expect(getAllByText('3.0').length).toBeGreaterThanOrEqual(1);
     expect(getByText('60% score')).toBeTruthy();
     expect(queryByText('5.0')).toBeNull();
     expect(queryByText('100% score')).toBeNull();
 
-    // Breakdown pills
-    expect(getByText('Buy again')).toBeTruthy();
-    expect(getByText('On sale')).toBeTruthy();
-    expect(getByText("Won't buy")).toBeTruthy();
-
+    // Star filter pills
+    expect(getByText('All (1)')).toBeTruthy();
+    expect(getByText('3 (1)')).toBeTruthy();
     // Review item
     expect(getByText('Vẻy delicious and gôd for health')).toBeTruthy();
     expect(getByText('Your review')).toBeTruthy();

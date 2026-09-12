@@ -8,13 +8,13 @@ export declare const adminUserSummarySchema: z.ZodObject<{
     lastName: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    email: string;
     firstName: string;
+    email: string;
     lastName: string;
 }, {
     id: string;
-    email: string;
     firstName: string;
+    email: string;
     lastName: string;
 }>;
 export type AdminUserSummary = z.infer<typeof adminUserSummarySchema>;
@@ -63,13 +63,13 @@ export declare const adminProductRowSchema: z.ZodObject<{
         lastName: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }>>>;
     createdAt: z.ZodString;
@@ -106,8 +106,8 @@ export declare const adminProductRowSchema: z.ZodObject<{
     moderatedAt?: string | null | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
 }, {
@@ -142,8 +142,8 @@ export declare const adminProductRowSchema: z.ZodObject<{
     moderatedAt?: string | null | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
 }>;
@@ -213,13 +213,13 @@ export declare const adminProductsListSchema: z.ZodObject<{
             lastName: z.ZodString;
         }, "strip", z.ZodTypeAny, {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         }, {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         }>>>;
         createdAt: z.ZodString;
@@ -256,8 +256,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderatedAt?: string | null | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
     }, {
@@ -292,8 +292,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderatedAt?: string | null | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
     }>, "many">;
@@ -331,8 +331,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderatedAt?: string | null | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
     }[];
@@ -370,8 +370,8 @@ export declare const adminProductsListSchema: z.ZodObject<{
         moderatedAt?: string | null | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
     }[];
@@ -500,13 +500,13 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
         lastName: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }>>>;
     proposed: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -543,8 +543,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     createdAt: string;
-    moderationNotes: string | null;
     productId: string;
+    moderationNotes: string | null;
     submittedBy: string;
     proposed: Record<string, unknown>;
     baseProductVersion: number;
@@ -554,8 +554,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     name?: string | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;
@@ -571,8 +571,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
     version: number;
     createdAt: string;
-    moderationNotes: string | null;
     productId: string;
+    moderationNotes: string | null;
     submittedBy: string;
     proposed: Record<string, unknown>;
     baseProductVersion: number;
@@ -582,8 +582,8 @@ export declare const adminProductEditRowSchema: z.ZodObject<{
     name?: string | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;
@@ -608,13 +608,13 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
             lastName: z.ZodString;
         }, "strip", z.ZodTypeAny, {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         }, {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         }>>>;
         proposed: z.ZodRecord<z.ZodString, z.ZodUnknown>;
@@ -651,8 +651,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         version: number;
         createdAt: string;
-        moderationNotes: string | null;
         productId: string;
+        moderationNotes: string | null;
         submittedBy: string;
         proposed: Record<string, unknown>;
         baseProductVersion: number;
@@ -662,8 +662,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         name?: string | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
         productName?: string | undefined;
@@ -679,8 +679,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         version: number;
         createdAt: string;
-        moderationNotes: string | null;
         productId: string;
+        moderationNotes: string | null;
         submittedBy: string;
         proposed: Record<string, unknown>;
         baseProductVersion: number;
@@ -690,8 +690,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         name?: string | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
         productName?: string | undefined;
@@ -710,8 +710,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         version: number;
         createdAt: string;
-        moderationNotes: string | null;
         productId: string;
+        moderationNotes: string | null;
         submittedBy: string;
         proposed: Record<string, unknown>;
         baseProductVersion: number;
@@ -721,8 +721,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         name?: string | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
         productName?: string | undefined;
@@ -741,8 +741,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
         version: number;
         createdAt: string;
-        moderationNotes: string | null;
         productId: string;
+        moderationNotes: string | null;
         submittedBy: string;
         proposed: Record<string, unknown>;
         baseProductVersion: number;
@@ -752,8 +752,8 @@ export declare const adminProductEditsListSchema: z.ZodObject<{
         name?: string | undefined;
         creator?: {
             id: string;
-            email: string;
             firstName: string;
+            email: string;
             lastName: string;
         } | null | undefined;
         productName?: string | undefined;

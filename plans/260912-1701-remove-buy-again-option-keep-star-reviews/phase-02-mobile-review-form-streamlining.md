@@ -67,11 +67,11 @@ Streamline the mobile review creation and editing screen (`apps/mobile/app/(app)
 4. Run `pnpm --filter mobile test product-review-screen.test.tsx`.
 
 ## Success Criteria
-- [ ] Review creation screen shows only 1-to-5 star selector and optional text comment.
-- [ ] Zero instances of "Buy again", "Buy on sale", or "Won't buy" on the screen.
-- [ ] Submitting without stars shows validation error.
-- [ ] Submitting 4 stars correctly sends `{ stars: 4 }` to the backend.
-- [ ] All unit tests in `product-review-screen.test.tsx` pass cleanly.
+- [x] Review creation screen shows only 1-to-5 star selector and optional text comment.
+- [x] Zero instances of "Buy again", "Buy on sale", or "Won't buy" on the screen.
+- [x] Submitting without stars shows validation error.
+- [x] Submitting 4 stars correctly sends `{ stars: 4 }` to the backend.
+- [x] All unit tests in `product-review-screen.test.tsx` pass cleanly.
 
 ## Risk Assessment
 - **Risk**: Existing review edits pre-populating with undefined stars.

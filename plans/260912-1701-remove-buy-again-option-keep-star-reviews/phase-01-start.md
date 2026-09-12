@@ -76,11 +76,11 @@ Migrate `@expyrico/shared` review DTO contracts and the backend Prisma PostgreSQ
 7. Run `pnpm --filter @expyrico/shared typecheck && pnpm --filter api test`.
 
 ## Success Criteria
-- [ ] Prisma schema and database include `stars` on `Review` and `averageRating` on `Product`.
-- [ ] Historical reviews are successfully backfilled to star values (5, 3, 1).
-- [ ] `POST /v1/products/:id/reviews` accepts `{ stars: 4, body: "Great!" }` and persists `stars: 4`.
-- [ ] `recomputeAndSyncProductTallies` accurately calculates average rating and rating count.
-- [ ] All backend review integration tests pass.
+- [x] Prisma schema and database include `stars` on `Review` and `averageRating` on `Product`.
+- [x] Historical reviews are successfully backfilled to star values (5, 3, 1).
+- [x] `POST /v1/products/:id/reviews` accepts `{ stars: 4, body: "Great!" }` and persists `stars: 4`.
+- [x] `recomputeAndSyncProductTallies` accurately calculates average rating and rating count.
+- [x] All backend review integration tests pass.
 
 ## Risk Assessment
 - **Risk**: Existing client requests sending legacy `rating: 'buy_again'` during rolling deployment.

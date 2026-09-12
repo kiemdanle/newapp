@@ -55,6 +55,7 @@ export declare const problemSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -94,6 +95,7 @@ export declare const problemSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -133,6 +135,7 @@ export declare const problemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>>;
     identifierConflict: z.ZodOptional<z.ZodObject<{
         slot: z.ZodEnum<["barcode", "qr"]>;
@@ -176,6 +179,7 @@ export declare const problemSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -233,6 +237,7 @@ export declare const problemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     } | undefined;
     identifierConflict?: {
         slot: "barcode" | "qr";
@@ -273,6 +278,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -312,6 +318,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -351,6 +358,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>>;
     identifierConflict: z.ZodOptional<z.ZodObject<{
         slot: z.ZodEnum<["barcode", "qr"]>;
@@ -397,6 +405,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -454,6 +463,7 @@ export declare const versionConflictProblemSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     } | undefined;
     identifierConflict?: {
         slot: "barcode" | "qr";

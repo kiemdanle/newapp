@@ -14,7 +14,8 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { Review, ReviewRating } from '@expyrico/shared';
+import type { Review } from '@expyrico/shared';
+import { useConnectionGuardStore } from '../../../../src/store/connectionGuardStore';
 import { Button } from '../../../../src/components/Button';
 import { ErrorText } from '../../../../src/components/ErrorText';
 import { KeyboardAwareScrollView } from '../../../../src/components/KeyboardAwareScrollView';
@@ -30,62 +31,6 @@ import {
   isUserOwnReview,
 } from '../../../../src/api/reviews';
 
-interface RecommendationOption {
-  value: ReviewRating;
-  label: string;
-  sublabel: string;
-  icon: string;
-  activeBorder: string;
-  activeBg: string;
-  activeText: string;
-  iconColor: string;
-}
-
-const RECOMMENDATION_OPTIONS: RecommendationOption[] = [
-  {
-    value: 'buy_again',
-    label: 'Buy again',
-    sublabel: 'Top pick',
-    icon: 'checkmark-circle',
-    activeBorder: '#4BAE8A', // Fresh Sage
-    activeBg: '#D6F0E6',     // Mint Mist
-    activeText: '#3A8F6F',   // Deep Sage
-    iconColor: '#4BAE8A',
-  },
-  {
-    value: 'buy_again_on_sale',
-    label: 'Buy on sale',
-    sublabel: 'Worth deal',
-    icon: 'pricetag',
-    activeBorder: '#F5A623', // Honey
-    activeBg: '#FEEFC3',     // Soft Butter
-    activeText: '#2C2C28',   // Almost Black
-    iconColor: '#F5A623',
-  },
-  {
-    value: 'wont_buy',
-    label: "Won't buy",
-    sublabel: 'Pass on it',
-    icon: 'thumbs-down',
-    activeBorder: '#8C8C85', // Pebble
-    activeBg: '#F0F0ED',     // Stone
-    activeText: '#2C2C28',   // Almost Black
-    iconColor: '#8C8C85',
-  },
-];
-
-function ratingToStars(r: ReviewRating | null | undefined): number {
-  if (r === 'buy_again') return 5;
-  if (r === 'buy_again_on_sale') return 3;
-  if (r === 'wont_buy') return 1;
-  return 0;
-}
-
-function starsToRating(s: number): ReviewRating {
-  if (s >= 4) return 'buy_again';
-  if (s === 3) return 'buy_again_on_sale';
-  return 'wont_buy';
-}
 
 export default function ProductReview() {
   const theme = useTheme();
@@ -110,10 +55,7 @@ export default function ProductReview() {
     allReviews.find((r) => isUserOwnReview(r, currentUserId)) ??
     null;
   const isEdit = Boolean(existingReview);
-  const [stars, setStars] = useState<number>(() => ratingToStars(existingReview?.rating));
-  const [rating, setRating] = useState<ReviewRating | null>(
-    existingReview?.rating ?? null,
-  );
+  const [stars, setStars] = useState<number>(() => existingReview?.stars ?? (existingReview?.rating === 'buy_again' ? 5 : existingReview?.rating === 'buy_again_on_sale' ? 3 : existingReview?.rating === 'wont_buy' ? 1 : 0));
   const [body, setBody] = useState(existingReview?.body ?? '');
   const [inputFocused, setInputFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,26 +64,18 @@ export default function ProductReview() {
 
   // Pre-populate when existing review loads
   useEffect(() => {
-    if (existingReview && (!isInitialized || rating === null)) {
-      setRating(existingReview.rating);
-      setStars(ratingToStars(existingReview.rating));
+    if (existingReview && (!isInitialized || stars === 0)) {
+      const initialStars = existingReview.stars ?? (existingReview.rating === 'buy_again' ? 5 : existingReview.rating === 'buy_again_on_sale' ? 3 : existingReview.rating === 'wont_buy' ? 1 : 0);
+      setStars(initialStars);
       setBody(existingReview.body ?? '');
       setIsInitialized(true);
     }
-  }, [existingReview, isInitialized, rating]);
+  }, [existingReview, isInitialized, stars]);
 
   function handleSelectStars(selectedStars: number) {
     setStars(selectedStars);
-    setRating(starsToRating(selectedStars));
     setError(null);
   }
-
-  function handleSelectRecommendation(val: ReviewRating) {
-    setRating(val);
-    setStars(ratingToStars(val));
-    setError(null);
-  }
-
   // Android hardware back handler with unsaved changes prompt
   useEffect(() => {
     const onBackPress = () => {
@@ -150,15 +84,13 @@ export default function ProductReview() {
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [body, rating, existingReview]);
+  }, [body, stars, existingReview]);
 
   function hasUnsavedChanges() {
-    if (!existingReview) {
-      return Boolean(rating !== null || body.trim().length > 0);
-    }
-    const ratingChanged = rating !== existingReview.rating;
-    const bodyChanged = body.trim() !== (existingReview.body ?? '').trim();
-    return ratingChanged || bodyChanged;
+    const initialStars = existingReview?.stars ?? (existingReview?.rating === 'buy_again' ? 5 : existingReview?.rating === 'buy_again_on_sale' ? 3 : existingReview?.rating === 'wont_buy' ? 1 : 0);
+    const starsChanged = stars !== initialStars;
+    const bodyChanged = body.trim() !== (existingReview?.body ?? '').trim();
+    return starsChanged || bodyChanged;
   }
 
   function handleBack() {
@@ -178,8 +110,12 @@ export default function ProductReview() {
 
   async function onSubmit() {
     setError(null);
-    if (!rating) {
-      setError('Please select whether you recommend this product.');
+    if (!stars || stars < 1) {
+      setError('Please select a star rating.');
+      return;
+    }
+
+    if (!useConnectionGuardStore.getState().requireServerConnection('Submit Review', () => void onSubmit())) {
       return;
     }
 
@@ -190,13 +126,13 @@ export default function ProductReview() {
         await updateReviewMutation.mutateAsync({
           reviewId: existingReview.id,
           productId,
-          patch: { rating, body: finalBody },
+          patch: { stars, body: finalBody },
         });
         navigation.goBack();
       } else {
         const res = await createReviewMutation.mutateAsync({
           productId,
-          input: { rating, body: finalBody },
+          input: { stars, body: finalBody },
         });
         if (res.status === 'hidden') {
           setModerationPending(true);
@@ -216,7 +152,7 @@ export default function ProductReview() {
             await updateReviewMutation.mutateAsync({
               reviewId: match.id,
               productId,
-              patch: { rating, body: finalBody },
+              patch: { stars, body: finalBody },
             });
             navigation.goBack();
             return;
@@ -476,7 +412,7 @@ export default function ProductReview() {
                   : stars === 4
                     ? '4 / 5 · Great!'
                     : stars === 3
-                      ? '3 / 5 · Good (Worth it on sale)'
+                      ? '3 / 5 · Good'
                       : stars === 2
                         ? '2 / 5 · Fair'
                         : stars === 1
@@ -484,101 +420,6 @@ export default function ProductReview() {
                           : 'Tap a star to rate'}
               </Text>
             </View>
-          </View>
-        </View>
-
-        {/* Tri-State Recommendation Selector Card */}
-        <View
-          style={[
-            styles.cardContainer,
-            {
-              backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.lg,
-            },
-          ]}
-        >
-          <View style={styles.cardHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="thumbs-up-outline" size={18} color={theme.colors.primary} />
-              <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
-                Would you recommend this item?
-              </Text>
-            </View>
-            <Text style={[styles.requiredBadge, { color: theme.colors.textMuted }]}>
-              Required *
-            </Text>
-          </View>
-
-          <View
-            style={styles.radiogroup}
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Would you recommend this item?"
-          >
-            {RECOMMENDATION_OPTIONS.map((opt) => {
-              const isSelected = rating === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  accessibilityRole="radio"
-                  accessibilityLabel={opt.label}
-                  accessibilityState={{ selected: isSelected }}
-                  onPress={() => handleSelectRecommendation(opt.value)}
-                  style={({ pressed }) => [
-                    styles.radioCard,
-                    {
-                      borderColor: isSelected ? opt.activeBorder : theme.colors.border,
-                      borderWidth: isSelected ? 2 : 1,
-                      backgroundColor: isSelected
-                        ? opt.activeBg
-                        : theme.scheme === 'dark'
-                          ? 'rgba(255,255,255,0.04)'
-                          : theme.colors.bg,
-                      opacity: pressed ? 0.85 : 1,
-                      transform: [{ scale: pressed ? 0.98 : 1 }],
-                    },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      {
-                        backgroundColor: isSelected
-                          ? 'rgba(255,255,255,0.65)'
-                          : theme.colors.bgElevated,
-                      },
-                    ]}
-                  >
-                    <Ionicons
-                      name={opt.icon}
-                      size={20}
-                      color={isSelected ? opt.iconColor : theme.colors.textMuted}
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.pillLabel,
-                      {
-                        color: isSelected ? opt.activeText : theme.colors.text,
-                        fontWeight: isSelected ? '700' : '600',
-                      },
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.pillSublabel,
-                      {
-                        color: isSelected ? opt.activeText : theme.colors.textMuted,
-                      },
-                    ]}
-                  >
-                    {opt.sublabel}
-                  </Text>
-                </Pressable>
-              );
-            })}
           </View>
         </View>
 
@@ -788,37 +629,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  radiogroup: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  radioCard: {
-    flex: 1,
-    minHeight: 84,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    gap: 4,
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
-  pillLabel: {
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  pillSublabel: {
-    fontSize: 11,
-    textAlign: 'center',
-    fontWeight: '500',
   },
   reviewInput: {
     minHeight: 120,

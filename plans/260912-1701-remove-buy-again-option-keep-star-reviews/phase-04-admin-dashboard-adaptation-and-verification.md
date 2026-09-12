@@ -63,11 +63,11 @@ Adapt the Admin moderation console and analytics pages to display and filter rev
    - Streamlined review cards with star ratings.
 
 ## Success Criteria
-- [ ] Admin reviews console displays star ratings (1-5 stars) and allows filtering by stars.
-- [ ] All API integration tests and mobile unit tests pass with zero regressions.
-- [ ] Workspace typecheck exits 0 across all 4 packages.
-- [ ] Android APK builds and installs cleanly on physical device (`96d9c774`).
-- [ ] Physical device screencaps prove complete removal of "Buy again", "Buy on sale", and "Won't buy" options.
+- [x] Admin reviews console displays star ratings (1-5 stars) and allows filtering by stars.
+- [x] All API integration tests and mobile unit tests pass with zero regressions.
+- [x] Workspace typecheck exits 0 across all 4 packages.
+- [x] Android APK builds and installs cleanly on physical device (`96d9c774`).
+- [x] Physical device screencaps prove complete removal of "Buy again", "Buy on sale", and "Won't buy" options.
 
 ## Risk Assessment
 - **Risk**: Database query timeouts when aggregating average star ratings across large product tables.

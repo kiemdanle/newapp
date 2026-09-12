@@ -43,6 +43,7 @@ function createWrapper() {
 const mockReview1: Review = {
   id: 'rev-1',
   productId: 'prod-1',
+  stars: 5,
   rating: 'buy_again',
   body: 'Great taste!',
   helpfulCount: 5,
@@ -58,6 +59,7 @@ const mockReview1: Review = {
 const mockReview2: Review = {
   id: 'rev-2',
   productId: 'prod-1',
+  stars: 3,
   rating: 'buy_again_on_sale',
   body: 'Good value on discount',
   helpfulCount: 2,
@@ -168,13 +170,13 @@ describe('Mobile Reviews API & Query Hooks', () => {
       await act(async () => {
         await result.current.mutateAsync({
           productId: 'prod-1',
-          input: { rating: 'buy_again', body: 'Awesome' },
+          input: { stars: 5, rating: 'buy_again', body: 'Awesome' },
         });
       });
 
       expect(apiClient.post).toHaveBeenCalledWith(
         '/products/prod-1/reviews',
-        { rating: 'buy_again', body: 'Awesome' },
+        { stars: 5, rating: 'buy_again', body: 'Awesome' },
         expect.objectContaining({ headers: expect.any(Object) }),
       );
 
@@ -197,13 +199,13 @@ describe('Mobile Reviews API & Query Hooks', () => {
         await result.current.mutateAsync({
           reviewId: 'rev-1',
           productId: 'prod-1',
-          patch: { rating: 'buy_again_on_sale', body: null },
+          patch: { stars: 3, rating: 'buy_again_on_sale', body: null },
         });
       });
 
       expect(apiClient.patch).toHaveBeenCalledWith(
         '/reviews/rev-1',
-        { rating: 'buy_again_on_sale', body: null },
+        { stars: 3, rating: 'buy_again_on_sale', body: null },
       );
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['products', 'prod-1'] });
     });

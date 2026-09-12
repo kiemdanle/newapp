@@ -49,35 +49,7 @@ export const ReviewCard = memo(function ReviewCard({
   const relativeDate = formatRelativeDate(review.createdAt);
   const currentUserId = useSessionStore((s) => s.user?.id);
   const isOwn = isUserOwnReview(review, currentUserId);
-  const badgeConfig: Record<
-    ReviewRating,
-    { label: string; icon: string; bg: string; border: string; text: string }
-  > = {
-    buy_again: {
-      label: 'Buy again',
-      icon: 'checkmark-circle',
-      bg: theme.colors.primaryLight,
-      border: theme.colors.primary,
-      text: theme.colors.primaryDark,
-    },
-    buy_again_on_sale: {
-      label: 'Buy on sale',
-      icon: 'pricetag',
-      bg: theme.colors.accentLight,
-      border: theme.colors.accent,
-      text: theme.colors.text,
-    },
-    wont_buy: {
-      label: "Won't buy",
-      icon: 'thumbs-down',
-      bg: theme.colors.neutralLight,
-      border: theme.colors.neutralMid,
-      text: theme.colors.textMuted,
-    },
-  };
-
-  const badge = badgeConfig[review.rating] ?? badgeConfig.buy_again;
-
+  const stars = review.stars ?? (review.rating === 'buy_again' ? 5 : review.rating === 'buy_again_on_sale' ? 3 : review.rating === 'wont_buy' ? 1 : 5);
   return (
     <View
       style={[
@@ -110,21 +82,21 @@ export const ReviewCard = memo(function ReviewCard({
           </View>
         </View>
 
-        {/* Recommendation Badge */}
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: badge.bg, borderColor: badge.border },
-          ]}
-        >
-          <Ionicons
-            name={badge.icon}
-            size={13}
-            color={badge.text}
-            style={{ marginRight: 4 }}
-          />
-          <Text style={[styles.badgeText, { color: badge.text }]}>
-            {badge.label}
+        {/* 5-Star Visual Indicator */}
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Ionicons
+                key={s}
+                name={s <= stars ? 'star' : 'star-outline'}
+                size={14}
+                color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
+                style={{ marginRight: 1 }}
+              />
+            ))}
+          </View>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text }}>
+            {stars}.0
           </Text>
         </View>
       </View>
@@ -166,26 +138,6 @@ export const ReviewCard = memo(function ReviewCard({
         </View>
       ) : null}
 
-      {/* 5-Star Visual Indicator */}
-      <View style={styles.cardStars}>
-        {[1, 2, 3, 4, 5].map((s) => {
-          const isFilled =
-            review.rating === 'buy_again'
-              ? s <= 5
-              : review.rating === 'buy_again_on_sale'
-                ? s <= 3
-                : s <= 1;
-          return (
-            <Ionicons
-              key={s}
-              name={isFilled ? 'star' : 'star-outline'}
-              size={15}
-              color={isFilled ? '#F5A623' : theme.colors.neutralMid}
-              style={{ marginRight: 2 }}
-            />
-          );
-        })}
-      </View>
 
       {/* Review Body Comment */}
       {review.body ? (

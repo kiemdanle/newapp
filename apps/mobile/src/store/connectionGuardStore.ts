@@ -33,7 +33,6 @@ export const useConnectionGuardStore = create<ConnectionGuardState>((set, get) =
   requireServerConnection: (actionName: string, onProceed: () => void): boolean => {
     const status = useConnectionStore.getState().status;
     if (status === 'ready') {
-      onProceed();
       return true;
     }
 

@@ -38,6 +38,7 @@ export declare const productSchema: z.ZodObject<{
     buyAgainCount: z.ZodNumber;
     buyAgainOnSaleCount: z.ZodNumber;
     wontBuyCount: z.ZodNumber;
+    averageRating: z.ZodDefault<z.ZodNumber>;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
     status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -77,6 +78,7 @@ export declare const productSchema: z.ZodObject<{
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
     wontBuyCount: number;
+    averageRating: number;
     ratingCount: number;
     reviewCount: number;
     version: number;
@@ -116,6 +118,7 @@ export declare const productSchema: z.ZodObject<{
     }[];
     createdAt: string;
     updatedAt: string;
+    averageRating?: number | undefined;
 }>;
 export type Product = z.infer<typeof productSchema>;
 export declare const productWithReviewsSchema: z.ZodObject<{
@@ -134,6 +137,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     buyAgainCount: z.ZodNumber;
     buyAgainOnSaleCount: z.ZodNumber;
     wontBuyCount: z.ZodNumber;
+    averageRating: z.ZodDefault<z.ZodNumber>;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
     status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -175,6 +179,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
     wontBuyCount: number;
+    averageRating: number;
     ratingCount: number;
     reviewCount: number;
     version: number;
@@ -216,6 +221,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     topReviews: unknown[];
+    averageRating?: number | undefined;
 }>;
 export type ProductWithReviews = z.infer<typeof productWithReviewsSchema>;
 export declare const productLookupRequestSchema: z.ZodEffects<z.ZodObject<{
@@ -252,6 +258,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -291,6 +298,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -330,6 +338,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>>;
 }, "strip", z.ZodTypeAny, {
     product: {
@@ -349,6 +358,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -390,6 +400,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     } | null;
 }>;
 export type ProductLookupResponse = z.infer<typeof productLookupResponseSchema>;
@@ -410,6 +421,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -449,6 +461,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -488,6 +501,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
@@ -507,6 +521,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -548,6 +563,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }[];
 }>;
 export type ProductSearchResult = z.infer<typeof productSearchResultSchema>;
@@ -615,6 +631,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -655,6 +672,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -694,6 +712,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
@@ -713,6 +732,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -755,6 +775,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     };
     outcome: "found";
 }>, z.ZodObject<{
@@ -775,6 +796,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -815,6 +837,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -854,6 +877,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
@@ -873,6 +897,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -915,6 +940,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     };
     outcome: "editable_private";
 }>, z.ZodObject<{
@@ -935,6 +961,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
+        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -975,6 +1002,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -1014,6 +1042,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
@@ -1033,6 +1062,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
+        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -1075,6 +1105,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         }[];
         createdAt: string;
         updatedAt: string;
+        averageRating?: number | undefined;
     };
     outcome: "creator_pending";
 }>, z.ZodObject<{

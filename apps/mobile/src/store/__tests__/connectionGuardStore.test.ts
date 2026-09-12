@@ -11,14 +11,13 @@ describe('connectionGuardStore', () => {
     useConnectionStore.getState().reset();
     useConnectionGuardStore.getState().closeModal();
   });
-
-  it('executes callback immediately when connection is ready', () => {
+  it('returns true when connection is ready without executing callback prematurely', () => {
     useConnectionStore.setState({ status: 'ready' });
     const callback = jest.fn();
 
     const allowed = useConnectionGuardStore.getState().requireServerConnection('Add Item', callback);
     expect(allowed).toBe(true);
-    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).not.toHaveBeenCalled();
     expect(useConnectionGuardStore.getState().isModalVisible).toBe(false);
   });
 

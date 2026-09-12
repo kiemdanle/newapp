@@ -71,10 +71,10 @@ Overhaul review display cards, feed views, and section headers across the mobile
 7. Run `pnpm --filter mobile test`.
 
 ## Success Criteria
-- [ ] No review card in the entire mobile app renders "Buy again", "Buy on sale", or "Won't buy".
-- [ ] All reviews display standard 1-to-5 star ratings.
-- [ ] Product review sections display clean average star score and review totals.
-- [ ] All mobile unit tests pass.
+- [x] No review card in the entire mobile app renders "Buy again", "Buy on sale", or "Won't buy".
+- [x] All reviews display standard 1-to-5 star ratings.
+- [x] Product review sections display clean average star score and review totals.
+- [x] All mobile unit tests pass.
 
 ## Risk Assessment
 - **Risk**: Snapshot tests failing due to removed recommendation badges.

@@ -87,6 +87,7 @@ export function toApiProduct(p: ProductWithPhotos, viewer: ProductSerializerView
     buyAgainCount: p.buyAgainCount,
     buyAgainOnSaleCount: p.buyAgainOnSaleCount,
     wontBuyCount: p.wontBuyCount,
+    averageRating: p.averageRating ? Number(p.averageRating) : 0,
     ratingCount: p.ratingCount,
     reviewCount: p.reviewCount,
     status: p.status,

@@ -25,6 +25,7 @@ jest.mock('../../src/api/reviews', () => ({
 const mockPersonalReview: Review = {
   id: 'rev-mine-1',
   productId: 'prod-101',
+  stars: 5,
   rating: 'buy_again',
   body: 'My favourite coffee beans',
   helpfulCount: 4,
@@ -115,7 +116,7 @@ describe('ReviewsHubScreen', () => {
 
     expect(getByText('Espresso Roast Whole Bean')).toBeTruthy();
     expect(getByText('StarRoast')).toBeTruthy();
-    expect(getByText('Buy again')).toBeTruthy();
+    expect(getByText('5.0')).toBeTruthy();
     expect(getByText('My favourite coffee beans')).toBeTruthy();
     expect(getByText('Edit review')).toBeTruthy();
     expect(getByText('View product')).toBeTruthy();

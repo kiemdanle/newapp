@@ -31,36 +31,7 @@ export const MyReviewCard = memo(function MyReviewCard({
   const productBrand = product?.brand ?? fetchedProduct?.brand;
   const photoUrl = review.product?.imageUrl ?? (product as any)?.imageUrl;
   const relativeDate = formatRelativeDate(review.createdAt);
-  const stars = getRatingStars(review.rating);
-  const badgeConfig: Record<
-    ReviewRating,
-    { label: string; icon: string; bg: string; border: string; text: string }
-  > = {
-    buy_again: {
-      label: 'Buy again',
-      icon: 'checkmark-circle',
-      bg: theme.colors.primaryLight,
-      border: theme.colors.primary,
-      text: theme.colors.primaryDark,
-    },
-    buy_again_on_sale: {
-      label: 'Buy on sale',
-      icon: 'pricetag',
-      bg: theme.colors.accentLight,
-      border: theme.colors.accent,
-      text: theme.colors.text,
-    },
-    wont_buy: {
-      label: "Won't buy",
-      icon: 'thumbs-down',
-      bg: theme.colors.neutralLight,
-      border: theme.colors.neutralMid,
-      text: theme.colors.textMuted,
-    },
-  };
-
-  const badge = badgeConfig[review.rating] ?? badgeConfig.buy_again;
-
+  const stars = review.stars ?? (review.rating ? getRatingStars(review.rating) : 5);
   return (
     <View
       style={[
@@ -103,22 +74,6 @@ export const MyReviewCard = memo(function MyReviewCard({
           </View>
         </View>
 
-        <View
-          style={[
-            styles.badge,
-            { backgroundColor: badge.bg, borderColor: badge.border },
-          ]}
-        >
-          <Ionicons
-            name={badge.icon}
-            size={13}
-            color={badge.text}
-            style={{ marginRight: 4 }}
-          />
-          <Text style={[styles.badgeText, { color: badge.text }]}>
-            {badge.label}
-          </Text>
-        </View>
       </View>
 
       {/* 5-Star Rating Row */}

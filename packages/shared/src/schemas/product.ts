@@ -95,6 +95,7 @@ export const productSchema = z.object({
   buyAgainCount: z.number().int().min(0),
   buyAgainOnSaleCount: z.number().int().min(0),
   wontBuyCount: z.number().int().min(0),
+  averageRating: z.number().min(0).max(5).default(0),
   ratingCount: z.number().int().min(0),
   reviewCount: z.number().int().min(0),
   status: productStatusSchema,

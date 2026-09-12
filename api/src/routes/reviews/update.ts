@@ -43,6 +43,7 @@ export async function updateReviewRoute(app: FastifyInstance) {
         const res = await tx.review.update({
           where: { id },
           data: {
+            ...(input.stars !== undefined ? { stars: input.stars } : {}),
             ...(input.rating !== undefined ? { rating: input.rating } : {}),
             ...(input.body !== undefined ? { body: input.body ?? null } : {}),
             status,

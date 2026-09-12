@@ -11,9 +11,14 @@ export const dynamic = 'force-dynamic';
 type Row = Awaited<ReturnType<typeof serverAdminApi.reviews.list>>['items'][number];
 
 const RATING_LABEL: Record<string, string> = {
-  buy_again: 'Buy again',
-  buy_again_on_sale: 'Buy again on sale',
-  wont_buy: "Won't buy",
+  '5': '5 Stars ★★★★★',
+  '4': '4 Stars ★★★★☆',
+  '3': '3 Stars ★★★☆☆',
+  '2': '2 Stars ★★☆☆☆',
+  '1': '1 Star ★☆☆☆☆',
+  buy_again: '5 Stars ★★★★★',
+  buy_again_on_sale: '3 Stars ★★★☆☆',
+  wont_buy: '1 Star ★☆☆☆☆',
 };
 
 export default async function ReviewsPage({
@@ -40,24 +45,22 @@ export default async function ReviewsPage({
       ),
     },
     {
-      header: 'Sentiment / Rating',
+      header: 'Star Rating',
       cell: (r) => {
-        const isGood = r.rating === 'buy_again';
-        const isSale = r.rating === 'buy_again_on_sale';
+        const stars = (r as any).stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : r.rating === 'wont_buy' ? 1 : Number(r.rating) || 5);
         return (
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              isGood
+              stars >= 4
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-                : isSale
+                : stars === 3
                   ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
-                  : 'bg-red-50 text-red-800 border border-red-200/80'
+                  : 'bg-stone-100 text-neutral-dark border border-stone-200'
             }`}
           >
-            {isGood && <ThumbsUp size={12} className="text-emerald-600" />}
-            {isSale && <Tag size={12} className="text-amber-600" />}
-            {!isGood && !isSale && <ThumbsDown size={12} className="text-red-600" />}
-            <span>{RATING_LABEL[r.rating] ?? r.rating}</span>
+            <span className="text-amber-500">{'★'.repeat(stars)}</span>
+            <span className="text-neutral-300">{'☆'.repeat(5 - stars)}</span>
+            <span className="ml-1 font-bold">{stars}.0</span>
           </span>
         );
       },
@@ -112,12 +115,14 @@ export default async function ReviewsPage({
         />
         <SelectFilter
           name="rating"
-          label="Purchase Sentiment"
+          label="Star Rating"
           value={sp.rating}
           options={[
-            { value: 'buy_again', label: 'Buy again' },
-            { value: 'buy_again_on_sale', label: 'Buy again on sale' },
-            { value: 'wont_buy', label: "Won't buy" },
+            { value: '5', label: '5 Stars ★★★★★' },
+            { value: '4', label: '4 Stars ★★★★☆' },
+            { value: '3', label: '3 Stars ★★★☆☆' },
+            { value: '2', label: '2 Stars ★★☆☆☆' },
+            { value: '1', label: '1 Star ★☆☆☆☆' },
           ]}
         />
       </FilterBar>

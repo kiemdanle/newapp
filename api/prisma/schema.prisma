@@ -459,6 +459,7 @@ model Product {
   buyAgainCount        Int           @default(0) @map("buy_again_count")
   buyAgainOnSaleCount  Int           @default(0) @map("buy_again_on_sale_count")
   wontBuyCount         Int           @default(0) @map("wont_buy_count")
+  averageRating        Decimal       @default(0) @db.Decimal(3, 2) @map("average_rating")
   ratingCount          Int           @default(0) @map("rating_count")
   reviewCount          Int           @default(0) @map("review_count")
   createdByUserId      String?       @map("created_by_user_id") @db.Uuid
@@ -779,7 +780,8 @@ model Review {
   id              String       @id @default(uuid()) @db.Uuid
   userId          String       @map("user_id") @db.Uuid
   productId       String       @map("product_id") @db.Uuid
-  rating          ReviewRating
+  stars           Int          @default(5) @db.SmallInt
+  rating          ReviewRating?
   body            String?
   helpfulCount    Int          @default(0) @map("helpful_count")
   notHelpfulCount Int          @default(0) @map("not_helpful_count")

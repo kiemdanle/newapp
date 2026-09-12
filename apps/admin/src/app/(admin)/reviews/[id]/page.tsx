@@ -6,9 +6,14 @@ import { ReviewActions } from './review-actions';
 export const dynamic = 'force-dynamic';
 
 const RATING_LABEL: Record<string, string> = {
-  buy_again: 'Buy again',
-  buy_again_on_sale: 'Buy again on sale',
-  wont_buy: "Won't buy",
+  '5': '5 Stars ★★★★★',
+  '4': '4 Stars ★★★★☆',
+  '3': '3 Stars ★★★☆☆',
+  '2': '2 Stars ★★☆☆☆',
+  '1': '1 Star ★☆☆☆☆',
+  buy_again: '5 Stars ★★★★★',
+  buy_again_on_sale: '3 Stars ★★★☆☆',
+  wont_buy: '1 Star ★☆☆☆☆',
 };
 
 export default async function ReviewDetailPage({
@@ -27,7 +32,9 @@ export default async function ReviewDetailPage({
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-semibold text-neutral-dark font-display">{RATING_LABEL[r.rating] ?? r.rating}</h1>
+          <h1 className="text-[28px] font-semibold text-neutral-dark font-display">
+            {RATING_LABEL[r.rating] ?? `${(r as any).stars ?? 5} Stars`}
+          </h1>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={r.status} />
             <span className="text-xs text-neutral-mid">

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { toApiProduct } from '../../src/services/products/serializer.js';
-
 const now = new Date();
 
 function makePrismaProduct(overrides: Partial<Record<string, unknown>> = {}) {
@@ -21,6 +21,7 @@ function makePrismaProduct(overrides: Partial<Record<string, unknown>> = {}) {
     buyAgainCount: 0,
     buyAgainOnSaleCount: 0,
     wontBuyCount: 0,
+    averageRating: new Prisma.Decimal(0),
     ratingCount: 0,
     reviewCount: 0,
     status: 'active',

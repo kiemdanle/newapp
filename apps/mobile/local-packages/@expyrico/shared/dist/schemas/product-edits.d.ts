@@ -201,13 +201,13 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         lastName: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }, {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     }>>>;
 }, "strict", z.ZodTypeAny, {
@@ -236,8 +236,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;
@@ -268,8 +268,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
         id: string;
-        email: string;
         firstName: string;
+        email: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;

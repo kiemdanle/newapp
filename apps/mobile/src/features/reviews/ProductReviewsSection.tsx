@@ -45,25 +45,14 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
 
   const totalRatings =
     isCompleteSet ? allReviews.length : (product.ratingCount ?? 0);
-  const buyAgainCount =
-    isCompleteSet
-      ? allReviews.filter((r) => r.rating === 'buy_again').length
-      : (product.buyAgainCount ?? 0);
-  const buyAgainOnSaleCount =
-    isCompleteSet
-      ? allReviews.filter((r) => r.rating === 'buy_again_on_sale').length
-      : (product.buyAgainOnSaleCount ?? 0);
-  const wontBuyCount =
-    isCompleteSet
-      ? allReviews.filter((r) => r.rating === 'wont_buy').length
-      : (product.wontBuyCount ?? 0);
-
   const avgScore =
     totalRatings > 0
-      ? Math.round(((buyAgainCount * 5 + buyAgainOnSaleCount * 3 + wontBuyCount * 1) / totalRatings) * 10) / 10
+      ? ((product as any).averageRating && Number((product as any).averageRating) > 0
+          ? Number((product as any).averageRating)
+          : allReviews.length > 0
+            ? Math.round((allReviews.reduce((acc, r) => acc + (r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1)), 0) / allReviews.length) * 10) / 10
+            : 0)
       : 0;
-  const scorePct =
-    totalRatings > 0 ? Math.round((avgScore / 5) * 100) : null;
   const writtenReviewsCount = isCompleteSet
     ? allReviews.filter((r) => Boolean(r.body && r.body.trim())).length
     : (product.reviewCount ?? allReviews.filter((r) => Boolean(r.body && r.body.trim())).length);
@@ -102,52 +91,17 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
           ]}
         >
           <View style={styles.sentimentHeader}>
-            <Ionicons name="star" size={20} color="#F5A623" />
-            <Text style={[styles.sentimentPct, { color: theme.colors.primaryDark }]}>
-              {scorePct !== null ? `${scorePct}%` : '0%'}
+            <Ionicons name="star" size={24} color="#F5A623" />
+            <Text style={[styles.sentimentPct, { color: theme.colors.text }]}>
+              {avgScore > 0 ? avgScore.toFixed(1) : '0.0'}
             </Text>
-            <Text style={[styles.sentimentPctLabel, { color: theme.colors.text }]}>
-              Positive score
+            <Text style={[styles.sentimentPctLabel, { color: theme.colors.textMuted }]}>
+              out of 5 stars
             </Text>
           </View>
           <Text style={[styles.sentimentSub, { color: theme.colors.textMuted }]}>
             {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'} ({writtenReviewsCount} written {writtenReviewsCount === 1 ? 'review' : 'reviews'})
           </Text>
-
-          {/* Sentiment Breakdown Pills */}
-          <View
-            style={[
-              styles.breakdownRow,
-              { borderTopColor: theme.colors.border },
-            ]}
-          >
-            <View style={styles.breakdownItem}>
-              <Text style={[styles.breakdownCount, { color: theme.colors.primaryDark }]}>
-                {buyAgainCount}
-              </Text>
-              <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                Buy again
-              </Text>
-            </View>
-            <Text style={[styles.breakdownDot, { color: theme.colors.textMuted }]}>·</Text>
-            <View style={styles.breakdownItem}>
-              <Text style={[styles.breakdownCount, { color: theme.colors.accent }]}>
-                {buyAgainOnSaleCount}
-              </Text>
-              <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                On sale
-              </Text>
-            </View>
-            <Text style={[styles.breakdownDot, { color: theme.colors.textMuted }]}>·</Text>
-            <View style={styles.breakdownItem}>
-              <Text style={[styles.breakdownCount, { color: theme.colors.textMuted }]}>
-                {wontBuyCount}
-              </Text>
-              <Text style={[styles.breakdownLabel, { color: theme.colors.textMuted }]}>
-                Won't buy
-              </Text>
-            </View>
-          </View>
         </View>
       ) : (
         <View

@@ -175,41 +175,7 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
         {displayReviews.map((rev) => {
           const authorName = rev.author?.firstName ?? 'Community Member';
           const relativeDate = formatRelativeDate(rev.createdAt);
-          const stars =
-            rev.rating === 'buy_again'
-              ? 5
-              : rev.rating === 'buy_again_on_sale'
-                ? 3
-                : 1;
-
-          const badgeBg =
-            rev.rating === 'buy_again'
-              ? theme.colors.primaryLight
-              : rev.rating === 'buy_again_on_sale'
-                ? theme.colors.accentLight
-                : theme.colors.neutralLight;
-
-          const badgeBorder =
-            rev.rating === 'buy_again'
-              ? theme.colors.primary
-              : rev.rating === 'buy_again_on_sale'
-                ? theme.colors.accent
-                : theme.colors.neutralMid;
-
-          const badgeText =
-            rev.rating === 'buy_again'
-              ? theme.colors.primaryDark
-              : rev.rating === 'buy_again_on_sale'
-                ? theme.colors.text
-                : theme.colors.textMuted;
-
-          const badgeLabel =
-            rev.rating === 'buy_again'
-              ? 'Buy again'
-              : rev.rating === 'buy_again_on_sale'
-                ? 'On sale'
-                : "Won't buy";
-
+          const stars = rev.stars ?? (rev.rating === 'buy_again' ? 5 : rev.rating === 'buy_again_on_sale' ? 3 : 1);
           return (
             <View
               key={rev.id}
@@ -243,30 +209,18 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
                   </View>
                 </View>
 
-                {/* Sentiment Badge */}
-                <View
-                  style={[
-                    styles.sentimentBadge,
-                    { backgroundColor: badgeBg, borderColor: badgeBorder },
-                  ]}
-                >
-                  <Text style={[styles.sentimentText, { color: badgeText }]}>
-                    {badgeLabel}
-                  </Text>
+                {/* Star Rating */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Ionicons
+                      key={s}
+                      name={s <= stars ? 'star' : 'star-outline'}
+                      size={13}
+                      color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
+                      style={{ marginRight: 1 }}
+                    />
+                  ))}
                 </View>
-              </View>
-
-              {/* Star Rating Row */}
-              <View style={styles.starRow}>
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Ionicons
-                    key={s}
-                    name={s <= stars ? 'star' : 'star-outline'}
-                    size={13}
-                    color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
-                    style={{ marginRight: 2 }}
-                  />
-                ))}
               </View>
 
               {/* Comment Body */}

@@ -188,7 +188,7 @@ export async function mergeProducts(
       _count: { _all: true },
     });
     const tally = { buy_again: 0, buy_again_on_sale: 0, wont_buy: 0 } as Record<string, number>;
-    for (const row of byRating) tally[row.rating] = row._count._all;
+    for (const row of byRating) if (row.rating) tally[row.rating] = row._count._all;
     const newBuyAgainCount = tally.buy_again!;
     const newBuyAgainOnSaleCount = tally.buy_again_on_sale!;
     const newWontBuyCount = tally.wont_buy!;

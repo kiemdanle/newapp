@@ -3,6 +3,8 @@ export declare const reviewStatusSchema: z.ZodEnum<["visible", "hidden", "delete
 export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 export declare const reviewRatingSchema: z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>;
 export type ReviewRating = z.infer<typeof reviewRatingSchema>;
+export declare const reviewStarsSchema: z.ZodNumber;
+export type ReviewStars = z.infer<typeof reviewStarsSchema>;
 export declare const reviewSortSchema: z.ZodDefault<z.ZodEnum<["score", "new"]>>;
 export type ReviewSort = z.infer<typeof reviewSortSchema>;
 export declare const reviewAuthorSchema: z.ZodObject<{
@@ -36,7 +38,8 @@ export type ReviewProductSummary = z.infer<typeof reviewProductSummarySchema>;
 export declare const reviewSchema: z.ZodObject<{
     id: z.ZodString;
     productId: z.ZodString;
-    rating: z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>;
+    stars: z.ZodDefault<z.ZodNumber>;
+    rating: z.ZodOptional<z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>>;
     body: z.ZodNullable<z.ZodString>;
     helpfulCount: z.ZodNumber;
     notHelpfulCount: z.ZodNumber;
@@ -81,13 +84,14 @@ export declare const reviewSchema: z.ZodObject<{
     status: "visible" | "hidden" | "deleted";
     id: string;
     productId: string;
-    rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
+    stars: number;
     body: string | null;
     helpfulCount: number;
     notHelpfulCount: number;
     createdAt: string;
     updatedAt: string;
     isOwnReview: boolean;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     myVote?: "helpful" | "not_helpful" | null | undefined;
     author?: {
         firstName: string;
@@ -104,12 +108,13 @@ export declare const reviewSchema: z.ZodObject<{
     status: "visible" | "hidden" | "deleted";
     id: string;
     productId: string;
-    rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     body: string | null;
     helpfulCount: number;
     notHelpfulCount: number;
     createdAt: string;
     updatedAt: string;
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     myVote?: "helpful" | "not_helpful" | null | undefined;
     isOwnReview?: boolean | undefined;
     author?: {
@@ -124,34 +129,66 @@ export declare const reviewSchema: z.ZodObject<{
     } | undefined;
 }>;
 export type Review = z.infer<typeof reviewSchema>;
-export declare const reviewCreateSchema: z.ZodObject<{
-    rating: z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>;
+export declare const reviewCreateSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
+    stars: z.ZodOptional<z.ZodNumber>;
+    rating: z.ZodOptional<z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>>;
     body: z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>;
 }, "strip", z.ZodTypeAny, {
-    rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
     body: string | null;
-}, {
-    rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
-    body?: string | null | undefined;
-}>;
-export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
-export declare const reviewPatchSchema: z.ZodEffects<z.ZodObject<{
-    rating: z.ZodOptional<z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>>;
-    body: z.ZodEffects<z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNull]>>, string | null | undefined, string | null | undefined>;
-}, "strip", z.ZodTypeAny, {
+    stars?: number | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
-    body?: string | null | undefined;
 }, {
+    stars?: number | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     body?: string | null | undefined;
 }>, {
+    body: string | null;
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+}, {
+    stars?: number | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     body?: string | null | undefined;
+}>, {
+    stars: number;
+    rating: "buy_again" | "buy_again_on_sale" | "wont_buy";
+    body: string | null;
 }, {
+    stars?: number | undefined;
     rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
     body?: string | null | undefined;
 }>;
-export type ReviewPatch = z.infer<typeof reviewPatchSchema>;
+export type ReviewCreate = z.input<typeof reviewCreateSchema>;
+export declare const reviewPatchSchema: z.ZodEffects<z.ZodEffects<z.ZodObject<{
+    stars: z.ZodOptional<z.ZodNumber>;
+    rating: z.ZodOptional<z.ZodEnum<["buy_again", "buy_again_on_sale", "wont_buy"]>>;
+    body: z.ZodEffects<z.ZodOptional<z.ZodUnion<[z.ZodString, z.ZodNull]>>, string | null | undefined, string | null | undefined>;
+}, "strip", z.ZodTypeAny, {
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}, {
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}>, {
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}, {
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}>, {
+    stars: number | undefined;
+    rating: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}, {
+    stars?: number | undefined;
+    rating?: "buy_again" | "buy_again_on_sale" | "wont_buy" | undefined;
+    body?: string | null | undefined;
+}>;
+export type ReviewPatch = z.input<typeof reviewPatchSchema>;
 export declare const reviewVoteSchema: z.ZodObject<{
     value: z.ZodEnum<["helpful", "not_helpful"]>;
 }, "strip", z.ZodTypeAny, {

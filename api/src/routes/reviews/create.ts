@@ -43,6 +43,7 @@ export async function createReviewRoute(app: FastifyInstance) {
             data: {
               userId,
               productId,
+              stars: input.stars,
               rating: input.rating,
               body: input.body ?? null,
               status,
