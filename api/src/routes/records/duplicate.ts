@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { ERROR_CODES, ITEM_LIMIT } from '@expyrico/shared';
+import { ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
@@ -8,6 +8,7 @@ import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/n
 import { notificationScheduleQueue } from '../../queues/index.js';
 import { randomUUID } from 'node:crypto';
 import { assertProductUse } from '../../services/products/product-visibility.js';
+import { lockUserPantryQuota, assertCanAddPantryItems } from '../../services/records/pantry-limits.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -23,58 +24,61 @@ export async function duplicateRecordRoute(app: FastifyInstance) {
     const userId = req.user!.id;
     const prisma = getPrisma();
 
-    const source = await prisma.record.findFirst({ where: { id, userId } });
-    if (!source) {
-      throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
-    }
+    const row = await prisma.$transaction(async (tx) => {
+      await lockUserPantryQuota(tx, userId);
 
-    // Duplicating an eligible creator-owned personal record preserves personal
-    // scope — this is always a personal_record use, never household, and it
-    // preserves the source's own already-established reference.
-    if (source.productId) {
-      await assertProductUse(userId, source.productId, {
-        purpose: 'personal_record',
-        existingRecordReference: true,
+      const source = await tx.record.findFirst({ where: { id, userId } });
+      if (!source) {
+        throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
+      }
+
+      // Duplicating an eligible creator-owned personal record preserves personal
+      // scope — this is always a personal_record use, never household, and it
+      // preserves the source's own already-established reference.
+      if (source.productId) {
+        await assertProductUse(
+          userId,
+          source.productId,
+          {
+            purpose: 'personal_record',
+            existingRecordReference: true,
+          },
+          tx,
+        );
+      }
+
+      // Duplicate counts against the active-record cap.
+      await assertCanAddPantryItems(userId, 1, tx);
+
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { notificationPreferences: true },
       });
-    }
+      const offsets =
+        body.notificationOffsetsDays ?? resolveOffsetsForUser(user?.notificationPreferences);
+      const notifyAt = computeNotifyAt(new Date(body.expiryDate), offsets);
 
-    // Duplicate counts against the active-record cap (spec §2.17).
-    const activeCount = await prisma.record.count({ where: { userId, status: 'active' } });
-    if (activeCount >= ITEM_LIMIT) {
-      throw new AppError({
-        status: 409,
-        code: ERROR_CODES.ITEM_LIMIT_REACHED,
-        title: `Item limit of ${ITEM_LIMIT} reached`,
+      return tx.record.create({
+        data: {
+          userId,
+          clientId: randomUUID(),
+          productId: source.productId,
+          customName: source.customName,
+          brand: source.brand,
+          category: source.category,
+          expiryDate: new Date(body.expiryDate),
+          purchaseDate: null,
+          quantity: Number(source.quantity),
+          unit: source.unit,
+          price: source.price,
+          store: source.store,
+          notes: source.notes,
+          photoUrl: source.photoUrl,
+          status: 'active',
+          location: source.location ?? null,
+          notifyAt,
+        },
       });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { notificationPreferences: true },
-    });
-    const offsets =
-      body.notificationOffsetsDays ?? resolveOffsetsForUser(user?.notificationPreferences);
-    const notifyAt = computeNotifyAt(new Date(body.expiryDate), offsets);
-
-    const row = await prisma.record.create({
-      data: {
-        userId,
-        clientId: randomUUID(),
-        productId: source.productId,
-        customName: source.customName,
-        brand: source.brand,
-        category: source.category,
-        expiryDate: new Date(body.expiryDate),
-        purchaseDate: null,
-        quantity: Number(source.quantity),
-        unit: source.unit,
-        price: source.price,
-        store: source.store,
-        notes: source.notes,
-        photoUrl: source.photoUrl,
-        location: source.location ?? null,
-        notifyAt,
-      },
     });
 
     await notificationScheduleQueue().add(

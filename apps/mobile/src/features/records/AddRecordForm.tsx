@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { createLocalRecord } from '../../api/records';
 import { useCreateOrResumeDraft, usePatchDraft, useProduct } from '../../api/products';
@@ -18,6 +18,8 @@ import { UnitSelector } from '../../components/UnitSelector';
 import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
 import { usePhotoLimits } from '../../utils/photo-limits';
+import { usePantryLimits } from '../../utils/pantry-limits';
+import { useMyActiveRecordCount } from './record-counters';
 interface Props {
   productId?: string | null;
   productName?: string | null;
@@ -52,6 +54,11 @@ export function AddRecordForm({
   const lastProductIdRef = useRef(productId);
   const [location, setLocation] = useState<string | null>(null);
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
+  const currentUserId = useSessionStore((s) => s.user?.id);
+  const { defaultUserPantryLimit: pantryLimit } = usePantryLimits();
+  const myActiveCount = useMyActiveRecordCount();
+  const isAtCapacity = myActiveCount >= pantryLimit;
+  const isNearCapacity = myActiveCount >= 0.9 * pantryLimit && !isAtCapacity;
   const hasUserEditedCategoryRef = useRef(false);
   const [itemName, setItemName] = useState(() => customName ?? productName ?? '');
   const [expiry, setExpiry] = useState('');
@@ -118,24 +125,30 @@ export function AddRecordForm({
   });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
   const save = async () => {
-    if (!productId && !itemName.trim()) {
+    if (isAtCapacity) {
+      Alert.alert(
+        'Pantry Limit Reached',
+        `You have reached the maximum allowed items (${pantryLimit} items). You must consume, discard, or delete existing items to add new ones.`,
+      );
+      return;
+    }
+    setError(null);
+    let finalProductId = productId ?? null;
+    if (!finalProductId && !itemName.trim()) {
       setError('Item name is required');
       return;
     }
-    if (!isoRe.test(expiry)) {
-      setError('Expiry date is required (YYYY-MM-DD)');
+    if (!expiry) {
+      setError('Expiry date is required');
       return;
     }
     const qty = Number(quantity);
-    if (!Number.isFinite(qty) || qty < 0) {
-      setError('Quantity must be a non-negative number');
+    if (!qty || qty <= 0) {
+      setError('Quantity must be greater than 0');
       return;
     }
     setBusy(true);
-    setError(null);
     try {
-      let finalProductId = productId ?? null;
-
       // If this is a custom item (no catalog product yet) and the user attached photos or has a scanned barcode,
       // create a private product draft and attach barcode/photo so it is permanently stored in catalog/cloud media
 
@@ -181,6 +194,7 @@ export function AddRecordForm({
         localPhotos: photos.map((p) => p.path),
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
+        userId: currentUserId ?? null,
       });
       onSaved(localId);
     } catch (e) {
@@ -257,6 +271,55 @@ export function AddRecordForm({
   };
   return (
     <View style={{ padding: theme.spacing.md, gap: theme.spacing.md }}>
+      {isAtCapacity ? (
+        <View
+          testID="add-record-capacity-blocked-banner"
+          style={{
+            backgroundColor: '#FDE8E8',
+            borderColor: '#E0442A',
+            borderWidth: 1,
+            borderRadius: theme.radii.md,
+            padding: theme.spacing.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <Ionicons name="alert-circle" size={20} color="#E0442A" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#E0442A', fontSize: 13, fontWeight: '700' }}>
+              Pantry Limit Reached ({myActiveCount}/{pantryLimit} items)
+            </Text>
+            <Text style={{ color: '#9B1C1C', fontSize: 12, marginTop: 2 }}>
+              You must consume, discard, or delete existing items to add new ones.
+            </Text>
+          </View>
+        </View>
+      ) : isNearCapacity ? (
+        <View
+          testID="add-record-capacity-warning-banner"
+          style={{
+            backgroundColor: '#FEEFC3',
+            borderColor: '#F5A623',
+            borderWidth: 1,
+            borderRadius: theme.radii.md,
+            padding: theme.spacing.md,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <Ionicons name="warning-outline" size={20} color="#F5A623" />
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#B45309', fontSize: 13, fontWeight: '700' }}>
+              Pantry Nearly Full ({myActiveCount}/{pantryLimit} items)
+            </Text>
+            <Text style={{ color: '#92400E', fontSize: 12, marginTop: 2 }}>
+              Consider consuming or sharing items before adding more.
+            </Text>
+          </View>
+        </View>
+      ) : null}
       {!productId ? (
         <View style={{ gap: 6 }}>
           <Text style={{ color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' }}>Item name *</Text>
@@ -684,17 +747,18 @@ export function AddRecordForm({
 
       <Pressable accessibilityRole="button"
         testID="add-record-save"
-        disabled={busy}
+        disabled={busy || isAtCapacity}
         onPress={save}
         style={{
-          backgroundColor: theme.colors.primary,
+          backgroundColor: isAtCapacity ? theme.colors.border : theme.colors.primary,
           padding: theme.spacing.lg,
           borderRadius: theme.radii.md,
           alignItems: 'center',
+          opacity: isAtCapacity ? 0.6 : 1,
         }}
       >
-        <Text style={{ color: theme.colors.primaryFg, fontWeight: '700' }}>
-          {busy ? 'Saving…' : 'Save'}
+        <Text style={{ color: isAtCapacity ? theme.colors.textMuted : theme.colors.primaryFg, fontWeight: '700' }}>
+          {isAtCapacity ? 'Pantry Limit Reached' : busy ? 'Saving…' : 'Save'}
         </Text>
       </Pressable>
       <MultiPhotoCameraModal

@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Future Tier Extensibility & End-to-End Verification"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: [1, 2, 3, 4]
@@ -114,6 +114,6 @@ Document the architectural roadmap for upcoming paid vs. free subscription tiers
 
 ## Success Criteria
 
-- [ ] Architectural documentation for future tier growth is committed.
-- [ ] Equal-timestamp page-boundary delta sync test passes against the Fastify HTTP endpoint with 0 dropped rows.
-- [ ] Android debug APK builds successfully with 0 errors.
+- [x] Architectural documentation for future tier growth is committed.
+- [x] Equal-timestamp page-boundary delta sync test passes against the Fastify HTTP endpoint with 0 dropped rows.
+- [x] Android debug APK builds successfully with 0 errors.

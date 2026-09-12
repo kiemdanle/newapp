@@ -84,6 +84,10 @@ export declare const recordCreateBaseSchema: z.ZodObject<{
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
     brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    status: z.ZodOptional<z.ZodEnum<["active", "consumed", "discarded", "expired"]>>;
+    consumedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
     expiryDate: string;
@@ -96,6 +100,10 @@ export declare const recordCreateBaseSchema: z.ZodObject<{
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
@@ -109,6 +117,10 @@ export declare const recordCreateBaseSchema: z.ZodObject<{
     unit?: string | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     location?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
@@ -128,6 +140,10 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
     brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    status: z.ZodOptional<z.ZodEnum<["active", "consumed", "discarded", "expired"]>>;
+    consumedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    discardReason: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
     expiryDate: string;
@@ -140,6 +156,10 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
@@ -153,6 +173,10 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     unit?: string | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     location?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
@@ -168,6 +192,10 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     purchaseDate?: string | null | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
 }, {
@@ -181,6 +209,10 @@ export declare const recordCreateSchema: z.ZodEffects<z.ZodObject<{
     unit?: string | undefined;
     notes?: string | null | undefined;
     photoUrl?: string | null | undefined;
+    status?: "active" | "consumed" | "discarded" | "expired" | undefined;
+    consumedAt?: string | null | undefined;
+    discardedAt?: string | null | undefined;
+    discardReason?: string | null | undefined;
     location?: string | null | undefined;
     brand?: string | null | undefined;
     notificationOffsetsDays?: number[] | undefined;
@@ -380,17 +412,27 @@ export declare const recordListQuerySchema: z.ZodObject<{
 export type RecordListQuery = z.infer<typeof recordListQuerySchema>;
 export declare const recordSyncConflictSchema: z.ZodObject<{
     clientId: z.ZodString;
-    reason: z.ZodEnum<["scope_changed", "product_unavailable"]>;
+    reason: z.ZodEnum<["scope_changed", "product_unavailable", "item_limit_reached"]>;
 }, "strip", z.ZodTypeAny, {
     clientId: string;
-    reason: "scope_changed" | "product_unavailable";
+    reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
 }, {
     clientId: string;
-    reason: "scope_changed" | "product_unavailable";
+    reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
 }>;
 export type RecordSyncConflict = z.infer<typeof recordSyncConflictSchema>;
 export declare const recordSyncBatchSchema: z.ZodObject<{
     since: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    cursor: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        updatedAt: z.ZodString;
+        id: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        updatedAt: string;
+    }, {
+        id: string;
+        updatedAt: string;
+    }>>>;
     upserts: z.ZodArray<z.ZodObject<{
         clientId: z.ZodString;
         productId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -402,7 +444,6 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notes: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         photoUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         notificationOffsetsDays: z.ZodOptional<z.ZodArray<z.ZodNumber, "many">>;
-        /** Assign the record to a household the caller belongs to; absent/null = personal. */
         householdId: z.ZodOptional<z.ZodNullable<z.ZodString>>;
         location: z.ZodEffects<z.ZodEffects<z.ZodEffects<z.ZodOptional<z.ZodNullable<z.ZodString>>, string | null, string | null | undefined>, string | null, string | null | undefined>, string | null, string | null | undefined>;
         brand: z.ZodOptional<z.ZodNullable<z.ZodString>>;
@@ -478,6 +519,10 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notificationOffsetsDays?: number[] | undefined;
     }[];
     deletes: string[];
+    cursor?: {
+        id: string;
+        updatedAt: string;
+    } | null | undefined;
     since?: string | null | undefined;
 }, {
     upserts: {
@@ -502,6 +547,10 @@ export declare const recordSyncBatchSchema: z.ZodObject<{
         notificationOffsetsDays?: number[] | undefined;
     }[];
     deletes: string[];
+    cursor?: {
+        id: string;
+        updatedAt: string;
+    } | null | undefined;
     since?: string | null | undefined;
 }>;
 export type RecordSyncBatch = z.infer<typeof recordSyncBatchSchema>;
@@ -577,15 +626,26 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
     deletedIds: z.ZodArray<z.ZodString, "many">;
     conflicts: z.ZodDefault<z.ZodArray<z.ZodObject<{
         clientId: z.ZodString;
-        reason: z.ZodEnum<["scope_changed", "product_unavailable"]>;
+        reason: z.ZodEnum<["scope_changed", "product_unavailable", "item_limit_reached"]>;
     }, "strip", z.ZodTypeAny, {
         clientId: string;
-        reason: "scope_changed" | "product_unavailable";
+        reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
     }, {
         clientId: string;
-        reason: "scope_changed" | "product_unavailable";
+        reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
     }>, "many">>;
     householdIds: z.ZodDefault<z.ZodArray<z.ZodString, "many">>;
+    nextCursor: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+        updatedAt: z.ZodString;
+        id: z.ZodString;
+    }, "strip", z.ZodTypeAny, {
+        id: string;
+        updatedAt: string;
+    }, {
+        id: string;
+        updatedAt: string;
+    }>>>;
+    hasMore: z.ZodDefault<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
     serverTime: string;
     changes: {
@@ -614,9 +674,14 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
     deletedIds: string[];
     conflicts: {
         clientId: string;
-        reason: "scope_changed" | "product_unavailable";
+        reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
     }[];
     householdIds: string[];
+    hasMore: boolean;
+    nextCursor?: {
+        id: string;
+        updatedAt: string;
+    } | null | undefined;
 }, {
     serverTime: string;
     changes: {
@@ -643,11 +708,16 @@ export declare const recordSyncResponseSchema: z.ZodObject<{
         brand?: string | null | undefined;
     }[];
     deletedIds: string[];
+    nextCursor?: {
+        id: string;
+        updatedAt: string;
+    } | null | undefined;
     conflicts?: {
         clientId: string;
-        reason: "scope_changed" | "product_unavailable";
+        reason: "scope_changed" | "product_unavailable" | "item_limit_reached";
     }[] | undefined;
     householdIds?: string[] | undefined;
+    hasMore?: boolean | undefined;
 }>;
 export type RecordSyncResponse = z.infer<typeof recordSyncResponseSchema>;
 export declare const pushTokenRegisterSchema: z.ZodObject<{

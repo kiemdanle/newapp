@@ -15,6 +15,7 @@ import { triggerSyncSoon } from '../db/triggers';
 import { imageDiskCache } from '../cache/image-disk-cache';
 import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-revalidator';
 
+import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 const KEY_CACHED_USER = '@pantry_cached_user';
 
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
@@ -46,6 +47,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   resetPantryViewModeState();
   await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   useDrawerStore.getState().reset();
+  syncQuotaErrorsStore.clear();
 }
 interface SessionState {
   user: User | null;

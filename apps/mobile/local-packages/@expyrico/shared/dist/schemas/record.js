@@ -57,6 +57,10 @@ export const recordCreateBaseSchema = z.object({
     householdId: z.string().uuid().nullable().optional(),
     location: locationField,
     brand: z.string().trim().min(1).max(120).nullable().optional(),
+    status: recordStatusSchema.optional(),
+    consumedAt: z.string().datetime().nullable().optional(),
+    discardedAt: z.string().datetime().nullable().optional(),
+    discardReason: z.string().trim().min(1).max(50).nullable().optional(),
 });
 export const recordCreateSchema = recordCreateBaseSchema.refine((v) => Boolean(v.productId) || Boolean(v.customName), { message: 'one of productId | customName is required' });
 export const recordPatchSchema = z.object({
@@ -96,10 +100,17 @@ export const recordSyncConflictSchema = z.object({
     // can no longer be used this way (draft/pending/changes_required it isn't
     // entitled to, or a newly-private/report-hidden reference) — the item is
     // never silently dropped, it always surfaces here instead.
-    reason: z.enum(['scope_changed', 'product_unavailable']),
+    reason: z.enum(['scope_changed', 'product_unavailable', 'item_limit_reached']),
 });
 export const recordSyncBatchSchema = z.object({
     since: z.string().datetime().nullable().optional(),
+    cursor: z
+        .object({
+        updatedAt: z.string().datetime(),
+        id: z.string().uuid(),
+    })
+        .nullable()
+        .optional(),
     upserts: z
         .array(recordCreateBaseSchema.extend({
         id: z.string().uuid().optional(),
@@ -118,6 +129,14 @@ export const recordSyncResponseSchema = z.object({
     deletedIds: z.array(z.string().uuid()),
     conflicts: z.array(recordSyncConflictSchema).default([]),
     householdIds: z.array(z.string().uuid()).default([]),
+    nextCursor: z
+        .object({
+        updatedAt: z.string().datetime(),
+        id: z.string().uuid(),
+    })
+        .nullable()
+        .optional(),
+    hasMore: z.boolean().default(false),
 });
 const deviceTokenSchema = z
     .string()

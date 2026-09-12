@@ -10,6 +10,8 @@ import { ScopeToggle } from '../../../src/features/households/ScopeToggle';
 import { usePantryScope } from '../../../src/store/pantryScope';
 import { useActiveRecords, usePantryHistoryRecords } from '../../../src/api/records';
 import { groupRecords } from '../../../src/features/records/groupRecords';
+import { usePantryLimits } from '../../../src/utils/pantry-limits';
+import { useMyActiveRecordCount } from '../../../src/features/records/record-counters';
 import { useTheme } from '../../../src/theme/useTheme';
 import { Logo } from '../../../src/components/Logo';
 import { HamburgerButton } from '../../../src/components/HamburgerButton';
@@ -25,6 +27,10 @@ export default function HomeTab() {
   const { scope, householdId } = usePantryScope();
   const isSelectionMode = useSelectionModeStore((s) => s.isSelectionMode);
   const previousScope = useRef({ scope, householdId });
+  const { defaultUserPantryLimit: pantryLimit } = usePantryLimits();
+  const myActiveCount = useMyActiveRecordCount();
+  const capacityRatio = pantryLimit > 0 ? myActiveCount / pantryLimit : 0;
+
 
   useEffect(() => {
     if (
@@ -165,12 +171,19 @@ export default function HomeTab() {
             style={[
               styles.tabText,
               {
-                color: activeTab === 'in_stock' ? '#3A8F6F' : theme.colors.textMuted,
+                color:
+                  capacityRatio >= 1
+                    ? '#E0442A'
+                    : capacityRatio >= 0.9
+                    ? '#F5A623'
+                    : activeTab === 'in_stock'
+                    ? '#3A8F6F'
+                    : theme.colors.textMuted,
                 fontWeight: activeTab === 'in_stock' ? '700' : '600',
               },
             ]}
           >
-            In Stock ({records.length})
+            In Stock ({myActiveCount}/{pantryLimit})
           </Text>
         </Pressable>
 

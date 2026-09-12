@@ -37,6 +37,7 @@ import { feedbackRoutes } from './routes/feedback/index.js';
 import { apiErrorRecorderPlugin } from './plugins/api-error-recorder.js';
 import { pantryUnitsClientRoute } from './routes/settings/pantry-units.js';
 import { photoLimitsClientRoute } from './routes/settings/photo-limits.js';
+import { pantryLimitsClientRoute } from './routes/settings/pantry-limits.js';
 import { startWorkers, stopWorkers } from './workers/runner.js';
 import { probeMediaCapabilities } from './services/products/product-image-processor.js';
 import { installMediaFreezePolicy } from './services/products/product-media-freeze.js';
@@ -167,6 +168,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(adminRoutes, { prefix: '/v1/admin' });
   await app.register(pantryUnitsClientRoute, { prefix: '/v1' });
   await app.register(photoLimitsClientRoute, { prefix: '/v1' });
+  await app.register(pantryLimitsClientRoute, { prefix: '/v1' });
 
   return app;
 }

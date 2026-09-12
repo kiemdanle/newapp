@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { recordSchema, recordCreateSchema, recordPatchSchema } from './record';
+import {
+  recordSchema,
+  recordCreateSchema,
+  recordPatchSchema,
+  recordSyncConflictSchema,
+  recordSyncBatchSchema,
+  recordSyncResponseSchema,
+} from './record';
 
 describe('recordSchema location validation', () => {
   const baseRecord = {
@@ -143,5 +150,96 @@ describe('recordCreateSchema and recordPatchSchema brand validation', () => {
         brand: 'a'.repeat(121),
       })
     ).toThrow();
+  });
+});
+
+describe('recordCreateSchema terminal fields & sync schemas', () => {
+  const baseCreate = {
+    clientId: '123e4567-e89b-12d3-a456-426614174001',
+    customName: 'Yogurt',
+    expiryDate: '2026-09-20',
+  };
+
+  it('accepts optional status and terminal history fields in recordCreateSchema', () => {
+    const parsed = recordCreateSchema.parse({
+      ...baseCreate,
+      status: 'consumed',
+      consumedAt: '2026-09-12T10:00:00.000Z',
+    });
+    expect(parsed.status).toBe('consumed');
+    expect(parsed.consumedAt).toBe('2026-09-12T10:00:00.000Z');
+
+    const discarded = recordCreateSchema.parse({
+      ...baseCreate,
+      status: 'discarded',
+      discardedAt: '2026-09-12T10:00:00.000Z',
+      discardReason: 'spoiled',
+    });
+    expect(discarded.status).toBe('discarded');
+    expect(discarded.discardReason).toBe('spoiled');
+  });
+
+  it('validates recordSyncConflictSchema with item_limit_reached', () => {
+    const conflict = recordSyncConflictSchema.parse({
+      clientId: '123e4567-e89b-12d3-a456-426614174001',
+      reason: 'item_limit_reached',
+    });
+    expect(conflict.reason).toBe('item_limit_reached');
+
+    expect(() =>
+      recordSyncConflictSchema.parse({
+        clientId: '123e4567-e89b-12d3-a456-426614174001',
+        reason: 'invalid_reason',
+      })
+    ).toThrow();
+  });
+
+  it('parses recordSyncBatchSchema with and without composite cursor', () => {
+    const withoutCursor = recordSyncBatchSchema.parse({
+      upserts: [],
+      deletes: [],
+    });
+    expect(withoutCursor.cursor).toBeUndefined();
+
+    const withCursor = recordSyncBatchSchema.parse({
+      cursor: {
+        updatedAt: '2026-09-12T10:00:00.000Z',
+        id: '123e4567-e89b-12d3-a456-426614174001',
+      },
+      upserts: [],
+      deletes: [],
+    });
+    expect(withCursor.cursor).toEqual({
+      updatedAt: '2026-09-12T10:00:00.000Z',
+      id: '123e4567-e89b-12d3-a456-426614174001',
+    });
+  });
+
+  it('parses recordSyncResponseSchema with nextCursor and hasMore', () => {
+    const parsed = recordSyncResponseSchema.parse({
+      serverTime: '2026-09-12T12:00:00.000Z',
+      changes: [],
+      deletedIds: [],
+      conflicts: [],
+      householdIds: [],
+      nextCursor: {
+        updatedAt: '2026-09-12T10:00:00.000Z',
+        id: '123e4567-e89b-12d3-a456-426614174001',
+      },
+      hasMore: true,
+    });
+    expect(parsed.hasMore).toBe(true);
+    expect(parsed.nextCursor).toEqual({
+      updatedAt: '2026-09-12T10:00:00.000Z',
+      id: '123e4567-e89b-12d3-a456-426614174001',
+    });
+
+    const defaults = recordSyncResponseSchema.parse({
+      serverTime: '2026-09-12T12:00:00.000Z',
+      changes: [],
+      deletedIds: [],
+    });
+    expect(defaults.hasMore).toBe(false);
+    expect(defaults.nextCursor).toBeUndefined();
   });
 });

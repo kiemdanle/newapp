@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Admin Dashboard Settings UI & User Inspection Hooks"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: [2]
@@ -110,9 +110,9 @@ apps/admin/src/
 
 ## Success Criteria
 
-- [ ] `/settings/pantry-limits` is accessible via Admin sidebar.
-- [ ] Admins can adjust the limit and save successfully.
-- [ ] Read failures display an error/retry state and do not render default values that could overwrite production limits.
-- [ ] Partial patch saves only the changed limit without wiping `tierLimits`.
-- [ ] Reducing the limit below the active setting prompts a confirmation dialog before saving.
-- [ ] Unit tests pass in `apps/admin`.
+- [x] `/settings/pantry-limits` is accessible via Admin sidebar.
+- [x] Admins can adjust the limit and save successfully.
+- [x] Read failures display an error/retry state and do not render default values that could overwrite production limits.
+- [x] Partial patch saves only the changed limit without wiping `tierLimits`.
+- [x] Reducing the limit below the active setting prompts a confirmation dialog before saving.
+- [x] Unit tests pass in `apps/admin`.

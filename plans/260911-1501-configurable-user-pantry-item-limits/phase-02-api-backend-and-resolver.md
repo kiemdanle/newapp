@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "API Backend Settings, Dynamic Resolver & Limit Enforcement"
-status: pending
+status: completed
 priority: P1
 effort: "6h"
 dependencies: [1]
@@ -248,10 +248,10 @@ Implement the backend settings store, in-memory caching with TTL and invalidatio
 
 ## Success Criteria
 
-- [ ] All positive active transitions (create, duplicate, patch reactivation, giveaway cancel, sync) enforce quota against the record's true owner.
-- [ ] Concurrent requests from the same user serialize under advisory lock without overshooting.
-- [ ] 409 quota errors are not cached in Redis, enabling immediate retry after capacity is freed.
-- [ ] Idempotent retries of committed creations return 201 without quota conflict.
-- [ ] Delta sync paginates deterministically over identical-timestamp boundaries without dropping rows.
-- [ ] Delta sync HTTP endpoint outputs `nextCursor` and `hasMore`.
-- [ ] All integration and concurrency tests pass against PostgreSQL.
+- [x] All positive active transitions (create, duplicate, patch reactivation, giveaway cancel, sync) enforce quota against the record's true owner.
+- [x] Concurrent requests from the same user serialize under advisory lock without overshooting.
+- [x] 409 quota errors are not cached in Redis, enabling immediate retry after capacity is freed.
+- [x] Idempotent retries of committed creations return 201 without quota conflict.
+- [x] Delta sync paginates deterministically over identical-timestamp boundaries without dropping rows.
+- [x] Delta sync HTTP endpoint outputs `nextCursor` and `hasMore`.
+- [x] All integration and concurrency tests pass against PostgreSQL.

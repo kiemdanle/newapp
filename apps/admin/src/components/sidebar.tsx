@@ -31,6 +31,7 @@ import {
   Gift,
   HelpCircle,
   Camera,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -60,6 +61,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Gift,
   HelpCircle,
   Camera,
+  Layers,
 };
 
 export function Sidebar({

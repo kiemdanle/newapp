@@ -56,6 +56,10 @@ import {
   type ContributorLevelsSetting,
   photoLimitsSettingsSchema,
   type PhotoLimitsSettings,
+  pantryLimitsSettingsSchema,
+  pantryLimitsPatchSchema,
+  type PantryLimitsSettings,
+  type PantryLimitsPatch,
   adminRowSchema,
   adminDealsListSchema,
   adminDealRowSchema,
@@ -319,6 +323,17 @@ export const serverAdminApi = {
           method: 'PATCH',
           body,
         }).then((r) => photoLimitsSettingsSchema.parse(r)),
+    },
+    pantryLimits: {
+      get: () =>
+        apiServerFetch('/v1/admin/settings/pantry-limits').then((r) =>
+          pantryLimitsSettingsSchema.parse(r),
+        ),
+      patch: (body: PantryLimitsPatch) =>
+        apiServerFetch('/v1/admin/settings/pantry-limits', {
+          method: 'PATCH',
+          body,
+        }).then((r) => pantryLimitsSettingsSchema.parse(r)),
     },
     notificationTemplates: {
       list: () =>

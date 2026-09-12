@@ -68,6 +68,7 @@ export const NAV: NavSection[] = [
       { label: 'Feature flags', href: '/settings/feature-flags', icon: 'ToggleRight' },
       { label: 'Contributor levels', href: '/settings/contributor-levels', icon: 'Award' },
       { label: 'Pantry units', href: '/settings/pantry-units', icon: 'Scale' },
+      { label: 'Pantry limits', href: '/settings/pantry-limits', icon: 'Layers' },
       { label: 'Photo upload limits', href: '/settings/photo-limits', icon: 'Camera' },
       { label: 'Notification templates', href: '/settings/notification-templates', icon: 'Bell' },
       { label: 'Moderation', href: '/settings/moderation', icon: 'Shield' },

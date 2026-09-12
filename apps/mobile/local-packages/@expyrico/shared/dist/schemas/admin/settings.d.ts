@@ -29,10 +29,10 @@ export declare const productCreationSettingsSchema: z.ZodObject<{
     mode: z.ZodEnum<["off", "internal", "all"]>;
     requireApproval: z.ZodDefault<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
-    mode: "off" | "all" | "internal";
+    mode: "off" | "internal" | "all";
     requireApproval: boolean;
 }, {
-    mode: "off" | "all" | "internal";
+    mode: "off" | "internal" | "all";
     requireApproval?: boolean | undefined;
 }>;
 export type ProductCreationSettings = z.infer<typeof productCreationSettingsSchema>;
@@ -45,18 +45,18 @@ export declare const notificationTemplateSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    updatedAt: string;
     key: string;
     title: string;
     body: string;
     enabled: boolean;
+    updatedAt: string;
 }, {
     id: string;
-    updatedAt: string;
     key: string;
     title: string;
     body: string;
     enabled: boolean;
+    updatedAt: string;
 }>;
 export declare const notificationTemplatePatchSchema: z.ZodEffects<z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
@@ -88,18 +88,18 @@ export declare const adminRowSchema: z.ZodObject<{
     createdAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }, {
     id: string;
-    createdAt: string;
     email: string;
     firstName: string;
     lastName: string;
     totpEnabledAt: string | null;
+    createdAt: string;
 }>;
 export type AdminRow = z.infer<typeof adminRowSchema>;
 export declare const adminInviteSchema: z.ZodObject<{
@@ -142,4 +142,35 @@ export declare const PHOTO_COMPRESSION_CONFIG: {
     readonly qualityFloor: 0.7;
     readonly maxFileBytes: number;
 };
+export declare const USER_PANTRY_TIERS: readonly ["free", "pro", "supporter"];
+export type UserPantryTier = (typeof USER_PANTRY_TIERS)[number];
+export declare const pantryLimitsSettingsSchema: z.ZodObject<{
+    defaultUserPantryLimit: z.ZodDefault<z.ZodNumber>;
+    tierLimits: z.ZodDefault<z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNumber>>>;
+}, "strip", z.ZodTypeAny, {
+    defaultUserPantryLimit: number;
+    tierLimits: Record<string, number>;
+}, {
+    defaultUserPantryLimit?: number | undefined;
+    tierLimits?: Record<string, number> | undefined;
+}>;
+export type PantryLimitsSettings = z.infer<typeof pantryLimitsSettingsSchema>;
+export declare const pantryLimitsPatchSchema: z.ZodEffects<z.ZodObject<{
+    defaultUserPantryLimit: z.ZodOptional<z.ZodNumber>;
+    tierLimits: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodNumber>>;
+}, "strip", z.ZodTypeAny, {
+    defaultUserPantryLimit?: number | undefined;
+    tierLimits?: Record<string, number> | undefined;
+}, {
+    defaultUserPantryLimit?: number | undefined;
+    tierLimits?: Record<string, number> | undefined;
+}>, {
+    defaultUserPantryLimit?: number | undefined;
+    tierLimits?: Record<string, number> | undefined;
+}, {
+    defaultUserPantryLimit?: number | undefined;
+    tierLimits?: Record<string, number> | undefined;
+}>;
+export type PantryLimitsPatch = z.infer<typeof pantryLimitsPatchSchema>;
+export declare const DEFAULT_PANTRY_LIMITS: PantryLimitsSettings;
 //# sourceMappingURL=settings.d.ts.map

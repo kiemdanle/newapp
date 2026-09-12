@@ -1,5 +1,5 @@
 import type { HouseholdRole } from '@expyrico/shared';
-import type { Record } from '@prisma/client';
+import type { Prisma, PrismaClient, Record } from '@prisma/client';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
 import { ERROR_CODES } from '@expyrico/shared';
@@ -12,9 +12,22 @@ export function canEditRecordHousehold(ctx: { isMember: boolean }): boolean {
   return ctx.isMember;
 }
 
-export async function assertMember(householdId: string, userId: string) {
-  const prisma = getPrisma();
-  const m = await prisma.householdMember.findUnique({
+export async function lockHouseholdRow(
+  tx: Prisma.TransactionClient | PrismaClient,
+  householdId: string,
+): Promise<void> {
+  const hex = householdId.replace(/-/g, '').slice(0, 15);
+  const lockKey = parseInt(hex, 16);
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
+}
+
+export async function assertMember(
+  householdId: string,
+  userId: string,
+  tx?: Prisma.TransactionClient | PrismaClient,
+) {
+  const client = tx ?? getPrisma();
+  const m = await client.householdMember.findUnique({
     where: { householdId_userId: { householdId, userId } },
   });
   if (!m) throw new AppError({ status: 403, code: ERROR_CODES.HOUSEHOLD_NOT_MEMBER, title: 'Not a member of this household' });

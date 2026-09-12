@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Shared Schemas & Tier Contracts"
-status: pending
+status: completed
 priority: P1
 effort: "4h"
 dependencies: []
@@ -136,10 +136,10 @@ packages/shared/src/
 
 ## Success Criteria
 
-- [ ] `pantryLimitsSettingsSchema` validates integer ranges [1, 10000] with default 50.
-- [ ] `pantryLimitsPatchSchema` allows updating `defaultUserPantryLimit` without overriding `tierLimits`.
-- [ ] `recordCreateSchema` supports optional status and terminal timestamps for inactive history entries.
-- [ ] `recordSyncBatchSchema` and `recordSyncResponseSchema` support composite `(updatedAt, id)` cursors.
-- [ ] `recordSyncConflictSchema` includes `item_limit_reached`.
-- [ ] Unit tests pass for `@expyrico/shared`.
-- [ ] `node scripts/check-vendored-shared-dist.mjs` passes with zero discrepancies.
+- [x] `pantryLimitsSettingsSchema` validates integer ranges [1, 10000] with default 50.
+- [x] `pantryLimitsPatchSchema` allows updating `defaultUserPantryLimit` without overriding `tierLimits`.
+- [x] `recordCreateSchema` supports optional status and terminal timestamps for inactive history entries.
+- [x] `recordSyncBatchSchema` and `recordSyncResponseSchema` support composite `(updatedAt, id)` cursors.
+- [x] `recordSyncConflictSchema` includes `item_limit_reached`.
+- [x] Unit tests pass for `@expyrico/shared`.
+- [x] `node scripts/check-vendored-shared-dist.mjs` passes with zero discrepancies.

@@ -14,6 +14,8 @@ export async function syncRecordsRoute(app: FastifyInstance) {
         deletedIds: result.deletedIds,
         conflicts: result.conflicts,
         householdIds: result.householdIds,
+        nextCursor: result.nextCursor ?? null,
+        hasMore: result.hasMore ?? false,
       }),
     );
   });

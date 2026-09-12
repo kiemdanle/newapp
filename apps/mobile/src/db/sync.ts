@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from './index';
 import { apiClient } from '../api/client';
 import { getItem, setItem } from '../auth/secure-store';
-import type { RecordSyncResponse, RecordSyncBatch } from '@expyrico/shared';
+import { ERROR_CODES, type RecordSyncResponse, type RecordSyncBatch } from '@expyrico/shared';
+import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 
 const LAST_SYNC_KEY = 'pantry.lastSyncAt';
 
@@ -47,14 +48,55 @@ export function getWirePhotoUrl(raw: string | null | undefined): string | null {
 
 async function pushPending(): Promise<void> {
   const recordsCol = database.get<RecordModel>('records');
-  const dirty = await recordsCol.query(Q.where('pending_sync', true)).fetch();
+
+  // STEP 1: Process deletes first
   const deletes = await recordsCol.query(Q.where('pending_delete', true)).fetch();
+  for (const rec of deletes) {
+    try {
+      if (rec.serverId) {
+        await apiClient.delete(`/records/${rec.serverId}`);
+      }
+    } catch (err: unknown) {
+      const e = err as { status?: number; response?: { status?: number } };
+      const status = e?.status ?? e?.response?.status;
+      if (status !== 403 && status !== 404) {
+        throw err;
+      }
+    }
+    await database.write(async () => {
+      await removeRecordLocalPhotos(rec.clientId);
+      await rec.destroyPermanently();
+    });
+    syncQuotaErrorsStore.remove(rec.clientId);
+  }
+
+  // STEP 2: Query surviving dirty records (pending_delete == false)
+  const dirty = await recordsCol
+    .query(Q.where('pending_sync', true), Q.where('pending_delete', false))
+    .fetch();
+
+  // Partition dirty records to process capacity-freeing updates first
+  const decreasing: RecordModel[] = [];
+  const neutral: RecordModel[] = [];
+  const positive: RecordModel[] = [];
 
   for (const rec of dirty) {
+    if (!rec.serverId) {
+      positive.push(rec);
+    } else if (rec.status === 'consumed' || rec.status === 'discarded') {
+      decreasing.push(rec);
+    } else {
+      neutral.push(rec);
+    }
+  }
+
+  const orderedDirty = [...decreasing, ...neutral, ...positive];
+
+  for (const rec of orderedDirty) {
     try {
       const clientId = rec.clientId || uuidv4();
       if (!rec.serverId) {
-        // CREATE — POST /v1/records (includes householdId for household sharing)
+        // CREATE — POST /v1/records
         const body: Record<string, unknown> = {
           clientId,
           productId: rec.productId,
@@ -66,9 +108,14 @@ async function pushPending(): Promise<void> {
           unit: rec.unit,
           notes: rec.notes,
           photoUrl: getWirePhotoUrl(rec.photoUrl),
+          status: rec.status,
+          consumedAt: rec.consumedAt ? rec.consumedAt.toISOString() : null,
+          discardedAt: rec.discardedAt ? rec.discardedAt.toISOString() : null,
+          discardReason: rec.discardReason ?? null,
         };
         if (rec.location) body.location = rec.location;
         if (rec.householdId) body.householdId = rec.householdId;
+
         const res = await apiClient.post<{ id: string }>(
           '/records',
           body,
@@ -76,12 +123,20 @@ async function pushPending(): Promise<void> {
         );
         const remoteId = res.id;
         await database.write(async () => {
-          await rec.update((r) => {
-            r.serverId = remoteId;
-            r.clientId = clientId;
-            r.pendingSync = false;
-          });
+          try {
+            const fresh = await recordsCol.find(rec.id);
+            if (fresh && !fresh.pendingDelete) {
+              await fresh.update((r) => {
+                r.serverId = remoteId;
+                r.clientId = clientId;
+                r.pendingSync = false;
+              });
+            }
+          } catch {
+            // Model might have been destroyed locally during network await
+          }
         });
+        syncQuotaErrorsStore.remove(clientId);
       } else {
         // UPDATE — PATCH /v1/records/:id
         const patch: Record<string, unknown> = {
@@ -100,66 +155,68 @@ async function pushPending(): Promise<void> {
         if (rec.discardedAt) patch.discardedAt = rec.discardedAt.toISOString();
         if (rec.discardReason !== undefined && rec.discardReason !== null) patch.discardReason = rec.discardReason;
         if (rec.locationDirty) patch.location = rec.location ? rec.location.trim() : null;
+
         await apiClient.patch(`/records/${rec.serverId}`, patch);
         await database.write(async () => {
-          await rec.update((r) => {
-            if (r.status === patch.status) {
-              r.pendingSync = false;
+          try {
+            const fresh = await recordsCol.find(rec.id);
+            if (fresh && !fresh.pendingDelete) {
+              await fresh.update((r) => {
+                if (r.status === patch.status) {
+                  r.pendingSync = false;
+                }
+                if (patch.location !== undefined) {
+                  r.locationDirty = false;
+                }
+              });
             }
-            if (patch.location !== undefined) {
-              r.locationDirty = false;
-            }
-          });
+          } catch {
+            // Model might have been destroyed locally during network await
+          }
         });
+        syncQuotaErrorsStore.remove(rec.clientId);
       }
     } catch (err: unknown) {
       let status: number | undefined;
+      let errorCode: string | undefined;
       if (err && typeof err === 'object') {
-        const e = err as { status?: number; response?: { status?: number } };
+        const e = err as { status?: number; response?: { status?: number; data?: { code?: string } }; data?: { code?: string } };
         status = e.status ?? e.response?.status;
+        errorCode = e.response?.data?.code ?? e.data?.code;
       }
+
+      // Check for 409 item_limit_reached quota error (both POST create and PATCH restoration)
+      if (status === 409 && (errorCode === ERROR_CODES.ITEM_LIMIT_REACHED || errorCode === 'item_limit_reached')) {
+        syncQuotaErrorsStore.add(rec.clientId);
+        // Do not throw; preserve pendingSync=true and continue loop
+        continue;
+      }
+
       if (rec.householdId && (status === 403 || status === 404)) {
-        // Membership was revoked remotely while offline:
-        // preserve the user's item by safely reverting householdId to null and clearing pendingSync.
         await database.write(async () => {
-          await rec.update((r) => {
-            r.householdId = null;
-            r.pendingSync = false;
-          });
+          try {
+            const fresh = await recordsCol.find(rec.id);
+            if (fresh && !fresh.pendingDelete) {
+              await fresh.update((r) => {
+                r.householdId = null;
+                r.pendingSync = false;
+              });
+            }
+          } catch {}
         });
       } else {
         throw err;
       }
     }
   }
-
-  for (const rec of deletes) {
-    try {
-      if (rec.serverId) {
-        await apiClient.delete(`/records/${rec.serverId}`);
-      }
-    } catch (err: any) {
-      const status = err?.status ?? err?.response?.status;
-      if (status !== 403 && status !== 404) {
-        throw err;
-      }
-    }
-    await database.write(async () => {
-      await removeRecordLocalPhotos(rec.clientId);
-      await rec.destroyPermanently();
-    });
-  }
 }
 
-async function pullSince(): Promise<void> {
-  const since = await loadLastSync();
-  const body: RecordSyncBatch = {
-    since: since ? since.toISOString() : null,
-    upserts: [],
-    deletes: [],
-  };
-  const res = await apiClient.post<RecordSyncResponse>('/records/sync', body);
-  const { changes, deletedIds, conflicts, serverTime } = res;
+async function applySyncChanges(
+  changes: RecordSyncResponse['changes'],
+  deletedIds: string[],
+  conflicts: RecordSyncResponse['conflicts'],
+  householdIds?: string[],
+): Promise<void> {
   const recordsCol = database.get<RecordModel>('records');
 
   await database.write(async () => {
@@ -198,19 +255,16 @@ async function pullSince(): Promise<void> {
       }
     }
 
-    // 2. Apply incoming changes with split conflict policy:
-    //    - Household records (householdId != null): SERVER WINS — unconditional overwrite.
-    //    - Personal records (householdId == null): keep the LWW merge (skip if local is newer,
-    //      or just accept server since personal records sync via LWW on push).
+    // 2. Apply incoming changes with split conflict policy
     for (const ch of changes) {
-      // Skip scope-change conflicts already handled above.
       if (conflictClientIds.has(ch.clientId)) continue;
+      // Protect quota-rejected pending restores from being overwritten by older server state
+      if (syncQuotaErrorsStore.has(ch.clientId)) continue;
 
       const existing = await recordsCol.query(Q.where('client_id', ch.clientId)).fetch();
       const hit = existing[0];
 
       if (ch.householdId) {
-        // Household record — server-authoritative: unconditionally overwrite local.
         if (hit) {
           await hit.update((r) => {
             r.serverId = ch.id;
@@ -263,9 +317,7 @@ async function pullSince(): Promise<void> {
           });
         }
       } else {
-        // Personal record — keep the LWW merge: only apply if no local newer unsynced edit.
         if (hit) {
-          // Skip if local has a newer pending edit (LWW: local will push on next cycle).
           if (hit.pendingSync) continue;
           await hit.update((r) => {
             r.serverId = ch.id;
@@ -319,12 +371,14 @@ async function pullSince(): Promise<void> {
         }
       }
     }
+
     for (const id of deletedIds) {
       const existing = await recordsCol.query(Q.where('server_id', id)).fetch();
       for (const e of existing) await e.destroyPermanently();
     }
-    if (res.householdIds && res.householdIds.length >= 0) {
-      const accessibleHhIds = new Set(res.householdIds);
+
+    if (householdIds && householdIds.length >= 0) {
+      const accessibleHhIds = new Set(householdIds);
       const localHouseholdRecords = await recordsCol
         .query(Q.where('household_id', Q.notEq(null)))
         .fetch();
@@ -335,8 +389,44 @@ async function pullSince(): Promise<void> {
       }
     }
   });
+}
 
-  await saveLastSync(new Date(serverTime));
+async function pullSince(): Promise<void> {
+  const since = await loadLastSync();
+  let cursor: { updatedAt: string; id: string } | null = null;
+  let initialServerTime: string | null = null;
+  let hasMore = true;
+
+  while (hasMore) {
+    const body: RecordSyncBatch = {
+      since: cursor ? null : (since ? since.toISOString() : null),
+      cursor,
+      upserts: [],
+      deletes: [],
+    };
+    const res = await apiClient.post<RecordSyncResponse>('/records/sync', body);
+    if (!initialServerTime) {
+      initialServerTime = res.serverTime;
+    }
+    await applySyncChanges(res.changes, res.deletedIds, res.conflicts, res.householdIds);
+
+    if (
+      res.hasMore &&
+      (!res.nextCursor ||
+        (cursor &&
+          res.nextCursor.id === cursor.id &&
+          res.nextCursor.updatedAt === cursor.updatedAt))
+    ) {
+      throw new Error('Sync protocol error: non-advancing cursor received');
+    }
+
+    cursor = res.nextCursor ?? null;
+    hasMore = Boolean(res.hasMore && cursor);
+  }
+
+  if (!hasMore && initialServerTime) {
+    await saveLastSync(new Date(initialServerTime));
+  }
 }
 
 /**

@@ -93,11 +93,11 @@ This plan delivers a complete, dual-horizon solution:
 
 | # | Phase | File | Status | Description |
 |---|-------|------|--------|-------------|
-| 1 | **Shared Schemas & Contracts** | [`phase-01-shared-schemas-and-tier-contracts.md`](./phase-01-shared-schemas-and-tier-contracts.md) | Pending | Define Zod schemas, defaults, sync conflict types, and sync vendored dist. |
-| 2 | **API Backend & Resolver** | [`phase-02-api-backend-and-resolver.md`](./phase-02-api-backend-and-resolver.md) | Pending | In-memory cached settings, dynamic resolver, positive transition enforcement, advisory locks, concurrency tests. |
-| 3 | **Admin Settings UI** | [`phase-03-admin-settings-ui.md`](./phase-03-admin-settings-ui.md) | Pending | Admin settings page, server actions, presets, audit logging, and future tier blueprint card. |
-| 4 | **Mobile Awareness & UI** | [`phase-04-mobile-pantry-limit-awareness.md`](./phase-04-mobile-pantry-limit-awareness.md) | Pending | `usePantryLimits` hook, AddRecordForm limit notice, duplicate alert, resilient `pushPending` reordering, quota isolation. |
-| 5 | **Future Tier Extensibility** | [`phase-05-future-tier-extensibility-and-verification.md`](./phase-05-future-tier-extensibility-and-verification.md) | Pending | Entitlement architecture validation, integration tests, full-stack verification. |
+| 1 | **Shared Schemas & Contracts** | [`phase-01-shared-schemas-and-tier-contracts.md`](./phase-01-shared-schemas-and-tier-contracts.md) | Completed | Define Zod schemas, defaults, sync conflict types, and sync vendored dist. |
+| 2 | **API Backend & Resolver** | [`phase-02-api-backend-and-resolver.md`](./phase-02-api-backend-and-resolver.md) | Completed | In-memory cached settings, dynamic resolver, positive transition enforcement, advisory locks, concurrency tests. |
+| 3 | **Admin Settings UI** | [`phase-03-admin-settings-ui.md`](./phase-03-admin-settings-ui.md) | Completed | Admin settings page, server actions, presets, audit logging, and future tier blueprint card. |
+| 4 | **Mobile Awareness & UI** | [`phase-04-mobile-pantry-limit-awareness.md`](./phase-04-mobile-pantry-limit-awareness.md) | Completed | `usePantryLimits` hook, AddRecordForm limit notice, duplicate alert, resilient `pushPending` reordering, quota isolation. |
+| 5 | **Future Tier Extensibility** | [`phase-05-future-tier-extensibility-and-verification.md`](./phase-05-future-tier-extensibility-and-verification.md) | Completed | Entitlement architecture validation, integration tests, full-stack verification. |
 
 ---
 

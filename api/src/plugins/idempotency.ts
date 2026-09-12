@@ -232,6 +232,17 @@ export const idempotencyPlugin = fp(async (app: FastifyInstance) => {
       await redis.del(key);
       return payload;
     }
+    if (reply.statusCode === 409) {
+      try {
+        const parsed = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        if (parsed && typeof parsed === 'object' && parsed.code === ERROR_CODES.ITEM_LIMIT_REACHED) {
+          await redis.del(key);
+          return payload;
+        }
+      } catch {
+        // Non-JSON payload, fall through to default caching
+      }
+    }
     const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
     const record: CompleteRecord = {
       state: 'complete',

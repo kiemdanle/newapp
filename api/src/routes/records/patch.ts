@@ -6,7 +6,12 @@ import { AppError } from '../../errors.js';
 import { toApiRecord } from '../../services/records/repository.js';
 import { computeNotifyAt, resolveOffsetsForUser } from '../../services/records/notify-at.js';
 import { notificationScheduleQueue, notificationSendQueue } from '../../queues/index.js';
-import { assertCanWriteRecord, assertCanAssignToHousehold } from '../../services/households/permissions.js';
+import {
+  lockHouseholdRow,
+  assertCanWriteRecord,
+  assertCanAssignToHousehold,
+} from '../../services/households/permissions.js';
+import { lockUserPantryQuota, assertCanAddPantryItems } from '../../services/records/pantry-limits.js';
 import { fanOutHouseholdRecordReminders, reschedulePersonalRecordReminders } from '../../services/households/household-reminders.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
 import type { ProductUsePurpose } from '../../services/products/product-visibility.js';
@@ -91,11 +96,36 @@ export async function patchRecordRoute(app: FastifyInstance) {
     const movingIntoHousehold = newHouseholdId !== null && newHouseholdId !== oldHouseholdId;
     const usePurpose: ProductUsePurpose = newHouseholdId ? 'household_record' : 'personal_record';
 
+    const quotaOwnerId = existing.userId;
+
     const updated = await prisma.$transaction(async (tx) => {
-      if (existing.productId) {
+      // 1. Quota lock on the record's true owner
+      await lockUserPantryQuota(tx, quotaOwnerId);
+
+      // 2. Household locks in sorted order
+      const householdIdsToLock = Array.from(
+        new Set([oldHouseholdId, newHouseholdId].filter(Boolean) as string[])
+      ).sort();
+      for (const hid of householdIdsToLock) {
+        await lockHouseholdRow(tx, hid);
+      }
+
+      // 3. Re-read row under lock
+      const freshRecord = await tx.record.findUnique({ where: { id } });
+      if (!freshRecord) {
+        throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Record not found' });
+      }
+
+      // 4. Assert quota on positive active transition
+      const isTransitioningToActive = input.status === 'active' && freshRecord.status !== 'active';
+      if (isTransitioningToActive) {
+        await assertCanAddPantryItems(quotaOwnerId, 1, tx);
+      }
+
+      if (freshRecord.productId) {
         await assertProductUse(
           userId,
-          existing.productId,
+          freshRecord.productId,
           { purpose: usePurpose, existingRecordReference: !movingIntoHousehold },
           tx,
         );

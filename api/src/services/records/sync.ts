@@ -1,11 +1,13 @@
 import type { Record as PrismaRecord } from '@prisma/client';
-import type { RecordSyncBatch, RecordSyncConflict } from '@expyrico/shared';
+import { ERROR_CODES, type RecordSyncBatch, type RecordSyncConflict } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
+import { AppError } from '../../errors.js';
 import { notificationScheduleQueue } from '../../queues/index.js';
 import { computeNotifyAt, resolveOffsetsForUser } from './notify-at.js';
 import { maybeActivateReferral } from '../referrals/referral-service.js';
-import { myHouseholdIds } from '../households/permissions.js';
+import { myHouseholdIds, lockHouseholdRow } from '../households/permissions.js';
 import { assertProductUse, ProductUseRejectionError } from '../products/product-visibility.js';
+import { lockUserPantryQuota, assertCanAddPantryItems } from './pantry-limits.js';
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -13,17 +15,8 @@ export interface SyncOutcome {
   conflicts: RecordSyncConflict[];
   serverTime: Date;
   householdIds: string[];
-}
-
-/**
- * Take an advisory lock on a household row so concurrent dissolve / member-remove
- * / record-write serialize on the same household. Released automatically at
- * transaction end (pg_advisory_xact_lock).
- */
-async function lockHouseholdRow(tx: ReturnType<typeof getPrisma>, householdId: string): Promise<void> {
-  const hex = householdId.replace(/-/g, '').slice(0, 15);
-  const lockKey = parseInt(hex, 16);
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
+  nextCursor?: { updatedAt: string; id: string } | null;
+  hasMore?: boolean;
 }
 
 export async function syncRecords(
@@ -96,13 +89,12 @@ export async function syncRecords(
       // Caller must be a current member of the relevant household.
       if (!householdIds.has(recordHouseholdId)) continue; // drop silently
 
-      // Take the household-row lock so this upsert serializes against
-      // concurrent dissolve / member-remove / other record writes.
-      // We wrap the dependent work in a raw transaction for the lock + write.
-      // For simplicity, we use the Prisma interactive transaction.
       try {
         await prisma.$transaction(async (tx) => {
-          await lockHouseholdRow(tx as unknown as ReturnType<typeof getPrisma>, recordHouseholdId);
+          // 1. Quota lock on the creator
+          await lockUserPantryQuota(tx, userId);
+          // 2. Household lock second
+          await lockHouseholdRow(tx, recordHouseholdId);
 
           if (existing) {
             // Server row already exists — server wins; do NOT overwrite with client data.
@@ -117,6 +109,10 @@ export async function syncRecords(
           }
 
           const uStatus = u.status ?? 'active';
+          if (uStatus === 'active') {
+            await assertCanAddPantryItems(userId, 1, tx);
+          }
+
           const offsets = u.notificationOffsetsDays ?? userOffsets;
           const notifyAt = uStatus === 'active' ? computeNotifyAt(new Date(u.expiryDate), offsets) : [];
           const created = await tx.record.create({
@@ -146,11 +142,13 @@ export async function syncRecords(
           }
         });
       } catch (err) {
-        if (!(err instanceof ProductUseRejectionError)) throw err;
-        // Never silently discard an offline edit: surface it as a per-item
-        // conflict so the client knows this item was not applied, instead of
-        // believing (via a plain 200) that it synced.
-        conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
+        if (err instanceof AppError && err.code === ERROR_CODES.ITEM_LIMIT_REACHED) {
+          conflicts.push({ clientId: u.clientId, reason: 'item_limit_reached' });
+        } else if (err instanceof ProductUseRejectionError) {
+          conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
+        } else {
+          throw err;
+        }
       }
     } else {
       // --- Personal path: last-write-wins ---
@@ -159,13 +157,23 @@ export async function syncRecords(
       const uStatus = u.status ?? existing?.status ?? 'active';
       const offsets = u.notificationOffsetsDays ?? userOffsets;
       const notifyAt = uStatus === 'active' ? computeNotifyAt(new Date(u.expiryDate), offsets) : [];
-      // A stored productId identical to what's already on the row is a preserved
-      // reference; anything else (brand-new row, or the client changing which
-      // product it points at) is a new attachment and must be checked as such.
       const existingRecordReference = existing?.productId === (u.productId ?? null) && existing?.productId != null;
 
       try {
         await prisma.$transaction(async (tx) => {
+          const ownerId = existing?.userId ?? userId;
+          await lockUserPantryQuota(tx, ownerId);
+
+          const freshRecord = await tx.record.findUnique({ where: { clientId: u.clientId } });
+          if (freshRecord && freshRecord.updatedAt >= clientUpdatedAt) {
+            return;
+          }
+
+          const isBecomingActive = uStatus === 'active' && freshRecord?.status !== 'active';
+          if (isBecomingActive) {
+            await assertCanAddPantryItems(ownerId, 1, tx);
+          }
+
           if (u.productId) {
             await assertProductUse(
               userId,
@@ -206,9 +214,9 @@ export async function syncRecords(
               notes: u.notes ?? null,
               photoUrl: u.photoUrl ?? null,
               status: uStatus,
-              consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : (existing?.consumedAt ?? new Date())) : null,
-              discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : (existing?.discardedAt ?? new Date())) : null,
-              discardReason: uStatus === 'discarded' ? (u.discardReason || existing?.discardReason || 'other') : null,
+              consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : (freshRecord?.consumedAt ?? new Date())) : null,
+              discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : (freshRecord?.discardedAt ?? new Date())) : null,
+              discardReason: uStatus === 'discarded' ? (u.discardReason || freshRecord?.discardReason || 'other') : null,
               notifyAt,
               ...(u.location !== undefined ? { location: u.location ? u.location.trim() : null } : {}),
             },
@@ -218,8 +226,13 @@ export async function syncRecords(
           }
         });
       } catch (err) {
-        if (!(err instanceof ProductUseRejectionError)) throw err;
-        conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
+        if (err instanceof AppError && err.code === ERROR_CODES.ITEM_LIMIT_REACHED) {
+          conflicts.push({ clientId: u.clientId, reason: 'item_limit_reached' });
+        } else if (err instanceof ProductUseRejectionError) {
+          conflicts.push({ clientId: u.clientId, reason: 'product_unavailable' });
+        } else {
+          throw err;
+        }
       }
     }
   }
@@ -242,23 +255,54 @@ export async function syncRecords(
   //    by CURRENT visibility (resolved at request time), so a record that left a
   //    household since the last sync is NOT echoed to a former co-member.
   const sinceDate = batch.since ? new Date(batch.since) : new Date(0);
-
   const householdIdList = [...householdIds];
+
+  const seekCondition = batch.cursor
+    ? {
+        OR: [
+          { updatedAt: { gt: new Date(batch.cursor.updatedAt) } },
+          {
+            updatedAt: new Date(batch.cursor.updatedAt),
+            id: { gt: batch.cursor.id },
+          },
+        ],
+      }
+    : { updatedAt: { gt: sinceDate } };
+
+  const visibilityCondition = {
+    OR: [
+      // Personal records owned by caller.
+      { userId, householdId: null },
+      // Household records the caller can currently see (membership-scoped).
+      ...(householdIdList.length > 0
+        ? [{ householdId: { in: householdIdList } }]
+        : []),
+    ],
+  };
+
+  const takeLimit = 1000;
   const changes = await prisma.record.findMany({
-    where: {
-      updatedAt: { gt: sinceDate },
-      OR: [
-        // Personal records owned by caller.
-        { userId, householdId: null },
-        // Household records the caller can currently see (membership-scoped).
-        ...(householdIdList.length > 0
-          ? [{ householdId: { in: householdIdList } }]
-          : []),
-      ],
-    },
-    orderBy: { updatedAt: 'asc' },
-    take: 1000,
+    where: { AND: [seekCondition, visibilityCondition] },
+    orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+    take: takeLimit + 1,
   });
 
-  return { changes, deletedIds, conflicts, serverTime, householdIds: householdIdList };
+  const hasMore = changes.length > takeLimit;
+  if (hasMore) {
+    changes.pop();
+  }
+  const lastItem = changes.length > 0 ? changes[changes.length - 1] : null;
+  const nextCursor = hasMore && lastItem
+    ? { updatedAt: lastItem.updatedAt.toISOString(), id: lastItem.id }
+    : null;
+
+  return {
+    changes,
+    deletedIds,
+    conflicts,
+    serverTime,
+    householdIds: householdIdList,
+    nextCursor,
+    hasMore,
+  };
 }

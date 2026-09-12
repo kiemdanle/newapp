@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Mobile App Limit Awareness, Soft-Ceiling & Feedback UI"
-status: pending
+status: completed
 priority: P1
 effort: "6h"
 dependencies: [2]
@@ -172,13 +172,13 @@ runSync()
 
 ## Success Criteria
 
-- [ ] `RecordList.tsx` duplicate action blocked with native alert when at capacity, and stamps current user ID on created duplicate.
-- [ ] Subtle capacity indicator in `home.tsx` displays active count and transitions color at 90% (Honey) and 100% (Alert Red).
-- [ ] `RecordCard.tsx` displays visual indicator for records with pending sync quota rejections.
-- [ ] Local active count accurately reflects the current user's creations across personal and household pantries.
-- [ ] Offline creates and edits followed by offline deletion do not crash with destroyed model errors.
-- [ ] 409 quota errors on both POST and PATCH are isolated and never wedge the sync loop.
-- [ ] Delta synchronization drains deterministically over equal-timestamp page boundaries without dropping rows or imposing an arbitrary page cap.
-- [ ] In-memory drainage prevents cross-account cursor leakage or stale resumption after sign-out / database reset.
-- [ ] Incomplete delta drainage does not advance `lastSync` checkpoint.
-- [ ] All Jest unit and resilience tests pass in `apps/mobile`.
+- [x] `RecordList.tsx` duplicate action blocked with native alert when at capacity, and stamps current user ID on created duplicate.
+- [x] Subtle capacity indicator in `home.tsx` displays active count and transitions color at 90% (Honey) and 100% (Alert Red).
+- [x] `RecordCard.tsx` displays visual indicator for records with pending sync quota rejections.
+- [x] Local active count accurately reflects the current user's creations across personal and household pantries.
+- [x] Offline creates and edits followed by offline deletion do not crash with destroyed model errors.
+- [x] 409 quota errors on both POST and PATCH are isolated and never wedge the sync loop.
+- [x] Delta synchronization drains deterministically over equal-timestamp page boundaries without dropping rows or imposing an arbitrary page cap.
+- [x] In-memory drainage prevents cross-account cursor leakage or stale resumption after sign-out / database reset.
+- [x] Incomplete delta drainage does not advance `lastSync` checkpoint.
+- [x] All Jest unit and resilience tests pass in `apps/mobile`.

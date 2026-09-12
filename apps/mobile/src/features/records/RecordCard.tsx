@@ -11,6 +11,7 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { getLocationIcon } from '../../utils/locations';
+import { useSyncQuotaErrorsStore } from '../../store/syncQuotaErrorsStore';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
@@ -51,6 +52,7 @@ export function RecordCard({
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const swipeableRef = useRef<Swipeable>(null);
   const { data: product } = useProduct(record.productId ?? undefined);
+  const hasQuotaError = useSyncQuotaErrorsStore((s) => s.errorClientIds.has(record.clientId));
   const displayName = record.customName || product?.name || 'Item';
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
@@ -235,6 +237,33 @@ export function RecordCard({
               </View>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+              {hasQuotaError ? (
+                <View
+                  testID={`record-quota-error-badge-${record.id}`}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 3,
+                    backgroundColor: '#FEEFC3',
+                    borderColor: '#F5A623',
+                    borderWidth: 1,
+                    paddingHorizontal: 7,
+                    paddingVertical: 2,
+                    borderRadius: theme.radii.pill,
+                  }}
+                >
+                  <Ionicons name="cloud-offline-outline" size={11} color="#F5A623" />
+                  <Text
+                    style={{
+                      color: '#B45309',
+                      fontSize: 10,
+                      fontWeight: '700',
+                    }}
+                  >
+                    Saved locally — server capacity reached
+                  </Text>
+                </View>
+              ) : null}
               {isHouseholdItem ? (
                 <View
                   testID={`record-household-badge-${record.id}`}

@@ -97,3 +97,39 @@ export const PHOTO_COMPRESSION_CONFIG = {
   qualityFloor: 0.70,
   maxFileBytes: 1 * 1024 * 1024, // 1,048,576 bytes (1 MB)
 } as const;
+
+export const USER_PANTRY_TIERS = ['free', 'pro', 'supporter'] as const;
+export type UserPantryTier = (typeof USER_PANTRY_TIERS)[number];
+
+export const pantryLimitsSettingsSchema = z.object({
+  defaultUserPantryLimit: z
+    .number()
+    .int('Pantry limit must be an integer')
+    .min(1, 'At least 1 pantry item must be allowed')
+    .max(10000, 'Maximum allowed pantry items is 10,000')
+    .default(50),
+  tierLimits: z
+    .record(z.string(), z.number().int().min(1).max(10000))
+    .optional()
+    .default({
+      free: 50,
+      pro: 500,
+    }),
+});
+export type PantryLimitsSettings = z.infer<typeof pantryLimitsSettingsSchema>;
+
+export const pantryLimitsPatchSchema = z
+  .object({
+    defaultUserPantryLimit: z.number().int().min(1).max(10000).optional(),
+    tierLimits: z.record(z.string(), z.number().int().min(1).max(10000)).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: 'At least one field must be provided' });
+export type PantryLimitsPatch = z.infer<typeof pantryLimitsPatchSchema>;
+
+export const DEFAULT_PANTRY_LIMITS: PantryLimitsSettings = {
+  defaultUserPantryLimit: 50,
+  tierLimits: {
+    free: 50,
+    pro: 500,
+  },
+};

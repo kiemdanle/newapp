@@ -4,6 +4,9 @@ import {
   photoLimitsSettingsSchema,
   DEFAULT_PHOTO_LIMITS,
   PHOTO_COMPRESSION_CONFIG,
+  pantryLimitsSettingsSchema,
+  pantryLimitsPatchSchema,
+  DEFAULT_PANTRY_LIMITS,
 } from './settings.js';
 
 describe('productCreationSettingsSchema', () => {
@@ -69,5 +72,76 @@ describe('photoLimitsSettingsSchema & PHOTO_COMPRESSION_CONFIG', () => {
     expect(PHOTO_COMPRESSION_CONFIG.qualityFloor).toBe(0.7);
     expect(PHOTO_COMPRESSION_CONFIG.qualitySteps).toEqual([0.82, 0.72, 0.7]);
     expect(PHOTO_COMPRESSION_CONFIG.maxFileBytes).toBe(1024 * 1024);
+  });
+});
+
+describe('pantryLimitsSettingsSchema & pantryLimitsPatchSchema', () => {
+  it('applies default limits when empty object is passed', () => {
+    const parsed = pantryLimitsSettingsSchema.parse({});
+    expect(parsed).toEqual({
+      defaultUserPantryLimit: 50,
+      tierLimits: {
+        free: 50,
+        pro: 500,
+      },
+    });
+    expect(DEFAULT_PANTRY_LIMITS).toEqual({
+      defaultUserPantryLimit: 50,
+      tierLimits: {
+        free: 50,
+        pro: 500,
+      },
+    });
+  });
+
+  it('accepts valid pantry limits between 1 and 10,000', () => {
+    expect(pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 1 })).toMatchObject({
+      defaultUserPantryLimit: 1,
+    });
+    expect(pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 10000 })).toMatchObject({
+      defaultUserPantryLimit: 10000,
+    });
+    expect(pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 250 })).toMatchObject({
+      defaultUserPantryLimit: 250,
+    });
+  });
+
+  it('rejects pantry limits below 1, above 10,000, or non-integer', () => {
+    expect(() => pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 0 })).toThrow(/At least 1 pantry item/);
+    expect(() => pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 10001 })).toThrow(/Maximum allowed pantry items is 10,000/);
+    expect(() => pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: -5 })).toThrow();
+    expect(() => pantryLimitsSettingsSchema.parse({ defaultUserPantryLimit: 50.5 })).toThrow(/must be an integer/);
+  });
+
+  it('validates tier limits within range', () => {
+    expect(
+      pantryLimitsSettingsSchema.parse({
+        defaultUserPantryLimit: 50,
+        tierLimits: { free: 50, pro: 1000, enterprise: 5000 },
+      })
+    ).toEqual({
+      defaultUserPantryLimit: 50,
+      tierLimits: { free: 50, pro: 1000, enterprise: 5000 },
+    });
+    expect(() =>
+      pantryLimitsSettingsSchema.parse({
+        tierLimits: { free: 0 },
+      })
+    ).toThrow();
+    expect(() =>
+      pantryLimitsSettingsSchema.parse({
+        tierLimits: { pro: 20000 },
+      })
+    ).toThrow();
+  });
+
+  it('allows partial updates with pantryLimitsPatchSchema', () => {
+    expect(pantryLimitsPatchSchema.parse({ defaultUserPantryLimit: 100 })).toEqual({
+      defaultUserPantryLimit: 100,
+    });
+    expect(pantryLimitsPatchSchema.parse({ tierLimits: { pro: 1000 } })).toEqual({
+      tierLimits: { pro: 1000 },
+    });
+    expect(() => pantryLimitsPatchSchema.parse({})).toThrow(/At least one field must be provided/);
   });
 });

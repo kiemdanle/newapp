@@ -26,6 +26,9 @@ import {
 import { usePantryScope } from '../../store/pantryScope';
 import { useMyHouseholds } from '../../api/households';
 import { runSync } from '../../db/sync';
+import { usePantryLimits } from '../../utils/pantry-limits';
+import { useMyActiveRecordCount } from './record-counters';
+import { useSessionStore } from '../../auth/session-store';
 import { groupRecords, type GroupedRecords } from './groupRecords';
 import { RecordCard } from './RecordCard';
 import { QuickEditModal } from './QuickEditModal';
@@ -122,6 +125,11 @@ export function RecordList({
   const queryClient = useQueryClient();
   const setGlobalSelectionMode = useSelectionModeStore((s) => s.setSelectionMode);
   const { data: householdsData } = useMyHouseholds();
+  const { defaultUserPantryLimit: pantryLimit } = usePantryLimits();
+  const myActiveCount = useMyActiveRecordCount();
+  const currentUserId = useSessionStore((s) => s.user?.id);
+  const isAtCapacity = myActiveCount >= pantryLimit;
+
   const householdNames = useMemo(() => {
     const map: Record<string, string> = {};
     for (const h of householdsData?.items ?? []) {
@@ -129,7 +137,6 @@ export function RecordList({
     }
     return map;
   }, [householdsData]);
-
   const [editingRecord, setEditingRecord] = useState<LocalRecord | null>(null);
   const [internalRefreshing, setInternalRefreshing] = useState(false);
 
@@ -354,6 +361,8 @@ export function RecordList({
         queryClient.invalidateQueries({ queryKey: ['households'] }),
         queryClient.invalidateQueries({ queryKey: ['records'] }),
         queryClient.invalidateQueries({ queryKey: ['products'] }),
+        queryClient.invalidateQueries({ queryKey: ['settings', 'pantry-limits'] }),
+        queryClient.invalidateQueries({ queryKey: ['usage'] }),
       ]);
     } finally {
       setInternalRefreshing(false);
@@ -380,17 +389,27 @@ export function RecordList({
     flexGrow: 1,
   };
 
-  const handleDuplicate = useCallback((record: LocalRecord) => {
-    const draft: LocalRecord = {
-      ...record,
-      id: `draft-duplicate-${record.id}`,
-      serverId: null,
-      clientId: uuidv4(),
-      expiryDate: '',
-      status: 'active',
-    };
-    setEditingRecord(draft);
-  }, []);
+  const handleDuplicate = useCallback(
+    (record: LocalRecord) => {
+      if (isAtCapacity) {
+        Alert.alert(
+          'Pantry Limit Reached',
+          `You have reached the maximum allowed items (${pantryLimit} items). Remove or consume existing items to duplicate.`,
+        );
+        return;
+      }
+      const draft: LocalRecord = {
+        ...record,
+        id: `draft-duplicate-${record.id}`,
+        serverId: null,
+        clientId: uuidv4(),
+        expiryDate: '',
+        status: 'active',
+      };
+      setEditingRecord(draft);
+    },
+    [isAtCapacity, pantryLimit],
+  );
 
   const handleEdit = useCallback((record: LocalRecord) => {
     setEditingRecord(record);
@@ -426,6 +445,13 @@ export function RecordList({
     }) => {
       if (!editingRecord) return;
       if (editingRecord.id.startsWith('draft-duplicate-')) {
+        if (isAtCapacity) {
+          Alert.alert(
+            'Pantry Limit Reached',
+            `You have reached the maximum allowed items (${pantryLimit} items). Remove or consume existing items to duplicate.`,
+          );
+          return;
+        }
         await createLocalRecord({
           productId: editingRecord.productId,
           customName: patch.customName !== undefined ? patch.customName : editingRecord.customName,
@@ -439,14 +465,14 @@ export function RecordList({
           notes: editingRecord.notes,
           photoUrl: editingRecord.photoUrl,
           householdId: editingRecord.householdId,
-          userId: editingRecord.userId,
+          userId: currentUserId ?? null,
           location: patch.location !== undefined ? patch.location : editingRecord.location,
         });
       } else {
         await patchLocalRecord(editingRecord.id, patch);
       }
     },
-    [editingRecord],
+    [editingRecord, isAtCapacity, pantryLimit, currentUserId],
   );
 
   const handleLongPress = useCallback((id: string) => {
