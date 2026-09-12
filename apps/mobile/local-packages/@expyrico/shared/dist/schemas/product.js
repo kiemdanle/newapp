@@ -208,12 +208,13 @@ export const productDraftCreateRequestSchema = z
     barcode: barcodeField.nullable().optional(),
     qrPayload: qrField.nullable().optional(),
     name: z.string().trim().min(1).max(200).optional(),
+    isTemplate: z.boolean().optional(),
 })
-    .strict()
     .transform((v) => ({
     barcode: v.barcode ?? undefined,
     qrPayload: v.qrPayload ?? undefined,
     name: v.name?.trim() || undefined,
+    ...(v.isTemplate !== undefined ? { isTemplate: v.isTemplate } : {}),
 }))
     .refine((v) => Boolean(v.barcode) !== Boolean(v.qrPayload), {
     message: 'exactly one of barcode | qrPayload is required',

@@ -1336,15 +1336,19 @@ export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodEffects<
     barcode: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     qrPayload: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     name: z.ZodOptional<z.ZodString>;
-}, "strict", z.ZodTypeAny, {
+    isTemplate: z.ZodOptional<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
     name?: string | undefined;
+    isTemplate?: boolean | undefined;
 }, {
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
     name?: string | undefined;
+    isTemplate?: boolean | undefined;
 }>, {
+    isTemplate?: boolean;
     barcode: string | undefined;
     qrPayload: string | undefined;
     name: string | undefined;
@@ -1352,7 +1356,9 @@ export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodEffects<
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
     name?: string | undefined;
+    isTemplate?: boolean | undefined;
 }>, {
+    isTemplate?: boolean;
     barcode: string | undefined;
     qrPayload: string | undefined;
     name: string | undefined;
@@ -1360,6 +1366,7 @@ export declare const productDraftCreateRequestSchema: z.ZodEffects<z.ZodEffects<
     barcode?: string | null | undefined;
     qrPayload?: string | null | undefined;
     name?: string | undefined;
+    isTemplate?: boolean | undefined;
 }>;
 export type ProductDraftCreateRequest = z.infer<typeof productDraftCreateRequestSchema>;
 export declare const productDraftPatchRequestSchema: z.ZodObject<{

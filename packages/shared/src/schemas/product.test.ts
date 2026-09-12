@@ -298,10 +298,14 @@ describe('productDraftCreateRequestSchema', () => {
       productDraftCreateRequestSchema.parse({ barcode: '5449000000996', qrPayload: 'qr-data' }),
     ).toThrow();
   });
-  it('accepts an optional product name', () => {
+  it('accepts an optional product name and isTemplate flag', () => {
     expect(productDraftCreateRequestSchema.parse({ barcode: '5449000000996', name: 'Almond Milk' })).toEqual({
       barcode: '5449000000996',
       name: 'Almond Milk',
+    });
+    expect(productDraftCreateRequestSchema.parse({ barcode: '5449000000996', isTemplate: true })).toEqual({
+      barcode: '5449000000996',
+      isTemplate: true,
     });
   });
 });

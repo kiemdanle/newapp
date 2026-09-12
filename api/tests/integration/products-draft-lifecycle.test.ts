@@ -1219,3 +1219,148 @@ describe('DELETE /v1/products/drafts/:id', () => {
     await app.close();
   });
 });
+
+describe('Template vs Community Product Separation', () => {
+  it('creates a community product by default (isTemplate: false) which is dismissed from templates list', async () => {
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const barcode = '8935049500999';
+
+    // 1. Create product without isTemplate (or isTemplate: false)
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode, name: 'Community Sourdough', isTemplate: false },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const created = createRes.json().product;
+
+    // In DB, isDismissedFromTemplates must be true
+    const dbProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: created.id } });
+    expect(dbProduct.isDismissedFromTemplates).toBe(true);
+
+    // Must NOT appear in GET /drafts (product templates)
+    const draftsRes = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts',
+      headers,
+    });
+    expect(draftsRes.statusCode).toBe(200);
+    expect(draftsRes.json().items.some((item: { id: string }) => item.id === created.id)).toBe(false);
+
+    // DOES appear in GET /me/contributions
+    // 2. Submit for community catalog review
+    stubAssessmentClient();
+    const submitRes = await app.inject({
+      method: 'POST',
+      url: `/v1/products/drafts/${created.id}/submit`,
+      headers: idemHeaders(headers),
+      payload: {
+        version: 1,
+        abuseToken: 'abuse-token-valid',
+        platform: 'android',
+      },
+    });
+    expect(submitRes.statusCode).toBe(200);
+
+    // DOES appear in GET /me/contributions once submitted
+    const contribRes = await app.inject({
+      method: 'GET',
+      url: '/v1/me/contributions',
+      headers,
+    });
+    expect(contribRes.statusCode).toBe(200);
+    expect(contribRes.json().items.some((item: { id: string }) => item.id === created.id)).toBe(true);
+
+    await app.close();
+  });
+
+  it('creates an explicit product template (isTemplate: true) which appears in product templates list', async () => {
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const barcode = '8935049500888';
+
+    // Create with isTemplate: true
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode, name: 'Template Oat Milk', isTemplate: true },
+    });
+    expect(createRes.statusCode).toBe(201);
+    const created = createRes.json().product;
+
+    // In DB, isDismissedFromTemplates must be false
+    const dbProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: created.id } });
+    expect(dbProduct.isDismissedFromTemplates).toBe(false);
+
+    // DOES appear in GET /drafts (product templates)
+    const draftsRes = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts',
+      headers,
+    });
+    expect(draftsRes.statusCode).toBe(200);
+    expect(draftsRes.json().items.some((item: { id: string }) => item.id === created.id)).toBe(true);
+
+    await app.close();
+  });
+
+  it('restores a community product to templates when scanned/added with isTemplate: true', async () => {
+    vi.doMock('../../src/services/products/off-client.js', () => ({
+      lookupOff: vi.fn().mockResolvedValue({ status: 'not_found' }),
+    }));
+    const app = await buildServer();
+    const { user, headers } = await authedUser();
+    const barcode = '8935049500777';
+
+    // 1. First create as community product (isTemplate: false)
+    const initialRes = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode, name: 'Initial Community Item', isTemplate: false },
+    });
+    expect(initialRes.statusCode).toBe(201);
+    const productId = initialRes.json().product.id;
+
+    // Verify not in templates
+    const draftsBefore = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts',
+      headers,
+    });
+    expect(draftsBefore.json().items.some((item: { id: string }) => item.id === productId)).toBe(false);
+
+    // 2. User later enters/scans same barcode from Product Templates page (isTemplate: true)
+    const resumeRes = await app.inject({
+      method: 'POST',
+      url: '/v1/products/drafts',
+      headers: idemHeaders(headers),
+      payload: { barcode, isTemplate: true },
+    });
+    expect(resumeRes.statusCode).toBe(200);
+    expect(resumeRes.json().resumed).toBe(true);
+
+    // In DB, isDismissedFromTemplates is now false
+    const dbProduct = await getPrisma().product.findUniqueOrThrow({ where: { id: productId } });
+    expect(dbProduct.isDismissedFromTemplates).toBe(false);
+
+    // Now appears in GET /drafts
+    const draftsAfter = await app.inject({
+      method: 'GET',
+      url: '/v1/products/drafts',
+      headers,
+    });
+    expect(draftsAfter.json().items.some((item: { id: string }) => item.id === productId)).toBe(true);
+
+    await app.close();
+  });
+});

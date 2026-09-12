@@ -358,11 +358,13 @@ export function ProductDraftForm({ initialProduct, onSaved, onDirtyChange, readO
                 },
               ]}
             >
-            <TextInput
-              accessibilityLabel="Category"
-              testID="draft-category"
-              editable={!readOnly}
-              placeholder="e.g. Dairy"
+              <TextInput
+                accessibilityLabel="Category"
+                testID="draft-category"
+                editable={!readOnly}
+                placeholder="e.g. Dairy"
+                placeholderTextColor={theme.colors.textMuted}
+                style={[styles.textInput, { color: theme.colors.text }]}
                 value={fields.category}
                 onFocus={(e) => {
                   setFocusedField('category');

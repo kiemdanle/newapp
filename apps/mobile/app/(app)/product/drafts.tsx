@@ -246,6 +246,7 @@ export default function ProductDraftsScreen() {
     navigation.push('ProductNew', {
       barcode: kind === 'barcode' ? code : '',
       qr: kind === 'qr' ? code : '',
+      target: 'template',
     });
   };
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -607,10 +608,15 @@ export default function ProductDraftsScreen() {
       <AddDraftOptionsModal
         visible={isAddOptionsVisible}
         onClose={() => setIsAddOptionsVisible(false)}
-        onScan={() => navigation.push('Scan')}
-        onManualEntry={() => setIsManualModalVisible(true)}
+        onScan={() => {
+          setIsAddOptionsVisible(false);
+          navigation.push('Scan', { target: 'template' });
+        }}
+        onManualEntry={() => {
+          setIsAddOptionsVisible(false);
+          setIsManualModalVisible(true);
+        }}
       />
-
       <DraftUndoToast
         entries={Array.from(pendingDiscards.values())}
         onUndo={handleUndo}

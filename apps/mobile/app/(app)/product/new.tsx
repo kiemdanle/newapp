@@ -24,7 +24,7 @@ type RouteParams = {
   productId?: string;
   resume?: 'edit' | 'pending';
   feedback?: string;
-  target?: 'pantry' | 'deal';
+  target?: 'pantry' | 'deal' | 'template';
 };
 
 /**
@@ -215,6 +215,7 @@ export default function NewProductScreen() {
             ? { qrPayload: qr.trim() }
             : { barcode: undefined }),
         name: name.trim(),
+        isTemplate: target === 'template',
       };
       const { product: created } = await createOrResumeDraft.mutateAsync(payload);
       // Patch the initial name entered by the user
@@ -392,9 +393,16 @@ export default function NewProductScreen() {
                   navigation.navigate('DealNew', { productId: product.id });
                 }}
               />
+            ) : target === 'template' ? (
+              <Button
+                testID="back-to-templates-btn"
+                label="Back to Templates"
+                icon="checkmark"
+                onPress={() => navigation.goBack()}
+              />
             ) : null}
           </View>
-          {target !== 'deal' ? (
+          {target !== 'deal' && target !== 'template' ? (
             <AddRecordForm
               productId={product.id}
               productName={product.name}
@@ -441,9 +449,12 @@ export default function NewProductScreen() {
         navigation.navigate('DealNew', { productId: submitted.id });
         return;
       }
+      if (target === 'template') {
+        navigation.goBack();
+        return;
+      }
       setSubmittedProduct(submitted);
     };
-
     return (
       <View style={[styles.screen, { backgroundColor: theme.colors.bg }]}>
         {/* Persistent Top Navigation Bar */}

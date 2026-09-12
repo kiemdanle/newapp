@@ -54,7 +54,7 @@ export type AppStackParamList = {
     productId?: string;
     resume?: 'edit' | 'pending';
     feedback?: string;
-    target?: 'pantry' | 'deal';
+    target?: 'pantry' | 'deal' | 'template';
   } | undefined;
   ProductDrafts: undefined;
   ProductReview: { id: string; review?: Review };
@@ -69,7 +69,7 @@ export type AppStackParamList = {
   GiveawayRate: { id: string };
   Record: { id: string };
   Report: { targetType: string; targetId: string };
-  Scan: { target?: 'pantry' | 'deal'; initialPhase?: 'scanning' | 'manual' } | undefined;
+  Scan: { target?: 'pantry' | 'deal' | 'template'; initialPhase?: 'scanning' | 'manual' } | undefined;
   ProfileEdit: undefined;
   ProfilePassword: undefined;
   FeedbackHub: { initialTab?: 'submit' | 'tickets' } | undefined;

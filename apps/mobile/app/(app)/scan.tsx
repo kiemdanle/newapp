@@ -34,7 +34,7 @@ export default function ScanScreen() {
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
   const { target, initialPhase } = (route.params ?? {}) as {
-    target?: 'pantry' | 'deal';
+    target?: 'pantry' | 'deal' | 'template';
     initialPhase?: 'scanning' | 'manual';
   };
   const insets = useSafeAreaInsets();
@@ -131,6 +131,13 @@ export default function ScanScreen() {
           case 'found':
             if (target === 'deal') {
               navigation.replace('DealNew', { productId: result.product.id });
+            } else if (target === 'template') {
+              navigation.replace('ProductNew', {
+                barcode: scan.kind === 'barcode' ? scan.value : '',
+                qr: scan.kind === 'qr' ? scan.value : '',
+                productId: result.product.id,
+                target: 'template',
+              });
             } else {
               navigation.replace('Product', { id: result.product.id });
             }

@@ -123,7 +123,30 @@ export async function createOrResumeDraft(
   const outcome = await lookupProductV2(identifierInput, { id: actor.id, role: 'user' });
 
   if (outcome.outcome === 'editable_private') {
+    if (input.isTemplate === true) {
+      await getPrisma().product.update({
+        where: { id: outcome.product.id },
+        data: { isDismissedFromTemplates: false },
+      });
+    }
     return { product: outcome.product, resumed: true };
+  }
+  if (
+    input.isTemplate === true &&
+    (outcome.outcome === 'creator_pending' || outcome.outcome === 'found')
+  ) {
+    const existingRow = await getPrisma().product.findUnique({
+      where: { id: outcome.product.id },
+      select: { id: true, createdByUserId: true },
+    });
+    if (existingRow && existingRow.createdByUserId === actor.id) {
+      const updated = await getPrisma().product.update({
+        where: { id: outcome.product.id },
+        data: { isDismissedFromTemplates: false },
+        include: PRODUCT_INCLUDE,
+      });
+      return { product: toApiProduct(updated, { kind: 'privileged' }), resumed: true };
+    }
   }
   if (outcome.outcome !== 'not_found') {
     throwForNonCreatableOutcome(outcome);
@@ -147,6 +170,7 @@ export async function createOrResumeDraft(
           source: 'user',
           createdByUserId: actor.id,
           status: 'draft',
+          isDismissedFromTemplates: input.isTemplate === true ? false : true,
         },
         include: PRODUCT_INCLUDE,
       });
@@ -157,7 +181,15 @@ export async function createOrResumeDraft(
       // Lost a create race for the same identifier — resolve through the same
       // classification the winner would have produced, never a raw DB retry.
       const raced = await lookupProductV2(identifierInput, { id: actor.id, role: 'user' });
-      if (raced.outcome === 'editable_private') return { product: raced.product, resumed: true };
+      if (raced.outcome === 'editable_private') {
+        if (input.isTemplate === true) {
+          await getPrisma().product.update({
+            where: { id: raced.product.id },
+            data: { isDismissedFromTemplates: false },
+          });
+        }
+        return { product: raced.product, resumed: true };
+      }
       throwForNonCreatableOutcome(raced);
     }
     throw err;
@@ -301,8 +333,11 @@ export async function discardDraft(
         data: { isDismissedFromTemplates: true },
       });
     }
-
-    return { success: true, id: productId, deleted: true };
+    return {
+      success: true,
+      id: productId,
+      ...(options?.emptyOnly ? { deleted: true } : {}),
+    };
   });
 }
 

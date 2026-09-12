@@ -56,7 +56,6 @@ export async function getUserContributions(
         status: ProductStatus.active,
       },
     }),
-    // Public history approved count: all active products ever contributed (independent of template dismissal)
     prisma.product.count({
       where: {
         createdByUserId: userId,
