@@ -121,59 +121,123 @@ export function ContributorLevelRoadmapModal({
                   key={tier.level}
                   style={[
                     styles.tierCard,
+                    isCurrent ? styles.currentTierCard : styles.regularTierCard,
                     {
                       backgroundColor: isCurrent
-                        ? `${theme.colors.primary}12`
-                        : theme.colors.bgGlass,
+                        ? theme.scheme === 'dark'
+                          ? '#15241C'
+                          : '#F0F9F5'
+                        : theme.scheme === 'dark'
+                        ? 'rgba(255, 255, 255, 0.03)'
+                        : 'rgba(0, 0, 0, 0.02)',
                       borderColor: isCurrent
-                        ? theme.colors.primary
+                        ? theme.scheme === 'dark'
+                          ? '#4BAE8A'
+                          : '#3A8F6F'
                         : theme.colors.border,
                     },
+                    isCurrent && (theme.scheme === 'dark' ? styles.currentCardGlowDark : styles.currentCardGlowLight),
                   ]}
                   testID={`roadmap-tier-${tier.level}`}
                 >
+                  {isCurrent && (
+                    <View
+                      style={[
+                        styles.currentTierBanner,
+                        {
+                          backgroundColor: theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F',
+                        },
+                      ]}
+                    >
+                      <Ionicons name="sparkles" size={11} color="#FFFFFF" style={{ marginRight: 4 }} />
+                      <Text style={styles.currentTierBannerText}>ACTIVE LEVEL • YOU ARE HERE</Text>
+                    </View>
+                  )}
+
                   <View style={styles.tierHeader}>
-                    <ContributorBadgeIcon
-                      badgeKey={tier.badgeKey}
-                      colorToken={tier.colorToken}
-                      size={40}
-                    />
+                    {isCurrent ? (
+                      <View
+                        style={[
+                          styles.currentBadgeHalo,
+                          {
+                            backgroundColor:
+                              theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.22)' : 'rgba(75, 174, 138, 0.16)',
+                            borderColor:
+                              theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.5)' : 'rgba(75, 174, 138, 0.35)',
+                          },
+                        ]}
+                      >
+                        <ContributorBadgeIcon
+                          badgeKey={tier.badgeKey}
+                          colorToken={tier.colorToken}
+                          size={44}
+                        />
+                      </View>
+                    ) : (
+                      <ContributorBadgeIcon
+                        badgeKey={tier.badgeKey}
+                        colorToken={tier.colorToken}
+                        size={38}
+                      />
+                    )}
+
                     <View style={styles.tierMainInfo}>
                       <View style={styles.tierTitleRow}>
                         <Text
                           style={[
-                            styles.tierTitle,
+                            isCurrent ? styles.currentTierTitle : styles.tierTitle,
                             { color: theme.colors.text },
                           ]}
                         >
                           Lv {tier.level} • {tier.title}
                         </Text>
-                        {isCurrent && (
-                          <View
-                            style={[
-                              styles.currentPill,
-                              { backgroundColor: theme.colors.primary },
-                            ]}
-                          >
-                            <Text style={styles.currentPillText}>CURRENT</Text>
-                          </View>
-                        )}
                       </View>
                       <Text
                         style={[
-                          styles.tierRequirements,
-                          { color: theme.colors.textMuted },
+                          isCurrent ? styles.currentTierRequirements : styles.tierRequirements,
+                          {
+                            color: isCurrent
+                              ? theme.scheme === 'dark'
+                                ? '#D6F0E6'
+                                : '#2A6F54'
+                              : theme.colors.textMuted,
+                          },
                         ]}
                       >
                         {tier.minPoints} pts • {tier.productsReq} {tier.productsReq === 1 ? 'product' : 'products'}
                       </Text>
                     </View>
                     <View style={styles.statusIndicator}>
-                      {isUnlocked ? (
+                      {isCurrent ? (
+                        <View
+                          style={[
+                            styles.currentStatusBadge,
+                            {
+                              backgroundColor:
+                                theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.2)' : 'rgba(75, 174, 138, 0.15)',
+                              borderColor: theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F',
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={14}
+                            color={theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F'}
+                          />
+                          <Text
+                            style={[
+                              styles.currentStatusBadgeText,
+                              { color: theme.scheme === 'dark' ? '#4BAE8A' : '#2A6F54' },
+                            ]}
+                          >
+                            ACTIVE
+                          </Text>
+                        </View>
+                      ) : isUnlocked ? (
                         <Ionicons
                           name="checkmark-circle"
                           size={22}
-                          color={theme.colors.primary}
+                          color={theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.6)' : 'rgba(58, 143, 111, 0.6)'}
                         />
                       ) : (
                         <View style={styles.lockBadge}>
@@ -194,24 +258,44 @@ export function ContributorLevelRoadmapModal({
                       )}
                     </View>
                   </View>
+
                   <View
                     style={[
-                      styles.perkContainer,
-                      { borderTopColor: theme.colors.border },
+                      isCurrent ? styles.currentPerkContainer : styles.perkContainer,
+                      {
+                        backgroundColor: isCurrent
+                          ? theme.scheme === 'dark'
+                            ? 'rgba(75, 174, 138, 0.14)'
+                            : 'rgba(75, 174, 138, 0.10)'
+                          : 'transparent',
+                        borderColor: isCurrent
+                          ? theme.scheme === 'dark'
+                            ? 'rgba(75, 174, 138, 0.25)'
+                            : 'rgba(75, 174, 138, 0.18)'
+                          : theme.colors.border,
+                        borderTopColor: isCurrent ? undefined : theme.colors.border,
+                      },
                     ]}
                   >
                     <Ionicons
-                      name="gift-outline"
-                      size={14}
-                      color={theme.colors.textMuted}
+                      name="gift"
+                      size={15}
+                      color={isCurrent ? (theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F') : theme.colors.textMuted}
                       style={styles.perkIcon}
                     />
                     <Text
                       style={[
-                        styles.perkText,
-                        { color: theme.colors.textMuted },
+                        isCurrent ? styles.currentPerkText : styles.perkText,
+                        {
+                          color: isCurrent
+                            ? theme.scheme === 'dark'
+                              ? '#E6EDE8'
+                              : '#2C2C28'
+                            : theme.colors.textMuted,
+                        },
                       ]}
                     >
+                      {isCurrent ? <Text style={{ fontWeight: '800' }}>Active Perk: </Text> : null}
                       {tier.perks}
                     </Text>
                   </View>
@@ -300,9 +384,91 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tierCard: {
+    overflow: 'hidden',
+  },
+  currentTierCard: {
+    borderRadius: 16,
+    borderWidth: 2,
+    padding: 16,
+  },
+  regularTierCard: {
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
+  },
+  currentCardGlowDark: {
+    shadowColor: '#4BAE8A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  currentCardGlowLight: {
+    shadowColor: '#3A8F6F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  currentTierBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginBottom: 10,
+  },
+  currentTierBannerText: {
+    color: '#FFFFFF',
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  currentBadgeHalo: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentTierTitle: {
+    fontSize: 15.5,
+    fontWeight: '800',
+    letterSpacing: 0.1,
+  },
+  currentTierRequirements: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  currentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  currentStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  currentPerkContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  currentPerkText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
   },
   tierHeader: {
     flexDirection: 'row',
@@ -320,17 +486,6 @@ const styles = StyleSheet.create({
   tierTitle: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  currentPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  currentPillText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
   },
   tierRequirements: {
     fontSize: 12,
