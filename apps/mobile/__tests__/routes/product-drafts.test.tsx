@@ -150,6 +150,7 @@ describe('<ProductDraftsScreen />', () => {
       expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
         barcode: '123456789012',
         qr: '',
+        target: 'template',
       });
     });
     // Crucially, no eager draft creation request was issued at entry time.
@@ -183,6 +184,7 @@ describe('<ProductDraftsScreen />', () => {
       expect(navigation.push).toHaveBeenCalledWith('ProductNew', {
         barcode: '',
         qr: 'https://qr.product.info/xyz',
+        target: 'template',
       });
     });
     expect(fetchSpy).not.toHaveBeenCalledWith(
@@ -286,7 +288,7 @@ describe('<ProductDraftsScreen />', () => {
     const scanBtn = await findByTestId('add-options-scan-btn');
     fireEvent.press(scanBtn);
 
-    expect(navigation.push).toHaveBeenCalledWith('Scan');
+    expect(navigation.push).toHaveBeenCalledWith('Scan', { target: 'template' });
   });
 
   it('renders centered dual-action bottom dock with Manually input and Scan an item', async () => {

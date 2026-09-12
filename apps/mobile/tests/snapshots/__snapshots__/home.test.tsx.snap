@@ -297,7 +297,7 @@ exports[`home in expyrico snapshot 1`] = `
                                 "paddingHorizontal": 12,
                               },
                               {
-                                "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                "backgroundColor": "rgba(75, 174, 138, 0.12)",
                                 "borderColor": "#4BAE8A",
                               },
                             ]
@@ -321,15 +321,28 @@ exports[`home in expyrico snapshot 1`] = `
                                   "fontSize": 13,
                                 },
                                 {
-                                  "color": "#3A8F6F",
+                                  "color": "#2A6F54",
                                   "fontWeight": "700",
                                 },
                               ]
                             }
                           >
-                            In Stock (
-                            0
-                            )
+                            In Stock
+                             
+                            <Text
+                              style={
+                                {
+                                  "color": "rgba(42, 111, 84, 0.8)",
+                                  "fontWeight": "700",
+                                }
+                              }
+                            >
+                              (
+                              0
+                              /
+                              50
+                              )
+                            </Text>
                           </Text>
                         </Memo(Pressable)>
                         <Memo(Pressable)
@@ -808,7 +821,7 @@ exports[`home in expyrico snapshot 1`] = `
                                   "paddingHorizontal": 12,
                                 },
                                 {
-                                  "backgroundColor": "rgba(75, 174, 138, 0.14)",
+                                  "backgroundColor": "rgba(75, 174, 138, 0.12)",
                                   "borderColor": "#4BAE8A",
                                 },
                               ]
@@ -822,15 +835,28 @@ exports[`home in expyrico snapshot 1`] = `
                                     "fontSize": 13,
                                   },
                                   {
-                                    "color": "#3A8F6F",
+                                    "color": "#2A6F54",
                                     "fontWeight": "700",
                                   },
                                 ]
                               }
                             >
-                              In Stock (
-                              0
-                              )
+                              In Stock
+                               
+                              <Text
+                                style={
+                                  {
+                                    "color": "rgba(42, 111, 84, 0.8)",
+                                    "fontWeight": "700",
+                                  }
+                                }
+                              >
+                                (
+                                0
+                                /
+                                50
+                                )
+                              </Text>
                             </Text>
                           </View>
                           <View
@@ -1302,15 +1328,15 @@ exports[`home in expyricoDark snapshot 1`] = `
                                 "paddingHorizontal": 12,
                               },
                               {
-                                "backgroundColor": "rgba(75, 174, 138, 0.14)",
-                                "borderColor": "#4BAE8A",
+                                "backgroundColor": "rgba(75, 174, 138, 0.16)",
+                                "borderColor": "rgba(75, 174, 138, 0.5)",
                               },
                             ]
                           }
                           testID="pantry-tab-in-stock"
                         >
                           <Unknown
-                            color="#3A8F6F"
+                            color="#4BAE8A"
                             name="cube-outline"
                             size={16}
                             style={
@@ -1326,15 +1352,28 @@ exports[`home in expyricoDark snapshot 1`] = `
                                   "fontSize": 13,
                                 },
                                 {
-                                  "color": "#3A8F6F",
+                                  "color": "#FAFAF8",
                                   "fontWeight": "700",
                                 },
                               ]
                             }
                           >
-                            In Stock (
-                            0
-                            )
+                            In Stock
+                             
+                            <Text
+                              style={
+                                {
+                                  "color": "rgba(250, 250, 248, 0.75)",
+                                  "fontWeight": "700",
+                                }
+                              }
+                            >
+                              (
+                              0
+                              /
+                              50
+                              )
+                            </Text>
                           </Text>
                         </Memo(Pressable)>
                         <Memo(Pressable)
@@ -1813,8 +1852,8 @@ exports[`home in expyricoDark snapshot 1`] = `
                                   "paddingHorizontal": 12,
                                 },
                                 {
-                                  "backgroundColor": "rgba(75, 174, 138, 0.14)",
-                                  "borderColor": "#4BAE8A",
+                                  "backgroundColor": "rgba(75, 174, 138, 0.16)",
+                                  "borderColor": "rgba(75, 174, 138, 0.5)",
                                 },
                               ]
                             }
@@ -1827,15 +1866,28 @@ exports[`home in expyricoDark snapshot 1`] = `
                                     "fontSize": 13,
                                   },
                                   {
-                                    "color": "#3A8F6F",
+                                    "color": "#FAFAF8",
                                     "fontWeight": "700",
                                   },
                                 ]
                               }
                             >
-                              In Stock (
-                              0
-                              )
+                              In Stock
+                               
+                              <Text
+                                style={
+                                  {
+                                    "color": "rgba(250, 250, 248, 0.75)",
+                                    "fontWeight": "700",
+                                  }
+                                }
+                              >
+                                (
+                                0
+                                /
+                                50
+                                )
+                              </Text>
                             </Text>
                           </View>
                           <View

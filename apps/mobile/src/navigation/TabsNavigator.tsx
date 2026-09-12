@@ -159,8 +159,8 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
           style={[
             styles.dualActionWrapper,
             {
-              backgroundColor: theme.colors.bgElevated,
-              borderColor: theme.colors.border,
+              backgroundColor: theme.scheme === 'dark' ? '#18221D' : '#FFFFFF',
+              borderColor: theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.35)' : 'rgba(75, 174, 138, 0.3)',
             },
           ]}
           pointerEvents="box-none"
@@ -174,25 +174,53 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
             style={({ pressed }) => [
               styles.manualInputButton,
               {
-                backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
-                borderRightColor: theme.colors.border,
-                opacity: pressed ? 0.88 : 1,
+                backgroundColor: pressed
+                  ? theme.scheme === 'dark'
+                    ? 'rgba(75, 174, 138, 0.22)'
+                    : 'rgba(75, 174, 138, 0.16)'
+                  : theme.scheme === 'dark'
+                  ? 'rgba(75, 174, 138, 0.10)'
+                  : 'rgba(75, 174, 138, 0.08)',
+                opacity: pressed ? 0.9 : 1,
               },
             ]}
           >
-            <Ionicons
-              name="create-outline"
-              size={18}
-              color={theme.colors.primaryDark}
-              style={styles.actionIcon}
-            />
+            <View
+              style={[
+                styles.manualInputIconCircle,
+                {
+                  backgroundColor: theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.18)' : 'rgba(75, 174, 138, 0.15)',
+                },
+              ]}
+            >
+              <Ionicons
+                name="create-outline"
+                size={16}
+                color={theme.scheme === 'dark' ? '#4BAE8A' : '#2A6F54'}
+              />
+            </View>
             <Text
-              style={[styles.manualInputLabel, { color: theme.colors.text }]}
+              style={[
+                styles.manualInputLabel,
+                {
+                  color: theme.scheme === 'dark' ? '#E6EDE8' : '#2A6F54',
+                },
+              ]}
               numberOfLines={1}
             >
               Manually input
             </Text>
           </Pressable>
+
+          {/* Subtle Vertical Divider */}
+          <View
+            style={[
+              styles.dualActionDivider,
+              {
+                backgroundColor: theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.3)' : 'rgba(75, 174, 138, 0.25)',
+              },
+            ]}
+          />
 
           {/* Right button: Scan an item */}
           <Pressable
@@ -210,7 +238,7 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
           >
             <Ionicons
               name="scan-outline"
-              size={20}
+              size={19}
               color="#2C2C28"
               style={styles.actionIcon}
             />
@@ -318,35 +346,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: 1.5,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 6,
   },
   manualInputButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingLeft: 12,
+    paddingRight: 14,
     height: 48,
-    borderRightWidth: 1,
-    gap: 5,
+    gap: 7,
+  },
+  manualInputIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   manualInputLabel: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 0.1,
+    letterSpacing: 0.15,
+  },
+  dualActionDivider: {
+    width: 1,
+    height: 22,
   },
   scanActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingLeft: 12,
+    paddingRight: 16,
     height: 48,
-    gap: 5,
+    gap: 6,
   },
   scanActionLabel: {
     fontSize: 13.5,

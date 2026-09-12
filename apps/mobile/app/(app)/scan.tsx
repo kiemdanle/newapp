@@ -338,8 +338,15 @@ export default function ScanScreen() {
                 style={({ pressed }) => [
                   styles.manualAddButton,
                   {
-                    backgroundColor: pressed ? theme.colors.bgGlass : theme.colors.bgElevated,
-                    borderColor: theme.colors.border,
+                    backgroundColor: pressed
+                      ? theme.scheme === 'dark'
+                        ? '#25332B'
+                        : theme.colors.bgGlass
+                      : theme.scheme === 'dark'
+                      ? '#18221D'
+                      : theme.colors.bgElevated,
+                    borderColor:
+                      theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.35)' : theme.colors.border,
                     transform: [{ scale: pressed ? 0.98 : 1 }],
                   },
                 ]}
@@ -347,10 +354,17 @@ export default function ScanScreen() {
                 <View
                   style={[
                     styles.manualAddIconBadge,
-                    { backgroundColor: theme.colors.primaryLight },
+                    {
+                      backgroundColor:
+                        theme.scheme === 'dark' ? 'rgba(75, 174, 138, 0.18)' : theme.colors.primaryLight,
+                    },
                   ]}
                 >
-                  <Ionicons name="create-outline" size={20} color={theme.colors.primaryDark} />
+                  <Ionicons
+                    name="create-outline"
+                    size={20}
+                    color={theme.scheme === 'dark' ? '#4BAE8A' : theme.colors.primaryDark}
+                  />
                 </View>
                 <View style={styles.manualAddContent}>
                   <Text style={[styles.manualAddTitle, { color: theme.colors.text }]}>

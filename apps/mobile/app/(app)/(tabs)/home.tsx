@@ -156,15 +156,24 @@ export default function HomeTab() {
             styles.tabItem,
             {
               backgroundColor:
-                activeTab === 'in_stock' ? 'rgba(75, 174, 138, 0.14)' : theme.colors.bgElevated,
-              borderColor: activeTab === 'in_stock' ? '#4BAE8A' : theme.colors.border,
+                activeTab === 'in_stock'
+                  ? theme.scheme === 'dark'
+                    ? 'rgba(75, 174, 138, 0.16)'
+                    : 'rgba(75, 174, 138, 0.12)'
+                  : theme.colors.bgElevated,
+              borderColor:
+                activeTab === 'in_stock'
+                  ? theme.scheme === 'dark'
+                    ? 'rgba(75, 174, 138, 0.5)'
+                    : '#4BAE8A'
+                  : theme.colors.border,
             },
           ]}
         >
           <Ionicons
             name="cube-outline"
             size={16}
-            color={activeTab === 'in_stock' ? '#3A8F6F' : theme.colors.textMuted}
+            color={activeTab === 'in_stock' ? (theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F') : theme.colors.textMuted}
             style={{ marginRight: 6 }}
           />
           <Text
@@ -172,18 +181,33 @@ export default function HomeTab() {
               styles.tabText,
               {
                 color:
-                  capacityRatio >= 1
-                    ? '#E0442A'
-                    : capacityRatio >= 0.9
-                    ? '#F5A623'
-                    : activeTab === 'in_stock'
-                    ? '#3A8F6F'
+                  activeTab === 'in_stock'
+                    ? theme.scheme === 'dark'
+                      ? '#FAFAF8'
+                      : '#2A6F54'
                     : theme.colors.textMuted,
                 fontWeight: activeTab === 'in_stock' ? '700' : '600',
               },
             ]}
           >
-            In Stock ({myActiveCount}/{pantryLimit})
+            In Stock{' '}
+            <Text
+              style={{
+                color:
+                  capacityRatio >= 1
+                    ? '#F5A623'
+                    : capacityRatio >= 0.9
+                    ? '#F5A623'
+                    : activeTab === 'in_stock'
+                    ? theme.scheme === 'dark'
+                      ? 'rgba(250, 250, 248, 0.75)'
+                      : 'rgba(42, 111, 84, 0.8)'
+                    : theme.colors.textMuted,
+                fontWeight: '700',
+              }}
+            >
+              ({myActiveCount}/{pantryLimit})
+            </Text>
           </Text>
         </Pressable>
 
@@ -197,22 +221,36 @@ export default function HomeTab() {
             styles.tabItem,
             {
               backgroundColor:
-                activeTab === 'history' ? 'rgba(75, 174, 138, 0.14)' : theme.colors.bgElevated,
-              borderColor: activeTab === 'history' ? '#4BAE8A' : theme.colors.border,
+                activeTab === 'history'
+                  ? theme.scheme === 'dark'
+                    ? 'rgba(75, 174, 138, 0.16)'
+                    : 'rgba(75, 174, 138, 0.12)'
+                  : theme.colors.bgElevated,
+              borderColor:
+                activeTab === 'history'
+                  ? theme.scheme === 'dark'
+                    ? 'rgba(75, 174, 138, 0.5)'
+                    : '#4BAE8A'
+                  : theme.colors.border,
             },
           ]}
         >
           <Ionicons
             name="time-outline"
             size={16}
-            color={activeTab === 'history' ? '#3A8F6F' : theme.colors.textMuted}
+            color={activeTab === 'history' ? (theme.scheme === 'dark' ? '#4BAE8A' : '#3A8F6F') : theme.colors.textMuted}
             style={{ marginRight: 6 }}
           />
           <Text
             style={[
               styles.tabText,
               {
-                color: activeTab === 'history' ? '#3A8F6F' : theme.colors.textMuted,
+                color:
+                  activeTab === 'history'
+                    ? theme.scheme === 'dark'
+                      ? '#FAFAF8'
+                      : '#2A6F54'
+                    : theme.colors.textMuted,
                 fontWeight: activeTab === 'history' ? '700' : '600',
               },
             ]}
