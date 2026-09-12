@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
   Modal,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -31,6 +33,60 @@ export function ContributorLevelRoadmapModal({
 }: ContributorLevelRoadmapModalProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      translateY.setValue(0);
+    }
+  }, [visible, translateY]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onMoveShouldSetPanResponderCapture: (_evt, gestureState) => {
+        return gestureState.dy > 4 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
+        } else {
+          translateY.setValue(gestureState.dy * 0.15);
+        }
+      },
+      onPanResponderRelease: (_evt, gestureState) => {
+        if (gestureState.dy > 70 || gestureState.vy > 0.45) {
+          Animated.timing(translateY, {
+            toValue: 600,
+            duration: 180,
+            useNativeDriver: true,
+          }).start(() => {
+            onClose();
+            translateY.setValue(0);
+          });
+        } else {
+          Animated.spring(translateY, {
+            toValue: 0,
+            bounciness: 4,
+            speed: 14,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(translateY, {
+          toValue: 0,
+          bounciness: 4,
+          speed: 14,
+          useNativeDriver: true,
+        }).start();
+      },
+    }),
+  ).current;
 
   return (
     <Modal
@@ -41,38 +97,52 @@ export function ContributorLevelRoadmapModal({
     >
       <View style={styles.overlay}>
         <Pressable style={styles.backdrop} onPress={onClose} />
-        <View
+        <Animated.View
           style={[
             styles.sheet,
             {
               backgroundColor: theme.colors.bgElevated,
               borderColor: theme.colors.border,
               paddingBottom: Math.max(insets.bottom, 16),
+              transform: [{ translateY }],
             },
           ]}
           testID="contributor-roadmap-modal"
         >
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.headerTitleContainer}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>
-                Contributor Levels
-              </Text>
-              <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-                Earn points by adding products, photos, and verified edits.
-              </Text>
+          {/* Drag Handle & Header Area with PanResponder */}
+          <View {...panResponder.panHandlers} collapsable={false}>
+            <View style={styles.handleBar}>
+              <View
+                style={[
+                  styles.handlePill,
+                  {
+                    backgroundColor:
+                      theme.scheme === 'dark'
+                        ? 'rgba(255, 255, 255, 0.22)'
+                        : 'rgba(44, 44, 40, 0.20)',
+                  },
+                ]}
+              />
             </View>
-            <Pressable
-              onPress={onClose}
-              style={[styles.closeButton, { backgroundColor: theme.colors.bgGlass }]}
-              hitSlop={8}
-              accessibilityLabel="Close roadmap"
-            >
-              <Ionicons name="close" size={20} color={theme.colors.textMuted} />
-            </Pressable>
+            <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
+              <View style={styles.headerTitleContainer}>
+                <Text style={[styles.title, { color: theme.colors.text }]}>
+                  Contributor Levels
+                </Text>
+                <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+                  Earn points by adding products, photos, and verified edits.
+                </Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                style={[styles.closeButton, { backgroundColor: theme.colors.bgGlass }]}
+                hitSlop={8}
+                accessibilityLabel="Close roadmap"
+              >
+                <Ionicons name="close" size={20} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
           </View>
-
-          {/* Current Score Banner */}
           <View
             style={[
               styles.currentScoreBanner,
@@ -303,7 +373,7 @@ export function ContributorLevelRoadmapModal({
               );
             })}
           </ScrollView>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -324,12 +394,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     maxHeight: '86%',
   },
+  handleBar: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 2,
+  },
+  handlePill: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 10,
     paddingBottom: 14,
     borderBottomWidth: 1,
   },
