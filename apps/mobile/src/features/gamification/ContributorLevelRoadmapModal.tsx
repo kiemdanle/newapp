@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
   Modal,
@@ -33,13 +33,50 @@ export function ContributorLevelRoadmapModal({
 }: ContributorLevelRoadmapModalProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(600)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const isClosingRef = useRef(false);
 
   useEffect(() => {
     if (visible) {
-      translateY.setValue(0);
+      isClosingRef.current = false;
+      translateY.setValue(600);
+      backdropOpacity.setValue(0);
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          bounciness: 3,
+          speed: 16,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [visible, translateY]);
+  }, [visible, translateY, backdropOpacity]);
+
+  const handleDismiss = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: 600,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+      isClosingRef.current = false;
+    });
+  }, [onClose, translateY, backdropOpacity]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -59,20 +96,13 @@ export function ContributorLevelRoadmapModal({
         }
       },
       onPanResponderRelease: (_evt, gestureState) => {
-        if (gestureState.dy > 70 || gestureState.vy > 0.45) {
-          Animated.timing(translateY, {
-            toValue: 600,
-            duration: 180,
-            useNativeDriver: true,
-          }).start(() => {
-            onClose();
-            translateY.setValue(0);
-          });
+        if (gestureState.dy > 45 || gestureState.vy > 0.3) {
+          handleDismiss();
         } else {
           Animated.spring(translateY, {
             toValue: 0,
             bounciness: 4,
-            speed: 14,
+            speed: 16,
             useNativeDriver: true,
           }).start();
         }
@@ -91,12 +121,12 @@ export function ContributorLevelRoadmapModal({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType="none"
       transparent
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
+      <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
+        <Pressable style={styles.backdrop} onPress={handleDismiss} />
         <Animated.View
           style={[
             styles.sheet,
@@ -134,7 +164,7 @@ export function ContributorLevelRoadmapModal({
                 </Text>
               </View>
               <Pressable
-                onPress={onClose}
+                onPress={handleDismiss}
                 style={[styles.closeButton, { backgroundColor: theme.colors.bgGlass }]}
                 hitSlop={8}
                 accessibilityLabel="Close roadmap"
@@ -143,6 +173,8 @@ export function ContributorLevelRoadmapModal({
               </Pressable>
             </View>
           </View>
+
+          {/* Current Score Banner */}
           <View
             style={[
               styles.currentScoreBanner,
@@ -374,7 +406,7 @@ export function ContributorLevelRoadmapModal({
             })}
           </ScrollView>
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
 }
