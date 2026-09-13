@@ -71,6 +71,7 @@ apps/mobile/android/app/src/main/res/drawable-*/
 *.pem
 .env.production
 
+*.gz
 # Backup / restic credentials — never commit
 restic_*.env
 *.restic.env

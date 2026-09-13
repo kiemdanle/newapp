@@ -15,6 +15,7 @@ export * from './schemas/admin/reviews.js';
 export * from './schemas/admin/reports.js';
 export * from './schemas/admin/analytics.js';
 export * from './schemas/admin/system.js';
+export * from './schemas/admin/barcode-api.js';
 export * from './schemas/admin/settings.js';
 export * from './schemas/admin/deals.js';
 export * from './schemas/deal.js';

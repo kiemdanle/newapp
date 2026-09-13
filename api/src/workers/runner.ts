@@ -19,9 +19,14 @@ import {
 import { sweepOutbox } from '../services/notifications/outbox.js';
 import { getConfig } from '../config.js';
 import { logger } from '../logger.js';
+import {
+  pruneExpiredBarcodeApiLogs,
+  flushBarcodeApiCallLogs,
+} from '../services/external/barcode-api-tracker.js';
 
 let _workers: Worker[] | null = null;
 let _outboxInterval: NodeJS.Timeout | null = null;
+let _barcodePruneInterval: NodeJS.Timeout | null = null;
 export function startWorkers(): Worker[] {
   if (_workers) return _workers;
   // Skip in test env unless explicitly requested
@@ -59,6 +64,16 @@ export function startWorkers(): Worker[] {
     }, 60_000);
     _outboxInterval.unref();
   }
+  if (!_barcodePruneInterval) {
+    // Run once on startup (deferred) and repeat every 24 hours
+    pruneExpiredBarcodeApiLogs().catch((err: unknown) => {
+      logger.error({ err }, 'failed initial barcode api log pruning sweep');
+    });
+    _barcodePruneInterval = setInterval(() => {
+      void pruneExpiredBarcodeApiLogs();
+    }, 24 * 60 * 60 * 1000);
+    _barcodePruneInterval.unref();
+  }
   logger.info({ count: _workers.length }, 'workers started');
   return _workers;
 }
@@ -69,6 +84,11 @@ export async function stopWorkers(): Promise<void> {
     clearInterval(_outboxInterval);
     _outboxInterval = null;
   }
+  if (_barcodePruneInterval) {
+    clearInterval(_barcodePruneInterval);
+    _barcodePruneInterval = null;
+  }
+  await flushBarcodeApiCallLogs();
   stopFeedbackAdminAlertPoller();
   stopIndependentOutboxPoller();
   stopModerationNotificationWatchdog();

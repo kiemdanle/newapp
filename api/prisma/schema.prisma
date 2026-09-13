@@ -1198,3 +1198,28 @@ model FeedbackAdminAlertOutbox {
   @@index([ticketId])
   @@map("feedback_admin_alert_outbox")
 }
+
+model BarcodeApiCallLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  provider           String   @db.VarChar(64)
+  barcode            String   @db.VarChar(64)
+  endpoint           String   @db.Text
+  httpMethod         String   @default("GET") @map("http_method") @db.VarChar(16)
+  status             String   @db.VarChar(32)
+  httpStatus         Int?     @map("http_status") @db.SmallInt
+  durationMs         Int      @map("duration_ms") @db.Integer
+  errorMessage       String?  @map("error_message") @db.Text
+  responseSizeBytes  Int?     @map("response_size_bytes") @db.Integer
+  callerContext      String   @default("sync_lookup") @map("caller_context") @db.VarChar(32)
+  requestHeaders     Json?    @map("request_headers")
+  responseHeaders    Json?    @map("response_headers")
+  rawResponsePreview String?  @map("raw_response_preview") @db.Text
+  userId             String?  @map("user_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([provider, createdAt])
+  @@index([createdAt])
+  @@index([barcode])
+  @@index([status, createdAt])
+  @@map("barcode_api_call_logs")
+}

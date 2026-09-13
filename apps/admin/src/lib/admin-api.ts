@@ -42,6 +42,23 @@ import {
   pushLogsListSchema,
   apiErrorsAggSchema,
   externalApiStateSchema,
+  barcodeApiStatsSchema,
+  barcodeApiRequestsListSchema,
+  barcodeApiCallLogDetailSchema,
+  barcodeApiProbeRequestSchema,
+  barcodeApiProbeResponseSchema,
+  barcodeApiConfigSchema,
+  barcodeApiConfigPatchSchema,
+  barcodeApiResetActionSchema,
+  type BarcodeApiStats,
+  type BarcodeApiRequestsQuery,
+  type BarcodeApiRequestsList,
+  type BarcodeApiCallLogDetail,
+  type BarcodeApiProbeRequest,
+  type BarcodeApiProbeResponse,
+  type BarcodeApiConfig,
+  type BarcodeApiConfigPatch,
+  type BarcodeApiResetAction,
   moderationNotificationBatchesListSchema,
   moderationNotificationDeliveriesListSchema,
   moderationNotificationHealthSchema,
@@ -242,6 +259,41 @@ export const serverAdminApi = {
       apiServerFetch('/v1/admin/system/external-apis').then((r) =>
         externalApiStateSchema.parse(r),
       ),
+    barcodeApiStats: (range: '24h' | '7d' | '30d' = '24h') =>
+      apiServerFetch(`/v1/admin/system/external-apis/stats${qs({ range })}`).then((r) =>
+        barcodeApiStatsSchema.parse(r),
+      ),
+    barcodeApiRequests: (query: BarcodeApiRequestsQuery) =>
+      apiServerFetch(
+        `/v1/admin/system/external-apis/requests${qs({
+          cursor: query.cursor,
+          limit: query.limit,
+          provider: query.provider,
+          status: query.status,
+          barcode: query.barcode,
+          callerContext: query.callerContext,
+          range: query.range,
+        })}`,
+      ).then((r) => barcodeApiRequestsListSchema.parse(r)),
+    barcodeApiRequestDetail: (id: string) =>
+      apiServerFetch(`/v1/admin/system/external-apis/requests/${encodeURIComponent(id)}`).then((r) =>
+        barcodeApiCallLogDetailSchema.parse(r),
+      ),
+    barcodeApiProbe: (body: BarcodeApiProbeRequest) =>
+      apiServerFetch('/v1/admin/system/external-apis/probe', {
+        method: 'POST',
+        body: barcodeApiProbeRequestSchema.parse(body),
+      }).then((r) => barcodeApiProbeResponseSchema.parse(r)),
+    updateBarcodeApiConfig: (body: BarcodeApiConfigPatch) =>
+      apiServerFetch('/v1/admin/system/external-apis/config', {
+        method: 'PATCH',
+        body: barcodeApiConfigPatchSchema.parse(body),
+      }).then((r) => barcodeApiConfigSchema.parse(r)),
+    resetBarcodeApiProvider: (body: BarcodeApiResetAction) =>
+      apiServerFetch<{ ok: boolean; provider: string; target: string }>('/v1/admin/system/external-apis/reset', {
+        method: 'POST',
+        body: barcodeApiResetActionSchema.parse(body),
+      }),
     moderationNotifications: {
       summary: () =>
         apiServerFetch('/v1/admin/system/moderation-notifications/summary').then((r) =>

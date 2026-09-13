@@ -25,6 +25,11 @@ import type {
   AdminUserSendRandomPasswordRequest,
   AdminUserSendRandomPasswordResponse,
 } from '@expyrico/shared';
+import type {
+  BarcodeApiConfigPatch,
+  BarcodeApiResetAction,
+  BarcodeApiProbeRequest,
+} from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
 import { ApiError } from './api';
 import type { ActionResult } from './action-result';
@@ -323,4 +328,32 @@ export async function savePantryLimitsAction(body: PantryLimitsPatch) {
   const result = await serverAdminApi.settings.pantryLimits.patch(body);
   revalidatePath('/settings/pantry-limits');
   return result;
+}
+
+export async function updateBarcodeApiConfigAction(body: BarcodeApiConfigPatch) {
+  return runAction(async () => {
+    const result = await serverAdminApi.system.updateBarcodeApiConfig(body);
+    revalidatePath('/system/external-apis');
+    return result;
+  });
+}
+
+export async function resetBarcodeApiProviderAction(body: BarcodeApiResetAction) {
+  return runAction(async () => {
+    const result = await serverAdminApi.system.resetBarcodeApiProvider(body);
+    revalidatePath('/system/external-apis');
+    return result;
+  });
+}
+
+export async function probeBarcodeApiAction(body: BarcodeApiProbeRequest) {
+  return runAction(async () => {
+    return serverAdminApi.system.barcodeApiProbe(body);
+  });
+}
+
+export async function fetchBarcodeApiRequestDetailAction(id: string) {
+  return runAction(async () => {
+    return serverAdminApi.system.barcodeApiRequestDetail(id);
+  });
 }

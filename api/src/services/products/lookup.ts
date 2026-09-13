@@ -2,7 +2,7 @@ import prismaPkg from '@prisma/client';
 const { Prisma } = prismaPkg;
 import type { ProductLookupV2Response } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
-import { lookupOff, type ExternalLookupResult } from './off-client.js';
+import { lookupOff, type ExternalLookupResult, type ExternalLookupOptions } from './off-client.js';
 import { lookupUpcitemdb } from './upcitemdb-client.js';
 import type { ExternalProductData } from './mappers.js';
 import { toApiProduct } from './serializer.js';
@@ -64,7 +64,10 @@ export function isRestrictedInStoreBarcode(barcode?: string): boolean {
  * Concurrently queries OpenFoodFacts and UPCitemdb. Resolves immediately
  * on the first positive 'found' hit, avoiding blocking on slower timeouts.
  */
-export async function queryExternalProvidersConcurrently(barcode: string): Promise<{
+export async function queryExternalProvidersConcurrently(
+  barcode: string,
+  options?: ExternalLookupOptions,
+): Promise<{
   data?: ExternalProductData;
   anyUnavailable: boolean;
 }> {
@@ -75,10 +78,10 @@ export async function queryExternalProvidersConcurrently(barcode: string): Promi
   let completed = false;
 
   const checkProvider = async (
-    lookupFn: (b: string) => Promise<ExternalLookupResult>,
+    lookupFn: (b: string, opts?: ExternalLookupOptions) => Promise<ExternalLookupResult>,
   ) => {
     try {
-      const res = await lookupFn(barcode);
+      const res = await lookupFn(barcode, options);
       if (completed) return;
       if (res.status === 'found') {
         completed = true;
@@ -278,7 +281,10 @@ export async function lookupProductV2(
     return { outcome: 'not_found', canCreate };
   }
 
-  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(input.barcode);
+  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(input.barcode, {
+    callerContext: 'sync_lookup',
+    userId: actor?.id ?? null,
+  });
   if (externalHit) {
     // Re-classify: a concurrent private draft/active row can win the race
     // between findLocalExact and this HTTP round trip.
@@ -314,7 +320,9 @@ export async function lookupProductForBackfill(barcode: string): Promise<{
     return { product: null, status: 'not_found' };
   }
 
-  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(barcode);
+  const { data: externalHit, anyUnavailable } = await queryExternalProvidersConcurrently(barcode, {
+    callerContext: 'backfill_worker',
+  });
   if (externalHit) {
     const persisted = await persistExternal(externalHit);
     return { product: persisted.status === 'active' ? persisted : null, status: 'found' };

@@ -16,6 +16,8 @@ import {
   type PhotoLimitsSettings,
   type PantryLimitsSettings,
   type PantryLimitsPatch,
+  barcodeApiConfigSchema,
+  type BarcodeApiConfig,
 } from '@expyrico/shared';
 import { writeAuditLog } from '../audit/log.js';
 
@@ -36,6 +38,9 @@ export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T)
     }
     if (key === SETTING_KEYS.PANTRY_LIMITS) {
       return schema.parse(DEFAULT_PANTRY_LIMITS);
+    }
+    if (key === SETTING_KEYS.EXTERNAL_BARCODE_PROVIDERS) {
+      return schema.parse(DEFAULT_BARCODE_API_CONFIG);
     }
     throw new Error(`Setting ${key} missing — run seed-admin`);
   }
@@ -71,7 +76,26 @@ export const SETTING_KEYS = {
   CONTRIBUTOR_LEVELS: 'contributor_levels',
   PHOTO_LIMITS: 'photo_limits',
   PANTRY_LIMITS: 'pantry_limits',
+  EXTERNAL_BARCODE_PROVIDERS: 'external_barcode_providers',
 } as const;
+
+export const DEFAULT_BARCODE_API_CONFIG: BarcodeApiConfig = {
+  providers: {
+    off: {
+      enabled: true,
+      timeoutMs: 3500,
+      dailyLimit: null,
+      priority: 10,
+    },
+    upcitemdb: {
+      enabled: true,
+      timeoutMs: 2000,
+      dailyLimit: 100,
+      priority: 20,
+    },
+  },
+  retentionDays: 30,
+};
 
 let cachedPhotoLimits: { data: PhotoLimitsSettings; expiresAt: number } | null = null;
 

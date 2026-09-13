@@ -15,7 +15,36 @@ export class HttpError extends Error {
   }
 }
 
-export async function getJson<T>(url: string, opts: HttpJsonOptions): Promise<T> {
+export interface HttpMetaResult<T> {
+  data: T | null;
+  status: number;
+  headers: Record<string, string>;
+  sizeBytes: number;
+  rawTextPreview: string;
+}
+
+function sanitizeHeaders(rawHeaders: Record<string, string | string[] | undefined>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(rawHeaders)) {
+    if (!v) continue;
+    const key = k.toLowerCase();
+    if (
+      key === 'authorization' ||
+      key === 'cookie' ||
+      key === 'set-cookie' ||
+      key.includes('token') ||
+      key.includes('secret') ||
+      key.includes('password')
+    ) {
+      result[key] = '[REDACTED]';
+    } else {
+      result[key] = Array.isArray(v) ? v.join(', ') : String(v);
+    }
+  }
+  return result;
+}
+
+export async function getJsonWithMeta<T>(url: string, opts: HttpJsonOptions): Promise<HttpMetaResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), opts.timeoutMs);
   try {
@@ -24,17 +53,38 @@ export async function getJson<T>(url: string, opts: HttpJsonOptions): Promise<T>
       headers: { accept: 'application/json', ...(opts.headers ?? {}) },
       signal: controller.signal,
     });
-    if (res.statusCode >= 500) {
-      throw new HttpError(res.statusCode, `upstream ${res.statusCode}`);
+    const text = await res.body.text();
+    const sizeBytes = Buffer.byteLength(text, 'utf8');
+    const rawTextPreview = text.slice(0, 4096);
+    const headers = sanitizeHeaders(res.headers as Record<string, string | string[] | undefined>);
+    let data: T | null = null;
+    try {
+      data = JSON.parse(text) as T;
+    } catch {
+      data = null;
     }
-    if (res.statusCode === 404) {
-      throw new HttpError(404, 'not found');
-    }
-    if (res.statusCode >= 400) {
-      throw new HttpError(res.statusCode, `client error ${res.statusCode}`);
-    }
-    return (await res.body.json()) as T;
+    return {
+      data,
+      status: res.statusCode,
+      headers,
+      sizeBytes,
+      rawTextPreview,
+    };
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function getJson<T>(url: string, opts: HttpJsonOptions): Promise<T> {
+  const meta = await getJsonWithMeta<T>(url, opts);
+  if (meta.status >= 500) {
+    throw new HttpError(meta.status, `upstream ${meta.status}`);
+  }
+  if (meta.status === 404) {
+    throw new HttpError(404, 'not found');
+  }
+  if (meta.status >= 400) {
+    throw new HttpError(meta.status, `client error ${meta.status}`);
+  }
+  return meta.data as T;
 }
