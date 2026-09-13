@@ -44,6 +44,14 @@ The MCP server returns "not initialized." Ask the user: _"I notice this project 
 
 <!-- CODEGRAPH_END -->
 
+# Agent Instructions: Code Navigation & Search
+
+## Core Search Directives
+- NEVER use raw `grep` or `find` to map structural code components, trace functions, find imports, or locate callers.
+- ALWAYS query the active `codegraph` MCP tools (`codegraph_search`, `codegraph_callers`, etc.) when searching for symbols, tracking cross-file definitions, or trying to understand code architecture.
+- Only fall back to built-in grep or bash lookups if raw textual verification (like searching for a generic string literal in a config file) is specifically required.
+
+
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
