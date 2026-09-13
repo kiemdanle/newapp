@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   Activity,
   CheckCircle2,
+  Barcode,
+  Zap,
 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -104,7 +106,7 @@ export default async function OverviewPage() {
       </div>
 
       {/* Quick Navigation Cards */}
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         {/* Moderation Card */}
         <div className="group rounded-2xl border border-border bg-card p-6 shadow-card hover:shadow-dropdown transition-all flex flex-col justify-between">
           <div>
@@ -182,6 +184,34 @@ export default async function OverviewPage() {
               className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:translate-x-0.5 transition-transform"
             >
               <span>Inspect queues</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Barcode Telemetry & Quotas Card */}
+        <div className="group rounded-2xl border border-border bg-card p-6 shadow-card hover:shadow-dropdown transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#D6F0E6] text-[#3A8F6F] border border-[#4BAE8A]/30 mb-4">
+              <Barcode size={20} />
+            </div>
+            <h3 className="text-lg font-bold text-neutral-dark font-display">
+              External Barcode APIs
+            </h3>
+            <p className="text-xs text-neutral-mid mt-1 leading-relaxed">
+              Monitor real-time latencies, hit rates, daily quotas, and diagnostic probes for OpenFoodFacts & UPCitemdb.
+            </p>
+          </div>
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-neutral-100">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-[#3A8F6F]">
+              <Zap size={13} />
+              <span>Telemetry & Quotas</span>
+            </span>
+            <Link
+              href="/system/external-apis"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:translate-x-0.5 transition-transform"
+            >
+              <span>Command center</span>
               <ArrowRight size={14} />
             </Link>
           </div>

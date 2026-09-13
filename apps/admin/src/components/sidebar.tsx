@@ -32,6 +32,7 @@ import {
   HelpCircle,
   Camera,
   Layers,
+  Barcode,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -62,6 +63,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   HelpCircle,
   Camera,
   Layers,
+  Barcode,
 };
 
 export function Sidebar({
