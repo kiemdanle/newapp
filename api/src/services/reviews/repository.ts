@@ -46,8 +46,7 @@ export function toApiReview(
   const out: ApiReview = {
     id: r.id,
     productId: r.productId,
-    stars: r.stars,
-    rating: r.rating ?? (r.stars >= 4 ? 'buy_again' : r.stars === 3 ? 'buy_again_on_sale' : 'wont_buy'),
+    rating: r.rating,
     body: r.body,
     helpfulCount: r.helpfulCount,
     notHelpfulCount: r.notHelpfulCount,

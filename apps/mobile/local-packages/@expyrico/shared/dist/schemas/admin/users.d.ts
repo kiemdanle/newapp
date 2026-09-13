@@ -174,12 +174,12 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
     createdAt: string;
+    reviewCount: number;
     requireProductApproval: boolean;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
     recordCount: number;
-    reviewCount: number;
     openReportsAgainst: number;
     sessions: {
         id: string;
@@ -197,11 +197,11 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
     createdAt: string;
+    reviewCount: number;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
     recordCount: number;
-    reviewCount: number;
     openReportsAgainst: number;
     sessions: {
         id: string;

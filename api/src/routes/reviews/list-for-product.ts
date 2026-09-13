@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ERROR_CODES, reviewListQuerySchema } from '@expyrico/shared';
@@ -61,9 +62,13 @@ export async function listForProductRoute(app: FastifyInstance) {
         }
       }
 
-      const where = viewerId
-        ? { productId, OR: [{ status: 'visible' as const }, { userId: viewerId }] }
-        : { productId, status: 'visible' as const };
+      const where: Prisma.ReviewWhereInput = {
+        productId,
+        ...(viewerId
+          ? { OR: [{ status: 'visible' }, { userId: viewerId }] }
+          : { status: 'visible' }),
+        ...(query.rating ? { rating: query.rating } : {}),
+      };
 
       const orderBy =
         query.sort === 'new'

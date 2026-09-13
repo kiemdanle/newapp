@@ -28,6 +28,7 @@ export declare const adminDealRowSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     productId: string;
+    productName: string;
     userId: string;
     expiryDate: string | null;
     photoUrl: string | null;
@@ -38,7 +39,6 @@ export declare const adminDealRowSchema: z.ZodObject<{
     note: string | null;
     upvoteCount: number;
     downvoteCount: number;
-    productName: string;
     productBrand: string | null;
     authorFirstName: string;
     authorEmail: string;
@@ -49,6 +49,7 @@ export declare const adminDealRowSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     productId: string;
+    productName: string;
     userId: string;
     expiryDate: string | null;
     photoUrl: string | null;
@@ -59,7 +60,6 @@ export declare const adminDealRowSchema: z.ZodObject<{
     note: string | null;
     upvoteCount: number;
     downvoteCount: number;
-    productName: string;
     productBrand: string | null;
     authorFirstName: string;
     authorEmail: string;
@@ -107,6 +107,7 @@ export declare const adminDealsListSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         productId: string;
+        productName: string;
         userId: string;
         expiryDate: string | null;
         photoUrl: string | null;
@@ -117,7 +118,6 @@ export declare const adminDealsListSchema: z.ZodObject<{
         note: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        productName: string;
         productBrand: string | null;
         authorFirstName: string;
         authorEmail: string;
@@ -128,6 +128,7 @@ export declare const adminDealsListSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         productId: string;
+        productName: string;
         userId: string;
         expiryDate: string | null;
         photoUrl: string | null;
@@ -138,7 +139,6 @@ export declare const adminDealsListSchema: z.ZodObject<{
         note: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        productName: string;
         productBrand: string | null;
         authorFirstName: string;
         authorEmail: string;
@@ -152,6 +152,7 @@ export declare const adminDealsListSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         productId: string;
+        productName: string;
         userId: string;
         expiryDate: string | null;
         photoUrl: string | null;
@@ -162,7 +163,6 @@ export declare const adminDealsListSchema: z.ZodObject<{
         note: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        productName: string;
         productBrand: string | null;
         authorFirstName: string;
         authorEmail: string;
@@ -176,6 +176,7 @@ export declare const adminDealsListSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         productId: string;
+        productName: string;
         userId: string;
         expiryDate: string | null;
         photoUrl: string | null;
@@ -186,7 +187,6 @@ export declare const adminDealsListSchema: z.ZodObject<{
         note: string | null;
         upvoteCount: number;
         downvoteCount: number;
-        productName: string;
         productBrand: string | null;
         authorFirstName: string;
         authorEmail: string;

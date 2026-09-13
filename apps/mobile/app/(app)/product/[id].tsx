@@ -13,6 +13,7 @@ import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { Button } from '../../../src/components/Button';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
+import { REVIEW_BADGE_CONFIG } from '../../../src/features/reviews/ReviewCard';
 export default function ProductDetail() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
@@ -30,14 +31,9 @@ export default function ProductDetail() {
     myReviewData?.review ??
     allMyReviews.find((r) => r.productId === targetProductId || r.productId === id);
   const userReviewRating = myReview?.rating;
-  const userStars =
-    userReviewRating === 'buy_again'
-      ? 5
-      : userReviewRating === 'buy_again_on_sale'
-        ? 3
-        : userReviewRating === 'wont_buy'
-          ? 1
-          : null;
+  const totalRatings = data?.ratingCount ?? 0;
+  const positiveCount = (data?.buyAgainCount ?? 0) + (data?.buyAgainOnSaleCount ?? 0);
+  const scorePct = totalRatings > 0 ? Math.round((positiveCount / totalRatings) * 100) : null;
 
   if (isLoading || !data) {
     return (
@@ -81,54 +77,77 @@ export default function ProductDetail() {
         <Text style={{ color: theme.colors.text, fontSize: theme.typeRamp.headlineMedium.fontSize, fontWeight: theme.typeRamp.headlineMedium.fontWeight as any }}>
           {data.name}
         </Text>
-        {userStars !== null ? (
+        {totalRatings > 0 || userReviewRating ? (
           <Pressable
-            testID="product-header-stars"
+            testID="product-header-sentiment"
             accessibilityRole="button"
-            accessibilityLabel={`Your rating: ${userStars} out of 5 stars. View all reviews.`}
+            accessibilityLabel={
+              userReviewRating
+                ? `Community: ${scorePct ?? 0}% recommend. Your rating: ${userReviewRating === 'buy_again' ? 'Buy again' : userReviewRating === 'buy_again_on_sale' ? 'Buy on sale' : "Won't buy"}. View all reviews.`
+                : `${scorePct}% recommend from ${totalRatings} community ratings. View all reviews.`
+            }
             onPress={() => navigation.navigate('ProductReviews', { id: data.id })}
             style={({ pressed }) => ({
               flexDirection: 'row',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 8,
               marginTop: 2,
               marginBottom: 4,
               opacity: pressed ? 0.8 : 1,
             })}
             hitSlop={8}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Ionicons
-                  key={s}
-                  name={s <= userStars ? 'star' : 'star-outline'}
-                  size={17}
-                  color={s <= userStars ? '#F5A623' : theme.colors.neutralMid}
-                  style={{ marginRight: 2 }}
-                />
-              ))}
-            </View>
-            <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '700', marginRight: 6 }}>
-              {userStars.toFixed(1)}
-            </Text>
-            <View
-              style={{
-                backgroundColor: theme.colors.bgGlass,
-                paddingHorizontal: 8,
-                paddingVertical: 2,
-                borderRadius: 6,
-                borderWidth: 1,
-                borderColor: theme.colors.border,
-              }}
-            >
-              <Text style={{ color: theme.colors.primaryDark, fontSize: 11, fontWeight: '600' }}>
-                Your review
-              </Text>
-            </View>
+            {scorePct !== null ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="thumbs-up" size={16} color="#4BAE8A" />
+                <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: '700' }}>
+                  {scorePct}% recommend
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  · {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'}
+                </Text>
+              </View>
+            ) : null}
+
+            {userReviewRating ? (() => {
+              const userBadge = REVIEW_BADGE_CONFIG[userReviewRating];
+              return (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    backgroundColor: userBadge.bg,
+                    borderColor: userBadge.border,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                    borderWidth: 1,
+                  }}
+                >
+                  <Ionicons
+                    name={userBadge.icon}
+                    size={12}
+                    color={userBadge.border}
+                  />
+                  <Text
+                    style={{
+                      color: userBadge.text,
+                      fontSize: 11,
+                      fontWeight: '600',
+                    }}
+                  >
+                    {userBadge.label} (You)
+                  </Text>
+                </View>
+              );
+            })() : null}
+
             <Ionicons
               name="chevron-forward"
               size={14}
               color={theme.colors.textMuted}
-              style={{ marginLeft: 4 }}
             />
           </Pressable>
         ) : null}

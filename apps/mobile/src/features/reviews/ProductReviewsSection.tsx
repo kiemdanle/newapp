@@ -37,7 +37,7 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
     null;
   const isReviewed = Boolean(existingReview);
 
-  // Sentiment metrics: retain authoritative server tallies unless the review set is demonstrably complete
+  // Recommendation metrics: retain authoritative server tallies unless the review set is demonstrably complete
   const isCompleteSet = Boolean(
     product.ratingCount &&
     allReviews.length === product.ratingCount,
@@ -45,18 +45,27 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
 
   const totalRatings =
     isCompleteSet ? allReviews.length : (product.ratingCount ?? 0);
-  const avgScore =
+
+  const buyAgainCount = isCompleteSet
+    ? allReviews.filter((r) => r.rating === 'buy_again').length
+    : (product.buyAgainCount ?? allReviews.filter((r) => r.rating === 'buy_again').length);
+
+  const buyAgainOnSaleCount = isCompleteSet
+    ? allReviews.filter((r) => r.rating === 'buy_again_on_sale').length
+    : (product.buyAgainOnSaleCount ?? allReviews.filter((r) => r.rating === 'buy_again_on_sale').length);
+
+  const wontBuyCount = isCompleteSet
+    ? allReviews.filter((r) => r.rating === 'wont_buy').length
+    : (product.wontBuyCount ?? allReviews.filter((r) => r.rating === 'wont_buy').length);
+
+  const recommendPct =
     totalRatings > 0
-      ? ((product as any).averageRating && Number((product as any).averageRating) > 0
-          ? Number((product as any).averageRating)
-          : allReviews.length > 0
-            ? Math.round((allReviews.reduce((acc, r) => acc + (r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1)), 0) / allReviews.length) * 10) / 10
-            : 0)
+      ? Math.round(((buyAgainCount + buyAgainOnSaleCount) / totalRatings) * 100)
       : 0;
+
   const writtenReviewsCount = isCompleteSet
     ? allReviews.filter((r) => Boolean(r.body && r.body.trim())).length
     : (product.reviewCount ?? allReviews.filter((r) => Boolean(r.body && r.body.trim())).length);
-
   const displayReviews = allReviews.slice(0, 3);
   function handleNavigateReview() {
     navigation.navigate('ProductReview', {
@@ -91,17 +100,39 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
           ]}
         >
           <View style={styles.sentimentHeader}>
-            <Ionicons name="star" size={24} color="#F5A623" />
+            <Ionicons name="thumbs-up" size={22} color="#4BAE8A" />
             <Text style={[styles.sentimentPct, { color: theme.colors.text }]}>
-              {avgScore > 0 ? avgScore.toFixed(1) : '0.0'}
+              {recommendPct}%
             </Text>
             <Text style={[styles.sentimentPctLabel, { color: theme.colors.textMuted }]}>
-              out of 5 stars
+              recommend
             </Text>
           </View>
           <Text style={[styles.sentimentSub, { color: theme.colors.textMuted }]}>
-            {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'} ({writtenReviewsCount} written {writtenReviewsCount === 1 ? 'review' : 'reviews'})
+            Based on {totalRatings} community {totalRatings === 1 ? 'rating' : 'ratings'} ({writtenReviewsCount} written {writtenReviewsCount === 1 ? 'review' : 'reviews'})
           </Text>
+
+          {/* Breakdown Chips Row */}
+          <View style={[styles.breakdownRow, { borderTopColor: theme.colors.border }]}>
+            <View style={[styles.breakdownChip, { backgroundColor: '#D6F0E6', borderColor: '#4BAE8A' }]}>
+              <Ionicons name="checkmark-circle" size={12} color="#4BAE8A" style={{ marginRight: 4 }} />
+              <Text style={[styles.breakdownText, { color: '#3A8F6F' }]}>
+                {buyAgainCount} Buy again
+              </Text>
+            </View>
+            <View style={[styles.breakdownChip, { backgroundColor: '#FEEFC3', borderColor: '#F5A623' }]}>
+              <Ionicons name="pricetag" size={12} color="#F5A623" style={{ marginRight: 4 }} />
+              <Text style={[styles.breakdownText, { color: '#2C2C28' }]}>
+                {buyAgainOnSaleCount} On sale
+              </Text>
+            </View>
+            <View style={[styles.breakdownChip, { backgroundColor: '#F0F0ED', borderColor: '#8C8C85' }]}>
+              <Ionicons name="thumbs-down" size={12} color="#8C8C85" style={{ marginRight: 4 }} />
+              <Text style={[styles.breakdownText, { color: '#2C2C28' }]}>
+                {wontBuyCount} Won't buy
+              </Text>
+            </View>
+          </View>
         </View>
       ) : (
         <View
@@ -116,10 +147,10 @@ export function ProductReviewsSection({ product }: ProductReviewsSectionProps) {
         >
           <Ionicons name="chatbox-outline" size={32} color={theme.colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-            No reviews yet
+            No community ratings yet
           </Text>
           <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
-            Be the first to share your experience with this item.
+            Be the first to rate this product!
           </Text>
         </View>
       )}
@@ -305,23 +336,22 @@ const styles = StyleSheet.create({
   breakdownRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
     paddingTop: 10,
     borderTopWidth: 1,
   },
-  breakdownItem: {
+  breakdownChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
   },
-  breakdownCount: {
-    fontSize: 13,
+  breakdownText: {
+    fontSize: 11,
     fontWeight: '700',
-    marginRight: 4,
-  },
-  breakdownLabel: {
-    fontSize: 12,
-  },
-  breakdownDot: {
-    marginHorizontal: 8,
   },
   emptyCard: {
     borderWidth: 1,

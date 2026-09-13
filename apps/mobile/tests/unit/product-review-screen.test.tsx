@@ -64,7 +64,9 @@ describe('ProductReview Screen', () => {
     expect(getByText('Oat Milk Organic')).toBeTruthy();
     expect(getByText('Oatly')).toBeTruthy();
     expect(getByText('Rate this product')).toBeTruthy();
-    expect(getByText('Tap a star to rate')).toBeTruthy();
+    expect(getByText('Buy again')).toBeTruthy();
+    expect(getByText('Buy on sale')).toBeTruthy();
+    expect(getByText("Won't buy")).toBeTruthy();
     expect(getByText('Submit review')).toBeTruthy();
   });
 
@@ -80,7 +82,7 @@ describe('ProductReview Screen', () => {
     fireEvent.press(submitBtn);
 
     await waitFor(() => {
-      expect(getByText('Please select a star rating.')).toBeTruthy();
+      expect(getByText('Please select whether you recommend this product.')).toBeTruthy();
     });
     expect(mockCreateMutateAsync).not.toHaveBeenCalled();
   });
@@ -97,8 +99,8 @@ describe('ProductReview Screen', () => {
 
     const { getByText, getByPlaceholderText, getByTestId } = render(<ProductReview />);
 
-    // Select 5 stars
-    fireEvent.press(getByTestId('rating-star-5'));
+    // Select Buy again recommendation
+    fireEvent.press(getByTestId('recommendation-option-buy_again'));
     // Type review comment
     const input = getByPlaceholderText('Share what you liked, taste, packaging, value...');
     fireEvent.changeText(input, 'Super smooth and pairs well with coffee!');
@@ -110,7 +112,7 @@ describe('ProductReview Screen', () => {
       expect(mockCreateMutateAsync).toHaveBeenCalledWith({
         productId: 'prod-123',
         input: {
-          stars: 5,
+          rating: 'buy_again',
           body: 'Super smooth and pairs well with coffee!',
         },
       });
@@ -122,7 +124,6 @@ describe('ProductReview Screen', () => {
     const existingReview: Review = {
       id: 'rev-existing',
       productId: 'prod-123',
-      stars: 3,
       rating: 'buy_again_on_sale',
       body: 'Only when on promo',
       helpfulCount: 3,
@@ -150,7 +151,6 @@ describe('ProductReview Screen', () => {
     const existingReview: Review = {
       id: 'rev-existing',
       productId: 'prod-123',
-      stars: 5,
       rating: 'buy_again',
       body: 'Old comment that will be cleared',
       helpfulCount: 0,
@@ -185,7 +185,7 @@ describe('ProductReview Screen', () => {
         reviewId: 'rev-existing',
         productId: 'prod-123',
         patch: {
-          stars: 5,
+          rating: 'buy_again',
           body: null, // explicit null
         },
       });
@@ -204,8 +204,7 @@ describe('ProductReview Screen', () => {
     });
 
     const { getByText, getByTestId } = render(<ProductReview />);
-
-    fireEvent.press(getByTestId('rating-star-5'));
+    fireEvent.press(getByTestId('recommendation-option-buy_again'));
     fireEvent.press(getByTestId('review-submit'));
 
     await waitFor(() => {

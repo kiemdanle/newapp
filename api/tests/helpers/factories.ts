@@ -87,7 +87,6 @@ export async function makeRecord(
 export async function makeReview(overrides: {
   userId: string;
   productId: string;
-  stars?: number;
   rating?: 'buy_again' | 'buy_again_on_sale' | 'wont_buy';
   body?: string | null;
   status?: 'visible' | 'hidden' | 'deleted';
@@ -96,13 +95,11 @@ export async function makeReview(overrides: {
   score?: number;
 }) {
   const prisma = getPrisma();
-  const stars = overrides.stars ?? (overrides.rating === 'buy_again' ? 5 : overrides.rating === 'buy_again_on_sale' ? 3 : overrides.rating === 'wont_buy' ? 1 : 5);
-  const rating = overrides.rating ?? (stars >= 4 ? 'buy_again' : stars === 3 ? 'buy_again_on_sale' : 'wont_buy');
+  const rating = overrides.rating ?? 'buy_again';
   return prisma.review.create({
     data: {
       userId: overrides.userId,
       productId: overrides.productId,
-      stars,
       rating,
       body: overrides.body !== undefined ? overrides.body : 'A solid product.',
       status: overrides.status ?? 'visible',

@@ -23,12 +23,11 @@ describe('reviewStatusSchema', () => {
 describe('reviewCreateSchema', () => {
   it('accepts a valid rating with optional body', () => {
     const r = reviewCreateSchema.parse({ rating: 'buy_again', body: 'great' });
-    expect(r).toEqual({ stars: 5, rating: 'buy_again', body: 'great' });
+    expect(r).toEqual({ rating: 'buy_again', body: 'great' });
   });
 
-  it('accepts numeric stars and infers rating', () => {
-    const r = reviewCreateSchema.parse({ stars: 4, body: 'great' });
-    expect(r).toEqual({ stars: 4, rating: 'buy_again', body: 'great' });
+  it('rejects payload with stars only', () => {
+    expect(() => reviewCreateSchema.parse({ stars: 4, body: 'great' })).toThrow();
   });
 
   it('accepts missing body and normalizes to null', () => {
@@ -55,16 +54,12 @@ describe('reviewCreateSchema', () => {
 describe('reviewPatchSchema', () => {
   it('accepts rating only', () => {
     expect(reviewPatchSchema.parse({ rating: 'buy_again_on_sale' })).toEqual({
-      stars: 3,
       rating: 'buy_again_on_sale',
     });
   });
 
-  it('accepts stars only', () => {
-    expect(reviewPatchSchema.parse({ stars: 2 })).toEqual({
-      stars: 2,
-      rating: 'wont_buy',
-    });
+  it('rejects stars only', () => {
+    expect(() => reviewPatchSchema.parse({ stars: 2 })).toThrow();
   });
 
   it('accepts body only', () => {
@@ -101,6 +96,10 @@ describe('reviewListQuerySchema', () => {
 
   it('clamps limit upper bound', () => {
     expect(() => reviewListQuerySchema.parse({ limit: 51 })).toThrow();
+  });
+  it('accepts valid rating filter', () => {
+    const r = reviewListQuerySchema.parse({ rating: 'buy_again' });
+    expect(r.rating).toBe('buy_again');
   });
 });
 

@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { Review, ReviewRating } from '@expyrico/shared';
+import { REVIEW_RATING_METADATA, type Review, type ReviewRating } from '@expyrico/shared';
 import { Avatar } from '../../components/Avatar';
 import { useSessionStore } from '../../auth/session-store';
 import { isUserOwnReview } from '../../api/reviews';
@@ -35,6 +35,38 @@ export function formatRelativeDate(isoDateString: string): string {
   return `${diffYears}y ago`;
 }
 
+export const REVIEW_BADGE_CONFIG: Record<
+  ReviewRating,
+  {
+    value: ReviewRating;
+    label: string;
+    sublabel: string;
+    icon: string;
+    bg: string;
+    border: string;
+    text: string;
+  }
+> = {
+  buy_again: {
+    ...REVIEW_RATING_METADATA.buy_again,
+    bg: '#D6F0E6',
+    border: '#4BAE8A',
+    text: '#3A8F6F',
+  },
+  buy_again_on_sale: {
+    ...REVIEW_RATING_METADATA.buy_again_on_sale,
+    bg: '#FEEFC3',
+    border: '#F5A623',
+    text: '#2C2C28',
+  },
+  wont_buy: {
+    ...REVIEW_RATING_METADATA.wont_buy,
+    bg: '#F0F0ED',
+    border: '#8C8C85',
+    text: '#2C2C28',
+  },
+};
+
 export const ReviewCard = memo(function ReviewCard({
   review,
   onVoteHelpful,
@@ -49,7 +81,7 @@ export const ReviewCard = memo(function ReviewCard({
   const relativeDate = formatRelativeDate(review.createdAt);
   const currentUserId = useSessionStore((s) => s.user?.id);
   const isOwn = isUserOwnReview(review, currentUserId);
-  const stars = review.stars ?? (review.rating === 'buy_again' ? 5 : review.rating === 'buy_again_on_sale' ? 3 : review.rating === 'wont_buy' ? 1 : 5);
+  const badge = REVIEW_BADGE_CONFIG[review.rating];
   return (
     <View
       style={[
@@ -82,21 +114,25 @@ export const ReviewCard = memo(function ReviewCard({
           </View>
         </View>
 
-        {/* 5-Star Visual Indicator */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Ionicons
-                key={s}
-                name={s <= stars ? 'star' : 'star-outline'}
-                size={14}
-                color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
-                style={{ marginRight: 1 }}
-              />
-            ))}
-          </View>
-          <Text style={{ fontSize: 13, fontWeight: '700', color: theme.colors.text }}>
-            {stars}.0
+        {/* Recommendation Badge */}
+        <View
+          style={[
+            styles.badge,
+            {
+              backgroundColor: badge.bg,
+              borderColor: badge.border,
+            },
+          ]}
+          accessibilityLabel={`Recommendation: ${badge.label}`}
+        >
+          <Ionicons
+            name={badge.icon}
+            size={13}
+            color={badge.border}
+            style={{ marginRight: 4 }}
+          />
+          <Text style={[styles.badgeText, { color: badge.text }]}>
+            {badge.label}
           </Text>
         </View>
       </View>

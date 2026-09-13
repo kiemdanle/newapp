@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { Review } from '@expyrico/shared';
+import type { Review, ReviewRating } from '@expyrico/shared';
 import { Screen } from '../../../../src/components/Screen';
 import { ProductThumbnail } from '../../../../src/components/ProductThumbnail';
 import { ReviewCard } from '../../../../src/features/reviews/ReviewCard';
@@ -36,7 +36,7 @@ export default function ProductReviewsScreen() {
   const { id: productId } = route.params as { id: string };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStar, setSelectedStar] = useState<number | 'all'>('all');
+  const [selectedRating, setSelectedRating] = useState<ReviewRating | 'all'>('all');
   const [sort, setSort] = useState<'score' | 'new'>('score');
 
   const { data: product, isLoading: isLoadingProduct } = useProduct(productId);
@@ -69,14 +69,11 @@ export default function ProductReviewsScreen() {
     return Array.from(map.values());
   }, [myReview, rawReviews]);
 
-  // Client-side search and rating filter
+  // Client-side search and recommendation filter
   const reviews = useMemo(() => {
     return allReviews.filter((r) => {
-      if (selectedStar !== 'all') {
-        const itemStars = r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1);
-        if (itemStars !== selectedStar) {
-          return false;
-        }
+      if (selectedRating !== 'all' && r.rating !== selectedRating) {
+        return false;
       }
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
@@ -86,7 +83,7 @@ export default function ProductReviewsScreen() {
       }
       return true;
     });
-  }, [allReviews, selectedStar, searchQuery]);
+  }, [allReviews, selectedRating, searchQuery]);
 
   const existingReview =
     myReview ??
@@ -121,16 +118,10 @@ export default function ProductReviewsScreen() {
       ? allReviews.filter((r) => r.rating === 'wont_buy').length
       : (product?.wontBuyCount ?? allReviews.filter((r) => r.rating === 'wont_buy').length);
 
-  const avgScore =
+  const recommendPct =
     totalRatings > 0
-      ? Math.round(((buyAgain * 5 + buySale * 3 + wontBuy * 1) / totalRatings) * 10) / 10
-      : 0;
-
-  const scorePct =
-    totalRatings > 0
-      ? Math.round((avgScore / 5) * 100)
+      ? Math.round(((buyAgain + buySale) / totalRatings) * 100)
       : null;
-
   function handleNavigateWriteReview() {
     navigation.navigate('ProductReview', {
       id: productId,
@@ -238,7 +229,7 @@ export default function ProductReviewsScreen() {
                   </View>
                 </View>
 
-                {/* Aggregate Star & Score Section */}
+                {/* Aggregate Recommendation Sentiment Section */}
                 <View
                   style={[
                     styles.scoreHeroSection,
@@ -249,53 +240,51 @@ export default function ProductReviewsScreen() {
                   ]}
                 >
                   <View style={styles.bigScoreGroup}>
-                    <Text style={[styles.bigScoreNum, { color: theme.colors.text }]}>
-                      {avgScore.toFixed(1)}
-                    </Text>
-                    <View style={styles.bigStarsCol}>
-                      <View style={{ flexDirection: 'row' }}>
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Ionicons
-                            key={s}
-                            name={s <= Math.round(avgScore) ? 'star' : 'star-outline'}
-                            size={16}
-                            color={s <= Math.round(avgScore) ? '#F5A623' : theme.colors.neutralMid}
-                            style={{ marginRight: 2 }}
-                          />
-                        ))}
-                      </View>
-                      <Text style={[styles.bigScoreLabel, { color: theme.colors.textMuted }]}>
-                        {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {scorePct !== null ? (
                     <View
                       style={[
-                        styles.recommendPill,
+                        styles.sentimentIconBadge,
                         {
-                          backgroundColor: theme.colors.bgGlass,
-                          borderColor: theme.colors.primary,
+                          backgroundColor:
+                            recommendPct !== null && recommendPct >= 50
+                              ? '#D6F0E6'
+                              : theme.scheme === 'dark'
+                                ? 'rgba(255,255,255,0.06)'
+                                : '#F0F0ED',
                         },
                       ]}
                     >
                       <Ionicons
-                        name="star"
-                        size={13}
-                        color="#F5A623"
-                        style={{ marginRight: 4 }}
+                        name="thumbs-up"
+                        size={22}
+                        color={recommendPct !== null && recommendPct >= 50 ? '#4BAE8A' : theme.colors.textMuted}
                       />
-                      <Text
-                        style={[styles.recommendPillText, { color: theme.colors.primaryDark }]}
-                      >
-                        {scorePct}% score
+                    </View>
+                    <View style={styles.bigScoreTextCol}>
+                      <Text style={[styles.bigScoreNum, { color: theme.colors.text }]}>
+                        {recommendPct !== null ? `${recommendPct}%` : '0%'} recommend
+                      </Text>
+                      <Text style={[styles.bigScoreLabel, { color: theme.colors.textMuted }]}>
+                        Based on {totalRatings} community {totalRatings === 1 ? 'rating' : 'ratings'}
                       </Text>
                     </View>
-                  ) : null}
+                  </View>
+
+                  <View
+                    style={[
+                      styles.breakdownTallyBadge,
+                      {
+                        backgroundColor: theme.colors.bgGlass,
+                        borderColor: theme.colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.breakdownTallyText, { color: theme.colors.textMuted }]}>
+                      {buyAgain} Buy again · {buySale} On sale · {wontBuy} Won't buy
+                    </Text>
+                  </View>
                 </View>
 
-                {/* Star Filter Pills Bar */}
+                {/* Recommendation Filter Pills Bar */}
                 <View
                   style={[
                     styles.breakdownRow,
@@ -309,37 +298,38 @@ export default function ProductReviewsScreen() {
                   >
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Filter all stars"
-                      onPress={() => setSelectedStar('all')}
+                      accessibilityLabel="Filter all recommendations"
+                      onPress={() => setSelectedRating('all')}
                       style={[
                         styles.starFilterPill,
                         {
-                          backgroundColor: selectedStar === 'all' ? theme.colors.primaryLight : 'transparent',
-                          borderColor: selectedStar === 'all' ? theme.colors.primary : theme.colors.border,
+                          backgroundColor: selectedRating === 'all' ? theme.colors.primaryLight : 'transparent',
+                          borderColor: selectedRating === 'all' ? theme.colors.primary : theme.colors.border,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.starFilterText,
-                          { color: selectedStar === 'all' ? theme.colors.primaryDark : theme.colors.textMuted },
+                          { color: selectedRating === 'all' ? theme.colors.primaryDark : theme.colors.textMuted },
                         ]}
                       >
                         All ({totalRatings})
                       </Text>
                     </Pressable>
 
-                    {[5, 4, 3, 2, 1].map((s) => {
-                      const count = allReviews.filter(
-                        (r) => (r.stars ?? (r.rating === 'buy_again' ? 5 : r.rating === 'buy_again_on_sale' ? 3 : 1)) === s,
-                      ).length;
-                      const isActive = selectedStar === s;
+                    {[
+                      { key: 'buy_again' as const, label: 'Buy again', count: buyAgain, icon: 'checkmark-circle', color: '#4BAE8A' },
+                      { key: 'buy_again_on_sale' as const, label: 'Buy on sale', count: buySale, icon: 'pricetag', color: '#F5A623' },
+                      { key: 'wont_buy' as const, label: "Won't buy", count: wontBuy, icon: 'thumbs-down', color: '#8C8C85' },
+                    ].map((item) => {
+                      const isActive = selectedRating === item.key;
                       return (
                         <Pressable
-                          key={s}
+                          key={item.key}
                           accessibilityRole="button"
-                          accessibilityLabel={`Filter ${s} stars`}
-                          onPress={() => setSelectedStar(isActive ? 'all' : s)}
+                          accessibilityLabel={`Filter ${item.label}`}
+                          onPress={() => setSelectedRating(isActive ? 'all' : item.key)}
                           style={[
                             styles.starFilterPill,
                             {
@@ -348,14 +338,14 @@ export default function ProductReviewsScreen() {
                             },
                           ]}
                         >
-                          <Ionicons name="star" size={12} color="#F5A623" style={{ marginRight: 3 }} />
+                          <Ionicons name={item.icon} size={13} color={item.color} style={{ marginRight: 4 }} />
                           <Text
                             style={[
                               styles.starFilterText,
                               { color: isActive ? theme.colors.primaryDark : theme.colors.text },
                             ]}
                           >
-                            {s} ({count})
+                            {item.label} ({item.count})
                           </Text>
                         </Pressable>
                       );
@@ -506,16 +496,16 @@ export default function ProductReviewsScreen() {
                 </View>
 
                 {/* Clear Active Filter if set */}
-                {selectedStar !== 'all' ? (
+                {selectedRating !== 'all' ? (
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Clear filter"
-                    onPress={() => setSelectedStar('all')}
+                    onPress={() => setSelectedRating('all')}
                     style={[styles.clearFilterChip, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}
                     hitSlop={8}
                   >
                     <Text style={[styles.clearFilterText, { color: theme.colors.text }]}>
-                      Clear filter ({selectedStar}★) ✕
+                      Clear filter ({selectedRating === 'buy_again' ? 'Buy again' : selectedRating === 'buy_again_on_sale' ? 'Buy on sale' : "Won't buy"}) ✕
                     </Text>
                   </Pressable>
                 ) : null}
@@ -545,14 +535,14 @@ export default function ProductReviewsScreen() {
                   style={{ marginBottom: 8 }}
                 />
                 <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-                  {searchQuery.trim() || selectedStar !== 'all'
+                  {searchQuery.trim() || selectedRating !== 'all'
                     ? 'No matching reviews found'
                     : 'No written reviews yet'}
                 </Text>
                 <Text
                   style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}
                 >
-                  {searchQuery.trim() || selectedStar !== 'all'
+                  {searchQuery.trim() || selectedRating !== 'all'
                     ? 'Try clearing the search query or rating filter.'
                     : 'Be the first to share your thoughts on this item!'}
                 </Text>
@@ -648,30 +638,38 @@ const styles = StyleSheet.create({
   bigScoreGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  sentimentIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bigScoreTextCol: {
+    gap: 2,
   },
   bigScoreNum: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: '800',
-    marginRight: 10,
-  },
-  bigStarsCol: {
-    gap: 2,
+    letterSpacing: -0.2,
   },
   bigScoreLabel: {
     fontSize: 12,
     fontWeight: '500',
   },
-  recommendPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  breakdownTallyBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 8,
     borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginTop: 6,
   },
-  recommendPillText: {
-    fontSize: 12,
-    fontWeight: '700',
+  breakdownTallyText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   breakdownRow: {
     flexDirection: 'row',

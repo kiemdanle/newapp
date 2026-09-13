@@ -2,7 +2,7 @@ import React, { memo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Review, ReviewRating } from '@expyrico/shared';
-import { formatRelativeDate } from './ReviewCard';
+import { formatRelativeDate, REVIEW_BADGE_CONFIG } from './ReviewCard';
 import { useTheme } from '../../theme/useTheme';
 import { useProduct } from '../../api/products';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
@@ -12,12 +12,6 @@ export interface MyReviewCardProps {
   onViewProduct: (productId: string) => void;
 }
 
-function getRatingStars(rating: ReviewRating): number {
-  if (rating === 'buy_again') return 5;
-  if (rating === 'buy_again_on_sale') return 3;
-  if (rating === 'wont_buy') return 1;
-  return 0;
-}
 
 export const MyReviewCard = memo(function MyReviewCard({
   review,
@@ -31,7 +25,7 @@ export const MyReviewCard = memo(function MyReviewCard({
   const productBrand = product?.brand ?? fetchedProduct?.brand;
   const photoUrl = review.product?.imageUrl ?? (product as any)?.imageUrl;
   const relativeDate = formatRelativeDate(review.createdAt);
-  const stars = review.stars ?? (review.rating ? getRatingStars(review.rating) : 5);
+  const badge = REVIEW_BADGE_CONFIG[review.rating];
   return (
     <View
       style={[
@@ -76,22 +70,23 @@ export const MyReviewCard = memo(function MyReviewCard({
 
       </View>
 
-      {/* 5-Star Rating Row */}
+      {/* Recommendation Badge Row */}
       <View style={styles.starRow}>
-        <View style={styles.starsGroup}>
-          {[1, 2, 3, 4, 5].map((s) => (
-            <Ionicons
-              key={s}
-              name={s <= stars ? 'star' : 'star-outline'}
-              size={15}
-              color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
-              style={{ marginRight: 2 }}
-            />
-          ))}
+        <View
+          style={[
+            styles.badge,
+            {
+              backgroundColor: badge.bg,
+              borderColor: badge.border,
+            },
+          ]}
+          accessibilityLabel={`Recommendation: ${badge.label}`}
+        >
+          <Ionicons name={badge.icon} size={12} color={badge.border} style={{ marginRight: 4 }} />
+          <Text style={[styles.badgeText, { color: badge.text }]}>
+            {badge.label}
+          </Text>
         </View>
-        <Text style={[styles.starScore, { color: theme.colors.text }]}>
-          {stars}.0
-        </Text>
         <Text style={[styles.dotDivider, { color: theme.colors.textMuted }]}>•</Text>
         <Text style={[styles.timestamp, { color: theme.colors.textMuted }]}>
           {relativeDate}

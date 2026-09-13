@@ -6,10 +6,30 @@ export type ReviewStatus = z.infer<typeof reviewStatusSchema>;
 export const reviewRatingSchema = z.enum(['buy_again', 'buy_again_on_sale', 'wont_buy']);
 export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 
-export const reviewStarsSchema = z.number().int().min(1).max(5);
-export type ReviewStars = z.infer<typeof reviewStarsSchema>;
 export const reviewSortSchema = z.enum(['score', 'new']).default('score');
 export type ReviewSort = z.infer<typeof reviewSortSchema>;
+
+export const REVIEW_RATING_METADATA = {
+  buy_again: {
+    value: 'buy_again',
+    label: 'Buy again',
+    sublabel: 'Top pick',
+    icon: 'checkmark-circle',
+  },
+  buy_again_on_sale: {
+    value: 'buy_again_on_sale',
+    label: 'Buy on sale',
+    sublabel: 'Worth deal',
+    icon: 'pricetag',
+  },
+  wont_buy: {
+    value: 'wont_buy',
+    label: "Won't buy",
+    sublabel: 'Pass on it',
+    icon: 'thumbs-down',
+  },
+} as const;
+export type ReviewRatingMetadata = (typeof REVIEW_RATING_METADATA)[ReviewRating];
 
 export const reviewAuthorSchema = z.object({
   firstName: z.string(),
@@ -28,8 +48,7 @@ export type ReviewProductSummary = z.infer<typeof reviewProductSummarySchema>;
 export const reviewSchema = z.object({
   id: z.string().uuid(),
   productId: z.string().uuid(),
-  stars: reviewStarsSchema.default(5),
-  rating: reviewRatingSchema.optional(),
+  rating: reviewRatingSchema,
   body: z.string().nullable(),
   helpfulCount: z.number().int().nonnegative(),
   notHelpfulCount: z.number().int().nonnegative(),
@@ -48,34 +67,18 @@ export const reviewSchema = z.object({
 });
 export type Review = z.infer<typeof reviewSchema>;
 
-export const reviewCreateSchema = z
-  .object({
-    stars: reviewStarsSchema.optional(),
-    rating: reviewRatingSchema.optional(),
-    body: z
-      .string()
-      .trim()
-      .max(2000)
-      .nullish()
-      .transform((v) => (!v ? null : v)),
-  })
-  .refine((v) => v.stars !== undefined || v.rating !== undefined, {
-    message: 'stars or rating is required',
-  })
-  .transform((v) => {
-    const stars = v.stars ?? (v.rating === 'buy_again' ? 5 : v.rating === 'buy_again_on_sale' ? 3 : 1);
-    const rating = v.rating ?? (stars >= 4 ? 'buy_again' : stars === 3 ? 'buy_again_on_sale' : 'wont_buy');
-    return {
-      ...v,
-      stars,
-      rating,
-    };
-  });
-export type ReviewCreate = z.input<typeof reviewCreateSchema>;
-
+export const reviewCreateSchema = z.object({
+  rating: reviewRatingSchema,
+  body: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullish()
+    .transform((v) => (!v ? null : v)),
+});
+export type ReviewCreate = z.infer<typeof reviewCreateSchema>;
 export const reviewPatchSchema = z
   .object({
-    stars: reviewStarsSchema.optional(),
     rating: reviewRatingSchema.optional(),
     body: z
       .union([z.string().trim().max(2000), z.null()])
@@ -83,25 +86,10 @@ export const reviewPatchSchema = z
       .transform((v) => (v === undefined ? undefined : !v ? null : v)),
   })
   .refine(
-    (v) => v.stars !== undefined || v.rating !== undefined || v.body !== undefined,
+    (v) => v.rating !== undefined || v.body !== undefined,
     { message: 'at least one field required' },
-  )
-  .transform((v) => {
-    let stars = v.stars;
-    let rating = v.rating;
-    if (stars !== undefined && rating === undefined) {
-      rating = stars >= 4 ? 'buy_again' : stars === 3 ? 'buy_again_on_sale' : 'wont_buy';
-    } else if (rating !== undefined && stars === undefined) {
-      stars = rating === 'buy_again' ? 5 : rating === 'buy_again_on_sale' ? 3 : 1;
-    }
-    return {
-      ...v,
-      stars,
-      rating,
-    };
-  });
-export type ReviewPatch = z.input<typeof reviewPatchSchema>;
-
+  );
+export type ReviewPatch = z.infer<typeof reviewPatchSchema>;
 export const reviewVoteSchema = z.object({
   value: z.enum(['helpful', 'not_helpful']),
 });
@@ -117,6 +105,7 @@ export type Vote = ReviewVote;
 
 export const reviewListQuerySchema = z.object({
   sort: reviewSortSchema,
+  rating: reviewRatingSchema.optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });

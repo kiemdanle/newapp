@@ -17,32 +17,32 @@ export declare const barcodeApiCallLogRowSchema: z.ZodObject<{
     createdAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+    createdAt: string;
     barcode: string;
+    userId: string | null;
+    errorMessage: string | null;
+    provider: string;
     endpoint: string;
     httpMethod: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
-    errorMessage: string | null;
     responseSizeBytes: number | null;
     callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-    userId: string | null;
-    createdAt: string;
 }, {
     id: string;
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+    createdAt: string;
     barcode: string;
+    userId: string | null;
+    errorMessage: string | null;
+    provider: string;
     endpoint: string;
     httpMethod: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
-    errorMessage: string | null;
     responseSizeBytes: number | null;
     callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-    userId: string | null;
-    createdAt: string;
 }>;
 export declare const barcodeApiCallLogDetailSchema: z.ZodObject<{
     id: z.ZodString;
@@ -64,35 +64,35 @@ export declare const barcodeApiCallLogDetailSchema: z.ZodObject<{
     rawResponsePreview: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+    createdAt: string;
     barcode: string;
+    userId: string | null;
+    errorMessage: string | null;
+    provider: string;
     endpoint: string;
     httpMethod: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
-    errorMessage: string | null;
     responseSizeBytes: number | null;
     callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-    userId: string | null;
-    createdAt: string;
     requestHeaders: Record<string, unknown> | null;
     responseHeaders: Record<string, unknown> | null;
     rawResponsePreview: string | null;
 }, {
     id: string;
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+    createdAt: string;
     barcode: string;
+    userId: string | null;
+    errorMessage: string | null;
+    provider: string;
     endpoint: string;
     httpMethod: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
-    errorMessage: string | null;
     responseSizeBytes: number | null;
     callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-    userId: string | null;
-    createdAt: string;
     requestHeaders: Record<string, unknown> | null;
     responseHeaders: Record<string, unknown> | null;
     rawResponsePreview: string | null;
@@ -108,20 +108,20 @@ export declare const barcodeApiRequestsQuerySchema: z.ZodObject<{
     range: z.ZodDefault<z.ZodEnum<["24h", "7d", "30d"]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    range: "24h" | "7d" | "30d";
-    provider?: string | undefined;
+    range: "7d" | "30d" | "24h";
+    status?: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped" | undefined;
     barcode?: string | undefined;
-    status?: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped" | undefined;
-    callerContext?: "sync_lookup" | "backfill_worker" | "admin_probe" | undefined;
     cursor?: string | undefined;
-}, {
     provider?: string | undefined;
-    barcode?: string | undefined;
-    status?: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped" | undefined;
     callerContext?: "sync_lookup" | "backfill_worker" | "admin_probe" | undefined;
+}, {
+    status?: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped" | undefined;
+    barcode?: string | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
-    range?: "24h" | "7d" | "30d" | undefined;
+    range?: "7d" | "30d" | "24h" | undefined;
+    provider?: string | undefined;
+    callerContext?: "sync_lookup" | "backfill_worker" | "admin_probe" | undefined;
 }>;
 export declare const barcodeApiRequestsListSchema: z.ZodObject<{
     items: z.ZodArray<z.ZodObject<{
@@ -140,66 +140,66 @@ export declare const barcodeApiRequestsListSchema: z.ZodObject<{
         createdAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        provider: string;
+        status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+        createdAt: string;
         barcode: string;
+        userId: string | null;
+        errorMessage: string | null;
+        provider: string;
         endpoint: string;
         httpMethod: string;
-        status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
         httpStatus: number | null;
         durationMs: number;
-        errorMessage: string | null;
         responseSizeBytes: number | null;
         callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-        userId: string | null;
-        createdAt: string;
     }, {
         id: string;
-        provider: string;
+        status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+        createdAt: string;
         barcode: string;
+        userId: string | null;
+        errorMessage: string | null;
+        provider: string;
         endpoint: string;
         httpMethod: string;
-        status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
         httpStatus: number | null;
         durationMs: number;
-        errorMessage: string | null;
         responseSizeBytes: number | null;
         callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-        userId: string | null;
-        createdAt: string;
     }>, "many">;
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        provider: string;
+        status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+        createdAt: string;
         barcode: string;
+        userId: string | null;
+        errorMessage: string | null;
+        provider: string;
         endpoint: string;
         httpMethod: string;
-        status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
         httpStatus: number | null;
         durationMs: number;
-        errorMessage: string | null;
         responseSizeBytes: number | null;
         callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-        userId: string | null;
-        createdAt: string;
     }[];
     nextCursor: string | null;
 }, {
     items: {
         id: string;
-        provider: string;
+        status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
+        createdAt: string;
         barcode: string;
+        userId: string | null;
+        errorMessage: string | null;
+        provider: string;
         endpoint: string;
         httpMethod: string;
-        status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
         httpStatus: number | null;
         durationMs: number;
-        errorMessage: string | null;
         responseSizeBytes: number | null;
         callerContext: "sync_lookup" | "backfill_worker" | "admin_probe";
-        userId: string | null;
-        createdAt: string;
     }[];
     nextCursor: string | null;
 }>;
@@ -232,12 +232,12 @@ export declare const barcodeProviderStatsSchema: z.ZodObject<{
     priority: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     name: string;
+    state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
     enabled: boolean;
     dailyLimit: number | null;
     todayCallCount: number;
     quotaRemaining: number | null;
     quotaPercentage: number | null;
-    state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
     breakerState: "open" | "closed" | "halfOpen";
     cooldownActive: boolean;
     cooldownRemainingSeconds: number | null;
@@ -259,12 +259,12 @@ export declare const barcodeProviderStatsSchema: z.ZodObject<{
     priority: number;
 }, {
     name: string;
+    state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
     enabled: boolean;
     dailyLimit: number | null;
     todayCallCount: number;
     quotaRemaining: number | null;
     quotaPercentage: number | null;
-    state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
     breakerState: "open" | "closed" | "halfOpen";
     cooldownActive: boolean;
     cooldownRemainingSeconds: number | null;
@@ -295,20 +295,20 @@ export declare const barcodeTimelineBucketSchema: z.ZodObject<{
     timeouts: z.ZodNumber;
     byProvider: z.ZodRecord<z.ZodString, z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    timestamp: string;
+    errors: number;
     total: number;
+    timestamp: string;
     hits: number;
     misses: number;
-    errors: number;
     rateLimited: number;
     timeouts: number;
     byProvider: Record<string, number>;
 }, {
-    timestamp: string;
+    errors: number;
     total: number;
+    timestamp: string;
     hits: number;
     misses: number;
-    errors: number;
     rateLimited: number;
     timeouts: number;
     byProvider: Record<string, number>;
@@ -413,12 +413,12 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         priority: z.ZodNumber;
     }, "strip", z.ZodTypeAny, {
         name: string;
+        state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
         enabled: boolean;
         dailyLimit: number | null;
         todayCallCount: number;
         quotaRemaining: number | null;
         quotaPercentage: number | null;
-        state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
         breakerState: "open" | "closed" | "halfOpen";
         cooldownActive: boolean;
         cooldownRemainingSeconds: number | null;
@@ -440,12 +440,12 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         priority: number;
     }, {
         name: string;
+        state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
         enabled: boolean;
         dailyLimit: number | null;
         todayCallCount: number;
         quotaRemaining: number | null;
         quotaPercentage: number | null;
-        state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
         breakerState: "open" | "closed" | "halfOpen";
         cooldownActive: boolean;
         cooldownRemainingSeconds: number | null;
@@ -476,20 +476,20 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         timeouts: z.ZodNumber;
         byProvider: z.ZodRecord<z.ZodString, z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
-        timestamp: string;
+        errors: number;
         total: number;
+        timestamp: string;
         hits: number;
         misses: number;
-        errors: number;
         rateLimited: number;
         timeouts: number;
         byProvider: Record<string, number>;
     }, {
-        timestamp: string;
+        errors: number;
         total: number;
+        timestamp: string;
         hits: number;
         misses: number;
-        errors: number;
         rateLimited: number;
         timeouts: number;
         byProvider: Record<string, number>;
@@ -527,7 +527,7 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         lastQueriedAt: string;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
-    range: "24h" | "7d" | "30d";
+    range: "7d" | "30d" | "24h";
     summary: {
         totalCalls: number;
         hitCount: number;
@@ -543,12 +543,12 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
     };
     providers: Record<string, {
         name: string;
+        state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
         enabled: boolean;
         dailyLimit: number | null;
         todayCallCount: number;
         quotaRemaining: number | null;
         quotaPercentage: number | null;
-        state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
         breakerState: "open" | "closed" | "halfOpen";
         cooldownActive: boolean;
         cooldownRemainingSeconds: number | null;
@@ -570,11 +570,11 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         priority: number;
     }>;
     volumeTimeline: {
-        timestamp: string;
+        errors: number;
         total: number;
+        timestamp: string;
         hits: number;
         misses: number;
-        errors: number;
         rateLimited: number;
         timeouts: number;
         byProvider: Record<string, number>;
@@ -592,7 +592,7 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         lastQueriedAt: string;
     }[];
 }, {
-    range: "24h" | "7d" | "30d";
+    range: "7d" | "30d" | "24h";
     summary: {
         totalCalls: number;
         hitCount: number;
@@ -608,12 +608,12 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
     };
     providers: Record<string, {
         name: string;
+        state: "open" | "healthy" | "degraded" | "exhausted" | "disabled";
         enabled: boolean;
         dailyLimit: number | null;
         todayCallCount: number;
         quotaRemaining: number | null;
         quotaPercentage: number | null;
-        state: "healthy" | "degraded" | "open" | "exhausted" | "disabled";
         breakerState: "open" | "closed" | "halfOpen";
         cooldownActive: boolean;
         cooldownRemainingSeconds: number | null;
@@ -635,11 +635,11 @@ export declare const barcodeApiStatsSchema: z.ZodObject<{
         priority: number;
     }>;
     volumeTimeline: {
-        timestamp: string;
+        errors: number;
         total: number;
+        timestamp: string;
         hits: number;
         misses: number;
-        errors: number;
         rateLimited: number;
         timeouts: number;
         byProvider: Record<string, number>;
@@ -763,11 +763,11 @@ export declare const barcodeApiProbeRequestSchema: z.ZodObject<{
     barcode: z.ZodString;
     provider: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    provider: string;
     barcode: string;
+    provider: string;
 }, {
-    provider: string;
     barcode: string;
+    provider: string;
 }>;
 export declare const barcodeApiProbeResponseSchema: z.ZodObject<{
     provider: z.ZodString;
@@ -793,10 +793,10 @@ export declare const barcodeApiProbeResponseSchema: z.ZodObject<{
     rawResponsePreview: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     errorMessage: z.ZodOptional<z.ZodNullable<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
     barcode: string;
+    provider: string;
     endpoint: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
     errorMessage?: string | null | undefined;
@@ -808,10 +808,10 @@ export declare const barcodeApiProbeResponseSchema: z.ZodObject<{
         brand?: string | null | undefined;
     } | undefined;
 }, {
-    provider: string;
+    status: "rate_limited" | "hit" | "miss" | "timeout" | "error" | "cooldown_skipped";
     barcode: string;
+    provider: string;
     endpoint: string;
-    status: "hit" | "miss" | "rate_limited" | "timeout" | "error" | "cooldown_skipped";
     httpStatus: number | null;
     durationMs: number;
     errorMessage?: string | null | undefined;
@@ -828,10 +828,10 @@ export declare const barcodeApiResetActionSchema: z.ZodObject<{
     target: z.ZodEnum<["cooldown", "breaker", "all"]>;
 }, "strip", z.ZodTypeAny, {
     provider: string;
-    target: "cooldown" | "breaker" | "all";
+    target: "all" | "cooldown" | "breaker";
 }, {
     provider: string;
-    target: "cooldown" | "breaker" | "all";
+    target: "all" | "cooldown" | "breaker";
 }>;
 export type BarcodeApiStatus = z.infer<typeof barcodeApiStatusSchema>;
 export type BarcodeApiCallerContext = z.infer<typeof barcodeApiCallerContextSchema>;

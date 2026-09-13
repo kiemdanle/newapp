@@ -1,3 +1,4 @@
+import { REVIEW_RATING_METADATA } from '@expyrico/shared';
 import Link from 'next/link';
 import { serverAdminApi } from '@/lib/admin-api';
 import { StatusBadge } from '@/components/status-badge';
@@ -6,14 +7,9 @@ import { ReviewActions } from './review-actions';
 export const dynamic = 'force-dynamic';
 
 const RATING_LABEL: Record<string, string> = {
-  '5': '5 Stars ★★★★★',
-  '4': '4 Stars ★★★★☆',
-  '3': '3 Stars ★★★☆☆',
-  '2': '2 Stars ★★☆☆☆',
-  '1': '1 Star ★☆☆☆☆',
-  buy_again: '5 Stars ★★★★★',
-  buy_again_on_sale: '3 Stars ★★★☆☆',
-  wont_buy: '1 Star ★☆☆☆☆',
+  buy_again: REVIEW_RATING_METADATA.buy_again.label,
+  buy_again_on_sale: REVIEW_RATING_METADATA.buy_again_on_sale.label,
+  wont_buy: REVIEW_RATING_METADATA.wont_buy.label,
 };
 
 export default async function ReviewDetailPage({
@@ -33,7 +29,7 @@ export default async function ReviewDetailPage({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[28px] font-semibold text-neutral-dark font-display">
-            {RATING_LABEL[r.rating] ?? `${(r as any).stars ?? 5} Stars`}
+            {RATING_LABEL[r.rating] ?? r.rating}
           </h1>
           <div className="mt-2 flex items-center gap-2">
             <StatusBadge status={r.status} />

@@ -114,7 +114,7 @@ describe('<ProductDetail /> — Suggest an edit', () => {
     expect(queryByTestId('product-suggest-edit')).toBeNull();
   });
 
-  it('renders stars row right below product name when product has a review', async () => {
+  it('renders recommendation sentiment right below product name when product has a review', async () => {
     (useMyProductReview as jest.Mock).mockReturnValue({
       data: {
         review: {
@@ -131,12 +131,11 @@ describe('<ProductDetail /> — Suggest an edit', () => {
     queueFetch(jsonResponse(PRODUCT));
     const { findByTestId, getByText } = render(wrap(<ProductDetail />));
 
-    const starsRow = await findByTestId('product-header-stars');
-    expect(starsRow).toBeTruthy();
-    expect(getByText('3.0')).toBeTruthy();
-    expect(getByText('Your review')).toBeTruthy();
+    const sentimentRow = await findByTestId('product-header-sentiment');
+    expect(sentimentRow).toBeTruthy();
+    expect(getByText(/Buy on sale/)).toBeTruthy();
 
-    fireEvent.press(starsRow);
+    fireEvent.press(sentimentRow);
     expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'p1' });
   });
 
@@ -164,11 +163,11 @@ describe('<ProductDetail /> — Suggest an edit', () => {
 
     const { findByTestId, getByText } = render(wrap(<ProductDetail />));
 
-    const starsRow = await findByTestId('product-header-stars');
-    expect(starsRow).toBeTruthy();
-    expect(getByText('5.0')).toBeTruthy();
+    const sentimentRow = await findByTestId('product-header-sentiment');
+    expect(sentimentRow).toBeTruthy();
+    expect(getByText(/Buy again/)).toBeTruthy();
 
-    fireEvent.press(starsRow);
+    fireEvent.press(sentimentRow);
     expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'canonical-p1' });
   });
 
@@ -196,12 +195,11 @@ describe('<ProductDetail /> — Suggest an edit', () => {
     queueFetch(jsonResponse(PRODUCT));
     const { findByTestId, getByText } = render(wrap(<ProductDetail />));
 
-    const starsRow = await findByTestId('product-header-stars');
-    expect(starsRow).toBeTruthy();
-    expect(getByText('3.0')).toBeTruthy();
-    expect(getByText('Your review')).toBeTruthy();
+    const sentimentRow = await findByTestId('product-header-sentiment');
+    expect(sentimentRow).toBeTruthy();
+    expect(getByText(/Buy on sale/)).toBeTruthy();
 
-    fireEvent.press(starsRow);
+    fireEvent.press(sentimentRow);
     expect(navigation.navigate).toHaveBeenCalledWith('ProductReviews', { id: 'p1' });
   });
   it('preserves AddRecordForm state when OCR camera is opened and canceled, and automatically prefills scanned date when parsed', async () => {

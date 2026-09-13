@@ -10,32 +10,32 @@ export declare const contributorLevelsSettingSchema: z.ZodObject<{
         colorToken: z.ZodEnum<["fresh_sage", "deep_sage", "mint_mist", "honey", "soft_butter", "pebble", "almost_black"]>;
         perks: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
         colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
         perks: string;
     }, {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
         colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
         perks: string;
     }>, "many">, {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
         colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
         perks: string;
     }[], {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
@@ -45,8 +45,8 @@ export declare const contributorLevelsSettingSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     enabled: boolean;
     levels: {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
@@ -55,8 +55,8 @@ export declare const contributorLevelsSettingSchema: z.ZodObject<{
     }[];
 }, {
     levels: {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
@@ -79,23 +79,23 @@ export declare const communityContributionRowSchema: z.ZodObject<{
     createdAt: z.ZodString;
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
     id: string;
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+    createdAt: string;
+    updatedAt: string;
     name: string;
     packagingPhotosCount: number;
     editsCount: number;
-    createdAt: string;
-    updatedAt: string;
     barcode?: string | null | undefined;
     brand?: string | null | undefined;
     coverImageUrl?: string | null | undefined;
     coverPhotoId?: string | null | undefined;
 }, {
-    status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
     id: string;
-    name: string;
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
     createdAt: string;
     updatedAt: string;
+    name: string;
     barcode?: string | null | undefined;
     brand?: string | null | undefined;
     coverImageUrl?: string | null | undefined;
@@ -115,16 +115,16 @@ export declare const userContributionsResponseSchema: z.ZodObject<{
         colorToken: z.ZodEnum<["fresh_sage", "deep_sage", "mint_mist", "honey", "soft_butter", "pebble", "almost_black"]>;
         perks: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
         colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
         perks: string;
     }, {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
@@ -212,23 +212,23 @@ export declare const userContributionsResponseSchema: z.ZodObject<{
         createdAt: z.ZodString;
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
         id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         name: string;
         packagingPhotosCount: number;
         editsCount: number;
-        createdAt: string;
-        updatedAt: string;
         barcode?: string | null | undefined;
         brand?: string | null | undefined;
         coverImageUrl?: string | null | undefined;
         coverPhotoId?: string | null | undefined;
     }, {
-        status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
         id: string;
-        name: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
+        name: string;
         barcode?: string | null | undefined;
         brand?: string | null | undefined;
         coverImageUrl?: string | null | undefined;
@@ -239,60 +239,24 @@ export declare const userContributionsResponseSchema: z.ZodObject<{
     hasMore: z.ZodDefault<z.ZodBoolean>;
     nextOffset: z.ZodDefault<z.ZodNullable<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
-    enabled: boolean;
-    levels: {
-        level: number;
-        title: string;
-        productsReq: number;
-        minPoints: number;
-        badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
-        colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
-        perks: string;
-    }[];
-    progression: {
-        title: string;
-        badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
-        colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
-        perks: string;
-        currentLevel: number;
-        colorHex: string;
-        totalPoints: number;
-        activeProductsCount: number;
-        currentLevelMinPoints: number;
-        nextLevel: number | null;
-        nextLevelMinPoints: number | null;
-        pointsToNextLevel: number;
-        productsToNextLevel: number;
-        progressPercent: number;
-        isMaxLevel: boolean;
-    };
-    stats: {
-        totalContributed: number;
-        activeApproved: number;
-        pendingReview: number;
-        changesRequested: number;
-        editsApproved: number;
-    };
     items: {
-        status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
         id: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         name: string;
         packagingPhotosCount: number;
         editsCount: number;
-        createdAt: string;
-        updatedAt: string;
         barcode?: string | null | undefined;
         brand?: string | null | undefined;
         coverImageUrl?: string | null | undefined;
         coverPhotoId?: string | null | undefined;
     }[];
     hasMore: boolean;
-    nextOffset: number | null;
-}, {
     enabled: boolean;
     levels: {
-        level: number;
         title: string;
+        level: number;
         productsReq: number;
         minPoints: number;
         badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
@@ -323,12 +287,14 @@ export declare const userContributionsResponseSchema: z.ZodObject<{
         changesRequested: number;
         editsApproved: number;
     };
+    nextOffset: number | null;
+}, {
     items: {
-        status: "draft" | "pending" | "active" | "changes_required" | "report_hidden" | "merged_into";
         id: string;
-        name: string;
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
         createdAt: string;
         updatedAt: string;
+        name: string;
         barcode?: string | null | undefined;
         brand?: string | null | undefined;
         coverImageUrl?: string | null | undefined;
@@ -336,6 +302,40 @@ export declare const userContributionsResponseSchema: z.ZodObject<{
         packagingPhotosCount?: number | undefined;
         editsCount?: number | undefined;
     }[];
+    enabled: boolean;
+    levels: {
+        title: string;
+        level: number;
+        productsReq: number;
+        minPoints: number;
+        badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
+        colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
+        perks: string;
+    }[];
+    progression: {
+        title: string;
+        badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
+        colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
+        perks: string;
+        currentLevel: number;
+        colorHex: string;
+        totalPoints: number;
+        activeProductsCount: number;
+        currentLevelMinPoints: number;
+        nextLevel: number | null;
+        nextLevelMinPoints: number | null;
+        pointsToNextLevel: number;
+        productsToNextLevel: number;
+        progressPercent: number;
+        isMaxLevel: boolean;
+    };
+    stats: {
+        totalContributed: number;
+        activeApproved: number;
+        pendingReview: number;
+        changesRequested: number;
+        editsApproved: number;
+    };
     hasMore?: boolean | undefined;
     nextOffset?: number | null | undefined;
 }>;

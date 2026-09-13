@@ -43,7 +43,6 @@ const mockProduct: Product = {
   buyAgainCount: 18,
   buyAgainOnSaleCount: 4,
   wontBuyCount: 2,
-  averageRating: 4.3,
   ratingCount: 24, // 18 + 4 + 2 = 24
   reviewCount: 14, // 14 written reviews
   createdAt: '2026-09-01T00:00:00.000Z',
@@ -53,7 +52,6 @@ const mockProduct: Product = {
 const mockReviewCommunity: Review = {
   id: 'rev-comm',
   productId: 'prod-1',
-  stars: 5,
   rating: 'buy_again',
   body: 'Creamy and not overly oily. Loved it!',
   helpfulCount: 5,
@@ -70,7 +68,6 @@ const mockReviewCommunity: Review = {
 const mockReviewOwn: Review = {
   id: 'rev-own',
   productId: 'prod-1',
-  stars: 5,
   rating: 'buy_again',
   body: 'Mine',
   helpfulCount: 0,
@@ -113,13 +110,11 @@ describe('ProductReviewsSection', () => {
     });
 
     const { getByText } = render(<ProductReviewsSection product={emptyProduct} />);
-
-    expect(getByText('No reviews yet')).toBeTruthy();
-    expect(getByText('Be the first to share your experience with this item.')).toBeTruthy();
+    expect(getByText('No community ratings yet')).toBeTruthy();
+    expect(getByText('Be the first to rate this product!')).toBeTruthy();
     expect(getByText('Write a review')).toBeTruthy();
   });
-
-  it('calculates average star rating and review totals', () => {
+  it('calculates recommendation percentage and review totals', () => {
     (useMyProductReview as jest.Mock).mockReturnValue({ data: { review: null } });
     (useProductReviews as jest.Mock).mockReturnValue({
       data: { pages: [{ items: [mockReviewCommunity] }] },
@@ -128,12 +123,15 @@ describe('ProductReviewsSection', () => {
 
     const { getByText } = render(<ProductReviewsSection product={mockProduct} />);
 
-    expect(getByText('4.3')).toBeTruthy();
-    expect(getByText('out of 5 stars')).toBeTruthy();
-    expect(getByText('24 ratings (14 written reviews)')).toBeTruthy();
+    expect(getByText('92%')).toBeTruthy();
+    expect(getByText('recommend')).toBeTruthy();
+    expect(getByText('Based on 24 community ratings (14 written reviews)')).toBeTruthy();
+    expect(getByText('18 Buy again')).toBeTruthy();
+    expect(getByText('4 On sale')).toBeTruthy();
+    expect(getByText("2 Won't buy")).toBeTruthy();
   });
 
-  it('renders reviews list with star rating and author details', () => {
+  it('renders reviews list with recommendation badge and author details', () => {
     (useMyProductReview as jest.Mock).mockReturnValue({ data: { review: null } });
     (useProductReviews as jest.Mock).mockReturnValue({
       data: { pages: [{ items: [mockReviewCommunity] }] },
@@ -143,7 +141,7 @@ describe('ProductReviewsSection', () => {
     const { getByText } = view;
     expect(getByText('Sarah')).toBeTruthy();
     expect(getByText('Creamy and not overly oily. Loved it!')).toBeTruthy();
-    expect(getByText('5.0')).toBeTruthy();
+    expect(getByText('Buy again')).toBeTruthy();
     expect(getByText('Helpful (5)')).toBeTruthy();
   });
   it('hides helpful vote button when review is author own review', () => {

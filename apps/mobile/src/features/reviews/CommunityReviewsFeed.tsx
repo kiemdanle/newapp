@@ -79,7 +79,7 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
     });
   }, [allReviews, searchQuery]);
 
-  // Group all user reviews of the same product into an average star score with 1-3 review comments
+  // Group all user reviews of the same product with recommendation metrics and 1-3 review comments
   const productGroups: ProductCommunityGroup[] = useMemo(() => {
     const map = new Map<string, typeof filteredReviews>();
     for (const r of filteredReviews) {
@@ -95,23 +95,15 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
-      let sum = 0;
-      let buyAgainCount = 0;
+      let positiveCount = 0;
       for (const r of sortedReviews) {
-        if (r.rating === 'buy_again') {
-          sum += 5;
-          buyAgainCount++;
-        } else if (r.rating === 'buy_again_on_sale') {
-          sum += 3;
-          buyAgainCount++;
-        } else if (r.rating === 'wont_buy') {
-          sum += 1;
+        if (r.rating === 'buy_again' || r.rating === 'buy_again_on_sale') {
+          positiveCount++;
         }
       }
-      const avg = sortedReviews.length > 0 ? sum / sortedReviews.length : 0;
       const recPct =
         sortedReviews.length > 0
-          ? Math.round((buyAgainCount / sortedReviews.length) * 100)
+          ? Math.round((positiveCount / sortedReviews.length) * 100)
           : null;
 
       groups.push({
@@ -119,7 +111,6 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
         product: firstProduct,
         reviews: sortedReviews,
         totalReviews: sortedReviews.length,
-        averageScore: avg,
         recommendPercent: recPct,
         latestCreatedAt: sortedReviews[0]?.createdAt ?? new Date().toISOString(),
       });
@@ -127,7 +118,11 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
 
     // Sort product groups
     if (sort === 'score') {
-      groups.sort((a, b) => b.averageScore - a.averageScore || b.totalReviews - a.totalReviews);
+      groups.sort(
+        (a, b) =>
+          (b.recommendPercent ?? 0) - (a.recommendPercent ?? 0) ||
+          b.totalReviews - a.totalReviews,
+      );
     } else {
       groups.sort(
         (a, b) =>

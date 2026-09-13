@@ -22,9 +22,9 @@ export declare const householdMemberSchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    householdId: string;
-    userId: string;
     role: "owner" | "member";
+    userId: string;
+    householdId: string;
     joinedAt: string;
     user?: {
         id: string;
@@ -33,9 +33,9 @@ export declare const householdMemberSchema: z.ZodObject<{
     } | undefined;
 }, {
     id: string;
-    householdId: string;
-    userId: string;
     role: "owner" | "member";
+    userId: string;
+    householdId: string;
     joinedAt: string;
     user?: {
         id: string;
@@ -55,19 +55,19 @@ export declare const householdSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    name: string;
-    ownerUserId: string;
     createdAt: string;
     updatedAt: string;
+    name: string;
+    ownerUserId: string;
     memberCount?: number | undefined;
     myRole?: "owner" | "member" | undefined;
     inviteCode?: string | null | undefined;
 }, {
     id: string;
-    name: string;
-    ownerUserId: string;
     createdAt: string;
     updatedAt: string;
+    name: string;
+    ownerUserId: string;
     memberCount?: number | undefined;
     myRole?: "owner" | "member" | undefined;
     inviteCode?: string | null | undefined;
@@ -93,17 +93,17 @@ export declare const householdMemberAddSchema: z.ZodEffects<z.ZodObject<{
     email: z.ZodOptional<z.ZodString>;
     userId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    userId?: string | undefined;
     email?: string | undefined;
+    userId?: string | undefined;
 }, {
-    userId?: string | undefined;
     email?: string | undefined;
+    userId?: string | undefined;
 }>, {
-    userId?: string | undefined;
     email?: string | undefined;
+    userId?: string | undefined;
 }, {
-    userId?: string | undefined;
     email?: string | undefined;
+    userId?: string | undefined;
 }>;
 export type HouseholdMemberAdd = z.infer<typeof householdMemberAddSchema>;
 export declare const householdJoinSchema: z.ZodObject<{
@@ -126,19 +126,19 @@ export declare const householdListResponseSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        name: string;
-        ownerUserId: string;
         createdAt: string;
         updatedAt: string;
+        name: string;
+        ownerUserId: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
         inviteCode?: string | null | undefined;
     }, {
         id: string;
-        name: string;
-        ownerUserId: string;
         createdAt: string;
         updatedAt: string;
+        name: string;
+        ownerUserId: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
         inviteCode?: string | null | undefined;
@@ -146,10 +146,10 @@ export declare const householdListResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        name: string;
-        ownerUserId: string;
         createdAt: string;
         updatedAt: string;
+        name: string;
+        ownerUserId: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
         inviteCode?: string | null | undefined;
@@ -157,10 +157,10 @@ export declare const householdListResponseSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        name: string;
-        ownerUserId: string;
         createdAt: string;
         updatedAt: string;
+        name: string;
+        ownerUserId: string;
         memberCount?: number | undefined;
         myRole?: "owner" | "member" | undefined;
         inviteCode?: string | null | undefined;
@@ -188,9 +188,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
         }>>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        householdId: string;
-        userId: string;
         role: "owner" | "member";
+        userId: string;
+        householdId: string;
         joinedAt: string;
         user?: {
             id: string;
@@ -199,9 +199,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
         } | undefined;
     }, {
         id: string;
-        householdId: string;
-        userId: string;
         role: "owner" | "member";
+        userId: string;
+        householdId: string;
         joinedAt: string;
         user?: {
             id: string;
@@ -212,9 +212,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        householdId: string;
-        userId: string;
         role: "owner" | "member";
+        userId: string;
+        householdId: string;
         joinedAt: string;
         user?: {
             id: string;
@@ -225,9 +225,9 @@ export declare const householdMembersResponseSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        householdId: string;
-        userId: string;
         role: "owner" | "member";
+        userId: string;
+        householdId: string;
         joinedAt: string;
         user?: {
             id: string;
@@ -253,26 +253,26 @@ export declare const householdInvitationSchema: z.ZodObject<{
     memberCount: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    householdId: string;
-    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    status: "pending" | "expired" | "accepted" | "declined" | "revoked";
     createdAt: string;
+    expiresAt: string;
+    householdId: string;
     inviterUserId: string;
     invitedEmail: string;
     invitedUserId: string | null;
-    expiresAt: string;
     memberCount?: number | undefined;
     token?: string | undefined;
     inviterName?: string | undefined;
     householdName?: string | undefined;
 }, {
     id: string;
-    householdId: string;
-    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+    status: "pending" | "expired" | "accepted" | "declined" | "revoked";
     createdAt: string;
+    expiresAt: string;
+    householdId: string;
     inviterUserId: string;
     invitedEmail: string;
     invitedUserId: string | null;
-    expiresAt: string;
     memberCount?: number | undefined;
     token?: string | undefined;
     inviterName?: string | undefined;
@@ -303,26 +303,26 @@ export declare const householdInvitationsListResponseSchema: z.ZodObject<{
         memberCount: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        householdId: string;
-        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        status: "pending" | "expired" | "accepted" | "declined" | "revoked";
         createdAt: string;
+        expiresAt: string;
+        householdId: string;
         inviterUserId: string;
         invitedEmail: string;
         invitedUserId: string | null;
-        expiresAt: string;
         memberCount?: number | undefined;
         token?: string | undefined;
         inviterName?: string | undefined;
         householdName?: string | undefined;
     }, {
         id: string;
-        householdId: string;
-        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        status: "pending" | "expired" | "accepted" | "declined" | "revoked";
         createdAt: string;
+        expiresAt: string;
+        householdId: string;
         inviterUserId: string;
         invitedEmail: string;
         invitedUserId: string | null;
-        expiresAt: string;
         memberCount?: number | undefined;
         token?: string | undefined;
         inviterName?: string | undefined;
@@ -331,13 +331,13 @@ export declare const householdInvitationsListResponseSchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        householdId: string;
-        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        status: "pending" | "expired" | "accepted" | "declined" | "revoked";
         createdAt: string;
+        expiresAt: string;
+        householdId: string;
         inviterUserId: string;
         invitedEmail: string;
         invitedUserId: string | null;
-        expiresAt: string;
         memberCount?: number | undefined;
         token?: string | undefined;
         inviterName?: string | undefined;
@@ -346,13 +346,13 @@ export declare const householdInvitationsListResponseSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        householdId: string;
-        status: "pending" | "accepted" | "declined" | "expired" | "revoked";
+        status: "pending" | "expired" | "accepted" | "declined" | "revoked";
         createdAt: string;
+        expiresAt: string;
+        householdId: string;
         inviterUserId: string;
         invitedEmail: string;
         invitedUserId: string | null;
-        expiresAt: string;
         memberCount?: number | undefined;
         token?: string | undefined;
         inviterName?: string | undefined;
@@ -371,19 +371,19 @@ export declare const householdInvitationPreviewSchema: z.ZodObject<{
     expiresAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    householdId: string;
-    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
-    memberCount: number;
+    status: "pending" | "expired" | "accepted" | "declined" | "revoked";
     expiresAt: string;
+    householdId: string;
+    memberCount: number;
     inviterName: string;
     householdName: string;
     inviterAvatarUrl: string | null;
 }, {
     id: string;
-    householdId: string;
-    status: "pending" | "accepted" | "declined" | "expired" | "revoked";
-    memberCount: number;
+    status: "pending" | "expired" | "accepted" | "declined" | "revoked";
     expiresAt: string;
+    householdId: string;
+    memberCount: number;
     inviterName: string;
     householdName: string;
     inviterAvatarUrl: string | null;

@@ -14,8 +14,47 @@ import {
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import type { Review } from '@expyrico/shared';
+import type { Review, ReviewRating } from '@expyrico/shared';
+import { REVIEW_BADGE_CONFIG } from '../../../../src/features/reviews/ReviewCard';
 import { useConnectionGuardStore } from '../../../../src/store/connectionGuardStore';
+
+const RECOMMENDATION_OPTIONS: Array<{
+  value: ReviewRating;
+  label: string;
+  sublabel: string;
+  icon: string;
+  activeBorder: string;
+  activeBg: string;
+  activeText: string;
+}> = [
+  {
+    value: 'buy_again',
+    label: REVIEW_BADGE_CONFIG.buy_again.label,
+    sublabel: REVIEW_BADGE_CONFIG.buy_again.sublabel,
+    icon: REVIEW_BADGE_CONFIG.buy_again.icon,
+    activeBorder: REVIEW_BADGE_CONFIG.buy_again.border,
+    activeBg: REVIEW_BADGE_CONFIG.buy_again.bg,
+    activeText: REVIEW_BADGE_CONFIG.buy_again.text,
+  },
+  {
+    value: 'buy_again_on_sale',
+    label: REVIEW_BADGE_CONFIG.buy_again_on_sale.label,
+    sublabel: REVIEW_BADGE_CONFIG.buy_again_on_sale.sublabel,
+    icon: REVIEW_BADGE_CONFIG.buy_again_on_sale.icon,
+    activeBorder: REVIEW_BADGE_CONFIG.buy_again_on_sale.border,
+    activeBg: REVIEW_BADGE_CONFIG.buy_again_on_sale.bg,
+    activeText: REVIEW_BADGE_CONFIG.buy_again_on_sale.text,
+  },
+  {
+    value: 'wont_buy',
+    label: REVIEW_BADGE_CONFIG.wont_buy.label,
+    sublabel: REVIEW_BADGE_CONFIG.wont_buy.sublabel,
+    icon: REVIEW_BADGE_CONFIG.wont_buy.icon,
+    activeBorder: REVIEW_BADGE_CONFIG.wont_buy.border,
+    activeBg: REVIEW_BADGE_CONFIG.wont_buy.bg,
+    activeText: REVIEW_BADGE_CONFIG.wont_buy.text,
+  },
+];
 import { Button } from '../../../../src/components/Button';
 import { ErrorText } from '../../../../src/components/ErrorText';
 import { KeyboardAwareScrollView } from '../../../../src/components/KeyboardAwareScrollView';
@@ -55,7 +94,7 @@ export default function ProductReview() {
     allReviews.find((r) => isUserOwnReview(r, currentUserId)) ??
     null;
   const isEdit = Boolean(existingReview);
-  const [stars, setStars] = useState<number>(() => existingReview?.stars ?? (existingReview?.rating === 'buy_again' ? 5 : existingReview?.rating === 'buy_again_on_sale' ? 3 : existingReview?.rating === 'wont_buy' ? 1 : 0));
+  const [rating, setRating] = useState<ReviewRating | null>(() => existingReview?.rating ?? null);
   const [body, setBody] = useState(existingReview?.body ?? '');
   const [inputFocused, setInputFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,18 +103,12 @@ export default function ProductReview() {
 
   // Pre-populate when existing review loads
   useEffect(() => {
-    if (existingReview && (!isInitialized || stars === 0)) {
-      const initialStars = existingReview.stars ?? (existingReview.rating === 'buy_again' ? 5 : existingReview.rating === 'buy_again_on_sale' ? 3 : existingReview.rating === 'wont_buy' ? 1 : 0);
-      setStars(initialStars);
+    if (existingReview && (!isInitialized || !rating)) {
+      setRating(existingReview.rating ?? null);
       setBody(existingReview.body ?? '');
       setIsInitialized(true);
     }
-  }, [existingReview, isInitialized, stars]);
-
-  function handleSelectStars(selectedStars: number) {
-    setStars(selectedStars);
-    setError(null);
-  }
+  }, [existingReview, isInitialized, rating]);
   // Android hardware back handler with unsaved changes prompt
   useEffect(() => {
     const onBackPress = () => {
@@ -84,13 +117,13 @@ export default function ProductReview() {
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [body, stars, existingReview]);
+  }, [body, rating, existingReview]);
 
   function hasUnsavedChanges() {
-    const initialStars = existingReview?.stars ?? (existingReview?.rating === 'buy_again' ? 5 : existingReview?.rating === 'buy_again_on_sale' ? 3 : existingReview?.rating === 'wont_buy' ? 1 : 0);
-    const starsChanged = stars !== initialStars;
+    const initialRating = existingReview?.rating ?? null;
+    const ratingChanged = rating !== initialRating;
     const bodyChanged = body.trim() !== (existingReview?.body ?? '').trim();
-    return starsChanged || bodyChanged;
+    return ratingChanged || bodyChanged;
   }
 
   function handleBack() {
@@ -110,8 +143,8 @@ export default function ProductReview() {
 
   async function onSubmit() {
     setError(null);
-    if (!stars || stars < 1) {
-      setError('Please select a star rating.');
+    if (!rating) {
+      setError('Please select whether you recommend this product.');
       return;
     }
 
@@ -126,13 +159,13 @@ export default function ProductReview() {
         await updateReviewMutation.mutateAsync({
           reviewId: existingReview.id,
           productId,
-          patch: { stars, body: finalBody },
+          patch: { rating, body: finalBody },
         });
         navigation.goBack();
       } else {
         const res = await createReviewMutation.mutateAsync({
           productId,
-          input: { stars, body: finalBody },
+          input: { rating, body: finalBody },
         });
         if (res.status === 'hidden') {
           setModerationPending(true);
@@ -152,7 +185,7 @@ export default function ProductReview() {
             await updateReviewMutation.mutateAsync({
               reviewId: match.id,
               productId,
-              patch: { stars, body: finalBody },
+              patch: { rating, body: finalBody },
             });
             navigation.goBack();
             return;
@@ -324,7 +357,7 @@ export default function ProductReview() {
           </View>
         </View>
 
-        {/* 1 to 5 Star Rating Selector Card */}
+        {/* Recommendation Selector Card */}
         <View
           style={[
             styles.cardContainer,
@@ -337,7 +370,7 @@ export default function ProductReview() {
         >
           <View style={styles.cardHeader}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Ionicons name="sparkles" size={18} color="#F5A623" />
+              <Ionicons name="sparkles" size={18} color="#4BAE8A" />
               <Text style={[styles.sectionLabel, { color: theme.colors.text }]}>
                 Rate this product
               </Text>
@@ -348,78 +381,73 @@ export default function ProductReview() {
           </View>
 
           <View
-            style={styles.starRow}
+            style={styles.recommendationRow}
             accessibilityRole="radiogroup"
-            accessibilityLabel="Rating out of 5 stars"
+            accessibilityLabel="Product recommendation options"
           >
-            {[1, 2, 3, 4, 5].map((starIndex) => {
-              const isFilled = starIndex <= stars;
+            {RECOMMENDATION_OPTIONS.map((opt) => {
+              const isSelected = rating === opt.value;
               return (
                 <Pressable
-                  key={starIndex}
-                  testID={`rating-star-${starIndex}`}
+                  key={opt.value}
+                  testID={`recommendation-option-${opt.value}`}
                   accessibilityRole="radio"
-                  accessibilityLabel={`${starIndex} star${starIndex > 1 ? 's' : ''}`}
-                  accessibilityState={{ selected: isFilled }}
-                  onPress={() => handleSelectStars(starIndex)}
+                  accessibilityLabel={`${opt.label} - ${opt.sublabel}`}
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => {
+                    setRating(opt.value);
+                    setError(null);
+                  }}
                   style={({ pressed }) => [
-                    styles.starButton,
-                    { transform: [{ scale: pressed ? 1.15 : 1 }] },
+                    styles.recommendationCard,
+                    {
+                      borderColor: isSelected
+                        ? opt.activeBorder
+                        : theme.colors.border,
+                      borderWidth: isSelected ? 2 : 1,
+                      backgroundColor: isSelected
+                        ? theme.scheme === 'dark'
+                          ? 'rgba(255,255,255,0.08)'
+                          : opt.activeBg
+                        : theme.scheme === 'dark'
+                          ? 'rgba(255,255,255,0.03)'
+                          : theme.colors.bg,
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    },
                   ]}
-                  hitSlop={6}
+                  hitSlop={4}
                 >
                   <Ionicons
-                    name={isFilled ? 'star' : 'star-outline'}
-                    size={30}
-                    color={isFilled ? '#F5A623' : theme.scheme === 'dark' ? '#3E3E38' : '#D0D0CA'}
+                    name={opt.icon}
+                    size={24}
+                    color={isSelected ? opt.activeBorder : theme.colors.textMuted}
                   />
+                  <Text
+                    style={[
+                      styles.recommendationLabel,
+                      {
+                        color: isSelected
+                          ? theme.scheme === 'dark'
+                            ? theme.colors.text
+                            : opt.activeText
+                          : theme.colors.text,
+                        fontWeight: isSelected ? '700' : '600',
+                      },
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.recommendationSublabel,
+                      { color: theme.colors.textMuted },
+                    ]}
+                  >
+                    {opt.sublabel}
+                  </Text>
                 </Pressable>
               );
             })}
-          </View>
-
-          <View style={styles.sentimentBadgeContainer}>
-            <View
-              style={[
-                styles.sentimentBadge,
-                {
-                  backgroundColor:
-                    stars >= 4
-                      ? theme.colors.primaryLight
-                      : stars === 3
-                        ? '#FEEFC3'
-                        : theme.scheme === 'dark'
-                          ? 'rgba(255,255,255,0.08)'
-                          : '#F0F0ED',
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.starCaption,
-                  {
-                    color:
-                      stars >= 4
-                        ? theme.colors.primaryDark
-                        : stars === 3
-                          ? '#7A4D05'
-                          : theme.colors.text,
-                  },
-                ]}
-              >
-                {stars === 5
-                  ? '5 / 5 · Excellent!'
-                  : stars === 4
-                    ? '4 / 5 · Great!'
-                    : stars === 3
-                      ? '3 / 5 · Good'
-                      : stars === 2
-                        ? '2 / 5 · Fair'
-                        : stars === 1
-                          ? '1 / 5 · Poor'
-                          : 'Tap a star to rate'}
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -604,31 +632,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  starRow: {
+  recommendationRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: 8,
-    paddingVertical: 2,
+    marginTop: 4,
+    marginBottom: 4,
   },
-  starButton: {
-    width: 44,
-    height: 44,
+  recommendationCard: {
+    flex: 1,
+    minHeight: 80,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 4,
   },
-  sentimentBadgeContainer: {
-    alignItems: 'center',
-    marginTop: 0,
+  recommendationLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 16,
   },
-  sentimentBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  starCaption: {
-    fontSize: 11,
-    fontWeight: '600',
+  recommendationSublabel: {
+    fontSize: 10,
     textAlign: 'center',
   },
   reviewInput: {

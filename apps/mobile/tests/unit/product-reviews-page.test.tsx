@@ -46,7 +46,6 @@ const mockProductStale: Product = {
   buyAgainCount: 1,
   buyAgainOnSaleCount: 0,
   wontBuyCount: 0,
-  averageRating: 3.0,
   ratingCount: 1,
   reviewCount: 1,
   createdAt: '2026-09-01T00:00:00.000Z',
@@ -57,7 +56,6 @@ const mockProductStale: Product = {
 const mockUpdatedReview: Review = {
   id: 'rev-dan-1',
   productId: 'prod-101',
-  stars: 3,
   rating: 'buy_again_on_sale',
   body: 'Vẻy delicious and gôd for health',
   helpfulCount: 2,
@@ -86,7 +84,7 @@ describe('ProductReviewsScreen (Dedicated Reviews Page)', () => {
     });
   });
 
-  it('corrects stale server tally and displays 3.0 stars and 60% score when review was edited to buy_again_on_sale', () => {
+  it('corrects stale server tally and displays recommendation percentage when review was edited to buy_again_on_sale', () => {
     (useProduct as jest.Mock).mockReturnValue({
       data: mockProductStale,
       isLoading: false,
@@ -107,23 +105,20 @@ describe('ProductReviewsScreen (Dedicated Reviews Page)', () => {
       isFetchingNextPage: false,
     });
 
-    const { getByText, getAllByText, queryByText } = render(<ProductReviewsScreen />);
+    const { getByText, queryByText } = render(<ProductReviewsScreen />);
     // Screen title
     expect(getByText('Product Reviews')).toBeTruthy();
     expect(getByText('Vinamilk Sữa chua ít đường')).toBeTruthy();
 
-    // Must show 3.0 and 60% score, NOT 5.0 or 100%
-    expect(getAllByText('3.0').length).toBeGreaterThanOrEqual(1);
-    expect(getByText('60% score')).toBeTruthy();
-    expect(queryByText('5.0')).toBeNull();
-    expect(queryByText('100% score')).toBeNull();
+    // Recommendation sentiment: buy_again_on_sale is a positive recommendation (100% recommend)
+    expect(getByText('100% recommend')).toBeTruthy();
+    expect(getByText('Based on 1 community rating')).toBeTruthy();
 
-    // Star filter pills
+    // Recommendation filter pills
     expect(getByText('All (1)')).toBeTruthy();
-    expect(getByText('3 (1)')).toBeTruthy();
+    expect(getByText('Buy on sale (1)')).toBeTruthy();
     // Review item
     expect(getByText('Vẻy delicious and gôd for health')).toBeTruthy();
-    expect(getByText('Your review')).toBeTruthy();
   });
 
   it('navigates to ProductReview edit screen on Edit your review CTA press', () => {

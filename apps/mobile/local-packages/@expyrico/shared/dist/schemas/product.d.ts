@@ -38,7 +38,6 @@ export declare const productSchema: z.ZodObject<{
     buyAgainCount: z.ZodNumber;
     buyAgainOnSaleCount: z.ZodNumber;
     wontBuyCount: z.ZodNumber;
-    averageRating: z.ZodDefault<z.ZodNumber>;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
     status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -63,7 +62,9 @@ export declare const productSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+    createdAt: string;
+    updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -72,13 +73,12 @@ export declare const productSchema: z.ZodObject<{
     category: string | null;
     imageUrl: string | null;
     defaultShelfLifeDays: number | null;
-    source: "off" | "upcitemdb" | "user";
+    source: "user" | "off" | "upcitemdb";
     sourceId: string | null;
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
     wontBuyCount: number;
-    averageRating: number;
     ratingCount: number;
     reviewCount: number;
     version: number;
@@ -88,11 +88,11 @@ export declare const productSchema: z.ZodObject<{
         thumbnailUrl: string;
         displayUrl: string;
     }[];
-    createdAt: string;
-    updatedAt: string;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+    createdAt: string;
+    updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -101,7 +101,7 @@ export declare const productSchema: z.ZodObject<{
     category: string | null;
     imageUrl: string | null;
     defaultShelfLifeDays: number | null;
-    source: "off" | "upcitemdb" | "user";
+    source: "user" | "off" | "upcitemdb";
     sourceId: string | null;
     isCommunityEligible: boolean;
     buyAgainCount: number;
@@ -116,9 +116,6 @@ export declare const productSchema: z.ZodObject<{
         thumbnailUrl: string;
         displayUrl: string;
     }[];
-    createdAt: string;
-    updatedAt: string;
-    averageRating?: number | undefined;
 }>;
 export type Product = z.infer<typeof productSchema>;
 export declare const productWithReviewsSchema: z.ZodObject<{
@@ -137,7 +134,6 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     buyAgainCount: z.ZodNumber;
     buyAgainOnSaleCount: z.ZodNumber;
     wontBuyCount: z.ZodNumber;
-    averageRating: z.ZodDefault<z.ZodNumber>;
     ratingCount: z.ZodNumber;
     reviewCount: z.ZodNumber;
     status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -164,7 +160,9 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     topReviews: z.ZodArray<z.ZodUnknown, "many">;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+    createdAt: string;
+    updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -173,13 +171,12 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     category: string | null;
     imageUrl: string | null;
     defaultShelfLifeDays: number | null;
-    source: "off" | "upcitemdb" | "user";
+    source: "user" | "off" | "upcitemdb";
     sourceId: string | null;
     isCommunityEligible: boolean;
     buyAgainCount: number;
     buyAgainOnSaleCount: number;
     wontBuyCount: number;
-    averageRating: number;
     ratingCount: number;
     reviewCount: number;
     version: number;
@@ -189,12 +186,12 @@ export declare const productWithReviewsSchema: z.ZodObject<{
         thumbnailUrl: string;
         displayUrl: string;
     }[];
-    createdAt: string;
-    updatedAt: string;
     topReviews: unknown[];
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+    status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+    createdAt: string;
+    updatedAt: string;
     barcode: string | null;
     qrPayload: string | null;
     name: string;
@@ -203,7 +200,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
     category: string | null;
     imageUrl: string | null;
     defaultShelfLifeDays: number | null;
-    source: "off" | "upcitemdb" | "user";
+    source: "user" | "off" | "upcitemdb";
     sourceId: string | null;
     isCommunityEligible: boolean;
     buyAgainCount: number;
@@ -218,10 +215,7 @@ export declare const productWithReviewsSchema: z.ZodObject<{
         thumbnailUrl: string;
         displayUrl: string;
     }[];
-    createdAt: string;
-    updatedAt: string;
     topReviews: unknown[];
-    averageRating?: number | undefined;
 }>;
 export type ProductWithReviews = z.infer<typeof productWithReviewsSchema>;
 export declare const productLookupRequestSchema: z.ZodEffects<z.ZodObject<{
@@ -258,7 +252,6 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
-        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -283,7 +276,9 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -292,13 +287,12 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -308,11 +302,11 @@ export declare const productLookupResponseSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -321,7 +315,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -336,14 +330,13 @@ export declare const productLookupResponseSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }>>;
 }, "strip", z.ZodTypeAny, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -352,13 +345,12 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -368,13 +360,13 @@ export declare const productLookupResponseSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     } | null;
 }, {
     product: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -383,7 +375,7 @@ export declare const productLookupResponseSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -398,9 +390,6 @@ export declare const productLookupResponseSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     } | null;
 }>;
 export type ProductLookupResponse = z.infer<typeof productLookupResponseSchema>;
@@ -421,7 +410,6 @@ export declare const productSearchResultSchema: z.ZodObject<{
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
-        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         status: z.ZodEnum<["draft", "pending", "changes_required", "active", "report_hidden", "merged_into"]>;
@@ -446,7 +434,9 @@ export declare const productSearchResultSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -455,13 +445,12 @@ export declare const productSearchResultSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -471,11 +460,11 @@ export declare const productSearchResultSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -484,7 +473,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -499,14 +488,13 @@ export declare const productSearchResultSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -515,13 +503,12 @@ export declare const productSearchResultSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -531,13 +518,13 @@ export declare const productSearchResultSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }[];
 }, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active" | "report_hidden" | "merged_into";
+        status: "active" | "draft" | "pending" | "changes_required" | "report_hidden" | "merged_into";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -546,7 +533,7 @@ export declare const productSearchResultSchema: z.ZodObject<{
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -561,9 +548,6 @@ export declare const productSearchResultSchema: z.ZodObject<{
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }[];
 }>;
 export type ProductSearchResult = z.infer<typeof productSearchResultSchema>;
@@ -631,7 +615,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
-        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -658,6 +641,8 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
     }, "strip", z.ZodTypeAny, {
         id: string;
         status: "active";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -666,13 +651,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -682,11 +666,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }, {
         id: string;
         status: "active";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -695,7 +679,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -710,14 +694,13 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
         status: "active";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -726,13 +709,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -742,14 +724,14 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     };
     outcome: "found";
 }, {
     product: {
         id: string;
         status: "active";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -758,7 +740,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -773,9 +755,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     };
     outcome: "found";
 }>, z.ZodObject<{
@@ -796,7 +775,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
-        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -823,6 +801,8 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
     }, "strip", z.ZodTypeAny, {
         id: string;
         status: "draft" | "changes_required";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -831,13 +811,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -847,11 +826,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }, {
         id: string;
         status: "draft" | "changes_required";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -860,7 +839,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -875,14 +854,13 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
         status: "draft" | "changes_required";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -891,13 +869,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -907,14 +884,14 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     };
     outcome: "editable_private";
 }, {
     product: {
         id: string;
         status: "draft" | "changes_required";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -923,7 +900,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -938,9 +915,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     };
     outcome: "editable_private";
 }>, z.ZodObject<{
@@ -961,7 +935,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         buyAgainCount: z.ZodNumber;
         buyAgainOnSaleCount: z.ZodNumber;
         wontBuyCount: z.ZodNumber;
-        averageRating: z.ZodDefault<z.ZodNumber>;
         ratingCount: z.ZodNumber;
         reviewCount: z.ZodNumber;
         version: z.ZodNumber;
@@ -988,6 +961,8 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
     }, "strip", z.ZodTypeAny, {
         id: string;
         status: "draft" | "pending" | "changes_required" | "report_hidden";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -996,13 +971,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -1012,11 +986,11 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     }, {
         id: string;
         status: "draft" | "pending" | "changes_required" | "report_hidden";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1025,7 +999,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -1040,14 +1014,13 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     }>;
 }, "strict", z.ZodTypeAny, {
     product: {
         id: string;
         status: "draft" | "pending" | "changes_required" | "report_hidden";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1056,13 +1029,12 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
         buyAgainOnSaleCount: number;
         wontBuyCount: number;
-        averageRating: number;
         ratingCount: number;
         reviewCount: number;
         version: number;
@@ -1072,14 +1044,14 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
     };
     outcome: "creator_pending";
 }, {
     product: {
         id: string;
         status: "draft" | "pending" | "changes_required" | "report_hidden";
+        createdAt: string;
+        updatedAt: string;
         barcode: string | null;
         qrPayload: string | null;
         name: string;
@@ -1088,7 +1060,7 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
         category: string | null;
         imageUrl: string | null;
         defaultShelfLifeDays: number | null;
-        source: "off" | "upcitemdb" | "user";
+        source: "user" | "off" | "upcitemdb";
         sourceId: string | null;
         isCommunityEligible: boolean;
         buyAgainCount: number;
@@ -1103,9 +1075,6 @@ export declare const productLookupV2ResponseSchema: z.ZodDiscriminatedUnion<"out
             thumbnailUrl: string;
             displayUrl: string;
         }[];
-        createdAt: string;
-        updatedAt: string;
-        averageRating?: number | undefined;
     };
     outcome: "creator_pending";
 }>, z.ZodObject<{
@@ -1142,10 +1111,10 @@ export declare const productDraftsQuerySchema: z.ZodObject<{
     status: z.ZodOptional<z.ZodUnion<[z.ZodEnum<["draft", "pending", "changes_required", "active"]>, z.ZodLiteral<"all">]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "draft" | "pending" | "changes_required" | "active" | "all" | undefined;
+    status?: "active" | "draft" | "pending" | "changes_required" | "all" | undefined;
     cursor?: string | undefined;
 }, {
-    status?: "draft" | "pending" | "changes_required" | "active" | "all" | undefined;
+    status?: "active" | "draft" | "pending" | "changes_required" | "all" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
 }>;
@@ -1208,10 +1177,10 @@ export declare const productDraftRowSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active";
+    status: "active" | "draft" | "pending" | "changes_required";
+    updatedAt: string;
     name: string;
     version: number;
-    updatedAt: string;
     identifier: {
         value: string;
         kind: "barcode";
@@ -1226,10 +1195,10 @@ export declare const productDraftRowSchema: z.ZodObject<{
     } | null;
 }, {
     id: string;
-    status: "draft" | "pending" | "changes_required" | "active";
+    status: "active" | "draft" | "pending" | "changes_required";
+    updatedAt: string;
     name: string;
     version: number;
-    updatedAt: string;
     identifier: {
         value: string;
         kind: "barcode";
@@ -1283,10 +1252,10 @@ export declare const productDraftsPageSchema: z.ZodObject<{
         updatedAt: z.ZodString;
     }, "strict", z.ZodTypeAny, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active";
+        status: "active" | "draft" | "pending" | "changes_required";
+        updatedAt: string;
         name: string;
         version: number;
-        updatedAt: string;
         identifier: {
             value: string;
             kind: "barcode";
@@ -1301,10 +1270,10 @@ export declare const productDraftsPageSchema: z.ZodObject<{
         } | null;
     }, {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active";
+        status: "active" | "draft" | "pending" | "changes_required";
+        updatedAt: string;
         name: string;
         version: number;
-        updatedAt: string;
         identifier: {
             value: string;
             kind: "barcode";
@@ -1322,10 +1291,10 @@ export declare const productDraftsPageSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active";
+        status: "active" | "draft" | "pending" | "changes_required";
+        updatedAt: string;
         name: string;
         version: number;
-        updatedAt: string;
         identifier: {
             value: string;
             kind: "barcode";
@@ -1343,10 +1312,10 @@ export declare const productDraftsPageSchema: z.ZodObject<{
 }, {
     items: {
         id: string;
-        status: "draft" | "pending" | "changes_required" | "active";
+        status: "active" | "draft" | "pending" | "changes_required";
+        updatedAt: string;
         name: string;
         version: number;
-        updatedAt: string;
         identifier: {
             value: string;
             kind: "barcode";

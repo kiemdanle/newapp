@@ -36,7 +36,6 @@ function makeProduct(overrides: Partial<Record<string, unknown>> = {}) {
     wontBuyCount: 0,
     ratingCount: 0,
     reviewCount: 0,
-    averageRating: 0,
     status: 'active',
     version: 1,
     photos: [],

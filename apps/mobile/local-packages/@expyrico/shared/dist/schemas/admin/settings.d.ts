@@ -29,10 +29,10 @@ export declare const productCreationSettingsSchema: z.ZodObject<{
     mode: z.ZodEnum<["off", "internal", "all"]>;
     requireApproval: z.ZodDefault<z.ZodBoolean>;
 }, "strip", z.ZodTypeAny, {
-    mode: "off" | "internal" | "all";
+    mode: "off" | "all" | "internal";
     requireApproval: boolean;
 }, {
-    mode: "off" | "internal" | "all";
+    mode: "off" | "all" | "internal";
     requireApproval?: boolean | undefined;
 }>;
 export type ProductCreationSettings = z.infer<typeof productCreationSettingsSchema>;
@@ -45,18 +45,18 @@ export declare const notificationTemplateSchema: z.ZodObject<{
     updatedAt: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    key: string;
+    updatedAt: string;
     title: string;
     body: string;
     enabled: boolean;
-    updatedAt: string;
+    key: string;
 }, {
     id: string;
-    key: string;
+    updatedAt: string;
     title: string;
     body: string;
     enabled: boolean;
-    updatedAt: string;
+    key: string;
 }>;
 export declare const notificationTemplatePatchSchema: z.ZodEffects<z.ZodObject<{
     title: z.ZodOptional<z.ZodString>;
@@ -91,15 +91,15 @@ export declare const adminRowSchema: z.ZodObject<{
     email: string;
     firstName: string;
     lastName: string;
-    totpEnabledAt: string | null;
     createdAt: string;
+    totpEnabledAt: string | null;
 }, {
     id: string;
     email: string;
     firstName: string;
     lastName: string;
-    totpEnabledAt: string | null;
     createdAt: string;
+    totpEnabledAt: string | null;
 }>;
 export type AdminRow = z.infer<typeof adminRowSchema>;
 export declare const adminInviteSchema: z.ZodObject<{

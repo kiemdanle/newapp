@@ -62,6 +62,7 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -75,7 +76,6 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
@@ -85,6 +85,7 @@ export declare const productEditRowSchema: z.ZodObject<{
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -98,7 +99,6 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     baseProductVersion: number;
@@ -201,18 +201,19 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         lastName: z.ZodString;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        firstName: string;
         email: string;
+        firstName: string;
         lastName: string;
     }, {
         id: string;
-        firstName: string;
         email: string;
+        firstName: string;
         lastName: string;
     }>>>;
 }, "strict", z.ZodTypeAny, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -226,7 +227,6 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
@@ -236,8 +236,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
         id: string;
-        firstName: string;
         email: string;
+        firstName: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;
@@ -245,6 +245,7 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
 }, {
     id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
+    updatedAt: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -258,7 +259,6 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    updatedAt: string;
     moderationFeedback: string | null;
     productId: string;
     submittedBy: string;
@@ -268,8 +268,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
         id: string;
-        firstName: string;
         email: string;
+        firstName: string;
         lastName: string;
     } | null | undefined;
     productName?: string | undefined;

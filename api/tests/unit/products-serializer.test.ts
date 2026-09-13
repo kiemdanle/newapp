@@ -21,7 +21,6 @@ function makePrismaProduct(overrides: Partial<Record<string, unknown>> = {}) {
     buyAgainCount: 0,
     buyAgainOnSaleCount: 0,
     wontBuyCount: 0,
-    averageRating: new Prisma.Decimal(0),
     ratingCount: 0,
     reviewCount: 0,
     status: 'active',

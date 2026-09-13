@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { Review, ReviewRating } from '@expyrico/shared';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Avatar } from '../../components/Avatar';
-import { formatRelativeDate } from './ReviewCard';
+import { formatRelativeDate, REVIEW_BADGE_CONFIG } from './ReviewCard';
 import { useProduct } from '../../api/products';
 import { useTheme } from '../../theme/useTheme';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
@@ -15,7 +15,7 @@ export interface ProductCommunityGroup {
   product?: any;
   reviews: Review[];
   totalReviews: number;
-  averageScore: number;
+  averageScore?: number;
   recommendPercent: number | null;
   latestCreatedAt: string;
 }
@@ -39,36 +39,20 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
   const productBrand = product?.brand;
   const photoUrl = product?.imageUrl;
 
-  // Compute average score: preserve authoritative server tallies unless the review set is complete
-  let avgScore = group.averageScore;
-  let totalRatings = group.totalReviews;
+  let buyAgain = product?.buyAgainCount ?? 0;
+  let buySale = product?.buyAgainOnSaleCount ?? 0;
+  let totalRatings = product?.ratingCount ?? group.totalReviews;
 
   if (product && typeof product.ratingCount === 'number' && product.ratingCount > 0) {
     const isComplete = product.ratingCount === group.reviews.length;
     if (isComplete && group.reviews.length > 0) {
-      let sum = 0;
-      for (const r of group.reviews) {
-        if (r.rating === 'buy_again') {
-          sum += 5;
-        } else if (r.rating === 'buy_again_on_sale') {
-          sum += 3;
-        } else if (r.rating === 'wont_buy') {
-          sum += 1;
-        }
-      }
-      avgScore = Math.round((sum / group.reviews.length) * 10) / 10;
+      buyAgain = group.reviews.filter((r) => r.rating === 'buy_again').length;
+      buySale = group.reviews.filter((r) => r.rating === 'buy_again_on_sale').length;
       totalRatings = group.reviews.length;
-    } else {
-      const buyAgain = product.buyAgainCount ?? 0;
-      const buySale = product.buyAgainOnSaleCount ?? 0;
-      const wontBuy = product.wontBuyCount ?? 0;
-      const count = product.ratingCount;
-      avgScore = Math.round(((buyAgain * 5 + buySale * 3 + wontBuy * 1) / count) * 10) / 10;
-      totalRatings = count;
     }
   }
 
-  const scorePct = totalRatings > 0 ? Math.round((avgScore / 5) * 100) : null;
+  const recommendPct = totalRatings > 0 ? Math.round(((buyAgain + buySale) / totalRatings) * 100) : null;
   // 1 to 3 newest review comments
   const displayReviews = isExpanded
     ? group.reviews
@@ -121,32 +105,28 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
             </Text>
           ) : null}
 
-          {/* Aggregate Rating Score Badge */}
+          {/* Aggregate Recommendation Sentiment Badge */}
           <View style={styles.scoreRow}>
-            <View
-              style={[
-                styles.starScoreBadge,
-                {
-                  backgroundColor: theme.colors.bgGlass,
-                  borderColor: theme.colors.border,
-                },
-              ]}
-            >
-              <Ionicons name="star" size={13} color="#F5A623" style={{ marginRight: 3 }} />
-              <Text style={[styles.starScoreText, { color: theme.colors.primaryDark }]}>
-                {avgScore.toFixed(1)}
-              </Text>
-            </View>
+            {recommendPct !== null ? (
+              <View
+                style={[
+                  styles.starScoreBadge,
+                  {
+                    backgroundColor: '#D6F0E6',
+                    borderColor: '#4BAE8A',
+                  },
+                ]}
+              >
+                <Ionicons name="thumbs-up" size={12} color="#4BAE8A" style={{ marginRight: 3 }} />
+                <Text style={[styles.starScoreText, { color: '#3A8F6F' }]}>
+                  {recommendPct}%
+                </Text>
+              </View>
+            ) : null}
 
-            {scorePct !== null ? (
-              <Text style={[styles.recommendText, { color: theme.colors.textMuted }]}>
-                {scorePct}% score · {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'}
-              </Text>
-            ) : (
-              <Text style={[styles.recommendText, { color: theme.colors.textMuted }]}>
-                {totalRatings} {totalRatings === 1 ? 'review' : 'reviews'}
-              </Text>
-            )}
+            <Text style={[styles.recommendText, { color: theme.colors.textMuted }]}>
+              {totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'}
+            </Text>
           </View>
         </View>
 
@@ -175,7 +155,6 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
         {displayReviews.map((rev) => {
           const authorName = rev.author?.firstName ?? 'Community Member';
           const relativeDate = formatRelativeDate(rev.createdAt);
-          const stars = rev.stars ?? (rev.rating === 'buy_again' ? 5 : rev.rating === 'buy_again_on_sale' ? 3 : 1);
           return (
             <View
               key={rev.id}
@@ -209,18 +188,34 @@ export const ProductCommunityCard = memo(function ProductCommunityCard({
                   </View>
                 </View>
 
-                {/* Star Rating */}
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Ionicons
-                      key={s}
-                      name={s <= stars ? 'star' : 'star-outline'}
-                      size={13}
-                      color={s <= stars ? '#F5A623' : theme.colors.neutralMid}
-                      style={{ marginRight: 1 }}
-                    />
-                  ))}
-                </View>
+                {/* Recommendation Badge */}
+                {(() => {
+                  const badge = REVIEW_BADGE_CONFIG[rev.rating];
+                  return (
+                    <View
+                      style={[
+                        styles.sentimentBadge,
+                        {
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          backgroundColor: badge.bg,
+                          borderColor: badge.border,
+                        },
+                      ]}
+                      accessibilityLabel={`Recommendation: ${badge.label}`}
+                    >
+                      <Ionicons
+                        name={badge.icon}
+                        size={11}
+                        color={badge.border}
+                        style={{ marginRight: 3 }}
+                      />
+                      <Text style={[styles.sentimentText, { color: badge.text }]}>
+                        {badge.label}
+                      </Text>
+                    </View>
+                  );
+                })()}
               </View>
 
               {/* Comment Body */}

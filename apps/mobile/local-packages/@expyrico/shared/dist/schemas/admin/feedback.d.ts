@@ -7,12 +7,12 @@ export declare const adminFeedbackQuerySchema: z.ZodObject<{
     search: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
-    status?: "open" | "in_progress" | "replied" | "resolved" | "closed" | undefined;
+    status?: "open" | "resolved" | "closed" | "in_progress" | "replied" | undefined;
     type?: "bug" | "suggestion" | "feedback" | undefined;
     cursor?: string | undefined;
     search?: string | undefined;
 }, {
-    status?: "open" | "in_progress" | "replied" | "resolved" | "closed" | undefined;
+    status?: "open" | "resolved" | "closed" | "in_progress" | "replied" | undefined;
     type?: "bug" | "suggestion" | "feedback" | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
@@ -32,12 +32,12 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         appVersion: z.ZodString;
         deviceModel: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
-        platform: "ios" | "android" | "web";
+        platform: "android" | "ios" | "web";
         osVersion: string;
         appVersion: string;
         deviceModel?: string | undefined;
     }, {
-        platform: "ios" | "android" | "web";
+        platform: "android" | "ios" | "web";
         osVersion: string;
         appVersion: string;
         deviceModel?: string | undefined;
@@ -103,8 +103,8 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         mimeType: string;
         fileSizeBytes: number;
         storageKey: string;
-        ticketId?: string | null | undefined;
         url?: string | undefined;
+        ticketId?: string | null | undefined;
     }, {
         id: string;
         createdAt: string;
@@ -113,15 +113,10 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         mimeType: string;
         fileSizeBytes: number;
         storageKey: string;
-        ticketId?: string | null | undefined;
         url?: string | undefined;
+        ticketId?: string | null | undefined;
     }>, "many">>;
 }, "strip", z.ZodTypeAny, {
-    status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-    type: "bug" | "suggestion" | "feedback";
-    title: string;
-    id: string;
-    description: string;
     user: {
         id: string;
         email: string;
@@ -129,17 +124,22 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         lastName: string;
         avatarUrl?: string | null | undefined;
     };
+    id: string;
+    status: "open" | "resolved" | "closed" | "in_progress" | "replied";
     createdAt: string;
     updatedAt: string;
+    type: "bug" | "suggestion" | "feedback";
+    description: string;
+    title: string;
     userId: string;
     deviceInfo?: {
-        platform: "ios" | "android" | "web";
+        platform: "android" | "ios" | "web";
         osVersion: string;
         appVersion: string;
         deviceModel?: string | undefined;
     } | null | undefined;
-    resolvedAt?: string | null | undefined;
     resolvedBy?: string | null | undefined;
+    resolvedAt?: string | null | undefined;
     resolutionNotes?: string | null | undefined;
     attachmentsCount?: number | undefined;
     messagesCount?: number | undefined;
@@ -151,8 +151,8 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         mimeType: string;
         fileSizeBytes: number;
         storageKey: string;
-        ticketId?: string | null | undefined;
         url?: string | undefined;
+        ticketId?: string | null | undefined;
     }[] | undefined;
     resolver?: {
         id: string;
@@ -161,11 +161,6 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         lastName: string;
     } | null | undefined;
 }, {
-    status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-    type: "bug" | "suggestion" | "feedback";
-    title: string;
-    id: string;
-    description: string;
     user: {
         id: string;
         email: string;
@@ -173,17 +168,22 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         lastName: string;
         avatarUrl?: string | null | undefined;
     };
+    id: string;
+    status: "open" | "resolved" | "closed" | "in_progress" | "replied";
     createdAt: string;
     updatedAt: string;
+    type: "bug" | "suggestion" | "feedback";
+    description: string;
+    title: string;
     userId: string;
     deviceInfo?: {
-        platform: "ios" | "android" | "web";
+        platform: "android" | "ios" | "web";
         osVersion: string;
         appVersion: string;
         deviceModel?: string | undefined;
     } | null | undefined;
-    resolvedAt?: string | null | undefined;
     resolvedBy?: string | null | undefined;
+    resolvedAt?: string | null | undefined;
     resolutionNotes?: string | null | undefined;
     attachmentsCount?: number | undefined;
     messagesCount?: number | undefined;
@@ -195,8 +195,8 @@ export declare const adminFeedbackRowSchema: z.ZodObject<{
         mimeType: string;
         fileSizeBytes: number;
         storageKey: string;
-        ticketId?: string | null | undefined;
         url?: string | undefined;
+        ticketId?: string | null | undefined;
     }[] | undefined;
     resolver?: {
         id: string;
@@ -220,12 +220,12 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             appVersion: z.ZodString;
             deviceModel: z.ZodOptional<z.ZodString>;
         }, "strip", z.ZodTypeAny, {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
         }, {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
@@ -291,8 +291,8 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }, {
             id: string;
             createdAt: string;
@@ -301,15 +301,10 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }>, "many">>;
     }, "strip", z.ZodTypeAny, {
-        status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-        type: "bug" | "suggestion" | "feedback";
-        title: string;
-        id: string;
-        description: string;
         user: {
             id: string;
             email: string;
@@ -317,17 +312,22 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             lastName: string;
             avatarUrl?: string | null | undefined;
         };
+        id: string;
+        status: "open" | "resolved" | "closed" | "in_progress" | "replied";
         createdAt: string;
         updatedAt: string;
+        type: "bug" | "suggestion" | "feedback";
+        description: string;
+        title: string;
         userId: string;
         deviceInfo?: {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
         } | null | undefined;
-        resolvedAt?: string | null | undefined;
         resolvedBy?: string | null | undefined;
+        resolvedAt?: string | null | undefined;
         resolutionNotes?: string | null | undefined;
         attachmentsCount?: number | undefined;
         messagesCount?: number | undefined;
@@ -339,8 +339,8 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }[] | undefined;
         resolver?: {
             id: string;
@@ -349,11 +349,6 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             lastName: string;
         } | null | undefined;
     }, {
-        status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-        type: "bug" | "suggestion" | "feedback";
-        title: string;
-        id: string;
-        description: string;
         user: {
             id: string;
             email: string;
@@ -361,17 +356,22 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             lastName: string;
             avatarUrl?: string | null | undefined;
         };
+        id: string;
+        status: "open" | "resolved" | "closed" | "in_progress" | "replied";
         createdAt: string;
         updatedAt: string;
+        type: "bug" | "suggestion" | "feedback";
+        description: string;
+        title: string;
         userId: string;
         deviceInfo?: {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
         } | null | undefined;
-        resolvedAt?: string | null | undefined;
         resolvedBy?: string | null | undefined;
+        resolvedAt?: string | null | undefined;
         resolutionNotes?: string | null | undefined;
         attachmentsCount?: number | undefined;
         messagesCount?: number | undefined;
@@ -383,8 +383,8 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }[] | undefined;
         resolver?: {
             id: string;
@@ -396,11 +396,6 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
     nextCursor: z.ZodNullable<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     items: {
-        status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-        type: "bug" | "suggestion" | "feedback";
-        title: string;
-        id: string;
-        description: string;
         user: {
             id: string;
             email: string;
@@ -408,17 +403,22 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             lastName: string;
             avatarUrl?: string | null | undefined;
         };
+        id: string;
+        status: "open" | "resolved" | "closed" | "in_progress" | "replied";
         createdAt: string;
         updatedAt: string;
+        type: "bug" | "suggestion" | "feedback";
+        description: string;
+        title: string;
         userId: string;
         deviceInfo?: {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
         } | null | undefined;
-        resolvedAt?: string | null | undefined;
         resolvedBy?: string | null | undefined;
+        resolvedAt?: string | null | undefined;
         resolutionNotes?: string | null | undefined;
         attachmentsCount?: number | undefined;
         messagesCount?: number | undefined;
@@ -430,8 +430,8 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }[] | undefined;
         resolver?: {
             id: string;
@@ -443,11 +443,6 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
     nextCursor: string | null;
 }, {
     items: {
-        status: "open" | "in_progress" | "replied" | "resolved" | "closed";
-        type: "bug" | "suggestion" | "feedback";
-        title: string;
-        id: string;
-        description: string;
         user: {
             id: string;
             email: string;
@@ -455,17 +450,22 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             lastName: string;
             avatarUrl?: string | null | undefined;
         };
+        id: string;
+        status: "open" | "resolved" | "closed" | "in_progress" | "replied";
         createdAt: string;
         updatedAt: string;
+        type: "bug" | "suggestion" | "feedback";
+        description: string;
+        title: string;
         userId: string;
         deviceInfo?: {
-            platform: "ios" | "android" | "web";
+            platform: "android" | "ios" | "web";
             osVersion: string;
             appVersion: string;
             deviceModel?: string | undefined;
         } | null | undefined;
-        resolvedAt?: string | null | undefined;
         resolvedBy?: string | null | undefined;
+        resolvedAt?: string | null | undefined;
         resolutionNotes?: string | null | undefined;
         attachmentsCount?: number | undefined;
         messagesCount?: number | undefined;
@@ -477,8 +477,8 @@ export declare const adminFeedbackListPageSchema: z.ZodObject<{
             mimeType: string;
             fileSizeBytes: number;
             storageKey: string;
-            ticketId?: string | null | undefined;
             url?: string | undefined;
+            ticketId?: string | null | undefined;
         }[] | undefined;
         resolver?: {
             id: string;
@@ -499,17 +499,17 @@ export declare const adminFeedbackCountsSchema: z.ZodObject<{
     closed: z.ZodNumber;
 }, "strip", z.ZodTypeAny, {
     open: number;
-    replied: number;
     resolved: number;
-    closed: number;
     total: number;
+    closed: number;
+    replied: number;
     inProgress: number;
 }, {
     open: number;
-    replied: number;
     resolved: number;
-    closed: number;
     total: number;
+    closed: number;
+    replied: number;
     inProgress: number;
 }>;
 export type AdminFeedbackCounts = z.infer<typeof adminFeedbackCountsSchema>;
