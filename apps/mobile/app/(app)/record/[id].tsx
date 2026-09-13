@@ -35,6 +35,7 @@ import { usePhotoLimits } from '../../../src/utils/photo-limits';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
+import { ProductReviewSummaryCard } from '../../../src/features/reviews/ProductReviewSummaryCard';
 export function getRelativeExpiryLabel(
   expiryDateStr: string,
   country?: string | null,
@@ -59,6 +60,7 @@ export default function RecordDetail() {
   const { id } = useRoute().params as { id: string };
   const record = useRecord(id);
   const { data: product } = useProduct(record?.productId ?? undefined);
+  const catalogProductId = record?.productId || product?.id;
   const [pendingReplaceIndex, setPendingReplaceIndex] = useState<number | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -115,7 +117,6 @@ export default function RecordDetail() {
   const barcode = product?.barcode;
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
-  const catalogProductId = record.productId || product?.id;
   const hasCustomizedPhotos = record.localPhotos !== undefined && record.localPhotos !== null;
   const displayedPhotos: string[] = hasCustomizedPhotos
     ? record.localPhotos!
@@ -460,6 +461,22 @@ export default function RecordDetail() {
             >
               {displayName}
             </Text>
+            {catalogProductId ? (
+              <ProductReviewSummaryCard
+                productId={catalogProductId}
+                product={product}
+                onPressViewReviews={() => {
+                  if (catalogProductId) {
+                    navigation.navigate('ProductReviews', { id: catalogProductId });
+                  }
+                }}
+                onPressWriteReview={() => {
+                  if (catalogProductId) {
+                    navigation.navigate('ProductReview', { id: catalogProductId });
+                  }
+                }}
+              />
+            ) : null}
           </View>
 
           {/* Quick Edit & Delete Header Controls */}
@@ -499,6 +516,7 @@ export default function RecordDetail() {
             </Pressable>
           </View>
         </View>
+
 
         {/* 2-Column Bento Stat Cards: Expiry & Quantity */}
         <View style={styles.bentoRow}>

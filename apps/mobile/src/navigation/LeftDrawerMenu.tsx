@@ -237,6 +237,105 @@ export function LeftDrawerMenu() {
           />
         </Pressable>
 
+        {/* 3 Quick Action Tiles (Scan, Household, Settings) */}
+        <View style={styles.quickActionsBar}>
+          {/* Scan Barcode */}
+          <Pressable
+            testID="shortcut-scan"
+            accessibilityRole="button"
+            accessibilityLabel="Scan Barcode"
+            onPress={() => handleShortcutPress('Scan')}
+            style={({ pressed }) => [
+              styles.quickActionTile,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <View
+              style={[
+                styles.quickActionIconWrap,
+                { backgroundColor: theme.colors.bgGlass },
+              ]}
+            >
+              <Ionicons
+                name="barcode-outline"
+                size={20}
+                color={theme.colors.primaryDark}
+              />
+            </View>
+            <Text style={[styles.quickActionLabel, { color: theme.colors.text }]}>
+              Scan
+            </Text>
+          </Pressable>
+
+          {/* Household Sharing */}
+          <Pressable
+            testID="shortcut-household"
+            accessibilityRole="button"
+            accessibilityLabel="Household Sharing"
+            onPress={() => handleShortcutPress('Household')}
+            style={({ pressed }) => [
+              styles.quickActionTile,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <View
+              style={[
+                styles.quickActionIconWrap,
+                { backgroundColor: theme.colors.bgGlass },
+              ]}
+            >
+              <Ionicons
+                name="people-outline"
+                size={20}
+                color={theme.colors.primaryDark}
+              />
+            </View>
+            <Text style={[styles.quickActionLabel, { color: theme.colors.text }]}>
+              Household
+            </Text>
+          </Pressable>
+
+          {/* Settings & Theme */}
+          <Pressable
+            testID="shortcut-settings"
+            accessibilityRole="button"
+            accessibilityLabel="Settings and Theme"
+            onPress={() => handleShortcutPress('SettingsIndex')}
+            style={({ pressed }) => [
+              styles.quickActionTile,
+              {
+                backgroundColor: theme.colors.bgElevated,
+                borderColor: theme.colors.border,
+              },
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <View
+              style={[
+                styles.quickActionIconWrap,
+                { backgroundColor: theme.colors.bgGlass },
+              ]}
+            >
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color={theme.colors.primaryDark}
+              />
+            </View>
+            <Text style={[styles.quickActionLabel, { color: theme.colors.text }]}>
+              Settings
+            </Text>
+          </Pressable>
+        </View>
+
         <View
           style={[styles.divider, { backgroundColor: theme.colors.border }]}
         />
@@ -327,102 +426,28 @@ export function LeftDrawerMenu() {
           style={[styles.divider, { backgroundColor: theme.colors.border }]}
         />
 
-        {/* Secondary Shortcuts Section */}
-        <View style={styles.section}>
+        {/* Feedback & Support Action (above Sign Out) */}
+        <Pressable
+          onPress={() => handleShortcutPress('FeedbackHub')}
+          style={({ pressed }) => [
+            styles.shortcutItem,
+            pressed && styles.buttonPressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Feedback and Support"
+          testID="shortcut-feedback"
+        >
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={18}
+            color={theme.colors.text}
+          />
           <Text
-            style={[styles.sectionTitle, { color: theme.colors.textMuted }]}
+            style={[styles.shortcutLabel, { color: theme.colors.text }]}
           >
-            QUICK ACCESS
+            Feedback & Support
           </Text>
-
-          <Pressable
-            onPress={() => handleShortcutPress('Scan')}
-            style={({ pressed }) => [
-              styles.shortcutItem,
-              pressed && styles.buttonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Scan Barcode"
-            testID="shortcut-scan"
-          >
-            <Ionicons
-              name="barcode-outline"
-              size={18}
-              color={theme.colors.text}
-            />
-            <Text
-              style={[styles.shortcutLabel, { color: theme.colors.text }]}
-            >
-              Scan Barcode
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => handleShortcutPress('Household')}
-            style={({ pressed }) => [
-              styles.shortcutItem,
-              pressed && styles.buttonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Household Sharing"
-            testID="shortcut-household"
-          >
-            <Ionicons
-              name="people-outline"
-              size={18}
-              color={theme.colors.text}
-            />
-            <Text
-              style={[styles.shortcutLabel, { color: theme.colors.text }]}
-            >
-              Household Sharing
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => handleShortcutPress('SettingsIndex')}
-            style={({ pressed }) => [
-              styles.shortcutItem,
-              pressed && styles.buttonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Settings and Theme"
-            testID="shortcut-settings"
-          >
-            <Ionicons
-              name="settings-outline"
-              size={18}
-              color={theme.colors.text}
-            />
-            <Text
-              style={[styles.shortcutLabel, { color: theme.colors.text }]}
-            >
-              Settings & Theme
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => handleShortcutPress('FeedbackHub')}
-            style={({ pressed }) => [
-              styles.shortcutItem,
-              pressed && styles.buttonPressed,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Feedback and Support"
-            testID="shortcut-feedback"
-          >
-            <Ionicons
-              name="chatbubble-ellipses-outline"
-              size={18}
-              color={theme.colors.text}
-            />
-            <Text
-              style={[styles.shortcutLabel, { color: theme.colors.text }]}
-            >
-              Feedback & Support
-            </Text>
-          </Pressable>
-        </View>
+        </Pressable>
 
         <View
           style={[styles.divider, { backgroundColor: theme.colors.border }]}
@@ -454,7 +479,7 @@ export function LeftDrawerMenu() {
         {/* Footer Version */}
         <View style={styles.footer}>
           <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
-            Expyrico v1.0 • Fresh Pantry
+            Expyrico V1.0
           </Text>
         </View>
       </ScrollView>
@@ -531,6 +556,35 @@ const styles = StyleSheet.create({
   },
   cardChevron: {
     marginLeft: 4,
+  },
+  quickActionsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  quickActionTile: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 5,
+  },
+  quickActionIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   divider: {
     height: 1,

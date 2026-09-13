@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
-  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -269,88 +268,184 @@ export default function ProductReviewsScreen() {
                     </View>
                   </View>
 
-                  <View
-                    style={[
-                      styles.breakdownTallyBadge,
-                      {
-                        backgroundColor: theme.colors.bgGlass,
-                        borderColor: theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.breakdownTallyText, { color: theme.colors.textMuted }]}>
-                      {buyAgain} Buy again · {buySale} On sale · {wontBuy} Won't buy
-                    </Text>
-                  </View>
                 </View>
 
-                {/* Recommendation Filter Pills Bar */}
+                {/* Recommendation Filter Pills Bar (2x2 Matrix — fits in one screen) */}
                 <View
                   style={[
-                    styles.breakdownRow,
+                    styles.filterGridContainer,
                     { borderTopColor: theme.colors.border },
                   ]}
                 >
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4 }}
-                  >
+                  <View style={styles.filterGridRow}>
+                    {/* All */}
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Filter all recommendations"
+                      accessibilityLabel={`Filter all ${totalRatings} recommendations`}
                       onPress={() => setSelectedRating('all')}
-                      style={[
-                        styles.starFilterPill,
+                      style={({ pressed }) => [
+                        styles.filterGridPill,
                         {
-                          backgroundColor: selectedRating === 'all' ? theme.colors.primaryLight : 'transparent',
-                          borderColor: selectedRating === 'all' ? theme.colors.primary : theme.colors.border,
+                          backgroundColor:
+                            selectedRating === 'all'
+                              ? theme.colors.primaryLight
+                              : theme.scheme === 'dark'
+                                ? 'rgba(255,255,255,0.03)'
+                                : theme.colors.bg,
+                          borderColor:
+                            selectedRating === 'all' ? theme.colors.primary : theme.colors.border,
+                          opacity: pressed ? 0.75 : 1,
                         },
                       ]}
                     >
+                      <Ionicons
+                        name="layers-outline"
+                        size={13}
+                        color={selectedRating === 'all' ? theme.colors.primaryDark : theme.colors.textMuted}
+                      />
                       <Text
                         style={[
-                          styles.starFilterText,
-                          { color: selectedRating === 'all' ? theme.colors.primaryDark : theme.colors.textMuted },
+                          styles.filterGridText,
+                          {
+                            color:
+                              selectedRating === 'all' ? theme.colors.primaryDark : theme.colors.text,
+                          },
                         ]}
                       >
                         All ({totalRatings})
                       </Text>
                     </Pressable>
 
-                    {[
-                      { key: 'buy_again' as const, label: 'Buy again', count: buyAgain, icon: 'checkmark-circle', color: '#4BAE8A' },
-                      { key: 'buy_again_on_sale' as const, label: 'Buy on sale', count: buySale, icon: 'pricetag', color: '#F5A623' },
-                      { key: 'wont_buy' as const, label: "Won't buy", count: wontBuy, icon: 'thumbs-down', color: '#8C8C85' },
-                    ].map((item) => {
-                      const isActive = selectedRating === item.key;
-                      return (
-                        <Pressable
-                          key={item.key}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Filter ${item.label}`}
-                          onPress={() => setSelectedRating(isActive ? 'all' : item.key)}
-                          style={[
-                            styles.starFilterPill,
-                            {
-                              backgroundColor: isActive ? theme.colors.primaryLight : 'transparent',
-                              borderColor: isActive ? theme.colors.primary : theme.colors.border,
-                            },
-                          ]}
-                        >
-                          <Ionicons name={item.icon} size={13} color={item.color} style={{ marginRight: 4 }} />
-                          <Text
-                            style={[
-                              styles.starFilterText,
-                              { color: isActive ? theme.colors.primaryDark : theme.colors.text },
-                            ]}
-                          >
-                            {item.label} ({item.count})
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
+                    {/* Buy again */}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter Buy again recommendations, ${buyAgain} reviews`}
+                      onPress={() =>
+                        setSelectedRating(selectedRating === 'buy_again' ? 'all' : 'buy_again')
+                      }
+                      style={({ pressed }) => [
+                        styles.filterGridPill,
+                        {
+                          backgroundColor:
+                            selectedRating === 'buy_again'
+                              ? theme.colors.primaryLight
+                              : theme.scheme === 'dark'
+                                ? 'rgba(255,255,255,0.03)'
+                                : theme.colors.bg,
+                          borderColor:
+                            selectedRating === 'buy_again' ? theme.colors.primary : theme.colors.border,
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="checkmark-circle" size={13} color="#4BAE8A" />
+                      <Text
+                        style={[
+                          styles.filterGridText,
+                          {
+                            color:
+                              selectedRating === 'buy_again'
+                                ? theme.colors.primaryDark
+                                : theme.colors.text,
+                          },
+                        ]}
+                      >
+                        Buy again ({buyAgain})
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <View style={styles.filterGridRow}>
+                    {/* Buy on sale */}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter Buy on sale recommendations, ${buySale} reviews`}
+                      onPress={() =>
+                        setSelectedRating(
+                          selectedRating === 'buy_again_on_sale' ? 'all' : 'buy_again_on_sale',
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.filterGridPill,
+                        {
+                          backgroundColor:
+                            selectedRating === 'buy_again_on_sale'
+                              ? theme.colors.accentLight
+                              : theme.scheme === 'dark'
+                                ? 'rgba(255,255,255,0.03)'
+                                : theme.colors.bg,
+                          borderColor:
+                            selectedRating === 'buy_again_on_sale'
+                              ? theme.colors.accent
+                              : theme.colors.border,
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="pricetag" size={12} color="#F5A623" />
+                      <Text
+                        style={[
+                          styles.filterGridText,
+                          {
+                            color:
+                              selectedRating === 'buy_again_on_sale'
+                                ? theme.scheme === 'dark'
+                                  ? '#FEEFC3'
+                                  : '#2C2C28'
+                                : theme.colors.text,
+                          },
+                        ]}
+                      >
+                        Buy on sale ({buySale})
+                      </Text>
+                    </Pressable>
+
+                    {/* Won't buy */}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Filter Won't buy recommendations, ${wontBuy} reviews`}
+                      onPress={() =>
+                        setSelectedRating(selectedRating === 'wont_buy' ? 'all' : 'wont_buy')
+                      }
+                      style={({ pressed }) => [
+                        styles.filterGridPill,
+                        {
+                          backgroundColor:
+                            selectedRating === 'wont_buy'
+                              ? theme.scheme === 'dark'
+                                ? 'rgba(140, 140, 133, 0.16)'
+                                : '#F0F0ED'
+                              : theme.scheme === 'dark'
+                                ? 'rgba(255,255,255,0.03)'
+                                : theme.colors.bg,
+                          borderColor:
+                            selectedRating === 'wont_buy'
+                              ? theme.scheme === 'dark'
+                                ? '#8C8C85'
+                                : theme.colors.textMuted
+                              : theme.colors.border,
+                          opacity: pressed ? 0.75 : 1,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="thumbs-down" size={12} color="#8C8C85" />
+                      <Text
+                        style={[
+                          styles.filterGridText,
+                          {
+                            color:
+                              selectedRating === 'wont_buy'
+                                ? theme.scheme === 'dark'
+                                  ? '#FAFAF8'
+                                  : '#2C2C28'
+                                : theme.colors.text,
+                          },
+                        ]}
+                      >
+                        Won't buy ({wontBuy})
+                      </Text>
+                    </Pressable>
+                  </View>
                 </View>
               </View>
 
@@ -659,34 +754,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  breakdownTallyBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-    marginTop: 6,
-  },
-  breakdownTallyText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+  filterGridContainer: {
     borderTopWidth: 1,
     paddingTop: 10,
+    gap: 8,
   },
-  starFilterPill: {
+  filterGridRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
+    gap: 8,
   },
-  starFilterText: {
+  filterGridPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 5,
+    minHeight: 34,
+  },
+  filterGridText: {
     fontSize: 12,
     fontWeight: '600',
   },

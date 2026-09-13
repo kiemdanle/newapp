@@ -21,6 +21,7 @@ import {
   createLocalRecord,
   patchLocalRecord,
   deleteLocalRecord,
+  markRecordStatusWithQuantity,
   type LocalRecord,
 } from '../../api/records';
 import { usePantryScope } from '../../store/pantryScope';
@@ -33,6 +34,9 @@ import { groupRecords, type GroupedRecords } from './groupRecords';
 import { RecordCard } from './RecordCard';
 import { QuickEditModal } from './QuickEditModal';
 import { useTheme } from '../../theme/useTheme';
+import { useUndoToastStore } from '../../store/undoToast';
+import { QuantityPromptModal } from '../../components/QuantityPromptModal';
+import { DiscardReasonModal } from '../../components/DiscardReasonModal';
 import { filterAndSortRecords } from './filterAndSortRecords';
 import { usePantryPagination } from './usePantryPagination';
 import { PantrySearchBar } from './PantrySearchBar';
@@ -62,9 +66,10 @@ interface RowProps {
   record: LocalRecord;
   householdName?: string | null;
   onPress: (id: string) => void;
+  onUsed?: (record: LocalRecord) => void;
   onDuplicate: (record: LocalRecord) => void;
   onEdit: (record: LocalRecord) => void;
-  onDelete: (record: LocalRecord) => void;
+  onDiscard: (record: LocalRecord) => void;
   selectionMode?: boolean;
   isSelected?: boolean;
   onLongPress?: (id: string) => void;
@@ -75,9 +80,10 @@ const RecordRow = React.memo(function RecordRow({
   record,
   householdName,
   onPress,
-  onDuplicate,
+  onUsed,
   onEdit,
-  onDelete,
+  onDuplicate,
+  onDiscard,
   selectionMode,
   isSelected,
   onLongPress,
@@ -89,8 +95,9 @@ const RecordRow = React.memo(function RecordRow({
       householdName={householdName}
       onPress={() => onPress(record.id)}
       onDuplicate={onDuplicate}
+      onUsed={onUsed}
       onEdit={onEdit}
-      onDelete={onDelete}
+      onDiscard={onDiscard}
       selectionMode={selectionMode}
       isSelected={isSelected}
       onLongPress={onLongPress ? () => onLongPress(record.id) : undefined}
@@ -433,6 +440,87 @@ export function RecordList({
     );
   }, []);
 
+  const [pendingLifecycleAction, setPendingLifecycleAction] = useState<{
+    record: LocalRecord;
+    status: 'consumed' | 'discarded';
+  } | null>(null);
+  const [pendingQuantity, setPendingQuantity] = useState<number>(1);
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [showDiscardReasonModal, setShowDiscardReasonModal] = useState(false);
+
+  const executeMark = useCallback(
+    async (
+      record: LocalRecord,
+      status: 'consumed' | 'discarded',
+      quantity: number,
+      reason: string | null = null,
+    ) => {
+      const displayName = record.customName || 'Item';
+      const result = await markRecordStatusWithQuantity(record.id, status, quantity, reason);
+      useUndoToastStore.getState().show({
+        recordId: result.affectedId,
+        parentId: result.parentId,
+        isSplit: result.isSplit,
+        quantity: result.markedQuantity,
+        unit: record.unit,
+        itemName: displayName,
+        status,
+        discardReason: reason,
+      });
+    },
+    [],
+  );
+
+  const handleUsed = useCallback(
+    (record: LocalRecord) => {
+      if (record.quantity > 1) {
+        setPendingLifecycleAction({ record, status: 'consumed' });
+        setShowQuantityModal(true);
+      } else {
+        void executeMark(record, 'consumed', 1, null);
+      }
+    },
+    [executeMark],
+  );
+
+  const handleDiscard = useCallback((record: LocalRecord) => {
+    if (record.quantity > 1) {
+      setPendingLifecycleAction({ record, status: 'discarded' });
+      setShowQuantityModal(true);
+    } else {
+      setPendingLifecycleAction({ record, status: 'discarded' });
+      setPendingQuantity(1);
+      setShowDiscardReasonModal(true);
+    }
+  }, []);
+
+  const handleConfirmQuantity = useCallback(
+    (selectedQty: number) => {
+      setShowQuantityModal(false);
+      if (!pendingLifecycleAction) return;
+
+      if (pendingLifecycleAction.status === 'discarded') {
+        setPendingQuantity(selectedQty);
+        setShowDiscardReasonModal(true);
+      } else if (pendingLifecycleAction.status === 'consumed') {
+        void executeMark(pendingLifecycleAction.record, 'consumed', selectedQty, null);
+        setPendingLifecycleAction(null);
+      }
+    },
+    [pendingLifecycleAction, executeMark],
+  );
+
+  const handleSelectDiscardReason = useCallback(
+    (reason: string) => {
+      setShowDiscardReasonModal(false);
+      if (!pendingLifecycleAction) return;
+
+      void executeMark(pendingLifecycleAction.record, 'discarded', pendingQuantity, reason);
+      setPendingLifecycleAction(null);
+    },
+    [pendingLifecycleAction, pendingQuantity, executeMark],
+  );
+
   const handleSaveEdit = useCallback(
     async (patch: {
       customName?: string | null;
@@ -549,8 +637,10 @@ export function RecordList({
               isSelected={selectedIds.has(first.id)}
               onLongPress={handleLongPress ? () => handleLongPress(first.id) : undefined}
               onToggleSelect={handleToggleSelect ? () => handleToggleSelect(first.id) : undefined}
+              onUsed={handleUsed}
               onDuplicate={handleDuplicate}
               onEdit={handleEdit}
+              onDiscard={handleDiscard}
               onDelete={handleDelete}
               isDrawerOpen={activeDrawerId === first.id}
               onOpenDrawer={() => setActiveDrawerId(first.id)}
@@ -567,8 +657,10 @@ export function RecordList({
                 isSelected={selectedIds.has(second.id)}
                 onLongPress={handleLongPress ? () => handleLongPress(second.id) : undefined}
                 onToggleSelect={handleToggleSelect ? () => handleToggleSelect(second.id) : undefined}
+                onUsed={handleUsed}
                 onDuplicate={handleDuplicate}
                 onEdit={handleEdit}
+                onDiscard={handleDiscard}
                 onDelete={handleDelete}
                 isDrawerOpen={activeDrawerId === second.id}
                 onOpenDrawer={() => setActiveDrawerId(second.id)}
@@ -590,7 +682,8 @@ export function RecordList({
           onPress={handlePressItem}
           onDuplicate={handleDuplicate}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onUsed={handleUsed}
+          onDiscard={handleDiscard}
           selectionMode={selectionMode}
           isSelected={selectedIds.has(item.id)}
           onLongPress={handleLongPress}
@@ -603,6 +696,8 @@ export function RecordList({
       handleDuplicate,
       handleEdit,
       handleDelete,
+      handleDiscard,
+      handleUsed,
       householdNames,
       selectionMode,
       selectedIds,
@@ -918,6 +1013,29 @@ export function RecordList({
         selectedRecordIds={Array.from(selectedIds)}
         records={records}
         onSuccess={handleMovedBulk}
+      />
+
+      <QuantityPromptModal
+        visible={showQuantityModal}
+        itemName={pendingLifecycleAction?.record.customName || 'Pantry item'}
+        maxQuantity={pendingLifecycleAction?.record.quantity ?? 1}
+        unit={pendingLifecycleAction?.record.unit || 'pcs'}
+        actionType={pendingLifecycleAction?.status || 'consumed'}
+        onClose={() => {
+          setShowQuantityModal(false);
+          setPendingLifecycleAction(null);
+        }}
+        onConfirm={handleConfirmQuantity}
+      />
+
+      <DiscardReasonModal
+        visible={showDiscardReasonModal}
+        itemName={pendingLifecycleAction?.record.customName || 'Pantry item'}
+        onClose={() => {
+          setShowDiscardReasonModal(false);
+          setPendingLifecycleAction(null);
+        }}
+        onSelectReason={handleSelectDiscardReason}
       />
     </View>
   );

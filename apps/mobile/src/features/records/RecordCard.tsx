@@ -18,8 +18,10 @@ interface Props {
   householdName?: string | null;
   showHouseholdBadge?: boolean;
   addedByName?: string | null;
+  onUsed?: (record: LocalRecord) => void;
   onDuplicate?: (record: LocalRecord) => void;
   onEdit?: (record: LocalRecord) => void;
+  onDiscard?: (record: LocalRecord) => void;
   onDelete?: (record: LocalRecord) => void;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -32,8 +34,10 @@ export function RecordCard({
   householdName,
   showHouseholdBadge,
   addedByName,
+  onUsed,
   onDuplicate,
   onEdit,
+  onDiscard,
   onDelete,
   selectionMode = false,
   isSelected = false,
@@ -76,6 +80,21 @@ export function RecordCard({
   ) => {
     return (
       <View style={styles.rightActionsRow}>
+        {/* Quick Used */}
+        <Pressable
+          testID={`record-used-${record.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Mark ${displayName} as used`}
+          onPress={() => {
+            swipeableRef.current?.close();
+            onUsed?.(record);
+          }}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color="#FFFFFF" />
+          <Text style={styles.actionBtnText}>Used</Text>
+        </Pressable>
+
         {/* Quick Edit */}
         <Pressable
           testID={`record-edit-${record.id}`}
@@ -100,25 +119,25 @@ export function RecordCard({
             swipeableRef.current?.close();
             onDuplicate?.(record);
           }}
-          style={[styles.actionBtn, { backgroundColor: theme.colors.primary }]}
+          style={[styles.actionBtn, { backgroundColor: theme.colors.utility }]}
         >
           <Ionicons name="copy-outline" size={20} color="#FFFFFF" />
           <Text style={styles.actionBtnText}>Duplicate</Text>
         </Pressable>
 
-        {/* Quick Delete */}
+        {/* Quick Discard */}
         <Pressable
-          testID={`record-delete-${record.id}`}
+          testID={`record-discard-${record.id}`}
           accessibilityRole="button"
-          accessibilityLabel={`Delete ${displayName}`}
+          accessibilityLabel={`Discard ${displayName}`}
           onPress={() => {
             swipeableRef.current?.close();
-            onDelete?.(record);
+            (onDiscard || onDelete)?.(record);
           }}
           style={[styles.actionBtn, { backgroundColor: theme.colors.danger }]}
         >
           <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.actionBtnText}>Delete</Text>
+          <Text style={styles.actionBtnText}>Discard</Text>
         </Pressable>
       </View>
     );

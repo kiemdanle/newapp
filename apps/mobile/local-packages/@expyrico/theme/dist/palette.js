@@ -10,6 +10,7 @@ export const expyricoPalette = {
     neutralDark: '#2C2C28',
     white: '#FFFFFF',
     expired: '#E0442A',
+    utility: '#2B6CB0',
 };
 export const expyricoColors = {
     bg: expyricoPalette.secondary,
@@ -34,6 +35,7 @@ export const expyricoColors = {
     good: expyricoPalette.primary,
     expiringSoon: expyricoPalette.accent,
     expired: expyricoPalette.expired,
+    utility: expyricoPalette.utility,
     hero: expyricoPalette.primaryDark,
     heroFg: expyricoPalette.secondary,
 };
@@ -61,6 +63,7 @@ export const expyricoDarkColors = {
     expiringSoon: expyricoPalette.accent,
     expired: expyricoPalette.expired,
     hero: '#203B31',
+    utility: expyricoPalette.utility,
     heroFg: '#FAFAF8',
 };
 //# sourceMappingURL=palette.js.map

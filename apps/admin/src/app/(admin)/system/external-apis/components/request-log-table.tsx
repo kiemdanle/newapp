@@ -185,8 +185,12 @@ export function RequestLogTable({
                   <td className="py-3 px-3 font-mono text-xs text-[#8C8C85]">
                     {formatTime(row.createdAt)}
                   </td>
-                  <td className="py-3 px-3 font-semibold text-[#2C2C28] capitalize">
-                    {row.provider}
+                  <td className="py-3 px-3 font-semibold text-[#2C2C28]">
+                    {row.provider === 'off'
+                      ? 'OpenFoodFacts'
+                      : row.provider === 'upcitemdb'
+                        ? 'UPCitemdb'
+                        : row.provider}
                   </td>
                   <td className="py-3 px-3">
                     <span

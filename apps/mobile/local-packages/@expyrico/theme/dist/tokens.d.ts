@@ -60,6 +60,7 @@ export interface ColorTokens {
     good: string;
     expiringSoon: string;
     expired: string;
+    utility: string;
     /** Used by the home expiry hero card */
     hero: string;
     heroFg: string;

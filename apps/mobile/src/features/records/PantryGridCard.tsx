@@ -22,8 +22,10 @@ export interface PantryGridCardProps {
   isSelected?: boolean;
   onLongPress?: () => void;
   onToggleSelect?: () => void;
+  onUsed?: (record: LocalRecord) => void;
   onDuplicate?: (record: LocalRecord) => void;
   onEdit?: (record: LocalRecord) => void;
+  onDiscard?: (record: LocalRecord, displayName?: string) => void;
   onDelete?: (record: LocalRecord, displayName?: string) => void;
   isDrawerOpen?: boolean;
   onOpenDrawer?: () => void;
@@ -39,8 +41,10 @@ export function PantryGridCard({
   isSelected = false,
   onLongPress,
   onToggleSelect,
+  onUsed,
   onDuplicate,
   onEdit,
+  onDiscard,
   onDelete,
   isDrawerOpen,
   onOpenDrawer,
@@ -119,6 +123,37 @@ export function PantryGridCard({
     },
     [onEdit, onCloseDrawer],
   );
+  const handleActionUsed = useCallback(
+    (rec: LocalRecord) => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+      swipeableRef.current?.close();
+      onCloseDrawer?.();
+      onUsed?.(rec);
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 300);
+    },
+    [onUsed, onCloseDrawer],
+  );
+
+  const handleActionDiscard = useCallback(
+    (rec: LocalRecord) => {
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
+      swipeableRef.current?.close();
+      onCloseDrawer?.();
+      if (onDiscard) {
+        onDiscard(rec, displayName);
+      } else {
+        onDelete?.(rec, displayName);
+      }
+      setTimeout(() => {
+        isProcessingRef.current = false;
+      }, 300);
+    },
+    [onDiscard, onDelete, onCloseDrawer, displayName],
+  );
 
   const handleActionDelete = useCallback(
     (rec: LocalRecord) => {
@@ -161,8 +196,10 @@ export function PantryGridCard({
       >
         <PantryGridActionDrawer
           record={record}
+          onUsed={handleActionUsed}
           onDuplicate={handleActionDuplicate}
           onEdit={handleActionEdit}
+          onDiscard={handleActionDiscard}
           onDelete={handleActionDelete}
           onClose={handleCloseDrawer}
           canDelete={canDelete}
@@ -175,6 +212,8 @@ export function PantryGridCard({
       record,
       handleActionDuplicate,
       handleActionEdit,
+      handleActionUsed,
+      handleActionDiscard,
       handleActionDelete,
       handleCloseDrawer,
       canDelete,

@@ -25,6 +25,7 @@ const tailwindTokens = {
     good: '#4BAE8A',
     'expiring-soon': '#F5A623',
     expired: '#E0442A',
+    utility: '#2B6CB0',
   },
   borderRadius: {
     sm: '10px',

@@ -80,20 +80,24 @@ export function HistoryRecordCard({
                 styles.statusBadge,
                 {
                   backgroundColor: isConsumed
-                    ? 'rgba(75, 174, 138, 0.12)'
-                    : 'rgba(245, 166, 35, 0.14)',
+                    ? theme.colors.primary + '18'
+                    : theme.colors.danger + '18',
                 },
               ]}
             >
               <Ionicons
                 name={isConsumed ? 'checkmark-circle' : 'trash'}
                 size={13}
-                color={isConsumed ? '#4BAE8A' : '#F5A623'}
+                color={isConsumed ? theme.colors.primary : theme.colors.danger}
               />
               <Text
                 style={[
                   styles.statusBadgeText,
-                  { color: isConsumed ? '#3A8F6F' : '#B8740B' },
+                  {
+                    color: isConsumed
+                      ? theme.colors.primaryDark
+                      : theme.colors.danger,
+                  },
                 ]}
               >
                 {isConsumed ? 'Used' : 'Discarded'}

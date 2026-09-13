@@ -112,8 +112,12 @@ export function RequestDetailModal({ logId, onClose }: RequestDetailModalProps) 
                   <span className="text-[11px] font-semibold text-[#8C8C85] uppercase tracking-wider block">
                     Provider
                   </span>
-                  <span className="text-sm font-bold text-[#2C2C28] font-display mt-0.5 block capitalize">
-                    {detail.provider}
+                  <span className="text-sm font-bold text-[#2C2C28] font-display mt-0.5 block">
+                    {detail.provider === 'off'
+                      ? 'OpenFoodFacts'
+                      : detail.provider === 'upcitemdb'
+                        ? 'UPCitemdb'
+                        : detail.provider}
                   </span>
                 </div>
 

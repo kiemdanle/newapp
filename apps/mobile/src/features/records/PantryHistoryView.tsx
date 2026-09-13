@@ -38,6 +38,7 @@ export function PantryHistoryView({
   onBack,
 }: PantryHistoryViewProps) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppNavigationProp>();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
@@ -144,19 +145,19 @@ export function PantryHistoryView({
           style={[
             styles.kpiCard,
             {
-              backgroundColor: 'rgba(75, 174, 138, 0.12)',
-              borderColor: 'rgba(75, 174, 138, 0.3)',
+              backgroundColor: theme.colors.primary + '18',
+              borderColor: theme.colors.primary + '4D',
             },
           ]}
         >
           <View style={styles.kpiHeader}>
-            <Ionicons name="checkmark-done-circle" size={18} color="#3A8F6F" />
-            <Text style={[styles.kpiTitle, { color: '#3A8F6F' }]}>Consumed</Text>
+            <Ionicons name="checkmark-done-circle" size={18} color={theme.colors.primary} />
+            <Text style={[styles.kpiTitle, { color: theme.colors.primary }]}>Consumed</Text>
           </View>
           <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
             {stats.consumed} {stats.consumed === 1 ? 'item' : 'items'}
           </Text>
-          <Text style={[styles.kpiSub, { color: '#3A8F6F' }]}>
+          <Text style={[styles.kpiSub, { color: theme.colors.textMuted }]}>
             {stats.consumptionRate}% consumption rate
           </Text>
         </View>
@@ -165,19 +166,19 @@ export function PantryHistoryView({
           style={[
             styles.kpiCard,
             {
-              backgroundColor: 'rgba(254, 239, 195, 0.5)',
-              borderColor: 'rgba(245, 166, 35, 0.35)',
+              backgroundColor: theme.colors.danger + '18',
+              borderColor: theme.colors.danger + '4D',
             },
           ]}
         >
           <View style={styles.kpiHeader}>
-            <Ionicons name="trash-bin-outline" size={18} color="#B8740B" />
-            <Text style={[styles.kpiTitle, { color: '#B8740B' }]}>Discarded</Text>
+            <Ionicons name="trash-bin-outline" size={18} color={theme.colors.danger} />
+            <Text style={[styles.kpiTitle, { color: theme.colors.danger }]}>Discarded</Text>
           </View>
           <Text style={[styles.kpiValue, { color: theme.colors.text }]}>
             {stats.discarded} {stats.discarded === 1 ? 'item' : 'items'}
           </Text>
-          <Text style={[styles.kpiSub, { color: '#B8740B' }]}>
+          <Text style={[styles.kpiSub, { color: theme.colors.textMuted }]}>
             {stats.wasteRate}% waste rate
           </Text>
         </View>
@@ -254,9 +255,13 @@ export function PantryHistoryView({
             styles.filterPill,
             {
               backgroundColor:
-                activeFilter === 'discarded' ? 'rgba(245, 166, 35, 0.16)' : theme.colors.bg,
+                activeFilter === 'discarded'
+                  ? theme.colors.danger + '20'
+                  : theme.colors.bg,
               borderColor:
-                activeFilter === 'discarded' ? theme.colors.accent : theme.colors.border,
+                activeFilter === 'discarded'
+                  ? theme.colors.danger
+                  : theme.colors.border,
             },
           ]}
         >
@@ -265,7 +270,9 @@ export function PantryHistoryView({
               styles.filterPillText,
               {
                 color:
-                  activeFilter === 'discarded' ? '#B8740B' : theme.colors.textMuted,
+                  activeFilter === 'discarded'
+                    ? theme.colors.danger
+                    : theme.colors.textMuted,
                 fontWeight: activeFilter === 'discarded' ? '700' : '500',
               },
             ]}

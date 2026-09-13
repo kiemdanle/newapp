@@ -12,6 +12,7 @@ This palette is the required colour scheme for the Expyrico app and website. Do 
 | Secondary | Warm White | `#FAFAF8` | Main background, cards |
 | Accent | Honey | `#F5A623` | CTAs, badges, highlights |
 | Accent Light | Soft Butter | `#FEEFC3` | Expiring-soon status background |
+| Utility | Marine Slate | `#2B6CB0` | Duplicate and utility actions in swipe menus |
 | Neutral Light | Stone | `#F0F0ED` | Section backgrounds, dividers |
 | Neutral Mid | Pebble | `#8C8C85` | Secondary text, icons |
 | Neutral Dark | Almost Black | `#2C2C28` | Primary text |
@@ -32,4 +33,5 @@ This palette is the required colour scheme for the Expyrico app and website. Do 
 - Primary CTAs use Honey with Almost Black text.
 - Fresh Sage is for logo, headers, active states, and secondary filled actions.
 - Alert Red must only communicate expired/destructive status. Do not use it for decoration, branding, or primary actions.
+- Marine Slate `#2B6CB0` is for duplicate and utility swipe actions across light and dark themes.
 - Do not add purple, grey-card, or alternate Material dynamic colours to auth, splash, onboarding, or settings screens.

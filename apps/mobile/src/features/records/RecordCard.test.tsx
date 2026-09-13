@@ -47,6 +47,19 @@ describe('RecordCard with swipe actions', () => {
     expect(getByText(/Expires/)).toBeTruthy();
   });
 
+  it('triggers onUsed when the used swipe action is pressed', () => {
+    const onUsed = jest.fn();
+    const { getByTestId, getByText } = renderWithProviders(
+      <RecordCard record={mockRecord} onPress={jest.fn()} onUsed={onUsed} />,
+    );
+
+    expect(getByText('Used')).toBeTruthy();
+    const usedBtn = getByTestId('record-used-rec-1');
+    expect(usedBtn).toBeTruthy();
+    fireEvent.press(usedBtn);
+    expect(onUsed).toHaveBeenCalledWith(mockRecord);
+  });
+
   it('triggers onDuplicate when the duplicate swipe action is pressed', () => {
     const onDuplicate = jest.fn();
     const { getByTestId, getByText } = renderWithProviders(
@@ -72,15 +85,16 @@ describe('RecordCard with swipe actions', () => {
     expect(onEdit).toHaveBeenCalledWith(mockRecord);
   });
 
-  it('triggers onDelete when the delete swipe action is pressed', () => {
-    const onDelete = jest.fn();
-    const { getByTestId } = renderWithProviders(
-      <RecordCard record={mockRecord} onPress={jest.fn()} onDelete={onDelete} />,
+  it('triggers onDiscard when the discard swipe action is pressed', () => {
+    const onDiscard = jest.fn();
+    const { getByTestId, getByText } = renderWithProviders(
+      <RecordCard record={mockRecord} onPress={jest.fn()} onDiscard={onDiscard} />,
     );
 
-    const deleteBtn = getByTestId('record-delete-rec-1');
-    expect(deleteBtn).toBeTruthy();
-    fireEvent.press(deleteBtn);
-    expect(onDelete).toHaveBeenCalledWith(mockRecord);
+    expect(getByText('Discard')).toBeTruthy();
+    const discardBtn = getByTestId('record-discard-rec-1');
+    expect(discardBtn).toBeTruthy();
+    fireEvent.press(discardBtn);
+    expect(onDiscard).toHaveBeenCalledWith(mockRecord);
   });
 });

@@ -50,7 +50,8 @@ describe('PantryGridActionDrawer', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('renders all 3 floating action circles and invokes callbacks on tap', () => {
+  it('renders all 4 floating action circles in 2x2 grid and invokes callbacks on tap', () => {
+    const onUsed = jest.fn();
     const onDuplicate = jest.fn();
     const onEdit = jest.fn();
     const onDelete = jest.fn();
@@ -59,6 +60,7 @@ describe('PantryGridActionDrawer', () => {
     const { getByTestId, getByText } = renderWithProviders(
       <PantryGridActionDrawer
         record={mockRecord}
+        onUsed={onUsed}
         onDuplicate={onDuplicate}
         onEdit={onEdit}
         onDelete={onDelete}
@@ -66,13 +68,18 @@ describe('PantryGridActionDrawer', () => {
       />,
     );
 
+    expect(getByText('Used')).toBeTruthy();
     expect(getByText('Edit')).toBeTruthy();
     expect(getByText('Duplicate')).toBeTruthy();
-    expect(getByText('Delete')).toBeTruthy();
+    expect(getByText('Discard')).toBeTruthy();
 
+    const usedBtn = getByTestId('record-used-rec-drawer-1');
     const editBtn = getByTestId('record-edit-rec-drawer-1');
     const duplicateBtn = getByTestId('record-duplicate-rec-drawer-1');
     const deleteBtn = getByTestId('record-delete-rec-drawer-1');
+
+    fireEvent.press(usedBtn);
+    expect(onUsed).toHaveBeenCalledWith(mockRecord);
 
     fireEvent.press(editBtn);
     expect(onEdit).toHaveBeenCalledWith(mockRecord);

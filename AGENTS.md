@@ -150,6 +150,7 @@ The required app and website palette is documented in `docs/design/expyrico-colo
 - Use Warm White `#FAFAF8` for main backgrounds and cards.
 - Use Honey `#F5A623` for CTAs, badges, highlights, and Expiring soon status.
 - Use Soft Butter `#FEEFC3` for expiring-soon status backgrounds.
+- Use Marine Slate `#2B6CB0` for duplicate and utility swipe actions across light and dark themes.
 - Use Stone `#F0F0ED` for section backgrounds and dividers.
 - Use Pebble `#8C8C85` for secondary text and icons.
 - Use Almost Black `#2C2C28` for primary text.

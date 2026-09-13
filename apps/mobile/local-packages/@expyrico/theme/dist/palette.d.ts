@@ -11,6 +11,7 @@ export declare const expyricoPalette: {
     readonly neutralDark: "#2C2C28";
     readonly white: "#FFFFFF";
     readonly expired: "#E0442A";
+    readonly utility: "#2B6CB0";
 };
 export declare const expyricoColors: ColorTokens;
 export declare const expyricoDarkColors: ColorTokens;
