@@ -6,7 +6,6 @@ import { getBaseUrl } from '../api/client';
 import { PrivateProductImage } from '../api/product-private-image';
 import { useTheme } from '../theme/useTheme';
 import { useCachedImage } from '../cache/useCachedImage';
-import { SkeletonBone, SkeletonShimmer } from './skeleton';
 export function normalizePhotoUri(uri: string | null | undefined): string | null {
   if (!uri || typeof uri !== 'string') return null;
   const trimmed = uri.trim();

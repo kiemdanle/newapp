@@ -140,9 +140,10 @@ export async function hydrateSession(): Promise<void> {
   if (cachedUserStr) {
     try {
       cachedUser = JSON.parse(cachedUserStr) as User;
-    } catch {}
+    } catch {
+      // Ignore corrupted cached user JSON
+    }
   }
-
   // Mark hydrated immediately so splash screen dismisses instantly with local tokens and cached user
   useSessionStore.setState({ user: cachedUser, accessToken, refreshToken, hydrated: true });
 
