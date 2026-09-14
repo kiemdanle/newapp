@@ -189,9 +189,8 @@ describe('Thumbnail & Card Inline Loading States', () => {
     it('resets settlement to false when useCachedImage upgrades candidate to cached URI', () => {
       (useCachedImage as jest.Mock).mockReturnValue({
         uri: null,
-        isLoading: true,
+        isLoading: false,
       });
-
       const { rerender, UNSAFE_getByType } = render(
         <ProductThumbnail photoUrl="https://cdn.example.com/apple.jpg" size={52} />
       );

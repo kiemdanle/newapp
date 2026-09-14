@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { QueryClient } from '@tanstack/react-query';
+import { createQueryClient } from '../../src/api/query-client';
 import { imageDiskCache } from '../../src/cache/image-disk-cache';
-import { clearProductMemoryCache, hydrateProductCache } from '../../src/api/products';
+import { clearProductMemoryCache, hydrateProductCache, purgeProductCache } from '../../src/api/products';
+import { clearAllLocalUserData } from '../../src/auth/session-store';
 import type { ProductWithReviews } from '@expyrico/shared';
 
 describe('Cold-Process Cache Hydration & Remount', () => {
@@ -35,9 +36,34 @@ describe('Cold-Process Cache Hydration & Remount', () => {
     expect(warmEntry?.localUri).toBe(localUri);
     expect(warmEntry?.etag).toBe('"cold-etag-1"');
   });
+  it('deferred-hydration: large payloads (>32KB) deferred from boot hydration resolve from L2 without premature network fetch or timeout', async () => {
+    const largeUri = 'https://cdn.example.com/large-photo.webp';
+    const key = `public::${largeUri}`;
+    const largePayload = 'data:image/webp;base64,' + 'X'.repeat(45 * 1024);
 
+    // 1. Seed >32KB payload into L2
+    await imageDiskCache.set(key, {
+      uri: largeUri,
+      localUri: largePayload,
+      etag: '"etag-large-1"',
+      isPrivate: false,
+      byteSize: largePayload.length,
+    });
+
+    // 2. Clear L1 to simulate cold restart
+    imageDiskCache.clearL1();
+
+    // 3. Boot hydration runs
+    // 4. Large payload (>32KB) is intentionally deferred from L1 sync memory to keep boot lightweight
+    expect(imageDiskCache.getSync(key)).toBeNull();
+
+    // 5. Asynchronous L2 get() resolves the deferred payload cleanly from AsyncStorage
+    const asyncEntry = await imageDiskCache.get(key);
+    expect(asyncEntry).toBeTruthy();
+    expect(asyncEntry?.localUri).toBe(largePayload);
+  });
   it('Product Cache: hydrateProductCache populates both memory map and TanStack QueryClient on cold start', async () => {
-    const queryClient = new QueryClient();
+    const queryClient = createQueryClient();
     const productId = 'prod-cold-999';
     const mockProduct: ProductWithReviews = {
       id: productId,
@@ -80,5 +106,64 @@ describe('Cold-Process Cache Hydration & Remount', () => {
     // 3. TanStack Query cache must be populated immediately without waiting for network fetch
     const cachedInQuery = queryClient.getQueryData<ProductWithReviews>(['products', productId]);
     expect(cachedInQuery).toEqual(mockProduct);
+  });
+
+  it('Privacy & Account Switch: drafts are never persisted or hydrated, and clearAllLocalUserData purges product cache', async () => {
+    const queryClient = createQueryClient();
+    const draftId = 'prod-draft-123';
+    const activeId = 'prod-active-456';
+    const draftProduct: ProductWithReviews = {
+      id: draftId,
+      name: 'Private Draft Salad',
+      brand: 'Secret Brand',
+      category: 'Produce',
+      description: null,
+      status: 'draft',
+      imageUrl: 'https://cdn.example.com/draft.webp',
+      barcode: null,
+      qrPayload: null,
+      defaultShelfLifeDays: 3,
+      source: 'user',
+      sourceId: null,
+      isCommunityEligible: false,
+      buyAgainCount: 0,
+      buyAgainOnSaleCount: 0,
+      wontBuyCount: 0,
+      ratingCount: 0,
+      reviewCount: 0,
+      version: 1,
+      photos: [],
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      topReviews: [],
+    };
+
+    const activeProduct: ProductWithReviews = {
+      ...draftProduct,
+      id: activeId,
+      name: 'Public Active Salad',
+      status: 'active',
+    };
+
+    // 1. Attempt to seed both active and draft into disk storage
+    await AsyncStorage.setItem(
+      '@expyrico_product_cache_v1',
+      JSON.stringify({ [draftId]: draftProduct, [activeId]: activeProduct }),
+    );
+
+    // 2. Hydrate product cache
+    await hydrateProductCache(queryClient);
+
+    // 3. Invariant: Active product is hydrated; private draft MUST be rejected and never hydrated
+    expect(queryClient.getQueryData(['products', activeId])).toEqual(activeProduct);
+    expect(queryClient.getQueryData(['products', draftId])).toBeUndefined();
+
+    // 4. User logs out / switches accounts: clearAllLocalUserData runs
+    await clearAllLocalUserData('user-1');
+
+    // 5. Invariant: Persistent storage and in-memory cache are completely purged
+    const storedAfterLogout = await AsyncStorage.getItem('@expyrico_product_cache_v1');
+    expect(storedAfterLogout).toBeNull();
+    expect(queryClient.getQueryData(['products', activeId])).toBeUndefined();
   });
 });

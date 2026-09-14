@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { normalizePhotoUri, ProductThumbnail } from './ProductThumbnail';
 import { ThemeProvider } from '../theme/ThemeProvider';
 import type { Product } from '@expyrico/shared';
@@ -61,16 +61,19 @@ describe('normalizePhotoUri', () => {
 });
 
 describe('ProductThumbnail', () => {
-  it('renders photo from product.photos for approved active product', () => {
-    const { getByRole, queryByRole } = renderWithTheme(<ProductThumbnail product={mockProduct} />);
+  it('renders photo from product.photos for approved active product', async () => {
+    const component = renderWithTheme(<ProductThumbnail product={mockProduct} />);
 
-    // In react-native, Image is rendered with accessibilityIgnoresInvertColors
-    const images = renderWithTheme(<ProductThumbnail product={mockProduct} />).UNSAFE_getAllByType('Image' as never);
-    expect(images.length).toBeGreaterThanOrEqual(1);
+    // In react-native, Image is rendered once useCachedImage resolves
+    const images = await waitFor(() => {
+      const found = component.UNSAFE_getAllByType('Image' as never);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      return found;
+    });
     expect(images[0].props.source.uri).toMatch(/https:\/\/cdn\.example\.com\/display\.webp|data:/);
   });
 
-  it('falls back to second candidate when primary candidate triggers onError', () => {
+  it('falls back to second candidate when primary candidate triggers onError', async () => {
     const component = renderWithTheme(
       <ProductThumbnail
         product={mockProduct}
@@ -78,14 +81,22 @@ describe('ProductThumbnail', () => {
       />,
     );
 
-    const images = component.UNSAFE_getAllByType('Image' as never);
+    const images = await waitFor(() => {
+      const found = component.UNSAFE_getAllByType('Image' as never);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      return found;
+    });
     expect(images[0].props.source.uri).toBe('file:///stale/path/that/does/not/exist.jpg');
 
     // Simulate image error on the broken local photo
     fireEvent(images[0], 'error');
 
     // Should fall back to product photos displayUrl
-    const updatedImages = component.UNSAFE_getAllByType('Image' as never);
+    const updatedImages = await waitFor(() => {
+      const found = component.UNSAFE_getAllByType('Image' as never);
+      expect(found[0].props.source.uri).toMatch(/https:\/\/cdn\.example\.com\/display\.webp|data:/);
+      return found;
+    });
     expect(updatedImages[0].props.source.uri).toMatch(/https:\/\/cdn\.example\.com\/display\.webp|data:/);
   });
 

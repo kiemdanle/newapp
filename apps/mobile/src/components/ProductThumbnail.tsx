@@ -206,29 +206,33 @@ function CachedThumbnailImage({
 }) {
   const theme = useTheme();
   const { uri, isLoading: isCacheLoading } = useCachedImage(candidate);
-  const renderUri = uri || candidate;
-  const [settledUri, setSettledUri] = useState<string | null>(null);
-  const [timedOut, setTimedOut] = useState(false);
   const onTimeoutRef = useRef(onTimeout);
   onTimeoutRef.current = onTimeout;
 
-  const isSettled = Boolean(settledUri && settledUri === renderUri);
+  // Gate candidate behind cache resolution: do not determine renderUri or mount <Image>
+  // while L2 disk cache lookup is in flight, preventing premature remote HTTP requests.
+  const isResolvingCache = isCacheLoading && !uri;
+  const renderUri = isResolvingCache ? null : (uri || candidate);
+
+  const [settledUri, setSettledUri] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+
+  const isSettled = Boolean(renderUri && settledUri === renderUri);
 
   useEffect(() => {
     setTimedOut(false);
   }, [renderUri]);
 
-  // DO NOT count down 3000ms safety timeout while L2 AsyncStorage image cache is resolving.
-  // Only start the timeout once cache loading is finished and renderUri is resolved.
+  // 3-second safety timer must only run once renderUri is resolved (cache check completed)
   useEffect(() => {
-    if (isCacheLoading || isSettled) return;
+    if (!renderUri || isSettled) return;
     const timer = setTimeout(() => {
       setSettledUri(renderUri);
       setTimedOut(true);
       onTimeoutRef.current?.();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [renderUri, isSettled, isCacheLoading]);
+  }, [renderUri, isSettled]);
 
   if (timedOut) {
     return (
@@ -264,6 +268,35 @@ function CachedThumbnailImage({
       </View>
     );
   }
+  // While L2 cache lookup is in flight, display the skeleton and DO NOT mount <Image>
+  if (isResolvingCache || !renderUri) {
+    return (
+      <View
+        testID="product-thumbnail-skeleton"
+        style={[
+          style,
+          styles.container,
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.neutralLight },
+        ]}
+      >
+        <View
+          style={[
+            styles.spinnerBadge,
+            {
+              width: Math.max(26, Math.round(size * 0.54)),
+              height: Math.max(26, Math.round(size * 0.54)),
+              borderRadius: Math.round(size * 0.27),
+              backgroundColor: theme.colors.bgGlass,
+            },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[style, styles.container]}>
       <Image

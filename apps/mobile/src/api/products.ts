@@ -51,6 +51,15 @@ export function clearProductMemoryCache(): void {
   productMemoryCache.clear();
   isProductCacheHydrated = false;
 }
+
+export async function purgeProductCache(): Promise<void> {
+  clearProductMemoryCache();
+  try {
+    await AsyncStorage.removeItem(PRODUCT_CACHE_STORAGE_KEY);
+  } catch {
+    // Best effort
+  }
+}
 export async function hydrateProductCache(client?: QueryClient): Promise<void> {
   if (isProductCacheHydrated) {
     if (client) {
@@ -65,9 +74,12 @@ export async function hydrateProductCache(client?: QueryClient): Promise<void> {
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, ProductWithReviews>;
       for (const [id, prod] of Object.entries(parsed)) {
-        productMemoryCache.set(id, prod);
-        if (client) {
-          client.setQueryData(['products', id], prod);
+        // Privacy invariant: only public active products can be hydrated from client disk
+        if (prod && prod.status === 'active') {
+          productMemoryCache.set(id, prod);
+          if (client) {
+            client.setQueryData(['products', id], prod);
+          }
         }
       }
     }
@@ -88,7 +100,10 @@ function schedulePersistProductCache(): void {
     try {
       const obj: Record<string, ProductWithReviews> = {};
       for (const [id, prod] of productMemoryCache.entries()) {
-        obj[id] = prod;
+        // Privacy invariant: only public active products can ever be persisted to disk
+        if (prod.status === 'active') {
+          obj[id] = prod;
+        }
       }
       await AsyncStorage.setItem(PRODUCT_CACHE_STORAGE_KEY, JSON.stringify(obj));
     } catch {
@@ -101,10 +116,15 @@ export function useProduct(id: string | undefined) {
   return useQuery({
     queryKey: ['products', id],
     enabled: Boolean(id),
-    initialData: () => (id ? productMemoryCache.get(id) : undefined),
+    initialData: () => {
+      if (!id) return undefined;
+      const cached = productMemoryCache.get(id);
+      return cached?.status === 'active' ? cached : undefined;
+    },
     queryFn: async () => {
       const data = await apiClient.get<ProductWithReviews>(`/products/${id}`);
-      if (id && data) {
+      // Privacy invariant: creator-scoped drafts and non-active items are never persisted
+      if (id && data && data.status === 'active') {
         productMemoryCache.set(id, data);
         schedulePersistProductCache();
       }

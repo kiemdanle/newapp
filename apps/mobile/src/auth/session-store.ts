@@ -14,7 +14,7 @@ import { useDrawerStore } from '../store/drawerStore';
 import { triggerSyncSoon } from '../db/triggers';
 import { imageDiskCache } from '../cache/image-disk-cache';
 import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-revalidator';
-
+import { purgeProductCache } from '../api/products';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
 import { invalidateSyncEpoch } from '../db/sync';
@@ -32,6 +32,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   clearAllInFlightRequests();
   await purgePrivateImageCache(userId);
   clearQueryClient();
+  await purgeProductCache();
   if (userId) {
     await Promise.allSettled([
       clearDraftLocalStateForUser(userId),
