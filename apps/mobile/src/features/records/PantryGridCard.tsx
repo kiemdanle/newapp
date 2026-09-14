@@ -308,6 +308,8 @@ export function PantryGridCard({
               product={product}
               photoUrl={record.photoUrl}
               hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
+              isLoading={Boolean(record.productId && isProductLoading && !product)}
+              fallbackIcon="basket-outline"
               size={72}
               style={{
                 width: 72,

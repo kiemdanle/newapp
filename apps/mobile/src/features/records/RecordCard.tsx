@@ -201,6 +201,8 @@ export function RecordCard({
             product={product}
             photoUrl={record.photoUrl}
             hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
+            isLoading={Boolean(record.productId && isProductLoading && !product)}
+            fallbackIcon="basket-outline"
             size={52}
             style={{
               width: 52,

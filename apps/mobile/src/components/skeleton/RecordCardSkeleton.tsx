@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { SkeletonBone } from './SkeletonBone';
 
@@ -26,14 +26,28 @@ export function RecordCardSkeleton({ style, testID }: RecordCardSkeletonProps) {
         style,
       ]}
     >
-      {/* 52x52 Squircle Thumbnail Bone */}
-      <SkeletonBone
-        width={52}
-        height={52}
-        borderRadius={theme.radii.sm}
-        style={{ marginRight: theme.spacing.md }}
-      />
-
+      {/* 52x52 Squircle Thumbnail Bone with Centered Spinner Badge */}
+      <View
+        style={[
+          styles.thumbnailBox,
+          {
+            width: 52,
+            height: 52,
+            borderRadius: theme.radii.sm,
+            backgroundColor: theme.colors.neutralLight,
+            marginRight: theme.spacing.md,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.spinnerBadge,
+            { backgroundColor: theme.colors.bgGlass },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      </View>
       {/* Middle Text Details */}
       <View style={styles.details}>
         <SkeletonBone
@@ -79,6 +93,17 @@ const styles = StyleSheet.create({
   },
   details: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  thumbnailBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinnerBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   pill: {

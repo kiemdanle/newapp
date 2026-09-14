@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
 import { SkeletonBone } from './SkeletonBone';
 
@@ -39,13 +39,28 @@ export function PantryGridCardSkeleton({ style, testID }: PantryGridCardSkeleton
           />
         </View>
 
-        {/* 72x72 Centered Thumbnail Bone */}
+        {/* 72x72 Centered Thumbnail Bone with Centered Spinner Badge */}
         <View style={styles.thumbnailContainer}>
-          <SkeletonBone
-            width={72}
-            height={72}
-            borderRadius={theme.radii.sm}
-          />
+          <View
+            style={[
+              styles.thumbnailBox,
+              {
+                width: 72,
+                height: 72,
+                borderRadius: theme.radii.sm,
+                backgroundColor: theme.colors.neutralLight,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.spinnerBadge,
+                { backgroundColor: theme.colors.bgGlass },
+              ]}
+            >
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          </View>
         </View>
 
         {/* Details Container */}
@@ -113,10 +128,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginVertical: 8,
   },
+  thumbnailBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinnerBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   detailsContainer: {
     flex: 1,
     justifyContent: 'space-between',
-    marginTop: 2,
   },
   titleBlock: {
     minHeight: 36,

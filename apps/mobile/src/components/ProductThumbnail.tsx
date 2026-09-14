@@ -65,6 +65,7 @@ export interface ProductThumbnailProps {
   style?: StyleProp<ImageStyle>;
   fallbackIcon?: string;
   hasPhotoOverride?: boolean;
+  isLoading?: boolean;
 }
 export function ProductThumbnail({
   product,
@@ -72,15 +73,43 @@ export function ProductThumbnail({
   photoUrl,
   size = 48,
   style,
-  fallbackIcon = 'nutrition-outline',
+  fallbackIcon = 'basket-outline',
   hasPhotoOverride = false,
+  isLoading = false,
 }: ProductThumbnailProps) {
   const theme = useTheme();
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
 
+  if (isLoading) {
+    return (
+      <View
+        testID="product-thumbnail-skeleton"
+        style={[
+          style,
+          styles.container,
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.neutralLight },
+        ]}
+      >
+        <View
+          style={[
+            styles.spinnerBadge,
+            {
+              width: Math.max(26, Math.round(size * 0.54)),
+              height: Math.max(26, Math.round(size * 0.54)),
+              borderRadius: Math.round(size * 0.27),
+              backgroundColor: theme.colors.bgGlass,
+            },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
   const parsedUris = parsePhotoUris(photoUrl);
   const primaryPhotoUrl = parsedUris[0] ?? photoUrl;
-
   const rawCandidates: Array<string | null | undefined> = [
     firstPhoto?.displayUrl,
     firstPhoto?.thumbnailUrl,
@@ -132,13 +161,31 @@ export function ProductThumbnail({
       testID="product-thumbnail-fallback"
       style={[
         style,
+        styles.container,
         {
+          alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: theme.colors.neutralLight,
         },
       ]}
     >
-      <Ionicons name={fallbackIcon as never} size={size * 0.46} color={theme.colors.textMuted} />
+      <View
+        style={[
+          styles.fallbackBadge,
+          {
+            width: Math.max(26, Math.round(size * 0.58)),
+            height: Math.max(26, Math.round(size * 0.58)),
+            borderRadius: Math.round(size * 0.29),
+            backgroundColor: theme.colors.bgGlass,
+          },
+        ]}
+      >
+        <Ionicons
+          name={fallbackIcon as never}
+          size={Math.max(14, Math.round(size * 0.36))}
+          color={theme.colors.primaryDark}
+        />
+      </View>
     </View>
   );
 }
@@ -195,7 +242,23 @@ function CachedThumbnailImage({
           },
         ]}
       >
-        <Ionicons name={fallbackIcon as never} size={size * 0.46} color={theme.colors.textMuted} />
+        <View
+          style={[
+            styles.fallbackBadge,
+            {
+              width: Math.max(26, Math.round(size * 0.58)),
+              height: Math.max(26, Math.round(size * 0.58)),
+              borderRadius: Math.round(size * 0.29),
+              backgroundColor: theme.colors.bgGlass,
+            },
+          ]}
+        >
+          <Ionicons
+            name={fallbackIcon as never}
+            size={Math.max(14, Math.round(size * 0.36))}
+            color={theme.colors.primaryDark}
+          />
+        </View>
       </View>
     );
   }
@@ -261,6 +324,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   spinnerBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fallbackBadge: {
     alignItems: 'center',
     justifyContent: 'center',
   },
