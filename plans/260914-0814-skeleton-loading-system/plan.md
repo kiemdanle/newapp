@@ -134,30 +134,30 @@ sequenceDiagram
 
 | # | Finding | Severity | Disposition | Applied To |
 |---|---------|----------|-------------|------------|
-| 1 | **Detail Screen Mounting Deadlock**: Gating entire screen return on image settlement prevents `<ItemImageGallery />` and `<Image>` from mounting, causing a permanent 3s stall. | High | Accept | Phase 4 (`GalleryImageItem` overlay & immediate gallery mount) |
-| 2 | **Offline Startup Fails to Arm 4s Timeout**: Timeout tied only to `runSync()` start, which never executes on offline launch. | High | Accept | Phase 3 (`useSyncStateStore` session-initialization timer) |
-| 3 | **Cross-Session Sync Race Condition**: In-flight sync or timeout from previous account can complete and write into newly signed-in account. | High | Accept | Phase 3 (`sessionGeneration` epoch invalidation on logout/login) |
-| 4 | **Android WatermelonDB Async Query Resolution**: Scope changes asynchronously dispatch; claiming instant in-memory queries causes stale previous-household cards. | High | Accept | Phase 3 & 4 (Track query resolution generation per `[scope, householdId]`) |
-| 5 | **List Chrome & Section Shift Prevention**: Search bar and sort pills popping into view after records sync down cause layout shifts. | Medium | Accept | Phase 3 (Pre-allocate search/sort controls in `PantryListSkeleton`) |
-| 6 | **Photo Removal Fallback Bug**: Checking `localPhotos.length > 0` causes explicit empty photo deletion (`[]`) to fall back to catalog product images. | Medium | Accept | Phase 4 (Preserve exact `hasCustomizedPhotos = localPhotos !== null && localPhotos !== undefined` check) |
-| 7 | **Device-Only Photo Leak on Shared Device**: `record-photo-storage.ts` attachments not purged during `clearAllLocalUserData()`. | High | Accept | Phase 3 (`clearAllRecordPhotoAttachments()` export and logout hook) |
-| 8 | **Component Dimensional Parity**: Skeletons previously assumed 1:1 large photo instead of actual 72×72 thumbnail, 16px corners, and 36px title block. | Medium | Accept | Phase 1 & 4 (Exact geometry parity matching current production layouts) |
-| 9 | **Cache-Hit Settlement Normalization**: Warm cache hits seed URI to `<Image>` immediately, but visual skeleton clears only on native `<Image onLoadEnd>` (or `onError` or 3s timeout). | Medium | Accept | Phase 2 & 4 (Normalized cache-hit contract across all phases) |
-| 10 | **Offline/Syncing Status Banner Integration**: Phase 3 promised an offline banner on 4s timeout without specifying component or rendering contract. | Medium | Accept | Phase 3 (`SyncStatusBar` inline pill in `RecordList` and `PantryHistoryView`) |
+| 1 | **Gallery Mount Deadlock (Fail 1 / Assump 1)**: Gating entire screen return on image settlement prevents `<ItemImageGallery />` and `<Image>` from mounting, causing a permanent 3s stall. | High | Accept | Phase 4 (`GalleryImageItem` overlay & immediate gallery mount) |
+| 2 | **Offline Boot Timer Unarmed (Fail 2 / Assump 2)**: Timeout tied only to `runSync()` start, which never executes on offline launch. | High | Accept | Phase 3 (`useSyncStateStore` session-initialization timer) |
+| 3 | **Cross-Session Sync Race (Sec 1 / Fail 4)**: In-flight sync or timeout from previous account can complete and write into newly signed-in account. | High | Accept | Phase 3 (`sessionGeneration` epoch invalidation on logout/login) |
+| 4 | **Scope/Filter Query Generations (Assump 3)**: Scope changes asynchronously dispatch on Android; claiming instant queries causes stale previous-household cards or premature empty flashes. | High | Accept | Phase 3 & 4 (Track query resolution generation per `[scope, householdId]`) |
+| 5 | **List Chrome & Section Shifts (Fail 7)**: Search bar and sort pills popping into view after records sync down cause layout shifts. | Medium | Accept | Phase 3 (Pre-allocate search/sort controls in `PantryListSkeleton`) |
+| 6 | **Empty-Photo Semantics (Sec 3 / Assump 4)**: Checking `localPhotos.length > 0` causes explicit empty photo deletion (`[]`) to fall back to catalog product images. | Medium | Accept | Phase 4 (Preserve exact `hasCustomizedPhotos = localPhotos !== null && localPhotos !== undefined` check) |
+| 7 | **Attachment Privacy Leak (Sec 2)**: `record-photo-storage.ts` attachments not purged during `clearAllLocalUserData()`. | High | Accept | Phase 3 (`clearAllRecordPhotoAttachments()` export and logout hook) |
+| 8 | **Actual Skeleton Geometry (Fail 6 / Assump 7)**: Skeletons previously assumed 1:1 large photo instead of actual 72×72 thumbnail, 16px corners, and 36px title block; hero assumed fixed 220px instead of responsive 4:3. | Medium | Accept | Phase 1 & 4 (Exact geometry parity matching current production layouts) |
+| 9 | **Image-Instance & Source Tracking (Fail 3 / Assump 5)**: Tracking URL alone allows thumbnail decode to unmask hero; cache-hit seeds source immediately but visual unmasking requires native `<Image onLoadEnd>`. | High | Accept | Phase 2 & 4 (Source-keyed settlement & instance tracking in `ProductThumbnail` and `ItemImageGallery`) |
+| 10 | **Timer Cleanup & Cancellation Lifecycle (Fail 5 / Assump 6)**: Per-image and store timers must be cleared on settlement, source change, or unmount, preventing timer leaks and stale callbacks from overriding newer loads. | Medium | Accept | Phase 1, 2 & 4 (`anim.stop()`, `clearTimeout` on source swap/unmount, and `SyncStatusBar` timeout UI) |
 
 ---
 
 ### Whole-Plan Consistency Sweep
 - Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents (`phase-01-skeleton-primitives.md`, `phase-02-thumbnail-and-card-loading.md`, `phase-03-initial-sync-and-pantry-skeleton.md`, `phase-04-detail-screens-and-e2e-verification.md`).
 - All 10 accepted red team findings and user advisory mandates formally reconciled across requirements, architecture diagrams, implementation steps, and test matrices:
-  1. **Mounting Deadlock Eliminated**: Detail screens mount content and gallery immediately under an image skeleton overlay, allowing native `<Image>` to start loading on millisecond 0.
-  2. **Universal 4s Timeout**: Arm timer on session initialization; unmasks all views simultaneously to empty state + `SyncStatusBar` if initial sync exceeds 4s.
-  3. **Session Epoch Invalidation**: `sessionGeneration` counter cancels pending sync callbacks on logout/login.
-  4. **Scoped Query Resolution**: Key local record observations to current `[scope, householdId]` generation.
-  5. **Chrome Shift Prevention**: Pre-allocate search and sort control slots in `PantryListSkeleton` for CLS = 0.
-  6. **Photo Deletion Fidelity**: Preserved `localPhotos !== null && localPhotos !== undefined` check so deleted photos stay deleted.
-  7. **Attachment Sanitization**: Exported `clearAllRecordPhotoAttachments()` in `record-photo-storage.ts` and called it in `clearAllLocalUserData()`.
-  8. **Production Dimensional Parity**: `PantryGridCardSkeleton` uses 16px corners, 72×72 thumbnail, and 36px title block; detail hero uses 4:3 responsive height.
-  9. **Cache-Hit Normalization**: Cache hits seed source immediately; bone overlay unmasks strictly upon native `<Image onLoadEnd>` confirmation.
-  10. **Status Banner Contract**: Added `SyncStatusBar` inline component rendered in list and history headers when initial sync times out or runs in background.
+  1. **Gallery Mount Deadlock Eliminated**: Detail screens mount content and gallery immediately under an image skeleton overlay, allowing native `<Image>` to start loading on millisecond 0.
+  2. **Offline Boot Timer Armed**: Universal 4,000ms timer starts on session initialization; unmasks all views simultaneously to empty state + `SyncStatusBar` if initial sync exceeds 4s.
+  3. **Cross-Session Sync Epoch Invalidation**: `sessionGeneration` counter cancels pending sync callbacks on logout/login.
+  4. **Scope/Filter Query Generation Tracking**: Key local record observations to current `[scope, householdId]` generation.
+  5. **List Chrome Shift Prevention**: Pre-allocate search and sort control slots in `PantryListSkeleton` for CLS = 0.
+  6. **Empty-Photo Removal Fidelity**: Preserved `localPhotos !== null && localPhotos !== undefined` check so deleted photos stay deleted.
+  7. **Attachment Privacy Sanitization**: Exported `clearAllRecordPhotoAttachments()` in `record-photo-storage.ts` and called it in `clearAllLocalUserData()`.
+  8. **Actual Skeleton Geometry Parity**: `PantryGridCardSkeleton` uses 16px corners, 72×72 thumbnail, and 36px title block; detail hero uses 4:3 responsive height.
+  9. **Image-Instance & Source Tracking**: Cache hits seed source immediately; bone overlay unmasks strictly upon native `<Image onLoadEnd>` confirmation per image instance.
+  10. **Timer Cleanup & Cancellation Lifecycle**: All animated loops (`anim.stop()`), per-image timeouts (`clearTimeout` on source swap/unmount), and store timers explicitly disposed.
   11. **Test Command Alignment**: Explicit command targeting all 5 unit test suites (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).
