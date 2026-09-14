@@ -30,9 +30,11 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
     - On `onLoadEnd`, smoothly fade in the image (`fadeDuration={150}`).
     - For the thumbnail gallery strip, render individual thumbnail skeleton bones until each respective candidate emits `onLoadEnd` or `onError`.
     - On error, display the fallback image placeholder with an error retry indicator.
-  - `PantryHistoryView.tsx` Skeleton Integration:
-    - Render 2 KPI card bones (Consumed & Discarded) and 3 history item bones while history data is loading.
-  - Verification & Build:
+  - `PantryHistoryView.tsx` Skeleton Integration & State Discrimination:
+    - In `apps/mobile/src/api/records.ts`, export `usePantryHistoryRecordsWithStatus(filter)`: `{ records, isLoading, isResolved }`.
+    - In `PantryHistoryView.tsx`, compute `const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && isSyncing);`.
+    - While `showHistorySkeleton` is true, render `<PantryHistorySkeleton />` (2 KPI card bones + 3 history row bones).
+    - When `isHistoryResolved` is true and `displayRecords.length === 0`, render `renderEmpty()` immediately without delays or spurious skeleton timeouts.
     - All Jest unit test suites passing.
     - Zero TypeScript errors across `@expyrico/mobile`.
     - Local Gradle debug APK compilation without Expo CLI or EAS.
@@ -65,19 +67,17 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 - Create:
   - `apps/mobile/src/components/skeleton/RecordDetailSkeleton.tsx`
   - `apps/mobile/src/components/skeleton/ProductDetailSkeleton.tsx`
+  - `apps/mobile/src/features/records/PantryHistorySkeleton.tsx`
   - `apps/mobile/tests/unit/record-detail-skeleton.test.tsx`
 - Modify:
-  - `apps/mobile/src/api/records.ts` (export `useRecordWithStatus`)
+  - `apps/mobile/src/api/records.ts` (export `useRecordWithStatus` and `usePantryHistoryRecordsWithStatus`)
   - `apps/mobile/app/(app)/record/[id].tsx`
   - `apps/mobile/app/(app)/product/[id].tsx`
   - `apps/mobile/src/features/records/PantryHistoryView.tsx`
-## Implementation Steps
 1. Update `apps/mobile/src/api/records.ts`:
-   - Implement and export `useRecordWithStatus(id)`.
-2. Create `RecordDetailSkeleton.tsx` and `ProductDetailSkeleton.tsx`:
-   - Structure containers matching `record/[id].tsx` and `product/[id].tsx`:
-     - Large hero image container (220px).
-     - Title bar, sentiment row bone, date chip bones, metadata rows.
+   - Implement and export `useRecordWithStatus(id)` and `usePantryHistoryRecordsWithStatus(filter)`.
+2. Create `RecordDetailSkeleton.tsx`, `ProductDetailSkeleton.tsx`, and `PantryHistorySkeleton.tsx`:
+   - Structure containers matching `record/[id].tsx`, `product/[id].tsx`, and `PantryHistoryView.tsx` KPI cards/history rows.
    - Wrap in `SkeletonShimmer`.
 3. Update `apps/mobile/app/(app)/record/[id].tsx`:
    - Consume `useRecordWithStatus(id)`.
@@ -92,10 +92,16 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 4. Update `apps/mobile/app/(app)/product/[id].tsx`:
    - Render `<ProductDetailSkeleton />` while `isLoading && !product`.
    - Add hero image settlement overlay until `onLoadEnd` fires.
-5. Create `tests/unit/record-detail-skeleton.test.tsx`:
+5. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
+   - Consume `usePantryHistoryRecordsWithStatus(activeFilter)`.
+   - Compute `showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && isSyncing)`.
+   - Render `<PantryHistorySkeleton />` while `showHistorySkeleton` is true.
+   - Render `renderEmpty()` immediately when `isHistoryResolved` is true and `displayRecords.length === 0`.
+6. Create `tests/unit/record-detail-skeleton.test.tsx`:
    - Test `useRecordWithStatus` transitions (`isLoading -> isResolved`).
    - Test that `RecordDetail` renders `RecordDetailSkeleton` while `isProductPending === true`.
    - **Mock Slow Image Scenario**: Simulate instant record and product resolution with hero image delayed by 500ms; verify hero skeleton overlay remains visible until `onLoadEnd`.
+   - Test `usePantryHistoryRecordsWithStatus` and `PantryHistoryView` state discrimination.
 6. Verification:
    - Run `npm run typecheck` in `apps/mobile`.
    - Run all 4 new unit test suites:
