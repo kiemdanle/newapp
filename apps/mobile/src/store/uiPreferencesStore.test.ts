@@ -3,7 +3,7 @@ import {
   useUiPreferencesStore,
   PANTRY_VIEW_MODE_STORAGE_KEY,
   resetPantryViewModeState,
-  getPantryViewModeGeneration,
+  hydratePantryViewModeFromStorage,
 } from './uiPreferencesStore';
 import { clearAllLocalUserData } from '../auth/session-store';
 
@@ -61,21 +61,33 @@ describe('uiPreferencesStore - pantryViewMode', () => {
     await useUiPreferencesStore.getState().setPantryViewMode('grid');
     expect(useUiPreferencesStore.getState().pantryViewMode).toBe('grid');
 
-    // 2. Capture generation before an in-flight async lookup
-    const inFlightGen = getPantryViewModeGeneration();
+    // 2. Mock AsyncStorage.getItem with a controlled deferred promise for PANTRY_VIEW_MODE_STORAGE_KEY
+    let resolveDelayedItem!: (val: string | null) => void;
+    const delayedPromise = new Promise<string | null>((resolve) => {
+      resolveDelayedItem = resolve;
+    });
+    const getItemSpy = jest.spyOn(AsyncStorage, 'getItem').mockImplementation((key) => {
+      if (key === PANTRY_VIEW_MODE_STORAGE_KEY) {
+        return delayedPromise;
+      }
+      return Promise.resolve(null);
+    });
 
-    // 3. User logs out: resetPantryViewModeState increments generation and resets to list
+    // 3. Initiate real production hydration from storage (suspended on delayedPromise)
+    const hydrationPromise = hydratePantryViewModeFromStorage();
+
+    // 4. User logs out while hydration is in flight: resetPantryViewModeState runs
     resetPantryViewModeState();
     expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
-    expect(getPantryViewModeGeneration()).toBeGreaterThan(inFlightGen);
 
-    // 4. Stale in-flight callback resolves with old 'grid' value
-    // Guarded by generation check:
-    if (inFlightGen === getPantryViewModeGeneration()) {
-      useUiPreferencesStore.setState({ pantryViewMode: 'grid' });
-    }
+    // 5. Delayed AsyncStorage.getItem finally resolves with the old 'grid' value
+    resolveDelayedItem('grid');
+    await hydrationPromise;
 
-    // 5. Invariant: Pantry view mode strictly remains 'list'
+    // 6. Invariant: The real hydratePantryViewModeFromStorage ran, checked generation,
+    // and discarded the stale 'grid' result! Pantry view mode remains 'list'.
     expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+
+    getItemSpy.mockRestore();
   });
 });

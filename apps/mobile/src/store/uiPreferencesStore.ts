@@ -17,29 +17,29 @@ interface UiPreferencesState {
 
 let userHasToggledPantryViewMode = false;
 let pantryViewModeGeneration = 0;
-
 export function resetPantryViewModeState() {
   pantryViewModeGeneration++;
   userHasToggledPantryViewMode = false;
   useUiPreferencesStore.setState({ pantryViewMode: 'list' });
 }
 
-export function getPantryViewModeGeneration(): number {
-  return pantryViewModeGeneration;
+export async function hydratePantryViewModeFromStorage(): Promise<void> {
+  const currentGen = pantryViewModeGeneration;
+  try {
+    const stored = await AsyncStorage.getItem(PANTRY_VIEW_MODE_STORAGE_KEY);
+    // Invariant: if resetPantryViewModeState() or setPantryViewMode() was invoked
+    // while getItem was in flight, discard the stale result
+    if (currentGen !== pantryViewModeGeneration) return;
+    if (!userHasToggledPantryViewMode && (stored === 'list' || stored === 'grid')) {
+      useUiPreferencesStore.setState({ pantryViewMode: stored });
+    }
+  } catch {
+    /* best-effort */
+  }
 }
 
 export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
-  const currentGen = pantryViewModeGeneration;
-  AsyncStorage.getItem(PANTRY_VIEW_MODE_STORAGE_KEY)
-    .then((stored) => {
-      // Invariant: if resetPantryViewModeState() or setPantryViewMode() was invoked
-      // while getItem was in flight, discard the stale result
-      if (currentGen !== pantryViewModeGeneration) return;
-      if (!userHasToggledPantryViewMode && (stored === 'list' || stored === 'grid')) {
-        set({ pantryViewMode: stored });
-      }
-    })
-    .catch(() => {});
+  void hydratePantryViewModeFromStorage();
 
   AsyncStorage.getItem(DRAFTS_VIEW_MODE_STORAGE_KEY)
     .then((stored) => {
