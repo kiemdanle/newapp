@@ -19,7 +19,16 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
       - `isSyncing: boolean` (true while `runSync()` is pulling/pushing).
       - `initialSyncCompleted: boolean` (false on app launch; becomes true after the first `runSync()` settles).
       - `lastSyncError: string | null`.
-      - `reset: () => void` (resets `isSyncing = false`, `initialSyncCompleted = false`, `lastSyncError = null`).
+      - `beginInitialSync: () => void`:
+        - Idempotent: no-op if `initialSyncCompleted` is already true or timer is already active.
+        - Unconditionally arms a 4,000ms timer that forces `initialSyncCompleted = true` and `lastSyncError = 'timeout'` if sync has not settled within 4s.
+        - Guarantees that offline launches exit the skeleton even when `runSync()` cannot execute.
+      - `reset: () => void`:
+        - Clears any pending timer (`clearTimeout(timerRef)`).
+        - Resets `isSyncing = false`, `initialSyncCompleted = false`, `lastSyncError = null`.
+    - **Explicit Caller & Ordering Contract (`AppSyncManager` in `App.tsx`)**:
+      - `AppSyncManager` calls `useSyncStateStore.getState().beginInitialSync()` *unconditionally* whenever `accessToken` is present, BEFORE `startSyncTriggers()` and before the `connectionStore.status === 'ready'` network check.
+      - Guarantees the deadline starts immediately upon session restoration, regardless of connectivity status.
     - **Session-Scoped Reset Contract**:
       - Hook `useSyncStateStore.getState().reset()` into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`.
       - Guarantees that when a second user signs in, `initialSyncCompleted` is re-armed as `false` so the new user sees the shimmering skeleton instead of an empty pantry flash.
@@ -95,41 +104,44 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
   - `apps/mobile/src/components/SyncStatusBar.tsx`
   - `apps/mobile/tests/unit/pantry-list-skeleton.test.tsx`
 - Modify:
+  - `apps/mobile/src/App.tsx` (call `beginInitialSync()` in `AppSyncManager` before `startSyncTriggers()`)
   - `apps/mobile/src/api/records.ts` (scope query generation tracking)
   - `apps/mobile/src/db/sync.ts`
   - `apps/mobile/src/features/records/RecordList.tsx`
   - `apps/mobile/src/auth/session-store.ts` (hook store reset and attachment purge in `clearAllLocalUserData`)
   - `apps/mobile/src/features/records/record-photo-storage.ts` (export `clearAllRecordPhotoAttachments`)
-
 ## Implementation Steps
 1. Create `syncStateStore.ts`:
-   - Implement Zustand store with `isSyncing`, `initialSyncCompleted`, `lastSyncError`, and `reset()`.
+   - Implement Zustand store with `isSyncing`, `initialSyncCompleted`, `lastSyncError`, `beginInitialSync()`, and `reset()`.
    - Add centralized 4,000ms timeout timer that forces `initialSyncCompleted = true` and `lastSyncError = 'timeout'` if sync takes longer than 4s.
-2. Update `session-store.ts` and `record-photo-storage.ts`:
+   - Ensure `beginInitialSync()` is idempotent and safe to invoke multiple times.
+2. Update `apps/mobile/src/App.tsx`:
+   - In `AppSyncManager`, call `useSyncStateStore.getState().beginInitialSync()` unconditionally when `accessToken` exists, before `startSyncTriggers()`.
+3. Update `session-store.ts` and `record-photo-storage.ts`:
    - Export `clearAllRecordPhotoAttachments()` in `record-photo-storage.ts`.
    - Wire `useSyncStateStore.getState().reset()` and `clearAllRecordPhotoAttachments()` inside `clearAllLocalUserData()` and on `signIn()`.
-3. Update `api/records.ts`:
+4. Update `api/records.ts`:
    - Implement and export `useActiveRecordsWithStatus()` with query generation key tracking (`[scope, householdId]`).
    - Retain `useActiveRecords()` as a convenience wrapper returning `.records` for complete backward compatibility with other callers (`UseNextHero`, modals, existing tests).
-4. Update `sync.ts`:
+5. Update `sync.ts`:
    - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers with session-generation validation.
-5. Create `SyncStatusBar.tsx`:
+6. Create `SyncStatusBar.tsx`:
    - Minimal theme-aware status chip for offline / background sync states.
-6. Create `PantryListSkeleton.tsx`:
+7. Create `PantryListSkeleton.tsx`:
    - Render 5 `RecordCardSkeleton` items (list) or 6 `PantryGridCardSkeleton` items in a 2-column flex matrix (grid).
    - Pre-allocate search/filter control slots to prevent layout shift.
    - Wrap in `SkeletonShimmer`.
-7. Update `RecordList.tsx`:
+8. Update `RecordList.tsx`:
    - Consume `useActiveRecordsWithStatus()`.
    - Compute: `const showListSkeleton = (!initialSyncCompleted && records.length === 0) || !isRecordsResolved;`.
    - Render `PantryListSkeleton` while `showListSkeleton` is true.
    - Render `SyncStatusBar` when `lastSyncError === 'timeout'` or background sync is active.
-8. Create `tests/unit/pantry-list-skeleton.test.tsx`:
+9. Create `tests/unit/pantry-list-skeleton.test.tsx`:
    - Test that `RecordList` renders `PantryListSkeleton` when `initialSyncCompleted === false` and `records === []`.
    - Test that `useSyncStateStore` forces `initialSyncCompleted = true` at 4,000ms, unmasking the empty state.
+   - Test cold-restored session in offline mode: verify `beginInitialSync()` arms the 4,000ms timer, `runSync()` is not invoked, and at 4,000ms `initialSyncCompleted` flips to `true` and unmasks the empty state with `SyncStatusBar`.
    - Test that `RecordList` renders real records when sync completes without layout shifts.
    - Test scope transition query invalidation and `useActiveRecordsWithStatus` transitions.
-
 ## Success Criteria
 - [ ] On fresh install / sign-in with cold cache, users see shimmering skeleton cards immediately instead of `"Start your pantry"`.
 - [ ] No sudden disappearing-and-reappearing UI flash when items sync down from server.

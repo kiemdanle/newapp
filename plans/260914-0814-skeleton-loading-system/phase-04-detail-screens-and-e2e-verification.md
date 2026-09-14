@@ -126,19 +126,24 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
    - Add 3,000ms safety timeout that forces `setSettledUri(renderUri)` and `onImageSettled?.(url)` if neither event fires.
    - Retain `SkeletonBone` overlay with `SkeletonShimmer` while `!isSettled`.
 5. Update `apps/mobile/app/(app)/record/[id].tsx`:
-   - Consume `const { record, isLoading: isRecordLoading, isResolved: isRecordResolved } = useRecordWithStatus(id);`.
-   - **React Rules of Hooks Invariant**: Compute `displayedPhotos` via `useMemo` and invoke `useImageSettlementTracker(displayedPhotos)` unconditionally at the component top before ANY early return statements (returns `[]` safely when `!record`):
+   - Consume both record status and linked catalog product hooks unconditionally at the top of the component:
      ```tsx
+     const { record, isLoading: isRecordLoading, isResolved: isRecordResolved } = useRecordWithStatus(id);
+     const { data: product, isLoading: isProductLoading, isError: isProductError } = useProduct(record?.productId ?? undefined);
+     ```
+   - **React Rules of Hooks & Photo Presence Invariant**: Compute `displayedPhotos` via `useMemo` preserving exact `hasCustomizedPhotos` presence check (so intentional empty arrays `[]` from photo deletion are preserved and do not fall back to catalog images), and invoke `useImageSettlementTracker(displayedPhotos)` unconditionally at the component top before ANY early return statements:
+     ```tsx
+     const hasCustomizedPhotos = Boolean(record && record.localPhotos !== undefined && record.localPhotos !== null);
      const displayedPhotos: string[] = useMemo(() => {
        if (!record) return [];
-       if (record.localPhotos && record.localPhotos.length > 0) return record.localPhotos;
+       if (hasCustomizedPhotos) return record.localPhotos!;
        const fallbackList = [
          record.photoUrl,
          product?.imageUrl,
          ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
        ].filter(Boolean) as string[];
        return Array.from(new Set(fallbackList));
-     }, [record, product]);
+     }, [record, product, hasCustomizedPhotos]);
 
      const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
      ```
@@ -151,6 +156,7 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
      if (isRecordResolved && !record) return <ItemNotFoundView />;
 
      // 3. At this point, record is guaranteed non-null:
+     // If linked product query errors out (404/network), gracefully unmask with record fallback
      const isProductPending = Boolean(record.productId && !record.customName && isProductLoading && !isProductError);
      const isDetailReady = !isProductPending && allVisibleImagesSettled;
 
