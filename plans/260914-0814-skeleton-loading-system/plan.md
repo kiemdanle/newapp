@@ -138,11 +138,13 @@ sequenceDiagram
 
 ### Whole-Plan Consistency Sweep
 - Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents (`phase-01-skeleton-primitives.md`, `phase-02-thumbnail-and-card-loading.md`, `phase-03-initial-sync-and-pantry-skeleton.md`, `phase-04-detail-screens-and-e2e-verification.md`).
-- Confirmed all 5 advisory concerns and blockers formally integrated with concrete technical contracts:
+- Confirmed all advisory concerns and blockers formally integrated with concrete technical contracts:
   1. **Strict Theme Tokens**: Zero ad-hoc dark hexes; skeleton base resolves to `theme.colors.neutralLight` (`#F0F0ED` light / `#2D3A34` dark) and highlight to `theme.colors.bgGlass`/`bgElevated`.
   2. **Readiness Contract Equation**: Formalized as `dataReady && allVisibleImagesSettled` across all 5 inventory screens with mock slow-image test coverage.
   3. **Thumbnail Source-Transition Settlement Reset**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
   4. **useRecordWithStatus State Discrimination**: Distinct `isLoading`, `isResolved`, and `record` states in `apps/mobile/src/api/records.ts`, preventing false "Item not found" flashes or infinite skeletons.
   5. **Session-Scoped Reset Only**: `useSyncStateStore.getState().reset()` is strictly session-scoped (`clearAllLocalUserData` and `signIn`), preserving instant SQLite-backed filtering on local household scope switches without triggering spurious timeouts.
   6. **Pantry History State Discrimination**: Exported `usePantryHistoryRecordsWithStatus` so empty-history users see `renderEmpty()` immediately upon DB resolution, avoiding permanent/timeout skeletons.
-  8. **Test Command Alignment**: Explicit command targeting all 5 unit test files (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).
+  7. **React Rules of Hooks & Dynamic URI Transition**: Unconditional hook invocation before early returns in `record/[id].tsx` and `product/[id].tsx`, with `useImageSettlementTracker` keying on `urisKey = uris.join('|')` and resetting settlement state when photos transition from empty to populated.
+  8. **Per-Image Fallback Timers**: 3,000ms safety timers inside `GalleryImageItem` and `CachedThumbnailImage` prevent hung image network requests from freezing individual skeleton bones.
+  9. **Test Command Alignment**: Explicit command targeting all 5 unit test files (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).

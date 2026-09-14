@@ -64,6 +64,11 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
 - Modify:
   - `apps/mobile/src/components/ProductThumbnail.tsx`
   - `apps/mobile/src/features/records/RecordCard.tsx`
+  - `apps/mobile/src/features/records/PantryGridCard.tsx`
+- Create:
+  - `apps/mobile/tests/unit/thumbnail-and-card-loading.test.tsx`
+
+## Implementation Steps
 1. Update `ProductThumbnail.tsx`:
    - In `CachedThumbnailImage`, consume `const { uri, isLoading } = useCachedImage(candidate)`.
    - Derive `const renderUri = uri || candidate`.
@@ -74,6 +79,7 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
    - Wire `onError={() => { setSettledUri(renderUri); onError(); }}`.
    - Add `useEffect` 3,000ms safety timeout that forces `setSettledUri(renderUri)` and sets fallback placeholder if neither event fires.
    - Keep `<Image>` mounted with `style={[style, !isSettled && { opacity: 0 }]}` to eliminate flash during source transition.
+2. Update `RecordCard.tsx`:
    - Destructure `isLoading: isProductLoading` from `useProduct(record.productId ?? undefined)`.
    - Add condition:
      ```tsx

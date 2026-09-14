@@ -46,6 +46,17 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
     - In addition, individual `<GalleryImageItem>` elements retain per-image `SkeletonBone` overlays with smooth cross-fade (`fadeDuration={150}`) upon settlement.
   - `PantryHistoryView.tsx` Skeleton Integration & State Discrimination:
     - In `apps/mobile/src/api/records.ts`, export `usePantryHistoryRecordsWithStatus(filter)`: `{ records, isLoading, isResolved }`.
+    - In `PantryHistoryView.tsx`, compute:
+      ```tsx
+      const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);
+      ```
+    - While `showHistorySkeleton` is true, render `<PantryHistorySkeleton />` (2 KPI card bones + 3 history row bones).
+    - When `isHistoryResolved && initialSyncCompleted && displayRecords.length === 0`, render `renderEmpty()` immediately with zero delay.
+- **Non-functional**:
+  - **React Rules of Hooks Compliance**: `useImageSettlementTracker` and all state hooks MUST be invoked unconditionally before any early return statements, operating on safe fallback arrays (`[]`) when data is null.
+  - Android build policy strictly enforced (no Expo CLI/EAS; direct Gradle and `adb`).
+  - Expyrico color palette compliance across all skeleton states.
+
 ## Architecture
 
 ```
