@@ -16,7 +16,7 @@ Implement the Stale-While-Revalidate (SWR) background revalidation engine in `ap
 ## Requirements
 - **Functional**:
   - `useCachedImage({ uri, target, photoId, variant, headers, freshTtlMs })` hook:
-    - **Step 1 (Instant Return)**: If cached on disk/memory, return `{ uri: localFileUri, isLoading: false, isRevalidating: true }` on Frame 0.
+    - **Step 1 (Warm Memory Return / Async Disk Hydration)**: If cached in warm L1 memory, return `{ uri: localFileUri, isLoading: false, isRevalidating: !isSyncFresh }` synchronously. If an L1 miss, return `{ uri: null, isLoading: true }` and asynchronously hydrate from L2 disk storage before falling back to network.
     - **Step 2 (Freshness Check)**: If `Date.now() - cached.timestamp < freshTtlMs` (24h for public catalog images, 15m for private user drafts), skip network check.
     - **Step 3 (In-Flight Deduplication)**: Multiple components requesting the same image URI share a single active fetch Promise to prevent redundant network bursts during list scrolling.
     - **Step 4 (Conditional Fetch)**: If stale, send background `GET` with `If-None-Match: cached.etag` and `If-Modified-Since: cached.lastModified`.
@@ -31,25 +31,25 @@ Implement the Stale-While-Revalidate (SWR) background revalidation engine in `ap
 
 ```mermaid
 flowchart TD
-    A[Component Requests Image] --> B{In Memory or Disk?}
-    B -->|Yes| C[Render Cached file:// Immediately]
-    B -->|No| D[Fetch Over Network]
+    A[Component Requests Image] --> B{In Warm L1 Memory?}
+    B -->|Yes| C[Render Cached URI Synchronously]
+    B -->|No| D[Async Hydrate from L2 Disk / Storage]
+    D -->|Found on Disk| C
+    D -->|Not on Disk| E[Fetch Over Network]
     
-    C --> E{Cache Stale? >24h Public or >15m Private}
-    E -->|No (Within Fresh TTL)| F[Keep Displaying - No Network Call]
-    E -->|Yes| G[Check In-Flight Promise Map]
+    C --> F{Cache Stale? >24h Public or >15m Private}
+    F -->|No (Within Fresh TTL)| G[Keep Displaying - No Network Call]
+    F -->|Yes| H[Check In-Flight Promise Map]
     
-    G -->|Already In-Flight| H[Attach To Existing Promise]
-    G -->|New Request| I[Background Conditional Fetch: If-None-Match ETag]
+    H -->|Already In-Flight| I[Attach To Existing Promise]
+    H -->|New Request| J[Background Conditional Fetch: If-None-Match ETag]
     
-    I --> J{Server Response}
-    J -->|304 Not Modified| K[Refresh Cache Timestamp - 0 Bytes]
-    J -->|200 OK New Image| L[Write to .tmp -> Atomic Rename to .webp]
-    J -->|Network Error / Offline| M[Silent Fallback - Keep Cached file://]
+    J --> K{Server Response}
+    K -->|304 Not Modified| L[Refresh Cache Timestamp - 0 Bytes]
+    K -->|200 OK New Image| M[Write to .tmp -> Atomic Rename / Save]
+    K -->|Network Error / Offline| N[Silent Fallback - Keep Cached URI]
     
-    L --> N[Update Index & Smoothly Emit New file:// URI]
-    D --> O[Atomic Write to Cache & Display Image]
-```
+    E --> O[Write to Cache & Display Image]
 
 ## Related Code Files
 - Create: `apps/mobile/src/cache/image-revalidator.ts`

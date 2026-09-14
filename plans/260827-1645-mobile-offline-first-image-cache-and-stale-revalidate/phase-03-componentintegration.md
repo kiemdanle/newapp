@@ -16,7 +16,7 @@ Integrate the SWR offline-first disk cache across all visual image components in
 ## Requirements
 - **Functional**:
   - `ProductThumbnail.tsx`:
-    - Render local disk-cached image on Frame 0 for both public catalog photos and private user-created product drafts.
+    - Render cached image synchronously on warm L1 memory hits, and asynchronously hydrate from local disk cache on cold starts.
     - Classify URLs: any authenticated/private route (`/v1/products/.../photos/`, `/v1/product-edits/...`) automatically scopes to the active `userId`.
     - Revalidate in background when stale (>24h public, >15m private).
   - `PrivateProductImage.tsx`:
@@ -53,7 +53,8 @@ Integrate the SWR offline-first disk cache across all visual image components in
                                 v
 +-----------------------------------------------------------------+
 |                   useCachedImage(uri, options)                  |
-|  - Frame 0: Instant cached file:// path                         |
+|  - Warm Memory: Synchronous cached URI return                   |
+|  - Cold Start: Async L2 disk hydration / placeholder           |
 |  - In-Flight Deduplication: 1 network request per unique URI    |
 |  - Background: Conditional SWR Check (304 / 200)                |
 +-----------------------------------------------------------------+
@@ -92,12 +93,12 @@ Integrate the SWR offline-first disk cache across all visual image components in
 
 ## Success Criteria
 - [ ] Navigating to Pantry, Deals, or Giveaways shows zero empty image blanks for previously viewed items.
-- [ ] App restart displays cached product images immediately on first render.
+- [ ] App restart hydrates cached product images from disk into view without requiring network re-download.
 - [ ] Private images are deleted when logging out, preventing multi-user device leakage.
 - [ ] No regression in image layout, aspect ratios, or fallback icons.
 
 ## Risk Assessment
 - **Slow List Rendering**: Executing too much logic per thumbnail could impact 60fps scrolling.
-  - *Mitigation*: L1 memory lookup is a synchronous `Map.get()`, running in <0.01ms.
+  - *Mitigation*: L1 memory lookup is a fast synchronous `Map.get()`, avoiding unnecessary async storage reads on warm hits.
 - **Unmounted Component Memory Leaks**: Background fetch completing after unmount.
   - *Mitigation*: Use cleanup flag in `useEffect` to avoid setting state on unmounted components.

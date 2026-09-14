@@ -19,7 +19,7 @@ Perform comprehensive unit testing, SWR revalidation lifecycle simulation, offli
   - Verification of decoupled storage: AsyncStorage keys contain only metadata (<1KB), preventing CursorWindow errors.
   - SWR lifecycle simulation:
     1. Cold start cache miss -> fetches and stores image on disk.
-    2. Warm start cache hit -> renders image immediately (<5ms).
+    2. Warm start cache hit -> renders image synchronously from L1 memory.
     3. Stale cache revalidation with 304 Not Modified -> retains cached image, updates timestamp, 0 payload bytes.
     4. Modified image with 200 OK -> updates local cache and updates rendered URI via atomic file commit.
     5. Concurrent requests for same image URI -> exactly 1 network fetch triggered.
@@ -33,7 +33,8 @@ Perform comprehensive unit testing, SWR revalidation lifecycle simulation, offli
 
 | Test Case | Scenario | Expected Outcome |
 |---|---|---|
-| **L1/L2 Cache Hit** | Request previously viewed image URI | Returns cached file URI immediately on Frame 0 |
+| **L1 Warm Hit** | Request previously loaded image in memory | Returns cached URI synchronously on initial mount |
+| **L2 Disk Hit** | Request cold image cached in local storage | Hydrates asynchronously from storage, then updates URI |
 | **SWR 304 Not Modified** | Server image unchanged | Revalidates in background with ETag, 0 bytes downloaded, cache timestamp refreshed |
 | **SWR 200 Replacement** | Image updated on server | Replaces disk cache via atomic rename and updates component state seamlessly |
 | **In-Flight Deduplication** | 5 concurrent requests for same URI | Only 1 network request fired; all 5 callers resolve with cached file |
@@ -55,7 +56,7 @@ Perform comprehensive unit testing, SWR revalidation lifecycle simulation, offli
    - User-scoped private image purging on logout.
    - LRU eviction order when reaching 100 MB size threshold.
 2. Create `useCachedImage.test.ts` covering:
-   - Immediate Frame-0 return from disk.
+   - Synchronous return on warm L1 memory hit and asynchronous retrieval on cold disk hit.
    - In-flight promise deduplication across simultaneous callers.
    - Conditional fetch with `If-None-Match`.
    - 304 vs 200 update flow with atomic rename.
@@ -67,7 +68,7 @@ Perform comprehensive unit testing, SWR revalidation lifecycle simulation, offli
 - [ ] All unit tests pass with zero failures.
 - [ ] Monorepo typecheck reports 0 errors.
 - [ ] No regression in existing image display or photo upload flows.
-
+- [ ] Explicit verification status: Hardware-level device cold-start latency benchmark is marked Unverified (L2 disk hydration is asynchronous).
 ## Risk Assessment
 - **AsyncStorage Mocking in Jest**: Tests may need reliable mock for AsyncStorage and fetch.
   - *Mitigation*: Use standard `@react-native-async-storage/async-storage/jest/async-storage-mock` already configured in the repo.

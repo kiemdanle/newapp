@@ -123,7 +123,8 @@ export class ImageDiskCache {
   }
 
   /**
-   * Synchronous L1 in-memory lookup. Returns cached image data within <0.01ms (Frame 0).
+   * Synchronous L1 in-memory lookup. Returns cached image data synchronously
+   * on warm memory-cache hits.
    */
   public getSync(key: string): CacheMetadata | null {
     const memory = this.l1Cache.get(key);

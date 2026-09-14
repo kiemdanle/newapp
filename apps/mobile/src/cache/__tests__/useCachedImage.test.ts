@@ -69,7 +69,7 @@ describe('useCachedImage & RevalidationEngine (SWR)', () => {
     expect(cached?.etag).toBe('"etag-100"');
   });
 
-  it('warm start: immediately returns cached image synchronously on Frame 0 (<0.01ms)', async () => {
+  it('warm start: immediately returns cached image synchronously on warm memory hit', async () => {
     const uri = 'https://cdn.example.com/instant.webp';
     await imageDiskCache.set(`public::${uri}`, {
       uri,
