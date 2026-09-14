@@ -1,9 +1,9 @@
 import React from 'react';
 import { Dimensions, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SkeletonBone } from './SkeletonBone';
 import { SkeletonShimmer } from './SkeletonShimmer';
-
 export interface ProductDetailSkeletonProps {
   style?: StyleProp<ViewStyle>;
   pointerEvents?: 'box-none' | 'none' | 'box-only' | 'auto';
@@ -30,14 +30,24 @@ export function ProductDetailSkeleton({
       ]}
     >
       <SkeletonShimmer style={styles.scrollContent}>
-        {/* 4:3 Hero Image Bone */}
-        {/* 4:3 Edge-to-Edge Hero Image Bone */}
+        {/* 4:3 Edge-to-Edge Hero Image Bone with Placeholder Icon */}
         <View style={styles.heroContainer}>
-          <SkeletonBone
-            width="100%"
-            height={Math.min(540, Math.round(INITIAL_WIDTH * 0.75))}
-            borderRadius={0}
-          />
+          <View
+            style={[
+              styles.heroBox,
+              {
+                height: Math.min(540, Math.round(INITIAL_WIDTH * 0.75)),
+                backgroundColor: theme.colors.neutralLight,
+              },
+            ]}
+          >
+            <Ionicons
+              name="cube-outline"
+              size={56}
+              color={theme.colors.textMuted}
+              style={{ opacity: 0.6 }}
+            />
+          </View>
         </View>
 
         {/* Content Body */}
@@ -155,6 +165,11 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     width: '100%',
+  },
+  heroBox: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
     width: '100%',

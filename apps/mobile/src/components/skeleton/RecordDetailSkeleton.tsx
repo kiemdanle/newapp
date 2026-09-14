@@ -1,9 +1,9 @@
 import React from 'react';
 import { Dimensions, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SkeletonBone } from './SkeletonBone';
 import { SkeletonShimmer } from './SkeletonShimmer';
-
 export interface RecordDetailSkeletonProps {
   style?: StyleProp<ViewStyle>;
   pointerEvents?: 'box-none' | 'none' | 'box-only' | 'auto';
@@ -30,15 +30,26 @@ export function RecordDetailSkeleton({
       ]}
     >
       <SkeletonShimmer style={styles.scrollContent}>
-        {/* 4:3 Responsive Hero Image Bone */}
+        {/* 4:3 Responsive Hero Image Bone with Placeholder Icon */}
         <View style={styles.heroContainer}>
-          <SkeletonBone
-            width="100%"
-            height={Math.round(INITIAL_WIDTH * 0.75)}
-            borderRadius={theme.radii.lg}
-          />
+          <View
+            style={[
+              styles.heroBox,
+              {
+                height: Math.round(INITIAL_WIDTH * 0.75),
+                backgroundColor: theme.colors.neutralLight,
+                borderRadius: theme.radii.lg,
+              },
+            ]}
+          >
+            <Ionicons
+              name="basket-outline"
+              size={56}
+              color={theme.colors.textMuted}
+              style={{ opacity: 0.6 }}
+            />
+          </View>
         </View>
-
         {/* Title Block Card */}
         <View
           style={[
@@ -170,6 +181,11 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     width: '100%',
+  },
+  heroBox: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
     borderWidth: 1,

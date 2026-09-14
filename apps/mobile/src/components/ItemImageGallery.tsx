@@ -412,11 +412,22 @@ function GalleryImageItem({
       {!isSettled && (
         <View
           testID="gallery-image-skeleton"
-          style={StyleSheet.absoluteFillObject}
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.loadingContainer,
+            { backgroundColor: theme.colors.neutralLight },
+          ]}
           pointerEvents="none"
         >
-          <SkeletonShimmer style={styles.fill}>
-            <SkeletonBone width="100%" height="100%" borderRadius={0} />
+          <SkeletonShimmer style={styles.loadingShimmer}>
+            <View style={styles.galleryLoadingContent}>
+              <Ionicons
+                name={placeholderIcon}
+                size={56}
+                color={theme.colors.textMuted}
+                style={{ opacity: 0.7 }}
+              />
+            </View>
           </SkeletonShimmer>
         </View>
       )}
@@ -428,8 +439,21 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
   },
-  placeholderHero: {
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingShimmer: {
     width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryLoadingContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placeholderHero: {
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',

@@ -219,11 +219,19 @@ function CachedThumbnailImage({
       {!isSettled && (
         <View
           testID="product-thumbnail-skeleton"
-          style={StyleSheet.absoluteFillObject}
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.loadingContainer,
+            { backgroundColor: theme.colors.neutralLight },
+          ]}
           pointerEvents="none"
         >
-          <SkeletonShimmer style={styles.fill}>
-            <SkeletonBone width="100%" height="100%" borderRadius={0} />
+          <SkeletonShimmer style={styles.loadingShimmer}>
+            <Ionicons
+              name={fallbackIcon as never}
+              size={size * 0.44}
+              color={theme.colors.textMuted}
+            />
           </SkeletonShimmer>
         </View>
       )}
@@ -241,5 +249,15 @@ const styles = StyleSheet.create({
   fill: {
     width: '100%',
     height: '100%',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingShimmer: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
