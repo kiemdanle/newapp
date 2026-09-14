@@ -172,26 +172,45 @@ describe('Detail Skeletons & Screen Overlay Lifecycle', () => {
       fireEvent.press(screen.getByText('Retry'));
       expect(retryMock).toHaveBeenCalledTimes(1);
     });
-    it('displays RecordDetailSkeleton instead of Item not found when active sync is running', () => {
-      useSyncStateStore.setState({ isSyncing: true });
-      (useRecordWithStatus as jest.Mock).mockReturnValue({
+    it('end-to-end lookup: asserts skeleton—not Item not found—while lookup is pending, then mounts item details upon insertion', () => {
+      let currentLookupState: any = {
         record: null,
-        isLoading: false,
-        isResolved: true,
-      });
+        isLoading: true,
+        isResolved: false,
+        isError: false,
+        errorMessage: null,
+        retry: jest.fn(),
+      };
+      (useRecordWithStatus as jest.Mock).mockImplementation(() => currentLookupState);
       (useProduct as jest.Mock).mockReturnValue({
-        data: null,
+        data: { id: 'prod-1', name: 'Apples' },
         isLoading: false,
         isError: false,
       });
 
-      renderWithTheme(<RecordDetail />, 'expyrico');
+      const { rerender } = renderWithTheme(<RecordDetail />, 'expyrico');
 
+      // 1. Initial pending lookup while sync is in flight: MUST show skeleton, NOT Item not found!
       expect(screen.getByTestId('record-detail-skeleton')).toBeTruthy();
       expect(screen.queryByText('Item not found')).toBeNull();
-      useSyncStateStore.setState({ isSyncing: false });
-    });
+      expect(screen.queryByText('Crisp Apples')).toBeNull();
 
+      // 2. Incoming sync inserts the record: state updates to resolved with record
+      currentLookupState = {
+        record: sampleRecord,
+        isLoading: false,
+        isResolved: true,
+        isError: false,
+        errorMessage: null,
+        retry: jest.fn(),
+      };
+
+      rerender(<RecordDetail />);
+
+      // Real item content mounts; "Item not found" is never rendered!
+      expect(screen.queryByText('Item not found')).toBeNull();
+      expect(screen.getByText('Crisp Apples')).toBeTruthy();
+    });
     it('displays RecordDetailSkeleton when product details are loading for a catalog product', () => {
       (useRecordWithStatus as jest.Mock).mockReturnValue({
         record: { ...sampleRecord, productId: 'prod-456' },

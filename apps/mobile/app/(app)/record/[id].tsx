@@ -18,7 +18,6 @@ import { useImageSettlementTracker } from '../../../src/cache/useImageSettlement
 import { RecordDetailSkeleton } from '../../../src/components/skeleton';
 import { useActiveGiveawaysForRecord } from '../../../src/api/giveaways';
 import { useUndoToastStore } from '../../../src/store/undoToast';
-import { useSyncStateStore } from '../../../src/store/syncStateStore';
 import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
 import { DiscardReasonModal } from '../../../src/components/DiscardReasonModal';
 import { PhotoSourcePickerModal } from '../../../src/components/PhotoSourcePickerModal';
@@ -88,7 +87,6 @@ export default function RecordDetail() {
   const [pendingQuantity, setPendingQuantity] = useState<number>(1);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [showDiscardReasonModal, setShowDiscardReasonModal] = useState(false);
-  const isSyncing = useSyncStateStore((s) => s.isSyncing);
   const handleReassignScope = async (newHouseholdId: string | null) => {
     if (!record) return;
     await patchLocalRecord(record.id, { householdId: newHouseholdId });
@@ -119,11 +117,6 @@ export default function RecordDetail() {
   }, [record, product, hasCustomizedPhotos]);
 
   const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
-
-  if (!isRecordResolved || (!record && isSyncing)) {
-    return <RecordDetailSkeleton />;
-  }
-
   if (isRecordError) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -138,6 +131,10 @@ export default function RecordDetail() {
         <Button label="Back to pantry" variant="outline" onPress={() => navigation.goBack()} />
       </View>
     );
+  }
+
+  if (!isRecordResolved) {
+    return <RecordDetailSkeleton />;
   }
 
   if (!record) {

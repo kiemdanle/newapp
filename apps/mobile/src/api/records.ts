@@ -327,10 +327,12 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
             setErrorMessage(null);
             setResolvedId(id);
           },
-          () => {
+          (err) => {
             if (cancelled || currentGen !== queryGenRef.current) return;
             currentModel = null;
             setRow(null);
+            setIsError(true);
+            setErrorMessage(err instanceof Error ? err.message : 'Database observation error');
             setResolvedId(id);
           },
         );
@@ -436,7 +438,7 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
 
   const isResolvedForThisId = Boolean(!id || (id && resolvedId === id));
   return {
-    record: isResolvedForThisId ? row : null,
+    record: id && resolvedId === id ? row : null,
     isLoading: !isResolvedForThisId,
     isResolved: isResolvedForThisId,
     isError: Boolean(id && resolvedId === id && isError),

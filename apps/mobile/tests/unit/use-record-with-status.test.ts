@@ -299,4 +299,80 @@ describe('useRecordWithStatus hook - slow sync and observable insertion lifecycl
     expect(result.current.isResolved).toBe(false);
     expect(result.current.isLoading).toBe(true);
   });
+  it('handles id == null gracefully and returns null record without stale row leakage', () => {
+    const { result, rerender } = renderHook(({ id }) => useRecordWithStatus(id), {
+      initialProps: { id: 'rec-valid' as string | null | undefined },
+    });
+
+    act(() => {
+      emitQueryMatches([
+        {
+          id: 'rec-valid',
+          serverId: 'srv-v',
+          clientId: 'cli-v',
+          customName: 'Valid Item',
+          notifyAtJson: '[]',
+          status: 'active',
+          expiryDate: '2026-10-01',
+          quantity: 1,
+          unit: 'pcs',
+        },
+      ]);
+    });
+    expect(result.current.record?.customName).toBe('Valid Item');
+
+    // Switch to null ID
+    rerender({ id: null });
+
+    expect(result.current.record).toBeNull();
+    expect(result.current.isResolved).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isError).toBe(false);
+
+    // Switch to undefined ID
+    rerender({ id: undefined });
+
+    expect(result.current.record).toBeNull();
+    expect(result.current.isResolved).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isError).toBe(false);
+  });
+
+  it('settles to retryable error state when model.observe errors', () => {
+    let observerErrorCallback: ((err: any) => void) | null = null;
+    const modelWithFaultyObserver = {
+      id: 'rec-faulty',
+      serverId: 'srv-faulty',
+      clientId: 'cli-faulty',
+      customName: 'Faulty Observer Item',
+      notifyAtJson: '[]',
+      status: 'active',
+      expiryDate: '2026-10-01',
+      quantity: 1,
+      unit: 'pcs',
+      observe: jest.fn(() => ({
+        subscribe: (onNext: any, onError: (err: any) => void) => {
+          observerErrorCallback = onError;
+          return { unsubscribe: jest.fn() };
+        },
+      })),
+    };
+
+    const { result } = renderHook(() => useRecordWithStatus('rec-faulty'));
+
+    act(() => {
+      emitQueryMatches([modelWithFaultyObserver]);
+    });
+
+    // Model observer encounters a database read error
+    act(() => {
+      observerErrorCallback?.(new Error('SQLite read fault'));
+    });
+
+    expect(result.current.isResolved).toBe(true);
+    expect(result.current.isError).toBe(true);
+    expect(result.current.errorMessage).toBe('SQLite read fault');
+    expect(result.current.record).toBeNull();
+    expect(typeof result.current.retry).toBe('function');
+  });
 });
