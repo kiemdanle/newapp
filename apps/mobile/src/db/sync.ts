@@ -38,6 +38,7 @@ export async function runSync(): Promise<void> {
     if (!isSyncEpochValid(runEpoch)) return;
     useSyncStateStore.getState().setSyncSuccess();
   } catch (err: unknown) {
+    console.error('[runSync] Sync failed:', err);
     if (isSyncEpochValid(runEpoch)) {
       useSyncStateStore.getState().setSyncError(err);
     }
@@ -150,7 +151,6 @@ async function pushPending(runEpoch: number): Promise<void> {
         };
         if (rec.location) body.location = rec.location;
         if (rec.householdId) body.householdId = rec.householdId;
-
         const res = await apiClient.post<{ id: string }>(
           '/records',
           body,
