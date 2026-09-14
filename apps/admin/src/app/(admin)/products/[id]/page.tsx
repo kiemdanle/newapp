@@ -65,7 +65,7 @@ export default async function ProductDetailPage({
             <p className="text-sm text-neutral-mid font-medium">
               {p.brand ? <span>{p.brand}</span> : <span className="text-neutral-mid/60">No brand specified</span>}
               {p.category && <span> · {p.category}</span>}
-              {p.creator && (
+              {p.creator ? (
                 <span>
                   {' '}
                   · Added by{' '}
@@ -73,7 +73,11 @@ export default async function ProductDetailPage({
                     {`${p.creator.firstName} ${p.creator.lastName}`.trim() || p.creator.email}
                   </span>
                 </span>
-              )}
+              ) : p.source === 'off' ? (
+                <span> · Source: <span className="font-semibold text-neutral-dark">Open Food Facts</span></span>
+              ) : p.source === 'upcitemdb' ? (
+                <span> · Source: <span className="font-semibold text-neutral-dark">UPCitemdb</span></span>
+              ) : null}
             </p>
           </div>
         </div>

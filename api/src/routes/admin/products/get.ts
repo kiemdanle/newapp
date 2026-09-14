@@ -16,9 +16,17 @@ export async function adminProductsGetRoute(app: FastifyInstance) {
       include: {
         ...PRODUCT_INCLUDE,
         createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+        records: {
+          select: {
+            user: { select: { id: true, email: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'asc' as const },
+          take: 1,
+        },
       },
     });
     if (!p) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+    const creatorUser = p.createdBy ?? p.records?.[0]?.user ?? null;
     return adminProductRowSchema.parse({
       id: p.id,
       barcode: p.barcode,
@@ -42,12 +50,12 @@ export async function adminProductsGetRoute(app: FastifyInstance) {
       photos: [...p.photos].sort((a, b) => a.position - b.position).map((photo) => toApiProductPhoto(photo, p.id)),
       moderationNotes: p.moderationNotes,
       moderatedAt: p.moderatedAt ? p.moderatedAt.toISOString() : null,
-      creator: p.createdBy
+      creator: creatorUser
         ? {
-            id: p.createdBy.id,
-            email: p.createdBy.email,
-            firstName: p.createdBy.firstName,
-            lastName: p.createdBy.lastName,
+            id: creatorUser.id,
+            email: creatorUser.email,
+            firstName: creatorUser.firstName,
+            lastName: creatorUser.lastName,
           }
         : null,
       createdAt: p.createdAt.toISOString(),

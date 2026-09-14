@@ -73,18 +73,36 @@ export default async function ProductsPage({
     {
       header: 'Creator',
       cell: (p) => {
-        if (!p.creator) return <span className="text-xs text-neutral-mid">—</span>;
-        const name = `${p.creator.firstName} ${p.creator.lastName}`.trim() || p.creator.email;
-        return (
-          <span className="text-xs">
-            <span className="font-medium text-neutral-dark">{name}</span>
-            {p.creator.email && name !== p.creator.email && (
-              <span className="text-neutral-mid block text-[11px] truncate max-w-[140px]">
-                {p.creator.email}
-              </span>
-            )}
-          </span>
-        );
+        if (p.creator) {
+          const name = `${p.creator.firstName} ${p.creator.lastName}`.trim() || p.creator.email;
+          return (
+            <span className="text-xs">
+              <span className="font-medium text-neutral-dark">{name}</span>
+              {p.creator.email && name !== p.creator.email && (
+                <span className="text-neutral-mid block text-[11px] truncate max-w-[140px]">
+                  {p.creator.email}
+                </span>
+              )}
+            </span>
+          );
+        }
+        if (p.source === 'off') {
+          return (
+            <span className="text-xs">
+              <span className="font-medium text-neutral-dark">Open Food Facts</span>
+              <span className="text-neutral-mid block text-[11px]">External Provider</span>
+            </span>
+          );
+        }
+        if (p.source === 'upcitemdb') {
+          return (
+            <span className="text-xs">
+              <span className="font-medium text-neutral-dark">UPCitemdb</span>
+              <span className="text-neutral-mid block text-[11px]">External Provider</span>
+            </span>
+          );
+        }
+        return <span className="text-xs text-neutral-mid">—</span>;
       },
     },
     { header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },

@@ -130,7 +130,10 @@ export async function hasLocalMatch(input: LookupInput): Promise<boolean> {
 // unit test; not part of the public service surface used by routes. Callers MUST
 // treat the returned row as potentially non-active (see the guard above) — never
 // assume "just persisted" implies "safe to serialize as a public hit".
-export async function persistExternal(data: ExternalProductData): Promise<ProductWithPhotos> {
+export async function persistExternal(
+  data: ExternalProductData,
+  creatorUserId?: string | null,
+): Promise<ProductWithPhotos> {
   const prisma = getPrisma();
   try {
     return await prisma.$transaction(async (tx) => {
@@ -149,6 +152,7 @@ export async function persistExternal(data: ExternalProductData): Promise<Produc
             brand: data.brand,
             category: data.category,
             imageUrl: data.imageUrl,
+            ...(creatorUserId && !existing.createdByUserId ? { createdByUserId: creatorUserId } : {}),
           },
           include: PRODUCT_INCLUDE,
         });
@@ -162,6 +166,7 @@ export async function persistExternal(data: ExternalProductData): Promise<Produc
           imageUrl: data.imageUrl,
           source: data.source,
           sourceId: data.sourceId,
+          createdByUserId: creatorUserId ?? null,
         },
         include: PRODUCT_INCLUDE,
       });
@@ -288,7 +293,7 @@ export async function lookupProductV2(
   if (externalHit) {
     // Re-classify: a concurrent private draft/active row can win the race
     // between findLocalExact and this HTTP round trip.
-    return classifyLocal(await persistExternal(externalHit), actor);
+    return classifyLocal(await persistExternal(externalHit, actor?.id), actor);
   }
 
   // Fail-open for eligible creators: an external outage or rate limit must NEVER

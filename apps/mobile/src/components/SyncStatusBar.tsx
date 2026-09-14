@@ -15,21 +15,25 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
   const isSyncing = useSyncStateStore((s) => s.isSyncing);
   const initialSyncCompleted = useSyncStateStore((s) => s.initialSyncCompleted);
   const lastSyncError = useSyncStateStore((s) => s.lastSyncError);
+  // Never render during active sync — pull-to-refresh / header spinner handles loading feedback
+  if (isSyncing) {
+    return null;
+  }
+
   // Suppress status bar during fresh-install initial sync (skeleton shimmer handles initial visual feedback)
   if (!initialSyncCompleted && lastSyncError !== 'timeout') {
     return null;
   }
-  const shouldShowSyncing = isSyncing && initialSyncCompleted;
-  const isTimeout = !isSyncing && lastSyncError === 'timeout';
-  const isGenericError = !isSyncing && Boolean(lastSyncError) && !isTimeout;
 
-  if (!shouldShowSyncing && !isTimeout && !isGenericError) {
+  const isTimeout = lastSyncError === 'timeout';
+  const isGenericError = Boolean(lastSyncError) && !isTimeout;
+
+  if (!isTimeout && !isGenericError) {
     return null;
   }
+
   const handlePress = () => {
-    if (!isSyncing) {
-      void runSync();
-    }
+    void runSync();
   };
 
   return (
@@ -40,9 +44,7 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
       accessibilityLabel={
         isTimeout
           ? 'Offline, showing local pantry. Tap to retry sync.'
-          : isSyncing
-            ? 'Syncing pantry items with server'
-            : `Sync status: ${lastSyncError}`
+          : `Sync status: ${lastSyncError}`
       }
       style={[
         styles.container,
@@ -70,9 +72,7 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
       >
         {isTimeout
           ? 'Offline — showing local pantry (tap to retry)'
-          : isSyncing
-            ? 'Syncing pantry...'
-            : 'Sync error — tap to retry'}
+          : 'Sync error — tap to retry'}
       </Text>
     </Pressable>
   );
