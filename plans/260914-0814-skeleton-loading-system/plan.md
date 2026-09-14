@@ -88,23 +88,30 @@ sequenceDiagram
 5. **No Raw "Item" Text Flash**:
    * Components MUST NEVER display the hardcoded string `"Item"` or empty spaces while `useProduct` is fetching uncached catalog data. They MUST render inline shimmering bones matching the text line height.
 6. **Readiness Contract Equation & Screen Inventory**:
-   * Skeleton dismissal MUST satisfy:
-     `isReady = dataReady && allVisibleImagesSettled`
-   * Skeletons MUST NOT be dismissed on metadata/query `isLoading` alone while image placeholders remain. Both metadata AND visible images (warm cache hit, `onLoadEnd`, or `onError` fallback) must reach terminal settlement before unmasking.
+   * Detail view skeleton dismissal satisfies:
+     `isDetailReady = dataReady && allVisibleImagesSettled`
+   * Once metadata resolves (`dataReady`), the screen mounts its real layout immediately with `<ItemImageGallery />` mounted underneath an absolute skeleton bone overlay (`opacity: 0` underneath). Native `<Image>` begins network download and decoding on millisecond 0, cross-fading in on `onLoadEnd` with zero mounting deadlocks.
    * Full screen inventory:
      1. **Pantry List View**: `RecordCard.tsx` inside `RecordList.tsx`
      2. **Pantry Grid View**: `PantryGridCard.tsx` inside `RecordList.tsx`
      3. **Record Detail Screen**: `record/[id].tsx` with `RecordDetailSkeleton`
      4. **Product Detail Screen**: `product/[id].tsx` with `ProductDetailSkeleton`
-     5. **Pantry History View**: `PantryHistoryView.tsx` with KPI & row bones
+     5. **Pantry History View**: `PantryHistoryView.tsx` with `PantryHistorySkeleton`
 7. **`useRecordWithStatus` State Discrimination**:
-   * `apps/mobile/src/api/records.ts` MUST export `useRecordWithStatus(id)` providing `{ record, isLoading, isResolved }`. Components must not gate on `!record` alone, cleanly distinguishing in-flight SQLite lookups from terminal "Item not found" states.
+   * `apps/mobile/src/api/records.ts` MUST export `useRecordWithStatus(id)` providing `{ record, isLoading, isResolved }`. In `record/[id].tsx`, terminal not-found is checked BEFORE metadata/image readiness:
+     1. `isRecordLoading && !isRecordResolved -> <RecordDetailSkeleton />`
+     2. `isRecordResolved && !record -> <ItemNotFoundView />`
+     3. `isProductPending -> <RecordDetailSkeleton />`
 8. **Source-Transition Settlement Reset in `ProductThumbnail`**:
    * `ProductThumbnail` MUST key image settlement on `renderUri = uri || candidate`. When `useCachedImage` hydrates and switches source from remote candidate to cached URI, settlement state MUST reset to `false` until the new source settles.
-9. **Session-Scoped Reset Only (Never on Local Scope Switch)**:
-   * `useSyncStateStore` MUST provide a `reset()` action wired strictly into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`. It MUST NOT be invoked on local scope switches (`usePantryScope.setScope`), because all household records are already synced locally into SQLite; resetting on local scope changes would leave an empty household trapped waiting for the 4-second timeout.
+9. **Session-Scoped Reset & Multi-Account Isolation**:
+   * `useSyncStateStore` MUST provide a `reset()` action wired strictly into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`. It MUST NOT be invoked on local scope switches (`usePantryScope.setScope`).
+   * Session generation tracking (`sessionGeneration`) invalidates stale in-flight sync callbacks from previous accounts.
+   * `record-photo-storage.ts` provides `clearAllRecordPhotoAttachments()` invoked on logout, preventing device-only photo leakage across accounts.
 10. **`usePantryHistoryRecordsWithStatus` State Discrimination**:
-   * `apps/mobile/src/api/records.ts` MUST export `usePantryHistoryRecordsWithStatus(filter)` providing `{ records, isLoading, isResolved }`. In `PantryHistoryView.tsx`, skeleton bones MUST only render while `(!isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0))` — NEVER on `records.length === 0` alone after initial sync has settled. Once resolved and settled, genuine empty history displays `renderEmpty()` immediately with zero skeleton delay.
+   * `apps/mobile/src/api/records.ts` MUST export `usePantryHistoryRecordsWithStatus(filter)` providing `{ records, isLoading, isResolved }`. In `PantryHistoryView.tsx`, skeleton bones MUST only render while `(!isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0))` — NEVER on `records.length === 0` alone after initial sync has settled.
+11. **Dimensional Parity with Actual Geometry**:
+   * Skeletons MUST replicate current production dimensions: `PantryGridCardSkeleton` uses 16px corners, 72×72px thumbnail bone, top action row, and 36px title block. Hero detail skeletons compute height dynamically via `Math.round(containerWidth * 0.75)`.
 ## Validation Log
 
 ### Session — 2026-09-14
@@ -113,38 +120,44 @@ sequenceDiagram
 - Verified: 10 | Failed: 0 | Unverified: 0
 - Tier: Standard (Fact Checker + Contract Verifier)
 
-**Interview Decisions Confirmed:**
 1. **Shimmer Animation Style**: `Subtle Native Opacity Pulse` (0.4 to 1.0 at 850ms, strictly via `useTheme().colors` tokens: `theme.colors.neutralLight` base `#F0F0ED` light / `#2D3A34` dark, `useNativeDriver: true`).
-2. **Fresh-Install Sync Timeout**: `4-Second Fail-Safe Timeout` with NetInfo offline check. Gracefully transitions to genuine empty state + offline banner if connection fails.
+2. **Fresh-Install Sync Timeout**: `4-Second Deterministic Universal Fail-Safe Timeout`. Initiated upon session readiness; at 4,000ms, store forces `initialSyncCompleted = true` and `lastSyncError = 'timeout'`, gracefully unmasking all views to the empty state + offline/syncing status banner without user lockup.
 3. **Skeleton Card Count**: `Viewport-Filling Preset` (5 items in List view, 6 items in 2-column Grid view).
-4. **Detail View Skeleton Scope**: `Full Structural Skeleton` (220px hero image bone, title bone, sentiment strip bone, date pills, action button bones).
-
-**Advisory Blockers Resolved:**
-1. **Detail Screen Image Settlement Blocker**: Added dedicated image settlement tracking (`onLoadEnd`/`onError`) for hero and gallery images, preventing hero blank gaps after metadata resolution.
-2. **ProductThumbnail Source-Swap Blocker**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
-3. **Detail Screen Linked Product Metadata Blocker**: Extended detail skeleton gate to include `record.productId && !record.customName && isProductLoading`, eliminating the `"Pantry Item"` title flash on deep links.
-
+4. **Detail View Skeleton Scope**: `Full Structural Skeleton` (responsive 4:3 hero image bone, title bone, sentiment strip bone, date pills, action button bones).
 ---
 
 ## Red Team Review (Pre-Planning Adversarial Audit)
 
-| # | Attack Vector / Failure Mode | Severity | Mitigation in Plan |
-|---|---|---|---|
-| 1 | **CPU/Battery Drain from Multiple Infinite Loops**: 10+ visible cards looping separate `Animated.loop` timers simultaneously. | High | Centralize pulse phase inside `SkeletonShimmer` using a single coordinated `Animated.Value`, and bound skeleton rendering to viewport preset (5-6 items). |
-| 2 | **Infinite Skeleton on Network/Sync Failure**: If device is offline on fresh install or API errors out, user could be trapped forever in a skeleton screen. | High | Implement a 4-second timeout on initial sync state; if sync fails or times out, gracefully transition to the genuine empty state with an offline banner. |
-| 3 | **Layout Shift (CLS) between Skeleton & Real Card**: Skeleton bone height/padding differs from final rendered text/image, causing jarring layout shifts. | Medium | Build `RecordCardSkeleton` and `PantryGridCardSkeleton` with pixel-perfect dimensional parity (heights, paddings, borders, aspect ratios) to real cards. |
-| 4 | **Detail Screen Metadata vs. Image Settlement Race**: Metadata resolves first, unmasking detail view while 220px hero photo is still downloading. | High | Integrate hero photo settlement tracking with absolute skeleton overlay until `onLoadEnd` fires. |
-| 5 | **Thumbnail Source Transition Race**: `useCachedImage` replaces candidate URI with cached URI after initial render, causing premature skeleton unmounting. | High | Key settlement state to `renderUri`, resetting settlement on source changes and keeping skeleton bone active until new URI settles. |
+### Session — 2026-09-14
+**Findings:** 10 (10 accepted, 0 rejected)
+**Severity breakdown:** 6 High, 4 Medium
+
+| # | Finding | Severity | Disposition | Applied To |
+|---|---------|----------|-------------|------------|
+| 1 | **Detail Screen Mounting Deadlock**: Gating entire screen return on image settlement prevents `<ItemImageGallery />` and `<Image>` from mounting, causing a permanent 3s stall. | High | Accept | Phase 4 (`GalleryImageItem` overlay & immediate gallery mount) |
+| 2 | **Offline Startup Fails to Arm 4s Timeout**: Timeout tied only to `runSync()` start, which never executes on offline launch. | High | Accept | Phase 3 (`useSyncStateStore` session-initialization timer) |
+| 3 | **Cross-Session Sync Race Condition**: In-flight sync or timeout from previous account can complete and write into newly signed-in account. | High | Accept | Phase 3 (`sessionGeneration` epoch invalidation on logout/login) |
+| 4 | **Android WatermelonDB Async Query Resolution**: Scope changes asynchronously dispatch; claiming instant in-memory queries causes stale previous-household cards. | High | Accept | Phase 3 & 4 (Track query resolution generation per `[scope, householdId]`) |
+| 5 | **List Chrome & Section Shift Prevention**: Search bar and sort pills popping into view after records sync down cause layout shifts. | Medium | Accept | Phase 3 (Pre-allocate search/sort controls in `PantryListSkeleton`) |
+| 6 | **Photo Removal Fallback Bug**: Checking `localPhotos.length > 0` causes explicit empty photo deletion (`[]`) to fall back to catalog product images. | Medium | Accept | Phase 4 (Preserve exact `hasCustomizedPhotos = localPhotos !== null && localPhotos !== undefined` check) |
+| 7 | **Device-Only Photo Leak on Shared Device**: `record-photo-storage.ts` attachments not purged during `clearAllLocalUserData()`. | High | Accept | Phase 3 (`clearAllRecordPhotoAttachments()` export and logout hook) |
+| 8 | **Component Dimensional Parity**: Skeletons previously assumed 1:1 large photo instead of actual 72×72 thumbnail, 16px corners, and 36px title block. | Medium | Accept | Phase 1 & 4 (Exact geometry parity matching current production layouts) |
+| 9 | **Cache-Hit Settlement Normalization**: Warm cache hits seed URI to `<Image>` immediately, but visual skeleton clears only on native `<Image onLoadEnd>` (or `onError` or 3s timeout). | Medium | Accept | Phase 2 & 4 (Normalized cache-hit contract across all phases) |
+| 10 | **Offline/Syncing Status Banner Integration**: Phase 3 promised an offline banner on 4s timeout without specifying component or rendering contract. | Medium | Accept | Phase 3 (`SyncStatusBar` inline pill in `RecordList` and `PantryHistoryView`) |
+
+---
 
 ### Whole-Plan Consistency Sweep
 - Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents (`phase-01-skeleton-primitives.md`, `phase-02-thumbnail-and-card-loading.md`, `phase-03-initial-sync-and-pantry-skeleton.md`, `phase-04-detail-screens-and-e2e-verification.md`).
-- Confirmed all advisory concerns and blockers formally integrated with concrete technical contracts:
-  1. **Strict Theme Tokens**: Zero ad-hoc dark hexes; skeleton base resolves to `theme.colors.neutralLight` (`#F0F0ED` light / `#2D3A34` dark) and highlight to `theme.colors.bgGlass`/`bgElevated`.
-  2. **Readiness Contract Equation**: Formalized as `dataReady && allVisibleImagesSettled` across all 5 inventory screens with mock slow-image test coverage.
-  3. **Thumbnail Source-Transition Settlement Reset**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
-  4. **useRecordWithStatus State Discrimination**: Distinct `isLoading`, `isResolved`, and `record` states in `apps/mobile/src/api/records.ts`, preventing false "Item not found" flashes or infinite skeletons.
-  5. **Session-Scoped Reset Only**: `useSyncStateStore.getState().reset()` is strictly session-scoped (`clearAllLocalUserData` and `signIn`), preserving instant SQLite-backed filtering on local household scope switches without triggering spurious timeouts.
-  6. **Pantry History State Discrimination**: Exported `usePantryHistoryRecordsWithStatus` so empty-history users see `renderEmpty()` immediately upon DB resolution, avoiding permanent/timeout skeletons.
-  7. **React Rules of Hooks & Dynamic URI Transition**: Unconditional hook invocation before early returns in `record/[id].tsx` and `product/[id].tsx`, with `useImageSettlementTracker` keying on `urisKey = uris.join('|')` and resetting settlement state when photos transition from empty to populated.
-  8. **Per-Image Fallback Timers**: 3,000ms safety timers inside `GalleryImageItem` and `CachedThumbnailImage` prevent hung image network requests from freezing individual skeleton bones.
-  9. **Test Command Alignment**: Explicit command targeting all 5 unit test files (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).
+- All 10 accepted red team findings and user advisory mandates formally reconciled across requirements, architecture diagrams, implementation steps, and test matrices:
+  1. **Mounting Deadlock Eliminated**: Detail screens mount content and gallery immediately under an image skeleton overlay, allowing native `<Image>` to start loading on millisecond 0.
+  2. **Universal 4s Timeout**: Arm timer on session initialization; unmasks all views simultaneously to empty state + `SyncStatusBar` if initial sync exceeds 4s.
+  3. **Session Epoch Invalidation**: `sessionGeneration` counter cancels pending sync callbacks on logout/login.
+  4. **Scoped Query Resolution**: Key local record observations to current `[scope, householdId]` generation.
+  5. **Chrome Shift Prevention**: Pre-allocate search and sort control slots in `PantryListSkeleton` for CLS = 0.
+  6. **Photo Deletion Fidelity**: Preserved `localPhotos !== null && localPhotos !== undefined` check so deleted photos stay deleted.
+  7. **Attachment Sanitization**: Exported `clearAllRecordPhotoAttachments()` in `record-photo-storage.ts` and called it in `clearAllLocalUserData()`.
+  8. **Production Dimensional Parity**: `PantryGridCardSkeleton` uses 16px corners, 72×72 thumbnail, and 36px title block; detail hero uses 4:3 responsive height.
+  9. **Cache-Hit Normalization**: Cache hits seed source immediately; bone overlay unmasks strictly upon native `<Image onLoadEnd>` confirmation.
+  10. **Status Banner Contract**: Added `SyncStatusBar` inline component rendered in list and history headers when initial sync times out or runs in background.
+  11. **Test Command Alignment**: Explicit command targeting all 5 unit test suites (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).

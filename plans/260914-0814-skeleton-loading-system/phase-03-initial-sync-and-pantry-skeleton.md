@@ -32,19 +32,22 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
       - If `viewMode === 'grid'`: renders 3 rows of 2-column `PantryGridCardSkeleton`.
       - If `viewMode === 'list'`: renders 5 stacked `RecordCardSkeleton` rows.
     - Matches list container padding, margin, and gap tokens exactly.
-  - `RecordList.tsx` Integration:
+  - `RecordList.tsx` Integration & Chrome Shift Prevention:
     - Compute `isInitialSyncLoading = !initialSyncCompleted && records.length === 0`.
     - While `isInitialSyncLoading` is true, render `PantryListSkeleton` in place of the list items and suppress the `"Start your pantry"` empty state card.
+    - **List Chrome Shift Prevention**: Always render `renderControls()` (search bar, sort pills) above `PantryListSkeleton` in an inactive/skeleton state. This pre-allocates the control space on Frame 0, preventing the search bar and sort row from popping in and pushing items down when records sync, ensuring zero layout shift.
     - Once sync settles:
       - If records were received, render them with smooth opacity transition.
       - If records are genuinely 0, render the empty pantry card.
-  - **Deterministic Centralized 4-Second Timeout**:
-    - The 4,000ms fail-safe timer lives directly in `useSyncStateStore`, started when `isSyncing = true` on initial load.
+  - **Deterministic Centralized 4-Second Timeout & SyncStatusBar**:
+    - The 4,000ms fail-safe timer lives directly in `useSyncStateStore`, started on session initialization.
     - If sync does not settle within 4,000ms (whether due to offline status, slow connection, or server error):
       - `initialSyncCompleted` flips to `true` and `lastSyncError = 'timeout'`.
       - Guarantees a deterministic exit across ALL views (`RecordList`, `PantryHistoryView`, etc.) even if `PantryHistoryView` is opened first.
-      - Gracefully unmasks the skeleton to display the empty state with a subtle syncing/offline banner while background sync continues.
-- **Non-functional**:
+      - Gracefully unmasks the skeleton to display the empty state with an inline `SyncStatusBar` pill ("Offline · Showing cached items" / "Syncing in background...").
+  - **Scoped Query Generation Invalidation** (`apps/mobile/src/api/records.ts`):
+    - In `useActiveRecords()`, track an internal query generation key per `[scope, householdId]`.
+    - When scope changes, invalidate previous records immediately so Android's asynchronous SQLite dispatcher does not display stale cards from the previous household during scope transitions.
   - Zero UI thread blocking.
   - Resilient to offline startup (deterministic store-level timer prevents infinite loading locks).
 
@@ -79,30 +82,41 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
 - Create:
   - `apps/mobile/src/store/syncStateStore.ts`
   - `apps/mobile/src/features/records/PantryListSkeleton.tsx`
+  - `apps/mobile/src/components/SyncStatusBar.tsx`
   - `apps/mobile/tests/unit/pantry-list-skeleton.test.tsx`
 - Modify:
+  - `apps/mobile/src/api/records.ts` (scope query generation tracking)
   - `apps/mobile/src/db/sync.ts`
   - `apps/mobile/src/features/records/RecordList.tsx`
-  - `apps/mobile/src/auth/session-store.ts` (hook store reset in `clearAllLocalUserData`)
+  - `apps/mobile/src/auth/session-store.ts` (hook store reset and attachment purge in `clearAllLocalUserData`)
+  - `apps/mobile/src/features/records/record-photo-storage.ts` (export `clearAllRecordPhotoAttachments`)
+
 ## Implementation Steps
 1. Create `syncStateStore.ts`:
    - Implement Zustand store with `isSyncing`, `initialSyncCompleted`, `lastSyncError`, and `reset()`.
    - Add centralized 4,000ms timeout timer that forces `initialSyncCompleted = true` and `lastSyncError = 'timeout'` if sync takes longer than 4s.
-2. Update `session-store.ts`:
-   - Wire `useSyncStateStore.getState().reset()` inside `clearAllLocalUserData()` and `signIn()`.
-3. Update `sync.ts`:
-   - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers.
-4. Create `PantryListSkeleton.tsx`:
+2. Update `session-store.ts` and `record-photo-storage.ts`:
+   - Export `clearAllRecordPhotoAttachments()` in `record-photo-storage.ts`.
+   - Wire `useSyncStateStore.getState().reset()` and `clearAllRecordPhotoAttachments()` inside `clearAllLocalUserData()` and on `signIn()`.
+3. Update `api/records.ts`:
+   - Add query generation tracking to `useActiveRecords()` on `[scope, householdId]` changes.
+4. Update `sync.ts`:
+   - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers with session-generation validation.
+5. Create `SyncStatusBar.tsx`:
+   - Minimal theme-aware status chip for offline / background sync states.
+6. Create `PantryListSkeleton.tsx`:
    - Render 5 `RecordCardSkeleton` items (list) or 6 `PantryGridCardSkeleton` items in a 2-column flex matrix (grid).
+   - Pre-allocate search/filter control slots to prevent layout shift.
    - Wrap in `SkeletonShimmer`.
-5. Update `RecordList.tsx`:
+7. Update `RecordList.tsx`:
    - Subscribe to `useSyncStateStore`.
-   - If `!initialSyncCompleted && records.length === 0`, render `PantryListSkeleton` inside the list body below the header.
-6. Create `tests/unit/pantry-list-skeleton.test.tsx`:
+   - If `!initialSyncCompleted && records.length === 0`, render `PantryListSkeleton` below reserved controls.
+   - Render `SyncStatusBar` when `lastSyncError === 'timeout'` or background sync is active.
+8. Create `tests/unit/pantry-list-skeleton.test.tsx`:
    - Test that `RecordList` renders `PantryListSkeleton` when `initialSyncCompleted === false` and `records === []`.
    - Test that `useSyncStateStore` forces `initialSyncCompleted = true` at 4,000ms, unmasking the empty state.
-   - Test that `RecordList` renders real records when sync completes.
-
+   - Test that `RecordList` renders real records when sync completes without layout shifts.
+   - Test scope transition query invalidation.
 ## Success Criteria
 - [ ] On fresh install / sign-in with cold cache, users see shimmering skeleton cards immediately instead of `"Start your pantry"`.
 - [ ] No sudden disappearing-and-reappearing UI flash when items sync down from server.
