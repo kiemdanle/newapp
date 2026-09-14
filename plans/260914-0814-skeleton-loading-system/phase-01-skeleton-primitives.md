@@ -56,7 +56,7 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 +---------------------------------------------------------------+
 |                       SkeletonBone                            |
 |  - Props: width, height, borderRadius, style                  |
-|  - Background: theme.colors.stone / dark variant              |
+|  - Background: theme.colors.neutralLight                      |
 +---------------------------------------------------------------+
             |                                       |
             v                                       v
@@ -65,21 +65,27 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 |  (52px thumb + rows)  |               | (1:1 image + rows)    |
 +-----------------------+               +-----------------------+
 ```
-1. Create `SkeletonShimmer.tsx`:
-   - Initialize `Animated.Value(0.4)`.
-   - Setup `const anim = Animated.loop(Animated.sequence([...]))` with `useNativeDriver: true`.
-   - Start animation on mount, and return `() => anim.stop()` in `useEffect` cleanup to prevent timer leaks.
-   - Add `AccessibilityInfo.isReduceMotionEnabled()` check on mount to bypass loop when enabled.
+
+## Related Code Files
+- Create:
+  - `apps/mobile/src/components/skeleton/SkeletonShimmer.tsx`
+  - `apps/mobile/src/components/skeleton/SkeletonBone.tsx`
+  - `apps/mobile/src/components/skeleton/RecordCardSkeleton.tsx`
+  - `apps/mobile/src/components/skeleton/PantryGridCardSkeleton.tsx`
+  - `apps/mobile/src/components/skeleton/index.ts`
+  - `apps/mobile/tests/unit/skeleton-primitives.test.tsx`
+- Modify:
   - `packages/theme/src/tokens.ts` (export formal skeleton color tokens if needed)
 
 ## Implementation Steps
 1. Create `SkeletonShimmer.tsx`:
    - Initialize `Animated.Value(0.4)`.
-   - Setup `Animated.loop(Animated.sequence([...]))` with `useNativeDriver: true`.
+   - Setup `const anim = Animated.loop(Animated.sequence([...]))` with `useNativeDriver: true`.
+   - Start animation on mount, and return `() => anim.stop()` in `useEffect` cleanup to prevent timer leaks.
    - Add `AccessibilityInfo.isReduceMotionEnabled()` check on mount to bypass loop when enabled.
 2. Create `SkeletonBone.tsx`:
    - Accept `width`, `height`, `borderRadius`, `style`.
-   - Apply theme-aware background colors (`#F0F0ED` in light, `#262624` in dark).
+   - Apply theme-aware background colors strictly via `useTheme().colors.neutralLight` (Light: `#F0F0ED` Stone, Dark: `#2D3A34`).
 3. Create `RecordCardSkeleton.tsx`:
    - Structure container matching `styles.card` in `RecordCard.tsx` (min-height 76px, padding 12px, border, rounded 14px).
    - Lay out 52×52px thumbnail on the left, vertical text stack in middle, pill bone on the right.
@@ -88,7 +94,7 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 5. Create `apps/mobile/tests/unit/skeleton-primitives.test.tsx`:
    - Verify `SkeletonBone` renders with correct dimensional props and styles.
    - Verify `RecordCardSkeleton` and `PantryGridCardSkeleton` render without crashing.
-   - Verify dark mode color resolution.
+   - Verify dark mode color resolution (`theme.colors.neutralLight`).
 
 ## Success Criteria
 - [ ] `SkeletonShimmer` oscillates opacity smoothly without frame drops.
@@ -103,4 +109,4 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
   - *Pre-decided Response*: Centralize pulse phase inside `SkeletonShimmer` so all bones within a card or list share a single `Animated.Value` context.
 - **Risk**: Hardcoded bone colors clash with custom high-contrast or dark themes.
   - *Observable Signal*: Bone borders visible against background in dark mode.
-  - *Pre-decided Response*: Resolve bone background strictly through `useTheme().colors.border` and `theme.colors.bgElevated`.
+  - *Pre-decided Response*: Resolve bone background strictly through `useTheme().colors.neutralLight` and highlight through `theme.colors.bgGlass`.

@@ -38,11 +38,15 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
     - Once sync settles:
       - If records were received, render them with smooth opacity transition.
       - If records are genuinely 0, render the empty pantry card.
-  - Fail-Safe Timeout:
-    - If `isInitialSyncLoading` persists for longer than 4,000ms (e.g. offline device or server 5xx), automatically flip a timeout fallback to reveal the genuine empty state with an offline banner, preventing infinite loading locks.
+  - **Deterministic Centralized 4-Second Timeout**:
+    - The 4,000ms fail-safe timer lives directly in `useSyncStateStore`, started when `isSyncing = true` on initial load.
+    - If sync does not settle within 4,000ms (whether due to offline status, slow connection, or server error):
+      - `initialSyncCompleted` flips to `true` and `lastSyncError = 'timeout'`.
+      - Guarantees a deterministic exit across ALL views (`RecordList`, `PantryHistoryView`, etc.) even if `PantryHistoryView` is opened first.
+      - Gracefully unmasks the skeleton to display the empty state with a subtle syncing/offline banner while background sync continues.
 - **Non-functional**:
   - Zero UI thread blocking.
-  - Resilient to offline startup (detects NetInfo connection and respects timeout).
+  - Resilient to offline startup (deterministic store-level timer prevents infinite loading locks).
 
 ## Architecture
 
@@ -83,21 +87,21 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
 ## Implementation Steps
 1. Create `syncStateStore.ts`:
    - Implement Zustand store with `isSyncing`, `initialSyncCompleted`, `lastSyncError`, and `reset()`.
+   - Add centralized 4,000ms timeout timer that forces `initialSyncCompleted = true` and `lastSyncError = 'timeout'` if sync takes longer than 4s.
 2. Update `session-store.ts`:
    - Wire `useSyncStateStore.getState().reset()` inside `clearAllLocalUserData()` and `signIn()`.
 3. Update `sync.ts`:
    - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers.
-3. Create `PantryListSkeleton.tsx`:
+4. Create `PantryListSkeleton.tsx`:
    - Render 5 `RecordCardSkeleton` items (list) or 6 `PantryGridCardSkeleton` items in a 2-column flex matrix (grid).
    - Wrap in `SkeletonShimmer`.
-4. Update `RecordList.tsx`:
+5. Update `RecordList.tsx`:
    - Subscribe to `useSyncStateStore`.
    - If `!initialSyncCompleted && records.length === 0`, render `PantryListSkeleton` inside the list body below the header.
-   - Add `useEffect` 4-second timeout to force `initialSyncCompleted` if network takes too long.
-5. Create `tests/unit/pantry-list-skeleton.test.tsx`:
+6. Create `tests/unit/pantry-list-skeleton.test.tsx`:
    - Test that `RecordList` renders `PantryListSkeleton` when `initialSyncCompleted === false` and `records === []`.
-   - Test that `RecordList` switches to real records when sync completes.
-   - Test that `RecordList` renders the empty card only when `initialSyncCompleted === true` and `records === []`.
+   - Test that `useSyncStateStore` forces `initialSyncCompleted = true` at 4,000ms, unmasking the empty state.
+   - Test that `RecordList` renders real records when sync completes.
 
 ## Success Criteria
 - [ ] On fresh install / sign-in with cold cache, users see shimmering skeleton cards immediately instead of `"Start your pantry"`.
@@ -106,6 +110,6 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
 - [ ] Unit tests pass with 100% assertions satisfied.
 
 ## Risk Assessment
-- **Risk**: Device with slow 2G connection triggers 4-second timeout while sync is still downloading 500+ items.
-  - *Observable Signal*: Empty state flashes briefly at 4 seconds, followed by items popping in at 6 seconds.
-  - *Pre-decided Response*: Only trigger timeout if `NetInfo` reports offline; otherwise, extend timeout to 8 seconds on slow connections.
+- **Risk**: Device with slow connection triggers 4-second timeout while sync is still in-flight.
+  - *Observable Signal*: Empty state flashes briefly at 4 seconds with syncing banner, followed by items rendering when sync finishes.
+  - *Pre-decided Response*: Deterministic 4-second store-level timeout unmasks to empty state with a subtle "Syncing in background..." indicator; items smoothly append via WatermelonDB subscription when sync finishes without freezing user interaction.

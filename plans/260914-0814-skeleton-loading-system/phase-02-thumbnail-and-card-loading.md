@@ -24,6 +24,9 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
       - Prevents the first candidate load from prematurely unmasking the skeleton for a subsequent cached source.
     - On load settlement (`onLoadEnd`), smoothly cross-fade to the rendered image via `fadeDuration={150}`.
     - On load failure (`onError`), display the fallback placeholder icon (`nutrition-outline`).
+    - **Per-Image 3,000ms Timeout Fallback**:
+      - If neither `onLoadEnd` nor `onError` fires within 3,000ms (e.g. hung network socket or dropped image stream), automatically force settlement (`setSettledUri(renderUri)` and `setTimedOut(true)`).
+      - Unmasks the skeleton bone and displays the fallback placeholder icon (`nutrition-outline`) with a subtle offline indicator, guaranteeing that a stalled image load never locks a thumbnail in an infinite skeleton.
   - `RecordCard.tsx`:
     - Inspect `isProductLoading` from `useProduct(record.productId)`.
     - If `record.customName` is absent and `isProductLoading` is true:
@@ -69,8 +72,8 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
    - Render `SkeletonBone` overlay with `SkeletonShimmer` while `!isSettled || (isLoading && !renderUri)`.
    - Wire `onLoadEnd={() => setSettledUri(renderUri)}` on `<Image>`.
    - Wire `onError={() => { setSettledUri(renderUri); onError(); }}`.
+   - Add `useEffect` 3,000ms safety timeout that forces `setSettledUri(renderUri)` and sets fallback placeholder if neither event fires.
    - Keep `<Image>` mounted with `style={[style, !isSettled && { opacity: 0 }]}` to eliminate flash during source transition.
-2. Update `RecordCard.tsx`:
    - Destructure `isLoading: isProductLoading` from `useProduct(record.productId ?? undefined)`.
    - Add condition:
      ```tsx

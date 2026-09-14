@@ -32,28 +32,20 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
         markSettled: (uri: string) => void;
       };
       ```
-    - Synchronous L1 cache hits mark URIs settled immediately on mount; unhydrated or remote URIs settle upon `markSettled(uri)` callback (`onLoadEnd`/`onError`).
-    - Includes a 3,000ms fail-safe timeout so slow image networks never trap the screen indefinitely in a skeleton.
+    - **Native Decode & Display Settlement**: Warm L1 cache hits seed the local file URI to `<Image>` immediately, but visual settlement strictly requires that source's native `<Image onLoadEnd>` (or `onError`) callback before marking settled. Warm hits do not bypass decode/display confirmation, ensuring cached images never unmask before pixels are actually visible on screen.
+    - **Dynamic URI Set Transition & Settlement Reset Contract**:
+      - Key internal settlement state to `urisKey = uris.join('|')`.
+      - When `uris` transitions from `[]` (during initial metadata loading) to a populated photo list, the tracker MUST reset its `settledUris` set, recompute `allSettled = false`, and start a fresh 3,000ms timer.
+      - Prevents an initial `allSettled = true` from an empty input from bypassing the aggregate skeleton when real photos subsequently resolve.
+    - **Per-Image 3,000ms Safety Timeout**:
+      - In `GalleryImageItem`, if neither `onLoadEnd` nor `onError` fires within 3,000ms, force settlement (`setSettledUri(renderUri)` and `onImageSettled?.(url)`).
+      - Unmasks the skeleton bone and displays the fallback placeholder (`placeholderIcon = 'image-outline'`) with an offline/retry indicator, guaranteeing that neither the aggregate screen nor individual gallery items can be locked indefinitely by a stalled network.
     - Both `record/[id].tsx` and `product/[id].tsx` gate full screen skeleton unmasking strictly on:
       `isDetailReady = dataReady && allVisibleImagesSettled`
     - In `ItemImageGallery.tsx`, accept `onImageSettled?: (uri: string) => void` and forward to `GalleryImageItem` so every rendered carousel and thumbnail image reports settlement up to the screen's aggregate gate.
     - In addition, individual `<GalleryImageItem>` elements retain per-image `SkeletonBone` overlays with smooth cross-fade (`fadeDuration={150}`) upon settlement.
   - `PantryHistoryView.tsx` Skeleton Integration & State Discrimination:
     - In `apps/mobile/src/api/records.ts`, export `usePantryHistoryRecordsWithStatus(filter)`: `{ records, isLoading, isResolved }`.
-    - In `PantryHistoryView.tsx`, compute:
-      ```tsx
-      const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);
-      ```
-    - While `showHistorySkeleton` is true, render `<PantryHistorySkeleton />` (2 KPI card bones + 3 history row bones).
-    - Eliminates the fresh-install startup gap before `runSync()` sets `isSyncing = true`. Once `initialSyncCompleted` settles, genuine empty history renders `renderEmpty()` immediately without delays or spurious skeleton timeouts.
-    - All Jest unit test suites passing.
-    - Zero TypeScript errors across `@expyrico/mobile`.
-    - Local Gradle debug APK compilation without Expo CLI or EAS.
-    - Physical device verification via `adb install -r`.
-- **Non-functional**:
-  - Android build policy strictly enforced (no Expo CLI/EAS; direct Gradle and `adb`).
-  - Expyrico color palette compliance across all skeleton states.
-
 ## Architecture
 
 ```
@@ -66,19 +58,12 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 |                        record/[id].tsx                          |
 |  - useRecordWithStatus(id) -> { record, isLoading, isResolved } |
 |  - useProduct(productId)   -> { product, isLoading, isError }  |
-|  - isProductPending = productId && !customName && isProdLoading |
+|  - useImageSettlementTracker(displayedPhotos)                   |
 |  +-----------------------------------------------------------+  |
-|  |  isLoading && !isResolved  -> <RecordDetailSkeleton />    |  |
-|  |  isResolved && !record     -> <ItemNotFoundView />        |  |
-|  |  isProductPending          -> <RecordDetailSkeleton />    |  |
-|  |  dataReady                 -> Check Image Settlement      |  |
-|  +-----------------------------------------------------------+  |
-|                                |                                |
-|                                v                                |
-|  +-----------------------------------------------------------+  |
-|  |  useImageSettlementTracker(photoUris)                     |  |
-|  |  - !allVisibleImagesSettled -> <RecordDetailSkeleton />   |  |
-|  |  - allVisibleImagesSettled  -> Render Record Content      |  |
+|  |  1. isRecordLoading && !isResolved -> <RecordSkeleton />  |  |
+|  |  2. isRecordResolved && !record    -> <ItemNotFoundView /> |  |
+|  |  3. isProductPending || !allSettled -> <RecordSkeleton /> |  |
+|  |  4. dataReady && allSettled        -> Render Record Screen|  |
 |  +-----------------------------------------------------------+  |
 +-----------------------------------------------------------------+
                                 |
@@ -86,11 +71,12 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 +-----------------------------------------------------------------+
 |                        product/[id].tsx                         |
 |  - useProduct(id) -> { data, isLoading, isError }               |
-|  - useImageSettlementTracker(photoUris)                         |
+|  - useImageSettlementTracker(uniquePhotos)                      |
 |  +-----------------------------------------------------------+  |
-|  |  isLoading || !allSettled   -> <ProductDetailSkeleton />  |  |
-|  |  dataReady && allSettled    -> Render Product Screen      |  |
-|  |  ItemImageGallery           -> Shared Gallery Skeletons   |  |
+|  |  1. isLoading && !data && !isError -> <ProductSkeleton /> |  |
+|  |  2. isError || (!isLoading && !data) -> <NotFoundView />  |  |
+|  |  3. !allVisibleImagesSettled       -> <ProductSkeleton /> |  |
+|  |  4. dataReady && allSettled        -> Render Product Screen|  |
 |  +-----------------------------------------------------------+  |
 +-----------------------------------------------------------------+
 ```
@@ -110,11 +96,12 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
   - `apps/mobile/app/(app)/product/[id].tsx`
   - `apps/mobile/src/features/records/PantryHistoryView.tsx`
 
-## Implementation Steps
 1. Create `apps/mobile/src/cache/useImageSettlementTracker.ts`:
-   - Check warm memory hits via `imageDiskCache.getSync()`.
-   - Track settlement set (`useState<Set<string>>`) and provide `markSettled(uri: string)`.
-   - Add 3,000ms timeout fallback that sets `allSettled = true`.
+   - Accept candidate URIs to track in the active viewport.
+   - Key state on `urisKey = uris.join('|')`; reset `settledUris` and restart timer on every URI set change.
+   - If `uris.length === 0`: `allSettled = true`. If `uris.length > 0`: `allSettled = false` until all URIs fire `markSettled`.
+   - Seed availability immediately from warm L1 cache if present, but track visual settlement exclusively via `markSettled(uri)` triggered by native `<Image onLoadEnd>` or `<Image onError>`.
+   - Add 3,000ms timeout fallback that sets `allSettled = true` to guarantee resilient recovery if network or decode stalls.
 2. Update `apps/mobile/src/api/records.ts`:
    - Implement and export `useRecordWithStatus(id)` and `usePantryHistoryRecordsWithStatus(filter)`.
 3. Create `RecordDetailSkeleton.tsx`, `ProductDetailSkeleton.tsx`, and `PantryHistorySkeleton.tsx`:
@@ -125,19 +112,79 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
    - In `GalleryImageItem`, consume `useCachedImage(url)`, derive `renderUri = uri || url`.
    - Key settlement on `settledUri === renderUri`.
    - When `onLoadEnd` or `onError` fires, call `setSettledUri(renderUri)` and `onImageSettled?.(url)`.
+   - Add 3,000ms safety timeout that forces `setSettledUri(renderUri)` and `onImageSettled?.(url)` if neither event fires.
    - Retain `SkeletonBone` overlay with `SkeletonShimmer` while `!isSettled`.
 5. Update `apps/mobile/app/(app)/record/[id].tsx`:
-   - Consume `useRecordWithStatus(id)`.
-   - Consume `useImageSettlementTracker(displayedPhotos.slice(0, 3))` and pass `markSettled` to `ItemImageGallery`.
-   - Gate:
+   - Consume `const { record, isLoading: isRecordLoading, isResolved: isRecordResolved } = useRecordWithStatus(id);`.
+   - **React Rules of Hooks Invariant**: Compute `displayedPhotos` via `useMemo` and invoke `useImageSettlementTracker(displayedPhotos)` unconditionally at the component top before ANY early return statements (returns `[]` safely when `!record`):
      ```tsx
-     const dataReady = isRecordResolved && record && !isProductPending;
-     if (!dataReady || !allVisibleImagesSettled) return <RecordDetailSkeleton />;
-     if (isRecordResolved && !record) return <ItemNotFoundView />;
+     const displayedPhotos: string[] = useMemo(() => {
+       if (!record) return [];
+       if (record.localPhotos && record.localPhotos.length > 0) return record.localPhotos;
+       const fallbackList = [
+         record.photoUrl,
+         product?.imageUrl,
+         ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
+       ].filter(Boolean) as string[];
+       return Array.from(new Set(fallbackList));
+     }, [record, product]);
+
+     const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
      ```
+   - Evaluate terminal not-found and readiness gates in strict sequential order:
+     ```tsx
+     // 1. In-flight local SQLite read: show skeleton
+     if (isRecordLoading && !isRecordResolved) return <RecordDetailSkeleton />;
+
+     // 2. Terminal Not-Found Branch (checked FIRST before metadata/image readiness):
+     if (isRecordResolved && !record) return <ItemNotFoundView />;
+
+     // 3. At this point, record is guaranteed non-null:
+     const isProductPending = Boolean(record.productId && !record.customName && isProductLoading && !isProductError);
+     const isDetailReady = !isProductPending && allVisibleImagesSettled;
+
+     // 4. If product metadata or images are pending, hold skeleton until ready:
+     if (!isDetailReady) return <RecordDetailSkeleton />;
+     ```
+   - Pass `onImageSettled={markSettled}` to `ItemImageGallery`.
 6. Update `apps/mobile/app/(app)/product/[id].tsx`:
-   - Consume `useImageSettlementTracker(uniquePhotos.slice(0, 3))` and pass `markSettled` to `ItemImageGallery`.
-   - Gate: `if (isLoading || !data || !allVisibleImagesSettled) return <ProductDetailSkeleton />;`.
+   - Destructure `const { data, isLoading, isError } = useProduct(id);`.
+   - Compute `uniquePhotos` via `useMemo` and invoke `useImageSettlementTracker(uniquePhotos)` unconditionally before any early returns:
+     ```tsx
+     const uniquePhotos: string[] = useMemo(() => {
+       if (!data) return [];
+       const photoList = [
+         data.imageUrl,
+         ...(data.photos?.map((p: any) => p.displayUrl || p.photoUrl || p.thumbnailUrl) || []),
+       ].filter(Boolean) as string[];
+       return Array.from(new Set(photoList));
+     }, [data]);
+
+     const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(uniquePhotos);
+     ```
+   - Evaluate terminal error and readiness gates in strict sequential order:
+     ```tsx
+     // 1. In-flight catalog query: show skeleton
+     if (isLoading && !data && !isError) return <ProductDetailSkeleton />;
+
+     // 2. Terminal Error / Not-Found Branch (404 or network failure):
+     if (isError || (!isLoading && !data)) {
+       return (
+         <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
+           <Ionicons name="cube-outline" size={36} color={theme.colors.textMuted} />
+           <Text style={[styles.errorTitle, { color: theme.colors.text }]}>Product not found</Text>
+           <Text style={[styles.errorSubtitle, { color: theme.colors.textMuted }]}>
+             This product could not be loaded or may have been removed.
+           </Text>
+           <Button label="Back" onPress={() => navigation.goBack()} />
+         </View>
+       );
+     }
+
+     // 3. At this point, data is guaranteed non-null:
+     if (!allVisibleImagesSettled) return <ProductDetailSkeleton />;
+     ```
+   - Pass `onImageSettled={markSettled}` to `ItemImageGallery`.
 7. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
    - Consume `usePantryHistoryRecordsWithStatus(activeFilter)`.
    - Compute: `const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);`.
