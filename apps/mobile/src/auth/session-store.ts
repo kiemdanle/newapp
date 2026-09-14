@@ -18,9 +18,12 @@ import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
 import { invalidateSyncEpoch } from '../db/sync';
+import { stopSyncTriggers } from '../db/triggers';
+import { deleteItem } from './secure-store';
 import { clearAllRecordPhotoAttachments } from '../features/records/record-photo-storage';
 const KEY_CACHED_USER = '@pantry_cached_user';
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
+  stopSyncTriggers();
   invalidateSyncEpoch();
   useSyncStateStore.getState().reset();
   if (userId) {
@@ -45,10 +48,9 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
     // eslint-disable-next-line no-console
     console.warn('Failed to reset local database', e);
   }
-  // Clear last sync timestamp so next user starts fresh
+  // Clear last sync timestamp from both secure storage and AsyncStorage so next user starts fresh
+  await deleteItem('pantry.lastSyncAt').catch(() => {});
   await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
-  // Reset pantry view mode to default list and clear local persistence
-  resetPantryViewModeState();
   await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();

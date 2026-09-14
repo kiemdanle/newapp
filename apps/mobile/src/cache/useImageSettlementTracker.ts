@@ -19,28 +19,41 @@ export function useImageSettlementTracker(
 
   const [settledUris, setSettledUris] = useState<Set<string>>(() => new Set());
   const [timedOut, setTimedOut] = useState(false);
-  const activeKeyRef = useRef(urisKey);
   const timerRef = useRef<NodeJS.Timeout | number | null>(null);
 
   useEffect(() => {
-    activeKeyRef.current = urisKey;
-
     if (timerRef.current !== null) {
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
 
+    setTimedOut(false);
+
+    // Prune settled set to keep already-settled surviving URIs
+    setSettledUris((prev) => {
+      const next = new Set<string>();
+      for (const u of validUris) {
+        if (prev.has(u)) {
+          next.add(u);
+        }
+      }
+      if (next.size === prev.size) {
+        let identical = true;
+        for (const u of next) {
+          if (!prev.has(u)) {
+            identical = false;
+            break;
+          }
+        }
+        if (identical) return prev;
+      }
+      return next;
+    });
     if (validUris.length === 0) {
-      setSettledUris(new Set());
-      setTimedOut(false);
       return;
     }
 
-    // Reset settlement state for new non-empty URI set
-    setSettledUris(new Set());
-    setTimedOut(false);
-
-    // Deterministic safety fail-safe timeout
+    // Start safety timeout for unsettled URIs
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       setTimedOut(true);
@@ -52,9 +65,7 @@ export function useImageSettlementTracker(
         timerRef.current = null;
       }
     };
-  }, [urisKey, validUris.length, timeoutMs]);
-
-  // Clear aggregate timer immediately once all valid URIs are settled
+  }, [urisKey, timeoutMs]);
   useEffect(() => {
     if (validUris.length > 0 && validUris.every((u) => settledUris.has(u))) {
       if (timerRef.current !== null) {
@@ -82,8 +93,9 @@ export function useImageSettlementTracker(
       if (timedOut) return true;
       return settledUris.has(uri);
     },
-    [validUris, settledUris, timedOut]
+    [validUris, settledUris, timedOut],
   );
+
   const allSettled = useMemo(() => {
     if (validUris.length === 0) return true;
     if (timedOut) return true;

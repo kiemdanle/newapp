@@ -31,11 +31,12 @@ export function ProductDetailSkeleton({
     >
       <SkeletonShimmer style={styles.scrollContent}>
         {/* 4:3 Hero Image Bone */}
+        {/* 4:3 Edge-to-Edge Hero Image Bone */}
         <View style={styles.heroContainer}>
           <SkeletonBone
             width="100%"
-            height={Math.round(INITIAL_WIDTH * 0.75)}
-            borderRadius={theme.radii.lg}
+            height={Math.min(540, Math.round(INITIAL_WIDTH * 0.75))}
+            borderRadius={0}
           />
         </View>
 
@@ -147,15 +148,17 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   scrollContent: {
-    padding: 16,
-    gap: 14,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    paddingBottom: 24,
+    gap: 0,
   },
   heroContainer: {
     width: '100%',
   },
   body: {
     width: '100%',
-    paddingTop: 8,
+    padding: 16,
   },
   row: {
     flexDirection: 'row',

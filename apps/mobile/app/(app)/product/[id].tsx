@@ -234,7 +234,7 @@ export default function ProductDetail() {
       {!allVisibleImagesSettled && (
         <ProductDetailSkeleton
           style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
+          pointerEvents="auto"
         />
       )}
     </View>

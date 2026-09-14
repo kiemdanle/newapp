@@ -200,6 +200,7 @@ export function RecordCard({
           <ProductThumbnail
             product={product}
             photoUrl={record.photoUrl}
+            hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
             size={52}
             style={{
               width: 52,

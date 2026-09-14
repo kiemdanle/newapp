@@ -538,7 +538,7 @@ export async function markRecordStatusWithQuantity(
 
       const historyClientId = uuidv4();
       const sourcePhotos = getRecordLocalPhotosSync(rec.clientId);
-      if (sourcePhotos && sourcePhotos.length > 0) {
+      if (sourcePhotos !== null && sourcePhotos !== undefined) {
         await saveRecordLocalPhotos(historyClientId, sourcePhotos);
       }
       const historyRec = await col.create((r) => {

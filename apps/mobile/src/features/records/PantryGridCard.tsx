@@ -307,6 +307,7 @@ export function PantryGridCard({
             <ProductThumbnail
               product={product}
               photoUrl={record.photoUrl}
+              hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
               size={72}
               style={{
                 width: 72,

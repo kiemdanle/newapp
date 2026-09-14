@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
@@ -7,13 +7,6 @@ import { PrivateProductImage } from '../api/product-private-image';
 import { useTheme } from '../theme/useTheme';
 import { useCachedImage } from '../cache/useCachedImage';
 import { SkeletonBone, SkeletonShimmer } from './skeleton';
-export interface ProductThumbnailProps {
-  product?: Product | null;
-  photoUrl?: string | null;
-  style?: StyleProp<ImageStyle>;
-  fallbackIcon?: string;
-  size?: number;
-}
 export function normalizePhotoUri(uri: string | null | undefined): string | null {
   if (!uri || typeof uri !== 'string') return null;
   const trimmed = uri.trim();
@@ -55,32 +48,45 @@ export function parsePhotoUris(raw: string | null | undefined): string[] {
   const single = normalizePhotoUri(trimmed);
   return single ? [single] : [];
 }
-/**
- * Universal product image thumbnail component that seamlessly resolves:
- * 1. Local or public photo URLs (from record.photoUrl or product.imageUrl).
- * 2. Public CDN photo URLs (from product.photos[0].displayUrl / thumbnailUrl).
- * 3. Authenticated private media for user-created draft/pending products (via PrivateProductImage).
- * 4. Elegant fallback placeholder icon when no image exists.
- */
+
+export interface ProductThumbnailProps {
+  product?: Product | {
+    id?: string;
+    imageUrl?: string | null;
+    status?: string | null;
+  } | null;
+  firstPhoto?: {
+    id?: string;
+    displayUrl?: string | null;
+    thumbnailUrl?: string | null;
+  } | null;
+  photoUrl?: string | null;
+  size?: number;
+  style?: StyleProp<ImageStyle>;
+  fallbackIcon?: string;
+  hasPhotoOverride?: boolean;
+}
 export function ProductThumbnail({
   product,
+  firstPhoto,
   photoUrl,
+  size = 48,
   style,
   fallbackIcon = 'nutrition-outline',
-  size = 52,
+  hasPhotoOverride = false,
 }: ProductThumbnailProps) {
   const theme = useTheme();
-  const [failedSources, setFailedSources] = useState<Set<string>>(new Set());
-  const firstPhoto = product?.photos && product.photos.length > 0 ? product.photos[0] : null;
+  const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
 
-  // Candidate sources in order of preference
+  const parsedUris = parsePhotoUris(photoUrl);
+  const primaryPhotoUrl = parsedUris[0] ?? photoUrl;
+
   const rawCandidates: Array<string | null | undefined> = [
-    ...parsePhotoUris(photoUrl),
     firstPhoto?.displayUrl,
     firstPhoto?.thumbnailUrl,
-    product?.imageUrl,
+    primaryPhotoUrl,
+    hasPhotoOverride ? null : product?.imageUrl,
   ];
-
   const candidates: string[] = [];
   for (const raw of rawCandidates) {
     const norm = normalizePhotoUri(raw);
@@ -123,10 +129,10 @@ export function ProductThumbnail({
 
   return (
     <View
+      testID="product-thumbnail-fallback"
       style={[
         style,
         {
-          alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: theme.colors.neutralLight,
         },
@@ -157,6 +163,8 @@ function CachedThumbnailImage({
   const renderUri = uri || candidate;
   const [settledUri, setSettledUri] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
+  const onTimeoutRef = useRef(onTimeout);
+  onTimeoutRef.current = onTimeout;
 
   const isSettled = Boolean(settledUri && settledUri === renderUri);
 
@@ -169,11 +177,10 @@ function CachedThumbnailImage({
     const timer = setTimeout(() => {
       setSettledUri(renderUri);
       setTimedOut(true);
-      onTimeout?.();
+      onTimeoutRef.current?.();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [renderUri, isSettled, onTimeout]);
-
+  }, [renderUri, isSettled]);
   if (timedOut) {
     return (
       <View

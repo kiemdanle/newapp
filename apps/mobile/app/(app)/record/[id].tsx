@@ -910,7 +910,7 @@ export default function RecordDetail() {
       {!allVisibleImagesSettled && (
         <RecordDetailSkeleton
           style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
+          pointerEvents="auto"
         />
       )}
     </View>

@@ -236,8 +236,50 @@ describe('Thumbnail & Card Inline Loading States', () => {
 
       // Skeleton should be unmasked and fallback icon shown
       expect(screen.queryByTestId('product-thumbnail-skeleton')).toBeNull();
+      expect(screen.getByTestId('product-thumbnail-fallback')).toBeTruthy();
 
       jest.useRealTimers();
+    });
+
+    it('same-source parent rerenders do not postpone the 3000ms safety timeout', () => {
+      jest.useFakeTimers();
+      const hungUri = 'https://cdn.example.com/hung-image-2.jpg';
+      const { rerender } = render(<ProductThumbnail photoUrl={hungUri} size={52} />);
+
+      // Advance 2500ms
+      act(() => {
+        jest.advanceTimersByTime(2500);
+      });
+      expect(screen.getByTestId('product-thumbnail-skeleton')).toBeTruthy();
+
+      // Rerender parent with same URI
+      rerender(<ProductThumbnail photoUrl={hungUri} size={52} />);
+
+      // Advance 500ms (total 3000ms from start)
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      // Must settle at 3000ms without being postponed!
+      expect(screen.queryByTestId('product-thumbnail-skeleton')).toBeNull();
+      expect(screen.getByTestId('product-thumbnail-fallback')).toBeTruthy();
+
+      jest.useRealTimers();
+    });
+
+    it('hasPhotoOverride true with no custom photos displays fallback icon and ignores catalog product image', () => {
+      const catalogProduct = { id: 'prod-1', imageUrl: 'https://cdn.example.com/catalog.jpg', status: 'active' as const };
+      render(
+        <ProductThumbnail
+          product={catalogProduct}
+          hasPhotoOverride={true}
+          size={52}
+        />
+      );
+
+      // Must not render CachedThumbnailImage or skeleton; must render fallback icon directly
+      expect(screen.queryByTestId('product-thumbnail-skeleton')).toBeNull();
+      expect(screen.queryByTestId('cached-thumbnail-image')).toBeNull();
     });
   });
 });

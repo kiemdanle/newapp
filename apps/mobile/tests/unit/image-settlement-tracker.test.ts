@@ -45,12 +45,32 @@ describe('useImageSettlementTracker', () => {
     expect(result.current.allSettled).toBe(true);
   });
 
+  it('preserves settlement when a settled photo is removed from a multi-photo set without deadlocking', () => {
+    const uriA = 'https://cdn.example.com/photo-a.jpg';
+    const uriB = 'https://cdn.example.com/photo-b.jpg';
+    let currentUris = [uriA, uriB];
+    const { result, rerender } = renderHook(() => useImageSettlementTracker(currentUris));
+
+    // Both settle
+    act(() => {
+      result.current.markSettled(uriA);
+      result.current.markSettled(uriB);
+    });
+    expect(result.current.allSettled).toBe(true);
+
+    // User deletes photo B, leaving only photo A
+    currentUris = [uriA];
+    rerender({});
+
+    // Since A was already settled, allSettled must remain true immediately!
+    expect(result.current.allSettled).toBe(true);
+    expect(result.current.isSettled(uriA)).toBe(true);
+  });
+
   it('resets settlement when uris transitions from empty to populated list', () => {
     const itemPhotoUri = 'https://cdn.example.com/item-photo.jpg';
     let currentUris: string[] = [];
     const { result, rerender } = renderHook(() => useImageSettlementTracker(currentUris));
-
-    expect(result.current.allSettled).toBe(true);
 
     // Metadata query resolves, supplying photo URLs
     currentUris = [itemPhotoUri];

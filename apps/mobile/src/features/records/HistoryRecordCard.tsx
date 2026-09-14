@@ -56,6 +56,7 @@ export function HistoryRecordCard({
         <ProductThumbnail
           product={product}
           photoUrl={record.photoUrl}
+          hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
           size={56}
           fallbackIcon={isConsumed ? 'checkmark-circle-outline' : 'trash-outline'}
           style={styles.thumbnail}
