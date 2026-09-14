@@ -34,9 +34,9 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
     - Apply identical inline loading protection for `displayName` and `brand`.
     - Provide a full 1:1 image skeleton bone inside the top card container while the large grid photo is streaming.
 - **Non-functional**:
+  - **Readiness Contract**: Card item readiness strictly satisfies `isReady = dataReady && allVisibleImagesSettled`. Skeleton bones remain active until BOTH metadata is available and the thumbnail image has settled (cache hit, load success, or error fallback).
   - Zero layout shift (height of skeleton text bones matches `lineHeight` of typography tokens exactly).
   - No flickering when navigating between already-cached items (synchronous L1 hits bypass skeleton bones completely).
-
 ## Architecture
 
 ```
@@ -84,7 +84,7 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
    - Test that `RecordCard` renders skeleton bones when `isProductLoading === true` and `record.customName === null`.
    - Test that `RecordCard` renders the actual product name when `product` is loaded.
    - Test that `ProductThumbnail` renders skeleton shimmer while image is loading.
-
+   - **Mock Slow Image Scenario**: Simulate instant metadata resolution with image bytes delayed by 500ms; verify the thumbnail skeleton remains visible until `onLoadEnd` fires and does not disappear prematurely on metadata resolution alone.
 ## Success Criteria
 - [ ] No appearance of the raw string `"Item"` when opening a record with an uncached product.
 - [ ] No blank white boxes while product images are downloading over network.

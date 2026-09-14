@@ -75,22 +75,34 @@ sequenceDiagram
 
 1. **Native Driver Exclusivity**:
    * All shimmer pulse animations MUST run exclusively via React Native's `Animated` with `useNativeDriver: true`. Zero JS-thread animation loops or bridge round-trips.
-2. **Strict Expyrico Palette Adherence**:
-   * Bone backgrounds and highlights MUST resolve strictly to tokens in `docs/design/expyrico-colour-palette.md` and `packages/theme/src/palette.ts`:
-     * **Light Theme**: Bone base `Stone #F0F0ED`, shimmer pulse highlight `#E6E6E3` (or `Warm White #FAFAF8`).
-     * **Dark Theme**: Bone base `#262624`, shimmer pulse highlight `#363632`.
-   * No ad-hoc neon hexes or muddy alpha overlays.
-3. **Accessibility & Reduced Motion**:
-   * Skeleton loaders MUST inspect `AccessibilityInfo.isReduceMotionEnabled()`. When reduced motion is enabled, animations stop and render a static bone to prevent vestibular discomfort.
+2. **Strict Expyrico Palette Adherence (useTheme Tokens Only)**:
+   * Bone backgrounds and highlights MUST resolve strictly via `useTheme().colors`:
+     * **Light Theme**: Base bone `theme.colors.neutralLight` (`#F0F0ED` Stone), pulse highlight `theme.colors.bgGlass` (`#D6F0E6` Mint Mist) or `theme.colors.bgElevated` (`#FAFAF8` Warm White).
+     * **Dark Theme**: Base bone `theme.colors.neutralLight` (`#2D3A34`), pulse highlight `theme.colors.bgGlass` (`#1F342C`).
+   * Zero ad-hoc dark hexes (`#262624`/`#363632` strictly prohibited).
+3. **Accessibility, Reduced Motion & Timer Cleanup**:
+   * Skeleton loaders MUST inspect `AccessibilityInfo.isReduceMotionEnabled()`. When reduced motion is enabled, animations stop and render a static bone.
+   * Every `Animated.loop` MUST be stopped on component unmount (`anim.stop()`) to prevent timer leaks during fast virtualized scrolling.
 4. **No Premature Empty State Flashes**:
    * `RecordList` MUST NEVER render the empty pantry card (`Start your pantry`) if an initial sync is active and records are empty. It MUST display `PantryListSkeleton` until sync settles.
 5. **No Raw "Item" Text Flash**:
    * Components MUST NEVER display the hardcoded string `"Item"` or empty spaces while `useProduct` is fetching uncached catalog data. They MUST render inline shimmering bones matching the text line height.
-6. **Detail View Metadata & Image Settlement Contract**:
-   * `record/[id].tsx` MUST NOT unmask prematurely when `record` is loaded from local SQLite if `record.productId && !record.customName && isProductLoading`. Both the linked product metadata AND the hero/gallery images MUST have explicit settlement gates (`onLoadEnd`/`onError`) with skeleton overlays before the full UI is revealed.
-7. **Source-Transition Settlement Reset**:
-   * `ProductThumbnail` and image loaders MUST key settlement on `renderUri = uri || candidate`. When `useCachedImage` hydrates and switches source from a remote candidate to a local cached URI, the settlement flag MUST reset to `false` and keep the skeleton bone active until the new source emits `onLoadEnd` or `onError`.
----
+6. **Readiness Contract Equation & Screen Inventory**:
+   * Skeleton dismissal MUST satisfy:
+     `isReady = dataReady && allVisibleImagesSettled`
+   * Skeletons MUST NOT be dismissed on metadata/query `isLoading` alone while image placeholders remain. Both metadata AND visible images (warm cache hit, `onLoadEnd`, or `onError` fallback) must reach terminal settlement before unmasking.
+   * Full screen inventory:
+     1. **Pantry List View**: `RecordCard.tsx` inside `RecordList.tsx`
+     2. **Pantry Grid View**: `PantryGridCard.tsx` inside `RecordList.tsx`
+     3. **Record Detail Screen**: `record/[id].tsx` with `RecordDetailSkeleton`
+     4. **Product Detail Screen**: `product/[id].tsx` with `ProductDetailSkeleton`
+     5. **Pantry History View**: `PantryHistoryView.tsx` with KPI & row bones
+7. **`useRecordWithStatus` State Discrimination**:
+   * `apps/mobile/src/api/records.ts` MUST export `useRecordWithStatus(id)` providing `{ record, isLoading, isResolved }`. Components must not gate on `!record` alone, cleanly distinguishing in-flight SQLite lookups from terminal "Item not found" states.
+8. **Source-Transition Settlement Reset in `ProductThumbnail`**:
+   * `ProductThumbnail` MUST key image settlement on `renderUri = uri || candidate`. When `useCachedImage` hydrates and switches source from remote candidate to cached URI, settlement state MUST reset to `false` until the new source settles.
+9. **Multi-Account & Session Reset**:
+   * `useSyncStateStore` MUST provide a `reset()` action wired into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`, ensuring new logins and account switches re-arm the initial sync skeleton.
 
 ## Validation Log
 
@@ -101,7 +113,7 @@ sequenceDiagram
 - Tier: Standard (Fact Checker + Contract Verifier)
 
 **Interview Decisions Confirmed:**
-1. **Shimmer Animation Style**: `Subtle Native Opacity Pulse` (0.4 to 1.0 at 850ms, Expyrico Stone `#F0F0ED` to `#E6E6E3` in light, `#262624` to `#363632` in dark, `useNativeDriver: true`).
+1. **Shimmer Animation Style**: `Subtle Native Opacity Pulse` (0.4 to 1.0 at 850ms, strictly via `useTheme().colors` tokens: `theme.colors.neutralLight` base `#F0F0ED` light / `#2D3A34` dark, `useNativeDriver: true`).
 2. **Fresh-Install Sync Timeout**: `4-Second Fail-Safe Timeout` with NetInfo offline check. Gracefully transitions to genuine empty state + offline banner if connection fails.
 3. **Skeleton Card Count**: `Viewport-Filling Preset` (5 items in List view, 6 items in 2-column Grid view).
 4. **Detail View Skeleton Scope**: `Full Structural Skeleton` (220px hero image bone, title bone, sentiment strip bone, date pills, action button bones).
@@ -125,12 +137,11 @@ sequenceDiagram
 
 ### Whole-Plan Consistency Sweep
 - Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents (`phase-01-skeleton-primitives.md`, `phase-02-thumbnail-and-card-loading.md`, `phase-03-initial-sync-and-pantry-skeleton.md`, `phase-04-detail-screens-and-e2e-verification.md`).
-- Confirmed all 3 advisory blockers formally integrated with concrete technical contracts:
-  1. Hero & gallery image settlement contract added to Phase 4 (`record/[id].tsx` and `product/[id].tsx`).
-  2. Thumbnail source-transition settlement reset contract added to Phase 2 (`ProductThumbnail.tsx`).
-  3. Linked product metadata gate added to Phase 4 (`isProductPending` with graceful `isProductError` fallback).
-- Confirmed all 4 user interview decisions propagated across phases:
-  1. Subtle native opacity pulse (0.4 to 1.0 at 850ms, Expyrico Stone tokens) in Phase 1.
-  2. 4-second fail-safe timeout with offline check in Phase 3.
-  3. Viewport-filling preset (5 List / 6 Grid) in Phase 3.
-  4. Full structural skeleton in Phase 4.
+- Confirmed all 5 advisory concerns and blockers formally integrated with concrete technical contracts:
+  1. **Strict Theme Tokens**: Zero ad-hoc dark hexes; skeleton base resolves to `theme.colors.neutralLight` (`#F0F0ED` light / `#2D3A34` dark) and highlight to `theme.colors.bgGlass`/`bgElevated`.
+  2. **Readiness Contract Equation**: Formalized as `dataReady && allVisibleImagesSettled` across all 5 inventory screens with mock slow-image test coverage.
+  3. **Thumbnail Source-Transition Settlement Reset**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
+  4. **useRecordWithStatus State Discrimination**: Distinct `isLoading`, `isResolved`, and `record` states in `apps/mobile/src/api/records.ts`, preventing false "Item not found" flashes or infinite skeletons.
+  5. **Multi-Account / Session Reset**: `useSyncStateStore.getState().reset()` hooked into `clearAllLocalUserData()` and `signIn()`, ensuring clean sync state for subsequent user logins.
+  6. **Component Parity**: Dedicated, unambiguous `RecordDetailSkeleton.tsx` and `ProductDetailSkeleton.tsx` exports.
+  7. **Test Command Alignment**: Explicit command targeting all 4 new unit test files.

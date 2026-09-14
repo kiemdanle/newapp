@@ -16,12 +16,14 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 - **Functional**:
   - `SkeletonShimmer`:
     - Wraps children in a native-driver pulse animation loop (`Animated.loop`) oscillating opacity between `0.4` and `1.0` over `850ms`.
+    - Clean unmount lifecycle: calls `anim.stop()` in `useEffect` cleanup to guarantee zero timer or memory leaks during fast virtualized scrolling.
     - Automatically checks `AccessibilityInfo.isReduceMotionEnabled()` and disables animation when user prefers reduced motion.
   - `SkeletonBone`:
     - Configurable bone primitive supporting `width` (number or percentage), `height`, `borderRadius`, and optional container styles.
-    - Resolves background color dynamically via `useTheme()`:
-      - Light theme: base `#F0F0ED` (Stone) with highlight `#E6E6E3`.
-      - Dark theme: base `#262624` with highlight `#363632`.
+    - Resolves background color strictly via `useTheme().colors`:
+      - Light theme: base `theme.colors.neutralLight` (`#F0F0ED` Stone) with highlight `theme.colors.bgGlass` (`#D6F0E6`) / `theme.colors.bgElevated` (`#FAFAF8`).
+      - Dark theme: base `theme.colors.neutralLight` (`#2D3A34`) with highlight `theme.colors.bgGlass` (`#1F342C`).
+      - Zero ad-hoc dark hexes (`#262624`/`#363632` strictly forbidden).
   - `RecordCardSkeleton`:
     - Exact dimensional replica of `RecordCard` in list view:
       - 52×52px squircle thumbnail bone (border radius 12px).
@@ -63,16 +65,11 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 |  (52px thumb + rows)  |               | (1:1 image + rows)    |
 +-----------------------+               +-----------------------+
 ```
-
-## Related Code Files
-- Create:
-  - `apps/mobile/src/components/skeleton/SkeletonShimmer.tsx`
-  - `apps/mobile/src/components/skeleton/SkeletonBone.tsx`
-  - `apps/mobile/src/components/skeleton/RecordCardSkeleton.tsx`
-  - `apps/mobile/src/components/skeleton/PantryGridCardSkeleton.tsx`
-  - `apps/mobile/src/components/skeleton/index.ts`
-  - `apps/mobile/tests/unit/skeleton-primitives.test.tsx`
-- Modify:
+1. Create `SkeletonShimmer.tsx`:
+   - Initialize `Animated.Value(0.4)`.
+   - Setup `const anim = Animated.loop(Animated.sequence([...]))` with `useNativeDriver: true`.
+   - Start animation on mount, and return `() => anim.stop()` in `useEffect` cleanup to prevent timer leaks.
+   - Add `AccessibilityInfo.isReduceMotionEnabled()` check on mount to bypass loop when enabled.
   - `packages/theme/src/tokens.ts` (export formal skeleton color tokens if needed)
 
 ## Implementation Steps
