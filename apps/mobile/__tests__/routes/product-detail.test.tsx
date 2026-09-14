@@ -5,6 +5,7 @@ import ProductDetail from '../../app/(app)/product/[id]';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
 import { createQueryClient } from '../../src/api/query-client';
+import { clearProductMemoryCache } from '../../src/api/products';
 import { navigation, __setRouteParams } from '../../tests/mocks/react-navigation';
 import { queueFetch, jsonResponse } from '../../tests/mocks/fetch';
 import { useSessionStore } from '../../src/auth/session-store';
@@ -98,6 +99,7 @@ const PRODUCT = {
 describe('<ProductDetail /> — Suggest an edit', () => {
   beforeEach(async () => {
     __reset();
+    clearProductMemoryCache();
     useThemeStore.setState({ themeId: 'expyrico', hydrated: false });
     await initThemeStore();
     useSessionStore.setState({ user: { id: 'user-1' } as never, accessToken: 'a', refreshToken: 'r', hydrated: true, pendingAuth: null });
@@ -106,6 +108,7 @@ describe('<ProductDetail /> — Suggest an edit', () => {
 
   afterEach(() => {
     cleanup();
+    clearProductMemoryCache();
     testQueryClient?.clear();
   });
   it('shows "Suggest an edit" for an active product and navigates to the edit screen', async () => {

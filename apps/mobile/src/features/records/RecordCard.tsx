@@ -58,6 +58,8 @@ export function RecordCard({
   const swipeableRef = useRef<Swipeable>(null);
   const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
   const hasQuotaError = useSyncQuotaErrorsStore((s) => s.errorClientIds.has(record.clientId));
+  const hasDirectPhoto = Boolean((record.localPhotos && record.localPhotos.length > 0) || record.photoUrl);
+  const isThumbnailLoading = Boolean(!hasDirectPhoto && record.productId && isProductLoading && !product);
   const isProductPending = Boolean(record.productId && !record.customName && isProductLoading);
   const isBrandPending = Boolean(record.productId && !record.brand && isProductLoading);
   const displayName = record.customName || product?.name || (isProductPending ? '' : 'Item');
@@ -201,7 +203,7 @@ export function RecordCard({
             product={product}
             photoUrl={record.photoUrl}
             hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
-            isLoading={Boolean(record.productId && isProductLoading && !product)}
+            isLoading={isThumbnailLoading}
             fallbackIcon="basket-outline"
             size={52}
             style={{

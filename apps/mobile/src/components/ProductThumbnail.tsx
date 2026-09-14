@@ -189,11 +189,10 @@ export function ProductThumbnail({
     </View>
   );
 }
-
 function CachedThumbnailImage({
   candidate,
   style,
-  fallbackIcon = 'nutrition-outline',
+  fallbackIcon = 'basket-outline',
   size = 48,
   onError,
   onTimeout,
@@ -262,6 +261,7 @@ function CachedThumbnailImage({
       </View>
     );
   }
+
   return (
     <View style={[style, styles.container]}>
       <Image

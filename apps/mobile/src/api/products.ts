@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import type {
   Product,
@@ -38,12 +39,62 @@ export function useProductSearch(q: string, enabled: boolean) {
   });
 }
 
+const PRODUCT_CACHE_STORAGE_KEY = '@expyrico_product_cache_v1';
+const productMemoryCache = new Map<string, ProductWithReviews>();
+let isProductCacheHydrated = false;
+
+export function clearProductMemoryCache(): void {
+  productMemoryCache.clear();
+}
+// Eagerly hydrate persisted product cache from AsyncStorage into memory on startup
+async function loadPersistedProductCache(): Promise<void> {
+  if (isProductCacheHydrated) return;
+  try {
+    const raw = await AsyncStorage.getItem(PRODUCT_CACHE_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, ProductWithReviews>;
+      for (const [id, prod] of Object.entries(parsed)) {
+        productMemoryCache.set(id, prod);
+      }
+    }
+  } catch {
+    // Best effort hydration
+  } finally {
+    isProductCacheHydrated = true;
+  }
+}
+
+void loadPersistedProductCache();
+
+let persistTimer: NodeJS.Timeout | null = null;
+function schedulePersistProductCache(): void {
+  if (persistTimer) return;
+  persistTimer = setTimeout(async () => {
+    persistTimer = null;
+    try {
+      const obj: Record<string, ProductWithReviews> = {};
+      for (const [id, prod] of productMemoryCache.entries()) {
+        obj[id] = prod;
+      }
+      await AsyncStorage.setItem(PRODUCT_CACHE_STORAGE_KEY, JSON.stringify(obj));
+    } catch {
+      // Best effort persist
+    }
+  }, 1000);
+}
+
 export function useProduct(id: string | undefined) {
   return useQuery({
     queryKey: ['products', id],
     enabled: Boolean(id),
+    initialData: () => (id ? productMemoryCache.get(id) : undefined),
     queryFn: async () => {
-      return await apiClient.get<ProductWithReviews>(`/products/${id}`);
+      const data = await apiClient.get<ProductWithReviews>(`/products/${id}`);
+      if (id && data) {
+        productMemoryCache.set(id, data);
+        schedulePersistProductCache();
+      }
+      return data;
     },
   });
 }

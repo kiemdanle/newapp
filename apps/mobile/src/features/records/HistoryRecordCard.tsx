@@ -28,6 +28,8 @@ export function HistoryRecordCard({
 }: HistoryRecordCardProps) {
   const theme = useTheme();
   const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
+  const hasDirectPhoto = Boolean((record.localPhotos && record.localPhotos.length > 0) || record.photoUrl);
+  const isThumbnailLoading = Boolean(!hasDirectPhoto && record.productId && isProductLoading && !product);
   const displayName = record.customName || product?.name || 'Pantry Item';
   const category = record.category || product?.category;
   const isConsumed = record.status === 'consumed';
@@ -57,7 +59,7 @@ export function HistoryRecordCard({
           product={product}
           photoUrl={record.photoUrl}
           hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
-          isLoading={Boolean(record.productId && isProductLoading && !product)}
+          isLoading={isThumbnailLoading}
           size={56}
           fallbackIcon={isConsumed ? 'checkmark-circle-outline' : 'trash-outline'}
           style={styles.thumbnail}

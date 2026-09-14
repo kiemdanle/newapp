@@ -60,6 +60,8 @@ export function PantryGridCard({
   const isProcessingRef = useRef(false);
   const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
 
+  const hasDirectPhoto = Boolean((record.localPhotos && record.localPhotos.length > 0) || record.photoUrl);
+  const isThumbnailLoading = Boolean(!hasDirectPhoto && record.productId && isProductLoading && !product);
   const isProductPending = Boolean(record.productId && !record.customName && isProductLoading);
   const isBrandPending = Boolean(record.productId && !record.brand && isProductLoading);
   const displayName = record.customName || product?.name || (isProductPending ? '' : 'Item');
@@ -305,10 +307,9 @@ export function PantryGridCard({
             </View>
           <View style={styles.thumbnailContainer}>
             <ProductThumbnail
-              product={product}
+              isLoading={isThumbnailLoading}
               photoUrl={record.photoUrl}
               hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
-              isLoading={Boolean(record.productId && isProductLoading && !product)}
               fallbackIcon="basket-outline"
               size={72}
               style={{
