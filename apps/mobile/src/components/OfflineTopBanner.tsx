@@ -5,6 +5,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
 import { useConnectionStore } from '../store/connectionStore';
 import { useConnectionGuardStore } from '../store/connectionGuardStore';
+import { useSyncStateStore } from '../store/syncStateStore';
 
 export function OfflineTopBanner() {
   const theme = useTheme();
@@ -12,9 +13,12 @@ export function OfflineTopBanner() {
   const isDark = theme.scheme === 'dark';
 
   const status = useConnectionStore((s) => s.status);
+  const isSyncing = useSyncStateStore((s) => s.isSyncing);
+  const initialSyncCompleted = useSyncStateStore((s) => s.initialSyncCompleted);
   const requireServerConnection = useConnectionGuardStore((s) => s.requireServerConnection);
 
-  if (status === 'ready' || status === 'checking') {
+  // Never display offline warning while the app is actively syncing or during initial boot
+  if (isSyncing || !initialSyncCompleted || status === 'ready' || status === 'checking') {
     return null;
   }
 

@@ -26,10 +26,12 @@ export const useSyncStateStore = create<SyncState>((set, get) => ({
     initialSyncTimer = setTimeout(() => {
       initialSyncTimer = null;
       if (!get().initialSyncCompleted) {
+        const isCurrentlySyncing = get().isSyncing;
         set({
           initialSyncCompleted: true,
-          lastSyncError: 'timeout',
-          isSyncing: false,
+          // If the network request is still actively running, do not claim timeout/offline
+          lastSyncError: isCurrentlySyncing ? null : 'timeout',
+          isSyncing: isCurrentlySyncing,
         });
       }
     }, 4000);
