@@ -11,9 +11,9 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { getLocationIcon } from '../../utils/locations';
-import { useSyncQuotaErrorsStore } from '../../store/syncQuotaErrorsStore';
-import { SkeletonBone } from '../../components/skeleton';
-interface Props {
+ import { useSyncQuotaErrorsStore } from '../../store/syncQuotaErrorsStore';
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
+ interface Props {
   record: LocalRecord;
   onPress: () => void;
   householdName?: string | null;
@@ -213,13 +213,14 @@ export function RecordCard({
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 {isBrandPending ? (
-                  <SkeletonBone
-                    testID="record-card-brand-skeleton"
-                    width="35%"
-                    height={10}
-                    borderRadius={3}
-                    style={{ marginBottom: 4 }}
-                  />
+                  <SkeletonShimmer style={{ marginBottom: 4 }}>
+                    <SkeletonBone
+                      testID="record-card-brand-skeleton"
+                      width="35%"
+                      height={10}
+                      borderRadius={3}
+                    />
+                  </SkeletonShimmer>
                 ) : brand ? (
                   <Text
                     style={{
@@ -250,13 +251,14 @@ export function RecordCard({
                   </Text>
                 ) : null}
                 {isProductPending ? (
-                  <SkeletonBone
-                    testID="record-card-title-skeleton"
-                    width="60%"
-                    height={16}
-                    borderRadius={4}
-                    style={{ marginVertical: 2 }}
-                  />
+                  <SkeletonShimmer style={{ marginVertical: 2 }}>
+                    <SkeletonBone
+                      testID="record-card-title-skeleton"
+                      width="60%"
+                      height={16}
+                      borderRadius={4}
+                    />
+                  </SkeletonShimmer>
                 ) : (
                   <Text
                     style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}

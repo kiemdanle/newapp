@@ -20,9 +20,15 @@ export function useImageSettlementTracker(
   const [settledUris, setSettledUris] = useState<Set<string>>(() => new Set());
   const [timedOut, setTimedOut] = useState(false);
   const activeKeyRef = useRef(urisKey);
+  const timerRef = useRef<NodeJS.Timeout | number | null>(null);
 
   useEffect(() => {
     activeKeyRef.current = urisKey;
+
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
 
     if (validUris.length === 0) {
       setSettledUris(new Set());
@@ -35,14 +41,28 @@ export function useImageSettlementTracker(
     setTimedOut(false);
 
     // Deterministic safety fail-safe timeout
-    const timer = setTimeout(() => {
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       setTimedOut(true);
     }, timeoutMs);
 
     return () => {
-      clearTimeout(timer);
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
     };
   }, [urisKey, validUris.length, timeoutMs]);
+
+  // Clear aggregate timer immediately once all valid URIs are settled
+  useEffect(() => {
+    if (validUris.length > 0 && validUris.every((u) => settledUris.has(u))) {
+      if (timerRef.current !== null) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  }, [validUris, settledUris]);
 
   const markSettled = useCallback((uri: string) => {
     if (!uri) return;
@@ -58,10 +78,11 @@ export function useImageSettlementTracker(
     (uri: string) => {
       if (!uri) return true;
       if (validUris.length === 0) return true;
+      if (!validUris.includes(uri)) return true;
       if (timedOut) return true;
       return settledUris.has(uri);
     },
-    [validUris.length, settledUris, timedOut]
+    [validUris, settledUris, timedOut]
   );
   const allSettled = useMemo(() => {
     if (validUris.length === 0) return true;

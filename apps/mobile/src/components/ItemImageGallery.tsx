@@ -359,6 +359,10 @@ function GalleryImageItem({
   const [settledUri, setSettledUri] = useState<string | null>(null);
   const [hasError, setHasError] = useState(false);
 
+  useEffect(() => {
+    setHasError(false);
+  }, [renderUri]);
+
   const isSettled = Boolean(settledUri && settledUri === renderUri);
 
   useEffect(() => {

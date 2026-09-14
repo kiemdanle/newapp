@@ -10,9 +10,9 @@ import { formatDate } from '../../utils/country-format';
 import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
-import { PantryGridActionDrawer } from './PantryGridActionDrawer';
-import { SkeletonBone } from '../../components/skeleton';
-import { getLocationIcon } from '../../utils/locations';
+ import { PantryGridActionDrawer } from './PantryGridActionDrawer';
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
+ import { getLocationIcon } from '../../utils/locations';
 export interface PantryGridCardProps {
   record: LocalRecord;
   onPress: () => void;
@@ -320,13 +320,14 @@ export function PantryGridCard({
           <View style={styles.detailsContainer}>
             <View style={styles.brandRow}>
               {isBrandPending ? (
-                <SkeletonBone
-                  testID="grid-card-brand-skeleton"
-                  width="40%"
-                  height={10}
-                  borderRadius={3}
-                  style={{ marginBottom: 2 }}
-                />
+                <SkeletonShimmer style={{ width: '100%', marginBottom: 2 }}>
+                  <SkeletonBone
+                    testID="grid-card-brand-skeleton"
+                    width="40%"
+                    height={10}
+                    borderRadius={3}
+                  />
+                </SkeletonShimmer>
               ) : brand ? (
                 <Text
                   style={[styles.brandText, { color: theme.colors.textMuted }]}
@@ -347,7 +348,7 @@ export function PantryGridCard({
             </View>
 
             {isProductPending ? (
-              <View style={styles.titleBlock}>
+              <SkeletonShimmer style={styles.titleBlock}>
                 <SkeletonBone
                   testID="grid-card-title-skeleton"
                   width="85%"
@@ -356,7 +357,7 @@ export function PantryGridCard({
                   style={{ marginBottom: 4 }}
                 />
                 <SkeletonBone width="50%" height={14} borderRadius={3} />
-              </View>
+              </SkeletonShimmer>
             ) : (
               <Text
                 style={[

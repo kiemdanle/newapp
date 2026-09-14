@@ -168,10 +168,10 @@ describe('Detail Skeletons & Screen Overlay Lifecycle', () => {
       expect(screen.getByTestId('record-detail-skeleton')).toBeTruthy();
     });
 
-    it('hero and thumbnail duplicate URL invariant: thumbnail decode does not dismiss hero overlay prematurely', () => {
+    it('multi-photo settlement invariant: overlay remains active while photos settle', () => {
       const recordWithMultiplePhotos: LocalRecord = {
         ...sampleRecord,
-        localPhotos: ['https://cdn.example.com/same-apple.jpg', 'https://cdn.example.com/photo2.jpg'],
+        localPhotos: ['https://cdn.example.com/apple1.jpg', 'https://cdn.example.com/apple2.jpg'],
       };
 
       (useRecordWithStatus as jest.Mock).mockReturnValue({
@@ -187,7 +187,9 @@ describe('Detail Skeletons & Screen Overlay Lifecycle', () => {
 
       renderWithTheme(<RecordDetail />, 'expyrico');
 
-      // Both hero and thumbnail share the same URL: overlay remains active until hero decodes
+      // Real screen content mounts underneath
+      expect(screen.getByText('Crisp Apples')).toBeTruthy();
+      // Overlay remains active until all photos settle
       expect(screen.getByTestId('record-detail-skeleton')).toBeTruthy();
     });
   });

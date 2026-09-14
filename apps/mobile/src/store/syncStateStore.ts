@@ -36,7 +36,7 @@ export const useSyncStateStore = create<SyncState>((set, get) => ({
   },
 
   setSyncStart: () => {
-    set({ isSyncing: true });
+    set({ isSyncing: true, lastSyncError: null });
   },
 
   setSyncSuccess: () => {

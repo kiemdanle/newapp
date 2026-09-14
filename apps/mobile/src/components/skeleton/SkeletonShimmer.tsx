@@ -5,16 +5,17 @@ interface SkeletonShimmerProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   duration?: number;
+  testID?: string;
 }
 
 export function SkeletonShimmer({
   children,
   style,
   duration = 850,
+  testID,
 }: SkeletonShimmerProps) {
   const [reduceMotion, setReduceMotion] = useState(false);
   const opacityAnim = useRef(new Animated.Value(0.4)).current;
-
   useEffect(() => {
     let isMounted = true;
 
@@ -72,7 +73,7 @@ export function SkeletonShimmer({
   }, [opacityAnim, duration, reduceMotion]);
 
   return (
-    <Animated.View style={[{ opacity: opacityAnim }, style]}>
+    <Animated.View testID={testID} style={[{ opacity: opacityAnim }, style]}>
       {children}
     </Animated.View>
   );

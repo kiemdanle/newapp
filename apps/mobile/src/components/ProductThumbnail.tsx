@@ -97,8 +97,13 @@ export function ProductThumbnail({
       <CachedThumbnailImage
         candidate={activeCandidate}
         style={style}
+        fallbackIcon={fallbackIcon}
+        size={size}
         onError={() => {
           setFailedSources((prev) => new Set([...prev, activeCandidate]));
+        }}
+        onTimeout={() => {
+          setFailedSources((prev) => new Set([...prev, ...candidates]));
         }}
       />
     );
@@ -135,27 +140,58 @@ export function ProductThumbnail({
 function CachedThumbnailImage({
   candidate,
   style,
+  fallbackIcon = 'nutrition-outline',
+  size = 48,
   onError,
+  onTimeout,
 }: {
   candidate: string;
   style?: StyleProp<ImageStyle>;
+  fallbackIcon?: string;
+  size?: number;
   onError: () => void;
+  onTimeout?: () => void;
 }) {
+  const theme = useTheme();
   const { uri } = useCachedImage(candidate);
   const renderUri = uri || candidate;
   const [settledUri, setSettledUri] = useState<string | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const isSettled = Boolean(settledUri && settledUri === renderUri);
+
+  useEffect(() => {
+    setTimedOut(false);
+  }, [renderUri]);
 
   useEffect(() => {
     if (isSettled) return;
     const timer = setTimeout(() => {
       setSettledUri(renderUri);
-      onError();
+      setTimedOut(true);
+      onTimeout?.();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [renderUri, isSettled, onError]);
+  }, [renderUri, isSettled, onTimeout]);
 
+  if (timedOut) {
+    return (
+      <View
+        testID="product-thumbnail-fallback"
+        style={[
+          style,
+          styles.container,
+          {
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.neutralLight,
+          },
+        ]}
+      >
+        <Ionicons name={fallbackIcon as never} size={size * 0.46} color={theme.colors.textMuted} />
+      </View>
+    );
+  }
   return (
     <View style={[style, styles.container]}>
       <Image

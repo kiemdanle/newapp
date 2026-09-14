@@ -49,7 +49,7 @@ function toLocal(r: RecordModel): LocalRecord {
   }
   const localAttachments = getRecordLocalPhotosSync(r.clientId);
   const effectivePhotoUrl =
-    localAttachments.length > 0
+    localAttachments && localAttachments.length > 0
       ? localAttachments.length > 1
         ? JSON.stringify(localAttachments)
         : localAttachments[0]
@@ -538,10 +538,9 @@ export async function markRecordStatusWithQuantity(
 
       const historyClientId = uuidv4();
       const sourcePhotos = getRecordLocalPhotosSync(rec.clientId);
-      if (sourcePhotos.length > 0) {
+      if (sourcePhotos && sourcePhotos.length > 0) {
         await saveRecordLocalPhotos(historyClientId, sourcePhotos);
       }
-
       const historyRec = await col.create((r) => {
         r.clientId = historyClientId;
         r.productId = rec.productId;

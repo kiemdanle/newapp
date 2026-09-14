@@ -125,10 +125,9 @@ describe('Skeleton Primitives & Components', () => {
 
     it('respects reduced motion setting and sets static opacity', async () => {
       jest.spyOn(AccessibilityInfo, 'isReduceMotionEnabled').mockResolvedValue(true);
-      const loopSpy = jest.spyOn(Animated, 'loop');
 
       render(
-        <SkeletonShimmer>
+        <SkeletonShimmer testID="shimmer-reduced">
           <SkeletonBone testID="reduced-bone" />
         </SkeletonShimmer>
       );
@@ -138,6 +137,10 @@ describe('Skeleton Primitives & Components', () => {
       });
 
       expect(screen.getByTestId('reduced-bone')).toBeTruthy();
+      const shimmer = screen.getByTestId('shimmer-reduced');
+      expect(shimmer.props.style).toEqual(
+        expect.objectContaining({ opacity: 0.7 })
+      );
     });
   });
 

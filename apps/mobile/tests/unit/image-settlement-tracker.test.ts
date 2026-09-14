@@ -116,4 +116,18 @@ describe('useImageSettlementTracker', () => {
     unmount();
     expect(clearTimeoutSpy).toHaveBeenCalled();
   });
+
+  it('clears safety timeout immediately once all URIs settle', () => {
+    const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
+    const photoUri = 'https://cdn.example.com/photo.jpg';
+    const uris = [photoUri];
+    const { result } = renderHook(() => useImageSettlementTracker(uris));
+
+    act(() => {
+      result.current.markSettled(photoUri);
+    });
+
+    expect(result.current.allSettled).toBe(true);
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
 });

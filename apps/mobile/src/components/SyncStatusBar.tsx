@@ -19,12 +19,13 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
   if (!initialSyncCompleted && lastSyncError !== 'timeout') {
     return null;
   }
+  const shouldShowSyncing = isSyncing && initialSyncCompleted;
+  const isTimeout = !isSyncing && lastSyncError === 'timeout';
+  const isGenericError = !isSyncing && Boolean(lastSyncError) && !isTimeout;
 
-  if (!isSyncing && lastSyncError !== 'timeout' && !lastSyncError) {
+  if (!shouldShowSyncing && !isTimeout && !isGenericError) {
     return null;
   }
-  const isTimeout = lastSyncError === 'timeout';
-
   const handlePress = () => {
     if (!isSyncing) {
       void runSync();

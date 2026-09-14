@@ -22,8 +22,8 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
       - `if (isProductPending) return <RecordDetailSkeleton />;`
     - Prevents masking a missing record forever or flashing "Item not found" before WatermelonDB emits.
   - Dedicated Skeleton Components:
-    - `RecordDetailSkeleton.tsx`: Tailored to pantry items (220px hero image bone, title bone, sentiment strip bone, expiry date pills, location, store, notes, and action button bones).
-    - `ProductDetailSkeleton.tsx`: Tailored to catalog products (220px hero image bone, title bone, barcode chip, categories, brand, default shelf-life, and community review breakdown bones).
+    - `RecordDetailSkeleton.tsx`: Tailored to pantry items (responsive 4:3 hero image bone matching `Math.round(containerWidth * 0.75)`, title bone, sentiment strip bone, expiry date pills, location, store, notes, and action button bones).
+    - `ProductDetailSkeleton.tsx`: Tailored to catalog products (responsive 4:3 hero image bone matching `Math.round(containerWidth * 0.75)`, title bone, barcode chip, categories, brand, default shelf-life, and community review breakdown bones).
   - **Hero & Gallery Image Settlement Contract & Aggregate Tracker**:
     - In `apps/mobile/src/cache/useImageSettlementTracker.ts`, export:
       ```tsx

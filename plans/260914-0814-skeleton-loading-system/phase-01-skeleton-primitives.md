@@ -33,11 +33,12 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
       - Identical outer padding, margin, card border, and elevated card background.
   - `PantryGridCardSkeleton`:
     - Exact dimensional replica of `PantryGridCard` in 2-column grid view:
-      - Aspect-ratio 1:1 image square bone with rounded top corners.
-      - Title bone (height 14px, width 75%).
-      - Expiry pill bone (height 20px, width 60px).
-      - Identical card elevation, border, and border radius (14px).
-- **Non-functional**:
+      - 16px card border radius (`theme.border.radius.xl` / 16px).
+      - Top action row: check button bone (20×20px) and status pill bone (width 48px, height 22px).
+      - Centered 72×72px squircle thumbnail bone (border radius 12px).
+      - Title block: two-line title block bone (height 36px, width 100%).
+      - Footer metadata bone (height 12px, width 55%).
+      - Identical card elevation, border, and elevated card background.
   - `useNativeDriver: true` mandatory for all animation loops. Zero bridge traffic during active animation.
   - No external heavy animation libraries; native `Animated` only.
   - Zero layout shift (Cumulative Layout Shift = 0) when transitioning from skeleton to real content.
@@ -60,10 +61,10 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
 +---------------------------------------------------------------+
             |                                       |
             v                                       v
-+-----------------------+               +-----------------------+
-|  RecordCardSkeleton   |               | PantryGridCardSkeleton|
-|  (52px thumb + rows)  |               | (1:1 image + rows)    |
-+-----------------------+               +-----------------------+
+      +-----------------------+               +-----------------------+
+      |  RecordCardSkeleton   |               | PantryGridCardSkeleton|
+      |  (52px thumb + rows)  |               | (72px thumb + top row)|
+      +-----------------------+               +-----------------------+
 ```
 
 ## Related Code Files
@@ -90,8 +91,7 @@ Build the foundational skeleton loading components and native-driver pulse/shimm
    - Structure container matching `styles.card` in `RecordCard.tsx` (min-height 76px, padding 12px, border, rounded 14px).
    - Lay out 52×52px thumbnail on the left, vertical text stack in middle, pill bone on the right.
 4. Create `PantryGridCardSkeleton.tsx`:
-   - Structure container matching `PantryGridCard.tsx` (aspect-ratio 1:1 image box, content pad, pill bone).
-5. Create `apps/mobile/tests/unit/skeleton-primitives.test.tsx`:
+   - Structure container matching `PantryGridCard.tsx` (16px corner radius, top action row, 72×72px thumbnail squircle, 36px title block, footer metadata).
    - Verify `SkeletonBone` renders with correct dimensional props and styles.
    - Verify `RecordCardSkeleton` and `PantryGridCardSkeleton` render without crashing.
    - Verify dark mode color resolution (`theme.colors.neutralLight`).

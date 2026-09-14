@@ -75,9 +75,15 @@ export async function getRecordLocalPhotos(clientId: string): Promise<string[]> 
   const map = await loadAttachments();
   return map[clientId] ?? [];
 }
+export function hasRecordLocalPhotosSync(clientId: string): boolean {
+  return clientId in memoryCache;
+}
 
-export function getRecordLocalPhotosSync(clientId: string): string[] {
-  return memoryCache[clientId] ?? [];
+export function getRecordLocalPhotosSync(clientId: string): string[] | null {
+  if (clientId in memoryCache) {
+    return memoryCache[clientId] ?? [];
+  }
+  return null;
 }
 
 export async function saveRecordLocalPhotos(clientId: string, paths: string[]): Promise<void> {
@@ -85,11 +91,7 @@ export async function saveRecordLocalPhotos(clientId: string, paths: string[]): 
     if (opEpoch !== storageEpoch) return;
     const map = await loadAttachments();
     if (opEpoch !== storageEpoch) return;
-    if (!paths || paths.length === 0) {
-      delete map[clientId];
-    } else {
-      map[clientId] = paths.slice(0, 20);
-    }
+    map[clientId] = (paths || []).slice(0, 20);
     memoryCache = { ...map };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
     if (opEpoch !== storageEpoch) return;
@@ -123,9 +125,9 @@ export async function clearAllRecordPhotoAttachments(): Promise<void> {
   });
 }
 
-export function useRecordLocalPhotos(clientId?: string | null): string[] {
+export function useRecordPhotoStorage(clientId?: string | null): string[] {
   const [photos, setPhotos] = useState<string[]>(() =>
-    clientId ? getRecordLocalPhotosSync(clientId) : [],
+    clientId ? getRecordLocalPhotosSync(clientId) ?? [] : [],
   );
 
   useEffect(() => {
