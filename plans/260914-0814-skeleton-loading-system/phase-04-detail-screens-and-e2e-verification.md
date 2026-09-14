@@ -24,17 +24,28 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
   - Dedicated Skeleton Components:
     - `RecordDetailSkeleton.tsx`: Tailored to pantry items (220px hero image bone, title bone, sentiment strip bone, expiry date pills, location, store, notes, and action button bones).
     - `ProductDetailSkeleton.tsx`: Tailored to catalog products (220px hero image bone, title bone, barcode chip, categories, brand, default shelf-life, and community review breakdown bones).
-  - **Hero & Gallery Image Settlement Contract**:
-    - In both `record/[id].tsx` and `product/[id].tsx`, readiness satisfies `dataReady && allVisibleImagesSettled`.
-    - While the active hero photo has not fired `onLoadEnd` or `onError`, display an absolute `SkeletonBone` overlay (220px height) over the hero container.
-    - On `onLoadEnd`, smoothly fade in the image (`fadeDuration={150}`).
-    - For the thumbnail gallery strip, render individual thumbnail skeleton bones until each respective candidate emits `onLoadEnd` or `onError`.
-    - On error, display the fallback image placeholder with an error retry indicator.
+  - **Hero & Gallery Image Settlement Contract & Aggregate Tracker**:
+    - In `apps/mobile/src/cache/useImageSettlementTracker.ts`, export:
+      ```tsx
+      export function useImageSettlementTracker(uris: string[], options?: { timeoutMs?: number }): {
+        allSettled: boolean;
+        markSettled: (uri: string) => void;
+      };
+      ```
+    - Synchronous L1 cache hits mark URIs settled immediately on mount; unhydrated or remote URIs settle upon `markSettled(uri)` callback (`onLoadEnd`/`onError`).
+    - Includes a 3,000ms fail-safe timeout so slow image networks never trap the screen indefinitely in a skeleton.
+    - Both `record/[id].tsx` and `product/[id].tsx` gate full screen skeleton unmasking strictly on:
+      `isDetailReady = dataReady && allVisibleImagesSettled`
+    - In `ItemImageGallery.tsx`, accept `onImageSettled?: (uri: string) => void` and forward to `GalleryImageItem` so every rendered carousel and thumbnail image reports settlement up to the screen's aggregate gate.
+    - In addition, individual `<GalleryImageItem>` elements retain per-image `SkeletonBone` overlays with smooth cross-fade (`fadeDuration={150}`) upon settlement.
   - `PantryHistoryView.tsx` Skeleton Integration & State Discrimination:
     - In `apps/mobile/src/api/records.ts`, export `usePantryHistoryRecordsWithStatus(filter)`: `{ records, isLoading, isResolved }`.
-    - In `PantryHistoryView.tsx`, compute `const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && isSyncing);`.
+    - In `PantryHistoryView.tsx`, compute:
+      ```tsx
+      const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);
+      ```
     - While `showHistorySkeleton` is true, render `<PantryHistorySkeleton />` (2 KPI card bones + 3 history row bones).
-    - When `isHistoryResolved` is true and `displayRecords.length === 0`, render `renderEmpty()` immediately without delays or spurious skeleton timeouts.
+    - Eliminates the fresh-install startup gap before `runSync()` sets `isSyncing = true`. Once `initialSyncCompleted` settles, genuine empty history renders `renderEmpty()` immediately without delays or spurious skeleton timeouts.
     - All Jest unit test suites passing.
     - Zero TypeScript errors across `@expyrico/mobile`.
     - Local Gradle debug APK compilation without Expo CLI or EAS.
@@ -52,61 +63,96 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
                                 |
                                 v
 +-----------------------------------------------------------------+
-|                   record/[id].tsx / product/[id].tsx            |
-|  - useRecord(id) / useProduct(id)                               |
+|                        record/[id].tsx                          |
+|  - useRecordWithStatus(id) -> { record, isLoading, isResolved } |
+|  - useProduct(productId)   -> { product, isLoading, isError }  |
+|  - isProductPending = productId && !customName && isProdLoading |
 |  +-----------------------------------------------------------+  |
-|  |  isLoading && !cachedData -> <RecordDetailSkeleton />     |  |
+|  |  isLoading && !isResolved  -> <RecordDetailSkeleton />    |  |
+|  |  isResolved && !record     -> <ItemNotFoundView />        |  |
+|  |  isProductPending          -> <RecordDetailSkeleton />    |  |
+|  |  dataReady                 -> Check Image Settlement      |  |
 |  +-----------------------------------------------------------+  |
+|                                |                                |
+|                                v                                |
 |  +-----------------------------------------------------------+  |
-|  |  dataResolved             -> Render actual Detail Screen  |  |
+|  |  useImageSettlementTracker(photoUris)                     |  |
+|  |  - !allVisibleImagesSettled -> <RecordDetailSkeleton />   |  |
+|  |  - allVisibleImagesSettled  -> Render Record Content      |  |
+|  +-----------------------------------------------------------+  |
++-----------------------------------------------------------------+
+                                |
+                                v
++-----------------------------------------------------------------+
+|                        product/[id].tsx                         |
+|  - useProduct(id) -> { data, isLoading, isError }               |
+|  - useImageSettlementTracker(photoUris)                         |
+|  +-----------------------------------------------------------+  |
+|  |  isLoading || !allSettled   -> <ProductDetailSkeleton />  |  |
+|  |  dataReady && allSettled    -> Render Product Screen      |  |
+|  |  ItemImageGallery           -> Shared Gallery Skeletons   |  |
 |  +-----------------------------------------------------------+  |
 +-----------------------------------------------------------------+
 ```
 
 ## Related Code Files
 - Create:
+  - `apps/mobile/src/cache/useImageSettlementTracker.ts`
   - `apps/mobile/src/components/skeleton/RecordDetailSkeleton.tsx`
   - `apps/mobile/src/components/skeleton/ProductDetailSkeleton.tsx`
   - `apps/mobile/src/features/records/PantryHistorySkeleton.tsx`
   - `apps/mobile/tests/unit/record-detail-skeleton.test.tsx`
+  - `apps/mobile/tests/unit/image-settlement-tracker.test.ts`
 - Modify:
   - `apps/mobile/src/api/records.ts` (export `useRecordWithStatus` and `usePantryHistoryRecordsWithStatus`)
+  - `apps/mobile/src/components/ItemImageGallery.tsx` (add `onImageSettled` callback & settlement overlay in `GalleryImageItem`)
   - `apps/mobile/app/(app)/record/[id].tsx`
   - `apps/mobile/app/(app)/product/[id].tsx`
   - `apps/mobile/src/features/records/PantryHistoryView.tsx`
-1. Update `apps/mobile/src/api/records.ts`:
+
+## Implementation Steps
+1. Create `apps/mobile/src/cache/useImageSettlementTracker.ts`:
+   - Check warm memory hits via `imageDiskCache.getSync()`.
+   - Track settlement set (`useState<Set<string>>`) and provide `markSettled(uri: string)`.
+   - Add 3,000ms timeout fallback that sets `allSettled = true`.
+2. Update `apps/mobile/src/api/records.ts`:
    - Implement and export `useRecordWithStatus(id)` and `usePantryHistoryRecordsWithStatus(filter)`.
-2. Create `RecordDetailSkeleton.tsx`, `ProductDetailSkeleton.tsx`, and `PantryHistorySkeleton.tsx`:
+3. Create `RecordDetailSkeleton.tsx`, `ProductDetailSkeleton.tsx`, and `PantryHistorySkeleton.tsx`:
    - Structure containers matching `record/[id].tsx`, `product/[id].tsx`, and `PantryHistoryView.tsx` KPI cards/history rows.
    - Wrap in `SkeletonShimmer`.
-3. Update `apps/mobile/app/(app)/record/[id].tsx`:
+4. Update `apps/mobile/src/components/ItemImageGallery.tsx`:
+   - Add `onImageSettled?: (uri: string) => void` to `ItemImageGalleryProps` and `GalleryImageItem`.
+   - In `GalleryImageItem`, consume `useCachedImage(url)`, derive `renderUri = uri || url`.
+   - Key settlement on `settledUri === renderUri`.
+   - When `onLoadEnd` or `onError` fires, call `setSettledUri(renderUri)` and `onImageSettled?.(url)`.
+   - Retain `SkeletonBone` overlay with `SkeletonShimmer` while `!isSettled`.
+5. Update `apps/mobile/app/(app)/record/[id].tsx`:
    - Consume `useRecordWithStatus(id)`.
+   - Consume `useImageSettlementTracker(displayedPhotos.slice(0, 3))` and pass `markSettled` to `ItemImageGallery`.
    - Gate:
      ```tsx
-     if (isRecordLoading && !isRecordResolved) return <RecordDetailSkeleton />;
+     const dataReady = isRecordResolved && record && !isProductPending;
+     if (!dataReady || !allVisibleImagesSettled) return <RecordDetailSkeleton />;
      if (isRecordResolved && !record) return <ItemNotFoundView />;
-     if (isProductPending) return <RecordDetailSkeleton />;
      ```
-   - Add hero photo settlement tracking (`const [heroSettled, setHeroSettled] = useState(false)`) and render `SkeletonBone` overlay on the 220px hero image until `onLoadEnd` or `onError` fires.
-   - Add gallery thumbnail settlement tracking for the multi-photo strip.
-4. Update `apps/mobile/app/(app)/product/[id].tsx`:
-   - Render `<ProductDetailSkeleton />` while `isLoading && !product`.
-   - Add hero image settlement overlay until `onLoadEnd` fires.
-5. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
+6. Update `apps/mobile/app/(app)/product/[id].tsx`:
+   - Consume `useImageSettlementTracker(uniquePhotos.slice(0, 3))` and pass `markSettled` to `ItemImageGallery`.
+   - Gate: `if (isLoading || !data || !allVisibleImagesSettled) return <ProductDetailSkeleton />;`.
+7. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
    - Consume `usePantryHistoryRecordsWithStatus(activeFilter)`.
-   - Compute `showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && isSyncing)`.
+   - Compute: `const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);`.
    - Render `<PantryHistorySkeleton />` while `showHistorySkeleton` is true.
-   - Render `renderEmpty()` immediately when `isHistoryResolved` is true and `displayRecords.length === 0`.
-6. Create `tests/unit/record-detail-skeleton.test.tsx`:
-   - Test `useRecordWithStatus` transitions (`isLoading -> isResolved`).
-   - Test that `RecordDetail` renders `RecordDetailSkeleton` while `isProductPending === true`.
-   - **Mock Slow Image Scenario**: Simulate instant record and product resolution with hero image delayed by 500ms; verify hero skeleton overlay remains visible until `onLoadEnd`.
+   - Render `renderEmpty()` immediately when `isHistoryResolved && initialSyncCompleted && displayRecords.length === 0`.
+8. Create `tests/unit/record-detail-skeleton.test.tsx` and `tests/unit/image-settlement-tracker.test.ts`:
+   - Test `useImageSettlementTracker` with warm hits, slow network loads, and 3s timeout fallback.
+   - Test that `RecordDetail` and `ProductDetail` hold the full structural skeleton until BOTH metadata and visible images settle.
+   - **Mock Slow Image Scenario**: Simulate instant metadata resolution with hero photo delayed by 500ms; verify skeleton stays active until image settles.
    - Test `usePantryHistoryRecordsWithStatus` and `PantryHistoryView` state discrimination.
-6. Verification:
+9. Verification:
    - Run `npm run typecheck` in `apps/mobile`.
-   - Run all 4 new unit test suites:
+   - Run all 5 unit test suites:
      ```bash
-     npm test -- tests/unit/skeleton-primitives.test.tsx tests/unit/thumbnail-and-card-loading.test.tsx tests/unit/pantry-list-skeleton.test.tsx tests/unit/record-detail-skeleton.test.tsx
+     npm test -- tests/unit/skeleton-primitives.test.tsx tests/unit/thumbnail-and-card-loading.test.tsx tests/unit/pantry-list-skeleton.test.tsx tests/unit/record-detail-skeleton.test.tsx tests/unit/image-settlement-tracker.test.ts
      ```
    - Build Android APK via local Gradle toolchain:
      ```bash
@@ -120,12 +166,13 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 
 ## Success Criteria
 - [ ] Navigating to record/product detail screen displays polished skeleton hero and metadata rows instead of blank or spinner.
-- [ ] History tab renders shimmering KPI bones during cold load.
-- [ ] All unit tests pass with zero failures.
-- [ ] TypeScript check reports 0 errors.
+- [ ] ItemImageGallery renders skeleton bones over hero carousel and thumbnail strip until active images emit onLoadEnd or onError.
+- [ ] History tab renders shimmering KPI bones during cold load, and immediately displays renderEmpty() when history is genuinely empty.
+- [ ] All unit tests pass with zero failures across the test suites.
+- [ ] TypeScript check reports 0 errors across `@expyrico/mobile`.
 - [ ] Android APK builds successfully via local Gradle and installs cleanly to phone `121b0a46`.
 
 ## Risk Assessment
 - **Risk**: Full-screen skeleton layout differs slightly from final loaded record detail, causing a slight pop when data arrives.
   - *Observable Signal*: Elements shift vertically when text replaces bones.
-  - *Pre-decided Response*: Reuse identical `marginHorizontal`, `padding`, and `gap` values from `record/[id].tsx` style definitions inside `RecordDetailSkeleton.tsx`.
+  - *Pre-decided Response*: Reuse identical `marginHorizontal`, `padding`, and `gap` values from `record/[id].tsx` and `product/[id].tsx` style definitions inside `RecordDetailSkeleton.tsx` and `ProductDetailSkeleton.tsx`.

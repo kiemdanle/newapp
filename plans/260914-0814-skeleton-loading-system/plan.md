@@ -104,7 +104,7 @@ sequenceDiagram
 9. **Session-Scoped Reset Only (Never on Local Scope Switch)**:
    * `useSyncStateStore` MUST provide a `reset()` action wired strictly into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`. It MUST NOT be invoked on local scope switches (`usePantryScope.setScope`), because all household records are already synced locally into SQLite; resetting on local scope changes would leave an empty household trapped waiting for the 4-second timeout.
 10. **`usePantryHistoryRecordsWithStatus` State Discrimination**:
-   * `apps/mobile/src/api/records.ts` MUST export `usePantryHistoryRecordsWithStatus(filter)` providing `{ records, isLoading, isResolved }`. In `PantryHistoryView.tsx`, skeleton bones MUST only render while `(!isResolved || (!initialSyncCompleted && isSyncing))` — NEVER on `records.length === 0` alone. Once resolved, genuine empty history displays `renderEmpty()` immediately with zero skeleton delay.
+   * `apps/mobile/src/api/records.ts` MUST export `usePantryHistoryRecordsWithStatus(filter)` providing `{ records, isLoading, isResolved }`. In `PantryHistoryView.tsx`, skeleton bones MUST only render while `(!isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0))` — NEVER on `records.length === 0` alone after initial sync has settled. Once resolved and settled, genuine empty history displays `renderEmpty()` immediately with zero skeleton delay.
 ## Validation Log
 
 ### Session — 2026-09-14
@@ -145,5 +145,4 @@ sequenceDiagram
   4. **useRecordWithStatus State Discrimination**: Distinct `isLoading`, `isResolved`, and `record` states in `apps/mobile/src/api/records.ts`, preventing false "Item not found" flashes or infinite skeletons.
   5. **Session-Scoped Reset Only**: `useSyncStateStore.getState().reset()` is strictly session-scoped (`clearAllLocalUserData` and `signIn`), preserving instant SQLite-backed filtering on local household scope switches without triggering spurious timeouts.
   6. **Pantry History State Discrimination**: Exported `usePantryHistoryRecordsWithStatus` so empty-history users see `renderEmpty()` immediately upon DB resolution, avoiding permanent/timeout skeletons.
-  7. **Component Parity**: Dedicated, unambiguous `RecordDetailSkeleton.tsx` and `ProductDetailSkeleton.tsx` exports.
-  8. **Test Command Alignment**: Explicit command targeting all 4 new unit test files.
+  8. **Test Command Alignment**: Explicit command targeting all 5 unit test files (`skeleton-primitives`, `thumbnail-and-card-loading`, `pantry-list-skeleton`, `record-detail-skeleton`, `image-settlement-tracker`).
