@@ -22,7 +22,7 @@ export default function ProductDetail() {
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
   const { id } = route.params as { id: string };
-  const { data, isLoading, isError } = useProduct(id);
+  const { data, isLoading, isError, isFetching } = useProduct(id);
   const [showOcr, setShowOcr] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | null>(null);
   const canonicalId = data?.id || id;
@@ -38,7 +38,7 @@ export default function ProductDetail() {
 
   const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(uniquePhotos);
 
-  if (isLoading && !data && !isError) {
+  if (!data && (isLoading || isFetching || !isError)) {
     return <ProductDetailSkeleton />;
   }
 

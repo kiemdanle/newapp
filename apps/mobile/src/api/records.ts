@@ -4,7 +4,7 @@ import {
   removeRecordLocalPhotos,
   subscribeRecordPhotoStorage,
 } from '../features/records/record-photo-storage';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from '../db/index';
@@ -13,6 +13,7 @@ import { usePantryScope } from '../store/pantryScope';
 import { apiClient } from './client';
 import { runSync } from '../db/sync';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
+import { useSyncStateStore } from '../store/syncStateStore';
 
 export interface LocalRecord {
   id: string; // watermelon id
@@ -263,53 +264,155 @@ export interface UseRecordStatus {
   record: LocalRecord | null;
   isLoading: boolean;
   isResolved: boolean;
+  isError: boolean;
+  errorMessage?: string | null;
+  retry: () => void;
 }
 
 export function useRecordWithStatus(id: string | undefined | null): UseRecordStatus {
+  const [activeId, setActiveId] = useState<string | null>(id ?? null);
   const [row, setRow] = useState<LocalRecord | null>(null);
-  const [isResolved, setIsResolved] = useState(false);
+  const [isResolved, setIsResolved] = useState(!id);
+  const [isError, setIsError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const queryGenRef = useRef(0);
+
+  if (id !== activeId) {
+    setActiveId(id ?? null);
+    setRow(null);
+    setIsResolved(!id);
+    setIsError(false);
+    setErrorMessage(null);
+  }
+
+  const retry = useCallback(() => {
+    setIsError(false);
+    setErrorMessage(null);
+    setIsResolved(false);
+    setRetryNonce((n) => n + 1);
+    void runSync();
+  }, []);
 
   useEffect(() => {
     const currentGen = ++queryGenRef.current;
     if (!id) {
       setRow(null);
       setIsResolved(true);
+      setIsError(false);
+      setErrorMessage(null);
       return;
     }
 
-    setIsResolved(false);
     const col = database.get<RecordModel>('records');
     let currentModel: RecordModel | null = null;
-    const sub = col.findAndObserve(id).subscribe(
-      (r) => {
-        if (currentGen !== queryGenRef.current) return;
-        currentModel = r;
-        setRow(r ? toLocal(r) : null);
-        setIsResolved(true);
+    let cancelled = false;
+
+    // Observe query across id, server_id, and client_id so that late insertions
+    // from slow background sync automatically trigger an update!
+    const query = col.query(
+      Q.or(Q.where('id', id), Q.where('server_id', id), Q.where('client_id', id)),
+    );
+
+    const sub = query.observe().subscribe(
+      (matches) => {
+        if (cancelled || currentGen !== queryGenRef.current) return;
+        if (matches.length > 0 && matches[0]) {
+          currentModel = matches[0];
+          setRow(toLocal(matches[0]));
+          setIsResolved(true);
+          setIsError(false);
+          setErrorMessage(null);
+        } else {
+          currentModel = null;
+          setRow(null);
+          const syncState = useSyncStateStore.getState();
+          if (syncState.isSyncing || !syncState.initialSyncCompleted) {
+            // Background sync is in flight over slow network — hold isResolved false so skeleton displays
+            setIsResolved(false);
+            setIsError(false);
+          } else if (syncState.lastSyncError) {
+            // Sync finished with an error — expose retryable error state instead of falsely reporting item not found!
+            setIsError(true);
+            setErrorMessage(syncState.lastSyncError);
+            setIsResolved(true);
+          } else {
+            // Terminal missing outcome: sync succeeded and the item truly does not exist
+            setIsError(false);
+            setErrorMessage(null);
+            setIsResolved(true);
+          }
+        }
       },
-      () => {
-        if (currentGen !== queryGenRef.current) return;
+      (err) => {
+        if (cancelled || currentGen !== queryGenRef.current) return;
+        currentModel = null;
         setRow(null);
+        setIsError(true);
+        setErrorMessage(err instanceof Error ? err.message : 'Database lookup error');
         setIsResolved(true);
       },
     );
+
+    // Subscribe to sync completion: gate terminal missing on a successful settled sync
+    const unsubSync = useSyncStateStore.subscribe((state, prevState) => {
+      if (cancelled || currentGen !== queryGenRef.current) return;
+      if (prevState.isSyncing && !state.isSyncing) {
+        if (!currentModel) {
+          setRow(null);
+          if (state.lastSyncError) {
+            // Sync failed: show retryable error state
+            setIsError(true);
+            setErrorMessage(state.lastSyncError);
+            setIsResolved(true);
+          } else {
+            // Sync succeeded: genuine missing record
+            setIsError(false);
+            setErrorMessage(null);
+            setIsResolved(true);
+          }
+        }
+      }
+    });
+
+    // 8s Fail-safe timer in case sync hangs or connection drops completely:
+    // Settle as an error / retry state — NEVER as "Item not found"!
+    const failSafeTimer = setTimeout(() => {
+      if (cancelled || currentGen !== queryGenRef.current) return;
+      if (!currentModel) {
+        const syncState = useSyncStateStore.getState();
+        if (!syncState.isSyncing) {
+          setIsError(true);
+          setErrorMessage('Sync request timed out. Please check your connection and try again.');
+          setIsResolved(true);
+        }
+      }
+    }, 8000);
+
     const unsubStorage = subscribeRecordPhotoStorage(() => {
-      if (currentGen !== queryGenRef.current) return;
+      if (cancelled || currentGen !== queryGenRef.current) return;
       if (currentModel) {
         setRow(toLocal(currentModel));
       }
     });
+
     return () => {
+      cancelled = true;
+      clearTimeout(failSafeTimer);
       sub.unsubscribe();
+      unsubSync();
       unsubStorage();
     };
-  }, [id]);
+  }, [id, retryNonce]);
 
+  const isCurrentId = id === activeId;
   return {
-    record: row,
-    isLoading: !isResolved,
-    isResolved,
+    record: isCurrentId ? row : null,
+    isLoading: isCurrentId ? !isResolved : Boolean(id),
+    isResolved: isCurrentId ? isResolved : !id,
+    isError: isCurrentId ? isError : false,
+    errorMessage: isCurrentId ? errorMessage : null,
+    retry,
   };
 }
 

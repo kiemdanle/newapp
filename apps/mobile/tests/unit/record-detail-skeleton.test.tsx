@@ -1,5 +1,4 @@
-import React from 'react';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { RecordDetailSkeleton } from '../../src/components/skeleton/RecordDetailSkeleton';
 import { ProductDetailSkeleton } from '../../src/components/skeleton/ProductDetailSkeleton';
 import { PantryHistorySkeleton } from '../../src/features/records/PantryHistorySkeleton';
@@ -146,6 +145,68 @@ describe('Detail Skeletons & Screen Overlay Lifecycle', () => {
 
       expect(screen.queryByTestId('record-detail-skeleton')).toBeNull();
       expect(screen.getByText('Item not found')).toBeTruthy();
+    });
+    it('displays retryable Unable to load item screen when record lookup yields an error', () => {
+      const retryMock = jest.fn();
+      (useRecordWithStatus as jest.Mock).mockReturnValue({
+        record: null,
+        isLoading: false,
+        isResolved: true,
+        isError: true,
+        errorMessage: 'Network request timed out',
+        retry: retryMock,
+      });
+      (useProduct as jest.Mock).mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: false,
+      });
+
+      renderWithTheme(<RecordDetail />, 'expyrico');
+
+      expect(screen.queryByTestId('record-detail-skeleton')).toBeNull();
+      expect(screen.getByText('Unable to load item')).toBeTruthy();
+      expect(screen.getByText('Network request timed out')).toBeTruthy();
+      expect(screen.queryByText('Item not found')).toBeNull();
+
+      fireEvent.press(screen.getByText('Retry'));
+      expect(retryMock).toHaveBeenCalledTimes(1);
+    });
+    it('displays RecordDetailSkeleton instead of Item not found when active sync is running', () => {
+      useSyncStateStore.setState({ isSyncing: true });
+      (useRecordWithStatus as jest.Mock).mockReturnValue({
+        record: null,
+        isLoading: false,
+        isResolved: true,
+      });
+      (useProduct as jest.Mock).mockReturnValue({
+        data: null,
+        isLoading: false,
+        isError: false,
+      });
+
+      renderWithTheme(<RecordDetail />, 'expyrico');
+
+      expect(screen.getByTestId('record-detail-skeleton')).toBeTruthy();
+      expect(screen.queryByText('Item not found')).toBeNull();
+      useSyncStateStore.setState({ isSyncing: false });
+    });
+
+    it('displays RecordDetailSkeleton when product details are loading for a catalog product', () => {
+      (useRecordWithStatus as jest.Mock).mockReturnValue({
+        record: { ...sampleRecord, productId: 'prod-456' },
+        isLoading: false,
+        isResolved: true,
+      });
+      (useProduct as jest.Mock).mockReturnValue({
+        data: null,
+        isLoading: true,
+        isError: false,
+      });
+
+      renderWithTheme(<RecordDetail />, 'expyrico');
+
+      expect(screen.getByTestId('record-detail-skeleton')).toBeTruthy();
     });
 
     it('mounts real layout immediately with RecordDetailSkeleton overlay while images settle', () => {

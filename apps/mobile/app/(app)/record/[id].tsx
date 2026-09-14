@@ -18,6 +18,7 @@ import { useImageSettlementTracker } from '../../../src/cache/useImageSettlement
 import { RecordDetailSkeleton } from '../../../src/components/skeleton';
 import { useActiveGiveawaysForRecord } from '../../../src/api/giveaways';
 import { useUndoToastStore } from '../../../src/store/undoToast';
+import { useSyncStateStore } from '../../../src/store/syncStateStore';
 import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
 import { DiscardReasonModal } from '../../../src/components/DiscardReasonModal';
 import { PhotoSourcePickerModal } from '../../../src/components/PhotoSourcePickerModal';
@@ -60,7 +61,13 @@ export default function RecordDetail() {
   const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
   const { id } = useRoute().params as { id: string };
-  const { record, isResolved: isRecordResolved } = useRecordWithStatus(id);
+  const {
+    record,
+    isResolved: isRecordResolved,
+    isError: isRecordError,
+    errorMessage: recordErrorMessage,
+    retry: retryRecord,
+  } = useRecordWithStatus(id);
   const { data: product, isLoading: isProductLoading, isError: isProductError } = useProduct(record?.productId ?? undefined);
   const catalogProductId = record?.productId || product?.id;
   const [pendingReplaceIndex, setPendingReplaceIndex] = useState<number | null>(null);
@@ -81,6 +88,7 @@ export default function RecordDetail() {
   const [pendingQuantity, setPendingQuantity] = useState<number>(1);
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [showDiscardReasonModal, setShowDiscardReasonModal] = useState(false);
+  const isSyncing = useSyncStateStore((s) => s.isSyncing);
   const handleReassignScope = async (newHouseholdId: string | null) => {
     if (!record) return;
     await patchLocalRecord(record.id, { householdId: newHouseholdId });
@@ -112,8 +120,24 @@ export default function RecordDetail() {
 
   const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
 
-  if (!isRecordResolved) {
+  if (!isRecordResolved || (!record && isSyncing)) {
     return <RecordDetailSkeleton />;
+  }
+
+  if (isRecordError) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
+        <View style={[styles.emptyIconWrap, { backgroundColor: theme.colors.bgGlass }]}>
+          <Ionicons name="cloud-offline-outline" size={32} color={theme.colors.warning} />
+        </View>
+        <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Unable to load item</Text>
+        <Text style={[styles.emptySubcopy, { color: theme.colors.textMuted }]}>
+          {recordErrorMessage || "We couldn't connect to your pantry to load this item. Please check your network and try again."}
+        </Text>
+        <Button label="Retry" onPress={retryRecord} style={{ marginBottom: 12 }} />
+        <Button label="Back to pantry" variant="outline" onPress={() => navigation.goBack()} />
+      </View>
+    );
   }
 
   if (!record) {
@@ -130,7 +154,7 @@ export default function RecordDetail() {
       </View>
     );
   }
-  if (record.productId && !record.customName && isProductLoading && !isProductError) {
+  if (record.productId && isProductLoading && !product && !isProductError) {
     return <RecordDetailSkeleton />;
   }
 
