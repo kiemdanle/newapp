@@ -61,7 +61,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();
   await clearAllRecordPhotoAttachments().catch(() => {});
-  // Guarantee that early view-mode storage removal is fully settled before clearAllLocalUserData resolves
+  // Settle early view-mode storage removal before clearAllLocalUserData resolves
   await removeViewModePromise;
 }
 interface SessionState {
