@@ -33,11 +33,12 @@ Implement the Stale-While-Revalidate (SWR) background revalidation engine in `ap
 flowchart TD
     A[Component Requests Image] --> B{In Warm L1 Memory?}
     B -->|Yes| C[Render Cached URI Synchronously]
-    B -->|No| D[Async Hydrate from L2 Disk / Storage]
-    D -->|Found on Disk| C
+    B -->|No| D[Show Placeholder & Async Hydrate from L2 Disk]
+    D -->|Found on Disk| P[Update State & Render after Async Hydration]
     D -->|Not on Disk| E[Fetch Over Network]
     
     C --> F{Cache Stale? >24h Public or >15m Private}
+    P --> F
     F -->|No (Within Fresh TTL)| G[Keep Displaying - No Network Call]
     F -->|Yes| H[Check In-Flight Promise Map]
     

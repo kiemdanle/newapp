@@ -76,7 +76,7 @@ Implement the core on-device persistent image caching layer (`ImageDiskCache`) i
    - `remove(key: string): Promise<void>`
    - `purgeUserPrivate(userId: string): Promise<void>`
    - `pruneLru(maxBytes?: number): Promise<void>` (caps at 100 MB)
-3. Hydrate L1 index from AsyncStorage during mobile app bootstrap for zero-latency lookups.
+3. Hydrate L1 index from AsyncStorage during mobile app bootstrap to prepopulate L1 for subsequent synchronous lookups.
 4. Hook `session-store.ts` to call `purgeUserPrivate(userId)` on `signOut()` and `signIn()`.
 
 ## Success Criteria
