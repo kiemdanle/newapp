@@ -52,6 +52,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   // Clear last sync timestamp from both secure storage and AsyncStorage so next user starts fresh
   await deleteItem('pantry.lastSyncAt').catch(() => {});
   await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
+  resetPantryViewModeState();
   await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();
