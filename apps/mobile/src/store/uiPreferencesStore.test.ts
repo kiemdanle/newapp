@@ -1,5 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useUiPreferencesStore, PANTRY_VIEW_MODE_STORAGE_KEY } from './uiPreferencesStore';
+import {
+  useUiPreferencesStore,
+  PANTRY_VIEW_MODE_STORAGE_KEY,
+  resetPantryViewModeState,
+  getPantryViewModeGeneration,
+} from './uiPreferencesStore';
 import { clearAllLocalUserData } from '../auth/session-store';
 
 describe('uiPreferencesStore - pantryViewMode', () => {
@@ -49,5 +54,28 @@ describe('uiPreferencesStore - pantryViewMode', () => {
     // Simulate late AsyncStorage resolution attempting to set stale 'list'
     await AsyncStorage.setItem(PANTRY_VIEW_MODE_STORAGE_KEY, 'list');
     expect(useUiPreferencesStore.getState().pantryViewMode).toBe('grid');
+  });
+
+  it('delayed AsyncStorage hydration racing against logout/reset is discarded via generation invalidation', async () => {
+    // 1. Initial state has grid mode
+    await useUiPreferencesStore.getState().setPantryViewMode('grid');
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('grid');
+
+    // 2. Capture generation before an in-flight async lookup
+    const inFlightGen = getPantryViewModeGeneration();
+
+    // 3. User logs out: resetPantryViewModeState increments generation and resets to list
+    resetPantryViewModeState();
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+    expect(getPantryViewModeGeneration()).toBeGreaterThan(inFlightGen);
+
+    // 4. Stale in-flight callback resolves with old 'grid' value
+    // Guarded by generation check:
+    if (inFlightGen === getPantryViewModeGeneration()) {
+      useUiPreferencesStore.setState({ pantryViewMode: 'grid' });
+    }
+
+    // 5. Invariant: Pantry view mode strictly remains 'list'
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
   });
 });

@@ -16,15 +16,25 @@ interface UiPreferencesState {
 }
 
 let userHasToggledPantryViewMode = false;
+let pantryViewModeGeneration = 0;
 
 export function resetPantryViewModeState() {
+  pantryViewModeGeneration++;
   userHasToggledPantryViewMode = false;
   useUiPreferencesStore.setState({ pantryViewMode: 'list' });
 }
 
+export function getPantryViewModeGeneration(): number {
+  return pantryViewModeGeneration;
+}
+
 export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
+  const currentGen = pantryViewModeGeneration;
   AsyncStorage.getItem(PANTRY_VIEW_MODE_STORAGE_KEY)
     .then((stored) => {
+      // Invariant: if resetPantryViewModeState() or setPantryViewMode() was invoked
+      // while getItem was in flight, discard the stale result
+      if (currentGen !== pantryViewModeGeneration) return;
       if (!userHasToggledPantryViewMode && (stored === 'list' || stored === 'grid')) {
         set({ pantryViewMode: stored });
       }
@@ -43,6 +53,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
     pantryViewMode: 'list',
     draftsViewMode: 'list',
     setPantryViewMode: async (mode: PantryViewMode) => {
+      pantryViewModeGeneration++;
       userHasToggledPantryViewMode = true;
       set({ pantryViewMode: mode });
       try {
@@ -60,6 +71,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
       }
     },
     hydrate: async () => {
+      const currentGen = pantryViewModeGeneration;
       try {
         const res = await apiClient.get<{
           uiPreferences?: {
@@ -67,6 +79,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
           } | null;
         }>('/me/preferences');
 
+        if (currentGen !== pantryViewModeGeneration) return;
         if (res.uiPreferences?.pantryViewMode) {
           set({ pantryViewMode: res.uiPreferences.pantryViewMode });
           await AsyncStorage.setItem(
