@@ -20,9 +20,10 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
       - `initialSyncCompleted: boolean` (false on app launch; becomes true after the first `runSync()` settles).
       - `lastSyncError: string | null`.
       - `reset: () => void` (resets `isSyncing = false`, `initialSyncCompleted = false`, `lastSyncError = null`).
-    - **Multi-Account & Session Reset Contract**:
-      - Hook `useSyncStateStore.getState().reset()` into `clearAllLocalUserData()` in `session-store.ts` and `usePantryScope.ts`.
-      - Guarantees that when a second user signs in or when switching households, `initialSyncCompleted` is re-armed as `false` so the new user sees the shimmering skeleton instead of an empty pantry flash.
+    - **Session-Scoped Reset Contract**:
+      - Hook `useSyncStateStore.getState().reset()` into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`.
+      - Guarantees that when a second user signs in, `initialSyncCompleted` is re-armed as `false` so the new user sees the shimmering skeleton instead of an empty pantry flash.
+      - **Scope Switch Preservation**: Do NOT invoke `reset()` on local household scope changes (`usePantryScope.setScope`). Local scope changes perform instant in-memory SQLite queries over already-synced household data; re-arming the skeleton on scope switch would needlessly block empty households behind the 4-second timeout.
   - Sync Lifecycle Integration (`apps/mobile/src/db/sync.ts`):
     - Update `runSync()` to set `isSyncing = true` at start, and `isSyncing = false` / `initialSyncCompleted = true` in `finally`.
     - Catch errors and record `lastSyncError`.
@@ -79,12 +80,11 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
   - `apps/mobile/src/db/sync.ts`
   - `apps/mobile/src/features/records/RecordList.tsx`
   - `apps/mobile/src/auth/session-store.ts` (hook store reset in `clearAllLocalUserData`)
-  - `apps/mobile/src/store/pantryScope.ts` (hook store reset on scope change)
 ## Implementation Steps
 1. Create `syncStateStore.ts`:
    - Implement Zustand store with `isSyncing`, `initialSyncCompleted`, `lastSyncError`, and `reset()`.
-2. Update `session-store.ts` and `pantryScope.ts`:
-   - Wire `useSyncStateStore.getState().reset()` inside `clearAllLocalUserData()` and on household scope switches.
+2. Update `session-store.ts`:
+   - Wire `useSyncStateStore.getState().reset()` inside `clearAllLocalUserData()` and `signIn()`.
 3. Update `sync.ts`:
    - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers.
 3. Create `PantryListSkeleton.tsx`:

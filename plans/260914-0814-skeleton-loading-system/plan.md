@@ -101,8 +101,8 @@ sequenceDiagram
    * `apps/mobile/src/api/records.ts` MUST export `useRecordWithStatus(id)` providing `{ record, isLoading, isResolved }`. Components must not gate on `!record` alone, cleanly distinguishing in-flight SQLite lookups from terminal "Item not found" states.
 8. **Source-Transition Settlement Reset in `ProductThumbnail`**:
    * `ProductThumbnail` MUST key image settlement on `renderUri = uri || candidate`. When `useCachedImage` hydrates and switches source from remote candidate to cached URI, settlement state MUST reset to `false` until the new source settles.
-9. **Multi-Account & Session Reset**:
-   * `useSyncStateStore` MUST provide a `reset()` action wired into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`, ensuring new logins and account switches re-arm the initial sync skeleton.
+9. **Session-Scoped Reset Only (Never on Local Scope Switch)**:
+   * `useSyncStateStore` MUST provide a `reset()` action wired strictly into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`. It MUST NOT be invoked on local scope switches (`usePantryScope.setScope`), because all household records are already synced locally into SQLite; resetting on local scope changes would leave an empty household trapped waiting for the 4-second timeout.
 
 ## Validation Log
 
@@ -142,6 +142,6 @@ sequenceDiagram
   2. **Readiness Contract Equation**: Formalized as `dataReady && allVisibleImagesSettled` across all 5 inventory screens with mock slow-image test coverage.
   3. **Thumbnail Source-Transition Settlement Reset**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
   4. **useRecordWithStatus State Discrimination**: Distinct `isLoading`, `isResolved`, and `record` states in `apps/mobile/src/api/records.ts`, preventing false "Item not found" flashes or infinite skeletons.
-  5. **Multi-Account / Session Reset**: `useSyncStateStore.getState().reset()` hooked into `clearAllLocalUserData()` and `signIn()`, ensuring clean sync state for subsequent user logins.
+  5. **Session-Scoped Reset Only**: `useSyncStateStore.getState().reset()` is strictly session-scoped (`clearAllLocalUserData` and `signIn`), preserving instant SQLite-backed filtering on local household scope switches without triggering spurious timeouts.
   6. **Component Parity**: Dedicated, unambiguous `RecordDetailSkeleton.tsx` and `ProductDetailSkeleton.tsx` exports.
   7. **Test Command Alignment**: Explicit command targeting all 4 new unit test files.
