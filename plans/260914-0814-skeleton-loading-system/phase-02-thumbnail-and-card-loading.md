@@ -15,9 +15,14 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
 ## Requirements
 - **Functional**:
   - `ProductThumbnail.tsx`:
-    - Track image load settlement (`onLoad`, `onError`, and `useCachedImage.isLoading`).
-    - While the image is downloading over the network or hydrating from storage, render a matching `SkeletonBone` with subtle shimmer in place of a blank white/transparent box.
-    - On load settlement (`onLoad`), smoothly cross-fade to the rendered image via `fadeDuration={150}`.
+    - **Source-Transition Settlement Reset Contract**:
+      - In `CachedThumbnailImage`, derive `renderUri = uri || candidate`.
+      - Track `settledUri: string | null` in state (`useState<string | null>(null)`).
+      - Compute `const isSettled = Boolean(settledUri && settledUri === renderUri)`.
+      - When `useCachedImage` updates and switches `renderUri` from a remote candidate to a local cached URI, `isSettled` automatically resets to `false`.
+      - The `SkeletonBone` overlay remains visible over the thumbnail until the active `renderUri` fires `onLoadEnd` or `onError`.
+      - Prevents the first candidate load from prematurely unmasking the skeleton for a subsequent cached source.
+    - On load settlement (`onLoadEnd`), smoothly cross-fade to the rendered image via `fadeDuration={150}`.
     - On load failure (`onError`), display the fallback placeholder icon (`nutrition-outline`).
   - `RecordCard.tsx`:
     - Inspect `isProductLoading` from `useProduct(record.productId)`.
@@ -56,15 +61,15 @@ Eliminate missing name text flashes (`"Item"`) and image pop-in blanks across `P
 - Modify:
   - `apps/mobile/src/components/ProductThumbnail.tsx`
   - `apps/mobile/src/features/records/RecordCard.tsx`
-  - `apps/mobile/src/features/records/PantryGridCard.tsx`
-- Test:
-  - `apps/mobile/tests/unit/thumbnail-and-card-loading.test.tsx`
-
-## Implementation Steps
 1. Update `ProductThumbnail.tsx`:
-   - In `CachedThumbnailImage`, maintain an `imageLoaded` state (`useState(false)`).
-   - Render `SkeletonBone` positioned absolutely or as a background overlay while `!imageLoaded` and `isLoading`.
-   - Wire `onLoadEnd={() => setImageLoaded(true)}` on `<Image>`.
+   - In `CachedThumbnailImage`, consume `const { uri, isLoading } = useCachedImage(candidate)`.
+   - Derive `const renderUri = uri || candidate`.
+   - Track `const [settledUri, setSettledUri] = useState<string | null>(null)`.
+   - Compute `const isSettled = Boolean(settledUri && settledUri === renderUri)`.
+   - Render `SkeletonBone` overlay with `SkeletonShimmer` while `!isSettled || (isLoading && !renderUri)`.
+   - Wire `onLoadEnd={() => setSettledUri(renderUri)}` on `<Image>`.
+   - Wire `onError={() => { setSettledUri(renderUri); onError(); }}`.
+   - Keep `<Image>` mounted with `style={[style, !isSettled && { opacity: 0 }]}` to eliminate flash during source transition.
 2. Update `RecordCard.tsx`:
    - Destructure `isLoading: isProductLoading` from `useProduct(record.productId ?? undefined)`.
    - Add condition:

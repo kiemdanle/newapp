@@ -14,13 +14,27 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 
 ## Requirements
 - **Functional**:
-  - `RecordDetailSkeleton.tsx`:
-    - Full-screen detail view skeleton rendered while `record` or linked `product` is loading:
-      - 220px hero image bone.
-      - Title bone (20px height) + inline sentiment strip bone.
+  - `RecordDetailSkeleton.tsx` & Detail Screen Metadata Gate:
+    - **Linked Product Metadata Gate**:
+      - In `record/[id].tsx`, compute:
+        ```tsx
+        const isProductPending = Boolean(record?.productId && !record?.customName && isProductLoading && !isProductError);
+        const isDetailLoading = !record || isProductPending;
+        ```
+      - While `isDetailLoading` is true, render `<RecordDetailSkeleton />` instead of flashing `"Pantry Item"` or empty metadata fields.
+      - **Error Fallback**: If `isProductError` is true (e.g. 404 or network failure), gracefully unmask and fall back to `record.customName || 'Pantry Item'` without hanging the skeleton indefinitely.
+    - **Full Structural Skeleton Composition**:
+      - 220px hero image bone wrapped in `SkeletonShimmer`.
+      - Title bone (20px height, 70% width) + inline sentiment strip bone.
       - Expiry and purchase date pills bones.
       - Quantity, unit, location, and store row bones.
       - Action buttons bone at screen bottom.
+  - **Hero & Gallery Image Settlement Contract**:
+    - In `record/[id].tsx` and `product/[id].tsx`, track hero and gallery photo load settlement:
+      - While `displayedPhotos[0]` has not settled (`onLoadEnd` / `onError`), display an absolute `SkeletonBone` overlay (220px height) over the hero container.
+      - On `onLoadEnd`, smoothly fade in the image (`fadeDuration={150}`).
+      - For the thumbnail gallery strip, render individual thumbnail skeleton bones until each respective candidate emits `onLoadEnd` or `onError`.
+      - On error, display the fallback image placeholder with an error retry indicator.
   - `PantryHistoryView.tsx` Skeleton Integration:
     - Render 2 KPI card bones (Consumed & Discarded) and 3 history item bones while history data is loading.
   - Verification & Build:
@@ -68,11 +82,13 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
      - Title bar, sentiment row bone, date chip bones, metadata rows.
    - Wrap in `SkeletonShimmer`.
 2. Update `apps/mobile/app/(app)/record/[id].tsx`:
-   - Replace generic `<ActivityIndicator />` with `<RecordDetailSkeleton />` while `!record`.
+   - Add `isProductPending = Boolean(record?.productId && !record?.customName && isProductLoading && !isProductError)`.
+   - Gate: `if (!record || isProductPending) return <RecordDetailSkeleton />;`.
+   - Add hero photo settlement tracking (`const [heroSettled, setHeroSettled] = useState(false)`) and render `SkeletonBone` overlay on the 220px hero image until `onLoadEnd` or `onError` fires.
+   - Add gallery thumbnail settlement tracking for the multi-photo strip.
 3. Update `apps/mobile/app/(app)/product/[id].tsx`:
    - Replace generic activity spinner with `<RecordDetailSkeleton />` while `isLoading`.
-4. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
-   - Integrate skeleton bones for KPI cards and history rows while sync or initial load is in progress.
+   - Add hero image settlement overlay until `onLoadEnd` fires.
 5. Verification:
    - Run `npm run typecheck` in `apps/mobile`.
    - Run `npm test -- tests/unit/skeleton-*.test.tsx`.

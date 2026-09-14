@@ -86,16 +86,30 @@ sequenceDiagram
    * `RecordList` MUST NEVER render the empty pantry card (`Start your pantry`) if an initial sync is active and records are empty. It MUST display `PantryListSkeleton` until sync settles.
 5. **No Raw "Item" Text Flash**:
    * Components MUST NEVER display the hardcoded string `"Item"` or empty spaces while `useProduct` is fetching uncached catalog data. They MUST render inline shimmering bones matching the text line height.
-
+6. **Detail View Metadata & Image Settlement Contract**:
+   * `record/[id].tsx` MUST NOT unmask prematurely when `record` is loaded from local SQLite if `record.productId && !record.customName && isProductLoading`. Both the linked product metadata AND the hero/gallery images MUST have explicit settlement gates (`onLoadEnd`/`onError`) with skeleton overlays before the full UI is revealed.
+7. **Source-Transition Settlement Reset**:
+   * `ProductThumbnail` and image loaders MUST key settlement on `renderUri = uri || candidate`. When `useCachedImage` hydrates and switches source from a remote candidate to a local cached URI, the settlement flag MUST reset to `false` and keep the skeleton bone active until the new source emits `onLoadEnd` or `onError`.
 ---
 
 ## Validation Log
 
 ### Session — 2026-09-14
-**Preflight Analysis:**
-- Codebase audited: 0 existing skeleton components in `apps/mobile/src`.
-- Problem confirmed: `RecordCard` and `PantryGridCard` fall back to literal `'Item'` when `record.customName` is null and `product` is loading.
-- Fresh-install behavior confirmed: `runSync()` is unobserved by `RecordList`, causing an instant empty state followed by pop-in.
+**Verification Results:**
+- Claims checked: 10
+- Verified: 10 | Failed: 0 | Unverified: 0
+- Tier: Standard (Fact Checker + Contract Verifier)
+
+**Interview Decisions Confirmed:**
+1. **Shimmer Animation Style**: `Subtle Native Opacity Pulse` (0.4 to 1.0 at 850ms, Expyrico Stone `#F0F0ED` to `#E6E6E3` in light, `#262624` to `#363632` in dark, `useNativeDriver: true`).
+2. **Fresh-Install Sync Timeout**: `4-Second Fail-Safe Timeout` with NetInfo offline check. Gracefully transitions to genuine empty state + offline banner if connection fails.
+3. **Skeleton Card Count**: `Viewport-Filling Preset` (5 items in List view, 6 items in 2-column Grid view).
+4. **Detail View Skeleton Scope**: `Full Structural Skeleton` (220px hero image bone, title bone, sentiment strip bone, date pills, action button bones).
+
+**Advisory Blockers Resolved:**
+1. **Detail Screen Image Settlement Blocker**: Added dedicated image settlement tracking (`onLoadEnd`/`onError`) for hero and gallery images, preventing hero blank gaps after metadata resolution.
+2. **ProductThumbnail Source-Swap Blocker**: Keyed settlement on `renderUri = uri || candidate`, resetting settlement state on source changes so initial candidate loads do not unmask prior to cached URI settlement.
+3. **Detail Screen Linked Product Metadata Blocker**: Extended detail skeleton gate to include `record.productId && !record.customName && isProductLoading`, eliminating the `"Pantry Item"` title flash on deep links.
 
 ---
 
@@ -103,6 +117,20 @@ sequenceDiagram
 
 | # | Attack Vector / Failure Mode | Severity | Mitigation in Plan |
 |---|---|---|---|
-| 1 | **CPU/Battery Drain from Multiple Infinite Loops**: 10+ visible cards looping separate `Animated.loop` timers simultaneously. | High | Centralize or synchronize pulse phase using a shared looped timing value, or bound skeleton rendering to viewport count (max 5-6 items). |
+| 1 | **CPU/Battery Drain from Multiple Infinite Loops**: 10+ visible cards looping separate `Animated.loop` timers simultaneously. | High | Centralize pulse phase inside `SkeletonShimmer` using a single coordinated `Animated.Value`, and bound skeleton rendering to viewport preset (5-6 items). |
 | 2 | **Infinite Skeleton on Network/Sync Failure**: If device is offline on fresh install or API errors out, user could be trapped forever in a skeleton screen. | High | Implement a 4-second timeout on initial sync state; if sync fails or times out, gracefully transition to the genuine empty state with an offline banner. |
 | 3 | **Layout Shift (CLS) between Skeleton & Real Card**: Skeleton bone height/padding differs from final rendered text/image, causing jarring layout shifts. | Medium | Build `RecordCardSkeleton` and `PantryGridCardSkeleton` with pixel-perfect dimensional parity (heights, paddings, borders, aspect ratios) to real cards. |
+| 4 | **Detail Screen Metadata vs. Image Settlement Race**: Metadata resolves first, unmasking detail view while 220px hero photo is still downloading. | High | Integrate hero photo settlement tracking with absolute skeleton overlay until `onLoadEnd` fires. |
+| 5 | **Thumbnail Source Transition Race**: `useCachedImage` replaces candidate URI with cached URI after initial render, causing premature skeleton unmounting. | High | Key settlement state to `renderUri`, resetting settlement on source changes and keeping skeleton bone active until new URI settles. |
+
+### Whole-Plan Consistency Sweep
+- Confirmed zero unresolved contradictions across `plan.md` and all 4 phase documents (`phase-01-skeleton-primitives.md`, `phase-02-thumbnail-and-card-loading.md`, `phase-03-initial-sync-and-pantry-skeleton.md`, `phase-04-detail-screens-and-e2e-verification.md`).
+- Confirmed all 3 advisory blockers formally integrated with concrete technical contracts:
+  1. Hero & gallery image settlement contract added to Phase 4 (`record/[id].tsx` and `product/[id].tsx`).
+  2. Thumbnail source-transition settlement reset contract added to Phase 2 (`ProductThumbnail.tsx`).
+  3. Linked product metadata gate added to Phase 4 (`isProductPending` with graceful `isProductError` fallback).
+- Confirmed all 4 user interview decisions propagated across phases:
+  1. Subtle native opacity pulse (0.4 to 1.0 at 850ms, Expyrico Stone tokens) in Phase 1.
+  2. 4-second fail-safe timeout with offline check in Phase 3.
+  3. Viewport-filling preset (5 List / 6 Grid) in Phase 3.
+  4. Full structural skeleton in Phase 4.
