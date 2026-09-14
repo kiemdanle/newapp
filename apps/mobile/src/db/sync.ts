@@ -3,6 +3,7 @@ import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from './index';
 import { apiClient } from '../api/client';
+import { isApiError } from '../api/errors';
 import { getItem, setItem } from '../auth/secure-store';
 import { ERROR_CODES, type RecordSyncResponse, type RecordSyncBatch } from '@expyrico/shared';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
@@ -218,10 +219,18 @@ async function pushPending(runEpoch: number): Promise<void> {
     } catch (err: unknown) {
       let status: number | undefined;
       let errorCode: string | undefined;
-      if (err && typeof err === 'object') {
-        const e = err as { status?: number; response?: { status?: number; data?: { code?: string } }; data?: { code?: string } };
+      if (isApiError(err)) {
+        status = err.status;
+        errorCode = err.code;
+      } else if (err && typeof err === 'object') {
+        const e = err as {
+          status?: number;
+          code?: string;
+          response?: { status?: number; data?: { code?: string } };
+          data?: { code?: string };
+        };
         status = e.status ?? e.response?.status;
-        errorCode = e.response?.data?.code ?? e.data?.code;
+        errorCode = e.code ?? e.response?.data?.code ?? e.data?.code;
       }
 
       // Check for 409 item_limit_reached quota error (both POST create and PATCH restoration)
