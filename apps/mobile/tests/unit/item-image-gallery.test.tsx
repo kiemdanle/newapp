@@ -108,4 +108,18 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
     expect(handleDelete).toHaveBeenCalledWith(0);
     alertSpy.mockRestore();
   });
+  it('displays gallery-image-skeleton while image is loading and unmasks to fallback on error', () => {
+    const { getAllByTestId, UNSAFE_getAllByType } = render(
+      <ThemeProvider>
+        <ItemImageGallery photos={['https://cdn.example.com/bad.jpg']} />
+      </ThemeProvider>,
+    );
+
+    expect(getAllByTestId('gallery-image-skeleton').length).toBeGreaterThan(0);
+
+    const images = UNSAFE_getAllByType('Image' as never);
+    fireEvent(images[0], 'error');
+
+    expect(getAllByTestId('gallery-image-fallback').length).toBeGreaterThan(0);
+  });
 });

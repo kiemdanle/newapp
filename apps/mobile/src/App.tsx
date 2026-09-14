@@ -27,8 +27,8 @@ import { Logo } from './components/Logo';
 import { initConnectionMonitoring, useConnectionStore } from './store/connectionStore';
 import { OfflineTopBanner } from './components/OfflineTopBanner';
 import { ConnectionNoticeModal } from './components/ConnectionNoticeModal';
+import { useSyncStateStore } from './store/syncStateStore';
 const queryClient = createQueryClient();
-
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
 // layout shatter at extreme accessibility text sizes while allowing the
 // full dynamic-type range up to 200%.
@@ -155,9 +155,8 @@ export function AppSyncManager() {
 
   useEffect(() => {
     if (!accessToken) return;
+    useSyncStateStore.getState().beginInitialSync();
     startSyncTriggers();
-
-    // On reconnect, invalidate React Query cache to refresh remote feeds
     let prevStatus = useConnectionStore.getState().status;
     const unsubConnection = useConnectionStore.subscribe((state) => {
       if (state.status === 'ready' && prevStatus !== 'ready') {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ProductDetail from '../../app/(app)/product/[id]';
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from '../../src/theme/store';
@@ -53,9 +53,17 @@ jest.mock('../../src/api/reviews', () => ({
   isUserOwnReview: jest.fn(() => false),
 }));
 
+let testQueryClient: QueryClient | null = null;
+
 function wrap(node: React.ReactNode) {
+  testQueryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0, staleTime: 0 },
+      mutations: { retry: false },
+    },
+  });
   return (
-    <QueryClientProvider client={createQueryClient()}>
+    <QueryClientProvider client={testQueryClient}>
       <ThemeProvider>{node}</ThemeProvider>
     </QueryClientProvider>
   );
@@ -96,6 +104,10 @@ describe('<ProductDetail /> — Suggest an edit', () => {
     __setRouteParams({ id: 'p1' });
   });
 
+  afterEach(() => {
+    cleanup();
+    testQueryClient?.clear();
+  });
   it('shows "Suggest an edit" for an active product and navigates to the edit screen', async () => {
     queueFetch(jsonResponse(PRODUCT));
     const { findByTestId } = render(wrap(<ProductDetail />));

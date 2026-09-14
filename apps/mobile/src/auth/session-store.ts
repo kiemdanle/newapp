@@ -16,9 +16,13 @@ import { imageDiskCache } from '../cache/image-disk-cache';
 import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-revalidator';
 
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
+import { useSyncStateStore } from '../store/syncStateStore';
+import { invalidateSyncEpoch } from '../db/sync';
+import { clearAllRecordPhotoAttachments } from '../features/records/record-photo-storage';
 const KEY_CACHED_USER = '@pantry_cached_user';
-
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
+  invalidateSyncEpoch();
+  useSyncStateStore.getState().reset();
   if (userId) {
     invalidateUserSession(userId);
   }
@@ -48,6 +52,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();
+  await clearAllRecordPhotoAttachments().catch(() => {});
 }
 interface SessionState {
   user: User | null;
@@ -75,6 +80,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (currentUserId && currentUserId !== user.id) {
       await clearAllLocalUserData(currentUserId);
     }
+    useSyncStateStore.getState().reset();
+    invalidateSyncEpoch();
     await purgePrivateImageCache(currentUserId);
     await Promise.allSettled([
       secureStore.setAccessToken(tokens.accessToken),

@@ -7,6 +7,7 @@ import type { LocalRecord } from '../../src/api/records';
 import * as recordsApi from '../../src/api/records';
 import { useUiPreferencesStore, PANTRY_VIEW_MODE_STORAGE_KEY } from '../../src/store/uiPreferencesStore';
 import { usePantryScope } from '../../src/store/pantryScope';
+import { useSyncStateStore } from '../../src/store/syncStateStore';
 import { renderWithTheme } from '../helpers/renderWithTheme';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -42,8 +43,13 @@ describe('Pantry View Mode Toggle Integration', () => {
     await AsyncStorage.clear();
     useUiPreferencesStore.setState({ pantryViewMode: 'list' });
     usePantryScope.getState().setScope('all', null);
+    useSyncStateStore.getState().setSyncSuccess();
+    jest.spyOn(recordsApi, 'useActiveRecordsWithStatus').mockImplementation(() => ({
+      records: recordsApi.useActiveRecords(),
+      isLoading: false,
+      isResolved: true,
+    }));
   });
-
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();

@@ -17,7 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/useTheme';
 import { useCachedImage } from '../cache/useCachedImage';
 import { FullScreenImageViewer } from './FullScreenImageViewer';
-
+import { SkeletonBone, SkeletonShimmer } from './skeleton';
 export interface ItemImageGalleryProps {
   photos: string[];
   title?: string;
@@ -34,8 +34,8 @@ export interface ItemImageGalleryProps {
   onChangeCover?: (activeIndex: number) => void;
   onSetCover?: (index: number) => void;
   maxPhotos?: number;
+  onImageSettled?: (uri: string) => void;
 }
-
 const INITIAL_HERO_WIDTH = Math.min(Dimensions.get('window').width - 32, 540);
 
 export function ItemImageGallery({
@@ -49,6 +49,7 @@ export function ItemImageGallery({
   onChangeCover,
   onSetCover,
   maxPhotos = 5,
+  onImageSettled,
 }: ItemImageGalleryProps) {
   const theme = useTheme();
   const heroScrollRef = useRef<ScrollView>(null);
@@ -161,6 +162,8 @@ export function ItemImageGallery({
                 url={url}
                 style={styles.heroImage}
                 resizeMode="cover"
+                placeholderIcon={placeholderIcon}
+                onImageSettled={onImageSettled}
               />
             </Pressable>
           ))}
@@ -341,21 +344,79 @@ function GalleryImageItem({
   url,
   style,
   resizeMode = 'cover',
+  placeholderIcon = 'image-outline',
+  onImageSettled,
 }: {
   url: string;
   style: StyleProp<ImageStyle>;
   resizeMode?: 'cover' | 'contain';
+  placeholderIcon?: keyof typeof Ionicons.glyphMap;
+  onImageSettled?: (uri: string) => void;
 }) {
+  const theme = useTheme();
   const { uri } = useCachedImage(url);
-  const sourceUri = uri || url;
+  const renderUri = uri || url;
+  const [settledUri, setSettledUri] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+
+  const isSettled = Boolean(settledUri && settledUri === renderUri);
+
+  useEffect(() => {
+    if (isSettled) return;
+    const timer = setTimeout(() => {
+      setSettledUri(renderUri);
+      setHasError(true);
+      onImageSettled?.(url);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [renderUri, isSettled, url, onImageSettled]);
 
   return (
-    <Image
-      source={{ uri: sourceUri }}
-      style={style}
-      resizeMode={resizeMode}
-      accessibilityIgnoresInvertColors
-    />
+    <View style={[style, styles.imageContainer]}>
+      {hasError ? (
+        <View
+          testID="gallery-image-fallback"
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.fallbackContainer,
+            { backgroundColor: theme.colors.neutralLight },
+          ]}
+        >
+          <Ionicons name={placeholderIcon} size={42} color={theme.colors.textMuted} />
+          <Text style={[styles.fallbackText, { color: theme.colors.textMuted }]}>
+            Unable to load photo
+          </Text>
+        </View>
+      ) : (
+        <Image
+          source={{ uri: renderUri }}
+          style={[style, !isSettled && styles.hiddenImage]}
+          resizeMode={resizeMode}
+          accessibilityIgnoresInvertColors
+          fadeDuration={150}
+          onLoadEnd={() => {
+            setSettledUri(renderUri);
+            onImageSettled?.(url);
+          }}
+          onError={() => {
+            setSettledUri(renderUri);
+            setHasError(true);
+            onImageSettled?.(url);
+          }}
+        />
+      )}
+      {!isSettled && (
+        <View
+          testID="gallery-image-skeleton"
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        >
+          <SkeletonShimmer style={styles.fill}>
+            <SkeletonBone width="100%" height="100%" borderRadius={0} />
+          </SkeletonShimmer>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -500,5 +561,24 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  imageContainer: {
+    overflow: 'hidden',
+  },
+  hiddenImage: {
+    opacity: 0,
+  },
+  fill: {
+    width: '100%',
+    height: '100%',
+  },
+  fallbackContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  fallbackText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

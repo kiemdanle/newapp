@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import HomeTab from '../../app/(app)/(tabs)/home';
 import { usePantryScope } from '../../src/store/pantryScope';
+import { useSyncStateStore } from '../../src/store/syncStateStore';
 import * as recordsApi from '../../src/api/records';
 import * as householdsApi from '../../src/api/households';
 import { renderWithTheme } from '../helpers/renderWithTheme';
@@ -89,6 +90,12 @@ describe('Unified Pantry and Household Sharing Integration', () => {
       isLoading: false,
     } as any);
 
+    useSyncStateStore.getState().setSyncSuccess();
+    jest.spyOn(recordsApi, 'useActiveRecordsWithStatus').mockImplementation(() => ({
+      records: recordsApi.useActiveRecords(),
+      isLoading: false,
+      isResolved: true,
+    }));
     jest.spyOn(recordsApi, 'useActiveRecords').mockImplementation(() => {
       const { scope, householdId } = usePantryScope();
       if (scope === 'personal') {

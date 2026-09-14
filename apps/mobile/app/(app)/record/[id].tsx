@@ -12,8 +12,10 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRecord, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, type LocalRecord } from '../../../src/api/records';
+import { useRecordWithStatus, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, type LocalRecord } from '../../../src/api/records';
 import { useMyHouseholds } from '../../../src/api/households';
+import { useImageSettlementTracker } from '../../../src/cache/useImageSettlementTracker';
+import { RecordDetailSkeleton } from '../../../src/components/skeleton';
 import { useActiveGiveawaysForRecord } from '../../../src/api/giveaways';
 import { useUndoToastStore } from '../../../src/store/undoToast';
 import { QuantityPromptModal } from '../../../src/components/QuantityPromptModal';
@@ -58,8 +60,8 @@ export default function RecordDetail() {
   const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
   const { id } = useRoute().params as { id: string };
-  const record = useRecord(id);
-  const { data: product } = useProduct(record?.productId ?? undefined);
+  const { record, isResolved: isRecordResolved } = useRecordWithStatus(id);
+  const { data: product, isLoading: isProductLoading, isError: isProductError } = useProduct(record?.productId ?? undefined);
   const catalogProductId = record?.productId || product?.id;
   const [pendingReplaceIndex, setPendingReplaceIndex] = useState<number | null>(null);
   const [showCameraModal, setShowCameraModal] = useState(false);
@@ -96,6 +98,24 @@ export default function RecordDetail() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [navigation]);
+  const hasCustomizedPhotos = record?.localPhotos != null;
+  const displayedPhotos: string[] = React.useMemo(() => {
+    if (!record) return [];
+    if (hasCustomizedPhotos) return record.localPhotos!;
+    const fallbackList = [
+      record.photoUrl,
+      product?.imageUrl,
+      ...(product?.photos?.map((p) => p.displayUrl || p.thumbnailUrl) || []),
+    ].filter(Boolean) as string[];
+    return Array.from(new Set(fallbackList));
+  }, [record, product, hasCustomizedPhotos]);
+
+  const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
+
+  if (!isRecordResolved) {
+    return <RecordDetailSkeleton />;
+  }
+
   if (!record) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -110,6 +130,9 @@ export default function RecordDetail() {
       </View>
     );
   }
+  if (record.productId && !record.customName && isProductLoading && !isProductError) {
+    return <RecordDetailSkeleton />;
+  }
 
   const displayName = record.customName || product?.name || 'Pantry Item';
   const brand = record.brand || product?.brand;
@@ -117,17 +140,6 @@ export default function RecordDetail() {
   const barcode = product?.barcode;
   const description = product?.description;
   const shelfLife = product?.defaultShelfLifeDays;
-  const hasCustomizedPhotos = record.localPhotos !== undefined && record.localPhotos !== null;
-  const displayedPhotos: string[] = hasCustomizedPhotos
-    ? record.localPhotos!
-    : (() => {
-        const fallbackList = [
-          record.photoUrl,
-          product?.imageUrl,
-          ...(product?.photos?.map((p: any) => p.displayUrl || p.thumbnailUrl || p.photoUrl) || []),
-        ].filter(Boolean) as string[];
-        return Array.from(new Set(fallbackList));
-      })();
   const handleInitiateMark = (status: 'consumed' | 'discarded') => {
     if (activeGiveaways && activeGiveaways.length > 0) {
       Alert.alert(
@@ -369,6 +381,7 @@ export default function RecordDetail() {
             onDeletePhoto={handleDeletePhoto}
             onChangeCover={handleChangeCover}
             onSetCover={handleSetCover}
+            onImageSettled={markSettled}
             maxPhotos={maxPantryItemPhotos}
             floatingAction={{
               icon: 'camera-outline',
@@ -894,6 +907,12 @@ export default function RecordDetail() {
         maxPhotos={maxPantryItemPhotos}
         onClose={() => setShowLimitModal(false)}
       />
+      {!allVisibleImagesSettled && (
+        <RecordDetailSkeleton
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      )}
     </View>
   );
 }

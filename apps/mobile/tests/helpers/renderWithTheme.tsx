@@ -12,11 +12,13 @@ export function renderWithTheme(ui: ReactElement, themeName: Exclude<ThemePrefer
       mutations: { retry: false },
     },
   });
-  return render(
-    <NavigationContainer>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider initial={themeName}>{ui}</ThemeProvider>
-      </QueryClientProvider>
-    </NavigationContainer>,
-  );
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <NavigationContainer>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider initial={themeName}>{children}</ThemeProvider>
+        </QueryClientProvider>
+      </NavigationContainer>
+    ),
+  });
 }

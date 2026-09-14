@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, Pressable, Modal } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View, Text, Pressable, Modal, StyleSheet } from 'react-native';
 import { KeyboardAwareScrollView } from '../../../src/components/KeyboardAwareScrollView';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -14,28 +14,35 @@ import { Button } from '../../../src/components/Button';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
 import { REVIEW_BADGE_CONFIG } from '../../../src/features/reviews/ReviewCard';
+import { useImageSettlementTracker } from '../../../src/cache/useImageSettlementTracker';
+import { ProductDetailSkeleton } from '../../../src/components/skeleton';
+
 export default function ProductDetail() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
   const { id } = route.params as { id: string };
-  const { data, isLoading } = useProduct(id);
+  const { data, isLoading, isError } = useProduct(id);
   const [showOcr, setShowOcr] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | null>(null);
-
-  const targetProductId = data?.id ?? id;
-  const { data: myReviewData } = useMyProductReview(targetProductId);
+  const canonicalId = data?.id || id;
+  const { data: myReviewData } = useMyProductReview(canonicalId);
   const { data: myReviewsData } = useMyReviews({ limit: 50 });
-  const allMyReviews = deduplicateReviews(myReviewsData?.pages);
-  const myReview =
-    myReviewData?.review ??
-    allMyReviews.find((r) => r.productId === targetProductId || r.productId === id);
-  const userReviewRating = myReview?.rating;
-  const totalRatings = data?.ratingCount ?? 0;
-  const positiveCount = (data?.buyAgainCount ?? 0) + (data?.buyAgainOnSaleCount ?? 0);
-  const scorePct = totalRatings > 0 ? Math.round((positiveCount / totalRatings) * 100) : null;
+  const uniquePhotos = useMemo(() => {
+    const photoList = [
+      data?.imageUrl,
+      ...(data?.photos?.map((p) => p.displayUrl || p.thumbnailUrl) || []),
+    ].filter(Boolean) as string[];
+    return Array.from(new Set(photoList));
+  }, [data?.imageUrl, data?.photos]);
 
-  if (isLoading || !data) {
+  const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(uniquePhotos);
+
+  if (isLoading && !data && !isError) {
+    return <ProductDetailSkeleton />;
+  }
+
+  if (!data) {
     return (
       <View
         style={{
@@ -43,19 +50,29 @@ export default function ProductDetail() {
           justifyContent: 'center',
           alignItems: 'center',
           backgroundColor: theme.colors.bg,
+          padding: 24,
+          gap: 12,
         }}
       >
-        <Text style={{ color: theme.colors.textMuted }}>Loading product…</Text>
+        <Ionicons name="cube-outline" size={48} color={theme.colors.textMuted} />
+        <Text style={{ color: theme.colors.text, fontSize: 18, fontWeight: '700' }}>Product not found</Text>
+        <Text style={{ color: theme.colors.textMuted, textAlign: 'center' }}>
+          This product could not be loaded or may have been removed.
+        </Text>
+        <Button label="Back" onPress={() => navigation.goBack()} />
       </View>
     );
   }
 
-
-  const photoList = [
-    data.imageUrl,
-    ...(data.photos?.map((p: any) => p.displayUrl || p.photoUrl || p.thumbnailUrl) || []),
-  ].filter(Boolean) as string[];
-  const uniquePhotos = Array.from(new Set(photoList));
+  const targetProductId = data.id ?? id;
+  const allMyReviews = deduplicateReviews(myReviewsData?.pages);
+  const myReview =
+    myReviewData?.review ??
+    allMyReviews.find((r) => r.productId === targetProductId || r.productId === id);
+  const userReviewRating = myReview?.rating;
+  const totalRatings = data.ratingCount ?? 0;
+  const positiveCount = (data.buyAgainCount ?? 0) + (data.buyAgainOnSaleCount ?? 0);
+  const scorePct = totalRatings > 0 ? Math.round((positiveCount / totalRatings) * 100) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -71,6 +88,7 @@ export default function ProductDetail() {
           title={data.name || 'Product'}
           placeholderIcon="cube-outline"
           placeholderText="No product photo"
+          onImageSettled={markSettled}
         />
       ) : null}
       <View style={{ padding: theme.spacing.lg, gap: theme.spacing.sm }}>
@@ -213,6 +231,12 @@ export default function ProductDetail() {
           }}
         />
       </Modal>
+      {!allVisibleImagesSettled && (
+        <ProductDetailSkeleton
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      )}
     </View>
   );
 }

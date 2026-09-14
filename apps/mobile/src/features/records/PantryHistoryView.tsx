@@ -14,10 +14,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import {
   usePantryHistoryRecords,
+  usePantryHistoryRecordsWithStatus,
   restoreLocalRecord,
   type LocalRecord,
 } from '../../api/records';
 import { useMyHouseholds } from '../../api/households';
+import { useSyncStateStore } from '../../store/syncStateStore';
+import { PantryHistorySkeleton } from './PantryHistorySkeleton';
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { calculatePantryWasteStats } from '../../utils/waste-metrics';
@@ -48,9 +52,12 @@ export function PantryHistoryView({
 
   // Query all history items for stats and counts
   const allHistoryRecords = usePantryHistoryRecords('all');
-  // Query filtered items for list view
-  const displayRecords = usePantryHistoryRecords(activeFilter);
-
+  // Query filtered items for list view with resolution status
+  const { records: displayRecords, isResolved: isDisplayResolved } =
+    usePantryHistoryRecordsWithStatus(activeFilter);
+  const initialSyncCompleted = useSyncStateStore((s) => s.initialSyncCompleted);
+  const showHistorySkeleton =
+    !isDisplayResolved || (!initialSyncCompleted && displayRecords.length === 0);
   const stats = useMemo(() => {
     const raw = calculatePantryWasteStats(allHistoryRecords);
     return {
@@ -140,10 +147,28 @@ export function PantryHistoryView({
       )}
 
       {/* KPI Stats Banner */}
-      <View style={styles.kpiContainer}>
-        <View
-          style={[
-            styles.kpiCard,
+      {showHistorySkeleton ? (
+        <View style={styles.kpiContainer}>
+          <SkeletonShimmer style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+            <SkeletonBone
+              testID="history-kpi-bone-1"
+              width="48%"
+              height={74}
+              borderRadius={14}
+            />
+            <SkeletonBone
+              testID="history-kpi-bone-2"
+              width="48%"
+              height={74}
+              borderRadius={14}
+            />
+          </SkeletonShimmer>
+        </View>
+      ) : (
+        <View style={styles.kpiContainer}>
+          <View
+            style={[
+              styles.kpiCard,
             {
               backgroundColor: theme.colors.primary + '18',
               borderColor: theme.colors.primary + '4D',
@@ -183,6 +208,7 @@ export function PantryHistoryView({
           </Text>
         </View>
       </View>
+      )}
 
       {/* Sub-Filter Pills */}
       <View style={styles.filterRow}>
@@ -298,7 +324,7 @@ export function PantryHistoryView({
           />
         )}
         ListHeaderComponent={renderHeaderContent}
-        ListEmptyComponent={renderEmpty}
+        ListEmptyComponent={showHistorySkeleton ? <PantryHistorySkeleton /> : renderEmpty}
         contentContainerStyle={[
           styles.listContent,
           { paddingBottom: Math.max(insets.bottom, 24) + 80 },

@@ -6,8 +6,8 @@ import { filterAndSortRecords } from '../../src/features/records/filterAndSortRe
 import type { LocalRecord } from '../../src/api/records';
 import * as recordsApi from '../../src/api/records';
 import { usePantryScope } from '../../src/store/pantryScope';
+import { useSyncStateStore } from '../../src/store/syncStateStore';
 import { renderWithTheme } from '../helpers/renderWithTheme';
-
 jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual('react-native-safe-area-context'),
   useSafeAreaInsets: jest.fn(() => ({ top: 0, right: 0, bottom: 0, left: 0 })),
@@ -38,8 +38,13 @@ describe('Pantry Filtering and Pagination Integration', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-09-07T12:00:00Z'));
+    useSyncStateStore.getState().setSyncSuccess();
+    jest.spyOn(recordsApi, 'useActiveRecordsWithStatus').mockImplementation(() => ({
+      records: recordsApi.useActiveRecords(),
+      isLoading: false,
+      isResolved: true,
+    }));
   });
-
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();

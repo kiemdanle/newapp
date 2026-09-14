@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Image, View, type ImageStyle, type StyleProp } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
 import { getBaseUrl } from '../api/client';
 import { PrivateProductImage } from '../api/product-private-image';
 import { useTheme } from '../theme/useTheme';
 import { useCachedImage } from '../cache/useCachedImage';
+import { SkeletonBone, SkeletonShimmer } from './skeleton';
 export interface ProductThumbnailProps {
   product?: Product | null;
   photoUrl?: string | null;
@@ -142,19 +143,60 @@ function CachedThumbnailImage({
 }) {
   const { uri } = useCachedImage(candidate);
   const renderUri = uri || candidate;
+  const [settledUri, setSettledUri] = useState<string | null>(null);
+
+  const isSettled = Boolean(settledUri && settledUri === renderUri);
+
+  useEffect(() => {
+    if (isSettled) return;
+    const timer = setTimeout(() => {
+      setSettledUri(renderUri);
+      onError();
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [renderUri, isSettled, onError]);
 
   return (
-    <Image
-      key={renderUri}
-      source={{
-        uri: renderUri,
-        cache: 'force-cache',
-      }}
-      style={style}
-      resizeMode="cover"
-      fadeDuration={150}
-      accessibilityIgnoresInvertColors
-      onError={onError}
-    />
+    <View style={[style, styles.container]}>
+      <Image
+        source={{
+          uri: renderUri,
+          cache: 'force-cache',
+        }}
+        style={[style, !isSettled && styles.hiddenImage]}
+        resizeMode="cover"
+        fadeDuration={150}
+        accessibilityIgnoresInvertColors
+        onLoadEnd={() => setSettledUri(renderUri)}
+        onError={() => {
+          setSettledUri(renderUri);
+          onError();
+        }}
+      />
+      {!isSettled && (
+        <View
+          testID="product-thumbnail-skeleton"
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        >
+          <SkeletonShimmer style={styles.fill}>
+            <SkeletonBone width="100%" height="100%" borderRadius={0} />
+          </SkeletonShimmer>
+        </View>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    overflow: 'hidden',
+  },
+  hiddenImage: {
+    opacity: 0,
+  },
+  fill: {
+    width: '100%',
+    height: '100%',
+  },
+});

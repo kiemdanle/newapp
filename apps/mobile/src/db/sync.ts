@@ -6,21 +6,50 @@ import { apiClient } from '../api/client';
 import { getItem, setItem } from '../auth/secure-store';
 import { ERROR_CODES, type RecordSyncResponse, type RecordSyncBatch } from '@expyrico/shared';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
+import { useSyncStateStore } from '../store/syncStateStore';
 
 const LAST_SYNC_KEY = 'pantry.lastSyncAt';
 
 let syncing = false;
+let currentSyncEpoch = 0;
+let pendingSyncRequestedEpoch: number | null = null;
+
+export function invalidateSyncEpoch(): void {
+  currentSyncEpoch++;
+  pendingSyncRequestedEpoch = null;
+}
+
+export function isSyncEpochValid(runEpoch?: number): boolean {
+  return runEpoch === undefined || runEpoch === currentSyncEpoch;
+}
 
 export async function runSync(): Promise<void> {
-  if (syncing) return;
+  const runEpoch = currentSyncEpoch;
+  if (syncing) {
+    pendingSyncRequestedEpoch = runEpoch;
+    return;
+  }
   syncing = true;
+  useSyncStateStore.getState().setSyncStart();
   try {
-    await pushPending();
-    await pullSince();
+    await pushPending(runEpoch);
+    if (!isSyncEpochValid(runEpoch)) return;
+    await pullSince(runEpoch);
+    if (!isSyncEpochValid(runEpoch)) return;
+    useSyncStateStore.getState().setSyncSuccess();
+  } catch (err: unknown) {
+    if (isSyncEpochValid(runEpoch)) {
+      useSyncStateStore.getState().setSyncError(err);
+    }
   } finally {
     syncing = false;
+    if (pendingSyncRequestedEpoch !== null && isSyncEpochValid(pendingSyncRequestedEpoch)) {
+      pendingSyncRequestedEpoch = null;
+      void runSync();
+    }
   }
 }
+
 export function getWirePhotoUrl(raw: string | null | undefined): string | null {
   if (!raw || typeof raw !== 'string') return null;
   const trimmed = raw.trim();
@@ -45,13 +74,14 @@ export function getWirePhotoUrl(raw: string | null | undefined): string | null {
   return null;
 }
 
-
-async function pushPending(): Promise<void> {
+async function pushPending(runEpoch: number): Promise<void> {
+  if (!isSyncEpochValid(runEpoch)) return;
   const recordsCol = database.get<RecordModel>('records');
 
   // STEP 1: Process deletes first
   const deletes = await recordsCol.query(Q.where('pending_delete', true)).fetch();
   for (const rec of deletes) {
+    if (!isSyncEpochValid(runEpoch)) return;
     try {
       if (rec.serverId) {
         await apiClient.delete(`/records/${rec.serverId}`);
@@ -63,14 +93,18 @@ async function pushPending(): Promise<void> {
         throw err;
       }
     }
+    if (!isSyncEpochValid(runEpoch)) return;
     await database.write(async () => {
+      if (!isSyncEpochValid(runEpoch)) return;
       await removeRecordLocalPhotos(rec.clientId);
+      if (!isSyncEpochValid(runEpoch)) return;
       await rec.destroyPermanently();
     });
     syncQuotaErrorsStore.remove(rec.clientId);
   }
 
   // STEP 2: Query surviving dirty records (pending_delete == false)
+  if (!isSyncEpochValid(runEpoch)) return;
   const dirty = await recordsCol
     .query(Q.where('pending_sync', true), Q.where('pending_delete', false))
     .fetch();
@@ -93,6 +127,7 @@ async function pushPending(): Promise<void> {
   const orderedDirty = [...decreasing, ...neutral, ...positive];
 
   for (const rec of orderedDirty) {
+    if (!isSyncEpochValid(runEpoch)) return;
     try {
       const clientId = rec.clientId || uuidv4();
       if (!rec.serverId) {
@@ -122,10 +157,12 @@ async function pushPending(): Promise<void> {
           { headers: { 'Idempotency-Key': clientId } },
         );
         const remoteId = res.id;
+        if (!isSyncEpochValid(runEpoch)) return;
         await database.write(async () => {
+          if (!isSyncEpochValid(runEpoch)) return;
           try {
             const fresh = await recordsCol.find(rec.id);
-            if (fresh && !fresh.pendingDelete) {
+            if (fresh && !fresh.pendingDelete && isSyncEpochValid(runEpoch)) {
               await fresh.update((r) => {
                 r.serverId = remoteId;
                 r.clientId = clientId;
@@ -157,10 +194,12 @@ async function pushPending(): Promise<void> {
         if (rec.locationDirty) patch.location = rec.location ? rec.location.trim() : null;
 
         await apiClient.patch(`/records/${rec.serverId}`, patch);
+        if (!isSyncEpochValid(runEpoch)) return;
         await database.write(async () => {
+          if (!isSyncEpochValid(runEpoch)) return;
           try {
             const fresh = await recordsCol.find(rec.id);
-            if (fresh && !fresh.pendingDelete) {
+            if (fresh && !fresh.pendingDelete && isSyncEpochValid(runEpoch)) {
               await fresh.update((r) => {
                 if (r.status === patch.status) {
                   r.pendingSync = false;
@@ -193,10 +232,12 @@ async function pushPending(): Promise<void> {
       }
 
       if (rec.householdId && (status === 403 || status === 404)) {
+        if (!isSyncEpochValid(runEpoch)) return;
         await database.write(async () => {
+          if (!isSyncEpochValid(runEpoch)) return;
           try {
             const fresh = await recordsCol.find(rec.id);
-            if (fresh && !fresh.pendingDelete) {
+            if (fresh && !fresh.pendingDelete && isSyncEpochValid(runEpoch)) {
               await fresh.update((r) => {
                 r.householdId = null;
                 r.pendingSync = false;
@@ -216,10 +257,13 @@ async function applySyncChanges(
   deletedIds: string[],
   conflicts: RecordSyncResponse['conflicts'],
   householdIds?: string[],
+  runEpoch?: number,
 ): Promise<void> {
+  if (!isSyncEpochValid(runEpoch)) return;
   const recordsCol = database.get<RecordModel>('records');
 
   await database.write(async () => {
+    if (!isSyncEpochValid(runEpoch)) return;
     for (const c of conflicts ?? []) {
       if (c.reason === 'item_limit_reached') {
         syncQuotaErrorsStore.add(c.clientId);
@@ -230,10 +274,13 @@ async function applySyncChanges(
     //    echoed server change so the client adopts the new householdId.
     const conflictClientIds = new Set((conflicts ?? []).map((c) => c.clientId));
     for (const ch of changes) {
+      if (!isSyncEpochValid(runEpoch)) return;
       if (!conflictClientIds.has(ch.clientId)) continue;
       const existing = await recordsCol.query(Q.where('client_id', ch.clientId)).fetch();
+      if (!isSyncEpochValid(runEpoch)) return;
       const hit = existing[0];
       if (hit) {
+        if (!isSyncEpochValid(runEpoch)) return;
         await hit.update((r) => {
           r.serverId = ch.id;
           r.clientId = ch.clientId;
@@ -263,15 +310,18 @@ async function applySyncChanges(
 
     // 2. Apply incoming changes with split conflict policy
     for (const ch of changes) {
+      if (!isSyncEpochValid(runEpoch)) return;
       if (conflictClientIds.has(ch.clientId)) continue;
       // Protect quota-rejected pending restores from being overwritten by older server state
       if (syncQuotaErrorsStore.has(ch.clientId)) continue;
 
       const existing = await recordsCol.query(Q.where('client_id', ch.clientId)).fetch();
+      if (!isSyncEpochValid(runEpoch)) return;
       const hit = existing[0];
 
       if (ch.householdId) {
         if (hit) {
+          if (!isSyncEpochValid(runEpoch)) return;
           await hit.update((r) => {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
@@ -297,6 +347,7 @@ async function applySyncChanges(
             r.pendingDelete = false;
           });
         } else {
+          if (!isSyncEpochValid(runEpoch)) return;
           await recordsCol.create((r) => {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
@@ -325,6 +376,7 @@ async function applySyncChanges(
       } else {
         if (hit) {
           if (hit.pendingSync) continue;
+          if (!isSyncEpochValid(runEpoch)) return;
           await hit.update((r) => {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
@@ -350,6 +402,7 @@ async function applySyncChanges(
             r.pendingDelete = false;
           });
         } else {
+          if (!isSyncEpochValid(runEpoch)) return;
           await recordsCol.create((r) => {
             r.serverId = ch.id;
             r.clientId = ch.clientId;
@@ -379,16 +432,24 @@ async function applySyncChanges(
     }
 
     for (const id of deletedIds) {
+      if (!isSyncEpochValid(runEpoch)) return;
       const existing = await recordsCol.query(Q.where('server_id', id)).fetch();
-      for (const e of existing) await e.destroyPermanently();
+      if (!isSyncEpochValid(runEpoch)) return;
+      for (const e of existing) {
+        if (!isSyncEpochValid(runEpoch)) return;
+        await e.destroyPermanently();
+      }
     }
 
     if (householdIds && householdIds.length >= 0) {
+      if (!isSyncEpochValid(runEpoch)) return;
       const accessibleHhIds = new Set(householdIds);
       const localHouseholdRecords = await recordsCol
         .query(Q.where('household_id', Q.notEq(null)))
         .fetch();
+      if (!isSyncEpochValid(runEpoch)) return;
       for (const r of localHouseholdRecords) {
+        if (!isSyncEpochValid(runEpoch)) return;
         if (r.householdId && !accessibleHhIds.has(r.householdId)) {
           await r.destroyPermanently();
         }
@@ -397,13 +458,15 @@ async function applySyncChanges(
   });
 }
 
-async function pullSince(): Promise<void> {
+async function pullSince(runEpoch: number): Promise<void> {
+  if (!isSyncEpochValid(runEpoch)) return;
   const since = await loadLastSync();
   let cursor: { updatedAt: string; id: string } | null = null;
   let initialServerTime: string | null = null;
   let hasMore = true;
 
   while (hasMore) {
+    if (!isSyncEpochValid(runEpoch)) return;
     const body: RecordSyncBatch = {
       since: cursor ? null : (since ? since.toISOString() : null),
       cursor,
@@ -411,10 +474,12 @@ async function pullSince(): Promise<void> {
       deletes: [],
     };
     const res = await apiClient.post<RecordSyncResponse>('/records/sync', body);
+    if (!isSyncEpochValid(runEpoch)) return;
     if (!initialServerTime) {
       initialServerTime = res.serverTime;
     }
-    await applySyncChanges(res.changes, res.deletedIds, res.conflicts, res.householdIds);
+    await applySyncChanges(res.changes, res.deletedIds, res.conflicts, res.householdIds, runEpoch);
+    if (!isSyncEpochValid(runEpoch)) return;
 
     if (
       res.hasMore &&
@@ -431,6 +496,7 @@ async function pullSince(): Promise<void> {
   }
 
   if (!hasMore && initialServerTime) {
+    if (!isSyncEpochValid(runEpoch)) return;
     await saveLastSync(new Date(initialServerTime));
   }
 }

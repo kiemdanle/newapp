@@ -5,10 +5,11 @@ const STORAGE_KEY = 'pantry.recordPhotoAttachments.v1';
 
 type AttachmentsMap = Record<string, string[]>;
 
+let storageEpoch = 0;
+let storageQueue: Promise<unknown> = Promise.resolve();
 let memoryCache: AttachmentsMap = {};
 let loadPromise: Promise<AttachmentsMap> | null = null;
 let initialized = false;
-
 type StorageListener = () => void;
 const listeners = new Set<StorageListener>();
 
@@ -29,22 +30,44 @@ function notifyListeners() {
   }
 }
 
+function enqueueStorageOp<T>(op: (epoch: number) => Promise<T>): Promise<T> {
+  const currentEpoch = storageEpoch;
+  const next = storageQueue.then(async () => {
+    if (currentEpoch !== storageEpoch) {
+      return undefined as unknown as T;
+    }
+    return op(currentEpoch);
+  });
+  storageQueue = next.then(() => {}, () => {});
+  return next;
+}
+
 async function loadAttachments(): Promise<AttachmentsMap> {
   if (initialized) return memoryCache;
   if (loadPromise) return loadPromise;
-  loadPromise = (async () => {
+  const currentEpoch = storageEpoch;
+  const currentPromise = (async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      memoryCache = raw ? (JSON.parse(raw) as AttachmentsMap) : {};
+      if (currentEpoch === storageEpoch) {
+        memoryCache = raw ? (JSON.parse(raw) as AttachmentsMap) : {};
+        initialized = true;
+        notifyListeners();
+      }
     } catch {
-      memoryCache = {};
+      if (currentEpoch === storageEpoch) {
+        memoryCache = {};
+        initialized = true;
+        notifyListeners();
+      }
     } finally {
-      initialized = true;
-      loadPromise = null;
-      notifyListeners();
+      if (currentEpoch === storageEpoch) {
+        loadPromise = null;
+      }
     }
     return memoryCache;
   })();
+  loadPromise = currentPromise;
   return loadPromise;
 }
 
@@ -58,23 +81,46 @@ export function getRecordLocalPhotosSync(clientId: string): string[] {
 }
 
 export async function saveRecordLocalPhotos(clientId: string, paths: string[]): Promise<void> {
-  const map = await loadAttachments();
-  if (!paths || paths.length === 0) {
-    delete map[clientId];
-  } else {
-    map[clientId] = paths.slice(0, 20);
-  }
-  memoryCache = { ...map };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
-  notifyListeners();
+  return enqueueStorageOp(async (opEpoch) => {
+    if (opEpoch !== storageEpoch) return;
+    const map = await loadAttachments();
+    if (opEpoch !== storageEpoch) return;
+    if (!paths || paths.length === 0) {
+      delete map[clientId];
+    } else {
+      map[clientId] = paths.slice(0, 20);
+    }
+    memoryCache = { ...map };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+    if (opEpoch !== storageEpoch) return;
+    notifyListeners();
+  });
 }
 
 export async function removeRecordLocalPhotos(clientId: string): Promise<void> {
-  const map = await loadAttachments();
-  delete map[clientId];
-  memoryCache = { ...map };
-  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
-  notifyListeners();
+  return enqueueStorageOp(async (opEpoch) => {
+    if (opEpoch !== storageEpoch) return;
+    const map = await loadAttachments();
+    if (opEpoch !== storageEpoch) return;
+    delete map[clientId];
+    memoryCache = { ...map };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+    if (opEpoch !== storageEpoch) return;
+    notifyListeners();
+  });
+}
+
+export async function clearAllRecordPhotoAttachments(): Promise<void> {
+  storageEpoch++;
+  loadPromise = null;
+  memoryCache = {};
+  initialized = true;
+  return enqueueStorageOp(async (opEpoch) => {
+    if (opEpoch !== storageEpoch) return;
+    memoryCache = {};
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    notifyListeners();
+  });
 }
 
 export function useRecordLocalPhotos(clientId?: string | null): string[] {

@@ -33,9 +33,18 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
       - Hook `useSyncStateStore.getState().reset()` into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`.
       - Guarantees that when a second user signs in, `initialSyncCompleted` is re-armed as `false` so the new user sees the shimmering skeleton instead of an empty pantry flash.
       - **Scope Switch Preservation**: Do NOT invoke `reset()` on local household scope changes (`usePantryScope.setScope`). Local scope changes perform instant in-memory SQLite queries over already-synced household data; re-arming the skeleton on scope switch would needlessly block empty households behind the 4-second timeout.
-  - Sync Lifecycle Integration (`apps/mobile/src/db/sync.ts`):
-    - Update `runSync()` to set `isSyncing = true` at start, and `isSyncing = false` / `initialSyncCompleted = true` in `finally`.
-    - Catch errors and record `lastSyncError`.
+  - Sync Lifecycle Integration & Cross-Session Isolation (`apps/mobile/src/db/sync.ts`):
+    - Track `currentSyncEpoch = 0` and `pendingSyncRequestedEpoch: number | null = null`.
+    - Provide `invalidateSyncEpoch()`: increments `currentSyncEpoch++` and clears pending sync flags. Hook into `clearAllLocalUserData()` and `signIn()` in `session-store.ts`.
+    - **Pre-Mutation Stale Checks**: In `pushPending(runEpoch)` and `pullSince(runEpoch)`:
+      - Capture `runEpoch` at the start of `runSync()`.
+      - Check `if (runEpoch !== currentSyncEpoch) return;` immediately before every post-await database/storage mutation (inside `database.write`, before calling `apiClient.delete` or writing to SQLite, and at the entry of `applySyncChanges()`).
+      - Completely prevents old-session API responses from writing into a newly signed-in user's wiped database.
+    - **Queued Generation Recovery**:
+      - If `runSync()` is invoked while `syncing === true` (e.g. `signIn()` or `AppSyncManager` triggers during an active await), store `pendingSyncRequestedEpoch = currentSyncEpoch`.
+      - In `finally`: release `syncing = false`. If `pendingSyncRequestedEpoch !== null && pendingSyncRequestedEpoch === currentSyncEpoch`, clear the flag and immediately schedule `void runSync()`.
+      - Guarantees the newly signed-in user's sync is never dropped or starved by an aborted previous-session run, avoiding timeout false alarms.
+    - Update `useSyncStateStore` on settle: `setSyncSuccess()` / `setSyncError()`, updating `initialSyncCompleted = true`.
   - `PantryListSkeleton.tsx`:
     - Renders a mock list/grid of 5–6 items wrapped in `SkeletonShimmer`:
       - If `viewMode === 'grid'`: renders 3 rows of 2-column `PantryGridCardSkeleton`.
@@ -125,6 +134,9 @@ Eliminate premature empty state flashes (`"Start your pantry"`) during fresh app
    - Retain `useActiveRecords()` as a convenience wrapper returning `.records` for complete backward compatibility with other callers (`UseNextHero`, modals, existing tests).
 5. Update `sync.ts`:
    - Import `syncStateStore` and hook into `runSync()` start, completion, and error handlers with session-generation validation.
+   - Implement `currentSyncEpoch`, `pendingSyncRequestedEpoch`, and export `invalidateSyncEpoch()`.
+   - Add stale checks before every post-await mutation in `pushPending` and `applySyncChanges`.
+   - Implement queued generation trigger in `finally` when `pendingSyncRequestedEpoch === currentSyncEpoch`.
 6. Create `SyncStatusBar.tsx`:
    - Minimal theme-aware status chip for offline / background sync states.
 7. Create `PantryListSkeleton.tsx`:

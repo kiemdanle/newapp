@@ -147,23 +147,22 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 
      const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
      ```
-   - Evaluate terminal not-found and readiness gates in strict sequential order:
+   - Evaluate terminal not-found and metadata readiness gates in strict sequential order (ONLY metadata/not-found gates may return early):
      ```tsx
      // 1. In-flight local SQLite read: show skeleton
      if (isRecordLoading && !isRecordResolved) return <RecordDetailSkeleton />;
 
-     // 2. Terminal Not-Found Branch (checked FIRST before metadata/image readiness):
+     // 2. Terminal Not-Found Branch (checked FIRST before product query):
      if (isRecordResolved && !record) return <ItemNotFoundView />;
 
-     // 3. At this point, record is guaranteed non-null:
-     // If linked product query errors out (404/network), gracefully unmask with record fallback
+     // 3. Pending linked product metadata: hold skeleton while product query is in flight
      const isProductPending = Boolean(record.productId && !record.customName && isProductLoading && !isProductError);
-     const isDetailReady = !isProductPending && allVisibleImagesSettled;
-
-     // 4. If product metadata or images are pending, hold skeleton until ready:
-     if (!isDetailReady) return <RecordDetailSkeleton />;
+     if (isProductPending) return <RecordDetailSkeleton />;
      ```
-   - Pass `onImageSettled={markSettled}` to `ItemImageGallery`.
+   - **Full Detail Mount with Skeleton Overlay (Deadlock Prevention)**:
+     - The real detail layout and `<ItemImageGallery onImageSettled={markSettled} />` MUST mount as soon as metadata is ready (`record` exists and `!isProductPending`).
+     - While images are settling (`!allVisibleImagesSettled`), render `<RecordDetailSkeleton style={StyleSheet.absoluteFillObject} pointerEvents="none" />` on top of the content view as a visual shimmer overlay.
+     - Because `<ItemImageGallery />` and its native `<Image>` components are mounted in the view hierarchy, image downloading starts on millisecond 0, triggering `markSettled` upon native decode without deadlocking. Once `allVisibleImagesSettled` is true (or at the 3s per-image safety timeout), the overlay unmasks seamlessly.
 6. Update `apps/mobile/app/(app)/product/[id].tsx`:
    - Destructure `const { data, isLoading, isError } = useProduct(id);`.
    - Compute `uniquePhotos` via `useMemo` and invoke `useImageSettlementTracker(uniquePhotos)` unconditionally before any early returns:
@@ -179,7 +178,7 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
 
      const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(uniquePhotos);
      ```
-   - Evaluate terminal error and readiness gates in strict sequential order:
+   - Evaluate terminal error and metadata readiness gates in strict sequential order:
      ```tsx
      // 1. In-flight catalog query: show skeleton
      if (isLoading && !data && !isError) return <ProductDetailSkeleton />;
@@ -197,11 +196,11 @@ Complete skeleton loading coverage for deep product/record detail screens (`reco
          </View>
        );
      }
-
-     // 3. At this point, data is guaranteed non-null:
-     if (!allVisibleImagesSettled) return <ProductDetailSkeleton />;
      ```
-   - Pass `onImageSettled={markSettled}` to `ItemImageGallery`.
+   - **Full Product Detail Mount with Skeleton Overlay (Deadlock Prevention)**:
+     - Mount the real screen and `<ItemImageGallery onImageSettled={markSettled} />` immediately once `data` is present.
+     - While `!allVisibleImagesSettled`, render `<ProductDetailSkeleton style={StyleSheet.absoluteFillObject} pointerEvents="none" />` as an overlay.
+     - Guarantees `<Image>` components are active in the tree, resolving images immediately and unmasking cleanly without deadlocking.
 7. Update `apps/mobile/src/features/records/PantryHistoryView.tsx`:
    - Consume `usePantryHistoryRecordsWithStatus(activeFilter)`.
    - Compute: `const showHistorySkeleton = !isHistoryResolved || (!initialSyncCompleted && displayRecords.length === 0);`.

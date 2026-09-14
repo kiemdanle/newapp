@@ -4,7 +4,7 @@ import {
   removeRecordLocalPhotos,
   subscribeRecordPhotoStorage,
 } from '../features/records/record-photo-storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from '../db/index';
@@ -98,11 +98,23 @@ export const RECORD_OBSERVED_COLUMNS = [
   'household_id',
 ] as const;
 
-export function useActiveRecords(): LocalRecord[] {
+export interface UseActiveRecordsStatus {
+  records: LocalRecord[];
+  isLoading: boolean;
+  isResolved: boolean;
+}
+
+export function useActiveRecordsWithStatus(): UseActiveRecordsStatus {
   const [rows, setRows] = useState<LocalRecord[]>([]);
+  const [isResolved, setIsResolved] = useState(false);
   const { scope, householdId } = usePantryScope();
+  const queryGenRef = useRef(0);
 
   useEffect(() => {
+    const currentGen = ++queryGenRef.current;
+    setIsResolved(false);
+    setRows([]);
+
     const col = database.get<RecordModel>('records');
     const conditions = [
       Q.where('status', 'active'),
@@ -119,10 +131,13 @@ export function useActiveRecords(): LocalRecord[] {
       .query(...conditions)
       .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
       .subscribe((res) => {
+        if (currentGen !== queryGenRef.current) return;
         currentModels = res;
         setRows(res.map(toLocal));
+        setIsResolved(true);
       });
     const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentGen !== queryGenRef.current) return;
       if (currentModels.length > 0) {
         setRows(currentModels.map(toLocal));
       }
@@ -132,9 +147,17 @@ export function useActiveRecords(): LocalRecord[] {
       unsubStorage();
     };
   }, [scope, householdId]);
-  return rows;
+
+  return {
+    records: rows,
+    isLoading: !isResolved,
+    isResolved,
+  };
 }
 
+export function useActiveRecords(): LocalRecord[] {
+  return useActiveRecordsWithStatus().records;
+}
 export function useAllActiveRecords(): LocalRecord[] {
   const [rows, setRows] = useState<LocalRecord[]>([]);
 
@@ -165,20 +188,31 @@ export function useAllActiveRecords(): LocalRecord[] {
   return rows;
 }
 
-export function usePantryHistoryRecords(
+export interface UsePantryHistoryRecordsStatus {
+  records: LocalRecord[];
+  isLoading: boolean;
+  isResolved: boolean;
+}
+
+export function usePantryHistoryRecordsWithStatus(
   filter: 'all' | 'consumed' | 'discarded' = 'all',
-): LocalRecord[] {
+): UsePantryHistoryRecordsStatus {
   const [rows, setRows] = useState<LocalRecord[]>([]);
+  const [isResolved, setIsResolved] = useState(false);
   const { scope, householdId } = usePantryScope();
+  const queryGenRef = useRef(0);
 
   useEffect(() => {
+    const currentGen = ++queryGenRef.current;
+    setIsResolved(false);
+    setRows([]);
     const col = database.get<RecordModel>('records');
     const statusCondition =
       filter === 'all'
         ? Q.where('status', Q.oneOf(['consumed', 'discarded']))
         : Q.where('status', filter);
 
-    const conditions: any[] = [
+    const conditions = [
       statusCondition,
       Q.where('pending_delete', false),
     ];
@@ -194,10 +228,13 @@ export function usePantryHistoryRecords(
       .query(...conditions, Q.sortBy('updated_at', Q.desc))
       .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
       .subscribe((res) => {
+        if (currentGen !== queryGenRef.current) return;
         currentModels = res;
         setRows(res.map(toLocal));
+        setIsResolved(true);
       });
     const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentGen !== queryGenRef.current) return;
       if (currentModels.length > 0) {
         setRows(currentModels.map(toLocal));
       }
@@ -208,26 +245,57 @@ export function usePantryHistoryRecords(
       unsubStorage();
     };
   }, [filter, scope, householdId]);
-  return rows;
+
+  return {
+    records: rows,
+    isLoading: !isResolved,
+    isResolved,
+  };
 }
 
-export function useRecord(id: string | undefined): LocalRecord | null {
+export function usePantryHistoryRecords(
+  filter: 'all' | 'consumed' | 'discarded' = 'all',
+): LocalRecord[] {
+  return usePantryHistoryRecordsWithStatus(filter).records;
+}
+
+export interface UseRecordStatus {
+  record: LocalRecord | null;
+  isLoading: boolean;
+  isResolved: boolean;
+}
+
+export function useRecordWithStatus(id: string | undefined | null): UseRecordStatus {
   const [row, setRow] = useState<LocalRecord | null>(null);
+  const [isResolved, setIsResolved] = useState(false);
+  const queryGenRef = useRef(0);
+
   useEffect(() => {
+    const currentGen = ++queryGenRef.current;
     if (!id) {
       setRow(null);
+      setIsResolved(true);
       return;
     }
+
+    setIsResolved(false);
     const col = database.get<RecordModel>('records');
     let currentModel: RecordModel | null = null;
     const sub = col.findAndObserve(id).subscribe(
       (r) => {
+        if (currentGen !== queryGenRef.current) return;
         currentModel = r;
         setRow(r ? toLocal(r) : null);
+        setIsResolved(true);
       },
-      () => setRow(null),
+      () => {
+        if (currentGen !== queryGenRef.current) return;
+        setRow(null);
+        setIsResolved(true);
+      },
     );
     const unsubStorage = subscribeRecordPhotoStorage(() => {
+      if (currentGen !== queryGenRef.current) return;
       if (currentModel) {
         setRow(toLocal(currentModel));
       }
@@ -237,7 +305,16 @@ export function useRecord(id: string | undefined): LocalRecord | null {
       unsubStorage();
     };
   }, [id]);
-  return row;
+
+  return {
+    record: row,
+    isLoading: !isResolved,
+    isResolved,
+  };
+}
+
+export function useRecord(id: string | undefined): LocalRecord | null {
+  return useRecordWithStatus(id).record;
 }
 
 export async function createLocalRecord(input: {

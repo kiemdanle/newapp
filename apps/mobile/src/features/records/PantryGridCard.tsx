@@ -11,7 +11,7 @@ import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { PantryGridActionDrawer } from './PantryGridActionDrawer';
-
+import { SkeletonBone } from '../../components/skeleton';
 import { getLocationIcon } from '../../utils/locations';
 export interface PantryGridCardProps {
   record: LocalRecord;
@@ -58,12 +58,13 @@ export function PantryGridCard({
   const swipeableRef = useRef<Swipeable>(null);
   const [cardWidth, setCardWidth] = useState(0);
   const isProcessingRef = useRef(false);
-  const { data: product } = useProduct(record.productId ?? undefined);
+  const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
 
-  const displayName = record.customName || product?.name || 'Item';
+  const isProductPending = Boolean(record.productId && !record.customName && isProductLoading);
+  const isBrandPending = Boolean(record.productId && !record.brand && isProductLoading);
+  const displayName = record.customName || product?.name || (isProductPending ? '' : 'Item');
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
-
   const isHouseholdItem =
     showHouseholdBadge ?? (scope === 'all' && Boolean(record.householdId));
   const isPersonalItem =
@@ -318,7 +319,15 @@ export function PantryGridCard({
           {/* Text Area: Brand/Category, Name */}
           <View style={styles.detailsContainer}>
             <View style={styles.brandRow}>
-              {brand ? (
+              {isBrandPending ? (
+                <SkeletonBone
+                  testID="grid-card-brand-skeleton"
+                  width="40%"
+                  height={10}
+                  borderRadius={3}
+                  style={{ marginBottom: 2 }}
+                />
+              ) : brand ? (
                 <Text
                   style={[styles.brandText, { color: theme.colors.textMuted }]}
                   numberOfLines={1}
@@ -337,17 +346,30 @@ export function PantryGridCard({
               )}
             </View>
 
-            <Text
-              style={[
-                styles.nameText,
-                {
-                  color: theme.colors.text,
-                },
-              ]}
-              numberOfLines={2}
-            >
-              {displayName}
-            </Text>
+            {isProductPending ? (
+              <View style={styles.titleBlock}>
+                <SkeletonBone
+                  testID="grid-card-title-skeleton"
+                  width="85%"
+                  height={14}
+                  borderRadius={3}
+                  style={{ marginBottom: 4 }}
+                />
+                <SkeletonBone width="50%" height={14} borderRadius={3} />
+              </View>
+            ) : (
+              <Text
+                style={[
+                  styles.nameText,
+                  {
+                    color: theme.colors.text,
+                  },
+                ]}
+                numberOfLines={2}
+              >
+                {displayName}
+              </Text>
+            )}
             {/* Footer Metadata: Household/Personal Badge + Expiry Date */}
             <View style={styles.footerMetadata}>
               {isHouseholdItem ? (
@@ -534,6 +556,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'capitalize',
     letterSpacing: 0.3,
+  },
+  titleBlock: {
+    minHeight: 36,
+    justifyContent: 'center',
   },
   nameText: {
     fontWeight: '600',

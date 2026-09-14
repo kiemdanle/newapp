@@ -12,6 +12,7 @@ import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { getLocationIcon } from '../../utils/locations';
 import { useSyncQuotaErrorsStore } from '../../store/syncQuotaErrorsStore';
+import { SkeletonBone } from '../../components/skeleton';
 interface Props {
   record: LocalRecord;
   onPress: () => void;
@@ -55,12 +56,13 @@ export function RecordCard({
   const { scope } = usePantryScope();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const swipeableRef = useRef<Swipeable>(null);
-  const { data: product } = useProduct(record.productId ?? undefined);
+  const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
   const hasQuotaError = useSyncQuotaErrorsStore((s) => s.errorClientIds.has(record.clientId));
-  const displayName = record.customName || product?.name || 'Item';
+  const isProductPending = Boolean(record.productId && !record.customName && isProductLoading);
+  const isBrandPending = Boolean(record.productId && !record.brand && isProductLoading);
+  const displayName = record.customName || product?.name || (isProductPending ? '' : 'Item');
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
-
   const isHouseholdItem =
     showHouseholdBadge ?? (scope === 'all' && Boolean(record.householdId));
   const isPersonalItem =
@@ -210,7 +212,15 @@ export function RecordCard({
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                {brand ? (
+                {isBrandPending ? (
+                  <SkeletonBone
+                    testID="record-card-brand-skeleton"
+                    width="35%"
+                    height={10}
+                    borderRadius={3}
+                    style={{ marginBottom: 4 }}
+                  />
+                ) : brand ? (
                   <Text
                     style={{
                       color: theme.colors.textMuted,
@@ -239,12 +249,22 @@ export function RecordCard({
                     {category}
                   </Text>
                 ) : null}
-                <Text
-                  style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
-                  numberOfLines={2}
-                >
-                  {displayName}
-                </Text>
+                {isProductPending ? (
+                  <SkeletonBone
+                    testID="record-card-title-skeleton"
+                    width="60%"
+                    height={16}
+                    borderRadius={4}
+                    style={{ marginVertical: 2 }}
+                  />
+                ) : (
+                  <Text
+                    style={{ color: theme.colors.text, fontWeight: '600', fontSize: 15 }}
+                    numberOfLines={2}
+                  >
+                    {displayName}
+                  </Text>
+                )}
               </View>
               <View
                 testID={`record-expiry-status-${status}`}

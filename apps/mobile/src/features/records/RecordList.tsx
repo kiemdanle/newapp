@@ -17,7 +17,7 @@ import { useSelectionModeStore } from '../../store/selectionModeStore';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  useActiveRecords,
+  useActiveRecordsWithStatus,
   createLocalRecord,
   patchLocalRecord,
   deleteLocalRecord,
@@ -47,6 +47,9 @@ import type { PantryFilterState, PantrySortOption } from './pantryFilterTypes';
 import { BulkScopeModal } from './BulkScopeModal';
 import { useUiPreferencesStore } from '../../store/uiPreferencesStore';
 import { PantryGridCard } from './PantryGridCard';
+import { useSyncStateStore } from '../../store/syncStateStore';
+import { PantryListSkeleton } from './PantryListSkeleton';
+import { SyncStatusBar } from '../../components/SyncStatusBar';
 
 function chunkArray<T>(items: T[], size: number = 2): T[][] {
   const chunks: T[][] = [];
@@ -125,7 +128,9 @@ export function RecordList({
   onUrgentFilterChange,
   dayTick,
 }: RecordListProps) {
-  const records = useActiveRecords();
+  const { records, isResolved: isRecordsResolved } = useActiveRecordsWithStatus();
+  const initialSyncCompleted = useSyncStateStore((s) => s.initialSyncCompleted);
+  const showListSkeleton = (!initialSyncCompleted && records.length === 0) || !isRecordsResolved;
   const { scope, householdId } = usePantryScope();
   const navigation = useNavigation<AppNavigationProp>();
   const theme = useTheme();
@@ -280,10 +285,10 @@ export function RecordList({
   ].join(':');
   const {
     paginatedItems,
-    hasMore,
-    isLoadingMore,
     loadMore,
     totalCount,
+    hasMore,
+    isLoadingMore,
   } = usePantryPagination(filteredRecords, 20, resetKey);
 
   const onEndReachedCalledDuringMomentumRef = useRef(true);
@@ -719,7 +724,6 @@ export function RecordList({
     setFilters({ expiryStatus: 'all' });
     setSelectedSort('expiry_asc');
   }, []);
-
   const renderPaginationFooter = () => {
     if (isLoadingMore) {
       return (
@@ -742,6 +746,7 @@ export function RecordList({
     }
     return null;
   };
+
 
   // Common interactive controls: Search Bar, Sort Pills, Active Filter Chips
   const renderControls = () => (
@@ -840,10 +845,19 @@ export function RecordList({
         ListHeaderComponent={
           <View style={styles.headerStack}>
             {resolvedHeader}
-            {records.length > 0 || isFiltered ? renderControls() : null}
+            <SyncStatusBar />
+            {records.length > 0 || isFiltered || showListSkeleton ? renderControls() : null}
           </View>
         }
-        ListEmptyComponent={isFiltered ? renderFilterEmptyState : empty}
+        ListEmptyComponent={
+          showListSkeleton ? (
+            <PantryListSkeleton viewMode={viewMode} />
+          ) : isFiltered ? (
+            renderFilterEmptyState()
+          ) : (
+            empty
+          )
+        }
         ListFooterComponent={renderPaginationFooter}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.25}
