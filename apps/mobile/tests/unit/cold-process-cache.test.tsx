@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createQueryClient } from '../../src/api/query-client';
+import { createQueryClient, clearQueryClient } from '../../src/api/query-client';
 import { imageDiskCache } from '../../src/cache/image-disk-cache';
-import { clearProductMemoryCache, hydrateProductCache, purgeProductCache } from '../../src/api/products';
+import { clearProductMemoryCache, hydrateProductCache } from '../../src/api/products';
 import { clearAllLocalUserData } from '../../src/auth/session-store';
 import type { ProductWithReviews } from '@expyrico/shared';
 
@@ -10,6 +10,10 @@ describe('Cold-Process Cache Hydration & Remount', () => {
     await imageDiskCache.purgeAll();
     await AsyncStorage.clear();
     clearProductMemoryCache();
+  });
+
+  afterEach(() => {
+    clearQueryClient();
   });
 
   it('L1 clear + L2 preload: imageDiskCache.hydrate warms L1 synchronously for cold remount', async () => {
@@ -52,11 +56,11 @@ describe('Cold-Process Cache Hydration & Remount', () => {
 
     // 2. Clear L1 to simulate cold restart
     imageDiskCache.clearL1();
-
     // 3. Boot hydration runs
+    await imageDiskCache.hydrate();
+
     // 4. Large payload (>32KB) is intentionally deferred from L1 sync memory to keep boot lightweight
     expect(imageDiskCache.getSync(key)).toBeNull();
-
     // 5. Asynchronous L2 get() resolves the deferred payload cleanly from AsyncStorage
     const asyncEntry = await imageDiskCache.get(key);
     expect(asyncEntry).toBeTruthy();
@@ -106,6 +110,7 @@ describe('Cold-Process Cache Hydration & Remount', () => {
     // 3. TanStack Query cache must be populated immediately without waiting for network fetch
     const cachedInQuery = queryClient.getQueryData<ProductWithReviews>(['products', productId]);
     expect(cachedInQuery).toEqual(mockProduct);
+    queryClient.clear();
   });
 
   it('Privacy & Account Switch: drafts are never persisted or hydrated, and clearAllLocalUserData purges product cache', async () => {
