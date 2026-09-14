@@ -9,30 +9,41 @@ jest.mock('../../db/sync', () => ({
   runSync: jest.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('../../api/records', () => ({
-  useActiveRecords: jest.fn(() => [
-    {
-      id: 'rec-1',
-      serverId: 'srv-1',
-      clientId: 'cli-1',
-      productId: null,
-      customName: 'Milk',
-      category: 'Dairy',
-      expiryDate: '2026-12-31',
-      quantity: 1,
-      unit: 'bottle',
-      price: null,
-      store: null,
-      notes: null,
-      photoUrl: null,
-      status: 'active',
-      notifyAt: [],
-      householdId: null,
-    },
-  ]),
-  patchLocalRecord: jest.fn().mockResolvedValue(undefined),
-  deleteLocalRecord: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('../../api/records', () => {
+  const mockRecord = {
+    id: 'rec-1',
+    serverId: 'srv-1',
+    clientId: 'cli-1',
+    productId: null,
+    customName: 'Milk',
+    category: 'Dairy',
+    expiryDate: '2026-12-31',
+    quantity: 1,
+    unit: 'bottle',
+    price: null,
+    store: null,
+    notes: null,
+    photoUrl: null,
+    status: 'active',
+    notifyAt: [],
+    householdId: null,
+  };
+  return {
+    useActiveRecords: jest.fn(() => [mockRecord]),
+    useActiveRecordsWithStatus: jest.fn(() => ({
+      records: [mockRecord],
+      isLoading: false,
+      isResolved: true,
+    })),
+    patchLocalRecord: jest.fn().mockResolvedValue(undefined),
+    deleteLocalRecord: jest.fn().mockResolvedValue(undefined),
+    markRecordStatusWithQuantity: jest.fn().mockResolvedValue({
+      affectedId: 'rec-1',
+      isSplit: false,
+      markedQuantity: 1,
+    }),
+  };
+});
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),

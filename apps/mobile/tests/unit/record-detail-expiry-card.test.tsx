@@ -47,9 +47,21 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('../../src/api/records', () => {
   const actual = jest.requireActual('../../src/api/records');
+  const mockRecordFn = jest.fn();
   return {
     ...actual,
-    useRecord: jest.fn(),
+    useRecord: mockRecordFn,
+    useRecordWithStatus: jest.fn((id?: string) => {
+      const rec = mockRecordFn(id);
+      return {
+        record: rec,
+        isLoading: false,
+        isResolved: true,
+        isError: false,
+        errorMessage: null,
+        retry: jest.fn(),
+      };
+    }),
     patchLocalRecord: jest.fn(),
     deleteLocalRecord: jest.fn(),
   };

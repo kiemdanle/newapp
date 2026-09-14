@@ -26,7 +26,10 @@ jest.mock('../../src/db/sync', () => ({
 // Mock records
 jest.mock('../../src/api/records', () => ({
   useActiveRecords: () => [],
+  useActiveRecordsWithStatus: () => ({ records: [], isLoading: false, isResolved: true }),
   usePantryHistoryRecords: () => [],
+  usePantryHistoryRecordsWithStatus: () => ({ records: [], isLoading: false, isResolved: true }),
+  useRecordWithStatus: () => ({ record: null, isLoading: false, isResolved: true, isError: false, errorMessage: null, retry: jest.fn() }),
   patchLocalRecord: jest.fn(),
   deleteLocalRecord: jest.fn(),
 }));

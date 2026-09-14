@@ -4,9 +4,11 @@ import { fireEvent, act } from '@testing-library/react-native';
 import PantryHistoryScreen from '../../app/(app)/pantry/history';
 import {
   usePantryHistoryRecords,
+  usePantryHistoryRecordsWithStatus,
   restoreLocalRecord,
   type LocalRecord,
 } from '../../src/api/records';
+import { useSyncStateStore } from '../../src/store/syncStateStore';
 import { renderWithTheme } from '../helpers/renderWithTheme';
 
 const mockNavigate = jest.fn();
@@ -22,8 +24,23 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+const mockFilterHistory = (filter?: string) => {
+  if (filter === 'consumed') {
+    return mockRecords.filter((r) => r.status === 'consumed');
+  }
+  if (filter === 'discarded') {
+    return mockRecords.filter((r) => r.status === 'discarded');
+  }
+  return mockRecords;
+};
+
 jest.mock('../../src/api/records', () => ({
-  usePantryHistoryRecords: jest.fn(),
+  usePantryHistoryRecords: jest.fn((filter?: string) => mockFilterHistory(filter)),
+  usePantryHistoryRecordsWithStatus: jest.fn((filter?: string) => ({
+    records: mockFilterHistory(filter),
+    isLoading: false,
+    isResolved: true,
+  })),
   restoreLocalRecord: jest.fn().mockResolvedValue({
     restoredRecordId: 'rec-1',
     wasReassignedToPersonal: false,
@@ -91,15 +108,13 @@ const mockRecords: LocalRecord[] = [
 describe('PantryHistoryScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (usePantryHistoryRecords as jest.Mock).mockImplementation((filter?: string) => {
-      if (filter === 'consumed') {
-        return mockRecords.filter((r) => r.status === 'consumed');
-      }
-      if (filter === 'discarded') {
-        return mockRecords.filter((r) => r.status === 'discarded');
-      }
-      return mockRecords;
-    });
+    useSyncStateStore.setState({ isSyncing: false, initialSyncCompleted: true });
+    (usePantryHistoryRecords as jest.Mock).mockImplementation((filter?: string) => mockFilterHistory(filter));
+    (usePantryHistoryRecordsWithStatus as jest.Mock).mockImplementation((filter?: string) => ({
+      records: mockFilterHistory(filter),
+      isLoading: false,
+      isResolved: true,
+    }));
   });
 
   it('renders history screen with header and KPI stats', () => {
@@ -128,17 +143,16 @@ describe('PantryHistoryScreen', () => {
 
     // Tap Used filter
     fireEvent.press(getByTestId('history-filter-used'));
-    expect(usePantryHistoryRecords).toHaveBeenCalledWith('consumed');
+    expect(usePantryHistoryRecordsWithStatus).toHaveBeenCalledWith('consumed');
 
     // Tap Discarded filter
     fireEvent.press(getByTestId('history-filter-discarded'));
-    expect(usePantryHistoryRecords).toHaveBeenCalledWith('discarded');
+    expect(usePantryHistoryRecordsWithStatus).toHaveBeenCalledWith('discarded');
 
     // Tap All filter
     fireEvent.press(getByTestId('history-filter-all'));
-    expect(usePantryHistoryRecords).toHaveBeenCalledWith('all');
+    expect(usePantryHistoryRecordsWithStatus).toHaveBeenCalledWith('all');
   });
-
   it('tapping Restore to Pantry calls restoreLocalRecord with household IDs', async () => {
     const { getByTestId } = renderWithTheme(<PantryHistoryScreen />, 'expyrico');
 
@@ -159,6 +173,11 @@ describe('PantryHistoryScreen', () => {
 
   it('renders empty state when there are no records for a filter', () => {
     (usePantryHistoryRecords as jest.Mock).mockReturnValue([]);
+    (usePantryHistoryRecordsWithStatus as jest.Mock).mockReturnValue({
+      records: [],
+      isLoading: false,
+      isResolved: true,
+    });
 
     const { getByText } = renderWithTheme(<PantryHistoryScreen />, 'expyrico');
     expect(getByText('Pantry history is empty')).toBeTruthy();

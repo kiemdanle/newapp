@@ -80,6 +80,7 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
 
 const styles = StyleSheet.create({
   container: {
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

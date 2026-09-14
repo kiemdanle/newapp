@@ -5,6 +5,7 @@ import { fireEvent, act } from '@testing-library/react-native';
 import RecordDetail from '../../app/(app)/record/[id]';
 import {
   useRecord,
+  useRecordWithStatus,
   markRecordStatusWithQuantity,
   type LocalRecord,
 } from '../../src/api/records';
@@ -31,6 +32,7 @@ jest.mock('@react-navigation/native', () => {
 
 jest.mock('../../src/api/records', () => ({
   useRecord: jest.fn(),
+  useRecordWithStatus: jest.fn(),
   patchLocalRecord: jest.fn(),
   deleteLocalRecord: jest.fn(),
   markRecordStatusWithQuantity: jest.fn().mockResolvedValue({
@@ -79,6 +81,14 @@ describe('Giveaway Safety Guard in RecordDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useRecord as jest.Mock).mockReturnValue(mockRecord);
+    (useRecordWithStatus as jest.Mock).mockReturnValue({
+      record: mockRecord,
+      isLoading: false,
+      isResolved: true,
+      isError: false,
+      errorMessage: null,
+      retry: jest.fn(),
+    });
   });
 
   it('blocks marking as used/discarded when item is linked to an active giveaway and alerts user', async () => {

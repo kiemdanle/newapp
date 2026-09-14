@@ -270,26 +270,17 @@ export interface UseRecordStatus {
 }
 
 export function useRecordWithStatus(id: string | undefined | null): UseRecordStatus {
-  const [activeId, setActiveId] = useState<string | null>(id ?? null);
+  const [resolvedId, setResolvedId] = useState<string | null>(null);
   const [row, setRow] = useState<LocalRecord | null>(null);
-  const [isResolved, setIsResolved] = useState(!id);
   const [isError, setIsError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const queryGenRef = useRef(0);
 
-  if (id !== activeId) {
-    setActiveId(id ?? null);
-    setRow(null);
-    setIsResolved(!id);
-    setIsError(false);
-    setErrorMessage(null);
-  }
-
   const retry = useCallback(() => {
     setIsError(false);
     setErrorMessage(null);
-    setIsResolved(false);
+    setResolvedId(null);
     setRetryNonce((n) => n + 1);
     void runSync();
   }, []);
@@ -298,7 +289,7 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
     const currentGen = ++queryGenRef.current;
     if (!id) {
       setRow(null);
-      setIsResolved(true);
+      setResolvedId(null);
       setIsError(false);
       setErrorMessage(null);
       return;
@@ -306,53 +297,92 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
 
     const col = database.get<RecordModel>('records');
     let currentModel: RecordModel | null = null;
+    let modelSub: { unsubscribe: () => void } | null = null;
     let cancelled = false;
 
-    // Observe query across id, server_id, and client_id so that late insertions
-    // from slow background sync automatically trigger an update!
+    // Observe query across id, server_id, and client_id with all detail columns
+    // so late insertions AND existing column edits trigger updates!
     const query = col.query(
       Q.or(Q.where('id', id), Q.where('server_id', id), Q.where('client_id', id)),
     );
 
-    const sub = query.observe().subscribe(
-      (matches) => {
-        if (cancelled || currentGen !== queryGenRef.current) return;
-        if (matches.length > 0 && matches[0]) {
-          currentModel = matches[0];
-          setRow(toLocal(matches[0]));
-          setIsResolved(true);
-          setIsError(false);
-          setErrorMessage(null);
-        } else {
-          currentModel = null;
-          setRow(null);
-          const syncState = useSyncStateStore.getState();
-          if (syncState.isSyncing || !syncState.initialSyncCompleted) {
-            // Background sync is in flight over slow network — hold isResolved false so skeleton displays
-            setIsResolved(false);
-            setIsError(false);
-          } else if (syncState.lastSyncError) {
-            // Sync finished with an error — expose retryable error state instead of falsely reporting item not found!
-            setIsError(true);
-            setErrorMessage(syncState.lastSyncError);
-            setIsResolved(true);
-          } else {
-            // Terminal missing outcome: sync succeeded and the item truly does not exist
+    const bindModelObserver = (model: RecordModel) => {
+      if (currentModel?.id === model.id && modelSub) return;
+      if (modelSub) {
+        modelSub.unsubscribe();
+        modelSub = null;
+      }
+      currentModel = model;
+      setRow(toLocal(model));
+      setIsError(false);
+      setErrorMessage(null);
+      setResolvedId(id);
+      if (typeof model.observe === 'function') {
+        modelSub = model.observe().subscribe(
+          (updated) => {
+            if (cancelled || currentGen !== queryGenRef.current) return;
+            currentModel = updated;
+            setRow(toLocal(updated));
             setIsError(false);
             setErrorMessage(null);
-            setIsResolved(true);
+            setResolvedId(id);
+          },
+          () => {
+            if (cancelled || currentGen !== queryGenRef.current) return;
+            currentModel = null;
+            setRow(null);
+            setResolvedId(id);
+          },
+        );
+      }
+    };
+
+    const sub = query
+      .observeWithColumns(RECORD_OBSERVED_COLUMNS as unknown as string[])
+      .subscribe(
+        (matches) => {
+          if (cancelled || currentGen !== queryGenRef.current) return;
+          if (matches.length > 0 && matches[0]) {
+            bindModelObserver(matches[0]);
+          } else {
+            if (modelSub) {
+              modelSub.unsubscribe();
+              modelSub = null;
+            }
+            currentModel = null;
+            setRow(null);
+            const syncState = useSyncStateStore.getState();
+            if (syncState.isSyncing || !syncState.initialSyncCompleted) {
+              // Background sync is in flight or initial sync is pending — hold unresolved so skeleton displays
+              setResolvedId(null);
+              setIsError(false);
+              setErrorMessage(null);
+            } else if (syncState.lastSyncError) {
+              // Sync finished with an error — expose retryable error state instead of falsely reporting item not found!
+              setResolvedId(id);
+              setIsError(true);
+              setErrorMessage(syncState.lastSyncError);
+            } else {
+              // Terminal missing outcome: initial sync completed cleanly and item does not exist
+              setResolvedId(id);
+              setIsError(false);
+              setErrorMessage(null);
+            }
           }
-        }
-      },
-      (err) => {
-        if (cancelled || currentGen !== queryGenRef.current) return;
-        currentModel = null;
-        setRow(null);
-        setIsError(true);
-        setErrorMessage(err instanceof Error ? err.message : 'Database lookup error');
-        setIsResolved(true);
-      },
-    );
+        },
+        (err) => {
+          if (cancelled || currentGen !== queryGenRef.current) return;
+          if (modelSub) {
+            modelSub.unsubscribe();
+            modelSub = null;
+          }
+          currentModel = null;
+          setRow(null);
+          setResolvedId(id);
+          setIsError(true);
+          setErrorMessage(err instanceof Error ? err.message : 'Database lookup error');
+        },
+      );
 
     // Subscribe to sync completion: gate terminal missing on a successful settled sync
     const unsubSync = useSyncStateStore.subscribe((state, prevState) => {
@@ -360,32 +390,28 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
       if (prevState.isSyncing && !state.isSyncing) {
         if (!currentModel) {
           setRow(null);
+          setResolvedId(id);
           if (state.lastSyncError) {
             // Sync failed: show retryable error state
             setIsError(true);
             setErrorMessage(state.lastSyncError);
-            setIsResolved(true);
           } else {
             // Sync succeeded: genuine missing record
             setIsError(false);
             setErrorMessage(null);
-            setIsResolved(true);
           }
         }
       }
     });
 
-    // 8s Fail-safe timer in case sync hangs or connection drops completely:
+    // Bounded fail-safe timer (8s) independent of sync completion:
     // Settle as an error / retry state — NEVER as "Item not found"!
     const failSafeTimer = setTimeout(() => {
       if (cancelled || currentGen !== queryGenRef.current) return;
       if (!currentModel) {
-        const syncState = useSyncStateStore.getState();
-        if (!syncState.isSyncing) {
-          setIsError(true);
-          setErrorMessage('Sync request timed out. Please check your connection and try again.');
-          setIsResolved(true);
-        }
+        setResolvedId(id);
+        setIsError(true);
+        setErrorMessage('Unable to load item. Please check your network connection and try again.');
       }
     }, 8000);
 
@@ -399,19 +425,22 @@ export function useRecordWithStatus(id: string | undefined | null): UseRecordSta
     return () => {
       cancelled = true;
       clearTimeout(failSafeTimer);
+      if (modelSub) {
+        modelSub.unsubscribe();
+      }
       sub.unsubscribe();
       unsubSync();
       unsubStorage();
     };
   }, [id, retryNonce]);
 
-  const isCurrentId = id === activeId;
+  const isResolvedForThisId = Boolean(!id || (id && resolvedId === id));
   return {
-    record: isCurrentId ? row : null,
-    isLoading: isCurrentId ? !isResolved : Boolean(id),
-    isResolved: isCurrentId ? isResolved : !id,
-    isError: isCurrentId ? isError : false,
-    errorMessage: isCurrentId ? errorMessage : null,
+    record: isResolvedForThisId ? row : null,
+    isLoading: !isResolvedForThisId,
+    isResolved: isResolvedForThisId,
+    isError: Boolean(id && resolvedId === id && isError),
+    errorMessage: (id && resolvedId === id) ? errorMessage : null,
     retry,
   };
 }

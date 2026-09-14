@@ -5,11 +5,23 @@ import { useSyncStateStore } from '../../src/store/syncStateStore';
 // In Jest, variables referenced in jest.mock must start with `mock`
 const mockQueryListeners = new Set<(matches: any[]) => void>();
 
+const mockModelListeners = new Map<string, Set<(model: any) => void>>();
+
 jest.mock('../../src/db', () => ({
   database: {
     get: jest.fn(() => ({
       query: jest.fn(() => ({
         observe: jest.fn(() => ({
+          subscribe: (callback: (matches: any[]) => void) => {
+            mockQueryListeners.add(callback);
+            return {
+              unsubscribe: () => {
+                mockQueryListeners.delete(callback);
+              },
+            };
+          },
+        })),
+        observeWithColumns: jest.fn(() => ({
           subscribe: (callback: (matches: any[]) => void) => {
             mockQueryListeners.add(callback);
             return {
@@ -36,6 +48,35 @@ describe('useRecordWithStatus hook - slow sync and observable insertion lifecycl
     mockQueryListeners.clear();
     useSyncStateStore.setState({ isSyncing: false, initialSyncCompleted: true });
   });
+  const createMockModel = (id: string, initialFields: Record<string, any>) => {
+    let currentFields = { id, ...initialFields };
+    if (!mockModelListeners.has(id)) {
+      mockModelListeners.set(id, new Set());
+    }
+    const model = {
+      ...currentFields,
+      observe: jest.fn(() => ({
+        subscribe: (callback: (updated: any) => void) => {
+          mockModelListeners.get(id)!.add(callback);
+          return {
+            unsubscribe: () => {
+              mockModelListeners.get(id)?.delete(callback);
+            },
+          };
+        },
+      })),
+      updateFields: (patch: Record<string, any>) => {
+        currentFields = { ...currentFields, ...patch };
+        const updatedModel = {
+          ...currentFields,
+          observe: model.observe,
+          updateFields: model.updateFields,
+        };
+        mockModelListeners.get(id)?.forEach((fn) => fn(updatedModel));
+      },
+    };
+    return model;
+  };
 
   it('keeps isResolved false and record null when lookup is empty but sync is in flight', () => {
     useSyncStateStore.setState({ isSyncing: true, initialSyncCompleted: false });
@@ -99,6 +140,36 @@ describe('useRecordWithStatus hook - slow sync and observable insertion lifecycl
     expect(result.current.record).toBeTruthy();
     expect(result.current.record?.customName).toBe('Synced Green Tea');
     expect(result.current.record?.serverId).toBe('rec-sync-slow');
+  });
+  it('reacts to live detail field edits (e.g. quantity stepper or name patch) via model observation', () => {
+    const model = createMockModel('rec-live', {
+      serverId: 'srv-live',
+      clientId: 'cli-live',
+      customName: 'Original Bread',
+      quantity: 1,
+      unit: 'loaf',
+      status: 'active',
+      expiryDate: '2026-10-01',
+      notifyAtJson: '[]',
+    });
+
+    const { result } = renderHook(() => useRecordWithStatus('rec-live'));
+
+    // Emit matching model
+    act(() => {
+      emitQueryMatches([model]);
+    });
+
+    expect(result.current.record?.customName).toBe('Original Bread');
+    expect(result.current.record?.quantity).toBe(1);
+
+    // Live update: user steps quantity to 2
+    act(() => {
+      model.updateFields({ quantity: 2 });
+    });
+
+    expect(result.current.record?.quantity).toBe(2);
+    expect(result.current.isResolved).toBe(true);
   });
 
   it('settles to empty record when slow sync completes without inserting the record', () => {
@@ -170,6 +241,31 @@ describe('useRecordWithStatus hook - slow sync and observable insertion lifecycl
     expect(result.current.errorMessage).toBe('Network request failed');
     expect(result.current.record).toBeNull();
     expect(typeof result.current.retry).toBe('function');
+  });
+
+  it('settles to retryable error state after 8s bounded fail-safe timeout instead of Item not found', () => {
+    jest.useFakeTimers();
+    useSyncStateStore.setState({ isSyncing: false, initialSyncCompleted: false });
+
+    const { result } = renderHook(() => useRecordWithStatus('rec-timeout-test'));
+
+    act(() => {
+      emitQueryMatches([]);
+    });
+    expect(result.current.isResolved).toBe(false);
+
+    // Advance past 8s bounded fail-safe timeout
+    act(() => {
+      jest.advanceTimersByTime(8500);
+    });
+
+    expect(result.current.isResolved).toBe(true);
+    expect(result.current.isError).toBe(true);
+    expect(result.current.errorMessage).toContain('Unable to load item');
+    expect(result.current.record).toBeNull();
+    expect(typeof result.current.retry).toBe('function');
+
+    jest.useRealTimers();
   });
 
   it('synchronously resets resolution state on ID change to prevent stale render pass leakage', () => {
