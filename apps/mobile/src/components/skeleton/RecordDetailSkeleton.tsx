@@ -1,7 +1,6 @@
 import React from 'react';
-import { Dimensions, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { ActivityIndicator, Dimensions, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useTheme } from '../../theme/useTheme';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import { SkeletonBone } from './SkeletonBone';
 import { SkeletonShimmer } from './SkeletonShimmer';
 export interface RecordDetailSkeletonProps {
@@ -42,12 +41,14 @@ export function RecordDetailSkeleton({
               },
             ]}
           >
-            <Ionicons
-              name="basket-outline"
-              size={56}
-              color={theme.colors.textMuted}
-              style={{ opacity: 0.6 }}
-            />
+            <View
+              style={[
+                styles.spinnerBadge,
+                { backgroundColor: theme.colors.bgGlass },
+              ]}
+            >
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
           </View>
         </View>
         {/* Title Block Card */}
@@ -186,6 +187,18 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  spinnerBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   card: {
     borderWidth: 1,

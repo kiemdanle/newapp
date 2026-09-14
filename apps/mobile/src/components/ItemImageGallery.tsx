@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   LayoutChangeEvent,
@@ -419,16 +420,14 @@ function GalleryImageItem({
           ]}
           pointerEvents="none"
         >
-          <SkeletonShimmer style={styles.loadingShimmer}>
-            <View style={styles.galleryLoadingContent}>
-              <Ionicons
-                name={placeholderIcon}
-                size={56}
-                color={theme.colors.textMuted}
-                style={{ opacity: 0.7 }}
-              />
-            </View>
-          </SkeletonShimmer>
+          <View
+            style={[
+              styles.gallerySpinnerBadge,
+              { backgroundColor: theme.colors.bgGlass },
+            ]}
+          >
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+          </View>
         </View>
       )}
     </View>
@@ -443,15 +442,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingShimmer: {
-    width: '100%',
-    height: '100%',
+  gallerySpinnerBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  galleryLoadingContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
   },
   placeholderHero: {
     height: 200,

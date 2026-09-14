@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, View, type ImageStyle, type StyleProp } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { Product } from '@expyrico/shared';
 import { getBaseUrl } from '../api/client';
@@ -226,13 +226,19 @@ function CachedThumbnailImage({
           ]}
           pointerEvents="none"
         >
-          <SkeletonShimmer style={styles.loadingShimmer}>
-            <Ionicons
-              name={fallbackIcon as never}
-              size={size * 0.44}
-              color={theme.colors.textMuted}
-            />
-          </SkeletonShimmer>
+          <View
+            style={[
+              styles.spinnerBadge,
+              {
+                width: Math.max(26, Math.round(size * 0.54)),
+                height: Math.max(26, Math.round(size * 0.54)),
+                borderRadius: Math.round(size * 0.27),
+                backgroundColor: theme.colors.bgGlass,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
         </View>
       )}
     </View>
@@ -254,9 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  loadingShimmer: {
-    width: '100%',
-    height: '100%',
+  spinnerBadge: {
     alignItems: 'center',
     justifyContent: 'center',
   },
