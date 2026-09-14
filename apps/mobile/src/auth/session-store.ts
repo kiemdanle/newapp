@@ -23,6 +23,12 @@ import { deleteItem } from './secure-store';
 import { clearAllRecordPhotoAttachments } from '../features/records/record-photo-storage';
 const KEY_CACHED_USER = '@pantry_cached_user';
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
+  // Synchronous resets and un-namespaced global key deletions must fire immediately
+  // before any asynchronous database or network work begins. This prevents cross-account
+  // race conditions where a fire-and-forget cleanup from User A overwrites or deletes
+  // preferences saved by newly logged-in User B.
+  resetPantryViewModeState();
+  const removeViewModePromise = AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   stopSyncTriggers();
   invalidateSyncEpoch();
   useSyncStateStore.getState().reset();
@@ -52,11 +58,11 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   // Clear last sync timestamp from both secure storage and AsyncStorage so next user starts fresh
   await deleteItem('pantry.lastSyncAt').catch(() => {});
   await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
-  resetPantryViewModeState();
-  await AsyncStorage.removeItem(PANTRY_VIEW_MODE_STORAGE_KEY).catch(() => {});
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();
   await clearAllRecordPhotoAttachments().catch(() => {});
+  // Guarantee that early view-mode storage removal is fully settled before clearAllLocalUserData resolves
+  await removeViewModePromise;
 }
 interface SessionState {
   user: User | null;

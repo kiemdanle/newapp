@@ -72,22 +72,24 @@ describe('uiPreferencesStore - pantryViewMode', () => {
       }
       return Promise.resolve(null);
     });
+    try {
+      // 3. Initiate real production hydration from storage (suspended on delayedPromise)
+      const hydrationPromise = hydratePantryViewModeFromStorage();
+      expect(getItemSpy).toHaveBeenCalledWith(PANTRY_VIEW_MODE_STORAGE_KEY);
 
-    // 3. Initiate real production hydration from storage (suspended on delayedPromise)
-    const hydrationPromise = hydratePantryViewModeFromStorage();
+      // 4. User logs out while hydration is in flight: resetPantryViewModeState runs
+      resetPantryViewModeState();
+      expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
 
-    // 4. User logs out while hydration is in flight: resetPantryViewModeState runs
-    resetPantryViewModeState();
-    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+      // 5. Delayed AsyncStorage.getItem finally resolves with the old 'grid' value
+      resolveDelayedItem('grid');
+      await hydrationPromise;
 
-    // 5. Delayed AsyncStorage.getItem finally resolves with the old 'grid' value
-    resolveDelayedItem('grid');
-    await hydrationPromise;
-
-    // 6. Invariant: The real hydratePantryViewModeFromStorage ran, checked generation,
-    // and discarded the stale 'grid' result! Pantry view mode remains 'list'.
-    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
-
-    getItemSpy.mockRestore();
+      // 6. Invariant: The real hydratePantryViewModeFromStorage ran, checked generation,
+      // and discarded the stale 'grid' result! Pantry view mode remains 'list'.
+      expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+    } finally {
+      getItemSpy.mockRestore();
+    }
   });
 });
