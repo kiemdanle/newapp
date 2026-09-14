@@ -266,6 +266,52 @@ describe('Thumbnail & Card Inline Loading States', () => {
 
       jest.useRealTimers();
     });
+    it('does not expire 3000ms safety timeout while useCachedImage is loading L2 cache', () => {
+      jest.useFakeTimers();
+      (useCachedImage as jest.Mock).mockReturnValue({
+        uri: null,
+        isLoading: true,
+        isRevalidating: false,
+        error: null,
+        reload: jest.fn(),
+      });
+
+      const hungUri = 'https://cdn.example.com/disk-cache-loading.jpg';
+      const { rerender } = render(<ProductThumbnail photoUrl={hungUri} size={52} />);
+
+      expect(screen.getByTestId('product-thumbnail-skeleton')).toBeTruthy();
+
+      // Advance 4000ms while cache is still loading
+      act(() => {
+        jest.advanceTimersByTime(4000);
+      });
+
+      // Must NOT timeout to fallback while cache is loading!
+      expect(screen.getByTestId('product-thumbnail-skeleton')).toBeTruthy();
+      expect(screen.queryByTestId('product-thumbnail-fallback')).toBeNull();
+
+      // Now cache lookup finishes and resolves local URI
+      (useCachedImage as jest.Mock).mockReturnValue({
+        uri: 'data:image/webp;base64,loaded-from-l2',
+        isLoading: false,
+        isRevalidating: false,
+        error: null,
+        reload: jest.fn(),
+      });
+
+      rerender(<ProductThumbnail photoUrl={hungUri} size={52} />);
+
+      // Image settles with cached local URI
+      const image = screen.getByTestId('product-thumbnail-image');
+      act(() => {
+        fireEvent(image, 'loadEnd');
+      });
+
+      expect(screen.queryByTestId('product-thumbnail-skeleton')).toBeNull();
+      expect(screen.queryByTestId('product-thumbnail-fallback')).toBeNull();
+
+      jest.useRealTimers();
+    });
 
     it('hasPhotoOverride true with no custom photos displays fallback icon and ignores catalog product image', () => {
       const catalogProduct = { id: 'prod-1', imageUrl: 'https://cdn.example.com/catalog.jpg', status: 'active' as const };

@@ -11,6 +11,7 @@ import { ThemeProvider, useTheme } from './theme/ThemeProvider';
 import { initThemeStore, useThemeStore } from './theme/store';
 import { hydrateSession, useSessionStore } from './auth/session-store';
 import { imageDiskCache } from './cache/image-disk-cache';
+import { hydrateProductCache } from './api/products';
 import { wireApiClient } from './auth/wire-client';
 import { startSyncTriggers, stopSyncTriggers } from './db/triggers';
 import { setItem } from './auth/secure-store';
@@ -56,6 +57,7 @@ function RootApp() {
   const theme = useTheme();
   const isDark = theme.scheme === 'dark';
   const [bootError, setBootError] = useState<string | null>(null);
+  const [cachesHydrated, setCachesHydrated] = useState(false);
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
   const activeNotification = useInAppNotificationStore((s) => s.current);
@@ -68,14 +70,20 @@ function RootApp() {
       initThemeStore(),
       hydrateSession(),
       imageDiskCache.hydrate().catch(() => {}),
-    ]).catch((e) => setBootError(String(e)));
+      hydrateProductCache(queryClient).catch(() => {}),
+    ])
+      .then(() => setCachesHydrated(true))
+      .catch((e) => {
+        setCachesHydrated(true);
+        setBootError(String(e));
+      });
 
     return () => {
       cleanupMonitoring();
     };
   }, []);
 
-  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated);
+  const splashReady = Boolean(bootError) || (themeHydrated && sessionHydrated && cachesHydrated);
 
 
   if (bootError) {

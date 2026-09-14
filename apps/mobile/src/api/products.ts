@@ -44,17 +44,31 @@ const productMemoryCache = new Map<string, ProductWithReviews>();
 let isProductCacheHydrated = false;
 
 export function clearProductMemoryCache(): void {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   productMemoryCache.clear();
+  isProductCacheHydrated = false;
 }
-// Eagerly hydrate persisted product cache from AsyncStorage into memory on startup
-async function loadPersistedProductCache(): Promise<void> {
-  if (isProductCacheHydrated) return;
+export async function hydrateProductCache(client?: QueryClient): Promise<void> {
+  if (isProductCacheHydrated) {
+    if (client) {
+      for (const [id, prod] of productMemoryCache.entries()) {
+        client.setQueryData(['products', id], prod);
+      }
+    }
+    return;
+  }
   try {
     const raw = await AsyncStorage.getItem(PRODUCT_CACHE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Record<string, ProductWithReviews>;
       for (const [id, prod] of Object.entries(parsed)) {
         productMemoryCache.set(id, prod);
+        if (client) {
+          client.setQueryData(['products', id], prod);
+        }
       }
     }
   } catch {
@@ -64,7 +78,7 @@ async function loadPersistedProductCache(): Promise<void> {
   }
 }
 
-void loadPersistedProductCache();
+void hydrateProductCache();
 
 let persistTimer: NodeJS.Timeout | null = null;
 function schedulePersistProductCache(): void {

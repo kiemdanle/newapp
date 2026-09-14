@@ -205,7 +205,7 @@ function CachedThumbnailImage({
   onTimeout?: () => void;
 }) {
   const theme = useTheme();
-  const { uri } = useCachedImage(candidate);
+  const { uri, isLoading: isCacheLoading } = useCachedImage(candidate);
   const renderUri = uri || candidate;
   const [settledUri, setSettledUri] = useState<string | null>(null);
   const [timedOut, setTimedOut] = useState(false);
@@ -218,15 +218,18 @@ function CachedThumbnailImage({
     setTimedOut(false);
   }, [renderUri]);
 
+  // DO NOT count down 3000ms safety timeout while L2 AsyncStorage image cache is resolving.
+  // Only start the timeout once cache loading is finished and renderUri is resolved.
   useEffect(() => {
-    if (isSettled) return;
+    if (isCacheLoading || isSettled) return;
     const timer = setTimeout(() => {
       setSettledUri(renderUri);
       setTimedOut(true);
       onTimeoutRef.current?.();
     }, 3000);
     return () => clearTimeout(timer);
-  }, [renderUri, isSettled]);
+  }, [renderUri, isSettled, isCacheLoading]);
+
   if (timedOut) {
     return (
       <View
@@ -261,10 +264,10 @@ function CachedThumbnailImage({
       </View>
     );
   }
-
   return (
     <View style={[style, styles.container]}>
       <Image
+        testID="product-thumbnail-image"
         source={{
           uri: renderUri,
           cache: 'force-cache',
