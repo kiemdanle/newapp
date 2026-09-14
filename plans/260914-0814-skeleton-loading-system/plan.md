@@ -64,11 +64,10 @@ sequenceDiagram
 
 | Phase | Name | Scope | Key Deliverables | Status |
 |---|---|---|---|---|
-| 1 | [Skeleton Core & Shimmer Primitives](./phase-01-skeleton-primitives.md) | `apps/mobile` | `SkeletonShimmer`, `SkeletonBone`, `RecordCardSkeleton`, `PantryGridCardSkeleton`, theme-token color resolver, reduced-motion accessibility | Pending |
-| 2 | [Thumbnail & Card Inline Loading](./phase-02-thumbnail-and-card-loading.md) | `apps/mobile` | `ProductThumbnail` skeleton state, `RecordCard` & `PantryGridCard` title/brand shimmer fallbacks (replacing `"Item"`), image cross-fade | Pending |
-| 3 | [Initial Sync & Pantry View Skeletons](./phase-03-initial-sync-and-pantry-skeleton.md) | `apps/mobile` | `useSyncStateStore`, `runSync` lifecycle hooks, `RecordList` fresh-install skeleton gating (preventing premature empty card) | Pending |
-| 4 | [Detail Screens & E2E Verification](./phase-04-detail-screens-and-e2e-verification.md) | `apps/mobile` | `RecordDetailSkeleton`, `ProductDetailSkeleton`, Jest unit tests, Android debug build and device smoke test | Pending |
-
+| 1 | [Skeleton Core & Shimmer Primitives](./phase-01-skeleton-primitives.md) | `apps/mobile` | `SkeletonShimmer`, `SkeletonBone`, `RecordCardSkeleton`, `PantryGridCardSkeleton` (72×72 thumbnail, 16px corners), theme-token color resolver, reduced-motion accessibility | Pending |
+| 2 | [Thumbnail & Card Inline Loading](./phase-02-thumbnail-and-card-loading.md) | `apps/mobile` | `ProductThumbnail` source-transition settlement reset contract, 3s per-image fallback timer, `RecordCard` & `PantryGridCard` inline title/brand shimmer fallbacks (replacing `"Item"`), image cross-fade | Pending |
+| 3 | [Initial Sync & Pantry View Skeletons](./phase-03-initial-sync-and-pantry-skeleton.md) | `apps/mobile` | `useSyncStateStore` (unconditional `beginInitialSync()` in `AppSyncManager`, 4s store timeout, `sessionGeneration` reset), `useActiveRecordsWithStatus()`, `SyncStatusBar`, `PantryListSkeleton` with pre-allocated controls | Pending |
+| 4 | [Detail Screens & E2E Verification](./phase-04-detail-screens-and-e2e-verification.md) | `apps/mobile` | `useRecordWithStatus()`, `usePantryHistoryRecordsWithStatus()`, `useImageSettlementTracker()`, `ItemImageGallery` shared settlement, `RecordDetailSkeleton`, `ProductDetailSkeleton`, `PantryHistorySkeleton`, all 5 unit test suites, Android Gradle debug APK build | Pending |
 ---
 
 ## Critical Invariants & Design Token Mandates
