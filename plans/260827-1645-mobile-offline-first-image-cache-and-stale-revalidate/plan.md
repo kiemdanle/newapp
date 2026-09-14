@@ -1,6 +1,6 @@
 ---
 title: "Mobile Offline-First Image Disk Cache and Stale-While-Revalidate"
-description: "Implement an on-device persistent image disk cache with Stale-While-Revalidate (SWR) for React Native mobile app, eliminating empty image placeholders on app launch and enabling instant 0ms cached rendering with background server sync."
+description: "Implement an on-device persistent image disk cache with Stale-While-Revalidate (SWR) for React Native mobile app, reducing redundant network refetches via warm-L1 synchronous rendering and asynchronous L2 disk hydration with background server sync."
 status: complete
 priority: P1
 branch: "main"
@@ -81,7 +81,7 @@ sequenceDiagram
 |---|---|---|---|---|
 | 1 | [StorageCore](./phase-01-storagecore.md) | `apps/mobile` | `ImageDiskCache` service, decoupled AsyncStorage metadata index + native file cache directory, user-scoped privacy isolation, and 100 MB LRU pruning | Complete |
 | 2 | [RevalidationEngine](./phase-02-revalidationengine.md) | `apps/mobile` | Stale-While-Revalidate hook/engine, in-flight Promise deduplication, atomic temp-file commit, background conditional ETag/Last-Modified fetcher (24h public / 15m private TTL), and 304 handler | Complete |
-| 3 | [ComponentIntegration](./phase-03-componentintegration.md) | `apps/mobile` | Integrate `ProductThumbnail`, `PrivateProductImage`, `Avatar`, `DealCard`, `GiveawayCard`, and `GiveawayImageGallery` with instant frame-0 rendering and sign-out cache purge | Complete |
+| 3 | [ComponentIntegration](./phase-03-componentintegration.md) | `apps/mobile` | Integrate `ProductThumbnail`, `PrivateProductImage`, `Avatar`, `DealCard`, `GiveawayCard`, and `GiveawayImageGallery` with warm-L1 synchronous rendering, async L2 disk hydration, and sign-out cache purge | Complete |
 | 4 | [Verification](./phase-04-verification.md) | Monorepo | SWR lifecycle tests, offline fallback tests, concurrent write race tests, CursorWindow boundary tests, and typechecks (Note: device cold-start timing benchmark unverified) | Complete |
 
 ---

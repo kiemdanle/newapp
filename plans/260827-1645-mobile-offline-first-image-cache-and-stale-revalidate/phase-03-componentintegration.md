@@ -9,7 +9,7 @@ dependencies: ["phase-01-storagecore", "phase-02-revalidationengine"]
 # Phase 3: ComponentIntegration
 
 ## Overview
-Integrate the SWR offline-first disk cache across all visual image components in `apps/mobile`. Replaces blank placeholders and loading flashes with instantaneous local cache rendering on mount across Pantry records, product catalog, giveaways, deals, and user profile screens, while enforcing user privacy isolation and sign-out purges.
+Integrate the SWR offline-first disk cache across all visual image components in `apps/mobile`. Enables warm-L1 synchronous rendering on mount and asynchronous L2 disk hydration across Pantry records, product catalog, giveaways, deals, and user profile screens, while enforcing user privacy isolation and sign-out purges.
 
 <!-- Updated: Red Team Review 2026-08-27 - Privacy URL Classification & Session Purge Integration -->
 
@@ -20,13 +20,13 @@ Integrate the SWR offline-first disk cache across all visual image components in
     - Classify URLs: any authenticated/private route (`/v1/products/.../photos/`, `/v1/product-edits/...`) automatically scopes to the active `userId`.
     - Revalidate in background when stale (>24h public, >15m private).
   - `PrivateProductImage.tsx`:
-    - Persist user draft/edit photos to user-scoped disk cache; display immediately on app open.
+    - Persist user draft/edit photos to user-scoped disk cache; display synchronously on warm memory hits and asynchronously hydrate from disk on app open.
   - `Avatar.tsx`:
-    - Display cached user avatar immediately on app launch.
+    - Display cached user avatar synchronously on warm memory hits, or asynchronously hydrate from local cache on app launch.
   - `DealCard.tsx` & `GiveawayCard.tsx`:
-    - Cache thumbnail photos for deals and giveaways; render instant cached images in feed lists.
+    - Cache thumbnail photos for deals and giveaways; render synchronously on warm memory hits and asynchronously hydrate from local disk in feed lists.
   - `GiveawayImageGallery.tsx`:
-    - Display hero and thumbnail strip images instantly from cache.
+    - Display hero and thumbnail strip images synchronously on warm memory hits, or asynchronously hydrate from local disk cache.
   - `session-store.ts`:
     - Hook `ImageDiskCache.purgeUserPrivate(userId)` into `signOut()` and account switch handlers.
 - **Non-functional**:
@@ -79,11 +79,11 @@ Integrate the SWR offline-first disk cache across all visual image components in
 ## Implementation Steps
 1. Update `ProductThumbnail.tsx`:
    - Use `useCachedImage` to resolve candidate photo URIs with automatic privacy classification.
-   - Return cached URI immediately with smooth fade-in and background placeholder.
+   - Return cached URI synchronously on warm L1 hits, or asynchronously hydrate with smooth fade-in and background placeholder.
 2. Update `PrivateProductImage.tsx`:
    - Replace in-memory-only map with `useCachedImage` backed by `ImageDiskCache`.
 3. Update `Avatar.tsx`:
-   - Pass user avatar URL through `useCachedImage` with instant local cache display.
+   - Pass user avatar URL through `useCachedImage` with warm-L1 synchronous display and async L2 disk hydration.
 4. Update `DealCard.tsx` and `GiveawayCard.tsx`:
    - Connect deal/giveaway image URLs to `useCachedImage` for smooth feed scrolling.
 5. Update `GiveawayImageGallery.tsx`:

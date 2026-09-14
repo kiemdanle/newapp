@@ -69,7 +69,7 @@ flowchart TD
 3. Update `product-private-image.tsx` to utilize `useCachedImage` and persist private images to user-scoped disk storage.
 
 ## Success Criteria
-- [ ] Stale cached images render immediately on mount and revalidate in background.
+- [ ] Stale cached images in warm L1 memory render synchronously on mount and revalidate in background.
 - [ ] Concurrent requests for identical images trigger only 1 network request.
 - [ ] Server 304 response transfers zero image bytes and refreshes local timestamp.
 - [ ] Modified image on server replaces local image smoothly via atomic rename.

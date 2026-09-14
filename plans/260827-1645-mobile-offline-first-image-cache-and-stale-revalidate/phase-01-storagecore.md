@@ -38,7 +38,7 @@ Implement the core on-device persistent image caching layer (`ImageDiskCache`) i
 |                                                             |
 |  +-------------------------------------------------------+  |
 |  | L1 In-Memory Index (Map<string, CacheMetadata>)       |  |
-|  |   - Instant synchronous lookup (<1ms)                 |  |
+|  |   - Synchronous in-memory lookup on warm hits         |  |
 |  +-------------------------------------------------------+  |
 |                            |                                |
 |                            v (miss / cold start)            |
@@ -80,7 +80,7 @@ Implement the core on-device persistent image caching layer (`ImageDiskCache`) i
 4. Hook `session-store.ts` to call `purgeUserPrivate(userId)` on `signOut()` and `signIn()`.
 
 ## Success Criteria
-- [ ] Cached images persist across app restart and are readable as `file://...` within <5ms.
+- [ ] Cached images persist across app restart and are readable from local storage without network requests (exact device cold-start latency benchmark unverified).
 - [ ] AsyncStorage rows remain <1KB each, preventing Android CursorWindow allocation exceptions.
 - [ ] Private images are isolated per user and cleared when logging out.
 - [ ] LRU prunes old entries when cache exceeds 100 MB capacity limit.
