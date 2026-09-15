@@ -35,6 +35,7 @@ export function MultiPhotoCameraModal({
   onClose,
 }: MultiPhotoCameraModalProps) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const { hasPermission, requestPermission } = useCameraPermission();
   const [cameraPosition, setCameraPosition] = useState<'back' | 'front'>('back');
   const device = useCameraDevice(cameraPosition);
@@ -192,15 +193,45 @@ export function MultiPhotoCameraModal({
       onRequestClose={onClose}
       testID="multi-photo-camera-modal"
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: isDark ? '#111512' : '#FAFAF8' }]}>
         {/* Permission Check */}
         {!hasCameraAccess ? (
-          <View style={[styles.centerScreen, { backgroundColor: theme.colors.bg }]}>
-            <View style={styles.permissionCard}>
-              <View style={[styles.permissionIconCircle, { backgroundColor: theme.colors.primaryLight }]}>
-                <Ionicons name="camera" size={36} color={theme.colors.primary} />
+          <View
+            style={[
+              styles.centerScreen,
+              {
+                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(44, 44, 40, 0.40)',
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.permissionCard,
+                {
+                  backgroundColor: isDark ? theme.colors.bgElevated : '#FAFAF8',
+                  borderColor: isDark ? 'rgba(75, 174, 138, 0.28)' : theme.colors.border,
+                  shadowColor: isDark ? '#000' : 'rgba(44, 44, 40, 0.25)',
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.permissionIconCircle,
+                  {
+                    backgroundColor: isDark ? 'rgba(75, 174, 138, 0.16)' : '#D6F0E6',
+                    borderColor: isDark ? 'rgba(75, 174, 138, 0.35)' : 'rgba(75, 174, 138, 0.30)',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="camera"
+                  size={32}
+                  color={isDark ? '#4BAE8A' : '#3A8F6F'}
+                />
               </View>
-              <Text style={[styles.permissionTitle, { color: theme.colors.text }]}>Camera Access Required</Text>
+              <Text style={[styles.permissionTitle, { color: theme.colors.text }]}>
+                Camera Access Required
+              </Text>
               <Text style={[styles.permissionBody, { color: theme.colors.textMuted }]}>
                 Expyrico needs camera access to take multiple photos for your items, giveaways, and products.
               </Text>
@@ -208,7 +239,15 @@ export function MultiPhotoCameraModal({
                 <Pressable
                   accessibilityRole="button"
                   onPress={onClose}
-                  style={[styles.btnSecondary, { borderColor: theme.colors.border }]}
+                  style={({ pressed }) => [
+                    styles.btnSecondary,
+                    {
+                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(44, 44, 40, 0.05)',
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : theme.colors.border,
+                      opacity: pressed ? 0.86 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
+                    },
+                  ]}
                 >
                   <Text style={[styles.btnSecondaryText, { color: theme.colors.text }]}>Cancel</Text>
                 </Pressable>
@@ -216,7 +255,14 @@ export function MultiPhotoCameraModal({
                   accessibilityRole="button"
                   testID="multi-camera-request-permission"
                   onPress={handleRequestPermission}
-                  style={[styles.btnPrimary, { backgroundColor: theme.colors.primary }]}
+                  style={({ pressed }) => [
+                    styles.btnPrimary,
+                    {
+                      backgroundColor: isDark ? '#4BAE8A' : '#3A8F6F',
+                      opacity: pressed ? 0.88 : 1,
+                      transform: [{ scale: pressed ? 0.98 : 1 }],
+                    },
+                  ]}
                 >
                   <Text style={styles.btnPrimaryText}>Enable Camera</Text>
                 </Pressable>
@@ -467,35 +513,39 @@ const styles = StyleSheet.create({
   permissionCard: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FAFAF8',
-    borderRadius: 20,
-    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 20,
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    elevation: 16,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
   },
   permissionIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   permissionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
+    lineHeight: 24,
   },
   permissionBody: {
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
     marginBottom: 24,
+    paddingHorizontal: 4,
   },
   permissionActions: {
     flexDirection: 'row',
@@ -504,26 +554,28 @@ const styles = StyleSheet.create({
   },
   btnPrimary: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 46,
+    borderRadius: 9999,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   btnPrimaryText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
   },
   btnSecondary: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: 12,
+    minHeight: 46,
+    borderRadius: 9999,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
   btnSecondaryText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   noDeviceView: {
