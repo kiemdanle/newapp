@@ -6,6 +6,7 @@ import { deleteRecordRoute } from './delete.js';
 import { syncRecordsRoute } from './sync.js';
 import { duplicateRecordRoute } from './duplicate.js';
 import { bulkScopeRecordsRoute } from './bulk-scope.js';
+import { uploadRecordPhotoRoute, publicRecordPhotoRoutes } from './upload-photo.js';
 
 export async function recordRoutes(app: FastifyInstance) {
   await app.register(listRecordsRoute);
@@ -15,4 +16,6 @@ export async function recordRoutes(app: FastifyInstance) {
   await app.register(deleteRecordRoute);
   await app.register(duplicateRecordRoute);
   await app.register(bulkScopeRecordsRoute);
+  await app.register(uploadRecordPhotoRoute);
+  await app.register(publicRecordPhotoRoutes);
 }

@@ -200,3 +200,9 @@ export const recordBulkScopeResponseSchema = z.object({
   recordIds: z.array(z.string().uuid()),
 });
 export type RecordBulkScopeResponse = z.infer<typeof recordBulkScopeResponseSchema>;
+
+export const recordPhotoUploadResponseSchema = z.object({
+  photoUrl: z.string().url(),
+  thumbUrl: z.string().url(),
+});
+export type RecordPhotoUploadResponse = z.infer<typeof recordPhotoUploadResponseSchema>;
