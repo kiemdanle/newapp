@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/useTheme';
 import { useSelectionModeStore } from '../store/selectionModeStore';
 import { useDrawerStore } from '../store/drawerStore';
+import { useGiveawayFeedStore } from '../store/giveawayFeedStore';
+import { useDealFeedStore } from '../store/dealFeedStore';
 import { SlidingDrawer } from '../components/SlidingDrawer';
 import { LeftDrawerMenu } from './LeftDrawerMenu';
 
@@ -131,11 +133,16 @@ const TAB_ACTIONS: Partial<Record<keyof TabsParamList, ActionConfig>> = {
 
 function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
   const isSelectionMode = useSelectionModeStore((s) => s.isSelectionMode);
+  const hasGiveaways = useGiveawayFeedStore((s) => s.hasItems);
+  const hasDeals = useDealFeedStore((s) => s.hasItems);
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const activeRouteName = state.routes[state.index]?.name as keyof TabsParamList;
   const actionConfig = TAB_ACTIONS[activeRouteName];
+  const isGiveawayEmpty = activeRouteName === 'Giveaways' && !hasGiveaways;
+  const isDealEmpty = activeRouteName === 'Deals' && !hasDeals;
+  const shouldShowAction = actionConfig && !isGiveawayEmpty && !isDealEmpty;
   const bottomOffset = insets.bottom > 0 ? insets.bottom + 2 : 12;
 
 
@@ -247,7 +254,7 @@ function BottomActionNavBar({ state, navigation }: BottomTabBarProps) {
             </Text>
           </Pressable>
         </View>
-      ) : actionConfig ? (
+      ) : shouldShowAction ? (
         <View style={styles.centerActionWrapper} pointerEvents="box-none">
           <Pressable
             testID={actionConfig.testID}

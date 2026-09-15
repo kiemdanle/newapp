@@ -20,7 +20,7 @@ import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
-import { expiryStatus, EXPIRY_STATUS_TOKEN } from '../records/expiryStatus';
+import { expiryStatus, getExpiryStatusBadgeStyles } from '../records/expiryStatus';
 
 export interface PantrySelectModalProps {
   visible: boolean;
@@ -49,13 +49,7 @@ function PantryItemRow({
     null;
 
   const status = expiryStatus(record.expiryDate);
-  const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
-  const statusBg =
-    status === 'amber'
-      ? theme.colors.accentLight
-      : status === 'red'
-        ? theme.colors.bgGlass
-        : theme.colors.primaryLight;
+  const statusStyle = getExpiryStatusBadgeStyles(status, theme);
 
   return (
     <Pressable
@@ -120,9 +114,18 @@ function PantryItemRow({
           </View>
 
           {record.expiryDate ? (
-            <View style={[styles.expiryBadge, { backgroundColor: statusBg }]}>
-              <Ionicons name="calendar-outline" size={11} color={statusColor} />
-              <Text style={[styles.expiryText, { color: statusColor }]}>
+            <View
+              style={[
+                styles.expiryBadge,
+                {
+                  backgroundColor: statusStyle.bg,
+                  borderColor: statusStyle.border,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Ionicons name="calendar-outline" size={11} color={statusStyle.dot} />
+              <Text style={[styles.expiryText, { color: statusStyle.textColor }]}>
                 {formatDate(record.expiryDate, userCountry)}
               </Text>
             </View>

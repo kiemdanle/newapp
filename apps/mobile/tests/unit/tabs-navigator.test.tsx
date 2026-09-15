@@ -11,6 +11,8 @@ jest.mock('@react-navigation/native', () => ({
 import { ThemeProvider } from '../../src/theme/ThemeProvider';
 import { useSelectionModeStore } from '../../src/store/selectionModeStore';
 import { useDrawerStore } from '../../src/store/drawerStore';
+import { useGiveawayFeedStore } from '../../src/store/giveawayFeedStore';
+import { useDealFeedStore } from '../../src/store/dealFeedStore';
 
 jest.mock('react-native-safe-area-context', () => ({
   ...jest.requireActual('react-native-safe-area-context'),
@@ -35,9 +37,11 @@ jest.mock('../../src/api/records', () => ({
 }));
 
 // Mock deals
+let mockDealItems: any[] = [{ id: '1', title: 'Almond Butter' }];
+
 jest.mock('../../src/api/deals', () => ({
   useDealFeed: () => ({
-    data: { pages: [{ items: [], cursor: null }] },
+    data: { pages: [{ items: mockDealItems, cursor: null }] },
     isLoading: false,
     isFetchingNextPage: false,
     hasNextPage: false,
@@ -46,12 +50,16 @@ jest.mock('../../src/api/deals', () => ({
     isRefetching: false,
   }),
   useDealStores: () => ({ data: { items: [] } }),
+  useDealVote: () => ({ mutate: jest.fn(), isPending: false }),
+  useDeleteDealVote: () => ({ mutate: jest.fn(), isPending: false }),
 }));
 
 // Mock giveaways
+let mockGiveawayItems: any[] = [{ id: '1', title: 'Soup' }];
+
 jest.mock('../../src/api/giveaways', () => ({
   useGiveawayFeed: () => ({
-    data: { pages: [{ items: [], cursor: null }] },
+    data: { pages: [{ items: mockGiveawayItems, cursor: null }] },
     isLoading: false,
     isFetchingNextPage: false,
     hasNextPage: false,
@@ -125,6 +133,11 @@ afterEach(() => {
 describe('TabsNavigator with Sliding Drawer and Centered Action Button', () => {
   beforeEach(() => {
     act(() => {
+      mockGiveawayItems = [{ id: '1', title: 'Soup' }];
+      mockDealItems = [{ id: '1', title: 'Almond Butter' }];
+      useDealFeedStore.setState({ hasItems: true });
+      mockGiveawayItems = [{ id: '1', title: 'Soup' }];
+      useGiveawayFeedStore.setState({ hasItems: true });
       useSelectionModeStore.setState({ isSelectionMode: false });
       useDrawerStore.getState().reset();
     });
@@ -208,6 +221,25 @@ describe('TabsNavigator with Sliding Drawer and Centered Action Button', () => {
     expect(getByText('Post a deal')).toBeTruthy();
   });
 
+  it('hides center action button on Deals tab when there are no deals listed', () => {
+    mockDealItems = [];
+    useDealFeedStore.setState({ hasItems: false });
+    const { getByTestId, queryByTestId } = renderTabs();
+
+    // Open drawer
+    act(() => {
+      fireEvent.press(getByTestId('top-nav-menu-button'));
+    });
+
+    // Navigate to Deals
+    act(() => {
+      fireEvent.press(getByTestId('nav-Deals'));
+    });
+
+    // Center action button is hidden when no deals are listed
+    expect(queryByTestId('deal-new-action')).toBeNull();
+  });
+
   it('switches to Reviews tab and updates center action button to Scan to review', () => {
     const { getByTestId, getByText } = renderTabs();
 
@@ -239,6 +271,25 @@ describe('TabsNavigator with Sliding Drawer and Centered Action Button', () => {
     // Center action button updates to Giveaways action
     expect(getByTestId('giveaway-new-action')).toBeTruthy();
     expect(getByText('Create giveaway')).toBeTruthy();
+  });
+
+  it('hides center action button on Giveaways tab when there are no giveaways listed', () => {
+    mockGiveawayItems = [];
+    useGiveawayFeedStore.setState({ hasItems: false });
+    const { getByTestId, queryByTestId } = renderTabs();
+
+    // Open drawer
+    act(() => {
+      fireEvent.press(getByTestId('top-nav-menu-button'));
+    });
+
+    // Navigate to Giveaways
+    act(() => {
+      fireEvent.press(getByTestId('nav-Giveaways'));
+    });
+
+    // Center action button is hidden when no giveaways are listed
+    expect(queryByTestId('giveaway-new-action')).toBeNull();
   });
 
   it('switches to Profile tab and leaves center action button empty', () => {

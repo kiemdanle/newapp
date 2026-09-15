@@ -23,6 +23,7 @@ import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { UnitSelector } from '../../components/UnitSelector';
 import { LocationSelector } from '../../components/LocationSelector';
 import { STANDARD_CATEGORIES } from './PantryFilterModal';
+import { ScopeSelectorPill } from './ScopeSelectorPill';
 import { useConnectionGuardStore } from '../../store/connectionGuardStore';
 interface Props {
   visible: boolean;
@@ -37,6 +38,7 @@ interface Props {
     unit: string;
     expiryDate: string;
     location?: string | null;
+    householdId?: string | null;
   }) => Promise<void>;
 }
 
@@ -44,8 +46,9 @@ interface Props {
 export function QuickEditModal({ visible, record, productName, onClose, onSave }: Props) {
   const theme = useTheme();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
+  const currentUserId = useSessionStore((s) => s.user?.id ?? null);
   const insets = useSafeAreaInsets();
-  const { data: product } = useProduct(record?.productId ?? undefined);
+  const { data: product, isLoading: isProductLoading } = useProduct(record?.productId ?? undefined);
   const [customName, setCustomName] = useState('');
   const [brand, setBrand] = useState('');
   const [category, setCategory] = useState('');
@@ -53,6 +56,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   const [unit, setUnit] = useState('pcs');
   const [expiryDate, setExpiryDate] = useState('');
   const [location, setLocation] = useState<string | null>(null);
+  const [householdId, setHouseholdId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const userEditedNameRef = useRef(false);
@@ -85,6 +89,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
       setUnit(record.unit || 'pcs');
       setExpiryDate(record.expiryDate || '');
       setLocation(record.location ?? null);
+      setHouseholdId(record.householdId ?? null);
     } else {
       // Product may have loaded asynchronously after modal opened
       if (!userEditedNameRef.current && !record.customName && !customName && product?.name) {
@@ -100,7 +105,13 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
   }, [visible, record, productName, product?.name, product?.category]);
 
   if (!record) return null;
-
+  const isConfirmedNonActive = Boolean(product && product.status !== 'active');
+  const isProductPending = Boolean(record?.productId && isProductLoading && !product);
+  const lockedPersonalScope = isConfirmedNonActive;
+  const hideScopeSelector = lockedPersonalScope || isProductPending;
+  const isDraftDuplicate = Boolean(record?.id?.startsWith('draft-duplicate-'));
+  const isCreator = isDraftDuplicate || !record?.userId || !currentUserId || record.userId === currentUserId;
+  const canMoveToPersonal = !record?.householdId || isCreator;
   const increment = () => {
     const parsed = parseFloat(quantity) || 0;
     setQuantity(String(Math.max(1, parsed + 1)));
@@ -135,6 +146,7 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
         unit: unit.trim() || 'pcs',
         expiryDate: trimmedExpiry,
         location: location ? location.trim().slice(0, 50) : null,
+        householdId: isConfirmedNonActive ? null : householdId,
       });
       onClose();
     } finally {
@@ -323,6 +335,19 @@ export function QuickEditModal({ visible, record, productName, onClose, onSave }
             label="Location (optional)"
             testID="quick-edit-location-selector"
           />
+
+          {!hideScopeSelector && (
+            <ScopeSelectorPill
+              testID="quick-edit-scope-selector"
+              label="Pantry Location"
+              selectedScope={householdId ? 'household' : 'personal'}
+              selectedHouseholdId={householdId}
+              onChange={(newScope, newHhId) => {
+                setHouseholdId(newScope === 'household' ? newHhId : null);
+              }}
+              canMoveToPersonal={canMoveToPersonal}
+            />
+          )}
 
           {/* Expiry Date */}
           <View style={{ gap: 6 }}>

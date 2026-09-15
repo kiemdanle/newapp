@@ -8,6 +8,7 @@ import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatCurrency, formatDate } from '../../utils/country-format';
 import { useCachedImage } from '../../cache/useCachedImage';
+
 interface Props {
   deal: Deal;
   onReport: (deal: Deal) => void;
@@ -17,8 +18,10 @@ interface Props {
 
 export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
   const theme = useTheme();
+  const isDark = theme.scheme === 'dark';
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const vote = useOptimisticDealVote(deal.id);
+
   function press(next: -1 | 1) {
     const prev = deal.myVote ?? null;
     vote.mutate({ next: prev === next ? 0 : next, prev });
@@ -28,10 +31,13 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
   const imageUrl = deal.photoUrl || deal.product?.imageUrl;
   const { uri: cachedImageUrl } = useCachedImage(imageUrl);
   const activeImageUrl = cachedImageUrl || imageUrl;
-  // Expiry calculation
+
+  // Expiry calculation with theme-aware calibrated styling
   let expiryLabel: string | null = null;
-  let expiryBg = theme.colors.bgElevated;
+  let expiryBg = theme.colors.bgGlass;
+  let expiryBorder = theme.colors.border;
   let expiryFg = theme.colors.textMuted;
+  let expiryDot = theme.colors.textMuted;
 
   if (deal.expiryDate) {
     const today = new Date();
@@ -45,27 +51,37 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
 
       if (diffDays < 0) {
         expiryLabel = 'Expired';
-        expiryBg = '#FEE8E6';
-        expiryFg = theme.colors.danger; // Alert Red #E0442A
+        expiryBg = theme.colors.danger + (isDark ? '26' : '14');
+        expiryBorder = theme.colors.danger + (isDark ? '66' : '3D');
+        expiryFg = isDark ? theme.colors.text : theme.colors.danger;
+        expiryDot = theme.colors.danger;
       } else if (diffDays === 0) {
         expiryLabel = 'Expires today';
-        expiryBg = '#FEEFC3'; // Soft Butter
-        expiryFg = '#B45309'; // Honey
+        expiryBg = isDark ? theme.colors.warning + '26' : theme.colors.accentLight;
+        expiryBorder = theme.colors.warning + (isDark ? '66' : '4D');
+        expiryFg = isDark ? theme.colors.text : '#B45309';
+        expiryDot = theme.colors.warning;
       } else if (diffDays === 1) {
         expiryLabel = 'Expires tomorrow';
-        expiryBg = '#FEEFC3';
-        expiryFg = '#B45309';
+        expiryBg = isDark ? theme.colors.warning + '26' : theme.colors.accentLight;
+        expiryBorder = theme.colors.warning + (isDark ? '66' : '4D');
+        expiryFg = isDark ? theme.colors.text : '#B45309';
+        expiryDot = theme.colors.warning;
       } else if (diffDays <= 3) {
         expiryLabel = `Expires in ${diffDays}d`;
-        expiryBg = '#FEEFC3';
-        expiryFg = '#B45309';
+        expiryBg = isDark ? theme.colors.warning + '26' : theme.colors.accentLight;
+        expiryBorder = theme.colors.warning + (isDark ? '66' : '4D');
+        expiryFg = isDark ? theme.colors.text : '#B45309';
+        expiryDot = theme.colors.warning;
       } else {
         const dayMonthStr = formatDate(deal.expiryDate, deal.country || userCountry, {
           style: 'dayMonth',
         });
         expiryLabel = `Best by ${dayMonthStr}`;
-        expiryBg = '#D6F0E6'; // Mint Mist
-        expiryFg = theme.colors.primaryDark; // Deep Sage #3A8F6F
+        expiryBg = theme.colors.primaryLight;
+        expiryBorder = theme.colors.success + (isDark ? '50' : '33');
+        expiryFg = isDark ? theme.colors.text : theme.colors.primaryDark;
+        expiryDot = theme.colors.success;
       }
     }
   }
@@ -75,12 +91,13 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
       accessibilityLabel={`deal-${deal.id}`}
       onPress={() => onPress?.(deal)}
       onLongPress={() => onReport(deal)}
-      style={[
+      style={({ pressed }) => [
         styles.card,
         {
           backgroundColor: theme.colors.bgElevated,
           borderColor: theme.colors.border,
           borderRadius: theme.radii.lg,
+          opacity: pressed ? 0.94 : 1,
         },
       ]}
     >
@@ -97,7 +114,11 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
           <View
             style={[
               styles.thumbnailPlaceholder,
-              { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.md },
+              {
+                backgroundColor: theme.colors.bgGlass,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radii.md,
+              },
             ]}
           >
             <Ionicons name="pricetag-outline" size={24} color={theme.colors.primary} />
@@ -113,37 +134,79 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
             >
               {deal.product?.name ?? 'Product'}
             </Text>
-            <Text style={[styles.priceTag, { color: theme.colors.primaryDark }]}>
-              {priceLabel}
-            </Text>
+            <View
+              style={[
+                styles.priceBadge,
+                {
+                  backgroundColor: isDark ? 'rgba(75, 174, 138, 0.20)' : theme.colors.primaryLight,
+                  borderColor: isDark ? 'rgba(75, 174, 138, 0.40)' : 'rgba(75, 174, 138, 0.30)',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.priceTag,
+                  { color: isDark ? theme.colors.primary : theme.colors.primaryDark },
+                ]}
+              >
+                {priceLabel}
+              </Text>
+            </View>
           </View>
 
           {deal.product?.brand ? (
-            <Text style={[styles.brandText, { color: theme.colors.textMuted }]}>
+            <Text
+              style={[styles.brandText, { color: theme.colors.textMuted }]}
+              numberOfLines={1}
+            >
               {deal.product.brand}
             </Text>
           ) : null}
 
-          {/* Badges: Store + Expiry */}
+          {/* Badges: Store (Same Row!) + Expiry */}
           <View style={styles.badgeRow}>
-            <View
-              style={[
-                styles.storePill,
-                { backgroundColor: theme.colors.bg, borderColor: theme.colors.border, borderWidth: 1, borderRadius: theme.radii.sm },
-              ]}
-            >
-              <Ionicons name="storefront-outline" size={12} color={theme.colors.textMuted} style={{ marginRight: 3 }} />
-              <Text style={[styles.storeText, { color: theme.colors.text }]}>
-                {deal.storeName}
-              </Text>
-            </View>
+            {deal.storeName ? (
+              <View
+                style={[
+                  styles.storePill,
+                  {
+                    backgroundColor: theme.colors.bgGlass,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radii.pill,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="storefront-outline"
+                  size={12}
+                  color={theme.colors.textMuted}
+                />
+                <Text
+                  style={[styles.storeText, { color: theme.colors.text }]}
+                  numberOfLines={1}
+                >
+                  {deal.storeName}
+                </Text>
+              </View>
+            ) : null}
+
             {expiryLabel ? (
               <View
                 style={[
                   styles.expiryPill,
-                  { backgroundColor: expiryBg, borderRadius: theme.radii.sm },
+                  {
+                    backgroundColor: expiryBg,
+                    borderColor: expiryBorder,
+                    borderRadius: theme.radii.pill,
+                  },
                 ]}
               >
+                <View
+                  style={[
+                    styles.statusDot,
+                    { backgroundColor: expiryDot },
+                  ]}
+                />
                 <Text style={[styles.expiryText, { color: expiryFg }]}>
                   {expiryLabel}
                 </Text>
@@ -154,19 +217,51 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
       </View>
 
       {deal.note ? (
-        <Text
-          style={[styles.noteText, { color: theme.colors.text, backgroundColor: theme.colors.bg }]}
-          numberOfLines={2}
+        <View
+          style={[
+            styles.noteCard,
+            {
+              backgroundColor: theme.colors.bgGlass,
+              borderColor: theme.colors.border,
+              borderRadius: theme.radii.sm,
+            },
+          ]}
         >
-          {deal.note}
-        </Text>
+          <Ionicons
+            name="chatbox-ellipses-outline"
+            size={13}
+            color={theme.colors.textMuted}
+            style={{ marginTop: 2 }}
+          />
+          <Text
+            style={[styles.noteText, { color: theme.colors.textMuted }]}
+            numberOfLines={2}
+          >
+            {deal.note}
+          </Text>
+        </View>
       ) : null}
 
       {/* Bottom Footer: Author & Voting */}
-      <View style={[styles.footerRow, { borderTopColor: theme.colors.border }]}>
-        <Text style={[styles.authorText, { color: theme.colors.textMuted }]}>
-          Shared by {deal.author?.firstName ?? 'Neighbor'}
-        </Text>
+      <View
+        style={[
+          styles.footerRow,
+          { borderTopColor: theme.colors.border },
+        ]}
+      >
+        <View style={styles.authorGroup}>
+          <Ionicons
+            name="person-circle-outline"
+            size={16}
+            color={theme.colors.textMuted}
+          />
+          <Text
+            style={[styles.authorText, { color: theme.colors.textMuted }]}
+            numberOfLines={1}
+          >
+            Shared by {deal.author?.firstName ?? 'Neighbor'}
+          </Text>
+        </View>
 
         {!isOwn && (
           <View style={styles.voteControls}>
@@ -179,7 +274,11 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                 styles.voteBtn,
                 {
                   backgroundColor:
-                    deal.myVote === 1 ? theme.colors.primary + '18' : 'transparent',
+                    deal.myVote === 1
+                      ? isDark
+                        ? 'rgba(75, 174, 138, 0.22)'
+                        : 'rgba(75, 174, 138, 0.16)'
+                      : 'transparent',
                   borderColor:
                     deal.myVote === 1 ? theme.colors.primary : theme.colors.border,
                 },
@@ -188,19 +287,21 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
               <Ionicons
                 name="arrow-up"
                 size={13}
-                color={deal.myVote === 1 ? theme.colors.primaryDark : theme.colors.textMuted}
-                style={{ marginRight: 2 }}
+                color={deal.myVote === 1 ? theme.colors.primary : theme.colors.textMuted}
               />
               <Text
-                style={{
-                  color: deal.myVote === 1 ? theme.colors.primaryDark : theme.colors.textMuted,
-                  fontWeight: '700',
-                  fontSize: 13,
-                }}
+                style={[
+                  styles.voteCount,
+                  {
+                    color:
+                      deal.myVote === 1 ? theme.colors.primary : theme.colors.textMuted,
+                  },
+                ]}
               >
                 {deal.upvoteCount}
               </Text>
             </Pressable>
+
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="downvote"
@@ -210,7 +311,11 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                 styles.voteBtn,
                 {
                   backgroundColor:
-                    deal.myVote === -1 ? theme.colors.danger + '18' : 'transparent',
+                    deal.myVote === -1
+                      ? isDark
+                        ? 'rgba(224, 68, 42, 0.22)'
+                        : 'rgba(224, 68, 42, 0.14)'
+                      : 'transparent',
                   borderColor:
                     deal.myVote === -1 ? theme.colors.danger : theme.colors.border,
                 },
@@ -220,14 +325,15 @@ export function DealCard({ deal, onReport, onPress, isOwn }: Props) {
                 name="arrow-down"
                 size={13}
                 color={deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted}
-                style={{ marginRight: 2 }}
               />
               <Text
-                style={{
-                  color: deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted,
-                  fontWeight: '700',
-                  fontSize: 13,
-                }}
+                style={[
+                  styles.voteCount,
+                  {
+                    color:
+                      deal.myVote === -1 ? theme.colors.danger : theme.colors.textMuted,
+                  },
+                ]}
               >
                 {deal.downvoteCount}
               </Text>
@@ -246,12 +352,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
     elevation: 2,
   },
   topRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 12,
   },
   thumbnail: {
@@ -261,6 +368,7 @@ const styles = StyleSheet.create({
   thumbnailPlaceholder: {
     width: 68,
     height: 68,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -275,45 +383,78 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   productName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     flex: 1,
+    lineHeight: 20,
+  },
+  priceBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9999,
+    borderWidth: 1,
   },
   priceTag: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '800',
   },
   brandText: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
     marginTop: 2,
   },
   badgeRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
     gap: 6,
     marginTop: 6,
   },
   storePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    borderWidth: 1,
   },
   storeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   expiryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   expiryText: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  noteCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderWidth: 1,
   },
   noteText: {
-    fontSize: 13,
-    marginTop: 10,
-    padding: 8,
-    borderRadius: 6,
+    fontSize: 12,
+    lineHeight: 16,
+    flex: 1,
+    fontStyle: 'italic',
   },
   footerRow: {
     flexDirection: 'row',
@@ -322,6 +463,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  authorGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
   },
   authorText: {
     fontSize: 12,
@@ -333,10 +480,15 @@ const styles = StyleSheet.create({
   voteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    minHeight: 32,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 9999,
+    minHeight: 28,
+  },
+  voteCount: {
+    fontWeight: '700',
+    fontSize: 12,
   },
 });

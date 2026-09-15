@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, StyleSheet, Text, View, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Screen } from '../../../src/components/Screen';
@@ -17,6 +17,7 @@ import { Logo } from '../../../src/components/Logo';
 import { HamburgerButton } from '../../../src/components/HamburgerButton';
 import { useSelectionModeStore } from '../../../src/store/selectionModeStore';
 import { PantryHistoryView } from '../../../src/features/records/PantryHistoryView';
+import { retryIfServerUnavailable } from '../../../src/store/connectionStore';
 
 export default function HomeTab() {
   const theme = useTheme();
@@ -49,6 +50,12 @@ export default function HomeTab() {
     });
     return () => sub.remove();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      retryIfServerUnavailable();
+    }, []),
+  );
 
   const records = useActiveRecords();
   const allHistoryRecords = usePantryHistoryRecords('all');

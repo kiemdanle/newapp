@@ -47,6 +47,23 @@ describe('RecordCard with swipe actions', () => {
     expect(getByText(/Expires/)).toBeTruthy();
   });
 
+  it('renders expired item quantity badge with red status indicator', () => {
+    const expiredRecord: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-expired',
+      expiryDate: '2020-01-01',
+      quantity: 4,
+      unit: 'pack',
+    };
+    const { getByTestId, getByText } = renderWithProviders(
+      <RecordCard record={expiredRecord} onPress={jest.fn()} />,
+    );
+
+    const statusBadge = getByTestId('record-expiry-status-red');
+    expect(statusBadge).toBeTruthy();
+    expect(getByText('4 pack')).toBeTruthy();
+  });
+
   it('triggers onUsed when the used swipe action is pressed', () => {
     const onUsed = jest.fn();
     const { getByTestId, getByText } = renderWithProviders(

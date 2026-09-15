@@ -1,3 +1,5 @@
+import type { Theme } from '@expyrico/theme';
+
 export type ExpiryStatus = 'green' | 'amber' | 'red';
 
 export const DEFAULT_EXPIRING_SOON_THRESHOLD_DAYS = 7;
@@ -32,3 +34,50 @@ export const EXPIRY_STATUS_TOKEN: Record<ExpiryStatus, 'success' | 'warning' | '
   amber: 'warning',
   red: 'danger',
 };
+
+export interface ExpiryStatusBadgeStyle {
+  bg: string;
+  border: string;
+  dot: string;
+  textColor: string;
+}
+
+/**
+ * Returns calibrated status badge styling strictly derived from Expyrico theme tokens.
+ * Preserves documented palette roles:
+ * - Light theme: Soft Butter (accentLight) for amber, Mint Mist (primaryLight) for green.
+ * - Dark theme: High-contrast (Warm White text) with status-tinted fills & borders,
+ *   eliminating unreadable saturated red/amber text on dark green glass.
+ */
+export function getExpiryStatusBadgeStyles(
+  status: ExpiryStatus,
+  theme: Theme,
+): ExpiryStatusBadgeStyle {
+  const isDark = theme.scheme === 'dark';
+
+  if (status === 'red') {
+    return {
+      bg: theme.colors.danger + (isDark ? '26' : '14'),
+      border: theme.colors.danger + (isDark ? '66' : '3D'),
+      dot: theme.colors.danger,
+      textColor: theme.colors.text,
+    };
+  }
+
+  if (status === 'amber') {
+    return {
+      bg: isDark ? theme.colors.warning + '26' : theme.colors.accentLight,
+      border: theme.colors.warning + (isDark ? '66' : '4D'),
+      dot: theme.colors.warning,
+      textColor: isDark ? theme.colors.text : theme.colors.text,
+    };
+  }
+
+  // green
+  return {
+    bg: theme.colors.primaryLight,
+    border: theme.colors.success + (isDark ? '50' : '33'),
+    dot: theme.colors.success,
+    textColor: theme.colors.text,
+  };
+}

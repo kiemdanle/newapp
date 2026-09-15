@@ -1,5 +1,5 @@
 // apps/mobile/src/features/deals/DealFeed.tsx
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Deal, DealSort } from '@expyrico/shared';
@@ -21,6 +22,8 @@ import { DealFilterModal } from './DealFilterModal';
 import { EmptyState } from '../../components/EmptyState';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { useTheme } from '../../theme/useTheme';
+import { useDealFeedStore } from '../../store/dealFeedStore';
+import { retryIfServerUnavailable } from '../../store/connectionStore';
 
 const SORTS: { id: DealSort; label: string; icon: string }[] = [
   { id: 'score', label: 'Top', icon: '🔥' },
@@ -36,7 +39,7 @@ interface Props {
   onNew: () => void;
 }
 
-export function DealFeed({ currentUserId, onOpen, onReport, onNew: _onNew }: Props) {
+export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   // Search & Filter state
@@ -70,9 +73,23 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew: _onNew }: Pro
   const q = useDealFeed(combinedFilters);
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const refetch = q.refetch;
+  const setHasItems = useDealFeedStore((s) => s.setHasItems);
+  useEffect(() => {
+    if (!q.isLoading && !q.isPending) {
+      setHasItems(items.length > 0);
+    }
+  }, [items.length, q.isLoading, q.isPending, setHasItems]);
+
+  useEffect(() => {
+    return () => {
+      setHasItems(true);
+    };
+  }, [setHasItems]);
+
 
   useFocusEffect(
     useCallback(() => {
+      retryIfServerUnavailable();
       void refetch();
     }, [refetch]),
   );
@@ -290,7 +307,10 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew: _onNew }: Pro
         refreshControl={
           <RefreshControl
             refreshing={q.isRefetching}
-            onRefresh={() => q.refetch()}
+            onRefresh={() => {
+              retryIfServerUnavailable();
+              void q.refetch();
+            }}
             tintColor={theme.colors.primary}
             colors={[theme.colors.primary]}
           />
@@ -335,12 +355,34 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew: _onNew }: Pro
               </Pressable>
             </View>
           ) : (
-            <View style={{ marginTop: 24 }}>
+            <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
               <EmptyState
                 icon="pricetag"
                 title="No deals posted yet"
                 body="Be the first to share a grocery price drop in your area and help neighbors save!"
               />
+              <Pressable
+                testID="deal-create-empty-action"
+                accessibilityRole="button"
+                accessibilityLabel="Post a deal"
+                onPress={onNew}
+                style={({ pressed }) => [
+                  styles.emptyStateAction,
+                  {
+                    backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
+                    borderRadius: theme.radii.pill,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  },
+                ]}
+              >
+                <Ionicons name="pricetag-outline" size={18} color="#FFFFFF" />
+                <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
+                  Post a deal
+                </Text>
+              </Pressable>
             </View>
           )
         }

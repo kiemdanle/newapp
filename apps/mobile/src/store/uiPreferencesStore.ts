@@ -11,6 +11,7 @@ interface UiPreferencesState {
   pantryViewMode: PantryViewMode;
   draftsViewMode: PantryViewMode;
   setPantryViewMode: (mode: PantryViewMode) => Promise<void>;
+  togglePantryViewMode: () => PantryViewMode;
   setDraftsViewMode: (mode: PantryViewMode) => Promise<void>;
   hydrate: () => Promise<void>;
 }
@@ -38,7 +39,7 @@ export async function hydratePantryViewModeFromStorage(): Promise<void> {
   }
 }
 
-export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
+export const useUiPreferencesStore = create<UiPreferencesState>((set, get) => {
   void hydratePantryViewModeFromStorage();
 
   AsyncStorage.getItem(DRAFTS_VIEW_MODE_STORAGE_KEY)
@@ -61,6 +62,19 @@ export const useUiPreferencesStore = create<UiPreferencesState>((set) => {
       } catch {
         /* best-effort */
       }
+    },
+    togglePantryViewMode: () => {
+      pantryViewModeGeneration++;
+      userHasToggledPantryViewMode = true;
+      const current = get().pantryViewMode;
+      const next: PantryViewMode = current === 'grid' ? 'list' : 'grid';
+      set({ pantryViewMode: next });
+      try {
+        void AsyncStorage.setItem(PANTRY_VIEW_MODE_STORAGE_KEY, next).catch(() => {});
+      } catch {
+        /* best-effort */
+      }
+      return next;
     },
     setDraftsViewMode: async (mode: PantryViewMode) => {
       set({ draftsViewMode: mode });

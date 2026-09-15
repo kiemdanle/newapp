@@ -57,8 +57,9 @@ export function HistoryRecordCard({
       <View style={styles.cardMain}>
         <ProductThumbnail
           product={product}
-          photoUrl={record.photoUrl}
-          hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
+          firstPhoto={product?.photos?.[0]}
+          photoUrl={record.localPhotos?.[0] || record.photoUrl}
+          hasPhotoOverride={hasDirectPhoto}
           isLoading={isThumbnailLoading}
           size={56}
           fallbackIcon={isConsumed ? 'checkmark-circle-outline' : 'trash-outline'}
@@ -170,6 +171,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   thumbnail: {
+    width: 56,
+    height: 56,
     borderRadius: 12,
   },
   cardContent: {

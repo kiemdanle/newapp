@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -15,6 +16,8 @@ export interface ScopeSelectorPillProps {
   selectedHouseholdId: string | null;
   onChange: (scope: 'personal' | 'household', householdId: string | null) => void;
   testID?: string;
+  label?: string;
+  canMoveToPersonal?: boolean;
 }
 
 export function ScopeSelectorPill({
@@ -22,6 +25,8 @@ export function ScopeSelectorPill({
   selectedHouseholdId,
   onChange,
   testID = 'scope-selector-pill',
+  label = 'Save to pantry:',
+  canMoveToPersonal = true,
 }: ScopeSelectorPillProps) {
   const theme = useTheme();
   const { data: householdsData } = useMyHouseholds();
@@ -38,9 +43,16 @@ export function ScopeSelectorPill({
   const activeHouseholdName = currentHousehold?.name ?? 'Household';
 
   const handlePersonalPress = () => {
+    if (!canMoveToPersonal) {
+      Alert.alert(
+        'Creator only',
+        'Only the item creator can move it to personal pantry',
+        [{ text: 'OK' }],
+      );
+      return;
+    }
     onChange('personal', null);
   };
-
   const handleHouseholdPress = () => {
     if (households.length > 1) {
       setPickerVisible(true);
@@ -55,7 +67,7 @@ export function ScopeSelectorPill({
   return (
     <View testID={testID} style={styles.outerContainer}>
       <Text style={[styles.label, { color: theme.colors.textMuted }]}>
-        Save to pantry:
+        {label}
       </Text>
 
       <View
@@ -77,6 +89,9 @@ export function ScopeSelectorPill({
             styles.segment,
             isPersonalActive && {
               backgroundColor: theme.colors.primary,
+            },
+            !canMoveToPersonal && {
+              opacity: 0.5,
             },
           ]}
         >

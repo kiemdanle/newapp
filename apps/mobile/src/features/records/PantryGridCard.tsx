@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, GestureResponderEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { LocalRecord } from '../../api/records';
@@ -7,12 +7,15 @@ import { useProduct } from '../../api/products';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
-import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
+import { expiryStatus, getExpiryStatusBadgeStyles } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
  import { PantryGridActionDrawer } from './PantryGridActionDrawer';
 import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
  import { getLocationIcon } from '../../utils/locations';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DEFAULT_CARD_WIDTH = Math.max(140, Math.floor((SCREEN_WIDTH - 44) / 2));
+
 export interface PantryGridCardProps {
   record: LocalRecord;
   onPress: () => void;
@@ -32,7 +35,7 @@ export interface PantryGridCardProps {
   onCloseDrawer?: () => void;
 }
 
-export function PantryGridCard({
+export const PantryGridCard = React.memo(function PantryGridCard({
   record,
   onPress,
   householdName,
@@ -56,7 +59,7 @@ export function PantryGridCard({
   const userCountry = sessionUser?.country ?? null;
   const currentUserId = sessionUser?.id ?? null;
   const swipeableRef = useRef<Swipeable>(null);
-  const [cardWidth, setCardWidth] = useState(0);
+  const [cardWidth, setCardWidth] = useState(DEFAULT_CARD_WIDTH);
   const isProcessingRef = useRef(false);
   const { data: product, isLoading: isProductLoading } = useProduct(record.productId ?? undefined);
 
@@ -76,13 +79,7 @@ export function PantryGridCard({
   // Creator-only delete permission gate per Red Team Finding 3
   const canDelete = !record.householdId || (Boolean(currentUserId) && record.userId === currentUserId);
   const status = expiryStatus(record.expiryDate);
-  const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
-  const statusBg =
-    status === 'amber'
-      ? theme.colors.accentLight
-      : status === 'red'
-        ? theme.colors.bgGlass
-        : theme.colors.primaryLight;
+  const statusStyle = getExpiryStatusBadgeStyles(status, theme);
 
   const handleCardLongPress = useCallback(() => {
     if (!selectionMode && onLongPress) {
@@ -281,11 +278,28 @@ export function PantryGridCard({
               <View style={styles.topRightCluster}>
                 <View
                   testID={`record-expiry-status-${status}`}
-                  style={[styles.statusPill, { backgroundColor: statusBg }]}
+                  style={[
+                    styles.statusPill,
+                    {
+                      backgroundColor: statusStyle.bg,
+                      borderColor: statusStyle.border,
+                      borderWidth: 1,
+                      borderRadius: theme.radii.pill,
+                    },
+                  ]}
                 >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: statusStyle.dot,
+                      marginRight: 4,
+                    }}
+                  />
                   <Text
                     numberOfLines={1}
-                    style={[styles.statusPillText, { color: statusColor }]}
+                    style={[styles.statusPillText, { color: statusStyle.textColor }]}
                   >
                     {record.quantity} {record.unit}
                   </Text>
@@ -307,9 +321,11 @@ export function PantryGridCard({
             </View>
           <View style={styles.thumbnailContainer}>
             <ProductThumbnail
+              product={product}
+              firstPhoto={product?.photos?.[0]}
               isLoading={isThumbnailLoading}
-              photoUrl={record.photoUrl}
-              hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
+              photoUrl={record.localPhotos?.[0] || record.photoUrl}
+              hasPhotoOverride={hasDirectPhoto}
               fallbackIcon="basket-outline"
               size={72}
               style={{
@@ -464,7 +480,7 @@ export function PantryGridCard({
       </Swipeable>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   cardWrapper: {
@@ -519,6 +535,8 @@ const styles = StyleSheet.create({
     height: 22,
   },
   statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,

@@ -92,4 +92,26 @@ describe('uiPreferencesStore - pantryViewMode', () => {
       getItemSpy.mockRestore();
     }
   });
+
+  it('toggles pantryViewMode synchronously and persists next mode', async () => {
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+
+    const next1 = useUiPreferencesStore.getState().togglePantryViewMode();
+    expect(next1).toBe('grid');
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('grid');
+
+    const next2 = useUiPreferencesStore.getState().togglePantryViewMode();
+    expect(next2).toBe('list');
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+  });
+
+  it('rapid double-toggle preserves second toggle destination without dropping toggle', async () => {
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+
+    // Rapid double toggle in the same microtask
+    useUiPreferencesStore.getState().togglePantryViewMode();
+    useUiPreferencesStore.getState().togglePantryViewMode();
+
+    expect(useUiPreferencesStore.getState().pantryViewMode).toBe('list');
+  });
 });

@@ -1,8 +1,19 @@
 import React from 'react';
+import { Alert } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import { QuickEditModal } from './QuickEditModal';
 import type { LocalRecord } from '../../api/records';
+import type { Product } from '@expyrico/shared';
+import { useSessionStore } from '../../auth/session-store';
 import { renderWithTheme } from '../../../tests/helpers/renderWithTheme';
+const mockMyHouseholds = jest.fn(() => ({ data: { items: [] as Array<{ id: string; name: string }> } }));
+jest.mock('../../api/households', () => ({
+  useMyHouseholds: () => mockMyHouseholds(),
+}));
+const mockUseProduct = jest.fn((id?: string) => ({ data: null as Product | null, isLoading: false }));
+jest.mock('../../api/products', () => ({
+  useProduct: (id?: string) => mockUseProduct(id),
+}));
 
 const mockRecord: LocalRecord = {
   id: 'rec-1',
@@ -91,6 +102,7 @@ describe('QuickEditModal', () => {
       unit: 'pcs',
       expiryDate: '2026-09-01',
       location: null,
+      householdId: null,
     });
     expect(onClose).toHaveBeenCalled();
   });
@@ -369,5 +381,358 @@ describe('QuickEditModal', () => {
         brand: null,
       }),
     );
+  });
+
+  it('does not render Pantry Location scope selector when user belongs to 0 households', () => {
+    mockMyHouseholds.mockReturnValueOnce({ data: { items: [] } });
+    const { queryByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+      'expyrico',
+    );
+
+    expect(queryByTestId('quick-edit-scope-selector')).toBeNull();
+  });
+
+  it('renders Pantry Location scope selector and allows changing to household', async () => {
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const onClose = jest.fn();
+
+    const { getByTestId, getByText } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={onClose}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    expect(getByTestId('quick-edit-scope-selector')).toBeTruthy();
+    expect(getByText('Pantry Location')).toBeTruthy();
+    expect(getByText('Dân house')).toBeTruthy();
+
+    // Tap household segment to change pantry location
+    fireEvent.press(getByTestId('quick-edit-scope-selector-household'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'hh-1',
+      }),
+    );
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('allows moving an item from household to personal pantry', async () => {
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordInHousehold: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-hh',
+      householdId: 'hh-1',
+      userId: null, // creator or no creator set
+    };
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordInHousehold}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Tap personal segment to move to personal pantry
+    fireEvent.press(getByTestId('quick-edit-scope-selector-personal'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: null,
+      }),
+    );
+  });
+
+  it('allows selecting among multiple households via picker modal in QuickEditModal', async () => {
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [
+          { id: 'hh-1', name: 'City Flat' },
+          { id: 'hh-2', name: 'Beach House' },
+        ],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+
+    const { getByTestId } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={mockRecord}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Press household segment to open modal
+    fireEvent.press(getByTestId('quick-edit-scope-selector-household'));
+
+    // Select second household
+    expect(getByTestId('quick-edit-scope-selector-option-hh-2')).toBeTruthy();
+    fireEvent.press(getByTestId('quick-edit-scope-selector-option-hh-2'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'hh-2',
+      }),
+    );
+  });
+
+  it('blocks moving from household to personal pantry when user is not creator', async () => {
+    useSessionStore.setState({
+      user: {
+        id: 'current-user-999',
+        email: 'tester@expyrico.com',
+        emailVerified: true,
+        firstName: 'Test',
+        lastName: 'User',
+        address: null,
+        country: 'US',
+        avatarUrl: null,
+        hasPassword: true,
+        role: 'user',
+        status: 'active',
+        themePreference: 'expyrico',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordFromOtherUser: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-other-user',
+      householdId: 'hh-1',
+      userId: 'other-user-123',
+    };
+
+    const { getByTestId, unmount } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordFromOtherUser}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    fireEvent.press(getByTestId('quick-edit-scope-selector-personal'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Creator only',
+      'Only the item creator can move it to personal pantry',
+      [{ text: 'OK' }],
+    );
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    // Should remain in the household, not personal
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'hh-1',
+      }),
+    );
+    alertSpy.mockRestore();
+    act(() => {
+      unmount();
+      useSessionStore.setState({ user: null });
+    });
+  });
+
+  it('allows moving a draft duplicate to personal pantry even if original item was from another user', async () => {
+    useSessionStore.setState({
+      user: {
+        id: 'current-user-999',
+        email: 'tester@expyrico.com',
+        emailVerified: true,
+        firstName: 'Test',
+        lastName: 'User',
+        address: null,
+        country: 'US',
+        avatarUrl: null,
+        hasPassword: true,
+        role: 'user',
+        status: 'active',
+        themePreference: 'expyrico',
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    });
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const draftDuplicate: LocalRecord = {
+      ...mockRecord,
+      id: 'draft-duplicate-rec-1',
+      householdId: 'hh-1',
+      userId: 'other-user-123',
+    };
+
+    const { getByTestId, unmount } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={draftDuplicate}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    fireEvent.press(getByTestId('quick-edit-scope-selector-personal'));
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: null,
+      }),
+    );
+    act(() => {
+      unmount();
+      useSessionStore.setState({ user: null });
+    });
+  });
+
+  it('hides Pantry Location scope selector and forces householdId to null for private/non-active products', async () => {
+    mockUseProduct.mockReturnValue({
+      data: {
+        id: 'prod-pending',
+        name: 'Private Honey',
+        status: 'pending',
+      } as unknown as Product,
+      isLoading: false,
+    });
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordWithPrivateProduct: LocalRecord = {
+      ...mockRecord,
+      productId: 'prod-pending',
+      householdId: null,
+    };
+
+    const { queryByTestId, getByTestId, unmount } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordWithPrivateProduct}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // Scope selector must be completely hidden for locked personal scope
+    expect(queryByTestId('quick-edit-scope-selector')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: null,
+      }),
+    );
+    act(() => {
+      unmount();
+      mockUseProduct.mockReturnValue({ data: null, isLoading: false });
+    });
+  });
+
+  it('hides Pantry Location scope selector while product metadata is in flight', async () => {
+    mockUseProduct.mockReturnValue({
+      data: null,
+      isLoading: true,
+    });
+    mockMyHouseholds.mockReturnValue({
+      data: {
+        items: [{ id: 'hh-1', name: 'Dân house' }],
+      },
+    });
+    const onSave = jest.fn().mockResolvedValue(undefined);
+    const recordLoadingProduct: LocalRecord = {
+      ...mockRecord,
+      productId: 'prod-unknown',
+      householdId: 'hh-1',
+    };
+
+    const { queryByTestId, getByTestId, unmount } = renderWithTheme(
+      <QuickEditModal
+        visible
+        record={recordLoadingProduct}
+        onClose={jest.fn()}
+        onSave={onSave}
+      />,
+      'expyrico',
+    );
+
+    // While product metadata is loading, scope selector must be hidden
+    expect(queryByTestId('quick-edit-scope-selector')).toBeNull();
+
+    await act(async () => {
+      fireEvent.press(getByTestId('save-quick-edit'));
+    });
+
+    // Existing householdId must be preserved, NOT forced to null!
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'hh-1',
+      }),
+    );
+
+    act(() => {
+      unmount();
+      mockUseProduct.mockReturnValue({ data: null, isLoading: false });
+    });
   });
 });

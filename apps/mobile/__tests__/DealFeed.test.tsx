@@ -4,6 +4,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DealFeed } from '../src/features/deals/DealFeed';
 import { ThemeProvider } from '../src/theme/ThemeProvider';
+import { useDealFeedStore } from '../src/store/dealFeedStore';
 
 const mockDeal = {
   id: 'deal-1',
@@ -35,9 +36,10 @@ const mockFeedResult = {
   refetch: jest.fn(),
   isRefetching: false,
 };
+let mockCurrentFeedResult: any = mockFeedResult;
 
 jest.mock('../src/api/deals', () => ({
-  useDealFeed: () => mockFeedResult,
+  useDealFeed: () => mockCurrentFeedResult,
   useDealStores: () => ({ data: { items: [{ name: 'Trader Joe', count: 1 }] } }),
   useDealVote: () => ({ mutate: jest.fn(), isPending: false }),
   useDeleteDealVote: () => ({ mutate: jest.fn(), isPending: false }),
@@ -52,7 +54,12 @@ function wrap(node: React.ReactNode) {
   );
 }
 
+
 describe('DealFeed', () => {
+  beforeEach(() => {
+    mockCurrentFeedResult = mockFeedResult;
+    useDealFeedStore.setState({ hasItems: true });
+  });
   it('renders deal feed with search bar, sorts, and deal items', () => {
     const onOpen = jest.fn();
     const onReport = jest.fn();
@@ -75,11 +82,19 @@ describe('DealFeed', () => {
     expect(getByText('🔥 Top')).toBeTruthy();
   });
 
-  it('triggers onNew when empty state post deal action is pressed', () => {
-    const onNew = jest.fn();
+  it('renders "Post a deal" button under "No deals posted yet" card when feed is empty and triggers onNew', () => {
+    mockCurrentFeedResult = {
+      data: { pages: [{ items: [], cursor: null }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      hasNextPage: false,
+      fetchNextPage: jest.fn(),
+      refetch: jest.fn(),
+      isRefetching: false,
+    };
 
-    // Mock empty feed
-    const { getByText } = render(
+    const onNew = jest.fn();
+    const { getByText, getByTestId } = render(
       wrap(
         <DealFeed
           currentUserId="user-2"
@@ -90,6 +105,27 @@ describe('DealFeed', () => {
       ),
     );
 
-    expect(getByText('Deals')).toBeTruthy();
+    expect(getByText('No deals posted yet')).toBeTruthy();
+    const postDealBtn = getByTestId('deal-create-empty-action');
+    expect(postDealBtn).toBeTruthy();
+    expect(getByText('Post a deal')).toBeTruthy();
+
+    fireEvent.press(postDealBtn);
+    expect(onNew).toHaveBeenCalledTimes(1);
+    expect(useDealFeedStore.getState().hasItems).toBe(false);
+  });
+
+  it('updates dealFeedStore hasItems to true when deals exist', () => {
+    render(
+      wrap(
+        <DealFeed
+          currentUserId="user-2"
+          onOpen={jest.fn()}
+          onReport={jest.fn()}
+          onNew={jest.fn()}
+        />,
+      ),
+    );
+    expect(useDealFeedStore.getState().hasItems).toBe(true);
   });
 });

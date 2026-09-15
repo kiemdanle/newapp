@@ -6,6 +6,7 @@ import {
   Pressable,
   RefreshControl,
   SectionList,
+  type SectionListData,
   StyleSheet,
   Text,
   View,
@@ -35,6 +36,7 @@ import { RecordCard } from './RecordCard';
 import { QuickEditModal } from './QuickEditModal';
 import { useTheme } from '../../theme/useTheme';
 import { useUndoToastStore } from '../../store/undoToast';
+import { retryIfServerUnavailable } from '../../store/connectionStore';
 import { QuantityPromptModal } from '../../components/QuantityPromptModal';
 import { DiscardReasonModal } from '../../components/DiscardReasonModal';
 import { filterAndSortRecords } from './filterAndSortRecords';
@@ -106,6 +108,91 @@ const RecordRow = React.memo(function RecordRow({
       onLongPress={onLongPress ? () => onLongPress(record.id) : undefined}
       onToggleSelect={onToggleSelect ? () => onToggleSelect(record.id) : undefined}
     />
+  );
+});
+
+interface GridRowProps {
+  first: LocalRecord;
+  second?: LocalRecord;
+  householdNames: Record<string, string>;
+  onPress: (id: string) => void;
+  onDuplicate?: (record: LocalRecord) => void;
+  onEdit?: (record: LocalRecord) => void;
+  onUsed?: (record: LocalRecord) => void;
+  onDiscard?: (record: LocalRecord) => void;
+  onDelete?: (record: LocalRecord) => void;
+  selectionMode?: boolean;
+  isSelectedFirst?: boolean;
+  isSelectedSecond?: boolean;
+  onLongPress?: (id: string) => void;
+  onToggleSelect?: (id: string) => void;
+  isDrawerOpenFirst?: boolean;
+  isDrawerOpenSecond?: boolean;
+  onOpenDrawer: (id: string) => void;
+  onCloseDrawer: (id: string) => void;
+}
+
+const GridRow = React.memo(function GridRow({
+  first,
+  second,
+  householdNames,
+  onPress,
+  onDuplicate,
+  onEdit,
+  onUsed,
+  onDiscard,
+  onDelete,
+  selectionMode,
+  isSelectedFirst,
+  isSelectedSecond,
+  onLongPress,
+  onToggleSelect,
+  isDrawerOpenFirst,
+  isDrawerOpenSecond,
+  onOpenDrawer,
+  onCloseDrawer,
+}: GridRowProps) {
+  return (
+    <View style={styles.gridRow}>
+      <PantryGridCard
+        record={first}
+        householdName={first.householdId ? householdNames[first.householdId] : undefined}
+        onPress={() => onPress(first.id)}
+        selectionMode={selectionMode}
+        isSelected={isSelectedFirst}
+        onLongPress={onLongPress ? () => onLongPress(first.id) : undefined}
+        onToggleSelect={onToggleSelect ? () => onToggleSelect(first.id) : undefined}
+        onUsed={onUsed}
+        onDuplicate={onDuplicate}
+        onEdit={onEdit}
+        onDiscard={onDiscard}
+        onDelete={onDelete}
+        isDrawerOpen={isDrawerOpenFirst}
+        onOpenDrawer={() => onOpenDrawer(first.id)}
+        onCloseDrawer={() => onCloseDrawer(first.id)}
+      />
+      {second ? (
+        <PantryGridCard
+          record={second}
+          householdName={second.householdId ? householdNames[second.householdId] : undefined}
+          onPress={() => onPress(second.id)}
+          selectionMode={selectionMode}
+          isSelected={isSelectedSecond}
+          onLongPress={onLongPress ? () => onLongPress(second.id) : undefined}
+          onToggleSelect={onToggleSelect ? () => onToggleSelect(second.id) : undefined}
+          onUsed={onUsed}
+          onDuplicate={onDuplicate}
+          onEdit={onEdit}
+          onDiscard={onDiscard}
+          onDelete={onDelete}
+          isDrawerOpen={isDrawerOpenSecond}
+          onOpenDrawer={() => onOpenDrawer(second.id)}
+          onCloseDrawer={() => onCloseDrawer(second.id)}
+        />
+      ) : (
+        <View style={styles.gridSpacer} />
+      )}
+    </View>
   );
 });
 
@@ -304,13 +391,14 @@ export function RecordList({
   }, [loadMore]);
 
   const viewMode = useUiPreferencesStore((s) => s.pantryViewMode);
-  const setPantryViewMode = useUiPreferencesStore((s) => s.setPantryViewMode);
+  const togglePantryViewMode = useUiPreferencesStore((s) => s.togglePantryViewMode);
 
   const handleToggleViewMode = useCallback(() => {
     onEndReachedCalledDuringMomentumRef.current = true;
     setActiveDrawerId(null);
-    void setPantryViewMode(viewMode === 'grid' ? 'list' : 'grid');
-  }, [viewMode, setPantryViewMode]);
+    togglePantryViewMode();
+  }, [togglePantryViewMode]);
+
   useEffect(() => {
     onEndReachedCalledDuringMomentumRef.current = true;
   }, [viewMode]);
@@ -360,6 +448,11 @@ export function RecordList({
       }));
   }, [filters.expiryStatus, isFiltered, groups, paginatedItems, totalCount, viewMode]);
 
+  const extraData = useMemo(
+    () => ({ viewMode, selectionMode, selectedIds, householdNames, activeDrawerId }),
+    [viewMode, selectionMode, selectedIds, householdNames, activeDrawerId],
+  );
+
   const openRecord = useCallback(
     (id: string) => navigation.navigate('Record', { id }),
     [navigation],
@@ -368,6 +461,7 @@ export function RecordList({
   const handleDefaultRefresh = useCallback(async () => {
     setInternalRefreshing(true);
     try {
+      retryIfServerUnavailable();
       await Promise.allSettled([
         runSync(),
         queryClient.invalidateQueries({ queryKey: ['households'] }),
@@ -405,7 +499,7 @@ export function RecordList({
     (record: LocalRecord) => {
       if (isAtCapacity) {
         Alert.alert(
-          'Pantry Limit Reached',
+          'Stash Limit Reached',
           `You have reached the maximum allowed items (${pantryLimit} items). Remove or consume existing items to duplicate.`,
         );
         return;
@@ -535,12 +629,13 @@ export function RecordList({
       unit: string;
       expiryDate: string;
       location?: string | null;
+      householdId?: string | null;
     }) => {
       if (!editingRecord) return;
       if (editingRecord.id.startsWith('draft-duplicate-')) {
         if (isAtCapacity) {
           Alert.alert(
-            'Pantry Limit Reached',
+            'Stash Limit Reached',
             `You have reached the maximum allowed items (${pantryLimit} items). Remove or consume existing items to duplicate.`,
           );
           return;
@@ -557,7 +652,7 @@ export function RecordList({
           store: editingRecord.store,
           notes: editingRecord.notes,
           photoUrl: editingRecord.photoUrl,
-          householdId: editingRecord.householdId,
+          householdId: patch.householdId !== undefined ? patch.householdId : editingRecord.householdId,
           userId: currentUserId ?? null,
           location: patch.location !== undefined ? patch.location : editingRecord.location,
         });
@@ -626,6 +721,14 @@ export function RecordList({
     [],
   );
 
+  const handleOpenDrawer = useCallback((id: string) => {
+    setActiveDrawerId(id);
+  }, []);
+
+  const handleCloseDrawer = useCallback((id: string) => {
+    setActiveDrawerId((curr) => (curr === id ? null : curr));
+  }, []);
+
   const renderItem = useCallback(
     ({ item }: { item: LocalRecord | LocalRecord[] }) => {
       if (Array.isArray(item)) {
@@ -633,50 +736,26 @@ export function RecordList({
         const second = item[1];
         if (!first) return null;
         return (
-          <View style={styles.gridRow}>
-            <PantryGridCard
-              record={first}
-              householdName={first.householdId ? householdNames[first.householdId] : undefined}
-              onPress={() => handlePressItem(first.id)}
-              selectionMode={selectionMode}
-              isSelected={selectedIds.has(first.id)}
-              onLongPress={handleLongPress ? () => handleLongPress(first.id) : undefined}
-              onToggleSelect={handleToggleSelect ? () => handleToggleSelect(first.id) : undefined}
-              onUsed={handleUsed}
-              onDuplicate={handleDuplicate}
-              onEdit={handleEdit}
-              onDiscard={handleDiscard}
-              onDelete={handleDelete}
-              isDrawerOpen={activeDrawerId === first.id}
-              onOpenDrawer={() => setActiveDrawerId(first.id)}
-              onCloseDrawer={() => {
-                setActiveDrawerId((curr) => (curr === first.id ? null : curr));
-              }}
-            />
-            {second ? (
-              <PantryGridCard
-                record={second}
-                householdName={second.householdId ? householdNames[second.householdId] : undefined}
-                onPress={() => handlePressItem(second.id)}
-                selectionMode={selectionMode}
-                isSelected={selectedIds.has(second.id)}
-                onLongPress={handleLongPress ? () => handleLongPress(second.id) : undefined}
-                onToggleSelect={handleToggleSelect ? () => handleToggleSelect(second.id) : undefined}
-                onUsed={handleUsed}
-                onDuplicate={handleDuplicate}
-                onEdit={handleEdit}
-                onDiscard={handleDiscard}
-                onDelete={handleDelete}
-                isDrawerOpen={activeDrawerId === second.id}
-                onOpenDrawer={() => setActiveDrawerId(second.id)}
-                onCloseDrawer={() => {
-                  setActiveDrawerId((curr) => (curr === second.id ? null : curr));
-                }}
-              />
-            ) : (
-              <View style={styles.gridSpacer} />
-            )}
-          </View>
+          <GridRow
+            first={first}
+            second={second}
+            householdNames={householdNames}
+            onPress={handlePressItem}
+            onDuplicate={handleDuplicate}
+            onEdit={handleEdit}
+            onUsed={handleUsed}
+            onDiscard={handleDiscard}
+            onDelete={handleDelete}
+            selectionMode={selectionMode}
+            isSelectedFirst={selectedIds.has(first.id)}
+            isSelectedSecond={second ? selectedIds.has(second.id) : false}
+            onLongPress={handleLongPress}
+            onToggleSelect={handleToggleSelect}
+            isDrawerOpenFirst={activeDrawerId === first.id}
+            isDrawerOpenSecond={second ? activeDrawerId === second.id : false}
+            onOpenDrawer={handleOpenDrawer}
+            onCloseDrawer={handleCloseDrawer}
+          />
         );
       }
 
@@ -709,6 +788,8 @@ export function RecordList({
       handleLongPress,
       handleToggleSelect,
       activeDrawerId,
+      handleOpenDrawer,
+      handleCloseDrawer,
     ],
   );
   const keyExtractor = useCallback((item: LocalRecord | LocalRecord[]) => {
@@ -834,11 +915,12 @@ export function RecordList({
       {/* STABLE SINGLE SectionList: Preserves search input focus, cursor, and keyboard connection */}
       <SectionList
         testID="pantry-record-list"
-        sections={sections as any}
-        extraData={{ viewMode, selectionMode, selectedIds, householdNames, activeDrawerId }}
+        sections={sections as unknown as SectionListData<LocalRecord | LocalRecord[]>[]}
+        extraData={extraData}
         scrollEnabled
-        initialNumToRender={30}
-        maxToRenderPerBatch={30}
+        initialNumToRender={viewMode === 'grid' ? 6 : 10}
+        maxToRenderPerBatch={8}
+        windowSize={7}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         stickySectionHeadersEnabled={false}

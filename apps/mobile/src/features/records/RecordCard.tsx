@@ -7,7 +7,7 @@ import { useProduct } from '../../api/products';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
-import { expiryStatus, EXPIRY_STATUS_TOKEN } from './expiryStatus';
+import { expiryStatus, getExpiryStatusBadgeStyles } from './expiryStatus';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { usePantryScope } from '../../store/pantryScope';
 import { getLocationIcon } from '../../utils/locations';
@@ -71,13 +71,7 @@ export function RecordCard({
     showHouseholdBadge === undefined ? (scope === 'all' && !record.householdId) : false;
   const badgeLabel = householdName || 'Shared';
   const status = expiryStatus(record.expiryDate);
-  const statusColor = theme.colors[EXPIRY_STATUS_TOKEN[status]];
-  const statusBg = status === 'amber'
-    ? theme.colors.accentLight
-    : status === 'red'
-      ? theme.colors.bgGlass
-      : theme.colors.primaryLight;
-
+  const statusStyle = getExpiryStatusBadgeStyles(status, theme);
   const renderRightActions = (
     _progress: Animated.AnimatedInterpolation<number>,
     _dragX: Animated.AnimatedInterpolation<number>,
@@ -201,8 +195,9 @@ export function RecordCard({
           {/* Product Image Thumbnail */}
           <ProductThumbnail
             product={product}
-            photoUrl={record.photoUrl}
-            hasPhotoOverride={record.localPhotos !== null && record.localPhotos !== undefined}
+            firstPhoto={product?.photos?.[0]}
+            photoUrl={record.localPhotos?.[0] || record.photoUrl}
+            hasPhotoOverride={hasDirectPhoto}
             isLoading={isThumbnailLoading}
             fallbackIcon="basket-outline"
             size={52}
@@ -275,9 +270,27 @@ export function RecordCard({
               </View>
               <View
                 testID={`record-expiry-status-${status}`}
-                style={{ backgroundColor: statusBg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: statusStyle.bg,
+                  borderColor: statusStyle.border,
+                  borderWidth: 1,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: theme.radii.pill,
+                  gap: 5,
+                }}
               >
-                <Text style={{ color: statusColor, fontSize: 11, fontWeight: '600' }}>
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: statusStyle.dot,
+                  }}
+                />
+                <Text style={{ color: statusStyle.textColor, fontSize: 11, fontWeight: '600' }}>
                   {record.quantity} {record.unit}
                 </Text>
               </View>

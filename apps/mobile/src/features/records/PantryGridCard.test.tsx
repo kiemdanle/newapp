@@ -59,6 +59,23 @@ describe('PantryGridCard', () => {
     expect(queryByText('4.5')).toBeNull();
   });
 
+  it('renders expired item quantity badge with red status indicator', () => {
+    const expiredRecord: LocalRecord = {
+      ...mockRecord,
+      id: 'rec-expired',
+      expiryDate: '2020-01-01',
+      quantity: 4,
+      unit: 'pack',
+    };
+    const { getByTestId, getByText } = renderWithProviders(
+      <PantryGridCard record={expiredRecord} onPress={jest.fn()} />,
+    );
+
+    const statusBadge = getByTestId('record-expiry-status-red');
+    expect(statusBadge).toBeTruthy();
+    expect(getByText('4 pack')).toBeTruthy();
+  });
+
   it('calls onPress when tapped in normal mode', () => {
     const onPress = jest.fn();
     const { getByTestId } = renderWithProviders(

@@ -1,5 +1,5 @@
 // apps/mobile/src/features/giveaways/GiveawayFeed.tsx
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Giveaway, GiveawaySort } from '@expyrico/shared';
@@ -25,6 +26,8 @@ import { HamburgerButton } from '@/components/HamburgerButton';
 import { EmptyState } from '@/components/EmptyState';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
+import { useGiveawayFeedStore } from '@/store/giveawayFeedStore';
+import { retryIfServerUnavailable } from '@/store/connectionStore';
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 const SORTS: { id: GiveawaySort; label: string; icon: string }[] = [
@@ -103,9 +106,23 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   const items = q.data?.pages.flatMap((p) => p.items) ?? [];
   const refetch = q.refetch;
 
+  const setHasItems = useGiveawayFeedStore((s) => s.setHasItems);
+  useEffect(() => {
+    if (!q.isLoading && !q.isPending) {
+      setHasItems(items.length > 0);
+    }
+  }, [items.length, q.isLoading, q.isPending, setHasItems]);
+
+  useEffect(() => {
+    return () => {
+      setHasItems(true);
+    };
+  }, [setHasItems]);
+
   // Auto-refetch when user navigates back to the Giveaways tab
   useFocusEffect(
     useCallback(() => {
+      retryIfServerUnavailable();
       void refetch();
     }, [refetch]),
   );
@@ -347,7 +364,10 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         refreshControl={
           <RefreshControl
             refreshing={q.isRefetching}
-            onRefresh={() => q.refetch()}
+            onRefresh={() => {
+              retryIfServerUnavailable();
+              void q.refetch();
+            }}
             tintColor={theme.colors.primary}
             colors={[theme.colors.primary]}
           />
@@ -415,26 +435,32 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
               </Pressable>
             </View>
           ) : (
-            <View style={{ marginTop: 24 }}>
+            <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
               <EmptyState
                 icon="gift"
                 title="No giveaways yet"
                 body="Be the first to share food or groceries with neighbors nearby!"
               />
               <Pressable
+                testID="giveaway-create-empty-action"
                 accessibilityRole="button"
-                accessibilityLabel="Share the first item"
+                accessibilityLabel="Create a giveaway"
                 onPress={onNew}
                 style={({ pressed }) => [
                   styles.emptyStateAction,
                   {
                     backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
                     borderRadius: theme.radii.pill,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
                   },
                 ]}
               >
+                <Ionicons name="gift-outline" size={18} color="#FFFFFF" />
                 <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
-                  + Share the first item
+                  Create giveaway
                 </Text>
               </Pressable>
             </View>

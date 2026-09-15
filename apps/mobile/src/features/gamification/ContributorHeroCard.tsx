@@ -17,7 +17,7 @@ export function ContributorHeroCard({ data, isLoading }: ContributorHeroCardProp
   const theme = useTheme();
   const [roadmapVisible, setRoadmapVisible] = useState(false);
 
-  const targetPercent = data && data.enabled !== false ? data.progression.progressPercent : 0;
+  const targetPercent = data && data.enabled !== false ? (data.progression?.progressPercent ?? 0) : 0;
   const animatedProgress = useRef(new Animated.Value(targetPercent)).current;
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function ContributorHeroCard({ data, isLoading }: ContributorHeroCardProp
   }, [animatedProgress, targetPercent]);
 
   // If disabled by Admin toggle or data missing, gracefully do not render gamification card
-  if (!data || data.enabled === false) {
+  if (!data || data.enabled === false || !data.progression) {
     return null;
   }
 
