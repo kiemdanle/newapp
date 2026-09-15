@@ -134,6 +134,26 @@ describe('Thumbnail & Card Inline Loading States', () => {
       expect(screen.getByText('Honeycrisp Apples')).toBeTruthy();
       expect(screen.queryByTestId('grid-card-title-skeleton')).toBeNull();
     });
+
+    it('passes product to ProductThumbnail and renders thumbnail image when record has no direct photo', () => {
+      (useProduct as jest.Mock).mockReturnValue({
+        data: mockProduct,
+        isLoading: false,
+      });
+
+      const recordWithoutPhoto = { ...mockRecord, photoUrl: null, localPhotos: [] };
+      renderWithTheme(
+        <PantryGridCard record={recordWithoutPhoto} onPress={jest.fn()} />,
+        'expyrico',
+      );
+
+      const image = screen.getByTestId('product-thumbnail-image');
+      expect(image).toBeTruthy();
+      expect(image.props.source).toEqual({
+        uri: 'https://cdn.example.com/apple.jpg',
+        cache: 'force-cache',
+      });
+    });
   });
 
   describe('ProductThumbnail & Mock Slow Image Scenario', () => {

@@ -12,7 +12,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRecordWithStatus, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, type LocalRecord } from '../../../src/api/records';
+import { useRecordWithStatus, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, uploadRecordPhoto, type LocalRecord } from '../../../src/api/records';
 import { useMyHouseholds } from '../../../src/api/households';
 import { useImageSettlementTracker } from '../../../src/cache/useImageSettlementTracker';
 import { RecordDetailSkeleton } from '../../../src/components/skeleton';
@@ -261,13 +261,54 @@ export default function RecordDetail() {
 
     const combined = [...displayedPhotos, ...acceptedPhotos.map((p) => p.path)];
     await patchLocalRecord(record.id, { localPhotos: combined });
+
+    // Background upload to server
+    (async () => {
+      try {
+        let currentPhotos = [...combined];
+        let hasChanges = false;
+        for (const p of acceptedPhotos) {
+          const res = await uploadRecordPhoto({ path: p.path, mime: p.mime });
+          if (res?.photoUrl) {
+            currentPhotos = currentPhotos.map((item) => (item === p.path ? res.photoUrl : item));
+            hasChanges = true;
+          }
+        }
+        if (hasChanges) {
+          const first = currentPhotos[0];
+          const serverCover = first && (first.startsWith('http://') || first.startsWith('https://')) ? first : null;
+          await patchLocalRecord(record.id, {
+            localPhotos: currentPhotos,
+            ...(serverCover ? { photoUrl: serverCover } : {}),
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to upload pantry item photo to server:', err);
+      }
+    })();
   };
 
   const replacePhotoAt = async (index: number, newPhoto: PickedPhoto) => {
     const updated = displayedPhotos.map((p, i) => (i === index ? newPhoto.path : p));
     await patchLocalRecord(record.id, { localPhotos: updated });
-  };
 
+    (async () => {
+      try {
+        const res = await uploadRecordPhoto({ path: newPhoto.path, mime: newPhoto.mime });
+        if (res?.photoUrl) {
+          const remoteUpdated = updated.map((item, i) => (i === index ? res.photoUrl : item));
+          const first = remoteUpdated[0];
+          const serverCover = first && (first.startsWith('http://') || first.startsWith('https://')) ? first : null;
+          await patchLocalRecord(record.id, {
+            localPhotos: remoteUpdated,
+            ...(serverCover ? { photoUrl: serverCover } : {}),
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to upload replacement photo to server:', err);
+      }
+    })();
+  };
   const handleCameraCapture = async (photos: PickedPhoto[]) => {
     const firstPhoto = photos[0];
     if (!firstPhoto) return;
@@ -292,7 +333,11 @@ export default function RecordDetail() {
     const targetPhoto = displayedPhotos[index];
     if (!targetPhoto) return;
     const reordered: string[] = [targetPhoto, ...displayedPhotos.filter((_, i) => i !== index)];
-    await patchLocalRecord(record.id, { localPhotos: reordered });
+    const isRemote = targetPhoto.startsWith('http://') || targetPhoto.startsWith('https://');
+    await patchLocalRecord(record.id, {
+      localPhotos: reordered,
+      ...(isRemote ? { photoUrl: targetPhoto } : {}),
+    });
   };
 
   const handleAddPhoto = () => {
@@ -319,18 +364,13 @@ export default function RecordDetail() {
     setDeleteTargetIndex(null);
     const photoToDelete = displayedPhotos[idx];
     const updated = displayedPhotos.filter((_, i) => i !== idx);
-    if (record.photoUrl === photoToDelete || updated.length === 0) {
-      await patchLocalRecord(record.id, {
-        localPhotos: updated,
-        photoUrl: null,
-      });
-    } else {
-      await patchLocalRecord(record.id, {
-        localPhotos: updated,
-      });
-    }
+    const newCover = updated[0];
+    const newCoverUrl = newCover && (newCover.startsWith('http://') || newCover.startsWith('https://')) ? newCover : null;
+    await patchLocalRecord(record.id, {
+      localPhotos: updated,
+      photoUrl: newCoverUrl,
+    });
   };
-
   const handleChooseGalleryFromModal = async () => {
     if (photoSourceModal.mode === 'add') {
       try {
@@ -362,6 +402,7 @@ export default function RecordDetail() {
     unit: string;
     expiryDate: string;
     location?: string | null;
+    householdId?: string | null;
   }) => {
     await patchLocalRecord(record.id, patch);
     setShowEditModal(false);

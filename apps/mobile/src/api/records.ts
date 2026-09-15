@@ -14,6 +14,7 @@ import { apiClient } from './client';
 import { runSync } from '../db/sync';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
+import { useSessionStore } from '../auth/session-store';
 
 export interface LocalRecord {
   id: string; // watermelon id
@@ -109,6 +110,7 @@ export function useActiveRecordsWithStatus(): UseActiveRecordsStatus {
   const [rows, setRows] = useState<LocalRecord[]>([]);
   const [isResolved, setIsResolved] = useState(false);
   const { scope, householdId } = usePantryScope();
+  const currentUserId = useSessionStore((s) => s.user?.id);
   const queryGenRef = useRef(0);
 
   useEffect(() => {
@@ -147,7 +149,7 @@ export function useActiveRecordsWithStatus(): UseActiveRecordsStatus {
       sub.unsubscribe();
       unsubStorage();
     };
-  }, [scope, householdId]);
+  }, [scope, householdId, currentUserId]);
 
   return {
     records: rows,
@@ -201,6 +203,7 @@ export function usePantryHistoryRecordsWithStatus(
   const [rows, setRows] = useState<LocalRecord[]>([]);
   const [isResolved, setIsResolved] = useState(false);
   const { scope, householdId } = usePantryScope();
+  const currentUserId = useSessionStore((s) => s.user?.id);
   const queryGenRef = useRef(0);
 
   useEffect(() => {
@@ -245,7 +248,7 @@ export function usePantryHistoryRecordsWithStatus(
       sub.unsubscribe();
       unsubStorage();
     };
-  }, [filter, scope, householdId]);
+  }, [filter, scope, householdId, currentUserId]);
 
   return {
     records: rows,
@@ -830,4 +833,23 @@ export async function bulkPatchLocalRecordScope(
   });
 
   return response;
+}
+
+export async function uploadRecordPhoto(photo: {
+  path: string;
+  mime?: string;
+  name?: string;
+}): Promise<{ photoUrl: string; thumbUrl: string }> {
+  const form = new FormData();
+  form.append('file', {
+    uri: photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`,
+    type: photo.mime || 'image/jpeg',
+    name: photo.name || 'record-photo.jpg',
+  } as unknown as Blob);
+
+  return apiClient.request<{ photoUrl: string; thumbUrl: string }>({
+    method: 'POST',
+    path: '/records/upload-photo',
+    body: form,
+  });
 }

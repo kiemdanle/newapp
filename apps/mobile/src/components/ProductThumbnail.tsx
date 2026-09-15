@@ -84,6 +84,7 @@ export function ProductThumbnail({
       <View
         testID="product-thumbnail-skeleton"
         style={[
+          { width: size, height: size },
           style,
           styles.container,
           styles.loadingContainer,
@@ -109,11 +110,14 @@ export function ProductThumbnail({
 
   const parsedUris = parsePhotoUris(photoUrl);
   const primaryPhotoUrl = parsedUris[0] ?? photoUrl;
+  const productPhotos = (product as { photos?: Array<{ displayUrl?: string | null; thumbnailUrl?: string | null }> } | null | undefined)?.photos;
   const rawCandidates: Array<string | null | undefined> = [
+    primaryPhotoUrl,
     firstPhoto?.displayUrl,
     firstPhoto?.thumbnailUrl,
-    primaryPhotoUrl,
-    hasPhotoOverride ? null : product?.imageUrl,
+    productPhotos?.[0]?.displayUrl,
+    productPhotos?.[0]?.thumbnailUrl,
+    product?.imageUrl,
   ];
   const candidates: string[] = [];
   for (const raw of rawCandidates) {
@@ -150,7 +154,7 @@ export function ProductThumbnail({
         target={{ kind: 'draft', productId: product.id }}
         photoId={firstPhoto.id}
         variant="thumb"
-        style={style}
+        style={[{ width: size, height: size }, style]}
       />
     );
   }
@@ -159,6 +163,7 @@ export function ProductThumbnail({
     <View
       testID="product-thumbnail-fallback"
       style={[
+        { width: size, height: size },
         style,
         styles.container,
         {
@@ -238,6 +243,7 @@ function CachedThumbnailImage({
       <View
         testID="product-thumbnail-fallback"
         style={[
+          { width: size, height: size },
           style,
           styles.container,
           {
@@ -273,6 +279,7 @@ function CachedThumbnailImage({
       <View
         testID="product-thumbnail-skeleton"
         style={[
+          { width: size, height: size },
           style,
           styles.container,
           styles.loadingContainer,
@@ -297,14 +304,16 @@ function CachedThumbnailImage({
   }
 
   return (
-    <View style={[style, styles.container]}>
+    <View style={[{ width: size, height: size }, style, styles.container]}>
       <Image
         testID="product-thumbnail-image"
         source={{
           uri: renderUri,
-          cache: 'force-cache',
+          ...(renderUri.startsWith('http://') || renderUri.startsWith('https://')
+            ? { cache: 'force-cache' }
+            : {}),
         }}
-        style={[style, !isSettled && styles.hiddenImage]}
+        style={[{ width: size, height: size }, style, !isSettled && styles.hiddenImage]}
         resizeMode="cover"
         fadeDuration={150}
         accessibilityIgnoresInvertColors

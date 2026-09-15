@@ -9,7 +9,7 @@ import { ERROR_CODES, type RecordSyncResponse, type RecordSyncBatch } from '@exp
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
 
-const LAST_SYNC_KEY = 'pantry.lastSyncAt';
+export const LAST_SYNC_KEY = 'pantry.lastSyncAt';
 
 let syncing = false;
 let currentSyncEpoch = 0;
@@ -529,10 +529,20 @@ export async function purgeHouseholdRecords(householdIds: string[]): Promise<voi
 }
 
 async function loadLastSync(): Promise<Date | null> {
+  try {
+    const recordsCol = database.get<RecordModel>('records');
+    const localCount = await recordsCol.query(Q.where('pending_delete', false)).fetchCount();
+    if (localCount === 0) {
+      // Local database is empty (fresh install, post-logout reset, or wiped database).
+      // Return null so pullSince triggers a full initial pull from the server.
+      return null;
+    }
+  } catch {
+    // If count query fails, fallback to stored cursor
+  }
   const raw = await getItem(LAST_SYNC_KEY);
   return raw ? new Date(raw) : null;
 }
-
 async function saveLastSync(d: Date): Promise<void> {
   await setItem(LAST_SYNC_KEY, d.toISOString());
 }

@@ -13,6 +13,7 @@ import { Button } from '../../components/Button';
 import { choosePhotos, handlePhotoPickerError, type PickedPhoto } from '../products/photo-picker-adapter';
 import { WheelDatePickerModal } from '../../components/WheelDatePickerModal';
 import { MultiPhotoCameraModal } from '../../components/MultiPhotoCameraModal';
+import { uploadRecordPhoto } from '../../api/records';
 import { ScopeSelectorPill } from './ScopeSelectorPill';
 import { UnitSelector } from '../../components/UnitSelector';
 import { LocationSelector } from '../../components/LocationSelector';
@@ -132,7 +133,7 @@ export function AddRecordForm({
     }
     if (isAtCapacity) {
       Alert.alert(
-        'Pantry Limit Reached',
+        'Stash Limit Reached',
         `You have reached the maximum allowed items (${pantryLimit} items). You must consume, discard, or delete existing items to add new ones.`,
       );
       return;
@@ -185,6 +186,26 @@ export function AddRecordForm({
         }
       }
 
+      let serverPhotoUrl: string | null = null;
+      let finalLocalPhotos: string[] = photos.map((p) => p.path);
+      if (photos.length > 0) {
+        try {
+          const uploadedUrls: string[] = [];
+          for (const p of photos) {
+            const res = await uploadRecordPhoto({ path: p.path, mime: p.mime });
+            if (res?.photoUrl) {
+              uploadedUrls.push(res.photoUrl);
+            }
+          }
+          if (uploadedUrls.length > 0) {
+            serverPhotoUrl = uploadedUrls[0] || null;
+            finalLocalPhotos = uploadedUrls;
+          }
+        } catch {
+          // If offline/error, continue with local paths
+        }
+      }
+
       const localId = await createLocalRecord({
         productId: finalProductId,
         customName: finalProductId ? null : itemName.trim(),
@@ -195,8 +216,8 @@ export function AddRecordForm({
         price: price ? Number(price) : null,
         store: store || null,
         notes: notes || null,
-        photoUrl: null,
-        localPhotos: photos.map((p) => p.path),
+        photoUrl: serverPhotoUrl,
+        localPhotos: finalLocalPhotos,
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
         userId: currentUserId ?? null,
@@ -293,7 +314,7 @@ export function AddRecordForm({
           <Ionicons name="alert-circle" size={20} color="#E0442A" />
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#E0442A', fontSize: 13, fontWeight: '700' }}>
-              Pantry Limit Reached ({myActiveCount}/{pantryLimit} items)
+              Stash Limit Reached ({myActiveCount}/{pantryLimit} items)
             </Text>
             <Text style={{ color: '#9B1C1C', fontSize: 12, marginTop: 2 }}>
               You must consume, discard, or delete existing items to add new ones.
@@ -763,7 +784,7 @@ export function AddRecordForm({
         }}
       >
         <Text style={{ color: isAtCapacity ? theme.colors.textMuted : theme.colors.primaryFg, fontWeight: '700' }}>
-          {isAtCapacity ? 'Pantry Limit Reached' : busy ? 'Saving…' : 'Save'}
+          {isAtCapacity ? 'Stash Limit Reached' : busy ? 'Saving…' : 'Save'}
         </Text>
       </Pressable>
       <MultiPhotoCameraModal

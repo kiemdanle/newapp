@@ -17,7 +17,7 @@ import { invalidateUserSession, clearAllInFlightRequests } from '../cache/image-
 import { purgeProductCache } from '../api/products';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
-import { invalidateSyncEpoch } from '../db/sync';
+import { invalidateSyncEpoch, LAST_SYNC_KEY } from '../db/sync';
 import { stopSyncTriggers } from '../db/triggers';
 import { deleteItem } from './secure-store';
 import { clearAllRecordPhotoAttachments } from '../features/records/record-photo-storage';
@@ -56,8 +56,9 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
     console.warn('Failed to reset local database', e);
   }
   // Clear last sync timestamp from both secure storage and AsyncStorage so next user starts fresh
-  await deleteItem('pantry.lastSyncAt').catch(() => {});
-  await AsyncStorage.removeItem('pantry.lastSyncAt').catch(() => {});
+  await deleteItem(LAST_SYNC_KEY).catch(() => {});
+  await AsyncStorage.removeItem(LAST_SYNC_KEY).catch(() => {});
+  await AsyncStorage.removeItem(`@secure_${LAST_SYNC_KEY}`).catch(() => {});
   useDrawerStore.getState().reset();
   syncQuotaErrorsStore.clear();
   await clearAllRecordPhotoAttachments().catch(() => {});
