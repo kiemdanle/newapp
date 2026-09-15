@@ -28,6 +28,8 @@ import { Logo } from './components/Logo';
 import { initConnectionMonitoring, useConnectionStore } from './store/connectionStore';
 import { OfflineTopBanner } from './components/OfflineTopBanner';
 import { ConnectionNoticeModal } from './components/ConnectionNoticeModal';
+import { AppAlertModal } from './components/AppAlertModal';
+import { installAppAlertInterceptor } from './store/alertStore';
 import { useSyncStateStore } from './store/syncStateStore';
 const queryClient = createQueryClient();
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
@@ -37,6 +39,8 @@ const queryClient = createQueryClient();
 (Text as any).defaultProps.maxFontSizeMultiplier = 1.5;
 (TextInput as any).defaultProps = (TextInput as any).defaultProps || {};
 (TextInput as any).defaultProps.maxFontSizeMultiplier = 1.5;
+
+installAppAlertInterceptor();
 
 export default function App() {
   return (
@@ -152,6 +156,7 @@ function RootApp() {
       </NavigationContainer>
       <UndoToast />
       <ConnectionNoticeModal />
+      <AppAlertModal />
     </View>
   );
 }

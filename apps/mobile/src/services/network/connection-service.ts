@@ -10,7 +10,7 @@ export interface ConnectionEvaluationResult {
   errorDetail?: string;
 }
 
-export const HEALTH_CHECK_TIMEOUT_MS = 4000;
+export const HEALTH_CHECK_TIMEOUT_MS = 8000;
 
 /**
  * Probe server readiness via GET /health/ready.
@@ -19,6 +19,7 @@ export const HEALTH_CHECK_TIMEOUT_MS = 4000;
 export async function probeServerHealth(
   baseUrl: string = getBaseUrl(),
   timeoutMs: number = HEALTH_CHECK_TIMEOUT_MS,
+  allowRetry = true,
 ): Promise<{ ok: boolean; detail?: string }> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -34,6 +35,13 @@ export async function probeServerHealth(
     });
 
     if (!res.ok) {
+      // If 404/502 on /health/ready, also try root /health
+      if (res.status === 404) {
+        try {
+          const fallbackRes = await fetch(`${cleanUrl}/health`, { signal: controller.signal });
+          if (fallbackRes.ok) return { ok: true };
+        } catch {}
+      }
       return { ok: false, detail: `HTTP ${res.status}` };
     }
 
@@ -44,6 +52,10 @@ export async function probeServerHealth(
 
     return { ok: false, detail: `Unexpected status: ${String(data?.status)}` };
   } catch (err: unknown) {
+    if (allowRetry) {
+      clearTimeout(timeoutId);
+      return probeServerHealth(baseUrl, timeoutMs, false);
+    }
     if (err instanceof Error) {
       if (err.name === 'AbortError') {
         return { ok: false, detail: 'Connection timeout' };

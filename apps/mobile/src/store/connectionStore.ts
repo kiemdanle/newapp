@@ -26,6 +26,32 @@ export interface ConnectionState {
 let unsubscribeNetInfo: (() => void) | null = null;
 let appStateSubscription: { remove: () => void } | null = null;
 let lastNetOnline: boolean | null = null;
+let autoReconnectTimer: NodeJS.Timeout | number | null = null;
+let unsubscribeStore: (() => void) | null = null;
+export const AUTO_RECONNECT_INTERVAL_MS = 5000;
+
+export function stopAutoReconnectTimer(): void {
+  if (autoReconnectTimer !== null) {
+    clearInterval(autoReconnectTimer as unknown as number);
+    autoReconnectTimer = null;
+  }
+}
+
+export function startAutoReconnectTimer(): void {
+  if (autoReconnectTimer !== null) {
+    return;
+  }
+  autoReconnectTimer = setInterval(() => {
+    const state = useConnectionStore.getState();
+    if (state.status === 'ready') {
+      stopAutoReconnectTimer();
+      return;
+    }
+    if (!state.isRetrying) {
+      void state.retry();
+    }
+  }, AUTO_RECONNECT_INTERVAL_MS);
+}
 
 export const useConnectionStore = create<ConnectionState>((set, get) => ({
   status: 'checking',
@@ -78,6 +104,7 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
   },
 
   reset: () => {
+    stopAutoReconnectTimer();
     set({
       status: 'checking',
       clientOnline: false,
@@ -89,6 +116,26 @@ export const useConnectionStore = create<ConnectionState>((set, get) => ({
     });
   },
 }));
+
+let lastAutoRetryAt = 0;
+const AUTO_RETRY_THROTTLE_MS = 2000;
+
+/**
+ * Automatically triggers a connection retry if currently offline or server_unreachable.
+ * Throttled to avoid spamming the probe endpoint during rapid tab switches.
+ */
+export function retryIfServerUnavailable(): void {
+  const state = useConnectionStore.getState();
+  if (state.status === 'ready' || state.isRetrying) {
+    return;
+  }
+  const now = Date.now();
+  if (now - lastAutoRetryAt < AUTO_RETRY_THROTTLE_MS) {
+    return;
+  }
+  lastAutoRetryAt = now;
+  void state.retry();
+}
 
 /**
  * Initialize event-driven network monitoring:
@@ -123,9 +170,23 @@ export function initConnectionMonitoring(): () => void {
   const handleAppStateChange = (nextState: AppStateStatus) => {
     if (nextState === 'active') {
       void useConnectionStore.getState().checkConnection();
+      if (useConnectionStore.getState().status !== 'ready') {
+        startAutoReconnectTimer();
+      }
+    } else {
+      stopAutoReconnectTimer();
     }
   };
   appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+  // Store status listener for automatic periodic reconnect
+  unsubscribeStore = useConnectionStore.subscribe((state) => {
+    if (state.status !== 'ready') {
+      startAutoReconnectTimer();
+    } else {
+      stopAutoReconnectTimer();
+    }
+  });
 
   // Initial check on mount
   void useConnectionStore.getState().checkConnection();
@@ -134,6 +195,11 @@ export function initConnectionMonitoring(): () => void {
 }
 
 export function teardownConnectionMonitoring(): void {
+  stopAutoReconnectTimer();
+  if (unsubscribeStore) {
+    unsubscribeStore();
+    unsubscribeStore = null;
+  }
   if (unsubscribeNetInfo) {
     unsubscribeNetInfo();
     unsubscribeNetInfo = null;

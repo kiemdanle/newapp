@@ -4,6 +4,10 @@ import {
   useConnectionStore,
   initConnectionMonitoring,
   teardownConnectionMonitoring,
+  retryIfServerUnavailable,
+  startAutoReconnectTimer,
+  stopAutoReconnectTimer,
+  AUTO_RECONNECT_INTERVAL_MS,
 } from '../connectionStore';
 import * as connectionService from '../../services/network/connection-service';
 
@@ -102,5 +106,63 @@ describe('connectionStore', () => {
     expect(NetInfo.addEventListener).toHaveBeenCalled();
     expect(appStateSpy).toHaveBeenCalledWith('change', expect.any(Function));
     expect(checkSpy).toHaveBeenCalled();
+  });
+
+  it('does nothing in retryIfServerUnavailable when status is ready', () => {
+    useConnectionStore.setState({ status: 'ready' });
+    const retrySpy = jest.spyOn(useConnectionStore.getState(), 'retry');
+
+    retryIfServerUnavailable();
+    expect(retrySpy).not.toHaveBeenCalled();
+  });
+
+  it('triggers retry in retryIfServerUnavailable when status is server_unreachable', () => {
+    useConnectionStore.setState({ status: 'server_unreachable' });
+    const retrySpy = jest.spyOn(useConnectionStore.getState(), 'retry').mockResolvedValue({
+      status: 'ready',
+      clientOnline: true,
+      serverReady: true,
+    });
+
+    retryIfServerUnavailable();
+    expect(retrySpy).toHaveBeenCalled();
+  });
+
+  it('automatically triggers retry every 5s when status is server_unreachable and stops when ready', () => {
+    let intervalCb: (() => void) | null = null;
+    const intervalSpy = jest.spyOn(global, 'setInterval').mockImplementation(((cb: () => void) => {
+      intervalCb = cb;
+      return 123 as any;
+    }) as any);
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
+
+    try {
+      stopAutoReconnectTimer();
+      useConnectionStore.setState({ status: 'server_unreachable', isRetrying: false });
+      const retrySpy = jest.spyOn(useConnectionStore.getState(), 'retry').mockResolvedValue({
+        status: 'server_unreachable',
+        clientOnline: true,
+        serverReady: false,
+      });
+
+      startAutoReconnectTimer();
+      expect(intervalSpy).toHaveBeenCalledWith(expect.any(Function), AUTO_RECONNECT_INTERVAL_MS);
+
+      // Trigger the periodic interval callback
+      intervalCb!();
+      expect(retrySpy).toHaveBeenCalledTimes(1);
+
+      // Trigger again for the next 5s tick
+      intervalCb!();
+      expect(retrySpy).toHaveBeenCalledTimes(2);
+
+      // Stop timer when status becomes ready
+      stopAutoReconnectTimer();
+      expect(clearIntervalSpy).toHaveBeenCalled();
+    } finally {
+      stopAutoReconnectTimer();
+      intervalSpy.mockRestore();
+      clearIntervalSpy.mockRestore();
+    }
   });
 });
