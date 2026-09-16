@@ -75,11 +75,29 @@ server {
     # ("Locking down the admin vhost") to add CIDRs.
 {% endif %}
 
-    # Next.js static assets — immutable long-term caching
+    # Static build assets served directly by nginx (hashed, immutable).
+    # add_header in a location replaces parent add_header, so repeat security headers.
     location /_next/static/ {
-        proxy_pass http://127.0.0.1:{{ admin_port }};
-        proxy_set_header Host $host;
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        alias {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/.next/static/;
+        access_log off;
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header X-Frame-Options "DENY" always;
+    }
+
+    # Public brand assets (logos) served directly by nginx.
+    location ~ ^/(expyrico-[^/]+\.(?:svg|png)|favicon\.ico)$ {
+        root {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/public;
+        access_log off;
+        expires 7d;
+        add_header Cache-Control "public" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header X-Frame-Options "DENY" always;
     }
 
     # Next.js standalone server: passes through /, /_next/*, /api/*, etc.
