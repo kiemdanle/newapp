@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { serverAdminApi } from '@/lib/admin-api';
 import { PantryItemsFilter } from './pantry-items-filter';
 import { PantryItemsTable } from './pantry-items-table';
@@ -9,6 +10,13 @@ export default async function PantryItemsPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  // Admin access to pantry items is restricted / denied (404 hides existence).
+  // All original functions, table, filter, and pagination components remain intact below.
+  const ALLOW_ADMIN_PANTRY_ITEMS = false;
+  if (!ALLOW_ADMIN_PANTRY_ITEMS) {
+    notFound();
+  }
+
   const sp = await searchParams;
 
   const query = {

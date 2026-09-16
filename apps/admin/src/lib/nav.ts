@@ -32,12 +32,14 @@ export const NAV: NavSection[] = [
       { label: 'Pending approval', href: '/products/pending', icon: 'Clock' },
     ],
   },
-  {
-    title: 'Pantry',
-    items: [
-      { label: 'Pantry Items', href: '/pantry-items', icon: 'Archive' },
-    ],
-  },
+  // Pantry Items management is hidden and access denied per admin policy.
+  // Preserved for future re-enablement without deleting functions.
+  // {
+  //   title: 'Pantry',
+  //   items: [
+  //     { label: 'Pantry Items', href: '/pantry-items', icon: 'Archive' },
+  //   ],
+  // },
   {
     title: 'People',
     items: [

@@ -27,6 +27,13 @@ export default async function PantryItemDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  // Admin access to pantry items is restricted / denied (404 hides existence).
+  // All original functions, gallery, modal, and action components remain intact below.
+  const ALLOW_ADMIN_PANTRY_ITEMS = false;
+  if (!ALLOW_ADMIN_PANTRY_ITEMS) {
+    notFound();
+  }
+
   const { id } = await params;
   const sp = await searchParams;
 
