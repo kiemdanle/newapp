@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -H 127.0.0.1 -p 4001",
-    "build": "next build",
+    "build": "next build && mkdir -p .next/standalone/apps/admin/.next/cache && (chmod 0777 .next/standalone/apps/admin/.next/cache 2>/dev/null || true)",
     "start": "node .next/standalone/apps/admin/server.js",
     "lint": "next lint --dir src --max-warnings 0",
     "typecheck": "tsc --noEmit",

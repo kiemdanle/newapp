@@ -15,6 +15,7 @@ EnvironmentFile={{ secrets_dir }}/admin.env
 Environment=NODE_ENV=production
 Environment=PORT={{ admin_port }}
 Environment=HOSTNAME=127.0.0.1
+ExecStartPre=+/bin/sh -c '/bin/mkdir -p {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/.next/cache /opt/newapp/apps/admin/.next/standalone/apps/admin/.next/cache 2>/dev/null; /bin/chmod -R 0777 {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/.next/cache /opt/newapp/apps/admin/.next/standalone/apps/admin/.next/cache 2>/dev/null || true'
 ExecStart=/usr/bin/node {{ app_root }}/current/apps/admin/.next/standalone/apps/admin/server.js
 # Restart-only (amendment 2): no ExecReload. SIGTERM + TimeoutStopSec=30 gives
 # the documented graceful drain window before SIGKILL.
@@ -30,7 +31,7 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
-ReadWritePaths=/var/log/pantry
+ReadWritePaths=/var/log/pantry -{{ app_root }}/current/apps/admin/.next/standalone/apps/admin/.next -{{ app_root }}/current/apps/admin/.next/standalone/apps/admin/.next/cache -/opt/newapp/apps/admin/.next/standalone/apps/admin/.next -/opt/newapp/apps/admin/.next/standalone/apps/admin/.next/cache
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
