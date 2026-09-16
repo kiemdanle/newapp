@@ -1,20 +1,23 @@
 // apps/mobile/app/(app)/deal/[id].tsx
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
+  ScrollView,
   Share,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useDeal, useDeleteDeal } from '@/api/deals';
 import { useOptimisticDealVote } from '@/features/deals/useOptimisticDealVote';
 import { useSessionStore } from '@/auth/session-store';
 import { useTheme } from '@/theme/useTheme';
-import { Screen } from '@/components/Screen';
 import { Button } from '@/components/Button';
 import { formatCurrency, formatDate } from '@/utils/country-format';
 import { ItemImageGallery } from '@/components/ItemImageGallery';
@@ -22,6 +25,7 @@ import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 export default function DealDetailScreen() {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
   const { id } = route.params as { id: string };
@@ -31,15 +35,25 @@ export default function DealDetailScreen() {
   const user = useSessionStore((s) => s.user);
   const userId = user?.id ?? null;
   const userCountry = user?.country ?? null;
-  if (isLoading || !deal) {
+
+  if (isLoading) {
     return (
-      <View
-        style={[
-          styles.center,
-          { backgroundColor: theme.colors.bg },
-        ]}
-      >
-        <Text style={{ color: theme.colors.textMuted }}>Loading deal details…</Text>
+      <View style={[styles.center, { backgroundColor: theme.colors.bg, gap: 12 }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>Loading deal details…</Text>
+      </View>
+    );
+  }
+
+  if (!deal) {
+    return (
+      <View style={[styles.center, { backgroundColor: theme.colors.bg, padding: 24, gap: 12 }]}>
+        <Ionicons name="pricetag-outline" size={48} color={theme.colors.textMuted} />
+        <Text style={{ fontSize: 18, fontWeight: '700', color: theme.colors.text }}>Deal not found</Text>
+        <Text style={{ fontSize: 14, color: theme.colors.textMuted, textAlign: 'center' }}>
+          This deal may have expired or been removed.
+        </Text>
+        <Button label="Go back" variant="outline" onPress={() => navigation.goBack()} />
       </View>
     );
   }
@@ -89,7 +103,15 @@ export default function DealDetailScreen() {
   const imageUrl = deal.photoUrl || deal.product?.imageUrl;
 
   return (
-    <Screen>
+    <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: Math.max(insets.bottom, 24) + 40,
+          gap: 14,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
       {/* Hero Image Gallery with Multi-Photo & Thumbnail Support */}
       <ItemImageGallery
         photos={uniquePhotos}
@@ -105,7 +127,6 @@ export default function DealDetailScreen() {
             backgroundColor: theme.colors.bgElevated,
             borderColor: theme.colors.border,
             borderRadius: theme.radii.lg,
-            marginTop: 14,
           },
         ]}
       >
@@ -286,7 +307,8 @@ export default function DealDetailScreen() {
           </>
         )}
       </View>
-    </Screen>
+      </ScrollView>
+    </View>
   );
 }
 

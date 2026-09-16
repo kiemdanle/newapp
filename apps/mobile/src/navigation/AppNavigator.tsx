@@ -108,7 +108,7 @@ export function AppNavigator() {
       <Stack.Screen name="ProductReview" component={ProductReviewScreen} />
       <Stack.Screen name="ProductReviews" component={ProductReviewsScreen} />
       <Stack.Screen name="ProductEdit" component={ProductEditScreen} />
-      <Stack.Screen name="Deal" component={DealScreen} />
+      <Stack.Screen name="Deal" component={DealScreen} options={{ headerShown: true, title: 'Deal' }} />
       <Stack.Screen name="DealNew" component={DealNewScreen} options={{ headerShown: true, title: 'Post a deal' }} />
       {/* Native headers restore the only back affordance on these stack screens
           (body content does not render a back control of its own). */}
