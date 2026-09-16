@@ -60,9 +60,8 @@ export declare const productEditRowSchema: z.ZodObject<{
     submittedAt: z.ZodNullable<z.ZodString>;
     updatedAt: z.ZodString;
 }, "strict", z.ZodTypeAny, {
-    id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
+    id: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -76,16 +75,16 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
+    updatedAt: string;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }, {
-    id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
+    id: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -99,10 +98,11 @@ export declare const productEditRowSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
+    updatedAt: string;
     productId: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     defaultShelfLifeDays?: number | null | undefined;
     notes?: string | null | undefined;
 }>;
@@ -211,9 +211,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         lastName: string;
     }>>>;
 }, "strict", z.ZodTypeAny, {
-    id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
+    id: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -227,11 +226,12 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
+    updatedAt: string;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {
@@ -243,9 +243,8 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
     productName?: string | undefined;
     notes?: string | null | undefined;
 }, {
-    id: string;
     status: "draft" | "pending" | "changes_required" | "approved" | "rejected";
-    updatedAt: string;
+    id: string;
     name: string;
     description: string | null;
     brand: string | null;
@@ -259,11 +258,12 @@ export declare const adminProductEditDetailSchema: z.ZodObject<{
         retained: boolean;
         sourceProductPhotoId?: string | null | undefined;
     }[];
-    moderationFeedback: string | null;
+    updatedAt: string;
     productId: string;
     submittedBy: string;
     baseProductVersion: number;
     submittedAt: string | null;
+    moderationFeedback: string | null;
     liveProductVersion: number;
     defaultShelfLifeDays?: number | null | undefined;
     creator?: {

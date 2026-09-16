@@ -11,20 +11,25 @@ const paramsSchema = z.object({ id: z.string().uuid() });
 export async function adminProductsGetRoute(app: FastifyInstance) {
   app.get('/:id', async (req) => {
     const { id } = paramsSchema.parse(req.params);
-    const p = await getPrisma().product.findUnique({
-      where: { id },
-      include: {
-        ...PRODUCT_INCLUDE,
-        createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
-        records: {
-          select: {
-            user: { select: { id: true, email: true, firstName: true, lastName: true } },
+    const [p, pantryItemCount] = await Promise.all([
+      getPrisma().product.findUnique({
+        where: { id },
+        include: {
+          ...PRODUCT_INCLUDE,
+          createdBy: { select: { id: true, email: true, firstName: true, lastName: true } },
+          records: {
+            select: {
+              user: { select: { id: true, email: true, firstName: true, lastName: true } },
+            },
+            orderBy: { createdAt: 'asc' as const },
+            take: 1,
           },
-          orderBy: { createdAt: 'asc' as const },
-          take: 1,
         },
-      },
-    });
+      }),
+      getPrisma().record.count({
+        where: { OR: [{ productId: id }, { product: { mergedIntoProductId: id } }] },
+      }),
+    ]);
     if (!p) throw new AppError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
     const creatorUser = p.createdBy ?? p.records?.[0]?.user ?? null;
     return adminProductRowSchema.parse({
@@ -41,6 +46,7 @@ export async function adminProductsGetRoute(app: FastifyInstance) {
       status: p.status,
       version: p.version,
       mergedIntoProductId: p.mergedIntoProductId,
+      pantryItemCount,
       isCommunityEligible: p.isCommunityEligible,
       buyAgainCount: p.buyAgainCount,
       buyAgainOnSaleCount: p.buyAgainOnSaleCount,

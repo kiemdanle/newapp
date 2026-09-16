@@ -15,10 +15,11 @@ export default async function MergePage({
   const { id } = await params;
   const sp = await searchParams;
   const q = sp.q?.trim() || undefined;
+  const direction = sp.direction;
+  const isSourceMode = direction === 'into';
 
   const winner = await serverAdminApi.products.get(id);
   const candidates = q ? (await serverAdminApi.products.list({ q })).items : [];
-
   return (
     <div className="space-y-8">
       <Link
@@ -35,14 +36,27 @@ export default async function MergePage({
           <span>Product Consolidation</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-neutral-dark font-display tracking-tight">
-          Merge Duplicate Products into {winner.name}
+          {isSourceMode
+            ? `Merge ${winner.name} into another product`
+            : `Merge Duplicate Products into ${winner.name}`}
         </h1>
         <p className="text-xs text-neutral-mid leading-relaxed max-w-2xl">
-          Consolidate barcode scans, reviews, and pantry records from duplicate items into this canonical target product.
+          {isSourceMode
+            ? `Consolidate this product's ${winner.pantryItemCount} pantry item(s), reviews, and deals into another active canonical target. This product will be retired as merged_into.`
+            : 'Consolidate barcode scans, reviews, and pantry records from duplicate items into this canonical target product.'}
         </p>
       </div>
 
-      <MergeTool winnerId={id} winnerVersion={winner.version} candidates={candidates} query={q ?? ''} />
+      <MergeTool
+        winnerId={id}
+        winnerVersion={winner.version}
+        winnerName={winner.name}
+        winnerBarcode={winner.barcode}
+        winnerPantryItemCount={winner.pantryItemCount}
+        candidates={candidates}
+        query={q ?? ''}
+        direction={direction}
+      />
     </div>
   );
 }

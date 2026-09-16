@@ -4,6 +4,7 @@ import { DataTable, type Column } from '@/components/data-table';
 import { LoadMore } from '@/components/load-more';
 import { StatusBadge } from '@/components/status-badge';
 import { FilterBar, SelectFilter, TextFilter } from '@/components/filter-bar';
+import { DeleteProductTableRowAction } from './[id]/delete-product-modal';
 import { Package, Clock, ExternalLink } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -107,11 +108,50 @@ export default async function ProductsPage({
     },
     { header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
     {
+      header: 'Pantry Items',
+      cell: (p) => (
+        <span
+          className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${
+            p.pantryItemCount > 0
+              ? 'bg-amber-50 text-amber-800 border border-amber-200/60 font-semibold'
+              : 'bg-neutral-light text-neutral-mid'
+          }`}
+        >
+          {p.pantryItemCount} {p.pantryItemCount === 1 ? 'item' : 'items'}
+        </span>
+      ),
+    },
+    {
       header: 'Reviews',
       cell: (p) => (
         <span className="text-xs font-semibold text-neutral-dark">
           {p.reviewCount} <span className="font-normal text-neutral-mid">reviews</span>
         </span>
+      ),
+    },
+    {
+      header: 'Actions',
+      cell: (p) => (
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/products/${p.id}`}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            View
+          </Link>
+          {p.status !== 'merged_into' && (
+            <DeleteProductTableRowAction
+              product={{
+                id: p.id,
+                name: p.name || '(Untitled product)',
+                pantryItemCount: p.pantryItemCount,
+                status: p.status,
+                barcode: p.barcode,
+                version: p.version,
+              }}
+            />
+          )}
+        </div>
       ),
     },
   ];

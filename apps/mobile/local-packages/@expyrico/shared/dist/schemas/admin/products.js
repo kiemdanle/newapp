@@ -42,6 +42,9 @@ export const adminProductRowSchema = z.object({
     wontBuyCount: z.number().int(),
     ratingCount: z.number().int(),
     reviewCount: z.number().int(),
+    // Total number of pantry items (Record rows) referencing this product or its merged aliases.
+    // Used by admin console to allow deletion (0) or block and prompt merge (>0).
+    pantryItemCount: z.number().int().nonnegative().default(0),
     // Ordered review media (private route for unpublished bytes, public CDN URL for
     // already-published ones) and moderation history — admin-only detail, never sent
     // through the public `productSchema`.
@@ -97,6 +100,11 @@ export const adminProductMergeSchema = z.object({
     version: z.number().int().min(1),
 }).refine((d) => !d.sourceIds.includes(d.targetId), { message: 'target cannot also be a source' })
     .refine((d) => new Set(d.sourceIds).size === d.sourceIds.length, { message: 'sourceIds must be unique' });
+// `version` is the product's last-known version token for optimistic concurrency guard
+// on deletion. Prevents deleting products concurrently modified by another admin or process.
+export const adminProductDeleteQuerySchema = z.object({
+    version: z.coerce.number().int().min(1),
+});
 export const adminProductMergeResponseSchema = z.object({
     targetId: z.string().uuid(),
     movedRecords: z.number().int(),

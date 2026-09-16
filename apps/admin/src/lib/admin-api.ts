@@ -178,6 +178,10 @@ export const serverAdminApi = {
       apiServerFetch(`/v1/admin/products/${id}`, { method: 'PATCH', body: { ...body, version } }).then((r) =>
         adminProductRowSchema.parse(r),
       ),
+    delete: (id: string, version: number) =>
+      apiServerFetch<void>(`/v1/admin/products/${id}?version=${version}`, {
+        method: 'DELETE',
+      }),
     // `targetId`/`sourceIds` (not `winnerId`/`loserIds`) and a required `version` for the
     // target — matches Phase 4's merge contract exactly.
     merge: (targetId: string, sourceIds: string[], version: number) =>

@@ -116,7 +116,7 @@ export async function mergeProducts(
   const sourceRows = await prisma.product.findMany({ where: { id: { in: sourceIds } } });
   if (sourceRows.length !== sourceIds.length) notFound();
   for (const s of sourceRows) {
-    if (s.status !== 'active') conflict(`Source product ${s.id} is not active`);
+    if (s.status !== 'active' && s.status !== 'report_hidden') conflict(`Source product ${s.id} is not eligible for merge`);
   }
 
   const lockOrder = [...new Set([resolvedTargetId, ...sourceIds])].sort();
@@ -132,7 +132,7 @@ export async function mergeProducts(
 
     const sources = await tx.product.findMany({ where: { id: { in: sourceIds } } });
     for (const s of sources) {
-      if (s.status !== 'active') conflict(`Source product ${s.id} is no longer active`);
+      if (s.status !== 'active' && s.status !== 'report_hidden') conflict(`Source product ${s.id} is no longer eligible for merge`);
     }
 
     const openEdit = await tx.productEdit.findFirst({

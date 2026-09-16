@@ -26,8 +26,8 @@ export async function makeUser(
 
 export async function makeProduct(
   overrides: Partial<{
-    barcode: string;
-    qrPayload: string;
+    barcode: string | null;
+    qrPayload: string | null;
     name: string;
     brand: string;
     source: 'off' | 'upcitemdb' | 'user';
@@ -35,12 +35,14 @@ export async function makeProduct(
     defaultShelfLifeDays: number;
     createdByUserId: string;
     status: ProductStatus | 'draft' | 'pending' | 'active' | 'changes_required' | 'report_hidden' | 'merged_into';
+    version: number;
+    mergedIntoProductId: string | null;
   }> = {},
 ) {
   const prisma = getPrisma();
   return prisma.product.create({
     data: {
-      barcode: overrides.barcode ?? `bc-${randomUUID()}`,
+      barcode: overrides.barcode !== undefined ? overrides.barcode : `bc-${randomUUID()}`,
       qrPayload: overrides.qrPayload ?? null,
       name: overrides.name ?? 'Test Product',
       brand: overrides.brand ?? 'TestBrand',
@@ -49,6 +51,8 @@ export async function makeProduct(
       defaultShelfLifeDays: overrides.defaultShelfLifeDays ?? null,
       createdByUserId: overrides.createdByUserId ?? null,
       ...(overrides.status ? { status: overrides.status as ProductStatus } : {}),
+      ...(overrides.version !== undefined ? { version: overrides.version } : {}),
+      ...(overrides.mergedIntoProductId !== undefined ? { mergedIntoProductId: overrides.mergedIntoProductId } : {}),
     },
   });
 }

@@ -28,4 +28,5 @@ export * from './schemas/feedback.js';
 export * from './schemas/admin/feedback.js';
 export * from './gamification/contributor-levels.js';
 export * from './schemas/admin/contributor-levels.js';
+export * from './schemas/admin/pantry-items.js';
 //# sourceMappingURL=index.js.map

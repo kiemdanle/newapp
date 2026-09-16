@@ -12,6 +12,7 @@ export class AppError extends Error {
   currentVersion?: number | undefined;
   canonicalProduct?: Product | undefined;
   identifierConflict?: MergeIdentifierConflict | undefined;
+  pantryItemCount?: number | undefined;
 
   constructor(opts: {
     status: number;
@@ -21,6 +22,7 @@ export class AppError extends Error {
     currentVersion?: number;
     canonicalProduct?: Product;
     identifierConflict?: MergeIdentifierConflict;
+    pantryItemCount?: number;
   }) {
     super(opts.title);
     this.status = opts.status;
@@ -30,6 +32,7 @@ export class AppError extends Error {
     this.currentVersion = opts.currentVersion;
     this.canonicalProduct = opts.canonicalProduct;
     this.identifierConflict = opts.identifierConflict;
+    this.pantryItemCount = opts.pantryItemCount;
   }
 }
 
@@ -67,6 +70,7 @@ export function toProblem(err: unknown): Problem {
       ...(err.currentVersion !== undefined ? { currentVersion: err.currentVersion } : {}),
       ...(err.canonicalProduct !== undefined ? { canonicalProduct: err.canonicalProduct } : {}),
       ...(err.identifierConflict !== undefined ? { identifierConflict: err.identifierConflict } : {}),
+      ...(err.pantryItemCount !== undefined ? { pantryItemCount: err.pantryItemCount } : {}),
     };
   }
   if (err instanceof ZodError) {

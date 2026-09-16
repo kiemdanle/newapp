@@ -1,30 +1,54 @@
 'use client';
+
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { mergeProductsAction } from '@/lib/actions';
 import { actionErrorMessage, isConflictCode } from '@/lib/action-result';
-import { Search, Merge, RefreshCw, Package } from 'lucide-react';
+import { Search, Merge, RefreshCw, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 
-type Candidate = {
+export type Candidate = {
   id: string;
   name: string;
   brand: string | null;
   barcode: string | null;
   reviewCount: number;
+  version: number;
+  status: string;
 };
+export function buildMergeSearchUrl(
+  productId: string,
+  searchQuery?: string | null,
+  direction?: string | null,
+): string {
+  const q = searchQuery ? searchQuery.trim() : '';
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (direction) params.set('direction', direction);
+  const qs = params.toString();
+  return `/products/${productId}/merge${qs ? `?${qs}` : ''}`;
+}
+
 
 export function MergeTool({
   winnerId,
   winnerVersion,
+  winnerName,
+  winnerBarcode,
+  winnerPantryItemCount = 0,
   candidates,
   query,
+  direction,
 }: {
   winnerId: string;
   winnerVersion: number;
+  winnerName: string;
+  winnerBarcode: string | null;
+  winnerPantryItemCount?: number | undefined;
   candidates: Candidate[];
   query: string;
+  direction?: string | undefined;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -33,6 +57,7 @@ export function MergeTool({
   const [err, setErr] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
 
+  const isSourceMode = direction === 'into';
   const rows = useMemo(() => candidates.filter((c) => c.id !== winnerId), [candidates, winnerId]);
 
   function toggle(id: string, checked: boolean) {
@@ -41,16 +66,16 @@ export function MergeTool({
 
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
-    const q = search.trim();
-    router.push(`/products/${winnerId}/merge${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+    router.push(buildMergeSearchUrl(winnerId, search, direction));
   }
 
-  function runMerge() {
+  // Normal mode: merge selected candidates into winnerId
+  function runWinnerMerge() {
     if (selected.length === 0) return;
     const count = selected.length;
     if (
       !window.confirm(
-        `Merge ${count} product${count > 1 ? 's' : ''} into the target? Records will be moved and source entries will point to this canonical product.`,
+        `Merge ${count} product${count > 1 ? 's' : ''} into "${winnerName}"? Records will be moved and source entries will point to this canonical product.`,
       )
     ) {
       return;
@@ -69,12 +94,38 @@ export function MergeTool({
     });
   }
 
+  // Source mode: merge winnerId into selected candidate target
+  function runSourceMerge(target: Candidate) {
+    if (
+      !window.confirm(
+        `Merge "${winnerName}" into "${target.name}"? All ${winnerPantryItemCount} pantry records and associated data will move to "${target.name}". "${winnerName}" will be retired as merged_into.`,
+      )
+    ) {
+      return;
+    }
+    setErr(null);
+    setConflict(false);
+    startTransition(async () => {
+      // Pass candidate as targetId, and winnerId as sourceId
+      const res = await mergeProductsAction(target.id, [winnerId], target.version);
+      if (res.ok) {
+        router.push(`/products/${target.id}`);
+        router.refresh();
+        return;
+      }
+      setErr(actionErrorMessage(res));
+      if (isConflictCode(res.code)) setConflict(true);
+    });
+  }
+
   return (
     <div className="space-y-6">
       {/* Search Bar */}
       <form onSubmit={submitSearch} className="rounded-3xl border border-border bg-card p-6 shadow-card space-y-3">
         <label className="block text-xs font-bold uppercase tracking-wider text-neutral-mid">
-          Search candidate products to merge
+          {isSourceMode
+            ? 'Search for target product to merge into'
+            : 'Search candidate products to merge'}
         </label>
         <div className="flex gap-3">
           <div className="relative flex-1">
@@ -97,9 +148,9 @@ export function MergeTool({
       <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-card space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-wider text-neutral-dark">
-            Candidates ({rows.length})
+            {isSourceMode ? `Prospective Target Products (${rows.length})` : `Candidates (${rows.length})`}
           </h2>
-          {selected.length > 0 && (
+          {!isSourceMode && selected.length > 0 && (
             <span className="rounded-full bg-primary-light/50 px-2.5 py-0.5 text-xs font-bold text-primary-dark">
               {selected.length} selected for merge
             </span>
@@ -108,12 +159,76 @@ export function MergeTool({
 
         {rows.length === 0 ? (
           <div className="p-8 text-center text-sm text-neutral-mid border border-dashed border-neutral-200 rounded-2xl">
-            {query ? 'No matching products found for this search.' : 'Search above to find duplicate items to merge.'}
+            {query
+              ? 'No matching products found for this search.'
+              : isSourceMode
+              ? 'Search above to find the canonical product to merge into.'
+              : 'Search above to find duplicate items to merge.'}
           </div>
         ) : (
           <div className="space-y-2.5">
             {rows.map((c) => {
               const isChecked = selected.includes(c.id);
+              const barcodeDiffers =
+                winnerBarcode && c.barcode && winnerBarcode !== c.barcode;
+              const barcodeWillTransfer = !c.barcode && Boolean(winnerBarcode);
+
+              if (isSourceMode) {
+                // Source mode candidate row: target card with merge button
+                return (
+                  <div
+                    key={c.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-4 hover:border-primary/40 hover:bg-neutral-50/50 transition-all shadow-xs"
+                  >
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-neutral-dark truncate">{c.name}</p>
+                        <span className="inline-flex items-center rounded-md bg-neutral-light px-2 py-0.5 text-[11px] font-medium text-neutral-dark uppercase">
+                          {c.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-neutral-mid">
+                        {c.brand && <span>{c.brand} · </span>}
+                        {c.barcode && <span className="font-mono">barcode: {c.barcode} · </span>}
+                        <span>{c.reviewCount} reviews</span>
+                      </p>
+                      {/* Barcode compatibility preview */}
+                      <div className="pt-1 flex flex-wrap gap-2">
+                        {barcodeDiffers && (
+                          <span className="inline-flex items-center gap-1 rounded bg-amber-50 border border-amber-200 text-amber-900 px-2 py-0.5 text-[11px] font-medium">
+                            <AlertTriangle size={12} className="text-amber-600" />
+                            Different barcode: target barcode ({c.barcode}) will be retained
+                          </span>
+                        )}
+                        {barcodeWillTransfer && (
+                          <span className="inline-flex items-center gap-1 rounded bg-blue-50 border border-blue-200 text-blue-900 px-2 py-0.5 text-[11px] font-medium">
+                            <CheckCircle2 size={12} className="text-blue-600" />
+                            Source barcode ({winnerBarcode}) will transfer to target
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-[11px] font-mono text-neutral-mid/70 hidden md:inline truncate max-w-[120px]">
+                        {c.id}
+                      </span>
+                      <Button
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => runSourceMerge(c)}
+                        className="rounded-xl px-4 text-xs font-semibold bg-[#4BAE8A] hover:bg-[#3A8F6F] text-white flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Merge size={14} />
+                        <span>Merge into this target</span>
+                        <ArrowRight size={12} />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Default winner mode candidate row
               return (
                 <label
                   key={c.id}
@@ -149,34 +264,36 @@ export function MergeTool({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-neutral-100">
-          <Button
-            size="default"
-            disabled={pending || selected.length === 0}
-            onClick={runMerge}
-            className="h-11 rounded-xl px-6 gap-2 shadow-xs"
-          >
-            <Merge size={16} />
-            <span>{pending ? 'Merging…' : `Merge ${selected.length} Selected into Target`}</span>
-          </Button>
+        {!isSourceMode && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-neutral-100">
+            <Button
+              size="default"
+              disabled={pending || selected.length === 0}
+              onClick={runWinnerMerge}
+              className="h-11 rounded-xl px-6 gap-2 shadow-xs"
+            >
+              <Merge size={16} />
+              <span>{pending ? 'Merging…' : `Merge ${selected.length} Selected into Target`}</span>
+            </Button>
+          </div>
+        )}
 
-          {err && (
-            <div className="flex items-center gap-2 text-xs text-destructive bg-red-50 p-2.5 rounded-xl border border-red-200">
-              <span>{err}</span>
-              {conflict && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.refresh()}
-                  className="h-7 text-xs rounded-lg"
-                >
-                  <RefreshCw size={12} className="mr-1" />
-                  <span>Refresh</span>
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+        {err && (
+          <div className="flex items-center gap-2 text-xs text-destructive bg-red-50 p-2.5 rounded-xl border border-red-200">
+            <span>{err}</span>
+            {conflict && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.refresh()}
+                className="h-7 text-xs rounded-lg"
+              >
+                <RefreshCw size={12} className="mr-1" />
+                <span>Refresh</span>
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

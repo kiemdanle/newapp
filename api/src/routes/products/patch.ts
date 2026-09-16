@@ -68,6 +68,7 @@ export async function patchProductRoute(app: FastifyInstance) {
       // must never silently drift to "whatever the product happens to be at now" if that
       // ever diverges from what was checked above.
       edit = await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT id FROM products WHERE id = ${product.id}::uuid FOR UPDATE`;
         const result = await tx.productEdit.updateMany({
           where: {
             id: existingOpenEdit.id,
@@ -103,6 +104,7 @@ export async function patchProductRoute(app: FastifyInstance) {
     } else {
       try {
         edit = await prisma.$transaction(async (tx) => {
+          await tx.$executeRaw`SELECT id FROM products WHERE id = ${product.id}::uuid FOR UPDATE`;
           const created = await tx.productEdit.create({
             data: {
               productId: product.id,

@@ -31,6 +31,7 @@ export const problemSchema = z.object({
   currentVersion: z.number().int().optional(),
   canonicalProduct: productSchema.optional(),
   identifierConflict: mergeIdentifierConflictSchema.optional(),
+  pantryItemCount: z.number().int().optional(),
 });
 export type Problem = z.infer<typeof problemSchema>;
 
@@ -115,6 +116,10 @@ export const ERROR_CODES = {
 
   // Products: abuse verification (Phase 7)
   ABUSE_CHECK_FAILED: 'abuse_check_failed',
+
+  // Products: deletion & lifecycle
+  PRODUCT_HAS_PANTRY_ITEMS: 'product_has_pantry_items',
+  PRODUCT_NOT_FOUND: 'product_not_found',
 
   // Feedback & Support
   FEEDBACK_NOT_FOUND: 'feedback_not_found',

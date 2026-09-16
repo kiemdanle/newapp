@@ -283,6 +283,37 @@ async function pushPending(runEpoch: number): Promise<void> {
         continue;
       }
 
+      // Deletion-wins recovery contract for offline-created items (!rec.serverId):
+      // If POST /v1/records returns 404 because the catalog product was deleted,
+      // unlink the deleted product (r.productId = null), ensure customName is non-empty,
+      // and retain pendingSync = true so it converts to a custom pantry item on the next sync pass.
+      // NEVER call destroyPermanently() or falsely mark household records synced!
+      const isCreate = !rec.serverId;
+      const isProductNotFound =
+        status === 404 &&
+        Boolean(rec.productId) &&
+        (errorCode === ERROR_CODES.PRODUCT_NOT_FOUND || errorCode === 'product_not_found');
+
+      if (isCreate && isProductNotFound) {
+        if (!isSyncEpochValid(runEpoch)) return;
+        await database.write(async () => {
+          if (!isSyncEpochValid(runEpoch)) return;
+          try {
+            const fresh = await recordsCol.find(rec.id);
+            if (fresh && !fresh.pendingDelete && isSyncEpochValid(runEpoch)) {
+              await fresh.update((r) => {
+                r.productId = null;
+                if (!r.customName || r.customName.trim().length === 0) {
+                  r.customName = r.brand || 'Item';
+                }
+                r.pendingSync = true;
+              });
+            }
+          } catch {}
+        });
+        continue;
+      }
+
       if (rec.householdId && (status === 403 || status === 404)) {
         if (!isSyncEpochValid(runEpoch)) return;
         await database.write(async () => {

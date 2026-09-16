@@ -184,6 +184,7 @@ export async function createOrResumeProductEdit(
 
   try {
     const created = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT id FROM products WHERE id = ${product.id}::uuid FOR UPDATE`;
       const edit = await tx.productEdit.create({
         data: {
           productId: product.id,

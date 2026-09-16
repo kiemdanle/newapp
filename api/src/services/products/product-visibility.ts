@@ -90,7 +90,7 @@ export interface ProductUseContext {
 export class ProductUseRejectionError extends AppError {}
 
 function notFound(): never {
-  throw new ProductUseRejectionError({ status: 404, code: ERROR_CODES.NOT_FOUND, title: 'Product not found' });
+  throw new ProductUseRejectionError({ status: 404, code: ERROR_CODES.PRODUCT_NOT_FOUND, title: 'Product not found' });
 }
 
 function forbidden(title: string): never {

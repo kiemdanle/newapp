@@ -15,12 +15,20 @@ const ADMIN_PRODUCT_INCLUDE = {
     orderBy: { createdAt: 'asc' as const },
     take: 1,
   },
+  _count: {
+    select: {
+      records: true,
+    },
+  },
 };
 type AdminProductWithPhotos = ProductWithPhotos & {
   createdBy?: { id: string; email: string; firstName: string; lastName: string } | null;
   records?: Array<{
     user: { id: string; email: string; firstName: string; lastName: string };
   }>;
+  _count?: {
+    records: number;
+  };
 };
 function toRow(p: AdminProductWithPhotos) {
   const creatorUser = p.createdBy ?? p.records?.[0]?.user ?? null;
@@ -29,6 +37,7 @@ function toRow(p: AdminProductWithPhotos) {
     brand: p.brand, category: p.category, imageUrl: p.imageUrl, defaultShelfLifeDays: p.defaultShelfLifeDays, source: p.source as 'off' | 'upcitemdb' | 'user',
     status: p.status as 'active' | 'pending' | 'merged_into', version: p.version,
     mergedIntoProductId: p.mergedIntoProductId, isCommunityEligible: p.isCommunityEligible,
+    pantryItemCount: p._count?.records ?? 0,
     buyAgainCount: p.buyAgainCount, buyAgainOnSaleCount: p.buyAgainOnSaleCount,
     wontBuyCount: p.wontBuyCount, ratingCount: p.ratingCount, reviewCount: p.reviewCount,
     // Ordered review media, admin-only — never included in the public product DTO.

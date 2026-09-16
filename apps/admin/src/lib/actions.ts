@@ -171,6 +171,20 @@ export async function patchProductAction(
   }
   return result;
 }
+export async function deleteProductAction(
+  id: string,
+  version: number,
+): Promise<ActionResult<void>> {
+  const result = await runAction<void>(async () => {
+    await serverAdminApi.products.delete(id, version);
+  });
+  if (result.ok) {
+    revalidatePath('/products');
+    revalidatePath(`/products/${id}`);
+  }
+  return result;
+}
+
 
 export async function mergeProductsAction(
   targetId: string,

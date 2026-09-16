@@ -12,6 +12,7 @@ import { adminUsersSendRandomPasswordRoute } from './users/send-random-password.
 import { adminProductsListRoute } from './products/list.js';
 import { adminProductsGetRoute } from './products/get.js';
 import { adminProductsPatchRoute } from './products/patch.js';
+import { adminProductsDeleteRoute } from './products/delete.js';
 import { adminProductsMergeRoute } from './products/merge.js';
 import { adminProductsModerateRoute } from './products/moderate.js';
 import { adminProductsPendingListRoute } from './products/pending.js';
@@ -71,6 +72,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminProductsListRoute, { prefix: '/products' });
   await app.register(adminProductsGetRoute, { prefix: '/products' });
   await app.register(adminProductsPatchRoute, { prefix: '/products' });
+  await app.register(adminProductsDeleteRoute, { prefix: '/products' });
   await app.register(adminProductsMergeRoute, { prefix: '/products' });
   await app.register(adminProductsModerateRoute, { prefix: '/products' });
   await app.register(adminProductEditRecoveryRoute, { prefix: '/products' });

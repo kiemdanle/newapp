@@ -4,6 +4,7 @@ import { KpiCard } from '@/components/kpi-card';
 import { StatusBadge } from '@/components/status-badge';
 import { ProductActions } from './product-actions';
 import { ProductPhotoManager } from './product-photo-manager';
+import { DeleteProductButton } from './delete-product-modal';
 import { ArrowLeft, Package, Merge, ExternalLink, Star, ThumbsUp, Tag, ThumbsDown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -91,6 +92,18 @@ export default async function ProductDetailPage({
                 <span>Merge product</span>
               </Link>
             </Button>
+            <DeleteProductButton
+              product={{
+                id: p.id,
+                name: p.name,
+                pantryItemCount: p.pantryItemCount,
+                status: p.status,
+                barcode: p.barcode,
+                version: p.version,
+              }}
+              className="rounded-xl shadow-xs gap-1.5 border-red-200 text-[#E0442A] hover:bg-red-50 hover:text-[#E0442A]"
+              redirectToIndex
+            />
           </div>
         )}
       </div>
@@ -139,6 +152,7 @@ export default async function ProductDetailPage({
             defaultShelfLifeDays={p.defaultShelfLifeDays ?? null}
             status={p.status}
             priorFeedback={p.moderationNotes ?? null}
+            pantryItemCount={p.pantryItemCount}
           />
         </div>
       )}

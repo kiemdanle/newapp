@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { patchProductAction, moderateProductAction } from '@/lib/actions';
 import { actionErrorMessage, isConflictCode, type ActionResult } from '@/lib/action-result';
-import { ShieldCheck, Edit, Check, AlertCircle, RefreshCw, Send, X, RotateCcw } from 'lucide-react';
+import { ShieldCheck, Edit, Check, AlertCircle, RefreshCw, Send, X, RotateCcw, Trash2 } from 'lucide-react';
+import { DeleteProductModal } from './delete-product-modal';
 
 export function ProductActions({
   id,
@@ -20,6 +21,7 @@ export function ProductActions({
   defaultShelfLifeDays: initialDefaultShelfLifeDays,
   status,
   priorFeedback,
+  pantryItemCount = 0,
 }: {
   id: string;
   version: number;
@@ -31,6 +33,7 @@ export function ProductActions({
   defaultShelfLifeDays?: number | null;
   status: string;
   priorFeedback: string | null;
+  pantryItemCount?: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -38,6 +41,7 @@ export function ProductActions({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userEditedFields, setUserEditedFields] = useState<Set<string>>(new Set());
   const [overlappingConflicts, setOverlappingConflicts] = useState<string[]>([]);
 
@@ -520,6 +524,16 @@ export function ProductActions({
                 Restore to search
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="default"
+              disabled={pending}
+              className="rounded-xl border-red-200 text-[#E0442A] hover:bg-red-50 hover:text-[#E0442A] gap-1.5"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <Trash2 size={14} />
+              <span>Delete product</span>
+            </Button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -539,6 +553,20 @@ export function ProductActions({
           </div>
         </div>
       </div>
+      {showDeleteModal && (
+        <DeleteProductModal
+          product={{
+            id,
+            name: form.name || initialName,
+            pantryItemCount,
+            status,
+            barcode: form.barcode || initialBarcode,
+            version,
+          }}
+          onClose={() => setShowDeleteModal(false)}
+          redirectToIndex
+        />
+      )}
     </div>
   );
 }
