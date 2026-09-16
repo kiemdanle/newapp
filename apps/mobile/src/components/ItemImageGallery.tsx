@@ -32,10 +32,17 @@ export interface ItemImageGalleryProps {
   };
   onAddPhoto?: () => void;
   onDeletePhoto?: (activeIndex: number) => void;
+  isPhotoDeletable?: (index: number) => boolean;
+  isProductFallback?: boolean;
   onChangeCover?: (activeIndex: number) => void;
   onSetCover?: (index: number) => void;
   maxPhotos?: number;
   onImageSettled?: (uri: string) => void;
+  uploadStatus?: {
+    isUploading: boolean;
+    progress: number;
+    statusText: string;
+  };
 }
 const INITIAL_HERO_WIDTH = Math.min(Dimensions.get('window').width - 32, 540);
 
@@ -47,10 +54,13 @@ export function ItemImageGallery({
   floatingAction,
   onAddPhoto,
   onDeletePhoto,
+  isPhotoDeletable,
+  isProductFallback = false,
   onChangeCover,
   onSetCover,
   maxPhotos = 5,
   onImageSettled,
+  uploadStatus,
 }: ItemImageGalleryProps) {
   const theme = useTheme();
   const heroScrollRef = useRef<ScrollView>(null);
@@ -61,16 +71,28 @@ export function ItemImageGallery({
   const [modalIndex, setModalIndex] = useState(0);
   const heroHeight = Math.round(containerWidth * 0.75); // 4:3 standard aspect ratio
 
-  // Clamp activeIndex if photos array changes
+  // When photos change (e.g. deletion), ensure activeIndex is clamped and immediately
+  // scroll the hero carousel to the new active photo so it never stays in blank space.
   useEffect(() => {
-    if (activeIndex >= photos.length && photos.length > 0) {
-      setActiveIndex(photos.length - 1);
+    if (photos.length > 0) {
+      const nextIndex = Math.min(activeIndex, photos.length - 1);
+      if (nextIndex !== activeIndex) {
+        setActiveIndex(nextIndex);
+      }
+      heroScrollRef.current?.scrollTo({
+        x: nextIndex * containerWidth,
+        animated: false,
+      });
+    } else {
+      setActiveIndex(0);
     }
-  }, [photos.length, activeIndex]);
+  }, [photos, containerWidth]);
 
-  const canAddMore = Boolean(onAddPhoto && photos.length < maxPhotos);
+  const isDeletable = isPhotoDeletable ? isPhotoDeletable(activeIndex) : !isProductFallback;
+  const canDeleteActivePhoto = Boolean(onDeletePhoto && isDeletable);
+  const canAddMore = Boolean(onAddPhoto && (isProductFallback || photos.length < maxPhotos));
   const handleDeletePress = () => {
-    if (!onDeletePhoto) return;
+    if (!canDeleteActivePhoto || !onDeletePhoto) return;
     onDeletePhoto(activeIndex);
   };
 
@@ -171,7 +193,7 @@ export function ItemImageGallery({
         </ScrollView>
 
         {/* Floating Delete Button (deletes active photo with confirmation) */}
-        {onDeletePhoto && (
+        {canDeleteActivePhoto && (
           <Pressable
             testID="gallery-delete-photo"
             accessibilityRole="button"
@@ -181,6 +203,25 @@ export function ItemImageGallery({
           >
             <Ionicons name="trash-outline" size={17} color="#FFFFFF" />
           </Pressable>
+        )}
+
+        {/* Product Catalog Source Indicator */}
+        {!canDeleteActivePhoto && (isProductFallback || (isPhotoDeletable && !isPhotoDeletable(activeIndex))) && (
+          <View
+            testID="gallery-product-source-badge"
+            style={[
+              styles.productSourceBadge,
+              {
+                backgroundColor: theme.colors.bgGlass,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            <Ionicons name="cube-outline" size={13} color={theme.colors.textMuted} />
+            <Text style={[styles.productSourceText, { color: theme.colors.textMuted }]}>
+              Product photo
+            </Text>
+          </View>
         )}
 
         {/* Floating Actions Row (Change Cover / Replace, Make Cover, Add Photo) */}
@@ -263,6 +304,35 @@ export function ItemImageGallery({
             </Text>
           </View>
         )}
+        {/* Upload Progress Bar and Micro Status Overlay */}
+        {uploadStatus?.isUploading && (
+          <View
+            testID="record-photo-upload-overlay"
+            style={[
+              styles.heroUploadOverlay,
+              {
+                backgroundColor: 'rgba(0, 0, 0, 0.45)',
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.uploadBadge}>
+              <ActivityIndicator testID="record-photo-upload-spinner" size="small" color="#FFFFFF" />
+              <Text style={styles.uploadBadgeText}>{uploadStatus.statusText}</Text>
+            </View>
+            <View style={styles.progressBarTrack}>
+              <View
+                testID="record-photo-upload-progress"
+                style={[
+                  styles.progressBarFill,
+                  {
+                    width: `${Math.min(100, Math.max(12, Math.round(uploadStatus.progress * 100)))}%`,
+                  },
+                ]}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
       {/* Thumbnails Row (Tap thumbnail to change active hero photo) */}
@@ -297,9 +367,32 @@ export function ItemImageGallery({
                   style={styles.thumbImage}
                   resizeMode="cover"
                 />
-                {idx === 0 && (
-                  <View style={[styles.coverTag, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.coverTagText}>Cover</Text>
+                {((idx === 0) || (isPhotoDeletable && !isPhotoDeletable(idx))) && (
+                  <View
+                    testID={(isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx))) ? 'gallery-product-tag' : 'gallery-cover-tag'}
+                    style={[
+                      styles.coverTag,
+                      {
+                        backgroundColor: (isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx)))
+                          ? theme.colors.neutralLight
+                          : theme.colors.primary,
+                        borderColor: (isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx))) ? theme.colors.border : undefined,
+                        borderWidth: (isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx))) ? 1 : 0,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.coverTagText,
+                        {
+                          color: (isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx)))
+                            ? theme.colors.textMuted
+                            : '#FFFFFF',
+                        },
+                      ]}
+                    >
+                      {(isProductFallback || (isPhotoDeletable && !isPhotoDeletable(idx))) ? 'Product' : 'Cover'}
+                    </Text>
                   </View>
                 )}
               </Pressable>
@@ -330,13 +423,15 @@ export function ItemImageGallery({
       )}
 
       {/* Fullscreen Photo Gallery Modal with Swipe Down to Dismiss */}
-      <FullScreenImageViewer
-        visible={modalVisible}
-        photos={photos}
-        initialIndex={modalIndex}
-        title={title || 'Photo Gallery'}
-        onClose={() => setModalVisible(false)}
-      />
+      {modalVisible && (
+        <FullScreenImageViewer
+          visible={modalVisible}
+          photos={photos}
+          initialIndex={modalIndex}
+          title={title || 'Photo Gallery'}
+          onClose={() => setModalVisible(false)}
+        />
+      )}
     </View>
   );
 }
@@ -372,7 +467,7 @@ function GalleryImageItem({
       setSettledUri(renderUri);
       setHasError(true);
       onImageSettled?.(url);
-    }, 3000);
+    }, 8000);
     return () => clearTimeout(timer);
   }, [renderUri, isSettled, url, onImageSettled]);
 
@@ -395,7 +490,7 @@ function GalleryImageItem({
       ) : (
         <Image
           source={{ uri: renderUri }}
-          style={[style, !isSettled && styles.hiddenImage]}
+          style={style}
           resizeMode={resizeMode}
           accessibilityIgnoresInvertColors
           fadeDuration={150}
@@ -606,8 +701,58 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  heroUploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    zIndex: 20,
+  },
+  uploadBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  uploadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  progressBarTrack: {
+    width: '60%',
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#4BAE8A',
+    borderRadius: 2,
+  },
   fallbackText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  productSourceBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    zIndex: 10,
+  },
+  productSourceText: {
+    fontSize: 12,
     fontWeight: '600',
   },
 });

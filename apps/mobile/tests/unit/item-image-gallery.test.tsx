@@ -122,4 +122,78 @@ describe('ItemImageGallery with Multi-Photo & Thumbnail Support', () => {
 
     expect(getAllByTestId('gallery-image-fallback').length).toBeGreaterThan(0);
   });
+
+  it('when photo is deleted and photos shrinks, clamps activeIndex and automatically shows next available photo', () => {
+    const { getByTestId, rerender, queryByTestId } = render(
+      <ThemeProvider>
+        <ItemImageGallery photos={photos} />
+      </ThemeProvider>,
+    );
+
+    // Select third photo (index 2)
+    fireEvent.press(getByTestId('giveaway-thumb-2'));
+    expect(getByTestId('giveaway-hero-image-2')).toBeTruthy();
+
+    // Simulate deleting third photo -> photos shrinks to 2 items
+    const updatedPhotos: string[] = photos.slice(0, 2);
+    rerender(
+      <ThemeProvider>
+        <ItemImageGallery photos={updatedPhotos} />
+      </ThemeProvider>,
+    );
+
+    // Third photo is gone, hero is now showing photo 2 (index 1), not a blank space
+    expect(queryByTestId('giveaway-hero-image-2')).toBeNull();
+    expect(getByTestId('giveaway-hero-image-1')).toBeTruthy();
+  });
+
+  it('when isProductFallback is true, renders product photo, omits delete button, displays product source badge, and enables adding photos', () => {
+    const handleAdd = jest.fn();
+    const handleDelete = jest.fn();
+
+    const { getByTestId, queryByTestId, getByText } = render(
+      <ThemeProvider>
+        <ItemImageGallery
+          photos={['https://cdn.expyrico.app/products/sample-product.jpg']}
+          isProductFallback={true}
+          onAddPhoto={handleAdd}
+          onDeletePhoto={handleDelete}
+        />
+      </ThemeProvider>,
+    );
+
+    // Hero displays the product photo
+    expect(getByTestId('giveaway-hero-image-0')).toBeTruthy();
+
+    // Delete button is omitted (cannot delete product photo)
+    expect(queryByTestId('gallery-delete-photo')).toBeNull();
+
+    // Product source badge and tag are rendered
+    expect(getByTestId('gallery-product-source-badge')).toBeTruthy();
+    expect(getByText('Product photo')).toBeTruthy();
+    expect(getByTestId('gallery-product-tag')).toBeTruthy();
+    expect(getByText('Product')).toBeTruthy();
+
+    // Add button in thumbnail row is available and clickable
+    const addBtn = getByTestId('gallery-thumb-add-btn');
+    expect(addBtn).toBeTruthy();
+    fireEvent.press(addBtn);
+    expect(handleAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it('when isPhotoDeletable returns false for active photo, suppresses delete button and prevents deletion', () => {
+    const handleDelete = jest.fn();
+    const { queryByTestId } = render(
+      <ThemeProvider>
+        <ItemImageGallery
+          photos={photos}
+          onDeletePhoto={handleDelete}
+          isPhotoDeletable={(idx) => idx !== 0}
+        />
+      </ThemeProvider>,
+    );
+
+    // Active photo is index 0 -> isPhotoDeletable(0) is false
+    expect(queryByTestId('gallery-delete-photo')).toBeNull();
+  });
 });

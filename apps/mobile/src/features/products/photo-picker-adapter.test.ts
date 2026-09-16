@@ -4,6 +4,8 @@ import {
   takePhoto,
   takePhotos,
   choosePhotos,
+  takeAndCropPhoto,
+  chooseAndCropPhoto,
   cleanupTemp,
   PhotoTooLargeError,
   isPermissionDenied,
@@ -197,5 +199,77 @@ describe('handlePhotoPickerError', () => {
         expect.objectContaining({ text: 'Open Settings' }),
       ]),
     );
+  });
+});
+
+describe('takeAndCropPhoto', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('opens camera with cropping enabled, circular overlay, and aspect ratio', async () => {
+    openCameraMock.mockResolvedValue(image({ width: 800, height: 800 }) as never);
+
+    const result = await takeAndCropPhoto({
+      cropperToolbarTitle: 'Custom Edit Title',
+      width: 600,
+      height: 600,
+    });
+
+    expect(result).toEqual(expect.objectContaining({ path: '/tmp/photo.jpg', width: 800, height: 800 }));
+    expect(openCameraMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cropping: true,
+        cropperCircleOverlay: true,
+        width: 600,
+        height: 600,
+        cropperToolbarTitle: 'Custom Edit Title',
+        forceJpg: true,
+      }),
+    );
+  });
+
+  it('resolves null on user cancellation instead of throwing', async () => {
+    openCameraMock.mockRejectedValue({ code: 'E_PICKER_CANCELLED' });
+
+    await expect(takeAndCropPhoto()).resolves.toBeNull();
+  });
+
+  it('rethrows non-cancellation errors', async () => {
+    openCameraMock.mockRejectedValue(new Error('cropper failed'));
+
+    await expect(takeAndCropPhoto()).rejects.toThrow('cropper failed');
+  });
+});
+
+describe('chooseAndCropPhoto', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('opens picker with single select and cropping enabled', async () => {
+    openPickerMock.mockResolvedValue(image({ width: 800, height: 800 }) as never);
+
+    const result = await chooseAndCropPhoto();
+
+    expect(result).toEqual(expect.objectContaining({ path: '/tmp/photo.jpg', width: 800, height: 800 }));
+    expect(openPickerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        multiple: false,
+        cropping: true,
+        cropperCircleOverlay: true,
+        width: 800,
+        height: 800,
+        forceJpg: true,
+      }),
+    );
+  });
+
+  it('resolves null on user cancellation', async () => {
+    openPickerMock.mockRejectedValue({ code: 'E_PICKER_CANCELLED' });
+
+    await expect(chooseAndCropPhoto()).resolves.toBeNull();
+  });
+
+  it('rethrows non-cancellation errors', async () => {
+    openPickerMock.mockRejectedValue(new Error('picker unavailable'));
+
+    await expect(chooseAndCropPhoto()).rejects.toThrow('picker unavailable');
   });
 });

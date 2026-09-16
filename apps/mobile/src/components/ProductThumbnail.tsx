@@ -78,6 +78,9 @@ export function ProductThumbnail({
 }: ProductThumbnailProps) {
   const theme = useTheme();
   const [failedSources, setFailedSources] = useState<Set<string>>(() => new Set());
+  useEffect(() => {
+    setFailedSources(new Set());
+  }, [photoUrl, firstPhoto?.displayUrl, firstPhoto?.thumbnailUrl, product?.imageUrl, product?.id, (product as { photos?: unknown })?.photos]);
 
   if (isLoading) {
     return (
@@ -133,6 +136,7 @@ export function ProductThumbnail({
   if (activeCandidate) {
     return (
       <CachedThumbnailImage
+        key={activeCandidate}
         candidate={activeCandidate}
         style={style}
         fallbackIcon={fallbackIcon}
@@ -141,7 +145,7 @@ export function ProductThumbnail({
           setFailedSources((prev) => new Set([...prev, activeCandidate]));
         }}
         onTimeout={() => {
-          setFailedSources((prev) => new Set([...prev, ...candidates]));
+          setFailedSources((prev) => new Set([...prev, activeCandidate]));
         }}
       />
     );
@@ -150,11 +154,13 @@ export function ProductThumbnail({
   // If product is a draft/pending creation and has private photos
   if (product?.id && firstPhoto?.id && product.status !== 'active') {
     return (
-      <PrivateProductImage
-        target={{ kind: 'draft', productId: product.id }}
+      <PrivateProductThumbnail
+        key={`draft-${product.id}-${firstPhoto.id}`}
+        productId={product.id}
         photoId={firstPhoto.id}
-        variant="thumb"
-        style={[{ width: size, height: size }, style]}
+        size={size}
+        style={style}
+        fallbackIcon={fallbackIcon}
       />
     );
   }
@@ -193,6 +199,105 @@ export function ProductThumbnail({
     </View>
   );
 }
+
+function PrivateProductThumbnail({
+  productId,
+  photoId,
+  size,
+  style,
+  fallbackIcon = 'basket-outline',
+}: {
+  productId: string;
+  photoId: string;
+  size: number;
+  style?: StyleProp<ImageStyle>;
+  fallbackIcon?: string;
+}) {
+  const theme = useTheme();
+  const { uri, isLoading, error } = useCachedImage({
+    target: { kind: 'draft', productId },
+    photoId,
+    variant: 'thumb',
+  });
+
+  if (isLoading && !uri) {
+    return (
+      <View
+        testID="product-thumbnail-skeleton"
+        style={[
+          { width: size, height: size },
+          style,
+          styles.container,
+          styles.loadingContainer,
+          { backgroundColor: theme.colors.neutralLight },
+        ]}
+      >
+        <View
+          style={[
+            styles.spinnerBadge,
+            {
+              width: Math.max(26, Math.round(size * 0.54)),
+              height: Math.max(26, Math.round(size * 0.54)),
+              borderRadius: Math.round(size * 0.27),
+              backgroundColor: theme.colors.bgGlass,
+            },
+          ]}
+        >
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !uri) {
+    return (
+      <View
+        testID="product-thumbnail-fallback"
+        style={[
+          { width: size, height: size },
+          style,
+          styles.container,
+          {
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.colors.neutralLight,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.fallbackBadge,
+            {
+              width: Math.max(26, Math.round(size * 0.58)),
+              height: Math.max(26, Math.round(size * 0.58)),
+              borderRadius: Math.round(size * 0.29),
+              backgroundColor: theme.colors.bgGlass,
+            },
+          ]}
+        >
+          <Ionicons
+            name={fallbackIcon as never}
+            size={Math.max(14, Math.round(size * 0.36))}
+            color={theme.colors.primaryDark}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[{ width: size, height: size }, style, styles.container]}>
+      <Image
+        testID="product-thumbnail-image"
+        source={{ uri }}
+        style={[{ width: size, height: size }, style]}
+        resizeMode="cover"
+        fadeDuration={150}
+        accessibilityIgnoresInvertColors
+      />
+    </View>
+  );
+}
 function CachedThumbnailImage({
   candidate,
   style,
@@ -225,16 +330,17 @@ function CachedThumbnailImage({
 
   useEffect(() => {
     setTimedOut(false);
-  }, [renderUri]);
+    setSettledUri(null);
+  }, [candidate, renderUri]);
 
-  // 3-second safety timer must only run once renderUri is resolved (cache check completed)
+  // 10-second safety timer must only run once renderUri is resolved (cache check completed)
   useEffect(() => {
     if (!renderUri || isSettled) return;
     const timer = setTimeout(() => {
       setSettledUri(renderUri);
       setTimedOut(true);
       onTimeoutRef.current?.();
-    }, 3000);
+    }, 10000);
     return () => clearTimeout(timer);
   }, [renderUri, isSettled]);
 
@@ -307,17 +413,15 @@ function CachedThumbnailImage({
     <View style={[{ width: size, height: size }, style, styles.container]}>
       <Image
         testID="product-thumbnail-image"
-        source={{
-          uri: renderUri,
-          ...(renderUri.startsWith('http://') || renderUri.startsWith('https://')
-            ? { cache: 'force-cache' }
-            : {}),
-        }}
-        style={[{ width: size, height: size }, style, !isSettled && styles.hiddenImage]}
+        source={{ uri: renderUri }}
+        style={[{ width: size, height: size }, style]}
         resizeMode="cover"
         fadeDuration={150}
         accessibilityIgnoresInvertColors
-        onLoadEnd={() => setSettledUri(renderUri)}
+        onLoadEnd={() => {
+          setSettledUri(renderUri);
+          setTimedOut(false);
+        }}
         onError={() => {
           setSettledUri(renderUri);
           onError();

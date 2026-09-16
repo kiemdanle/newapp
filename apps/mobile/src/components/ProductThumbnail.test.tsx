@@ -114,4 +114,60 @@ describe('ProductThumbnail', () => {
     const images = UNSAFE_queryAllByType('Image' as never);
     expect(images.length).toBe(0);
   });
+
+  it('resets failed sources when photoUrl changes so newly chosen cover displays immediately', async () => {
+    const { rerender, UNSAFE_getAllByType, UNSAFE_queryAllByType } = renderWithTheme(
+      <ProductThumbnail product={mockProduct} photoUrl="https://cdn.example.com/stale-failing.webp" />,
+    );
+
+    const initialImages = await waitFor(() => {
+      const found = UNSAFE_getAllByType('Image' as never);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      return found;
+    });
+    expect(initialImages[0].props.source.uri).toMatch(/stale-failing.webp|data:/);
+
+    // Simulate error on stale cover
+    fireEvent(initialImages[0], 'error');
+
+    // Now user changes cover to a new photo
+    rerender(
+      <ThemeProvider>
+        <ProductThumbnail product={mockProduct} photoUrl="https://cdn.example.com/new-chosen-cover.webp" />
+      </ThemeProvider>,
+    );
+
+    const updatedImages = await waitFor(() => {
+      const found = UNSAFE_getAllByType('Image' as never);
+      expect(found.length).toBeGreaterThanOrEqual(1);
+      return found;
+    });
+    expect(updatedImages[0].props.source.uri).toMatch(/new-chosen-cover.webp|data:/);
+  });
+
+  it('renders PrivateProductThumbnail skeleton or fallback for private draft with only photoId without crashing', () => {
+    const draftProduct: Product = {
+      ...mockProduct,
+      status: 'draft',
+      imageUrl: null,
+      photos: [
+        {
+          id: 'draft-photo-id-only',
+          position: 0,
+        } as never,
+      ],
+    };
+
+    const { queryByTestId } = renderWithTheme(
+      <ProductThumbnail
+        product={draftProduct}
+        firstPhoto={draftProduct.photos[0]}
+        fallbackIcon="cube-outline"
+      />,
+    );
+
+    const hasSkeleton = Boolean(queryByTestId('product-thumbnail-skeleton'));
+    const hasFallback = Boolean(queryByTestId('product-thumbnail-fallback'));
+    expect(hasSkeleton || hasFallback).toBe(true);
+  });
 });

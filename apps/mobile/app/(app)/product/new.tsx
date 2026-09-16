@@ -315,6 +315,8 @@ export default function NewProductScreen() {
             productId={submittedProduct.id}
             productName={submittedProduct.name}
             initialCategory={submittedProduct.category}
+            initialProduct={submittedProduct}
+            isNewlyCreatedProduct={true}
             lockedPersonalScope={!isApproved}
             onSaved={async () => {
               await ensurePushTokenRegistered();
@@ -407,6 +409,7 @@ export default function NewProductScreen() {
               productId={product.id}
               productName={product.name}
               initialCategory={product.category}
+              initialProduct={product}
               lockedPersonalScope
               onSaved={async () => {
                 await ensurePushTokenRegistered();

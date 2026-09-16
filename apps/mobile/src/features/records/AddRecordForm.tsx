@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import type { Product } from '@expyrico/shared';
 import { createLocalRecord } from '../../api/records';
 import { useCreateOrResumeDraft, usePatchDraft, useProduct } from '../../api/products';
 import { uploadProductPhoto } from '../../api/product-photo-upload';
@@ -22,12 +23,15 @@ import { usePhotoLimits } from '../../utils/photo-limits';
 import { usePantryLimits } from '../../utils/pantry-limits';
 import { useMyActiveRecordCount } from './record-counters';
 import { useConnectionGuardStore } from '../../store/connectionGuardStore';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 
 interface Props {
   productId?: string | null;
   productName?: string | null;
   customName?: string | null;
   initialCategory?: string | null;
+  initialProduct?: Product | null;
+  isNewlyCreatedProduct?: boolean;
   onSaved: (localId: string) => void;
   onOpenOcr?: () => void;
   /** True while the product this record attaches to is still private
@@ -46,6 +50,8 @@ export function AddRecordForm({
   productName,
   customName,
   initialCategory,
+  initialProduct,
+  isNewlyCreatedProduct = false,
   onSaved,
   onOpenOcr,
   lockedPersonalScope,
@@ -54,6 +60,11 @@ export function AddRecordForm({
 }: Props) {
   const theme = useTheme();
   const { data: product } = useProduct(productId ?? undefined);
+  const effectiveProduct = initialProduct ?? product;
+  const hasProductPhoto = Boolean(
+    effectiveProduct?.imageUrl ||
+    (effectiveProduct?.photos && effectiveProduct.photos.length > 0)
+  );
   const lastProductIdRef = useRef(productId);
   const [location, setLocation] = useState<string | null>(null);
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
@@ -187,23 +198,17 @@ export function AddRecordForm({
       }
 
       let serverPhotoUrl: string | null = null;
+      let serverPhotoUrls: string[] | null = null;
       let finalLocalPhotos: string[] = photos.map((p) => p.path);
       if (photos.length > 0) {
-        try {
-          const uploadedUrls: string[] = [];
-          for (const p of photos) {
-            const res = await uploadRecordPhoto({ path: p.path, mime: p.mime });
-            if (res?.photoUrl) {
-              uploadedUrls.push(res.photoUrl);
-            }
-          }
-          if (uploadedUrls.length > 0) {
-            serverPhotoUrl = uploadedUrls[0] || null;
-            finalLocalPhotos = uploadedUrls;
-          }
-        } catch {
-          // If offline/error, continue with local paths
+        const uploadedUrls: string[] = [];
+        for (const photo of photos) {
+          const uploaded = await uploadRecordPhoto({ path: photo.path, mime: photo.mime });
+          uploadedUrls.push(uploaded.photoUrl);
         }
+        serverPhotoUrls = uploadedUrls;
+        serverPhotoUrl = uploadedUrls[0] ?? null;
+        finalLocalPhotos = uploadedUrls;
       }
 
       const localId = await createLocalRecord({
@@ -217,6 +222,7 @@ export function AddRecordForm({
         store: store || null,
         notes: notes || null,
         photoUrl: serverPhotoUrl,
+        photoUrls: serverPhotoUrls,
         localPhotos: finalLocalPhotos,
         location: location ? location.trim().slice(0, 50) : null,
         householdId: effectiveHouseholdId,
@@ -381,103 +387,195 @@ export function AddRecordForm({
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{photos.length}/{maxPantryItemPhotos} photos</Text>
           ) : null}
         </View>
-        {photos.length > 0 ? (
-          <View style={{ gap: 10 }}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
-              keyboardShouldPersistTaps="handled"
+        {isNewlyCreatedProduct && hasProductPhoto ? (
+          photos.length === 0 ? (
+            // State A: Single Inherited Product Photo Preview Card
+            <View
+              testID="add-record-inherited-product-photo"
+              style={[
+                styles.inheritedPhotoCard,
+                {
+                  backgroundColor: isDark ? theme.colors.bgGlass : '#FFFFFF',
+                  borderColor: theme.colors.border,
+                },
+              ]}
             >
-              {photos.map((p, index) => (
-                <View key={`${p.path}-${index}`} style={{ position: 'relative', width: 68, height: 68 }}>
-                  <Image
-                    testID={index === 0 ? 'add-record-photo-preview' : `add-record-photo-preview-${index}`}
-                    source={{ uri: p.path.startsWith('/') ? `file://${p.path}` : p.path }}
-                    style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
-                    accessibilityIgnoresInvertColors
-                  />
-                  <Pressable
-                    testID={index === 0 ? 'add-record-photo-remove' : `add-record-photo-remove-${index}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove photo ${index + 1}`}
-                    onPress={() => handleRemovePhoto(index)}
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: -6,
-                      backgroundColor: theme.colors.danger,
-                      borderRadius: 11,
-                      width: 22,
-                      height: 22,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons name="close" size={14} color="#FFFFFF" />
-                  </Pressable>
-                </View>
-              ))}
-              {photos.length < maxPantryItemPhotos ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Add more photos"
-                  testID="add-record-add-more-photos"
-                  onPress={onChoosePhotos}
-                  style={{
-                    width: 68,
-                    height: 68,
-                    borderRadius: theme.radii.md,
-                    borderWidth: 1.5,
-                    borderStyle: 'dashed',
-                    borderColor: isDark ? theme.colors.border : theme.colors.primary,
-                    backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 2,
-                  }}
-                >
-                  <Ionicons name="add" size={20} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
-                  <Text style={{ fontSize: 10, fontWeight: '700', color: isDark ? theme.colors.primary : theme.colors.primaryDark }}>Add</Text>
-                </Pressable>
-              ) : null}
-            </ScrollView>
-            {photos.length < maxPantryItemPhotos ? (
-              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                <Button
-                  testID="add-record-take-photo"
-                  label="Take photo"
-                  icon="camera"
-                  variant="outline"
-                  onPress={onTakePhoto}
-                />
-                <Button
-                  testID="add-record-choose-photo"
-                  label="Choose photo"
-                  icon="images"
-                  variant="outline"
-                  onPress={onChoosePhotos}
+              <View style={styles.inheritedPhotoThumbWrap}>
+                <ProductThumbnail
+                  product={effectiveProduct}
+                  firstPhoto={effectiveProduct?.photos?.[0]}
+                  size={68}
+                  style={styles.inheritedPhotoImage}
+                  fallbackIcon="cube-outline"
                 />
               </View>
-            ) : null}
-          </View>
+              <View style={styles.inheritedPhotoInfoCol}>
+                <View style={[styles.inheritedPhotoBadge, { backgroundColor: theme.colors.primaryLight }]}>
+                  <Ionicons name="cube-outline" size={12} color={theme.colors.primaryDark} />
+                  <Text style={[styles.inheritedPhotoBadgeText, { color: theme.colors.primaryDark }]}>
+                    Product photo
+                  </Text>
+                </View>
+                <Text style={[styles.inheritedPhotoHint, { color: theme.colors.textMuted }]}>
+                  Photo from product creation will be used for this item. You don't need to take another photo.
+                </Text>
+                <Pressable
+                  testID="add-record-add-custom-photo-btn"
+                  accessibilityRole="button"
+                  accessibilityLabel="Add an extra custom photo for this item"
+                  onPress={onChoosePhotos}
+                  style={({ pressed }) => [
+                    styles.addCustomPhotoBtn,
+                    {
+                      borderColor: theme.colors.border,
+                      backgroundColor: pressed ? theme.colors.neutralLight : 'transparent',
+                      opacity: pressed ? 0.85 : 1,
+                      transform: [{ scale: pressed ? 0.985 : 1 }],
+                    },
+                  ]}
+                >
+                  <Ionicons name="camera-outline" size={14} color={theme.colors.text} />
+                  <Text style={[styles.addCustomPhotoBtnText, { color: theme.colors.text }]}>
+                    Add extra photo
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            // State B: Multi-Photo Strip (Slot 0: Pinned Product Photo + Slot 1+: Custom Photos)
+            <View style={{ gap: 10 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {/* Pinned Slot 0: Product photo */}
+                <View style={{ position: 'relative', width: 68, height: 68 }}>
+                  <ProductThumbnail
+                    product={effectiveProduct}
+                    firstPhoto={effectiveProduct?.photos?.[0]}
+                    size={68}
+                    style={{ width: 68, height: 68, borderRadius: theme.radii.md }}
+                    fallbackIcon="cube-outline"
+                  />
+                  <View style={[styles.pinnedProductTag, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderWidth: 1 }]}>
+                    <Text style={[styles.pinnedProductTagText, { color: theme.colors.textMuted }]}>Product</Text>
+                  </View>
+                </View>
+
+                {/* Slot 1+: User custom photos with remove buttons */}
+                {photos.map((p, index) => (
+                  <View key={`${p.path}-${index}`} style={{ position: 'relative', width: 68, height: 68 }}>
+                    <Image
+                      testID={`add-record-photo-preview-${index}`}
+                      source={{ uri: p.path.startsWith('/') ? `file://${p.path}` : p.path }}
+                      style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
+                      accessibilityIgnoresInvertColors
+                    />
+                    <Pressable
+                      testID={`add-record-photo-remove-${index}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove custom photo ${index + 1}`}
+                      onPress={() => handleRemovePhoto(index)}
+                      style={styles.removePhotoBadge}
+                    >
+                      <Ionicons name="close" size={14} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+
+                {/* Trailing Add Button if capacity remains */}
+                {photos.length < maxPantryItemPhotos ? (
+                  <Pressable
+                    testID="add-record-add-more-photos"
+                    accessibilityRole="button"
+                    accessibilityLabel="Add more photos"
+                    onPress={onChoosePhotos}
+                    style={[
+                      styles.addMoreCard,
+                      {
+                        borderColor: isDark ? theme.colors.border : theme.colors.primary,
+                        backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="add" size={20} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
+                    <Text style={[styles.addMoreText, { color: isDark ? theme.colors.primary : theme.colors.primaryDark }]}>Add</Text>
+                  </Pressable>
+                ) : null}
+              </ScrollView>
+              <Text style={{ fontSize: 12, color: theme.colors.textMuted }}>
+                Product photo is preserved alongside your custom item photos.
+              </Text>
+            </View>
+          )
         ) : (
-          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-            <Button
-              testID="add-record-take-photo"
-              label="Take photo"
-              icon="camera"
-              variant="outline"
-              onPress={onTakePhoto}
-            />
-            <Button
-              testID="add-record-choose-photo"
-              label="Choose photo"
-              icon="images"
-              variant="outline"
-              onPress={onChoosePhotos}
-            />
-          </View>
+          photos.length > 0 ? (
+            <View style={{ gap: 10 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 10, paddingVertical: 4 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                {photos.map((p, index) => (
+                  <View key={`${p.path}-${index}`} style={{ position: 'relative', width: 68, height: 68 }}>
+                    <Image
+                      testID={index === 0 ? 'add-record-photo-preview' : `add-record-photo-preview-${index}`}
+                      source={{ uri: p.path.startsWith('/') ? `file://${p.path}` : p.path }}
+                      style={{ width: 68, height: 68, borderRadius: theme.radii.md, backgroundColor: theme.colors.neutralLight }}
+                      accessibilityIgnoresInvertColors
+                    />
+                    <Pressable
+                      testID={index === 0 ? 'add-record-photo-remove' : `add-record-photo-remove-${index}`}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove photo ${index + 1}`}
+                      onPress={() => handleRemovePhoto(index)}
+                      style={styles.removePhotoBadge}
+                    >
+                      <Ionicons name="close" size={14} color="#FFFFFF" />
+                    </Pressable>
+                  </View>
+                ))}
+                {photos.length < maxPantryItemPhotos ? (
+                  <Pressable
+                    testID="add-record-add-more-photos"
+                    accessibilityRole="button"
+                    accessibilityLabel="Add more photos"
+                    onPress={onChoosePhotos}
+                    style={[
+                      styles.addMoreCard,
+                      {
+                        borderColor: isDark ? theme.colors.border : theme.colors.primary,
+                        backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.primaryLight,
+                      },
+                    ]}
+                  >
+                    <Ionicons name="add" size={20} color={isDark ? theme.colors.primary : theme.colors.primaryDark} />
+                    <Text style={[styles.addMoreText, { color: isDark ? theme.colors.primary : theme.colors.primaryDark }]}>Add</Text>
+                  </Pressable>
+                ) : null}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <Button
+                testID="add-record-take-photo"
+                label="Take photo"
+                icon="camera"
+                variant="outline"
+                onPress={onTakePhoto}
+              />
+              <Button
+                testID="add-record-choose-photo"
+                label="Choose photo"
+                icon="images"
+                variant="outline"
+                onPress={onChoosePhotos}
+              />
+            </View>
+          )
         )}
       </View>
 
@@ -797,3 +895,100 @@ export function AddRecordForm({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  inheritedPhotoCard: {
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 12,
+    alignItems: 'center',
+  },
+  inheritedPhotoThumbWrap: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  inheritedPhotoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  inheritedPhotoInfoCol: {
+    flex: 1,
+    gap: 4,
+  },
+  inheritedPhotoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  inheritedPhotoBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  inheritedPhotoHint: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  addCustomPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+  },
+  addCustomPhotoBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pinnedProductTag: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 1,
+    alignItems: 'center',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+  },
+  pinnedProductTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  removePhotoBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#E0442A',
+    borderRadius: 11,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMoreCard: {
+    width: 68,
+    height: 68,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  addMoreText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+});

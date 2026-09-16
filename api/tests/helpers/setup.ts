@@ -93,6 +93,7 @@ beforeAll(async () => {
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "records_user_id_status_discarded_at_idx" ON records(user_id, status, discarded_at);');
   await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "records_user_id_status_consumed_at_idx" ON records(user_id, status, consumed_at);');
   await prisma.$executeRawUnsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS location TEXT;');
+  await prisma.$executeRawUnsafe('ALTER TABLE records ADD COLUMN IF NOT EXISTS photo_urls JSONB;');
 });
 
 beforeEach(async () => {

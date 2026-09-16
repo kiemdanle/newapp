@@ -243,3 +243,67 @@ describe('recordCreateSchema terminal fields & sync schemas', () => {
     expect(defaults.nextCursor).toBeUndefined();
   });
 });
+
+describe('record photoUrls validation', () => {
+  const baseCreate = {
+    clientId: '123e4567-e89b-12d3-a456-426614174001',
+    customName: 'Apples',
+    expiryDate: '2026-09-20',
+  };
+
+  it('accepts valid HTTP and HTTPS photo URLs in recordCreateSchema', () => {
+    const parsed = recordCreateSchema.parse({
+      ...baseCreate,
+      photoUrls: ['https://example.com/p1.webp', 'http://example.com/p2.webp'],
+    });
+    expect(parsed.photoUrls).toEqual([
+      'https://example.com/p1.webp',
+      'http://example.com/p2.webp',
+    ]);
+  });
+
+  it('accepts null and empty array photoUrls in recordCreateSchema and recordPatchSchema', () => {
+    const createdEmpty = recordCreateSchema.parse({ ...baseCreate, photoUrls: [] });
+    expect(createdEmpty.photoUrls).toEqual([]);
+
+    const createdNull = recordCreateSchema.parse({ ...baseCreate, photoUrls: null });
+    expect(createdNull.photoUrls).toBeNull();
+
+    const patchEmpty = recordPatchSchema.parse({ photoUrls: [] });
+    expect(patchEmpty.photoUrls).toEqual([]);
+
+    const patchNull = recordPatchSchema.parse({ photoUrls: null });
+    expect(patchNull.photoUrls).toBeNull();
+  });
+
+  it('rejects non-HTTP(S) photo URLs', () => {
+    expect(() =>
+      recordCreateSchema.parse({
+        ...baseCreate,
+        photoUrls: ['ftp://example.com/p1.webp'],
+      })
+    ).toThrow(/must be an HTTP or HTTPS URL/);
+
+    expect(() =>
+      recordPatchSchema.parse({
+        photoUrls: ['javascript:alert(1)'],
+      })
+    ).toThrow();
+  });
+
+  it('rejects photoUrls array exceeding 20 items', () => {
+    const urls = Array.from({ length: 21 }, (_, i) => `https://example.com/${i}.webp`);
+    expect(() =>
+      recordCreateSchema.parse({
+        ...baseCreate,
+        photoUrls: urls,
+      })
+    ).toThrow(/cannot exceed maximum photo limit/);
+
+    expect(() =>
+      recordPatchSchema.parse({
+        photoUrls: urls,
+      })
+    ).toThrow(/cannot exceed maximum photo limit/);
+  });
+});

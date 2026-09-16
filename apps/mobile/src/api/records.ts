@@ -11,7 +11,7 @@ import { database, RecordModel } from '../db/index';
 import { triggerSyncSoon } from '../db/triggers';
 import { usePantryScope } from '../store/pantryScope';
 import { apiClient } from './client';
-import { runSync } from '../db/sync';
+import { runSync, withRecordSyncLock } from '../db/sync';
 import { syncQuotaErrorsStore } from '../store/syncQuotaErrorsStore';
 import { useSyncStateStore } from '../store/syncStateStore';
 import { useSessionStore } from '../auth/session-store';
@@ -40,6 +40,7 @@ export interface LocalRecord {
   discardReason?: string | null;
   location?: string | null;
   localPhotos?: string[] | null;
+  photoUrls?: string[] | null;
 }
 
 function toLocal(r: RecordModel): LocalRecord {
@@ -49,14 +50,29 @@ function toLocal(r: RecordModel): LocalRecord {
   } catch {
     notifyAt = [];
   }
+  let serverPhotoUrls: string[] | null = null;
+  if (r.photoUrlsJson !== null && r.photoUrlsJson !== undefined) {
+    try {
+      const parsed = JSON.parse(r.photoUrlsJson);
+      if (Array.isArray(parsed)) {
+        serverPhotoUrls = parsed;
+      }
+    } catch {
+      serverPhotoUrls = null;
+    }
+  }
   const localAttachments = getRecordLocalPhotosSync(r.clientId);
-  const effectivePhotoUrl =
+  const effectivePhotos =
     localAttachments && localAttachments.length > 0
-      ? localAttachments.length > 1
-        ? JSON.stringify(localAttachments)
-        : localAttachments[0]
-      : r.photoUrl;
-
+      ? localAttachments
+      : serverPhotoUrls && serverPhotoUrls.length > 0
+        ? serverPhotoUrls
+        : r.photoUrl
+          ? [r.photoUrl]
+          : [];
+  const effectivePhotoUrl =
+    r.photoUrl ||
+    (effectivePhotos.length > 0 ? effectivePhotos[0] : null);
   return {
     id: r.id,
     serverId: r.serverId,
@@ -72,7 +88,8 @@ function toLocal(r: RecordModel): LocalRecord {
     store: r.store,
     notes: r.notes,
     photoUrl: effectivePhotoUrl ?? null,
-    localPhotos: localAttachments,
+    photoUrls: serverPhotoUrls,
+    localPhotos: effectivePhotos,
     status: r.status,
     notifyAt,
     householdId: r.householdId ?? null,
@@ -95,6 +112,7 @@ export const RECORD_OBSERVED_COLUMNS = [
   'status',
   'notes',
   'photo_url',
+  'photo_urls_json',
   'price',
   'store',
   'household_id',
@@ -466,12 +484,14 @@ export async function createLocalRecord(input: {
   store?: string | null;
   notes?: string | null;
   photoUrl?: string | null;
+  photoUrls?: string[] | null;
   localPhotos?: string[] | null;
   householdId?: string | null;
   userId?: string | null;
   location?: string | null;
 }): Promise<string> {
   const clientId = uuidv4();
+  let serverPhotoUrls: string[] | null | undefined = undefined;
   let serverPhotoUrl: string | null = null;
   const localPhotoPaths: string[] = [];
 
@@ -479,36 +499,64 @@ export async function createLocalRecord(input: {
     localPhotoPaths.push(...input.localPhotos);
   }
 
-  if (input.photoUrl) {
-    const raw = input.photoUrl.trim();
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
-      serverPhotoUrl = raw;
-    } else if (!input.localPhotos) {
-      if (raw.startsWith('[') && raw.endsWith(']')) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            for (const item of parsed) {
-              if (typeof item === 'string') {
-                if (item.startsWith('http://') || item.startsWith('https://')) {
-                  if (!serverPhotoUrl) serverPhotoUrl = item;
-                } else {
-                  localPhotoPaths.push(item);
+  if (input.photoUrls !== undefined) {
+    if (input.photoUrls === null) {
+      serverPhotoUrls = null;
+      serverPhotoUrl = null;
+    } else if (Array.isArray(input.photoUrls)) {
+      const valid = input.photoUrls.filter(
+        (u): u is string => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')),
+      );
+      serverPhotoUrls = valid;
+      serverPhotoUrl = (valid.length > 0 && valid[0]) ? valid[0] : null;
+    }
+  }
+
+  if (serverPhotoUrls === undefined) {
+    if (input.photoUrl) {
+      const raw = input.photoUrl.trim();
+      if (raw.startsWith('http://') || raw.startsWith('https://')) {
+        serverPhotoUrl = raw;
+        serverPhotoUrls = [raw];
+      } else if (!input.localPhotos) {
+        if (raw.startsWith('[') && raw.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              for (const item of parsed) {
+                if (typeof item === 'string') {
+                  if (item.startsWith('http://') || item.startsWith('https://')) {
+                    if (!serverPhotoUrl) serverPhotoUrl = item;
+                  } else {
+                    localPhotoPaths.push(item);
+                  }
                 }
               }
             }
+          } catch {
+            localPhotoPaths.push(raw);
           }
-        } catch {
+        } else {
           localPhotoPaths.push(raw);
         }
-      } else {
-        localPhotoPaths.push(raw);
+      }
+    }
+
+    if (serverPhotoUrls === undefined && input.localPhotos && input.localPhotos.length > 0) {
+      const remote = input.localPhotos.filter(
+        (u): u is string => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')),
+      );
+      if (remote.length > 0) {
+        serverPhotoUrls = remote;
+        serverPhotoUrl = remote[0] ?? null;
       }
     }
   }
 
   if (localPhotoPaths.length > 0) {
     await saveRecordLocalPhotos(clientId, localPhotoPaths);
+  } else if (serverPhotoUrls && serverPhotoUrls.length > 0) {
+    await saveRecordLocalPhotos(clientId, serverPhotoUrls);
   }
 
   const col = database.get<RecordModel>('records');
@@ -529,6 +577,7 @@ export async function createLocalRecord(input: {
       r.store = input.store ?? null;
       r.notes = input.notes ?? null;
       r.photoUrl = serverPhotoUrl;
+      r.photoUrlsJson = serverPhotoUrls !== undefined ? JSON.stringify(serverPhotoUrls) : null;
       r.status = 'active';
       r.notifyAtJson = '[]';
       r.consumedAt = null;
@@ -548,28 +597,62 @@ export async function createLocalRecord(input: {
 export async function patchLocalRecord(
   id: string,
   patch: Partial<
-    Pick<LocalRecord, 'customName' | 'brand' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'category' | 'productId' | 'householdId' | 'location'>
+    Pick<LocalRecord, 'customName' | 'brand' | 'expiryDate' | 'quantity' | 'unit' | 'notes' | 'status' | 'photoUrl' | 'photoUrls' | 'category' | 'productId' | 'householdId' | 'location'>
   > & { localPhotos?: string[] | null },
 ): Promise<void> {
   const col = database.get<RecordModel>('records');
   await database.write(async () => {
     const rec = await col.find(id);
     let serverPhotoUrl: string | null | undefined = patch.photoUrl;
+    let serverPhotoUrls: string[] | null | undefined = patch.photoUrls;
     const localPhotoPaths: string[] = [];
+
+    if (patch.photoUrls !== undefined) {
+      if (patch.photoUrls === null) {
+        serverPhotoUrls = null;
+        serverPhotoUrl = null;
+      } else if (Array.isArray(patch.photoUrls)) {
+        const valid = patch.photoUrls.filter(
+          (u): u is string => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')),
+        );
+        serverPhotoUrls = valid;
+        serverPhotoUrl = (valid.length > 0 && valid[0]) ? valid[0] : null;
+      }
+      if (patch.localPhotos === undefined) {
+        if (serverPhotoUrls && serverPhotoUrls.length > 0) {
+          await saveRecordLocalPhotos(rec.clientId, serverPhotoUrls);
+        } else if (serverPhotoUrls === null || (Array.isArray(serverPhotoUrls) && serverPhotoUrls.length === 0)) {
+          await removeRecordLocalPhotos(rec.clientId);
+        }
+      }
+    }
 
     if (patch.localPhotos !== undefined) {
       if (patch.localPhotos && patch.localPhotos.length > 0) {
         localPhotoPaths.push(...patch.localPhotos);
+        await saveRecordLocalPhotos(rec.clientId, localPhotoPaths);
+        if (serverPhotoUrls === undefined) {
+          const remote = localPhotoPaths.filter(
+            (u): u is string => typeof u === 'string' && (u.startsWith('http://') || u.startsWith('https://')),
+          );
+          if (remote.length > 0) {
+            serverPhotoUrls = remote;
+            serverPhotoUrl = remote[0] ?? null;
+          }
+        }
+      } else {
+        await removeRecordLocalPhotos(rec.clientId);
       }
-      await saveRecordLocalPhotos(rec.clientId, localPhotoPaths);
-    } else if (patch.photoUrl !== undefined) {
+    } else if (patch.photoUrl !== undefined && patch.photoUrls === undefined) {
       if (!patch.photoUrl) {
         await removeRecordLocalPhotos(rec.clientId);
         serverPhotoUrl = null;
+        serverPhotoUrls = null;
       } else {
         const raw = patch.photoUrl.trim();
         if (raw.startsWith('http://') || raw.startsWith('https://')) {
           serverPhotoUrl = raw;
+          serverPhotoUrls = [raw];
         } else if (raw.startsWith('[') && raw.endsWith(']')) {
           try {
             const parsed = JSON.parse(raw);
@@ -606,6 +689,9 @@ export async function patchLocalRecord(
       if (patch.notes !== undefined) r.notes = patch.notes;
       if (patch.status !== undefined) r.status = patch.status;
       if (serverPhotoUrl !== undefined) r.photoUrl = serverPhotoUrl;
+      if (serverPhotoUrls !== undefined) {
+        r.photoUrlsJson = JSON.stringify(serverPhotoUrls);
+      }
       if (patch.category !== undefined) r.category = patch.category;
       if (patch.productId !== undefined) r.productId = patch.productId;
       if (patch.householdId !== undefined) r.householdId = patch.householdId;
@@ -690,6 +776,7 @@ export async function markRecordStatusWithQuantity(
         r.price = splitPrice;
         r.notes = rec.notes;
         r.photoUrl = rec.photoUrl;
+        r.photoUrlsJson = rec.photoUrlsJson;
         r.householdId = rec.householdId;
         r.userId = rec.userId;
         r.status = status;
@@ -840,16 +927,97 @@ export async function uploadRecordPhoto(photo: {
   mime?: string;
   name?: string;
 }): Promise<{ photoUrl: string; thumbUrl: string }> {
+  const sessionUser = useSessionStore.getState().user;
+  const initialUserId = sessionUser?.id;
+  if (!initialUserId) {
+    throw new Error('User must be signed in to upload photos');
+  }
+
+  let fileUri = photo.path;
+  if (!fileUri.startsWith('file://') && !fileUri.startsWith('content://')) {
+    fileUri = `file://${fileUri}`;
+  }
+
   const form = new FormData();
   form.append('file', {
-    uri: photo.path.startsWith('file://') ? photo.path : `file://${photo.path}`,
+    uri: fileUri,
     type: photo.mime || 'image/jpeg',
     name: photo.name || 'record-photo.jpg',
   } as unknown as Blob);
 
-  return apiClient.request<{ photoUrl: string; thumbUrl: string }>({
+  const res = await apiClient.request<{ photoUrl: string; thumbUrl: string }>({
     method: 'POST',
     path: '/records/upload-photo',
     body: form,
   });
+
+  const currentUserId = useSessionStore.getState().user?.id;
+  if (currentUserId !== initialUserId) {
+    throw new Error('User session changed during photo upload');
+  }
+
+  for (const url of [res?.photoUrl, res?.thumbUrl]) {
+    if (typeof url !== 'string' || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      throw new Error('Server returned an invalid photo URL');
+    }
+  }
+
+  return res;
+}
+
+export async function saveRecordPhotos(id: string, photoUrls: string[]): Promise<void> {
+  try {
+    const userId = useSessionStore.getState().user?.id;
+    if (!userId) throw new Error('User must be signed in to save record photos');
+    const urls = photoUrls.map((url) => {
+      if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+        throw new Error('Invalid photo URL: ' + url);
+      }
+      return url;
+    });
+    const col = database.get<RecordModel>('records');
+    const initial = await col.find(id);
+    if (!initial.serverId) await runSync();
+
+    await withRecordSyncLock(async (isCurrent) => {
+      const assertSession = () => {
+        if (!isCurrent() || useSessionStore.getState().user?.id !== userId) {
+          throw new Error('User session changed during photo save');
+        }
+      };
+      assertSession();
+    const rec = await col.find(id);
+    if (rec.pendingDelete) throw new Error('Cannot update photos on a deleted record');
+    if (!rec.serverId) {
+      throw new Error(useSyncStateStore.getState().lastSyncError || 'Failed to sync record to server');
+    }
+    assertSession();
+    const cover = urls[0] ?? null;
+    const confirmed = await apiClient.patch<{ id: string; photoUrl: string | null; photoUrls?: string[] | null }>(
+      '/records/' + rec.serverId,
+      { photoUrls: urls, photoUrl: cover },
+    );
+    assertSession();
+    if (confirmed.id !== rec.serverId || confirmed.photoUrl !== cover ||
+        !Array.isArray(confirmed.photoUrls) || confirmed.photoUrls.length !== urls.length ||
+        confirmed.photoUrls.some((url, index) => url !== urls[index])) {
+      throw new Error('Server did not confirm the complete photo gallery');
+    }
+    await database.write(async () => {
+      assertSession();
+      const fresh = await col.find(id);
+      assertSession();
+      await fresh.update((r) => {
+        r.photoUrlsJson = JSON.stringify(urls);
+        r.photoUrl = cover;
+        // Other locally edited fields still need their normal sync.
+      });
+      assertSession();
+      await saveRecordLocalPhotos(fresh.clientId, urls);
+    });
+  });
+} catch (err) {
+  console.error('[saveRecordPhotos] Error:', err);
+  throw err;
+}
 }

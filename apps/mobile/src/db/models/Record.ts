@@ -18,6 +18,7 @@ export class RecordModel extends Model {
   @field('store') store!: string | null;
   @field('notes') notes!: string | null;
   @field('photo_url') photoUrl!: string | null;
+  @field('photo_urls_json') photoUrlsJson!: string | null;
   @field('status') status!: string;
   @field('notify_at_json') notifyAtJson!: string;
   @readonly @date('created_at') createdAt!: Date;

@@ -3,10 +3,11 @@ import { StyleSheet } from 'react-native';
 import type * as ExpyricoThemeModule from '@expyrico/theme';
 import { AddRecordForm } from '../features/records/AddRecordForm';
 import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
-import { createLocalRecord } from '../api/records';
+import { createLocalRecord, uploadRecordPhoto } from '../api/records';
 
 jest.mock('../api/records', () => ({
   createLocalRecord: jest.fn().mockResolvedValue('local-id-1'),
+  uploadRecordPhoto: jest.fn().mockResolvedValue({ photoUrl: '', thumbUrl: '' }),
   useActiveRecords: () => [],
 }));
 const mockChoosePhotos = jest.fn();
@@ -316,6 +317,9 @@ describe('AddRecordForm', () => {
 
   it('supports selecting multiple photos, previewing them with count, and removing individual photos', async () => {
     const onSaved = jest.fn();
+    (uploadRecordPhoto as jest.Mock)
+      .mockResolvedValueOnce({ photoUrl: 'https://cdn.example.com/photo2.webp', thumbUrl: 'https://cdn.example.com/thumb2.webp' })
+      .mockResolvedValueOnce({ photoUrl: 'https://cdn.example.com/photo3.webp', thumbUrl: 'https://cdn.example.com/thumb3.webp' });
     mockChoosePhotos.mockResolvedValueOnce([
       { path: '/local/photo1.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
       { path: '/local/photo2.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
@@ -354,8 +358,154 @@ describe('AddRecordForm', () => {
     expect(createLocalRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: 'prod-1',
-        localPhotos: ['/local/photo2.jpg', '/local/photo3.jpg'],
+        photoUrls: ['https://cdn.example.com/photo2.webp', 'https://cdn.example.com/photo3.webp'],
       }),
     );
+  });
+  it('uploads selected photos and saves with durable photoUrls gallery contract', async () => {
+    const onSaved = jest.fn();
+    mockChoosePhotos.mockResolvedValueOnce([
+      { path: '/local/photo1.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
+      { path: '/local/photo2.jpg', width: 800, height: 600, mime: 'image/jpeg', size: 1024 },
+    ]);
+    (uploadRecordPhoto as jest.Mock)
+      .mockResolvedValueOnce({ photoUrl: 'https://cdn.example.com/up1.webp', thumbUrl: 'https://cdn.example.com/th1.webp' })
+      .mockResolvedValueOnce({ photoUrl: 'https://cdn.example.com/up2.webp', thumbUrl: 'https://cdn.example.com/th2.webp' });
+
+    const { getByTestId, findByTestId } = render(
+      <AddRecordForm productId="prod-1" productName="Bananas" onSaved={onSaved} />,
+    );
+
+    fireEvent.press(getByTestId('add-record-choose-photo'));
+    expect(await findByTestId('add-record-photo-preview')).toBeTruthy();
+
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2026-11-30');
+    fireEvent.press(getByTestId('add-record-save'));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith('local-id-1'));
+    expect(uploadRecordPhoto).toHaveBeenCalledTimes(2);
+    expect(createLocalRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        productId: 'prod-1',
+        photoUrl: 'https://cdn.example.com/up1.webp',
+        photoUrls: ['https://cdn.example.com/up1.webp', 'https://cdn.example.com/up2.webp'],
+        localPhotos: ['https://cdn.example.com/up1.webp', 'https://cdn.example.com/up2.webp'],
+      }),
+    );
+  });
+  it('keeps the form open with an error when an attached photo fails to upload', async () => {
+    const onSaved = jest.fn();
+    mockChoosePhotos.mockResolvedValueOnce([{ path: '/local/photo.jpg', mime: 'image/jpeg' }]);
+    (uploadRecordPhoto as jest.Mock).mockRejectedValueOnce(new Error('Photo upload failed'));
+    const { getByTestId, findByTestId, findByText } = render(
+      <AddRecordForm productId="prod-1" productName="Apples" onSaved={onSaved} />,
+    );
+    fireEvent.press(getByTestId('add-record-choose-photo'));
+    await findByTestId('add-record-photo-preview');
+    fireEvent.changeText(getByTestId('add-record-expiry-input'), '2099-12-31');
+    fireEvent.press(getByTestId('add-record-save'));
+    expect(await findByText('Photo upload failed')).toBeTruthy();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(createLocalRecord).not.toHaveBeenCalled();
+  });
+
+  it('renders inherited product photo preview card and omits redundant capture buttons when isNewlyCreatedProduct is true and photo exists', () => {
+    const sampleProduct = {
+      id: 'prod-new-1',
+      name: 'Organic Milk',
+      imageUrl: 'https://cdn.example.com/organic-milk.webp',
+      status: 'active' as const,
+      createdAt: '2026-09-15T00:00:00Z',
+      updatedAt: '2026-09-15T00:00:00Z',
+      barcode: '123456789012',
+      qrPayload: null,
+      photos: [
+        { id: 'ph-1', displayUrl: 'https://cdn.example.com/organic-milk.webp', thumbnailUrl: 'https://cdn.example.com/organic-milk-th.webp' },
+      ],
+    };
+
+    const { getByTestId, queryByTestId, getByText } = render(
+      <AddRecordForm
+        productId="prod-new-1"
+        productName="Organic Milk"
+        initialProduct={sampleProduct as never}
+        isNewlyCreatedProduct={true}
+        onSaved={jest.fn()}
+      />,
+    );
+
+    // Inherited card renders
+    expect(getByTestId('add-record-inherited-product-photo')).toBeTruthy();
+    expect(getByText('Product photo')).toBeTruthy();
+    expect(getByText(/Photo from product creation will be used for this item/i)).toBeTruthy();
+    expect(getByTestId('add-record-add-custom-photo-btn')).toBeTruthy();
+
+    // Redundant empty capture buttons are omitted
+    expect(queryByTestId('add-record-take-photo')).toBeNull();
+    expect(queryByTestId('add-record-choose-photo')).toBeNull();
+  });
+
+  it('negative gating: omits inherited photo preview and renders standard capture buttons when isNewlyCreatedProduct is false even if product has photos', () => {
+    const sampleProduct = {
+      id: 'prod-resumed-1',
+      name: 'Resumed Product',
+      imageUrl: 'https://cdn.example.com/resumed.webp',
+      status: 'pending' as const,
+      photos: [{ id: 'ph-2', displayUrl: 'https://cdn.example.com/resumed.webp', thumbnailUrl: 'https://cdn.example.com/resumed-th.webp' }],
+    };
+
+    const { getByTestId, queryByTestId } = render(
+      <AddRecordForm
+        productId="prod-resumed-1"
+        productName="Resumed Product"
+        initialProduct={sampleProduct as never}
+        isNewlyCreatedProduct={false}
+        onSaved={jest.fn()}
+      />,
+    );
+
+    // Inherited card is omitted
+    expect(queryByTestId('add-record-inherited-product-photo')).toBeNull();
+
+    // Standard capture buttons are rendered
+    expect(getByTestId('add-record-take-photo')).toBeTruthy();
+    expect(getByTestId('add-record-choose-photo')).toBeTruthy();
+  });
+
+  it('appends custom photo into multi-photo strip alongside pinned product photo when add-extra-photo is used', async () => {
+    const sampleProduct = {
+      id: 'prod-new-2',
+      name: 'Greek Yogurt',
+      imageUrl: 'https://cdn.example.com/yogurt.webp',
+      status: 'active' as const,
+      photos: [{ id: 'ph-3', displayUrl: 'https://cdn.example.com/yogurt.webp', thumbnailUrl: 'https://cdn.example.com/yogurt-th.webp' }],
+    };
+
+    mockChoosePhotos.mockResolvedValueOnce([
+      { path: '/local/custom-yogurt.jpg', mime: 'image/jpeg' },
+    ]);
+
+    const { getByTestId, findByTestId, getByText } = render(
+      <AddRecordForm
+        productId="prod-new-2"
+        productName="Greek Yogurt"
+        initialProduct={sampleProduct as never}
+        isNewlyCreatedProduct={true}
+        onSaved={jest.fn()}
+      />,
+    );
+
+    // Tap "Add extra photo"
+    fireEvent.press(getByTestId('add-record-add-custom-photo-btn'));
+
+    // Custom photo appears at slot 1 in multi-photo strip
+    expect(await findByTestId('add-record-photo-preview-0')).toBeTruthy();
+    expect(getByTestId('add-record-photo-remove-0')).toBeTruthy();
+    expect(getByText('Product')).toBeTruthy();
+    expect(getByText(/Product photo is preserved alongside your custom item photos/i)).toBeTruthy();
+
+    // Remove custom photo restores single inherited card
+    fireEvent.press(getByTestId('add-record-photo-remove-0'));
+    expect(getByTestId('add-record-inherited-product-photo')).toBeTruthy();
   });
 });

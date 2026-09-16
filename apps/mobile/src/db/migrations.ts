@@ -69,5 +69,18 @@ export const migrations = schemaMigrations({
         },
       ],
     },
+    {
+      // v6 → v7: add photo_urls_json to records
+      toVersion: 7,
+      steps: [
+        {
+          type: 'add_columns' as const,
+          table: 'records',
+          columns: [
+            { name: 'photo_urls_json', type: 'string', isOptional: true },
+          ],
+        },
+      ],
+    },
   ],
 });

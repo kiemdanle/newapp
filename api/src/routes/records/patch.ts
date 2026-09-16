@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { recordPatchSchema, ERROR_CODES } from '@expyrico/shared';
@@ -15,6 +16,7 @@ import { lockUserPantryQuota, assertCanAddPantryItems } from '../../services/rec
 import { fanOutHouseholdRecordReminders, reschedulePersonalRecordReminders } from '../../services/households/household-reminders.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
 import type { ProductUsePurpose } from '../../services/products/product-visibility.js';
+import { getPhotoLimits } from '../../services/admin/settings.js';
 
 const paramSchema = z.object({ id: z.string().uuid() });
 
@@ -24,6 +26,32 @@ export async function patchRecordRoute(app: FastifyInstance) {
     const input = recordPatchSchema.parse(req.body);
     const userId = req.user!.id;
     const prisma = getPrisma();
+    if (input.photoUrls !== undefined && input.photoUrls !== null && input.photoUrls.length > 0) {
+      const photoLimits = await getPhotoLimits();
+      if (input.photoUrls.length > photoLimits.maxPantryItemPhotos) {
+        throw new AppError({
+          status: 400,
+          code: ERROR_CODES.VALIDATION,
+          title: `Cannot exceed maximum of ${photoLimits.maxPantryItemPhotos} photos`,
+        });
+      }
+    }
+
+    let photoUrlsUpdate: { photoUrls?: Prisma.InputJsonValue | typeof Prisma.DbNull } = {};
+    let photoUrlUpdate: { photoUrl?: string | null } = {};
+
+    if (input.photoUrls !== undefined) {
+      if (input.photoUrls === null) {
+        photoUrlsUpdate = { photoUrls: Prisma.DbNull };
+        photoUrlUpdate = { photoUrl: null };
+      } else {
+        photoUrlsUpdate = { photoUrls: input.photoUrls };
+        photoUrlUpdate = { photoUrl: input.photoUrls[0] ?? null };
+      }
+    } else if (input.photoUrl !== undefined) {
+      photoUrlUpdate = { photoUrl: input.photoUrl };
+    }
+
 
     const existing = await prisma.record.findFirst({ where: { id } });
     if (!existing) {
@@ -143,7 +171,8 @@ export async function patchRecordRoute(app: FastifyInstance) {
           ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
           ...(input.unit !== undefined ? { unit: input.unit } : {}),
           ...(input.notes !== undefined ? { notes: input.notes } : {}),
-          ...(input.photoUrl !== undefined ? { photoUrl: input.photoUrl } : {}),
+          ...photoUrlUpdate,
+          ...photoUrlsUpdate,
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.status === 'consumed'
             ? {

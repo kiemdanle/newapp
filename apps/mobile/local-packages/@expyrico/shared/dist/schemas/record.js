@@ -3,6 +3,10 @@ export const recordStatusSchema = z.enum(['active', 'consumed', 'discarded', 'ex
 const isoDate = z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
+const httpUrl = z
+    .string()
+    .url('must be a valid URL')
+    .refine((u) => /^https?:\/\//i.test(u), { message: 'must be an HTTP or HTTPS URL' });
 const locationField = z
     .string()
     .nullable()
@@ -32,6 +36,7 @@ export const recordSchema = z.object({
     unit: z.string().max(16),
     notes: z.string().nullable(),
     photoUrl: z.string().url().nullable(),
+    photoUrls: z.array(httpUrl).nullable().optional(),
     status: recordStatusSchema,
     notifyAt: z.array(z.string().datetime()),
     createdAt: z.string().datetime(),
@@ -52,6 +57,7 @@ export const recordCreateBaseSchema = z.object({
     unit: z.string().trim().max(16).default('pcs'),
     notes: z.string().trim().max(2000).nullable().optional(),
     photoUrl: z.string().url().nullable().optional(),
+    photoUrls: z.array(httpUrl).max(20, 'cannot exceed maximum photo limit').nullable().optional(),
     notificationOffsetsDays: z.array(z.number().int().min(0).max(365)).max(10).optional(),
     /** Assign the record to a household the caller belongs to; absent/null = personal. */
     householdId: z.string().uuid().nullable().optional(),
@@ -71,6 +77,7 @@ export const recordPatchSchema = z.object({
     unit: z.string().trim().max(16).optional(),
     notes: z.string().trim().max(2000).nullable().optional(),
     photoUrl: z.string().url().nullable().optional(),
+    photoUrls: z.array(httpUrl).max(20, 'cannot exceed maximum photo limit').nullable().optional(),
     status: recordStatusSchema.optional(),
     consumedAt: z.string().datetime().nullable().optional(),
     discardedAt: z.string().datetime().nullable().optional(),
@@ -163,5 +170,9 @@ export const recordBulkScopeSchema = z.object({
 export const recordBulkScopeResponseSchema = z.object({
     updatedCount: z.number().int().min(0),
     recordIds: z.array(z.string().uuid()),
+});
+export const recordPhotoUploadResponseSchema = z.object({
+    photoUrl: z.string().url(),
+    thumbUrl: z.string().url(),
 });
 //# sourceMappingURL=record.js.map

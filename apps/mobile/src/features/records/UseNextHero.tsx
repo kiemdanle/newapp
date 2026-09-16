@@ -131,7 +131,7 @@ export function UseNextHero({ groups: propGroups }: { groups?: GroupedRecords })
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         <ProductThumbnail
           product={product}
-          photoUrl={item.photoUrl}
+          photoUrl={item.localPhotos?.[0] || item.photoUrl}
           size={44}
           style={{ width: 44, height: 44, borderRadius: theme.radii.sm }}
         />

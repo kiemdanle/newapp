@@ -65,6 +65,8 @@ export function FullScreenImageViewer({
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const currentIndexRef = useRef(initialIndex);
   currentIndexRef.current = currentIndex;
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
 
   const panX = useRef(new Animated.Value(0)).current;
   const panY = useRef(new Animated.Value(0)).current;
@@ -86,7 +88,8 @@ export function FullScreenImageViewer({
   }, [onClose]);
 
   const goToNextPhoto = useCallback(() => {
-    if (currentIndexRef.current < photos.length - 1) {
+    const totalPhotos = photosRef.current.length;
+    if (currentIndexRef.current < totalPhotos - 1) {
       Animated.timing(panX, {
         toValue: -screenWidth,
         duration: 150,
@@ -103,7 +106,7 @@ export function FullScreenImageViewer({
         useNativeDriver: true,
       }).start();
     }
-  }, [photos.length, panX, screenWidth]);
+  }, [panX, screenWidth]);
 
   const goToPrevPhoto = useCallback(() => {
     if (currentIndexRef.current > 0) {
@@ -124,6 +127,12 @@ export function FullScreenImageViewer({
       }).start();
     }
   }, [panX, screenWidth]);
+  const goToNextPhotoRef = useRef(goToNextPhoto);
+  goToNextPhotoRef.current = goToNextPhoto;
+  const goToPrevPhotoRef = useRef(goToPrevPhoto);
+  goToPrevPhotoRef.current = goToPrevPhoto;
+  const handleDismissRef = useRef(handleDismiss);
+  handleDismissRef.current = handleDismiss;
 
   const panResponder = useRef(
     PanResponder.create({
@@ -145,10 +154,12 @@ export function FullScreenImageViewer({
         const absY = Math.abs(gestureState.dy);
 
         // Lock gesture axis once movement exceeds 5px
+        const totalPhotos = photosRef.current.length;
+        // Lock gesture axis once movement exceeds 5px
         if (gestureMode.current === 'none' && (absX > 5 || absY > 5)) {
           if (absY > absX) {
             gestureMode.current = 'vertical';
-          } else if (photos.length > 1) {
+          } else if (totalPhotos > 1) {
             gestureMode.current = 'horizontal';
           }
         }
@@ -160,11 +171,10 @@ export function FullScreenImageViewer({
             // Slight resistance upward
             panY.setValue(gestureState.dy * 0.2);
           }
-        } else if (gestureMode.current === 'horizontal' && photos.length > 1) {
+        } else if (gestureMode.current === 'horizontal' && totalPhotos > 1) {
           const isAtStart = currentIndexRef.current === 0 && gestureState.dx > 0;
           const isAtEnd =
-            currentIndexRef.current === photos.length - 1 && gestureState.dx < 0;
-
+            currentIndexRef.current === totalPhotos - 1 && gestureState.dx < 0;
           if (isAtStart || isAtEnd) {
             // Edge rubber-band resistance
             panX.setValue(gestureState.dx * 0.3);
@@ -174,10 +184,11 @@ export function FullScreenImageViewer({
         }
       },
       onPanResponderRelease: (_evt, gestureState) => {
+        const totalPhotos = photosRef.current.length;
         if (gestureMode.current === 'vertical') {
           // Swipe down threshold: > 50px drag or fast downward velocity
           if (gestureState.dy > 50 || gestureState.vy > 0.35) {
-            handleDismiss();
+            handleDismissRef.current();
           } else {
             Animated.spring(panY, {
               toValue: 0,
@@ -186,11 +197,11 @@ export function FullScreenImageViewer({
               useNativeDriver: true,
             }).start();
           }
-        } else if (gestureMode.current === 'horizontal' && photos.length > 1) {
+        } else if (gestureMode.current === 'horizontal' && totalPhotos > 1) {
           if (gestureState.dx < -40 || gestureState.vx < -0.3) {
-            goToNextPhoto();
+            goToNextPhotoRef.current();
           } else if (gestureState.dx > 40 || gestureState.vx > 0.3) {
-            goToPrevPhoto();
+            goToPrevPhotoRef.current();
           } else {
             Animated.spring(panX, {
               toValue: 0,
@@ -222,7 +233,8 @@ export function FullScreenImageViewer({
   }
 
   const handleSelectThumbnail = (index: number) => {
-    if (index !== currentIndex) {
+    if (index !== currentIndexRef.current && index >= 0 && index < photosRef.current.length) {
+      currentIndexRef.current = index;
       setCurrentIndex(index);
       panX.setValue(0);
     }

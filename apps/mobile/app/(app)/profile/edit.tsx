@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Platform,
@@ -18,14 +17,15 @@ import { Avatar } from '../../../src/components/Avatar';
 import { TextField } from '../../../src/components/TextField';
 import { Button } from '../../../src/components/Button';
 import { CountryPickerModal } from '../../../src/components/CountryPickerModal';
-import { MultiPhotoCameraModal } from '../../../src/components/MultiPhotoCameraModal';
+import { PhotoSourcePickerModal } from '../../../src/components/PhotoSourcePickerModal';
 import {
   getCountryMetadata,
   type CountryMetadata,
 } from '../../../src/utils/country-format';
 import {
-  choosePhotos,
+  chooseAndCropPhoto,
   handlePhotoPickerError,
+  takeAndCropPhoto,
 } from '../../../src/features/products/photo-picker-adapter';
 import { useTheme } from '../../../src/theme/useTheme';
 
@@ -40,7 +40,7 @@ export default function EditProfileScreen() {
   const [address, setAddress] = useState(user?.address ?? '');
   const [country, setCountry] = useState(user?.country ?? 'US');
 
-  const [isCameraModalVisible, setIsCameraModalVisible] = useState(false);
+  const [isPhotoPickerVisible, setIsPhotoPickerVisible] = useState(false);
   const [isCountryModalVisible, setIsCountryModalVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
@@ -126,69 +126,46 @@ export default function EditProfileScreen() {
   };
 
   const openAvatarPicker = () => {
-    const options = ['Take Photo', 'Choose from Library', 'Cancel'];
-    if (user?.avatarUrl) {
-      options.splice(2, 0, 'Remove Photo');
-    }
+    setIsPhotoPickerVisible(true);
+  };
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options,
-          cancelButtonIndex: options.length - 1,
-          destructiveButtonIndex: user?.avatarUrl ? 2 : undefined,
-        },
-        async (buttonIndex) => {
-          if (buttonIndex === 0) {
-            setIsCameraModalVisible(true);
-          } else if (buttonIndex === 1) {
-            try {
-              const photos = await choosePhotos(1);
-              if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
-            } catch (err) {
-              handlePhotoPickerError(err, 'gallery');
-            }
-          } else if (user?.avatarUrl && buttonIndex === 2) {
-            await handleAvatarDelete();
-          }
-        },
-      );
-    } else {
-      Alert.alert('Profile Photo', 'Select an option', [
-        {
-          text: 'Take Photo',
-          onPress: () => {
-            setIsCameraModalVisible(true);
-          },
-        },
-        {
-          text: 'Choose from Library',
-          onPress: async () => {
-            try {
-              const photos = await choosePhotos(1);
-              if (photos.length > 0) await handleAvatarUpload(photos[0]!.path, photos[0]!.mime);
-            } catch (err) {
-              handlePhotoPickerError(err, 'gallery');
-            }
-          },
-        },
-        ...(user?.avatarUrl
-          ? [
-              {
-                text: 'Remove Photo',
-                style: 'destructive' as const,
-                onPress: handleAvatarDelete,
-              },
-            ]
-          : []),
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+  const handleTakePhoto = async () => {
+    try {
+      const photo = await takeAndCropPhoto({
+        cropperToolbarTitle: 'Edit Profile Photo',
+        cropperCircleOverlay: true,
+        width: 800,
+        height: 800,
+        cropperActiveWidgetColor: theme.colors.primary,
+        cropperToolbarColor: theme.colors.primaryDark,
+        cropperToolbarWidgetColor: '#FAFAF8',
+      });
+      if (photo?.path) {
+        await handleAvatarUpload(photo.path, photo.mime || 'image/jpeg');
+      }
+    } catch (err) {
+      const msg = handlePhotoPickerError(err, 'camera');
+      if (msg) setErrorMessage(msg);
     }
   };
 
-  const handleCameraCapture = async (photos: { path: string; mime?: string }[]) => {
-    if (photos.length > 0 && photos[0]?.path) {
-      await handleAvatarUpload(photos[0].path, photos[0].mime ?? 'image/jpeg');
+  const handleChooseGallery = async () => {
+    try {
+      const photo = await chooseAndCropPhoto({
+        cropperToolbarTitle: 'Edit Profile Photo',
+        cropperCircleOverlay: true,
+        width: 800,
+        height: 800,
+        cropperActiveWidgetColor: theme.colors.primary,
+        cropperToolbarColor: theme.colors.primaryDark,
+        cropperToolbarWidgetColor: '#FAFAF8',
+      });
+      if (photo?.path) {
+        await handleAvatarUpload(photo.path, photo.mime || 'image/jpeg');
+      }
+    } catch (err) {
+      const msg = handlePhotoPickerError(err, 'gallery');
+      if (msg) setErrorMessage(msg);
     }
   };
 
@@ -413,12 +390,17 @@ export default function EditProfileScreen() {
         onSelect={handleCountrySelect}
         onClose={() => setIsCountryModalVisible(false)}
       />
-      <MultiPhotoCameraModal
-        visible={isCameraModalVisible}
-        maxPhotos={1}
+      <PhotoSourcePickerModal
+        visible={isPhotoPickerVisible}
         title="Profile Photo"
-        onCapture={handleCameraCapture}
-        onClose={() => setIsCameraModalVisible(false)}
+        subtitle="Choose how you want to update your profile photo"
+        onClose={() => setIsPhotoPickerVisible(false)}
+        onTakePhoto={handleTakePhoto}
+        onChooseGallery={handleChooseGallery}
+        onRemovePhoto={user?.avatarUrl ? handleAvatarDelete : undefined}
+        removeOptionLabel="Remove Photo"
+        removeOptionSubtitle="Remove current profile photo"
+        testID="profile-photo-picker-modal"
       />
     </ScrollView>
   );

@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { z } from 'zod';
@@ -7,12 +7,13 @@ import { getConfig } from '../../config.js';
 import { ERROR_CODES, recordPhotoUploadResponseSchema } from '@expyrico/shared';
 import { processRecordPhotoUpload } from '../../services/media/record-photo-processor.js';
 import { resolveMediaPath } from '../../services/products/product-media-storage.js';
+import { withMediaMutationLease } from '../../services/products/product-media-coordinator.js';
 
 const MAX_RECORD_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 
 export async function uploadRecordPhotoRoute(app: FastifyInstance) {
   app.post(
-    '/records/upload-photo',
+    '/upload-photo',
     {
       onRequest: [app.requireAuth],
       config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
@@ -47,12 +48,13 @@ export async function uploadRecordPhotoRoute(app: FastifyInstance) {
       }
 
       const userId = req.user!.id;
-      const processed = await processRecordPhotoUpload({
-        sourceBuffer: buffer,
-        userId,
-        mimeType: filePart.mimetype,
-      });
-
+      const processed = await withMediaMutationLease('upload', async () =>
+        processRecordPhotoUpload({
+          sourceBuffer: buffer,
+          userId,
+          mimeType: filePart.mimetype,
+        }),
+      );
       const response = recordPhotoUploadResponseSchema.parse({
         photoUrl: processed.photoUrl,
         thumbUrl: processed.thumbUrl,
@@ -70,19 +72,27 @@ const publicPhotoParamsSchema = z.object({
 });
 
 export async function publicRecordPhotoRoutes(app: FastifyInstance) {
-  app.get('/record-photos/:userId/:photoId/:variant', async (req, reply) => {
+  const handler = async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = publicPhotoParamsSchema.safeParse(req.params);
     if (!parsed.success) {
       return reply.status(404).send({ message: 'Photo not found' });
     }
 
     const { userId, photoId, variant } = parsed.data;
-    const filename = `${variant}.webp`;
+    const cleanVariant = variant.replace(/\.webp$/, '');
+    if (cleanVariant !== 'display' && cleanVariant !== 'thumb') {
+      return reply.status(404).send({ message: 'Photo not found' });
+    }
+
+    const filename = `${cleanVariant}.webp`;
     const cfg = getConfig().media;
     const diskPath = resolveMediaPath(cfg.root, 'public', 'records', userId, photoId, filename);
 
     try {
-      await stat(diskPath);
+      const fileStat = await stat(diskPath);
+      if (!fileStat.isFile()) {
+        return reply.status(404).send({ message: 'Photo not found' });
+      }
     } catch {
       return reply.status(404).send({ message: 'Photo not found' });
     }
@@ -90,5 +100,7 @@ export async function publicRecordPhotoRoutes(app: FastifyInstance) {
     reply.header('content-type', 'image/webp');
     reply.header('cache-control', 'public, max-age=31536000, immutable');
     return reply.send(createReadStream(diskPath));
-  });
+  };
+
+  app.get('/records/:userId/:photoId/:variant', handler);
 }

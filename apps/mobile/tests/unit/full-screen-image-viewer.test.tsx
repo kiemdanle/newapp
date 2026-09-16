@@ -62,4 +62,52 @@ describe('FullScreenImageViewer', () => {
 
     expect(queryByText('Invisible Photo')).toBeNull();
   });
+
+  it('allows navigating to newly added photos when photos prop dynamically expands without unmounting', () => {
+    const initialPhotos = [
+      'https://cdn.expyrico.app/photos/1.jpg',
+      'https://cdn.expyrico.app/photos/2.jpg',
+      'https://cdn.expyrico.app/photos/3.jpg',
+    ];
+
+    const { getByTestId, getByText, rerender } = render(
+      <ThemeProvider>
+        <FullScreenImageViewer
+          visible={true}
+          photos={initialPhotos}
+          initialIndex={2}
+          title="Pantry Item"
+          onClose={jest.fn()}
+        />
+      </ThemeProvider>,
+    );
+
+    expect(getByText(/3 \/ 3/)).toBeTruthy();
+
+    // User adds a 4th photo while the screen is open
+    const expandedPhotos = [
+      ...initialPhotos,
+      'https://cdn.expyrico.app/photos/4.jpg',
+    ];
+
+    rerender(
+      <ThemeProvider>
+        <FullScreenImageViewer
+          visible={true}
+          photos={expandedPhotos}
+          initialIndex={2}
+          title="Pantry Item"
+          onClose={jest.fn()}
+        />
+      </ThemeProvider>,
+    );
+
+    // 4th thumbnail is rendered and can be navigated to
+    const thumb4 = getByTestId('modal-thumb-3');
+    expect(thumb4).toBeTruthy();
+    fireEvent.press(thumb4);
+
+    // Counter updates to 4 / 4
+    expect(getByText(/4 \/ 4/)).toBeTruthy();
+  });
 });

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { ERROR_CODES } from '@expyrico/shared';
@@ -74,6 +75,7 @@ export async function duplicateRecordRoute(app: FastifyInstance) {
           store: source.store,
           notes: source.notes,
           photoUrl: source.photoUrl,
+          photoUrls: source.photoUrls === null ? Prisma.DbNull : ((source.photoUrls as Prisma.InputJsonValue) ?? Prisma.DbNull),
           status: 'active',
           location: source.location ?? null,
           notifyAt,

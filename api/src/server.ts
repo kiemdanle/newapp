@@ -17,6 +17,7 @@ import { authRoutes } from './routes/auth/index.js';
 import { meRoutes } from './routes/me/index.js';
 import { publicAvatarRoutes } from './routes/me/avatar.js';
 import { publicProductMediaRoutes } from './routes/products/public-media.js';
+import { publicRecordPhotoRoutes } from './routes/records/upload-photo.js';
 import { productRoutes } from './routes/products/index.js';
 import { editPrivateMediaRoute } from './routes/products/edit-private-media.js';
 import { editMetadataRoute } from './routes/products/edit-metadata.js';
@@ -149,6 +150,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(publicAvatarRoutes);
   await app.register(publicProductMediaRoutes, { prefix: '/v1' });
   await app.register(publicProductMediaRoutes);
+  await app.register(publicRecordPhotoRoutes, { prefix: '/v1' });
+  await app.register(publicRecordPhotoRoutes);
   await app.register(productRoutes, { prefix: '/v1/products' });
   await app.register(editPrivateMediaRoute, { prefix: '/v1/product-edits' });
   await app.register(editMetadataRoute, { prefix: '/v1/product-edits' });

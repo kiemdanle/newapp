@@ -87,11 +87,14 @@ export function getRecordLocalPhotosSync(clientId: string): string[] | null {
 }
 
 export async function saveRecordLocalPhotos(clientId: string, paths: string[]): Promise<void> {
+  const sliced = (paths || []).slice(0, 20);
+  memoryCache[clientId] = sliced;
+  notifyListeners();
   return enqueueStorageOp(async (opEpoch) => {
     if (opEpoch !== storageEpoch) return;
     const map = await loadAttachments();
     if (opEpoch !== storageEpoch) return;
-    map[clientId] = (paths || []).slice(0, 20);
+    map[clientId] = sliced;
     memoryCache = { ...map };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
     if (opEpoch !== storageEpoch) return;
@@ -100,6 +103,8 @@ export async function saveRecordLocalPhotos(clientId: string, paths: string[]): 
 }
 
 export async function removeRecordLocalPhotos(clientId: string): Promise<void> {
+  delete memoryCache[clientId];
+  notifyListeners();
   return enqueueStorageOp(async (opEpoch) => {
     if (opEpoch !== storageEpoch) return;
     const map = await loadAttachments();

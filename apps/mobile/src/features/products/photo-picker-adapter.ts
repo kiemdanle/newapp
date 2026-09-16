@@ -89,18 +89,25 @@ async function toPickedPhoto(image: {
   path: string;
   width: number;
   height: number;
-  mime: string;
-  size: number;
+  mime?: string;
+  size?: number;
 }): Promise<PickedPhoto> {
-  if (image.size > ADVISORY_MAX_BYTES) {
+  const size = image.size || 0;
+  if (size > ADVISORY_MAX_BYTES) {
     // L3: the caller never learns this path (it throws before returning
     // one), so nothing downstream would ever call cleanupTemp for it —
     // clean it up here, before throwing, or it leaks for the lifetime of
     // the OS's own temp-file eviction policy.
     await cleanupTemp([image.path]);
-    throw new PhotoTooLargeError(image.size);
+    throw new PhotoTooLargeError(size);
   }
-  return { path: image.path, width: image.width, height: image.height, mime: image.mime, size: image.size };
+  return {
+    path: image.path,
+    width: image.width,
+    height: image.height,
+    mime: image.mime || 'image/jpeg',
+    size,
+  };
 }
 
 const pickerOptions = {
@@ -175,6 +182,84 @@ export async function choosePhotos(maxFiles: number): Promise<PickedPhoto[]> {
     return await Promise.all(images.map(toPickedPhoto));
   } catch (err) {
     if (isPickerCancellation(err)) return [];
+    throw err;
+  }
+}
+
+export interface CropPickerOptions {
+  width?: number;
+  height?: number;
+  cropperCircleOverlay?: boolean;
+  cropperToolbarTitle?: string;
+  cropperToolbarColor?: string;
+  cropperToolbarWidgetColor?: string;
+  cropperActiveWidgetColor?: string;
+  compressImageMaxWidth?: number;
+  compressImageMaxHeight?: number;
+  compressImageQuality?: number;
+}
+
+/** Opens the camera for a single photo and immediately opens the native cropper
+ * for crop, scale, and move adjustments. Resolves `null` on user cancellation. */
+export async function takeAndCropPhoto(options: CropPickerOptions = {}): Promise<PickedPhoto | null> {
+  try {
+    const image = await ImagePicker.openCamera({
+      mediaType: 'photo',
+      cropping: true,
+      cropperCircleOverlay: options.cropperCircleOverlay ?? true,
+      width: options.width ?? 800,
+      height: options.height ?? 800,
+      freeStyleCropEnabled: false,
+      enableRotationGesture: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperToolbarTitle: options.cropperToolbarTitle ?? 'Edit Profile Photo',
+      cropperChooseText: 'Choose',
+      cropperCancelText: 'Cancel',
+      cropperToolbarColor: options.cropperToolbarColor ?? '#2C2C28',
+      cropperToolbarWidgetColor: options.cropperToolbarWidgetColor ?? '#FAFAF8',
+      cropperActiveWidgetColor: options.cropperActiveWidgetColor ?? '#4BAE8A',
+      compressImageMaxWidth: options.compressImageMaxWidth ?? 1024,
+      compressImageMaxHeight: options.compressImageMaxHeight ?? 1024,
+      compressImageQuality: options.compressImageQuality ?? 0.85,
+      forceJpg: true,
+      includeExif: false,
+    });
+    return await toPickedPhoto(image);
+  } catch (err) {
+    if (isPickerCancellation(err)) return null;
+    throw err;
+  }
+}
+
+/** Opens the photo library for a single photo and immediately opens the native cropper
+ * for crop, scale, and move adjustments. Resolves `null` on user cancellation. */
+export async function chooseAndCropPhoto(options: CropPickerOptions = {}): Promise<PickedPhoto | null> {
+  try {
+    const image = await ImagePicker.openPicker({
+      mediaType: 'photo',
+      multiple: false,
+      cropping: true,
+      cropperCircleOverlay: options.cropperCircleOverlay ?? true,
+      width: options.width ?? 800,
+      height: options.height ?? 800,
+      freeStyleCropEnabled: false,
+      enableRotationGesture: true,
+      avoidEmptySpaceAroundImage: true,
+      cropperToolbarTitle: options.cropperToolbarTitle ?? 'Edit Profile Photo',
+      cropperChooseText: 'Choose',
+      cropperCancelText: 'Cancel',
+      cropperToolbarColor: options.cropperToolbarColor ?? '#2C2C28',
+      cropperToolbarWidgetColor: options.cropperToolbarWidgetColor ?? '#FAFAF8',
+      cropperActiveWidgetColor: options.cropperActiveWidgetColor ?? '#4BAE8A',
+      compressImageMaxWidth: options.compressImageMaxWidth ?? 1024,
+      compressImageMaxHeight: options.compressImageMaxHeight ?? 1024,
+      compressImageQuality: options.compressImageQuality ?? 0.85,
+      forceJpg: true,
+      includeExif: false,
+    });
+    return await toPickedPhoto(image);
+  } catch (err) {
+    if (isPickerCancellation(err)) return null;
     throw err;
   }
 }

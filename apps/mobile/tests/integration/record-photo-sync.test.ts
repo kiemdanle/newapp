@@ -1,25 +1,35 @@
 import { apiClient } from '../../src/api/client';
 import { runSync } from '../../src/db/sync';
 
-jest.mock('../../src/api/client', () => ({
-  apiClient: {
-    post: jest.fn(),
-    patch: jest.fn(),
-    delete: jest.fn(),
-  },
-}));
-import { getWirePhotoUrl } from '../../src/db/sync';
+jest.mock('../../src/api/client', () => {
+  const actual = jest.requireActual<Record<string, unknown>>('../../src/api/client');
+  return {
+    ...actual,
+    apiClient: {
+      post: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn(),
+      request: jest.fn(),
+    },
+  };
+});
+import { getWirePhotoUrl, getWirePhotoUrls } from '../../src/db/sync';
 import {
   subscribeRecordPhotoStorage,
   getRecordLocalPhotos,
   saveRecordLocalPhotos,
+  clearAllRecordPhotoAttachments,
 } from '../../src/features/records/record-photo-storage';
 import {
   createLocalRecord,
+  patchLocalRecord,
   deleteLocalRecord,
   markRecordStatusWithQuantity,
   restoreLocalRecord,
+  uploadRecordPhoto,
+  saveRecordPhotos,
 } from '../../src/api/records';
+import { useSessionStore } from '../../src/auth/session-store';
 interface MockRecordRow {
   id: string;
   clientId?: string;
@@ -65,6 +75,10 @@ jest.mock('../../src/db/index', () => {
             const expected = cond.comparison?.right?.value;
             results = results.filter((r) => Boolean(r.pendingSync) === Boolean(expected));
           }
+          if (cond?.left === 'client_id') {
+            const expected = cond.comparison?.right?.value;
+            results = results.filter((r) => r.clientId === expected);
+          }
         }
         return results;
       }),
@@ -85,9 +99,21 @@ jest.mock('../../src/db/triggers', () => ({
 }));
 
 describe('Record Photo Storage & Sync Contract', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     mockRecordsStore.clear();
     jest.clearAllMocks();
+    await clearAllRecordPhotoAttachments();
+    useSessionStore.setState({
+      user: {
+        id: 'user-1',
+        email: 'user@example.com',
+        fullName: 'User One',
+        role: 'user',
+        status: 'active',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      } as unknown as Parameters<typeof useSessionStore.setState>[0] extends { user?: infer U } ? NonNullable<U> : never,
+      hydrated: true,
+    });
   });
 
   it('separates local photo attachments from server wire state on create', async () => {
@@ -307,5 +333,243 @@ describe('Record Photo Storage & Sync Contract', () => {
     // Parent record still has its local photos intact
     const parentPhotosAfterUndo = await getRecordLocalPhotos(parentRec.clientId);
     expect(parentPhotosAfterUndo).toEqual(localPhotos);
+  });
+
+  it('restores full gallery (non-cover photos) from server photoUrls across sync and logout', async () => {
+    const remotePhotos = [
+      'https://cdn.example.com/p1.webp',
+      'https://cdn.example.com/p2.webp',
+      'https://cdn.example.com/p3.webp',
+    ];
+
+    // 1. Initial creation with remote photoUrls
+    const localId = await createLocalRecord({
+      customName: 'Gourmet Cheese',
+      expiryDate: '2026-12-01',
+      quantity: 1,
+      unit: 'pack',
+      photoUrls: remotePhotos,
+    });
+
+    const rec = mockRecordsStore.get(localId);
+    expect(rec).toBeDefined();
+    if (!rec || !rec.clientId) throw new Error('Record not found');
+    expect(rec.photoUrl).toBe('https://cdn.example.com/p1.webp');
+    expect(rec.photoUrlsJson).toBe(JSON.stringify(remotePhotos));
+
+    // 2. Simulate logout: clearAllRecordPhotoAttachments wipes local AsyncStorage and memory cache
+    await clearAllRecordPhotoAttachments();
+    const clearedLocal = await getRecordLocalPhotos(rec.clientId);
+    expect(clearedLocal).toEqual([]);
+
+    // 3. Simulate login and sync pull: server returns changes with photoUrls
+    (apiClient.post as jest.Mock).mockImplementation(async (path: string) => {
+      if (path === '/records/sync') {
+        return {
+          changes: [
+            {
+              id: 'server-record-cheese',
+              clientId: rec.clientId,
+              productId: null,
+              customName: 'Gourmet Cheese',
+              brand: null,
+              category: null,
+              expiryDate: '2026-12-01',
+              purchaseDate: null,
+              quantity: 1,
+              unit: 'pack',
+              notes: null,
+              photoUrl: 'https://cdn.example.com/p1.webp',
+              photoUrls: remotePhotos,
+              status: 'active',
+              notifyAt: [],
+              householdId: null,
+              userId: 'user-1',
+              consumedAt: null,
+              discardedAt: null,
+              discardReason: null,
+              location: null,
+            },
+          ],
+          deletedIds: [],
+          conflicts: [],
+          serverTime: new Date().toISOString(),
+        };
+      }
+      return {};
+    });
+
+    await runSync();
+
+    // 4. Verify all photos including non-cover photos are restored in local storage
+    const restoredPhotos = await getRecordLocalPhotos(rec.clientId);
+    expect(restoredPhotos).toEqual(remotePhotos);
+    expect(restoredPhotos).toHaveLength(3);
+    expect(rec.photoUrlsJson).toBe(JSON.stringify(remotePhotos));
+    expect(rec.photoUrl).toBe('https://cdn.example.com/p1.webp');
+  });
+
+  describe('saveRecordPhotos contract', () => {
+    it('rejects a server response that did not persist the gallery and preserves dirty item edits', async () => {
+      const id = await createLocalRecord({ customName: 'Honey', expiryDate: '2027-01-01', quantity: 2, unit: 'jar' });
+      const rec = mockRecordsStore.get(id)!;
+      rec.serverId = 'server-honey';
+      const urls = ['https://cdn.example.com/a.webp', 'https://cdn.example.com/b.webp'];
+      (apiClient.patch as jest.Mock).mockResolvedValueOnce({ id: rec.serverId, photoUrl: urls[0] });
+      await expect(saveRecordPhotos(id, urls)).rejects.toThrow();
+      expect(rec.photoUrlsJson).toBeNull();
+      expect(rec.pendingSync).toBe(true);
+      (apiClient.patch as jest.Mock).mockResolvedValueOnce({ id: rec.serverId, photoUrl: urls[0], photoUrls: urls });
+      await saveRecordPhotos(id, urls);
+      expect(rec.pendingSync).toBe(true);
+      expect(rec.quantity).toBe(2);
+      expect(await getRecordLocalPhotos(rec.clientId!)).toEqual(urls);
+    });
+
+    it('serializes a photo save behind an older background patch so the server keeps the new gallery', async () => {
+      const id = await createLocalRecord({ customName: 'Honey', expiryDate: '2027-01-01', quantity: 1, unit: 'jar' });
+      const rec = mockRecordsStore.get(id)!;
+      rec.serverId = 'server-honey';
+      const urls = ['https://cdn.example.com/new.webp'];
+      let release!: () => void;
+      let entered!: () => void;
+      const started = new Promise<void>((resolve) => { entered = resolve; });
+      const delayed = new Promise<void>((resolve) => { release = resolve; });
+      let serverUrls: unknown;
+      (apiClient.patch as jest.Mock).mockImplementation(async (_path: string, body: { photoUrls?: string[]; photoUrl: string | null }) => {
+        if (body.photoUrls === undefined) { entered(); await delayed; }
+        serverUrls = body.photoUrls;
+        return { id: rec.serverId, photoUrl: body.photoUrl, photoUrls: body.photoUrls };
+      });
+      (apiClient.post as jest.Mock).mockResolvedValue({ changes: [], deletedIds: [], conflicts: [], serverTime: new Date().toISOString() });
+      const background = runSync();
+      await started;
+      const saving = saveRecordPhotos(id, urls);
+      await Promise.resolve();
+      release();
+      await Promise.all([background, saving]);
+      expect(serverUrls).toEqual(urls);
+      expect(await getRecordLocalPhotos(rec.clientId!)).toEqual(urls);
+    });
+    it('resolves ONLY when server has acknowledged gallery save and local representation is updated', async () => {
+      const localId = await createLocalRecord({
+        customName: 'Honey',
+        expiryDate: '2027-01-01',
+        quantity: 1,
+        unit: 'jar',
+      });
+      const rec = mockRecordsStore.get(localId);
+      if (!rec || !rec.clientId) throw new Error('Record not found');
+      rec.serverId = 'server-record-honey';
+      rec.pendingSync = false;
+
+      const newUrls = ['https://cdn.example.com/h1.webp', 'https://cdn.example.com/h2.webp'];
+
+      (apiClient.patch as jest.Mock).mockResolvedValueOnce({
+        id: 'server-record-honey',
+        photoUrl: 'https://cdn.example.com/h1.webp',
+        photoUrls: newUrls,
+      });
+
+      await saveRecordPhotos(localId, newUrls);
+
+      expect(apiClient.patch).toHaveBeenCalledWith('/records/server-record-honey', {
+        photoUrls: newUrls,
+        photoUrl: 'https://cdn.example.com/h1.webp',
+      });
+
+      // Local representation updated
+      expect(rec.photoUrlsJson).toBe(JSON.stringify(newUrls));
+      expect(rec.photoUrl).toBe('https://cdn.example.com/h1.webp');
+      expect(rec.pendingSync).toBe(false);
+
+      const localPhotos = await getRecordLocalPhotos(rec.clientId);
+      expect(localPhotos).toEqual(newUrls);
+    });
+
+    it('rejects clearly when offline / server fails and does not mark pendingSync false', async () => {
+      const localId = await createLocalRecord({
+        customName: 'Jam',
+        expiryDate: '2027-02-01',
+        quantity: 1,
+        unit: 'jar',
+      });
+      const rec = mockRecordsStore.get(localId);
+      if (!rec || !rec.clientId) throw new Error('Record not found');
+      rec.serverId = 'server-record-jam';
+
+      (apiClient.patch as jest.Mock).mockRejectedValueOnce(new Error('Network request failed'));
+
+      await expect(
+        saveRecordPhotos(localId, ['https://cdn.example.com/j1.webp']),
+      ).rejects.toThrow('Network request failed');
+    });
+
+    it('handles unsynced record creation via runSync, rejecting if sync does not establish serverId', async () => {
+      const localId = await createLocalRecord({
+        customName: 'Bread',
+        expiryDate: '2026-10-01',
+        quantity: 1,
+        unit: 'loaf',
+      });
+      const rec = mockRecordsStore.get(localId);
+      if (!rec || !rec.clientId) throw new Error('Record not found');
+      expect(rec.serverId).toBeFalsy();
+
+      // Mock apiClient.post for /records to fail
+      (apiClient.post as jest.Mock).mockRejectedValueOnce(new Error('Server unavailable'));
+
+      await expect(
+        saveRecordPhotos(localId, ['https://cdn.example.com/b1.webp']),
+      ).rejects.toThrow(/Failed to sync record|Server unavailable/);
+    });
+
+    it('rejects if user session changes during photo save', async () => {
+      const localId = await createLocalRecord({
+        customName: 'Butter',
+        expiryDate: '2026-11-01',
+        quantity: 1,
+        unit: 'block',
+      });
+      const rec = mockRecordsStore.get(localId);
+      if (!rec || !rec.clientId) throw new Error('Record not found');
+      rec.serverId = 'server-record-butter';
+
+      (apiClient.patch as jest.Mock).mockImplementation(async () => {
+        // Simulate user sign-out/change mid-flight
+        useSessionStore.setState({ user: null });
+        return { id: 'server-record-butter', photoUrl: 'https://cdn.example.com/b1.webp' };
+      });
+
+      await expect(
+        saveRecordPhotos(localId, ['https://cdn.example.com/b1.webp']),
+      ).rejects.toThrow(/session changed/i);
+    });
+  });
+
+  describe('uploadRecordPhoto contract', () => {
+    it('preserves content:// and file:// URIs and validates server response URL', async () => {
+      let uploadedFormData: FormData | null = null;
+      (apiClient.request as jest.Mock).mockImplementation(async (opts: { body: FormData }) => {
+        uploadedFormData = opts.body;
+        return { photoUrl: 'https://cdn.example.com/uploaded.webp', thumbUrl: 'https://cdn.example.com/thumb.webp' };
+      });
+
+      const res = await uploadRecordPhoto({
+        path: 'content://media/external/images/media/123',
+        mime: 'image/jpeg',
+      });
+
+      expect(res.photoUrl).toBe('https://cdn.example.com/uploaded.webp');
+      expect(uploadedFormData).toBeDefined();
+    });
+
+    it('rejects invalid non-URL server response', async () => {
+      (apiClient.request as jest.Mock).mockResolvedValueOnce({ photoUrl: 'not-a-valid-url' });
+
+      await expect(
+        uploadRecordPhoto({ path: 'file:///tmp/photo.jpg' }),
+      ).rejects.toThrow();
+    });
   });
 });

@@ -17,6 +17,9 @@ export interface PhotoSourcePickerModalProps {
   onClose: () => void;
   onTakePhoto: () => void;
   onChooseGallery: () => void;
+  onRemovePhoto?: () => void;
+  removeOptionLabel?: string;
+  removeOptionSubtitle?: string;
   testID?: string;
 }
 
@@ -27,6 +30,9 @@ export function PhotoSourcePickerModal({
   onClose,
   onTakePhoto,
   onChooseGallery,
+  onRemovePhoto,
+  removeOptionLabel = 'Remove Photo',
+  removeOptionSubtitle = 'Remove current photo',
   testID = 'photo-source-picker-modal',
 }: PhotoSourcePickerModalProps) {
   const theme = useTheme();
@@ -221,6 +227,58 @@ export function PhotoSourcePickerModal({
                 color={theme.colors.textMuted}
               />
             </Pressable>
+
+            {/* Remove Photo Option */}
+            {onRemovePhoto ? (
+              <Pressable
+                testID="photo-source-remove-btn"
+                accessibilityRole="button"
+                accessibilityLabel={removeOptionLabel}
+                onPress={() => {
+                  onClose();
+                  onRemovePhoto();
+                }}
+                style={({ pressed }) => [
+                  styles.actionCard,
+                  {
+                    backgroundColor: isDark ? theme.colors.bgGlass : '#FFFFFF',
+                    borderColor: isDark ? 'rgba(224, 68, 42, 0.3)' : 'rgba(224, 68, 42, 0.18)',
+                    opacity: pressed ? 0.85 : 1,
+                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.cardIconBadge,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(224, 68, 42, 0.2)'
+                        : 'rgba(224, 68, 42, 0.1)',
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="trash-outline"
+                    size={22}
+                    color={theme.colors.danger}
+                  />
+                </View>
+                <View style={styles.cardTextCol}>
+                  <Text style={[styles.cardTitle, { color: theme.colors.danger }]}>
+                    {removeOptionLabel}
+                  </Text>
+                  <Text style={[styles.cardSubtitle, { color: theme.colors.textMuted }]}>
+                    {removeOptionSubtitle}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.colors.textMuted}
+                />
+              </Pressable>
+            ) : null}
           </View>
 
           {/* Cancel Button */}
@@ -232,13 +290,25 @@ export function PhotoSourcePickerModal({
             style={({ pressed }) => [
               styles.cancelButton,
               {
-                backgroundColor: isDark ? theme.colors.bgGlass : theme.colors.bgElevated,
-                borderColor: theme.colors.border,
-                opacity: pressed ? 0.8 : 1,
+                backgroundColor: isDark
+                  ? pressed
+                    ? 'rgba(255, 255, 255, 0.1)'
+                    : 'rgba(255, 255, 255, 0.06)'
+                  : pressed
+                    ? 'rgba(44, 44, 40, 0.08)'
+                    : 'rgba(44, 44, 40, 0.04)',
+                borderColor: isDark ? theme.colors.border : 'rgba(44, 44, 40, 0.12)',
+                opacity: pressed ? 0.85 : 1,
+                transform: [{ scale: pressed ? 0.985 : 1 }],
               },
             ]}
           >
-            <Text style={[styles.cancelButtonText, { color: theme.colors.textMuted }]}>
+            <Ionicons
+              name="close-circle-outline"
+              size={18}
+              color={theme.colors.textMuted}
+            />
+            <Text style={[styles.cancelButtonText, { color: theme.colors.text }]}>
               Cancel
             </Text>
           </Pressable>
@@ -343,15 +413,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   cancelButton: {
-    marginTop: 12,
-    minHeight: 44,
+    marginTop: 14,
+    minHeight: 48,
     borderRadius: 14,
     borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
   },
   cancelButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });

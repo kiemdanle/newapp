@@ -41,6 +41,36 @@ describe('Photo Action Modals (Expyrico Palette & Design System)', () => {
       expect(onClose).toHaveBeenCalledTimes(3);
     });
 
+    it('renders remove photo option when onRemovePhoto callback is provided', () => {
+      const onTake = jest.fn();
+      const onGallery = jest.fn();
+      const onRemove = jest.fn();
+      const onClose = jest.fn();
+
+      const { getByTestId, getByText } = renderWithTheme(
+        <PhotoSourcePickerModal
+          visible={true}
+          title="Profile Photo"
+          subtitle="Choose how you want to update your profile photo"
+          onClose={onClose}
+          onTakePhoto={onTake}
+          onChooseGallery={onGallery}
+          onRemovePhoto={onRemove}
+          removeOptionLabel="Remove Photo"
+          removeOptionSubtitle="Remove current profile photo"
+        />,
+        'expyrico',
+      );
+
+      expect(getByTestId('photo-source-remove-btn')).toBeTruthy();
+      expect(getByText('Remove Photo')).toBeTruthy();
+      expect(getByText('Remove current profile photo')).toBeTruthy();
+
+      fireEvent.press(getByTestId('photo-source-remove-btn'));
+      expect(onRemove).toHaveBeenCalledTimes(1);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('renders default Add Item Photo title and options in dark theme', () => {
       const onTake = jest.fn();
       const onGallery = jest.fn();

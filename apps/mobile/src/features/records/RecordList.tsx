@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   BackHandler,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   SectionList,
@@ -389,6 +392,57 @@ export function RecordList({
     onEndReachedCalledDuringMomentumRef.current = true;
     loadMore();
   }, [loadMore]);
+  // Facebook-style quick-reappear controls:
+  // When scrolling down, search bar and filter controls slide up and disappear.
+  // When scrolling up by ~7 lines (approx 120-130px), controls reappear smoothly docked at the top.
+  const [showFloatingControls, setShowFloatingControls] = useState(false);
+  const showFloatingControlsRef = useRef(false);
+  showFloatingControlsRef.current = showFloatingControls;
+  const lastScrollYRef = useRef(0);
+  const accumulatedUpScrollRef = useRef(0);
+  const floatingControlsAnim = useRef(new Animated.Value(-240)).current;
+  const headerHeightRef = useRef(400);
+
+  useEffect(() => {
+    Animated.spring(floatingControlsAnim, {
+      toValue: showFloatingControls ? 0 : -240,
+      useNativeDriver: true,
+      bounciness: 0,
+      speed: 18,
+    }).start();
+  }, [showFloatingControls, floatingControlsAnim]);
+
+  const handleListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const currentY = e.nativeEvent.contentOffset.y;
+    const deltaY = currentY - lastScrollYRef.current;
+    lastScrollYRef.current = currentY;
+    // Threshold: when the user is within the header area or at the top of the list,
+    // the inline controls are in view. Never show floating controls here!
+    const inlineControlsThreshold = Math.max(280, headerHeightRef.current - 60);
+    if (currentY <= inlineControlsThreshold) {
+      if (showFloatingControlsRef.current) {
+        setShowFloatingControls(false);
+      }
+      return;
+    }
+
+    if (deltaY > 4) {
+      // Scrolling down -> hide floating bar and reset upward accumulator
+      accumulatedUpScrollRef.current = 0;
+      if (showFloatingControlsRef.current) {
+        setShowFloatingControls(false);
+      }
+    } else if (deltaY < -2) {
+      // Scrolling up -> accumulate distance
+      accumulatedUpScrollRef.current += Math.abs(deltaY);
+      // ~7 lines threshold (approx 120px of upward scroll)
+      if (accumulatedUpScrollRef.current >= 120) {
+        if (!showFloatingControlsRef.current) {
+          setShowFloatingControls(true);
+        }
+      }
+    }
+  }, []);
 
   const viewMode = useUiPreferencesStore((s) => s.pantryViewMode);
   const togglePantryViewMode = useUiPreferencesStore((s) => s.togglePantryViewMode);
@@ -830,8 +884,9 @@ export function RecordList({
 
 
   // Common interactive controls: Search Bar, Sort Pills, Active Filter Chips
-  const renderControls = () => (
-    <View style={styles.controlsWrap}>
+  // When isInline is true and floating bar is active, opacity: 0 guarantees zero duplicate controls!
+  const renderControls = (isInline: boolean = false) => (
+    <View style={[styles.controlsWrap, isInline && showFloatingControls && { opacity: 0 }]}>
       <PantrySearchBar
         value={searchQuery}
         onChangeText={setSearchQuery}
@@ -912,6 +967,55 @@ export function RecordList({
 
   return (
     <View style={{ flex: 1 }}>
+      {/* Facebook-style quick-reappear floating search bar and filter buttons on ~7 lines of upward scroll */}
+      {(records.length > 0 || isFiltered) && (
+        <Animated.View
+          testID="pantry-floating-controls"
+          style={[
+            styles.floatingControlsWrap,
+            {
+              backgroundColor: theme.colors.bgElevated,
+              borderBottomColor: theme.colors.border,
+              transform: [{ translateY: floatingControlsAnim }],
+            },
+          ]}
+          pointerEvents={showFloatingControls ? 'auto' : 'none'}
+        >
+          <View style={styles.floatingControlsInner}>
+            <PantrySearchBar
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onOpenFilter={() => setFilterModalVisible(true)}
+              activeFilterCount={activeFilterCount}
+              viewMode={viewMode}
+              onToggleViewMode={handleToggleViewMode}
+            />
+            <PantrySortPills selectedSort={selectedSort} onSelectSort={setSelectedSort} />
+            {isFiltered ? (
+              <PantryActiveFilterChips
+                filters={filters}
+                searchQuery={searchQuery}
+                onRemoveFilter={(key, value) =>
+                  setFilters((prev) => {
+                    if (key === 'locations' && value) {
+                       const remaining = prev.locations?.filter(
+                        (l) => l.toLowerCase() !== value.toLowerCase(),
+                      );
+                      return {
+                        ...prev,
+                        locations: remaining && remaining.length > 0 ? remaining : undefined,
+                      };
+                    }
+                    return { ...prev, [key]: undefined };
+                  })
+                }
+                onClearSearch={() => setSearchQuery('')}
+                onClearAll={handleClearAll}
+              />
+            ) : null}
+          </View>
+        </Animated.View>
+      )}
       {/* STABLE SINGLE SectionList: Preserves search input focus, cursor, and keyboard connection */}
       <SectionList
         testID="pantry-record-list"
@@ -925,10 +1029,18 @@ export function RecordList({
         keyExtractor={keyExtractor}
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={
-          <View style={styles.headerStack}>
+          <View
+            style={styles.headerStack}
+            onLayout={(e) => {
+              const h = e.nativeEvent.layout.height;
+              if (h > 0) {
+                headerHeightRef.current = h;
+              }
+            }}
+          >
             {resolvedHeader}
             <SyncStatusBar />
-            {records.length > 0 || isFiltered || showListSkeleton ? renderControls() : null}
+            {records.length > 0 || isFiltered || showListSkeleton ? renderControls(true) : null}
           </View>
         }
         ListEmptyComponent={
@@ -941,6 +1053,8 @@ export function RecordList({
           )
         }
         ListFooterComponent={renderPaginationFooter}
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
         onEndReached={handleEndReached}
         onEndReachedThreshold={0.25}
         onScrollBeginDrag={handleScrollBegin}
@@ -1138,6 +1252,25 @@ export function RecordList({
 }
 
 const styles = StyleSheet.create({
+  floatingControlsWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 10,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+  },
+  floatingControlsInner: {
+    gap: 8,
+  },
   headerStack: {
     gap: 12,
   },

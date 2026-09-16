@@ -16,6 +16,7 @@ export function toApiRecord(r: PrismaRecord): ApiRecord {
     unit: r.unit,
     notes: r.notes,
     photoUrl: r.photoUrl,
+    photoUrls: Array.isArray(r.photoUrls) ? (r.photoUrls as string[]) : null,
     status: r.status,
     notifyAt: Array.isArray(r.notifyAt) ? (r.notifyAt as string[]) : [],
     createdAt: r.createdAt.toISOString(),

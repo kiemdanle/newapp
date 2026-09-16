@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   BackHandler,
   Modal,
   Pressable,
@@ -12,7 +13,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRecordWithStatus, patchLocalRecord, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, uploadRecordPhoto, type LocalRecord } from '../../../src/api/records';
+import { useRecordWithStatus, patchLocalRecord, saveRecordPhotos, deleteLocalRecord, markRecordStatusWithQuantity, restoreLocalRecord, uploadRecordPhoto, type LocalRecord } from '../../../src/api/records';
 import { useMyHouseholds } from '../../../src/api/households';
 import { useImageSettlementTracker } from '../../../src/cache/useImageSettlementTracker';
 import { RecordDetailSkeleton } from '../../../src/components/skeleton';
@@ -79,6 +80,13 @@ export default function RecordDetail() {
   }>({ visible: false, mode: 'add', index: 0 });
   const [deleteTargetIndex, setDeleteTargetIndex] = useState<number | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [photoSaveState, setPhotoSaveState] = useState<'idle' | 'uploading' | 'saving' | 'error'>('idle');
+  const [pendingPhotos, setPendingPhotos] = useState<string[] | null>(null);
+  const photoSaveInFlight = React.useRef(false);
+  const photoSaveAttempt = React.useRef<{ urls: string[]; photos: PickedPhoto[] } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusText, setUploadStatusText] = useState('');
+  const isSavingPhotos = photoSaveState === 'uploading' || photoSaveState === 'saving';
   const { maxPantryItemPhotos } = usePhotoLimits();
   const { data: householdsData } = useMyHouseholds();
   const households = householdsData?.items ?? [];
@@ -94,6 +102,7 @@ export default function RecordDetail() {
 
   React.useEffect(() => {
     const onBackPress = () => {
+      if (photoSaveInFlight.current) return true;
       if (navigation.canGoBack()) {
         navigation.goBack();
       } else {
@@ -104,19 +113,50 @@ export default function RecordDetail() {
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => sub.remove();
   }, [navigation]);
-  const hasCustomizedPhotos = record?.localPhotos != null;
-  const displayedPhotos: string[] = React.useMemo(() => {
+  const userPhotos = React.useMemo(() => {
     if (!record) return [];
-    if (hasCustomizedPhotos) return record.localPhotos!;
-    const fallbackList = [
-      record.photoUrl,
-      product?.imageUrl,
-      ...(product?.photos?.map((p) => p.displayUrl || p.thumbnailUrl) || []),
+    if (Array.isArray(record.localPhotos) && record.localPhotos.length > 0) {
+      return record.localPhotos;
+    }
+    if (record.photoUrl) {
+      return [record.photoUrl];
+    }
+    return [];
+  }, [record]);
+
+  const productPhotos = React.useMemo(() => {
+    if (!product) return [];
+    const list = [
+      product.imageUrl,
+      ...(product.photos?.map((p) => p.displayUrl || p.thumbnailUrl) || []),
     ].filter(Boolean) as string[];
-    return Array.from(new Set(fallbackList));
-  }, [record, product, hasCustomizedPhotos]);
+    return Array.from(new Set(list));
+  }, [product]);
+
+  const hasUserPhotos = userPhotos.length > 0;
+  const isProductFallback = !hasUserPhotos && productPhotos.length > 0;
+
+  const savedPhotos = React.useMemo(() => {
+    if (hasUserPhotos) {
+      // Compose custom user photos first, followed by catalog product photos as reference
+      if (productPhotos.length > 0) {
+        return Array.from(new Set([...userPhotos, ...productPhotos]));
+      }
+      return userPhotos;
+    }
+    if (productPhotos.length > 0) return productPhotos;
+    return [];
+  }, [hasUserPhotos, userPhotos, productPhotos]);
+  const displayedPhotos = pendingPhotos ?? savedPhotos;
 
   const { allSettled: allVisibleImagesSettled, markSettled } = useImageSettlementTracker(displayedPhotos);
+  const [initialOverlayActive, setInitialOverlayActive] = useState(true);
+
+  useEffect(() => {
+    if (allVisibleImagesSettled) {
+      setInitialOverlayActive(false);
+    }
+  }, [allVisibleImagesSettled]);
   if (isRecordError) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.bg }]}>
@@ -252,62 +292,70 @@ export default function RecordDetail() {
     const newQty = Math.max(1, record.quantity + delta);
     await patchLocalRecord(record.id, { quantity: newQty });
   };
-  const savePhotosToRecord = async (newPhotos: PickedPhoto[]) => {
-    const availableSlots = Math.max(0, maxPantryItemPhotos - displayedPhotos.length);
-    if (availableSlots <= 0) return;
+  const persistPhotos = async (attempt: { urls: string[]; photos: PickedPhoto[] }) => {
+    if (photoSaveInFlight.current) return;
+    photoSaveInFlight.current = true;
+    const userId = useSessionStore.getState().user?.id;
+    photoSaveAttempt.current = attempt;
+    setPendingPhotos([...attempt.urls]);
+    setPhotoSaveState('uploading');
+    setUploadProgress(0.12);
+    setUploadStatusText('Uploading photo…');
 
+    const totalLocal = attempt.urls.filter((u) => !u.startsWith('http://') && !u.startsWith('https://')).length;
+    let uploadedSoFar = 0;
+
+    try {
+      for (const [index, uri] of attempt.urls.entries()) {
+        if (uri.startsWith('https://') || uri.startsWith('http://')) continue;
+        const photo = attempt.photos.find((candidate) => candidate.path === uri);
+        const uploaded = await uploadRecordPhoto({ path: uri, mime: photo?.mime });
+        if (useSessionStore.getState().user?.id !== userId) throw new Error('Session changed during upload');
+        attempt.urls[index] = uploaded.photoUrl;
+        uploadedSoFar++;
+        const ratio = totalLocal > 0 ? 0.12 + (0.58 * (uploadedSoFar / totalLocal)) : 0.7;
+        setUploadProgress(ratio);
+        if (totalLocal > 1) {
+          setUploadStatusText(`Uploading photo (${uploadedSoFar}/${totalLocal})…`);
+        }
+      }
+      setPhotoSaveState('saving');
+      setUploadProgress(0.85);
+      setUploadStatusText('Saving to pantry…');
+      if (useSessionStore.getState().user?.id !== userId) throw new Error('Session changed during upload');
+      await saveRecordPhotos(record.id, attempt.urls);
+      photoSaveAttempt.current = null;
+      setPendingPhotos(null);
+      setPhotoSaveState('idle');
+      setUploadProgress(0);
+      setUploadStatusText('');
+    } catch (err) {
+      console.error('[persistPhotos] Error saving photos:', err);
+      setPhotoSaveState('error');
+    } finally {
+      photoSaveInFlight.current = false;
+    }
+  };
+
+  const savePhotosToRecord = async (newPhotos: PickedPhoto[]) => {
+    const baseUrls = isProductFallback ? [] : userPhotos;
+    const availableSlots = Math.max(0, maxPantryItemPhotos - baseUrls.length);
     const acceptedPhotos = newPhotos.slice(0, availableSlots);
     if (acceptedPhotos.length === 0) return;
-
-    const combined = [...displayedPhotos, ...acceptedPhotos.map((p) => p.path)];
-    await patchLocalRecord(record.id, { localPhotos: combined });
-
-    // Background upload to server
-    (async () => {
-      try {
-        let currentPhotos = [...combined];
-        let hasChanges = false;
-        for (const p of acceptedPhotos) {
-          const res = await uploadRecordPhoto({ path: p.path, mime: p.mime });
-          if (res?.photoUrl) {
-            currentPhotos = currentPhotos.map((item) => (item === p.path ? res.photoUrl : item));
-            hasChanges = true;
-          }
-        }
-        if (hasChanges) {
-          const first = currentPhotos[0];
-          const serverCover = first && (first.startsWith('http://') || first.startsWith('https://')) ? first : null;
-          await patchLocalRecord(record.id, {
-            localPhotos: currentPhotos,
-            ...(serverCover ? { photoUrl: serverCover } : {}),
-          });
-        }
-      } catch (err) {
-        console.warn('Failed to upload pantry item photo to server:', err);
-      }
-    })();
+    await persistPhotos({
+      urls: [...baseUrls, ...acceptedPhotos.map((photo) => photo.path)],
+      photos: acceptedPhotos,
+    });
   };
 
   const replacePhotoAt = async (index: number, newPhoto: PickedPhoto) => {
-    const updated = displayedPhotos.map((p, i) => (i === index ? newPhoto.path : p));
-    await patchLocalRecord(record.id, { localPhotos: updated });
-
-    (async () => {
-      try {
-        const res = await uploadRecordPhoto({ path: newPhoto.path, mime: newPhoto.mime });
-        if (res?.photoUrl) {
-          const remoteUpdated = updated.map((item, i) => (i === index ? res.photoUrl : item));
-          const first = remoteUpdated[0];
-          const serverCover = first && (first.startsWith('http://') || first.startsWith('https://')) ? first : null;
-          await patchLocalRecord(record.id, {
-            localPhotos: remoteUpdated,
-            ...(serverCover ? { photoUrl: serverCover } : {}),
-          });
-        }
-      } catch (err) {
-        console.warn('Failed to upload replacement photo to server:', err);
-      }
-    })();
+    if (isProductFallback) {
+      await savePhotosToRecord([newPhoto]);
+      return;
+    }
+    const updated = [...userPhotos];
+    updated[index] = newPhoto.path;
+    await persistPhotos({ urls: updated, photos: [newPhoto] });
   };
   const handleCameraCapture = async (photos: PickedPhoto[]) => {
     const firstPhoto = photos[0];
@@ -319,8 +367,11 @@ export default function RecordDetail() {
       await savePhotosToRecord(photos);
     }
   };
-
   const handleChangeCover = (index: number = 0) => {
+    if (isProductFallback || index >= userPhotos.length) {
+      handleAddPhoto();
+      return;
+    }
     setPhotoSourceModal({
       visible: true,
       mode: index === 0 ? 'cover' : 'replace',
@@ -329,15 +380,12 @@ export default function RecordDetail() {
   };
 
   const handleSetCover = async (index: number) => {
+    if (isProductFallback || index >= userPhotos.length) return;
     if (index <= 0 || index >= displayedPhotos.length) return;
     const targetPhoto = displayedPhotos[index];
     if (!targetPhoto) return;
-    const reordered: string[] = [targetPhoto, ...displayedPhotos.filter((_, i) => i !== index)];
-    const isRemote = targetPhoto.startsWith('http://') || targetPhoto.startsWith('https://');
-    await patchLocalRecord(record.id, {
-      localPhotos: reordered,
-      ...(isRemote ? { photoUrl: targetPhoto } : {}),
-    });
+    const reordered: string[] = [targetPhoto, ...userPhotos.filter((_, i) => i !== index)];
+    await persistPhotos({ urls: reordered, photos: [] });
   };
 
   const handleAddPhoto = () => {
@@ -354,27 +402,28 @@ export default function RecordDetail() {
 
   const handlePickPhoto = () => handleChangeCover(0);
 
+  const isPhotoDeletableByIndex = (index: number) => {
+    if (isProductFallback) return false;
+    return index < userPhotos.length;
+  };
+
   const handleDeletePhoto = (index: number) => {
+    if (!isPhotoDeletableByIndex(index)) return;
     setDeleteTargetIndex(index);
   };
 
   const executeDeletePhoto = async () => {
-    if (deleteTargetIndex === null || deleteTargetIndex < 0 || deleteTargetIndex >= displayedPhotos.length) return;
+    if (deleteTargetIndex === null || deleteTargetIndex < 0 || !isPhotoDeletableByIndex(deleteTargetIndex)) return;
     const idx = deleteTargetIndex;
     setDeleteTargetIndex(null);
-    const photoToDelete = displayedPhotos[idx];
-    const updated = displayedPhotos.filter((_, i) => i !== idx);
-    const newCover = updated[0];
-    const newCoverUrl = newCover && (newCover.startsWith('http://') || newCover.startsWith('https://')) ? newCover : null;
-    await patchLocalRecord(record.id, {
-      localPhotos: updated,
-      photoUrl: newCoverUrl,
-    });
+    const updatedUserPhotos = userPhotos.filter((_, i) => i !== idx);
+    await persistPhotos({ urls: updatedUserPhotos, photos: [] });
   };
   const handleChooseGalleryFromModal = async () => {
     if (photoSourceModal.mode === 'add') {
       try {
-        const remaining = 5 - displayedPhotos.length;
+        const baseLength = isProductFallback ? 0 : userPhotos.length;
+        const remaining = Math.max(0, maxPantryItemPhotos - baseLength);
         if (remaining <= 0) return;
         const picked = await choosePhotos(remaining);
         if (picked.length > 0) {
@@ -433,6 +482,7 @@ export default function RecordDetail() {
         automaticallyAdjustKeyboardInsets={true}
       >
         {/* Hero Photo / Add Photo Card */}
+        <View pointerEvents={photoSaveState !== 'idle' ? 'none' : 'auto'}>
         {displayedPhotos.length > 0 ? (
           <ItemImageGallery
             photos={displayedPhotos}
@@ -441,16 +491,32 @@ export default function RecordDetail() {
             placeholderText="No photo attached"
             onAddPhoto={handleAddPhoto}
             onDeletePhoto={handleDeletePhoto}
-            onChangeCover={handleChangeCover}
-            onSetCover={handleSetCover}
+            isPhotoDeletable={isPhotoDeletableByIndex}
+            isProductFallback={isProductFallback}
+            onChangeCover={isProductFallback ? undefined : handleChangeCover}
+            onSetCover={isProductFallback ? undefined : handleSetCover}
             onImageSettled={markSettled}
             maxPhotos={maxPantryItemPhotos}
-            floatingAction={{
-              icon: 'camera-outline',
-              label: 'Change',
-              onPress: () => handleChangeCover(0),
-              accessibilityLabel: 'Change photo',
+            uploadStatus={{
+              isUploading: photoSaveState === 'uploading' || photoSaveState === 'saving',
+              progress: uploadProgress,
+              statusText: uploadStatusText,
             }}
+            floatingAction={
+              isProductFallback
+                ? {
+                    icon: 'camera-outline',
+                    label: 'Add photo',
+                    onPress: handleAddPhoto,
+                    accessibilityLabel: 'Add photo for this item',
+                  }
+                : {
+                    icon: 'camera-outline',
+                    label: 'Change',
+                    onPress: () => handleChangeCover(0),
+                    accessibilityLabel: 'Change photo',
+                  }
+            }
           />
         ) : (
           <Pressable
@@ -474,6 +540,21 @@ export default function RecordDetail() {
               Take a photo or choose from library
             </Text>
           </Pressable>
+        )}
+        </View>
+        {photoSaveState === 'error' && (
+          <View accessibilityRole="alert" style={{ padding: theme.spacing.xl, gap: theme.spacing.md, backgroundColor: theme.colors.bgElevated }}>
+            <Text style={{ color: theme.colors.text, fontWeight: '600' }}>Photos not saved</Text>
+            <Text style={{ color: theme.colors.text }}>The server has not confirmed your photos. Retry before leaving this item or signing out.</Text>
+            <Button label="Retry upload" onPress={() => {
+              if (photoSaveAttempt.current) void persistPhotos(photoSaveAttempt.current);
+            }} />
+            <Button label="Discard photo changes" variant="outline" onPress={() => {
+              photoSaveAttempt.current = null;
+              setPendingPhotos(null);
+              setPhotoSaveState('idle');
+            }} />
+          </View>
         )}
 
         {/* Historical Status Banner for non-active items */}
@@ -969,7 +1050,7 @@ export default function RecordDetail() {
         maxPhotos={maxPantryItemPhotos}
         onClose={() => setShowLimitModal(false)}
       />
-      {!allVisibleImagesSettled && (
+      {initialOverlayActive && !allVisibleImagesSettled && (
         <RecordDetailSkeleton
           style={StyleSheet.absoluteFillObject}
           pointerEvents="auto"
