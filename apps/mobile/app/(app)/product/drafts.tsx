@@ -30,6 +30,7 @@ import { DraftSwipeableRow } from '../../../src/features/products/DraftSwipeable
 import { DraftUndoToast, type PendingDiscardEntry } from '../../../src/features/products/DraftUndoToast';
 import { DraftsSearchBar } from '../../../src/features/products/DraftsSearchBar';
 import { DraftsSortPills, type DraftSortOption } from '../../../src/features/products/DraftsSortPills';
+import { ProductDraftsSkeleton } from '../../../src/features/products/ProductDraftsSkeleton';
 import { useUiPreferencesStore } from '../../../src/store/uiPreferencesStore';
 import { useTheme } from '../../../src/theme/useTheme';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
@@ -200,8 +201,13 @@ export default function ProductDraftsScreen() {
   const refetchRef = useRef(q.refetch);
   refetchRef.current = q.refetch;
 
+  const isFirstMountRef = useRef(true);
   useFocusEffect(
     useCallback(() => {
+      if (isFirstMountRef.current) {
+        isFirstMountRef.current = false;
+        return;
+      }
       void refetchRef.current();
     }, []),
   );
@@ -354,7 +360,10 @@ export default function ProductDraftsScreen() {
           onEndReachedThreshold={0.4}
           ListEmptyComponent={
             q.isLoading ? (
-              <ActivityIndicator color={theme.colors.primary} />
+              <ProductDraftsSkeleton
+                viewMode={viewMode}
+                testID="drafts-list-skeleton"
+              />
             ) : (
               <View style={styles.emptyContainer}>
                 <EmptyState

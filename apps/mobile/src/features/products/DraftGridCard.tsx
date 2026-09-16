@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   Platform,
   Pressable,
@@ -14,7 +15,7 @@ import { useTheme } from '../../theme/useTheme';
 import { PrivateProductImage } from '../../api/product-private-image';
 import { formatDate } from '../../utils/country-format';
 import { DraftGridActionDrawer } from './DraftGridActionDrawer';
-
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
 export interface DraftGridCardProps {
   item: ProductDraftRow;
   onPress: (item: ProductDraftRow) => void;
@@ -23,6 +24,7 @@ export interface DraftGridCardProps {
   onDelete?: (item: ProductDraftRow) => void;
   onSwipeableWillOpen?: (ref: Swipeable) => void;
   isSubmitting?: boolean;
+  isLoading?: boolean;
 }
 
 const STATUS_CONFIG: Partial<Record<ProductDraftStatus, { label: string; text: string; bg: string }>> = {
@@ -43,6 +45,7 @@ export function DraftGridCard({
   onDelete,
   onSwipeableWillOpen,
   isSubmitting,
+  isLoading = false,
 }: DraftGridCardProps) {
   const theme = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
@@ -106,7 +109,18 @@ export function DraftGridCard({
           ]}
         >
       {/* Top Header Row: Status Badge */}
-      {statusCfg ? (
+      {isLoading ? (
+        <View style={styles.topRow}>
+          <SkeletonShimmer>
+            <SkeletonBone
+              testID="draft-grid-status-skeleton"
+              width={65}
+              height={18}
+              borderRadius={theme.radii.sm}
+            />
+          </SkeletonShimmer>
+        </View>
+      ) : statusCfg ? (
         <View style={styles.topRow}>
           <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
             <Text style={[styles.statusBadgeText, { color: statusCfg.text }]} numberOfLines={1}>
@@ -118,7 +132,34 @@ export function DraftGridCard({
 
       {/* Center Product Image */}
       <View style={styles.imageWrapper}>
-        {item.cover ? (
+        {isLoading ? (
+          <View
+            testID="draft-grid-thumbnail-skeleton"
+            style={[
+              styles.thumbnail,
+              styles.placeholder,
+              {
+                backgroundColor: theme.colors.neutralLight,
+                borderColor: theme.colors.border,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+            ]}
+          >
+            <View
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: theme.colors.bgGlass,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          </View>
+        ) : item.cover ? (
           item.cover.thumbnailUrl.startsWith('http') ? (
             <Image
               testID="draft-grid-cover"
@@ -149,34 +190,56 @@ export function DraftGridCard({
       </View>
 
       {/* Product Title */}
-      <Text
-        style={[styles.title, { color: theme.colors.text }]}
-        numberOfLines={2}
-      >
-        {item.name}
-      </Text>
+      {isLoading ? (
+        <SkeletonShimmer style={{ gap: 4, marginVertical: 4 }}>
+          <SkeletonBone
+            testID="draft-grid-title-skeleton"
+            width="80%"
+            height={14}
+            borderRadius={3}
+          />
+          <SkeletonBone width="50%" height={14} borderRadius={3} />
+        </SkeletonShimmer>
+      ) : (
+        <Text
+          style={[styles.title, { color: theme.colors.text }]}
+          numberOfLines={2}
+        >
+          {item.name}
+        </Text>
+      )}
 
       {/* Barcode & Meta */}
-      <View style={styles.metaRow}>
-        {identifierValue ? (
-          <View style={styles.identifierRow}>
-            <Ionicons
-              name={isBarcode ? 'barcode-outline' : 'qr-code-outline'}
-              size={12}
-              color={theme.colors.textMuted}
-            />
-            <Text style={[styles.identifierText, { color: theme.colors.textMuted }]} numberOfLines={1}>
-              {identifierValue}
-            </Text>
-          </View>
-        ) : null}
-        <Text style={[styles.updatedAt, { color: theme.colors.textMuted }]}>
-          {formatUpdatedAt(item.updatedAt)}
-        </Text>
-      </View>
+      {isLoading ? (
+        <SkeletonShimmer style={styles.metaRow}>
+          <SkeletonBone width="45%" height={11} borderRadius={3} />
+        </SkeletonShimmer>
+      ) : (
+        <View style={styles.metaRow}>
+          {identifierValue ? (
+            <View style={styles.identifierRow}>
+              <Ionicons
+                name={isBarcode ? 'barcode-outline' : 'qr-code-outline'}
+                size={12}
+                color={theme.colors.textMuted}
+              />
+              <Text style={[styles.identifierText, { color: theme.colors.textMuted }]} numberOfLines={1}>
+                {identifierValue}
+              </Text>
+            </View>
+          ) : null}
+          <Text style={[styles.updatedAt, { color: theme.colors.textMuted }]}>
+            {formatUpdatedAt(item.updatedAt)}
+          </Text>
+        </View>
+      )}
 
       {/* Direct Add Action Button */}
-      {canAddDirectly ? (
+      {isLoading ? (
+        <SkeletonShimmer>
+          <SkeletonBone width="100%" height={28} borderRadius={theme.radii.sm} />
+        </SkeletonShimmer>
+      ) : canAddDirectly ? (
         <Pressable
           testID={`draft-grid-add-btn-${item.id}`}
           accessibilityRole="button"

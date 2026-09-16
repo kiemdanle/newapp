@@ -82,7 +82,7 @@ export function DraftGridActionDrawer({
               },
             ]}
           >
-            <Ionicons name="create-outline" size={22} color={theme.colors.neutralDark} />
+            <Ionicons name="create-outline" size={20} color={theme.colors.neutralDark} />
           </Pressable>
           <Text style={[styles.actionLabel, { color: theme.colors.textMuted }]}>
             Edit
@@ -111,7 +111,7 @@ export function DraftGridActionDrawer({
                 },
               ]}
             >
-              <Ionicons name="basket-outline" size={22} color={theme.colors.neutralDark} />
+              <Ionicons name="basket-outline" size={20} color={theme.colors.neutralDark} />
             </Pressable>
             <Text style={[styles.actionLabel, { color: theme.colors.textMuted }]}>
               Add
@@ -141,7 +141,7 @@ export function DraftGridActionDrawer({
                 },
               ]}
             >
-              <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
             </Pressable>
             <Text style={[styles.actionLabel, { color: theme.colors.textMuted }]}>
               Delete
@@ -158,57 +158,59 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 8,
     justifyContent: 'space-between',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 24,
-    marginBottom: 4,
+    height: 22,
+    marginBottom: 2,
   },
   headerTitle: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    marginRight: 6,
+    marginRight: 4,
   },
   closeBtn: {
-    width: 24,
-    height: 24,
+    width: 22,
+    height: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
+    borderRadius: 11,
   },
   actionsColumn: {
     flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
+    justifyContent: 'space-evenly',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
+    gap: 4,
   },
   actionItemWrap: {
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    width: '100%',
   },
   actionCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
-    shadowRadius: 4,
+    shadowRadius: 3,
     elevation: 2,
   },
   actionLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });

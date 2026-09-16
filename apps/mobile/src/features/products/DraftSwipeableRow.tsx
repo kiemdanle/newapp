@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import {
+  ActivityIndicator,
   Animated,
   Image,
   Pressable,
@@ -13,7 +14,7 @@ import type { ProductDraftRow, ProductDraftStatus } from '@expyrico/shared';
 import { PrivateProductImage } from '../../api/product-private-image';
 import { useTheme } from '../../theme/useTheme';
 import { formatDate } from '../../utils/country-format';
-
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
 export interface DraftSwipeableRowProps {
   item: ProductDraftRow;
   onPress: (item: ProductDraftRow) => void;
@@ -22,6 +23,7 @@ export interface DraftSwipeableRowProps {
   onDelete?: (item: ProductDraftRow) => void;
   onSwipeableWillOpen?: (ref: Swipeable) => void;
   isSubmitting?: boolean;
+  isLoading?: boolean;
 }
 
 const STATUS_CONFIG: Partial<Record<ProductDraftStatus, { label: string; text: string; bg: string }>> = {
@@ -42,6 +44,7 @@ export function DraftSwipeableRow({
   onDelete,
   onSwipeableWillOpen,
   isSubmitting,
+  isLoading = false,
 }: DraftSwipeableRowProps) {
   const theme = useTheme();
   const swipeableRef = useRef<Swipeable>(null);
@@ -142,7 +145,32 @@ export function DraftSwipeableRow({
           },
         ]}
       >
-        {item.cover ? (
+        {isLoading ? (
+          <View
+            testID="draft-row-thumbnail-skeleton"
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: theme.radii.sm,
+              backgroundColor: theme.colors.neutralLight,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <View
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 13,
+                backgroundColor: theme.colors.bgGlass,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          </View>
+        ) : item.cover ? (
           item.cover.thumbnailUrl.startsWith('http') ? (
             <Image
               testID="draft-row-cover"
@@ -177,20 +205,48 @@ export function DraftSwipeableRow({
         )}
 
         <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-            Updated {formatUpdatedAt(item.updatedAt)}
-          </Text>
-          {item.status === 'changes_required' && item.moderationFeedback ? (
-            <Text style={{ color: theme.colors.danger, fontSize: 12 }} numberOfLines={1}>
-              {item.moderationFeedback}
-            </Text>
-          ) : null}
+          {isLoading ? (
+            <SkeletonShimmer style={{ gap: 4 }}>
+              <SkeletonBone
+                testID="draft-card-title-skeleton"
+                width="60%"
+                height={16}
+                borderRadius={4}
+              />
+              <SkeletonBone
+                testID="draft-card-date-skeleton"
+                width="40%"
+                height={12}
+                borderRadius={3}
+              />
+            </SkeletonShimmer>
+          ) : (
+            <>
+              <Text style={{ color: theme.colors.text, fontWeight: '600' }} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                Updated {formatUpdatedAt(item.updatedAt)}
+              </Text>
+              {item.status === 'changes_required' && item.moderationFeedback ? (
+                <Text style={{ color: theme.colors.danger, fontSize: 12 }} numberOfLines={1}>
+                  {item.moderationFeedback}
+                </Text>
+              ) : null}
+            </>
+          )}
         </View>
 
-        {statusCfg ? (
+        {isLoading ? (
+          <SkeletonShimmer>
+            <SkeletonBone
+              testID="draft-card-status-skeleton"
+              width={75}
+              height={20}
+              borderRadius={theme.radii.sm}
+            />
+          </SkeletonShimmer>
+        ) : statusCfg ? (
           <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: theme.radii.sm }}>
             <Text style={{ color: statusCfg.text, fontSize: 11, fontWeight: '700' }}>
               {statusCfg.label}

@@ -1,13 +1,15 @@
 import React from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import type { CommunityContributionRow } from '@expyrico/shared';
 import { PrivateProductImage } from '../../api/product-private-image';
 import { useTheme } from '../../theme/useTheme';
+import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
 
 export interface ContributedProductCardProps {
   item: CommunityContributionRow;
   onPress?: () => void;
+  isLoading?: boolean;
 }
 
 const STATUS_CONFIG: Partial<
@@ -32,11 +34,10 @@ function formatDate(isoString: string): string {
   }
 }
 
-export function ContributedProductCard({ item, onPress }: ContributedProductCardProps) {
+export function ContributedProductCard({ item, onPress, isLoading = false }: ContributedProductCardProps) {
   const theme = useTheme();
   const statusConfig = STATUS_CONFIG[item.status];
   const formattedDate = formatDate(item.createdAt);
-
   return (
     <Pressable
       testID={`contributed-card-${item.id}`}
@@ -54,7 +55,32 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
       ]}
     >
       {/* 48x48 Thumbnail */}
-      {item.coverPhotoId ? (
+      {isLoading ? (
+        <View
+          testID="contributed-card-thumbnail-skeleton"
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: theme.radii.sm,
+            backgroundColor: theme.colors.neutralLight,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <View
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              backgroundColor: theme.colors.bgGlass,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+          </View>
+        </View>
+      ) : item.coverPhotoId ? (
         <PrivateProductImage
           testID="contributed-card-cover"
           target={{ kind: 'draft', productId: item.id }}
@@ -85,43 +111,75 @@ export function ContributedProductCard({ item, onPress }: ContributedProductCard
           <Ionicons name="cube-outline" size={24} color={theme.colors.textMuted} />
         </View>
       )}
-
       {/* Middle details */}
       <View style={{ flex: 1, gap: 3 }}>
-        <Text style={[styles.productName, { color: theme.colors.text }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          {item.brand ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-              {item.brand} •{' '}
+        {isLoading ? (
+          <SkeletonShimmer style={{ gap: 4 }}>
+            <SkeletonBone
+              testID="contributed-card-title-skeleton"
+              width="65%"
+              height={15}
+              borderRadius={4}
+            />
+            <SkeletonBone
+              testID="contributed-card-subtitle-skeleton"
+              width="45%"
+              height={12}
+              borderRadius={3}
+            />
+            <SkeletonBone
+              testID="contributed-card-barcode-skeleton"
+              width="30%"
+              height={10}
+              borderRadius={3}
+            />
+          </SkeletonShimmer>
+        ) : (
+          <>
+            <Text style={[styles.productName, { color: theme.colors.text }]} numberOfLines={1}>
+              {item.name}
             </Text>
-          ) : null}
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            Added {formattedDate}
-          </Text>
-        </View>
-        {item.barcode ? (
-          <Text
-            style={{
-              color: theme.colors.textMuted,
-              fontSize: 11,
-              fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
-            }}
-          >
-            {item.barcode}
-          </Text>
-        ) : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              {item.brand ? (
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                  {item.brand} •{' '}
+                </Text>
+              ) : null}
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                Added {formattedDate}
+              </Text>
+            </View>
+            {item.barcode ? (
+              <Text
+                style={{
+                  color: theme.colors.textMuted,
+                  fontSize: 11,
+                  fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace' }),
+                }}
+              >
+                {item.barcode}
+              </Text>
+            ) : null}
+          </>
+        )}
       </View>
-
       {/* Right side: status pill + photo & edit badges */}
       <View style={{ alignItems: 'flex-end', gap: 6 }}>
-        {statusConfig ? (
+        {isLoading ? (
+          <SkeletonShimmer>
+            <SkeletonBone
+              testID="contributed-card-status-skeleton"
+              width={75}
+              height={20}
+              borderRadius={theme.radii.sm}
+            />
+          </SkeletonShimmer>
+        ) : statusConfig ? (
           <View
             style={{
               backgroundColor: statusConfig.bg,
               paddingHorizontal: 8,
-              paddingVertical: 4,
+              paddingVertical: 3,
               borderRadius: theme.radii.sm,
             }}
           >
