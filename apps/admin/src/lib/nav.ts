@@ -33,6 +33,12 @@ export const NAV: NavSection[] = [
     ],
   },
   {
+    title: 'Pantry',
+    items: [
+      { label: 'Pantry Items', href: '/pantry-items', icon: 'Archive' },
+    ],
+  },
+  {
     title: 'People',
     items: [
       { label: 'Users', href: '/users', icon: 'Users' },

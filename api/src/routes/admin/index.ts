@@ -49,6 +49,7 @@ import { adminSettingsPhotoLimitsRoute } from './settings/photo-limits.js';
 import { adminSettingsPantryLimitsRoute } from './settings/pantry-limits.js';
 import { adminTrustedDevicesRoute } from './trusted-devices.js';
 import { adminFeedbackRoutes } from './feedback/index.js';
+import { adminPantryItemsRoutes } from './pantry-items/index.js';
 export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminOnlyPlugin);
   await app.register(auditPlugin);
@@ -112,4 +113,5 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminHouseholdsDissolveRoute, { prefix: '/households' });
   await app.register(adminTrustedDevicesRoute);
   await app.register(adminFeedbackRoutes, { prefix: '/feedback' });
+  await app.register(adminPantryItemsRoutes, { prefix: '/pantry-items' });
 }

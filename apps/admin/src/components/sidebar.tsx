@@ -33,6 +33,7 @@ import {
   Camera,
   Layers,
   Barcode,
+  Archive,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,6 +65,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Camera,
   Layers,
   Barcode,
+  Archive,
 };
 
 export function Sidebar({

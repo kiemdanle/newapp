@@ -30,6 +30,10 @@ import type {
   BarcodeApiResetAction,
   BarcodeApiProbeRequest,
 } from '@expyrico/shared';
+import type {
+  AdminPantryItemPatch,
+  AdminPantryItemDetail,
+} from '@expyrico/shared';
 import { serverAdminApi } from './admin-api';
 import { ApiError } from './api';
 import type { ActionResult } from './action-result';
@@ -57,6 +61,48 @@ async function runAction<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
     }
     return { ok: false, code: 'unknown_error' };
   }
+}
+
+// --- Pantry Items ---
+export async function patchPantryItemAction(
+  id: string,
+  body: AdminPantryItemPatch,
+): Promise<ActionResult<AdminPantryItemDetail>> {
+  const result = await runAction(() => serverAdminApi.pantryItems.patch(id, body));
+  if (result.ok) {
+    revalidatePath('/pantry-items');
+    revalidatePath(`/pantry-items/${id}`);
+  }
+  return result;
+}
+
+export async function discardPantryItemAction(
+  id: string,
+  discardReason?: string,
+): Promise<ActionResult<AdminPantryItemDetail>> {
+  const result = await runAction(() =>
+    serverAdminApi.pantryItems.patch(id, {
+      status: 'discarded',
+      discardReason: discardReason ?? null,
+    }),
+  );
+  if (result.ok) {
+    revalidatePath('/pantry-items');
+    revalidatePath(`/pantry-items/${id}`);
+  }
+  return result;
+}
+
+export async function deletePantryItemAction(
+  id: string,
+): Promise<ActionResult<void>> {
+  const result = await runAction<void>(async () => {
+    await serverAdminApi.pantryItems.delete(id);
+  });
+  if (result.ok) {
+    revalidatePath('/pantry-items');
+  }
+  return result;
 }
 
 // --- Users ---

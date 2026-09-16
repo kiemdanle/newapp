@@ -90,6 +90,11 @@ import {
   feedbackTicketSchema,
   type FeedbackReplyInput,
   type UpdateFeedbackStatusInput,
+  adminPantryItemsListSchema,
+  adminPantryItemDetailSchema,
+  adminPantryFilterOptionsSchema,
+  type AdminPantryItemPatch,
+  type AdminPantryItemsQuery,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -103,6 +108,27 @@ function qs(q: Q): string {
 }
 
 export const serverAdminApi = {
+  pantryItems: {
+    list: (q: Q = {}) =>
+      apiServerFetch(`/v1/admin/pantry-items${qs(q)}`).then((r) =>
+        adminPantryItemsListSchema.parse(r),
+      ),
+    filterOptions: () =>
+      apiServerFetch('/v1/admin/pantry-items/filter-options').then((r) =>
+        adminPantryFilterOptionsSchema.parse(r),
+      ),
+    get: (id: string) =>
+      apiServerFetch(`/v1/admin/pantry-items/${id}`).then((r) =>
+        adminPantryItemDetailSchema.parse(r),
+      ),
+    patch: (id: string, body: object) =>
+      apiServerFetch(`/v1/admin/pantry-items/${id}`, {
+        method: 'PATCH',
+        body,
+      }).then((r) => adminPantryItemDetailSchema.parse(r)),
+    delete: (id: string) =>
+      apiServerFetch(`/v1/admin/pantry-items/${id}`, { method: 'DELETE' }),
+  },
   users: {
     list: (q: Q = {}) =>
       apiServerFetch(`/v1/admin/users${qs(q)}`).then((r) => adminUsersListSchema.parse(r)),

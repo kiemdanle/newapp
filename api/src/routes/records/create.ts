@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import prismaPkg from '@prisma/client';
-const { Prisma } = prismaPkg;
+import { Prisma } from '@prisma/client';
 import { recordCreateSchema, ERROR_CODES } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
 import { AppError } from '../../errors.js';
@@ -12,6 +11,7 @@ import { assertMember, lockHouseholdRow } from '../../services/households/permis
 import { lockUserPantryQuota, assertCanAddPantryItems } from '../../services/records/pantry-limits.js';
 import { fanOutHouseholdRecordReminders } from '../../services/households/household-reminders.js';
 import { assertProductUse } from '../../services/products/product-visibility.js';
+import { getPhotoLimits } from '../../services/admin/settings.js';
 
 export async function createRecordRoute(app: FastifyInstance) {
   app.post(
@@ -19,6 +19,17 @@ export async function createRecordRoute(app: FastifyInstance) {
     { onRequest: app.requireAuth, config: { idempotent: 'required' } },
     async (req, reply) => {
       const input = recordCreateSchema.parse(req.body);
+      if (input.photoUrls && input.photoUrls.length > 0) {
+        const photoLimits = await getPhotoLimits();
+        if (input.photoUrls.length > photoLimits.maxPantryItemPhotos) {
+          throw new AppError({
+            status: 400,
+            code: ERROR_CODES.VALIDATION,
+            title: `Cannot exceed maximum of ${photoLimits.maxPantryItemPhotos} photos`,
+          });
+        }
+      }
+
       const userId = req.user!.id;
       const prisma = getPrisma();
 
@@ -47,6 +58,18 @@ export async function createRecordRoute(app: FastifyInstance) {
               title: 'client_id already used by another user',
             });
           }
+          // 3b. Check for tombstone under lock (anti-resurrection guard)
+          const tombstone = await tx.recordTombstone.findUnique({
+            where: { clientId: input.clientId },
+          });
+          if (tombstone) {
+            throw new AppError({
+              status: 409,
+              code: ERROR_CODES.CONFLICT,
+              title: 'This item was deleted by an administrator and cannot be recreated',
+            });
+          }
+
 
           if (input.productId) {
             await assertProductUse(
@@ -75,6 +98,19 @@ export async function createRecordRoute(app: FastifyInstance) {
             await assertCanAddPantryItems(userId, 1, tx);
           }
 
+          let photoUrlsData: Prisma.InputJsonValue | typeof Prisma.DbNull | undefined = undefined;
+          let photoUrlData: string | null = input.photoUrl ?? null;
+
+          if (input.photoUrls !== undefined) {
+            if (input.photoUrls === null) {
+              photoUrlsData = Prisma.DbNull;
+              photoUrlData = null;
+            } else {
+              photoUrlsData = input.photoUrls;
+              photoUrlData = input.photoUrls[0] ?? null;
+            }
+          }
+
           const created = await tx.record.create({
             data: {
               userId,
@@ -87,7 +123,8 @@ export async function createRecordRoute(app: FastifyInstance) {
               quantity: input.quantity,
               unit: input.unit,
               notes: input.notes ?? null,
-              photoUrl: input.photoUrl ?? null,
+              photoUrl: photoUrlData,
+              photoUrls: photoUrlsData ?? Prisma.DbNull,
               status: effectiveStatus,
               consumedAt:
                 effectiveStatus === 'consumed'

@@ -1,4 +1,4 @@
-import { removeRecordLocalPhotos } from '../features/records/record-photo-storage';
+import { removeRecordLocalPhotos, saveRecordLocalPhotos, getRecordLocalPhotosSync } from '../features/records/record-photo-storage';
 import { Q } from '@nozbe/watermelondb';
 import { v4 as uuidv4 } from 'uuid';
 import { database, RecordModel } from './index';
@@ -11,13 +11,19 @@ import { useSyncStateStore } from '../store/syncStateStore';
 
 export const LAST_SYNC_KEY = 'pantry.lastSyncAt';
 
-let syncing = false;
 let currentSyncEpoch = 0;
-let pendingSyncRequestedEpoch: number | null = null;
+let recordSyncQueue: Promise<unknown> = Promise.resolve();
+
+// Direct photo saves and background sync must not write the server out of order.
+export function withRecordSyncLock<T>(operation: (isCurrent: () => boolean) => Promise<T>): Promise<T> {
+  const epoch = currentSyncEpoch;
+  const result = recordSyncQueue.then(() => operation(() => epoch === currentSyncEpoch));
+  recordSyncQueue = result.catch(() => {});
+  return result;
+}
 
 export function invalidateSyncEpoch(): void {
   currentSyncEpoch++;
-  pendingSyncRequestedEpoch = null;
 }
 
 export function isSyncEpochValid(runEpoch?: number): boolean {
@@ -25,12 +31,13 @@ export function isSyncEpochValid(runEpoch?: number): boolean {
 }
 
 export async function runSync(): Promise<void> {
-  const runEpoch = currentSyncEpoch;
-  if (syncing) {
-    pendingSyncRequestedEpoch = runEpoch;
-    return;
-  }
-  syncing = true;
+  await withRecordSyncLock(async (isCurrent) => {
+    if (!isCurrent()) return;
+    await runSyncPass(currentSyncEpoch);
+  });
+}
+
+async function runSyncPass(runEpoch: number): Promise<void> {
   useSyncStateStore.getState().setSyncStart();
   try {
     await pushPending(runEpoch);
@@ -42,12 +49,6 @@ export async function runSync(): Promise<void> {
     console.error('[runSync] Sync failed:', err);
     if (isSyncEpochValid(runEpoch)) {
       useSyncStateStore.getState().setSyncError(err);
-    }
-  } finally {
-    syncing = false;
-    if (pendingSyncRequestedEpoch !== null && isSyncEpochValid(pendingSyncRequestedEpoch)) {
-      pendingSyncRequestedEpoch = null;
-      void runSync();
     }
   }
 }
@@ -75,6 +76,34 @@ export function getWirePhotoUrl(raw: string | null | undefined): string | null {
   }
   return null;
 }
+export function getWirePhotoUrls(
+  urlsJson: string | null | undefined,
+  fallbackCoverUrl?: string | null,
+): string[] | null | undefined {
+  if (urlsJson == null) return undefined;
+  const trimmed = urlsJson.trim();
+  if (trimmed === 'null') return null;
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (item): item is string =>
+            typeof item === 'string' &&
+            (item.startsWith('http://') || item.startsWith('https://')),
+        );
+      }
+    } catch {
+      // ignore invalid json
+    }
+  }
+  if (fallbackCoverUrl) {
+    const cover = getWirePhotoUrl(fallbackCoverUrl);
+    return cover ? [cover] : [];
+  }
+  return null;
+}
+
 
 async function pushPending(runEpoch: number): Promise<void> {
   if (!isSyncEpochValid(runEpoch)) return;
@@ -134,6 +163,10 @@ async function pushPending(runEpoch: number): Promise<void> {
       const clientId = rec.clientId || uuidv4();
       if (!rec.serverId) {
         // CREATE — POST /v1/records
+        const wirePhotoUrls = getWirePhotoUrls(rec.photoUrlsJson, rec.photoUrl);
+        const wireCover = wirePhotoUrls && wirePhotoUrls.length > 0
+          ? wirePhotoUrls[0]
+          : getWirePhotoUrl(rec.photoUrl);
         const body: Record<string, unknown> = {
           clientId,
           productId: rec.productId,
@@ -144,7 +177,7 @@ async function pushPending(runEpoch: number): Promise<void> {
           quantity: rec.quantity,
           unit: rec.unit,
           notes: rec.notes,
-          photoUrl: getWirePhotoUrl(rec.photoUrl),
+          photoUrl: wireCover,
           status: rec.status,
           consumedAt: rec.consumedAt ? rec.consumedAt.toISOString() : null,
           discardedAt: rec.discardedAt ? rec.discardedAt.toISOString() : null,
@@ -152,6 +185,9 @@ async function pushPending(runEpoch: number): Promise<void> {
         };
         if (rec.location) body.location = rec.location;
         if (rec.householdId) body.householdId = rec.householdId;
+        if (wirePhotoUrls !== undefined) {
+          body.photoUrls = wirePhotoUrls;
+        }
         const res = await apiClient.post<{ id: string }>(
           '/records',
           body,
@@ -177,6 +213,10 @@ async function pushPending(runEpoch: number): Promise<void> {
         syncQuotaErrorsStore.remove(clientId);
       } else {
         // UPDATE — PATCH /v1/records/:id
+        const wirePhotoUrls = getWirePhotoUrls(rec.photoUrlsJson, rec.photoUrl);
+        const wireCover = wirePhotoUrls && wirePhotoUrls.length > 0
+          ? wirePhotoUrls[0]
+          : getWirePhotoUrl(rec.photoUrl);
         const patch: Record<string, unknown> = {
           customName: rec.customName,
           brand: rec.brand,
@@ -185,9 +225,12 @@ async function pushPending(runEpoch: number): Promise<void> {
           quantity: rec.quantity,
           unit: rec.unit,
           notes: rec.notes,
-          photoUrl: getWirePhotoUrl(rec.photoUrl),
+          photoUrl: wireCover,
           status: rec.status,
         };
+        if (wirePhotoUrls !== undefined) {
+          patch.photoUrls = wirePhotoUrls;
+        }
         if (rec.householdId !== undefined) patch.householdId = rec.householdId;
         if (rec.consumedAt) patch.consumedAt = rec.consumedAt.toISOString();
         if (rec.discardedAt) patch.discardedAt = rec.discardedAt.toISOString();
@@ -254,9 +297,35 @@ async function pushPending(runEpoch: number): Promise<void> {
             }
           } catch {}
         });
+      } else if (!rec.householdId && status === 404) {
+        // Personal record was deleted on server (e.g. by admin).
+        // Destroy local record permanently to unblock sync pipeline.
+        if (!isSyncEpochValid(runEpoch)) return;
+        await database.write(async () => {
+          if (!isSyncEpochValid(runEpoch)) return;
+          try {
+            const fresh = await recordsCol.find(rec.id);
+            if (fresh && isSyncEpochValid(runEpoch)) {
+              await fresh.destroyPermanently();
+            }
+          } catch {}
+        });
       } else {
         throw err;
       }
+    }
+  }
+}
+
+async function applyPhotoAttachments(record: RecordSyncResponse['changes'][number], runEpoch?: number): Promise<void> {
+  if (!isSyncEpochValid(runEpoch)) return;
+  if (Array.isArray(record.photoUrls)) {
+    await saveRecordLocalPhotos(record.clientId, record.photoUrls);
+  } else if (record.photoUrls === null) {
+    const local = getRecordLocalPhotosSync(record.clientId);
+    // A newly added nullable server column must not erase pre-upgrade camera files.
+    if (!local?.some((uri) => !uri.startsWith('https://') && !uri.startsWith('http://'))) {
+      await removeRecordLocalPhotos(record.clientId);
     }
   }
 }
@@ -304,6 +373,9 @@ async function applySyncChanges(
           r.unit = ch.unit;
           r.notes = ch.notes;
           r.photoUrl = ch.photoUrl;
+          if (ch.photoUrls !== undefined) {
+            r.photoUrlsJson = ch.photoUrls ? JSON.stringify(ch.photoUrls) : null;
+          }
           r.status = ch.status;
           r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
           r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -314,6 +386,7 @@ async function applySyncChanges(
           r.pendingSync = false;
           r.pendingDelete = false;
         });
+        await applyPhotoAttachments(ch, runEpoch);
       }
     }
 
@@ -345,6 +418,9 @@ async function applySyncChanges(
             r.unit = ch.unit;
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
+            if (ch.photoUrls !== undefined) {
+              r.photoUrlsJson = ch.photoUrls ? JSON.stringify(ch.photoUrls) : null;
+            }
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -371,6 +447,9 @@ async function applySyncChanges(
             r.unit = ch.unit;
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
+            if (ch.photoUrls !== undefined) {
+              r.photoUrlsJson = ch.photoUrls ? JSON.stringify(ch.photoUrls) : null;
+            }
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -400,6 +479,9 @@ async function applySyncChanges(
             r.unit = ch.unit;
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
+            if (ch.photoUrls !== undefined) {
+              r.photoUrlsJson = ch.photoUrls ? JSON.stringify(ch.photoUrls) : null;
+            }
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -426,6 +508,9 @@ async function applySyncChanges(
             r.unit = ch.unit;
             r.notes = ch.notes;
             r.photoUrl = ch.photoUrl;
+            if (ch.photoUrls !== undefined) {
+              r.photoUrlsJson = ch.photoUrls ? JSON.stringify(ch.photoUrls) : null;
+            }
             r.status = ch.status;
             r.consumedAt = ch.consumedAt ? new Date(ch.consumedAt) : null;
             r.discardedAt = ch.discardedAt ? new Date(ch.discardedAt) : null;
@@ -438,6 +523,8 @@ async function applySyncChanges(
           });
         }
       }
+
+      await applyPhotoAttachments(ch, runEpoch);
     }
 
     for (const id of deletedIds) {
@@ -473,7 +560,6 @@ async function pullSince(runEpoch: number): Promise<void> {
   let cursor: { updatedAt: string; id: string } | null = null;
   let initialServerTime: string | null = null;
   let hasMore = true;
-
   while (hasMore) {
     if (!isSyncEpochValid(runEpoch)) return;
     const body: RecordSyncBatch = {

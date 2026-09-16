@@ -1,5 +1,5 @@
+import { Prisma, ProductStatus } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
-import { ProductStatus } from '@prisma/client';
 import { getPrisma } from '../../src/db.js';
 export async function makeUser(
   overrides: Partial<{
@@ -58,6 +58,12 @@ export async function makeRecord(
   overrides: Partial<{
     productId: string | null;
     customName: string;
+    brand: string | null;
+    category: string | null;
+    location: string | null;
+    store: string | null;
+    price: number | null;
+    notes: string | null;
     expiryDate: Date;
     quantity: number;
     unit: string;
@@ -65,6 +71,8 @@ export async function makeRecord(
     clientId: string;
     notifyAt: string[];
     householdId: string | null;
+    photoUrl: string | null;
+    photoUrls: string[] | null;
   }> = {},
 ) {
   const prisma = getPrisma();
@@ -73,6 +81,12 @@ export async function makeRecord(
       userId,
       productId: overrides.productId ?? null,
       customName: overrides.customName ?? 'Manual item',
+      brand: overrides.brand ?? null,
+      category: overrides.category ?? null,
+      location: overrides.location ?? null,
+      store: overrides.store ?? null,
+      price: overrides.price !== undefined ? overrides.price : null,
+      notes: overrides.notes ?? null,
       expiryDate: overrides.expiryDate ?? new Date(Date.now() + 7 * 24 * 3600 * 1000),
       quantity: overrides.quantity ?? 1,
       unit: overrides.unit ?? 'pcs',
@@ -80,6 +94,8 @@ export async function makeRecord(
       clientId: overrides.clientId ?? randomUUID(),
       notifyAt: overrides.notifyAt ?? [],
       householdId: overrides.householdId !== undefined ? overrides.householdId : null,
+      photoUrl: (overrides.photoUrl !== undefined ? overrides.photoUrl : (overrides.photoUrls && overrides.photoUrls.length > 0 ? overrides.photoUrls[0] : null)) ?? null,
+      photoUrls: overrides.photoUrls === undefined ? Prisma.DbNull : (overrides.photoUrls === null ? Prisma.DbNull : overrides.photoUrls),
     },
   });
 }

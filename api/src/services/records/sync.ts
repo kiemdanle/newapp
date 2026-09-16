@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { Record as PrismaRecord } from '@prisma/client';
 import { ERROR_CODES, type RecordSyncBatch, type RecordSyncConflict } from '@expyrico/shared';
 import { getPrisma } from '../../db.js';
@@ -8,6 +9,7 @@ import { maybeActivateReferral } from '../referrals/referral-service.js';
 import { myHouseholdIds, lockHouseholdRow } from '../households/permissions.js';
 import { assertProductUse, ProductUseRejectionError } from '../products/product-visibility.js';
 import { lockUserPantryQuota, assertCanAddPantryItems } from './pantry-limits.js';
+import { getPhotoLimits } from '../admin/settings.js';
 
 export interface SyncOutcome {
   changes: PrismaRecord[];
@@ -39,6 +41,16 @@ export async function syncRecords(
     select: { notificationPreferences: true },
   });
   const userOffsets = resolveOffsetsForUser(user?.notificationPreferences);
+  if (batch.upserts.some((record) => record.photoUrls?.length)) {
+    const { maxPantryItemPhotos } = await getPhotoLimits();
+    if (batch.upserts.some((record) => (record.photoUrls?.length ?? 0) > maxPantryItemPhotos)) {
+      throw new AppError({
+        status: 400,
+        code: ERROR_CODES.VALIDATION,
+        title: 'Cannot exceed maximum of ' + maxPantryItemPhotos + ' photos',
+      });
+    }
+  }
 
   // 1. Apply deletes — caller's personal records + household records they can access.
   if (batch.deletes.length > 0) {
@@ -96,6 +108,19 @@ export async function syncRecords(
           // 2. Household lock second
           await lockHouseholdRow(tx, recordHouseholdId);
 
+          const tombstone = await tx.recordTombstone.findUnique({
+            where: { clientId: u.clientId },
+          });
+          if (tombstone) {
+            if (
+              tombstone.userId === userId ||
+              (tombstone.householdId && householdIds.has(tombstone.householdId))
+            ) {
+              deletedIds.push(tombstone.recordId);
+            }
+            return;
+          }
+
           if (existing) {
             // Server row already exists — server wins; do NOT overwrite with client data.
             // The server copy will be echoed in the delta (step 3).
@@ -115,6 +140,17 @@ export async function syncRecords(
 
           const offsets = u.notificationOffsetsDays ?? userOffsets;
           const notifyAt = uStatus === 'active' ? computeNotifyAt(new Date(u.expiryDate), offsets) : [];
+          let photoUrlsData: Prisma.InputJsonValue | typeof Prisma.DbNull | undefined = undefined;
+          let photoUrlData: string | null = u.photoUrl ?? null;
+          if (u.photoUrls !== undefined) {
+            if (u.photoUrls === null) {
+              photoUrlsData = Prisma.DbNull;
+              photoUrlData = null;
+            } else {
+              photoUrlsData = u.photoUrls;
+              photoUrlData = u.photoUrls[0] ?? null;
+            }
+          }
           const created = await tx.record.create({
             data: {
               userId,
@@ -128,7 +164,8 @@ export async function syncRecords(
               quantity: u.quantity,
               unit: u.unit,
               notes: u.notes ?? null,
-              photoUrl: u.photoUrl ?? null,
+              photoUrl: photoUrlData,
+              photoUrls: photoUrlsData ?? Prisma.DbNull,
               status: uStatus,
               consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : new Date()) : null,
               discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
@@ -164,6 +201,19 @@ export async function syncRecords(
           const ownerId = existing?.userId ?? userId;
           await lockUserPantryQuota(tx, ownerId);
 
+          const tombstone = await tx.recordTombstone.findUnique({
+            where: { clientId: u.clientId },
+          });
+          if (tombstone) {
+            if (
+              tombstone.userId === userId ||
+              (tombstone.householdId && householdIds.has(tombstone.householdId))
+            ) {
+              deletedIds.push(tombstone.recordId);
+            }
+            return;
+          }
+
           const freshRecord = await tx.record.findUnique({ where: { clientId: u.clientId } });
           if (freshRecord) {
             if (freshRecord.userId !== userId) {
@@ -187,6 +237,31 @@ export async function syncRecords(
               tx,
             );
           }
+          let photoUrlsData: Prisma.InputJsonValue | typeof Prisma.DbNull | undefined = undefined;
+          let photoUrlData: string | null = u.photoUrl ?? null;
+          if (u.photoUrls !== undefined) {
+            if (u.photoUrls === null) {
+              photoUrlsData = Prisma.DbNull;
+              photoUrlData = null;
+            } else {
+              photoUrlsData = u.photoUrls;
+              photoUrlData = u.photoUrls[0] ?? null;
+            }
+          }
+
+          let photoUrlsUpdate: { photoUrls?: Prisma.InputJsonValue | typeof Prisma.DbNull } = {};
+          let photoUrlUpdate: { photoUrl?: string | null } = {};
+          if (u.photoUrls !== undefined) {
+            if (u.photoUrls === null) {
+              photoUrlsUpdate = { photoUrls: Prisma.DbNull };
+              photoUrlUpdate = { photoUrl: null };
+            } else {
+              photoUrlsUpdate = { photoUrls: u.photoUrls };
+              photoUrlUpdate = { photoUrl: u.photoUrls[0] ?? null };
+            }
+          } else if (u.photoUrl !== undefined) {
+            photoUrlUpdate = { photoUrl: u.photoUrl };
+          }
           const upserted = await tx.record.upsert({
             where: { clientId: u.clientId },
             create: {
@@ -200,7 +275,8 @@ export async function syncRecords(
               quantity: u.quantity,
               unit: u.unit,
               notes: u.notes ?? null,
-              photoUrl: u.photoUrl ?? null,
+              photoUrl: photoUrlData,
+              photoUrls: photoUrlsData ?? Prisma.DbNull,
               status: u.status ?? 'active',
               consumedAt: (u.status ?? 'active') === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : new Date()) : null,
               discardedAt: (u.status ?? 'active') === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : new Date()) : null,
@@ -217,7 +293,8 @@ export async function syncRecords(
               quantity: u.quantity,
               unit: u.unit,
               notes: u.notes ?? null,
-              photoUrl: u.photoUrl ?? null,
+              ...photoUrlUpdate,
+              ...photoUrlsUpdate,
               status: uStatus,
               consumedAt: uStatus === 'consumed' ? (u.consumedAt ? new Date(u.consumedAt) : (freshRecord?.consumedAt ?? new Date())) : null,
               discardedAt: uStatus === 'discarded' ? (u.discardedAt ? new Date(u.discardedAt) : (freshRecord?.discardedAt ?? new Date())) : null,
@@ -300,10 +377,32 @@ export async function syncRecords(
   const nextCursor = hasMore && lastItem
     ? { updatedAt: lastItem.updatedAt.toISOString(), id: lastItem.id }
     : null;
+  // 4. Tombstone pull: deliver server-side deletions since sinceDate
+  // Only query on initial page (batch.cursor absent) to prevent unbounded replay on continuations
+  if (!batch.cursor) {
+    const tombstones = await prisma.recordTombstone.findMany({
+      where: {
+        deletedAt: { gt: sinceDate },
+        OR: [
+          { userId, householdId: null },
+          ...(householdIdList.length > 0
+            ? [{ householdId: { in: householdIdList } }]
+            : []),
+        ],
+      },
+      select: { recordId: true },
+      take: 1000,
+    });
+    for (const t of tombstones) {
+      deletedIds.push(t.recordId);
+    }
+  }
+
+  const uniqueDeletedIds = Array.from(new Set(deletedIds));
 
   return {
     changes,
-    deletedIds,
+    deletedIds: uniqueDeletedIds,
     conflicts,
     serverTime,
     householdIds: householdIdList,

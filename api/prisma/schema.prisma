@@ -732,6 +732,7 @@ model Record {
   store        String?
   notes        String?
   photoUrl     String?      @map("photo_url")
+  photoUrls    Json?        @map("photo_urls")
   status       RecordStatus @default(active)
   notifyAt     Json         @default("[]") @map("notify_at")
   clientId     String       @unique @map("client_id") @db.Uuid
@@ -755,6 +756,19 @@ model Record {
   @@index([userId, status, discardedAt])
   @@index([userId, status, consumedAt])
   @@map("records")
+}
+
+model RecordTombstone {
+  id          String   @id @default(uuid()) @db.Uuid
+  recordId    String   @map("record_id") @db.Uuid
+  clientId    String   @unique @map("client_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  householdId String?  @map("household_id") @db.Uuid
+  deletedAt   DateTime @default(now()) @map("deleted_at")
+
+  @@index([userId, deletedAt])
+  @@index([householdId, deletedAt])
+  @@map("record_tombstones")
 }
 
 model PushLog {
