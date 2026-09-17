@@ -61,7 +61,7 @@ export default function RecordDetail() {
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
-  const { id } = useRoute().params as { id: string };
+  const { id = '' } = (useRoute().params ?? {}) as { id?: string };
   const {
     record,
     isResolved: isRecordResolved,

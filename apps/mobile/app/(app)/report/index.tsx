@@ -14,7 +14,7 @@ const REASONS: string[] = ['spam', 'abuse', 'incorrect', 'other'];
 export default function ReportScreen() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
-  const { targetType, targetId } = useRoute().params as { targetType: string; targetId: string };
+  const { targetType = 'product', targetId = '' } = (useRoute().params ?? {}) as { targetType?: string; targetId?: string };
   const [reason, setReason] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);

@@ -21,7 +21,7 @@ export default function ProductDetail() {
   const theme = useTheme();
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
-  const { id } = route.params as { id: string };
+  const { id = '' } = (route.params ?? {}) as { id?: string };
   const { data, isLoading, isError, isFetching } = useProduct(id);
   const [showOcr, setShowOcr] = useState(false);
   const [prefillDate, setPrefillDate] = useState<string | null>(null);

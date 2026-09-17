@@ -11,7 +11,7 @@ import { useTheme } from '@/theme/useTheme';
 
 export default function ManageGiveawayScreen() {
   const theme = useTheme();
-  const { id } = useRoute().params as { id: string };
+  const { id = '' } = (useRoute().params ?? {}) as { id?: string };
 
   const { data: giveaway, isLoading: loadingGiveaway } = useGiveaway(id ?? '');
   const { data: claims, isLoading: loadingClaims, refetch } = useGiveawayClaims(id ?? '');

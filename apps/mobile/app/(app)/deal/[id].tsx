@@ -28,7 +28,7 @@ export default function DealDetailScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<AppNavigationProp>();
   const route = useRoute();
-  const { id } = route.params as { id: string };
+  const { id = '' } = (route.params ?? {}) as { id?: string };
   const { data: deal, isLoading } = useDeal(id ?? '');
   const del = useDeleteDeal();
   const vote = useOptimisticDealVote(id ?? '');

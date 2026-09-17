@@ -50,7 +50,7 @@ export default function GiveawayDetailScreen() {
   const navigation = useNavigation<AppNavigationProp>();
   const insets = useSafeAreaInsets();
   const route = useRoute();
-  const { id } = route.params as { id: string };
+  const { id = '' } = (route.params ?? {}) as { id?: string };
 
   const { data: giveaway, isLoading, refetch } = useGiveaway(id ?? '');
   const user = useSessionStore((s) => s.user);

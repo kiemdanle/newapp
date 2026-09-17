@@ -5,7 +5,7 @@ import { TransactionRatingForm } from '@/features/giveaways/TransactionRatingFor
 import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 export default function RateTransactionScreen() {
-  const { id } = useRoute().params as { id: string };
+  const { id = '' } = (useRoute().params ?? {}) as { id?: string };
   const navigation = useNavigation<AppNavigationProp>();
 
   return (

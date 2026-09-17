@@ -62,7 +62,7 @@ export default function FeedbackDetailScreen() {
   const queryClient = useQueryClient();
   const theme = useTheme();
 
-  const ticketId = route.params.id;
+  const ticketId = route.params?.id ?? '';
   const [replyText, setReplyText] = useState('');
 
   const ticketQuery = useQuery({

@@ -41,6 +41,10 @@ class MainActivity : ReactActivity() {
         }
         onBackPressedDispatcher.addCallback(this, backCallback)
     }
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
 
     override fun invokeDefaultOnBackPressed() {
         defaultBackInvoked = true

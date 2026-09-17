@@ -98,20 +98,57 @@ function HouseholdInvitationBannerHandler({ isAuthenticated }: { isAuthenticated
     />
   );
 }
+function parseQueryString(query: string): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!query) return result;
+  const cleaned = query.startsWith('?') ? query.slice(1) : query;
+  for (const pair of cleaned.split('&')) {
+    if (!pair) continue;
+    const eq = pair.indexOf('=');
+    if (eq === -1) {
+      result[decodeURIComponent(pair)] = '';
+    } else {
+      const k = decodeURIComponent(pair.slice(0, eq));
+      const v = decodeURIComponent(pair.slice(eq + 1));
+      result[k] = v;
+    }
+  }
+  return result;
+}
+
 function DeepLinkHandler() {
   useEffect(() => {
     const handleUrl = ({ url }: { url: string }) => {
       try {
-        const parsed = new URL(url);
-        if (parsed.protocol === 'expyrico:' && parsed.hostname === 'invite') {
-          const code = parsed.searchParams.get('code');
+        if (!url || !url.startsWith('expyrico://')) return;
+
+        const withoutScheme = url.slice('expyrico://'.length);
+        const [hostPath, queryStr = ''] = withoutScheme.split('?');
+        const host = (hostPath || '').split('/')[0]?.toLowerCase();
+        const queryParams = parseQueryString(queryStr);
+
+        if (host === 'navigate') {
+          const screen = queryParams.screen;
+          if (screen) {
+            let parsedParams: Record<string, unknown> | undefined;
+            if (queryParams.params) {
+              try { parsedParams = JSON.parse(queryParams.params); } catch { /* ignore */ }
+            }
+            if (!parsedParams) {
+              const extra: Record<string, string> = {};
+              for (const [k, v] of Object.entries(queryParams)) {
+                if (k !== 'screen' && k !== 'params') extra[k] = v;
+              }
+              if (Object.keys(extra).length > 0) parsedParams = extra;
+            }
+            navigate(screen, parsedParams);
+          }
+        } else if (host === 'invite') {
+          const code = queryParams.code;
           if (code) void capturePendingReferralCode(code);
-        } else if (
-          parsed.protocol === 'expyrico:' &&
-          (parsed.hostname === 'household' || parsed.hostname === 'join-household')
-        ) {
-          const code = parsed.searchParams.get('code');
-          const token = parsed.searchParams.get('token');
+        } else if (host === 'household' || host === 'join-household') {
+          const code = queryParams.code;
+          const token = queryParams.token;
           if (token) {
             capturePendingHouseholdInvitationToken(token);
           } else if (code) {
@@ -119,17 +156,15 @@ function DeepLinkHandler() {
             navigate('Household', { joinCode: code });
           }
         }
-      } catch {
-        // ignore parse failures on non-referral URLs
+      } catch (err) {
+        console.warn('Deep link handling error:', err);
       }
     };
 
     const sub = Linking.addEventListener('url', handleUrl);
     Linking.getInitialURL().then((url) => {
       if (url) handleUrl({ url });
-    }).catch(() => {
-      // ignore
-    });
+    }).catch(() => {});
     return () => sub.remove();
   }, []);
 
