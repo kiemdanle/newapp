@@ -55,6 +55,7 @@ export const NAV: NavSection[] = [
       { label: 'Reviews', href: '/analytics/reviews', icon: 'MessageSquare' },
       { label: 'Geography', href: '/analytics/geography', icon: 'Map' },
       { label: 'Barcode APIs', href: '/system/external-apis', icon: 'Barcode' },
+      { label: 'Google Maps API', href: '/system/external-apis/google-maps', icon: 'Compass' },
     ],
   },
   {
@@ -68,8 +69,6 @@ export const NAV: NavSection[] = [
       { label: 'Push logs', href: '/system/push', icon: 'Smartphone' },
       { label: 'Moderation notifications', href: '/system/moderation-notifications', icon: 'Bell' },
       { label: 'API errors', href: '/system/api-errors', icon: 'AlertTriangle' },
-      { label: 'External Barcode APIs', href: '/system/external-apis', icon: 'Barcode' },
-      { label: 'Google Maps API', href: '/system/external-apis/google-maps', icon: 'Compass' },
     ],
   },
   {
