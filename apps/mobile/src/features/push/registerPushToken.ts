@@ -4,8 +4,8 @@ import { getItem, setItem } from '../../auth/secure-store';
 import { registerPushTokenApi } from '../../api/push';
 
 /** Stores the last successfully registered FCM token and user ID. */
-export const PUSH_REGISTERED_FLAG_KEY = 'pantry.pushRegisteredV1';
-export const PUSH_REGISTERED_USER_ID_KEY = 'pantry.pushRegisteredUserIdV1';
+export const PUSH_REGISTERED_FLAG_KEY = 'pantry.pushRegisteredV2';
+export const PUSH_REGISTERED_USER_ID_KEY = 'pantry.pushRegisteredUserIdV2';
 
 export async function ensurePushTokenRegistered(currentUserId?: string): Promise<void> {
   try {
@@ -15,9 +15,15 @@ export async function ensurePushTokenRegistered(currentUserId?: string): Promise
       authStatus === messaging.AuthorizationStatus.PROVISIONAL;
     if (!enabled) return;
 
-    const fcmToken = await messaging().getToken();
+    let fcmToken: string | null = null;
+    try {
+      fcmToken = await messaging().getToken();
+    } catch (e) {
+      console.warn('Initial getToken failed, resetting token:', e);
+      await messaging().deleteToken().catch(() => {});
+      fcmToken = await messaging().getToken().catch(() => null);
+    }
     if (!fcmToken) return;
-
     // Compare against the last registered token AND user so switching accounts
     // re-registers the token for the newly authenticated user.
     const lastRegisteredToken = await getItem(PUSH_REGISTERED_FLAG_KEY);
