@@ -1,16 +1,16 @@
 -- AlterTable
-ALTER TABLE "users" ADD COLUMN "latitude" DOUBLE PRECISION,
-ADD COLUMN "longitude" DOUBLE PRECISION;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION;
 
 -- AlterTable
-ALTER TABLE "giveaways" ADD COLUMN "latitude" DOUBLE PRECISION,
-ADD COLUMN "longitude" DOUBLE PRECISION;
+ALTER TABLE "giveaways" ADD COLUMN IF NOT EXISTS "latitude" DOUBLE PRECISION;
+ALTER TABLE "giveaways" ADD COLUMN IF NOT EXISTS "longitude" DOUBLE PRECISION;
 
 -- CreateIndex
-CREATE INDEX "giveaways_latitude_longitude_idx" ON "giveaways"("latitude", "longitude");
+CREATE INDEX IF NOT EXISTS "giveaways_latitude_longitude_idx" ON "giveaways"("latitude", "longitude");
 
 -- CreateTable
-CREATE TABLE "google_maps_api_call_logs" (
+CREATE TABLE IF NOT EXISTS "google_maps_api_call_logs" (
     "id" UUID NOT NULL,
     "endpoint" TEXT NOT NULL,
     "latitude" DOUBLE PRECISION NOT NULL,
@@ -29,13 +29,20 @@ CREATE TABLE "google_maps_api_call_logs" (
 );
 
 -- CreateIndex
-CREATE INDEX "google_maps_api_call_logs_created_at_idx" ON "google_maps_api_call_logs"("created_at");
+CREATE INDEX IF NOT EXISTS "google_maps_api_call_logs_created_at_idx" ON "google_maps_api_call_logs"("created_at");
 
 -- CreateIndex
-CREATE INDEX "google_maps_api_call_logs_status_created_at_idx" ON "google_maps_api_call_logs"("status", "created_at");
+CREATE INDEX IF NOT EXISTS "google_maps_api_call_logs_status_created_at_idx" ON "google_maps_api_call_logs"("status", "created_at");
 
 -- CreateIndex
-CREATE INDEX "google_maps_api_call_logs_user_id_created_at_idx" ON "google_maps_api_call_logs"("user_id", "created_at");
+CREATE INDEX IF NOT EXISTS "google_maps_api_call_logs_user_id_created_at_idx" ON "google_maps_api_call_logs"("user_id", "created_at");
 
 -- AddForeignKey
-ALTER TABLE "google_maps_api_call_logs" ADD CONSTRAINT "google_maps_api_call_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'google_maps_api_call_logs_user_id_fkey'
+  ) THEN
+    ALTER TABLE "google_maps_api_call_logs" ADD CONSTRAINT "google_maps_api_call_logs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;
