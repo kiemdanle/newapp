@@ -164,7 +164,7 @@ export default function GiveawayDetailScreen() {
       <ScrollView
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: Math.max(insets.bottom, 34) + 90,
+          paddingBottom: Math.max(insets.bottom, 34) + 110,
           gap: 14,
         }}
         showsVerticalScrollIndicator={false}
@@ -393,11 +393,17 @@ export default function GiveawayDetailScreen() {
                 Neighbourhood
               </Text>
             </View>
-            <Text style={[styles.specValue, { color: theme.colors.text }]}>
-              {giveaway.locationText}
-            </Text>
+            <View style={{ flex: 1, alignItems: 'flex-end', paddingLeft: 12 }}>
+              <Text style={[styles.specValue, { color: theme.colors.text }]}>
+                {giveaway.locationText}
+              </Text>
+              {giveaway.distanceKm != null && (
+                <Text style={{ fontSize: 11, fontWeight: '600', color: theme.colors.primaryDark, marginTop: 2 }}>
+                  📍 {giveaway.distanceKm} km from you
+                </Text>
+              )}
+            </View>
           </View>
-
           {giveaway.country ? (
             <View style={styles.specRow}>
               <View style={styles.specLabelWrap}>
@@ -792,12 +798,15 @@ const styles = StyleSheet.create({
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: 12,
   },
   specLabelWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 0,
+    paddingTop: 1,
   },
   specLabel: {
     fontSize: 13,
@@ -805,6 +814,9 @@ const styles = StyleSheet.create({
   specValue: {
     fontSize: 14,
     fontWeight: '600',
+    flex: 1,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   notesBox: {
     padding: 10,
