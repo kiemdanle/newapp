@@ -1,5 +1,6 @@
 // apps/admin/src/components/sidebar.tsx
 'use client';
+import { useMemo } from 'react';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -69,6 +70,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Archive,
   Compass,
 };
+const ALL_NAV_HREFS: string[] = NAV.flatMap((section) => section.items.map((item) => item.href));
+
 
 export function Sidebar({
   pendingModerationCount = 0,
@@ -83,9 +86,22 @@ export function Sidebar({
   const { isCollapsed } = useSidebar();
   const collapsed = forceExpanded ? false : isCollapsed;
 
+  const activeHref = useMemo(() => {
+    if (pathname === '/') return '/';
+
+    let bestMatch = '';
+    for (const href of ALL_NAV_HREFS) {
+      if (href === '/') continue;
+      const isMatch = pathname === href || pathname.startsWith(href + '/');
+      if (isMatch && href.length > bestMatch.length) {
+        bestMatch = href;
+      }
+    }
+    return bestMatch;
+  }, [pathname]);
+
   function isActive(href: string): boolean {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
+    return activeHref === href;
   }
 
   return (
