@@ -272,10 +272,16 @@ export function GiveawayCard({
             ) : null}
 
             <View style={styles.metaRow}>
-              <Text style={[styles.locationText, { color: theme.colors.textMuted }]} numberOfLines={1}>
-                📍 {loc}
-                {giveaway.distanceKm != null ? ` · ${giveaway.distanceKm} km away` : ''}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4, flex: 1 }}>
+                <Text style={[styles.locationText, { color: theme.colors.textMuted, maxWidth: '65%' }]} numberOfLines={1}>
+                  📍 {loc}
+                </Text>
+                {giveaway.distanceKm != null ? (
+                  <Text style={[styles.locationText, { color: theme.colors.primaryDark, fontWeight: '600' }]}>
+                    · {giveaway.distanceKm} km away
+                  </Text>
+                ) : null}
+              </View>
               {giveaway.claimCount ? (
                 <Text style={[styles.claimCountText, { color: theme.colors.primaryDark }]}>
                   · {giveaway.claimCount} requested
