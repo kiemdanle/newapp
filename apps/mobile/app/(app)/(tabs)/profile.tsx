@@ -1,5 +1,5 @@
-import React, { useCallback, useRef } from 'react';
-import { StyleSheet, Text, View, Pressable, Alert } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { StyleSheet, Text, View, Pressable, Alert, ActivityIndicator } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
@@ -23,6 +23,7 @@ interface ActionRowProps {
   onPress: () => void;
   badge?: React.ReactNode;
   isDestructive?: boolean;
+  isLoading?: boolean;
 }
 
 function ActionRow({
@@ -34,6 +35,7 @@ function ActionRow({
   onPress,
   badge,
   isDestructive = false,
+  isLoading = false,
 }: ActionRowProps) {
   const theme = useTheme();
 
@@ -42,6 +44,7 @@ function ActionRow({
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      disabled={isLoading}
       onPress={onPress}
       style={({ pressed }) => [
         styles.actionRow,
@@ -98,12 +101,16 @@ function ActionRow({
 
       <View style={styles.actionRowTrailing}>
         {badge}
-        <Ionicons
-          name="chevron-forward"
-          size={18}
-          color={isDestructive ? theme.colors.danger : theme.colors.textMuted}
-          style={{ opacity: 0.6 }}
-        />
+        {isLoading ? (
+          <ActivityIndicator size="small" color={isDestructive ? theme.colors.danger : theme.colors.primary} />
+        ) : (
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={isDestructive ? theme.colors.danger : theme.colors.textMuted}
+            style={{ opacity: 0.6 }}
+          />
+        )}
       </View>
     </Pressable>
   );
@@ -117,6 +124,7 @@ export default function Profile() {
 
   const draftsQuery = useProductDrafts();
   const draftCount = draftsQuery.data?.pages?.flatMap((p) => p.items)?.length ?? 0;
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const contributionsQuery = useUserContributions();
   const contributionsData = contributionsQuery.data;
 
@@ -138,6 +146,7 @@ export default function Profile() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
+          setIsSigningOut(true);
           try {
             await authEndpoints.logout();
           } catch {
@@ -493,10 +502,11 @@ export default function Profile() {
             testID="profile-sign-out"
             accessibilityLabel="Sign out of Expyrico"
             icon="log-out-outline"
-            label="Sign out"
+            label={isSigningOut ? 'Signing out…' : 'Sign out'}
             subtitle="Log out of this device"
             onPress={onSignOut}
             isDestructive
+            isLoading={isSigningOut}
           />
         </View>
 

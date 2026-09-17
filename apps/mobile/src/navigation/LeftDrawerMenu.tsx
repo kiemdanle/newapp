@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -75,6 +76,7 @@ export function LeftDrawerMenu() {
   const activeTab = useDrawerStore((s) => s.activeTab);
   const closeDrawer = useDrawerStore((s) => s.closeDrawer);
   const { scope } = usePantryScope();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const fullName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
@@ -115,16 +117,17 @@ export function LeftDrawerMenu() {
           text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
-            closeDrawer();
+            setIsSigningOut(true);
             try {
               await authEndpoints.logout();
             } catch {
               /* best-effort */
             }
+            closeDrawer();
             await signOut();
           },
         },
-      ]
+      ],
     );
   };
 
@@ -456,6 +459,7 @@ export function LeftDrawerMenu() {
         {/* Sign Out Action */}
         <Pressable
           onPress={handleSignOut}
+          disabled={isSigningOut}
           style={({ pressed }) => [
             styles.signOutItem,
             pressed && styles.buttonPressed,
@@ -464,15 +468,19 @@ export function LeftDrawerMenu() {
           accessibilityLabel="Sign Out"
           testID="drawer-sign-out"
         >
-          <Ionicons
-            name="log-out-outline"
-            size={18}
-            color={theme.colors.danger}
-          />
+          {isSigningOut ? (
+            <ActivityIndicator size="small" color={theme.colors.danger} />
+          ) : (
+            <Ionicons
+              name="log-out-outline"
+              size={18}
+              color={theme.colors.danger}
+            />
+          )}
           <Text
             style={[styles.signOutLabel, { color: theme.colors.danger }]}
           >
-            Sign Out
+            {isSigningOut ? 'Signing out…' : 'Sign Out'}
           </Text>
         </Pressable>
 
