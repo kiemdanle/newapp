@@ -249,9 +249,9 @@ export default function NewGiveawayScreen() {
         <Text style={[styles.eyebrow, { color: theme.colors.primaryDark }]}>
           COMMUNITY FOOD SHARING
         </Text>
-        <Text style={[styles.heading, { color: theme.colors.text }]}>Offer to Neighbors</Text>
+        <Text style={[styles.heading, { color: theme.colors.text }]}>Offer to Neighbours</Text>
         <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-          Give food, pantry staples, or groceries to neighbors before they expire.
+          Give food, pantry staples, or groceries to neighbours before they expire.
         </Text>
       </View>
 

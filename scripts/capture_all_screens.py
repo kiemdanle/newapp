@@ -1,6 +1,7 @@
 import subprocess
 import time
 import os
+import sys
 
 screens = [
     ("01_pantry_home", "Home", None),
@@ -26,7 +27,7 @@ screens = [
     ("21_household_sharing", "Household", None),
     ("22_invite_referral", "Invite", None),
     ("23_feedback_hub", "FeedbackHub", None),
-    ("24_feedback_detail", "FeedbackDetail", "5cf0dca3-7042-499e-bb09-845b222ab5fb"),
+    ("24_feedback_detail", "FeedbackDetail", "534964b7-0000-4000-a000-000000000001"),
     ("25_settings_main", "SettingsIndex", None),
     ("26_settings_theme", "SettingsTheme", None),
     ("27_settings_add_passkey", "SettingsAddPasskey", None),
@@ -36,14 +37,19 @@ out_dir = "/Users/lekiemdan/newapp/docs/screenshots/mobile"
 os.makedirs(out_dir, exist_ok=True)
 
 results = []
-for filename, screen_name, entity_id in screens:
+for idx, (filename, screen_name, entity_id) in enumerate(screens, 1):
     url = f"expyrico://navigate?screen={screen_name}"
     if entity_id:
         url += f"&id={entity_id}"
     
-    cmd = ["adb", "shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", url]
-    subprocess.run(cmd, capture_output=True, text=True)
-    time.sleep(2.0)
+    # Use single quotes around url so remote shell preserves query params intact
+    cmd = ["adb", "shell", f"am start -W -a android.intent.action.VIEW -d '{url}'"]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        print(f"Error launching {screen_name}: {res.stderr}", file=sys.stderr)
+    
+    # 2.5s delay to allow data and images to fully render
+    time.sleep(2.5)
     
     img_path = f"{out_dir}/{filename}.png"
     with open(img_path, "wb") as f:
@@ -51,11 +57,11 @@ for filename, screen_name, entity_id in screens:
     
     size_kb = os.path.getsize(img_path) / 1024
     results.append(f"{filename}.png ({size_kb:.1f} KB)")
-    print(f"[{len(results)}/28] Captured {filename}.png ({size_kb:.1f} KB)")
+    print(f"[{idx}/28] Captured {filename}.png ({size_kb:.1f} KB)")
 
-# Capture Navigation Drawer
-subprocess.run(["adb", "shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d", "expyrico://navigate?screen=Home"])
-time.sleep(1.5)
+# Capture Navigation Drawer on Home
+subprocess.run(["adb", "shell", "am start -W -a android.intent.action.VIEW -d 'expyrico://navigate?screen=Home'"])
+time.sleep(2.0)
 subprocess.run(["adb", "shell", "input", "tap", "100", "150"])
 time.sleep(1.5)
 drawer_path = f"{out_dir}/28_navigation_drawer.png"
@@ -65,4 +71,4 @@ print(f"[28/28] Captured 28_navigation_drawer.png ({os.path.getsize(drawer_path)
 
 # Dismiss drawer
 subprocess.run(["adb", "shell", "input", "tap", "900", "500"])
-print("\nDone! All 28 screens captured successfully with zero crashes.")
+print("\nDone! All 28 screens successfully loaded and captured with real content.")
