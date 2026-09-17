@@ -11,7 +11,7 @@ import {
 import { writeAuditLog } from '../../../services/audit/log.js';
 
 export async function adminSettingsGiveawaysRoute(app: FastifyInstance) {
-  app.get('/settings/giveaways', async () => {
+  app.get('/giveaways', async () => {
     const settings = await getSetting(
       SETTING_KEYS.GIVEAWAY_DISTANCE,
       giveawayDistanceSettingsSchema,
@@ -19,7 +19,7 @@ export async function adminSettingsGiveawaysRoute(app: FastifyInstance) {
     return settings;
   });
 
-  app.patch('/settings/giveaways', async (req) => {
+  app.patch('/giveaways', async (req) => {
     const input = giveawayDistanceSettingsSchema.parse(req.body);
     const adminUserId = req.user!.id;
 
