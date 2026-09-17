@@ -18,6 +18,9 @@ import {
   type PantryLimitsPatch,
   barcodeApiConfigSchema,
   type BarcodeApiConfig,
+  giveawayDistanceSettingsSchema,
+  DEFAULT_GIVEAWAY_DISTANCE_SETTINGS,
+  type GiveawayDistanceSettings,
 } from '@expyrico/shared';
 import { writeAuditLog } from '../audit/log.js';
 
@@ -42,6 +45,9 @@ export async function getSetting<T extends z.ZodTypeAny>(key: string, schema: T)
     if (key === SETTING_KEYS.EXTERNAL_BARCODE_PROVIDERS) {
       return schema.parse(DEFAULT_BARCODE_API_CONFIG);
     }
+    if (key === SETTING_KEYS.GIVEAWAY_DISTANCE) {
+      return schema.parse(DEFAULT_GIVEAWAY_DISTANCE_SETTINGS);
+    }
     throw new Error(`Setting ${key} missing — run seed-admin`);
   }
   return schema.parse(row.value);
@@ -65,6 +71,9 @@ export async function putSetting<T extends z.ZodTypeAny>(
   if (key === SETTING_KEYS.PANTRY_LIMITS) {
     invalidatePantryLimitsCache();
   }
+  if (key === SETTING_KEYS.GIVEAWAY_DISTANCE) {
+    invalidateGiveawayDistanceCache();
+  }
   return parsed;
 }
 
@@ -77,8 +86,8 @@ export const SETTING_KEYS = {
   PHOTO_LIMITS: 'photo_limits',
   PANTRY_LIMITS: 'pantry_limits',
   EXTERNAL_BARCODE_PROVIDERS: 'external_barcode_providers',
+  GIVEAWAY_DISTANCE: 'giveaway_distance',
 } as const;
-
 export const DEFAULT_BARCODE_API_CONFIG: BarcodeApiConfig = {
   providers: {
     off: {
@@ -101,6 +110,20 @@ let cachedPhotoLimits: { data: PhotoLimitsSettings; expiresAt: number } | null =
 
 export function invalidatePhotoLimitsCache(): void {
   cachedPhotoLimits = null;
+}
+
+let cachedGiveawayDistance: { data: GiveawayDistanceSettings; expiresAt: number } | null = null;
+export function invalidateGiveawayDistanceCache(): void {
+  cachedGiveawayDistance = null;
+}
+export async function getCachedGiveawayDistanceSettings(): Promise<GiveawayDistanceSettings> {
+  const now = Date.now();
+  if (cachedGiveawayDistance && cachedGiveawayDistance.expiresAt > now) {
+    return cachedGiveawayDistance.data;
+  }
+  const settings = await getSetting(SETTING_KEYS.GIVEAWAY_DISTANCE, giveawayDistanceSettingsSchema);
+  cachedGiveawayDistance = { data: settings, expiresAt: now + 60_000 };
+  return settings;
 }
 
 export async function getPhotoLimits(): Promise<PhotoLimitsSettings> {

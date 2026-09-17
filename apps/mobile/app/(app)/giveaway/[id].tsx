@@ -300,7 +300,7 @@ export default function GiveawayDetailScreen() {
                 <Text style={[styles.bentoSubtext, { color: theme.colors.textMuted }]}>
                   {giveaway.claimExpiresAt
                     ? `Claim by ${claimExpiryLabel}`
-                    : 'Active neighborhood offer'}
+                    : 'Active neighbourhood offer'}
                 </Text>
               </>
             )}
@@ -330,7 +330,7 @@ export default function GiveawayDetailScreen() {
               </Text>
             </View>
             <Text style={[styles.bentoSubtext, { color: theme.colors.textMuted }]}>
-              {giveaway.myClaim ? 'You requested this' : 'Neighbors interested'}
+              {giveaway.myClaim ? 'You requested this' : 'Neighbours interested'}
             </Text>
           </View>
         </View>
@@ -354,7 +354,7 @@ export default function GiveawayDetailScreen() {
               />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={[styles.giverSectionLabel, { color: theme.colors.primaryDark }]}>
-                  SHARED BY NEIGHBOR
+                  SHARED BY NEIGHBOUR
                 </Text>
                 <Text style={[styles.giverFullName, { color: theme.colors.text }]}>
                   {giveaway.giver.firstName}
@@ -390,7 +390,7 @@ export default function GiveawayDetailScreen() {
             <View style={styles.specLabelWrap}>
               <Ionicons name="location-outline" size={15} color={theme.colors.textMuted} />
               <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>
-                Neighborhood
+                Neighbourhood
               </Text>
             </View>
             <Text style={[styles.specValue, { color: theme.colors.text }]}>
@@ -416,7 +416,7 @@ export default function GiveawayDetailScreen() {
               <View style={styles.specLabelWrap}>
                 <Ionicons name="calendar-outline" size={15} color={theme.colors.textMuted} />
                 <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>
-                  Item Expiration Date
+                  Item Expiry Date
                 </Text>
               </View>
               <Text style={[styles.specValue, { color: itemExpiryColor || theme.colors.text, fontWeight: '700' }]}>

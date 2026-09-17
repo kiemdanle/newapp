@@ -153,3 +153,19 @@ export const meEndpoints = {
   deleteAvatar: () =>
     apiClient.request<User>({ method: 'DELETE', path: '/me/avatar' }),
 };
+
+export interface ReverseGeocodeResponse {
+  address: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  cached: boolean;
+}
+
+export const geoEndpoints = {
+  reverseGeocode: (lat: number, lng: number) =>
+    apiClient.request<ReverseGeocodeResponse>({
+      method: 'GET',
+      path: `/geo/reverse-geocode?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`,
+    }),
+};

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { Button } from '../../components/Button';
 import { Logo } from '../../components/Logo';
 import { HamburgerButton } from '../../components/HamburgerButton';
 import { useTheme } from '../../theme/useTheme';
+import { BackToTopButton, useBackToTop } from '../../components/BackToTopButton';
 import type { AppNavigationProp } from '../../navigation/AppNavigator';
 
 export function ReviewsHubScreen() {
@@ -32,7 +33,19 @@ export function ReviewsHubScreen() {
     params.initialTab ?? 'community',
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const myReviewsListRef = useRef<FlatList<Review>>(null);
 
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef: myReviewsListRef,
+    hasTabBar: true,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   const {
     data: myReviewsData,
     isLoading: isLoadingMyReviews,
@@ -71,7 +84,7 @@ export function ReviewsHubScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: theme.colors.bg }]}>
-      <Screen style={styles.screen} padded={false}>
+      <Screen style={styles.screen} padded={false} scroll={false}>
         {/* Top Header Row with Logo & Quick Stat Badge */}
         <View style={styles.header}>
           <View style={styles.brandRow}>
@@ -276,9 +289,13 @@ export function ReviewsHubScreen() {
         {activeTab === 'community' ? (
           <CommunityReviewsFeed searchQuery={searchQuery} />
         ) : (
-          <FlatList
-            data={myReviews}
-            keyExtractor={(item) => item.id}
+          <>
+            <FlatList
+              ref={myReviewsListRef}
+              data={myReviews}
+              onTouchStart={handleTouchActivity}
+              onScroll={handleScroll}
+              keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <MyReviewCard
                 review={item}
@@ -361,7 +378,15 @@ export function ReviewsHubScreen() {
                 </View>
               ) : null
             }
-          />
+            />
+            <BackToTopButton
+              scrollRef={myReviewsListRef}
+              visible={showBackToTop}
+              onPress={handleScrollToTop}
+              hasTabBar={true}
+              testID="my-reviews-back-to-top"
+            />
+          </>
         )}
       </Screen>
     </View>

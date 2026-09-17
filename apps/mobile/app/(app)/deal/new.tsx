@@ -144,7 +144,7 @@ export default function NewDealScreen() {
           What item has a price drop?
         </Text>
         <Text style={[styles.subTitle, { color: theme.colors.textMuted }]}>
-          Search the community catalog or scan the barcode to attach a deal.
+          Search the community catalogue or scan the barcode to attach a deal.
         </Text>
       </View>
 

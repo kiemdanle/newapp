@@ -326,7 +326,7 @@ export default function ScanScreen() {
             <View style={[styles.frame, { borderColor: theme.colors.primary }]} />
             <View style={[styles.instruction, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border, borderRadius: theme.radii.pill }]}>
               <Ionicons name="barcode-outline" size={18} color={theme.colors.primaryDark} />
-              <Text style={[styles.instructionText, { color: theme.colors.text }]}>Center the barcode or QR code in the frame</Text>
+              <Text style={[styles.instructionText, { color: theme.colors.text }]}>Centre the barcode or QR code in the frame</Text>
             </View>
           </View>
           {target !== 'deal' ? (
@@ -438,7 +438,7 @@ export default function ScanScreen() {
           <View testID="scan-custom-item-form" style={[styles.resultPanel, { backgroundColor: theme.colors.bgElevated, borderColor: theme.colors.border }]}>
             <Text style={[styles.panelTitle, { color: theme.colors.text }]}>Name this private item</Text>
             <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
-              Give this item a name to track its expiration date privately in your pantry.
+              Give this item a name to track its expiry date privately in your pantry.
             </Text>
             <TextInput
               accessibilityLabel="Custom item name"
@@ -489,8 +489,8 @@ export default function ScanScreen() {
           <Text style={[styles.panelTitle, { color: theme.colors.text }]}>We couldn't find this item</Text>
           <Text style={[styles.panelBody, { color: theme.colors.textMuted }]}>
             {target === 'deal'
-              ? "This barcode isn't in our catalog yet. Add it as a new product to attach it to your deal."
-              : "This barcode isn't in our catalog yet. You can add it as a new product with full details, or save it as a private item in your pantry."}
+              ? "This barcode isn't in our catalogue yet. Add it as a new product to attach it to your deal."
+              : "This barcode isn't in our catalogue yet. You can add it as a new product with full details, or save it as a private item in your pantry."}
           </Text>
           {lastScanRef.current ? (
             <View style={[styles.codeBadge, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border }]}>

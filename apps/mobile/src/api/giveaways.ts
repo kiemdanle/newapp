@@ -20,8 +20,10 @@ export interface GiveawayFeedFilters {
   location?: string;
   country?: string;
   hasPhoto?: boolean;
+  latitude?: number;
+  longitude?: number;
+  radiusKm?: number;
 }
-
 export function buildGiveawayQueryString(
   filters: GiveawayFeedFilters = {},
   cursor?: string,
@@ -33,6 +35,9 @@ export function buildGiveawayQueryString(
   if (filters.location?.trim()) parts.push(`location=${encodeURIComponent(filters.location.trim())}`);
   if (filters.country) parts.push(`country=${encodeURIComponent(filters.country)}`);
   if (filters.hasPhoto) parts.push('hasPhoto=true');
+  if (filters.latitude !== undefined) parts.push(`latitude=${encodeURIComponent(filters.latitude)}`);
+  if (filters.longitude !== undefined) parts.push(`longitude=${encodeURIComponent(filters.longitude)}`);
+  if (filters.radiusKm !== undefined) parts.push(`radiusKm=${encodeURIComponent(filters.radiusKm)}`);
   if (cursor) parts.push(`cursor=${encodeURIComponent(cursor)}`);
 
   return parts.length > 0 ? `?${parts.join('&')}` : '';

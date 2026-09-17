@@ -200,7 +200,7 @@ describe('<NewProductScreen />', () => {
     });
   });
 
-  it('submitting an auto-approved draft (status: active) displays "Published to catalog" confirmation', async () => {
+  it('submitting an auto-approved draft (status: active) displays "Published to catalogue" confirmation', async () => {
     __setRouteParams({ barcode: '123', productId: 'draft-1', resume: 'edit' });
     queueFetch(jsonResponse(PRODUCT));
     await AsyncStorage.setItem(
@@ -215,7 +215,7 @@ describe('<NewProductScreen />', () => {
     fireEvent.press(getByTestId('draft-submit'));
 
     expect(await findByTestId('new-product-submitted-message')).toBeTruthy();
-    expect(await findByText('Published to catalog — you can add it to your pantry now.')).toBeTruthy();
+    expect(await findByText('Published to catalogue — you can add it to your pantry now.')).toBeTruthy();
     expect(mockExecuteAssessment).toHaveBeenCalledTimes(1);
     expect(getByTestId('add-record-save')).toBeTruthy();
   });

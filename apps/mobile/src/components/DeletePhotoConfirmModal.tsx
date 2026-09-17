@@ -42,7 +42,7 @@ export function DeletePhotoConfirmModal({
         <Pressable
           testID="delete-photo-dismiss-overlay"
           accessibilityRole="button"
-          accessibilityLabel="Cancel deletion and close dialog"
+          accessibilityLabel="Cancel deletion and close dialogue"
           style={styles.dismissOverlay}
           onPress={onClose}
         />

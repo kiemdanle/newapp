@@ -155,7 +155,7 @@ export function PantryFilterModal({
                 Filter Pantry
               </Text>
               <Text style={[styles.sheetSubtitle, { color: theme.colors.textMuted }]}>
-                Refine items by expiration date, category, and availability.
+                Refine items by expiry date, category, and availability.
               </Text>
             </View>
             <Pressable

@@ -25,6 +25,8 @@ export declare const authResultSchema: z.ZodObject<{
         lastName: z.ZodString;
         address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         country: z.ZodNullable<z.ZodString>;
+        latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         avatarUrl: z.ZodNullable<z.ZodString>;
         hasPassword: z.ZodDefault<z.ZodBoolean>;
         role: z.ZodEnum<["user", "admin"]>;
@@ -47,6 +49,8 @@ export declare const authResultSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
     }, {
         id: string;
         email: string;
@@ -61,6 +65,8 @@ export declare const authResultSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
         hasPassword?: boolean | undefined;
     }>;
     tokens: z.ZodObject<{
@@ -93,6 +99,8 @@ export declare const authResultSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
     };
     tokens: {
         accessToken: string;
@@ -115,6 +123,8 @@ export declare const authResultSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
         hasPassword?: boolean | undefined;
     };
     tokens: {
@@ -390,6 +400,8 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         lastName: z.ZodString;
         address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
         country: z.ZodNullable<z.ZodString>;
+        latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+        longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
         avatarUrl: z.ZodNullable<z.ZodString>;
         hasPassword: z.ZodDefault<z.ZodBoolean>;
         role: z.ZodEnum<["user", "admin"]>;
@@ -412,6 +424,8 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
     }, {
         id: string;
         email: string;
@@ -426,6 +440,8 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
         hasPassword?: boolean | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
@@ -444,6 +460,8 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         themePreference: "expyrico" | "bento" | "clay" | "material";
         createdAt: string;
         updatedAt: string;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
     };
     tokens: {
         accessToken: string;
@@ -465,6 +483,8 @@ export declare const passwordMutationResponseSchema: z.ZodObject<{
         createdAt: string;
         updatedAt: string;
         address?: string | null | undefined;
+        latitude?: number | null | undefined;
+        longitude?: number | null | undefined;
         hasPassword?: boolean | undefined;
     };
     tokens: {

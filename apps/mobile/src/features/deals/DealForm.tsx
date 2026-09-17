@@ -305,7 +305,7 @@ export function DealForm({ product, existing, onDone }: Props) {
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Select expiration date"
+          accessibilityLabel="Select expiry date"
           onPress={() => setShowDatePicker(true)}
           style={[
             styles.datePickerTrigger,
@@ -322,7 +322,7 @@ export function DealForm({ product, existing, onDone }: Props) {
               fontSize: 15,
             }}
           >
-            {expiryDate ? `🗓️ ${expiryDate}` : 'Tap to select expiration date…'}
+            {expiryDate ? `🗓️ ${expiryDate}` : 'Tap to select expiry date…'}
           </Text>
           {expiryDate ? (
             <Pressable

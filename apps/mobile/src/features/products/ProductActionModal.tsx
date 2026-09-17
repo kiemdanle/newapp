@@ -23,7 +23,7 @@ export interface ProductActionModalProps {
 }
 
 const STATUS_CONFIG: Record<ProductDraftStatus, { label: string; text: string; bg: string; icon: string }> = {
-  active: { label: 'Catalog Active', text: '#3A8F6F', bg: '#D6F0E6', icon: 'checkmark-circle' },
+  active: { label: 'Catalogue Active', text: '#3A8F6F', bg: '#D6F0E6', icon: 'checkmark-circle' },
   pending: { label: 'Awaiting Review', text: '#B45309', bg: '#FEEFC3', icon: 'time-outline' },
   draft: { label: 'Draft', text: '#8C8C85', bg: '#F0F0ED', icon: 'create-outline' },
   changes_required: { label: 'Changes Requested', text: '#E0442A', bg: '#FDE8E8', icon: 'alert-circle-outline' },
@@ -170,7 +170,7 @@ export function ProductActionModal({
                   </View>
                 </View>
                 <Text style={[styles.actionSubtitle, { color: '#3A8F6F' }]}>
-                  Set expiration date, quantity and stock your shelf
+                  Set expiry date, quantity and stock your shelf
                 </Text>
               </View>
               <View style={[styles.actionChevronCircle, { backgroundColor: 'rgba(75, 174, 138, 0.2)' }]}>
@@ -200,7 +200,7 @@ export function ProductActionModal({
               <View style={styles.actionTextCol}>
                 <Text style={[styles.actionTitle, { color: theme.colors.text }]}>View Details & Photos</Text>
                 <Text style={[styles.actionSubtitle, { color: theme.colors.textMuted }]}>
-                  Inspect catalog photos, barcode, brand, and metadata
+                  Inspect catalogue photos, barcode, brand, and metadata
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />

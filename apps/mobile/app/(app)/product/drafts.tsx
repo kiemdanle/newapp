@@ -33,6 +33,7 @@ import { DraftsSortPills, type DraftSortOption } from '../../../src/features/pro
 import { ProductDraftsSkeleton } from '../../../src/features/products/ProductDraftsSkeleton';
 import { useUiPreferencesStore } from '../../../src/store/uiPreferencesStore';
 import { useTheme } from '../../../src/theme/useTheme';
+import { BackToTopButton, useBackToTop } from '../../../src/components/BackToTopButton';
 import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 
 type DraftTab = 'all' | 'active' | 'pending' | 'draft';
@@ -257,6 +258,19 @@ export default function ProductDraftsScreen() {
   };
   const scrollY = useRef(new Animated.Value(0)).current;
   const listRef = useRef<FlatList<ProductDraftRow>>(null);
+
+  const {
+    visible: showBackToTop,
+    handleScroll: handleBackToTopScroll,
+    scrollToTop: handleBackToTopPress,
+    onTouchStart: handleBackToTopTouch,
+  } = useBackToTop({
+    scrollRef: listRef,
+    hasTabBar: false,
+    offsetBottom: 60,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   const [collapsibleHeight, setCollapsibleHeight] = useState(72);
   const [stickyHeight, setStickyHeight] = useState(136);
 
@@ -324,9 +338,10 @@ export default function ProductDraftsScreen() {
               : { paddingHorizontal: 20, paddingBottom: 140, gap: 10 },
             { paddingTop: listTopPadding },
           ]}
+          onTouchStart={handleBackToTopTouch}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true },
+            { useNativeDriver: true, listener: handleBackToTopScroll },
           )}
           scrollEventThrottle={16}
           renderItem={({ item }) =>
@@ -657,6 +672,14 @@ export default function ProductDraftsScreen() {
       <DraftUndoToast
         entries={Array.from(pendingDiscards.values())}
         onUndo={handleUndo}
+      />
+      <BackToTopButton
+        scrollRef={listRef}
+        visible={showBackToTop}
+        onPress={handleBackToTopPress}
+        hasTabBar={false}
+        offsetBottom={60}
+        testID="drafts-back-to-top"
       />
     </View>
   );

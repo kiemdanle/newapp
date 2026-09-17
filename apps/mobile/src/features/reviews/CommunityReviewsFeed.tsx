@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   deduplicateReviews,
 } from '../../api/reviews';
 import { useTheme } from '../../theme/useTheme';
+import { BackToTopButton, useBackToTop } from '../../components/BackToTopButton';
 import { ProductCommunityCard, type ProductCommunityGroup } from './ProductCommunityCard';
 
 export interface CommunityReviewsFeedProps {
@@ -25,7 +26,19 @@ export interface CommunityReviewsFeedProps {
 export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedProps) {
   const theme = useTheme();
   const [sort, setSort] = useState<'score' | 'new'>('score');
+  const flatListRef = useRef<FlatList<ProductCommunityGroup>>(null);
 
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef: flatListRef,
+    hasTabBar: true,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   const {
     data,
     isLoading: isLoadingCommunity,
@@ -236,6 +249,10 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
 
       {/* Main Grouped List */}
       <FlatList
+        ref={flatListRef}
+        onTouchStart={handleTouchActivity}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={productGroups}
         keyExtractor={(item) => item.productId}
         renderItem={({ item }) => (
@@ -309,6 +326,13 @@ export function CommunityReviewsFeed({ searchQuery = '' }: CommunityReviewsFeedP
             </View>
           ) : null
         }
+      />
+      <BackToTopButton
+        scrollRef={flatListRef}
+        visible={showBackToTop}
+        onPress={handleScrollToTop}
+        hasTabBar={true}
+        testID="community-reviews-back-to-top"
       />
     </View>
   );

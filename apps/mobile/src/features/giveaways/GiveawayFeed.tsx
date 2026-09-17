@@ -1,5 +1,5 @@
 // apps/mobile/src/features/giveaways/GiveawayFeed.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,6 +22,7 @@ import { GiveawayCard } from './GiveawayCard';
 import { GiveawaySearchBar } from './GiveawaySearchBar';
 import { GiveawayFilterModal } from './GiveawayFilterModal';
 import { GiveawayQuickEditModal } from './GiveawayQuickEditModal';
+import { BackToTopButton, useBackToTop } from '@/components/BackToTopButton';
 import { HamburgerButton } from '@/components/HamburgerButton';
 import { EmptyState } from '@/components/EmptyState';
 import { useSessionStore } from '@/auth/session-store';
@@ -32,6 +33,7 @@ import type { AppNavigationProp } from '@/navigation/AppNavigator';
 
 const SORTS: { id: GiveawaySort; label: string; icon: string }[] = [
   { id: 'new', label: 'Newest', icon: '⏱️' },
+  { id: 'distance_asc', label: 'Nearest', icon: '📍' },
   { id: 'expiry_asc', label: 'Expiring Soon', icon: '⏳' },
   { id: 'claims_asc', label: 'Fewest Claims', icon: '🎁' },
   { id: 'claims_desc', label: 'Popular', icon: '🔥' },
@@ -63,10 +65,23 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
   const updateGiveaway = useUpdateGiveaway();
   const cancelGiveaway = useCancelGiveaway();
   const [editingGiveaway, setEditingGiveaway] = useState<Giveaway | null>(null);
-  // Search & Filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSort, setSelectedSort] = useState<GiveawaySort>('new');
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const flatListRef = useRef<FlatList<Giveaway>>(null);
+
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef: flatListRef,
+    hasTabBar: true,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedRadius, setExpandedRadius] = useState<number | undefined>(undefined);
+  const [selectedSort, setSelectedSort] = useState<GiveawaySort>('new');
   const [filters, setFilters] = useState<GiveawayFeedFilters>(() => ({
     status: 'open',
     sort: 'new',
@@ -98,8 +113,11 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
       ...filters,
       sort: selectedSort,
       q: searchQuery.trim() || undefined,
+      latitude: user?.latitude ?? undefined,
+      longitude: user?.longitude ?? undefined,
+      radiusKm: expandedRadius,
     }),
-    [filters, selectedSort, searchQuery],
+    [filters, selectedSort, searchQuery, user?.latitude, user?.longitude, expandedRadius],
   );
 
   const q = useGiveawayFeed(combinedFilters);
@@ -214,7 +232,7 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={[styles.heading, { color: theme.colors.text }]}>Giveaways</Text>
           <Text style={[styles.subheading, { color: theme.colors.textMuted }]}>
-            Offer food or groceries to neighbors before they expire.
+            Offer food or groceries to neighbours before they expire.
           </Text>
         </View>
       </View>
@@ -355,6 +373,10 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
 
       {/* Main Giveaways Feed List */}
       <FlatList
+        ref={flatListRef}
+        onTouchStart={handleTouchActivity}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={items}
         keyExtractor={(d: Giveaway) => d.id}
         contentContainerStyle={[
@@ -439,8 +461,31 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
               <EmptyState
                 icon="gift"
                 title="No giveaways yet"
-                body="Be the first to share food or groceries with neighbors nearby!"
+                body={
+                  user?.latitude != null
+                    ? 'No giveaways found within your local area. You can expand your search or be the first to share!'
+                    : 'Be the first to share food or groceries with neighbours nearby!'
+                }
               />
+              {user?.latitude != null && !expandedRadius && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Expand search to 50 km"
+                  onPress={() => setExpandedRadius(50)}
+                  style={({ pressed }) => [
+                    styles.emptyStateAction,
+                    {
+                      backgroundColor: pressed ? theme.colors.primaryDark : theme.colors.primary,
+                      borderRadius: theme.radii.pill,
+                      marginBottom: 12,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.emptyStateActionText, { color: '#FFFFFF' }]}>
+                    Expand search to 50 km
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 testID="giveaway-create-empty-action"
                 accessibilityRole="button"
@@ -473,6 +518,14 @@ export function GiveawayFeed({ onOpen, onNew }: Props) {
             </View>
           ) : null
         }
+      />
+
+      <BackToTopButton
+        scrollRef={flatListRef}
+        visible={showBackToTop}
+        onPress={handleScrollToTop}
+        hasTabBar={true}
+        testID="giveaways-back-to-top"
       />
 
 

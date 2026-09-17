@@ -43,8 +43,13 @@ export async function createGiveawayRoute(app: FastifyInstance) {
       if (inheritedProductId) {
         await assertProductUse(userId, inheritedProductId, { purpose: 'giveaway' });
       }
-      const giver = await prisma.user.findUnique({ where: { id: userId }, select: { country: true } });
+      const giver = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { country: true, latitude: true, longitude: true },
+      });
       const country = giver?.country ?? null;
+      const latitude = input.latitude !== undefined ? input.latitude : (giver?.latitude ?? null);
+      const longitude = input.longitude !== undefined ? input.longitude : (giver?.longitude ?? null);
 
       let storedPhotoUrl: string | null = null;
       if (input.photoUrls && input.photoUrls.length > 0) {
@@ -74,6 +79,8 @@ export async function createGiveawayRoute(app: FastifyInstance) {
           productId: inheritedProductId,
           recordId: input.recordId ?? null,
           country,
+          latitude,
+          longitude,
         },
         include: {
           giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

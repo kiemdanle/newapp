@@ -140,7 +140,7 @@ describe('WheelDatePickerModal', () => {
       } as any,
     });
 
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getAllByText } = render(
       <ThemeProvider>
         <WheelDatePickerModal
           visible
@@ -153,7 +153,7 @@ describe('WheelDatePickerModal', () => {
 
     const textInput = getByTestId('date-picker-text-input');
     expect(textInput.props.value).toBe('28/08/2026');
-    expect(getByText('Tháng 8')).toBeTruthy();
+    expect(getAllByText('Tháng 8').length).toBeGreaterThan(0);
   });
 
   it('allows natural typing like 13/9/26 and confirms', () => {
@@ -246,5 +246,139 @@ describe('WheelDatePickerModal', () => {
 
     expect(onConfirm).toHaveBeenCalledWith(expect.stringMatching(/-09-13$/));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('loops day wheel: scrolling up from Day 1 goes straight to Day 31', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2026-08-01"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+    // Day 1 in midBlock (2 * 31 = 62 items, offset 62 * 38 = 2356)
+    // Scrolling up 1 item decreases y by 38 to 2318 -> item 61 (Day 31)
+    const dayWheel = getByTestId('wheel-picker-day');
+    fireEvent(dayWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: 2318 } },
+    });
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-08-31');
+  });
+
+  it('loops day wheel: scrolling down from Day 31 wraps to Day 1', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2026-08-31"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+    // Day 31 in midBlock (2 * 31 + 30 = 92 items, offset 92 * 38 = 3496)
+    // Scrolling down 1 item increases y by 38 to 3534 -> item 93 (Day 1)
+    const dayWheel = getByTestId('wheel-picker-day');
+    fireEvent(dayWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: 3534 } },
+    });
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-08-01');
+  });
+
+  it('loops month wheel: scrolling up from January goes straight to December', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2026-01-15"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+    // January in midBlock (2 * 12 + 0 = 24 items, offset 24 * 38 = 912)
+    // Scrolling up 1 item decreases y by 38 to 874 -> item 23 (December)
+    const monthWheel = getByTestId('wheel-picker-month');
+    fireEvent(monthWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: 874 } },
+    });
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-12-15');
+  });
+
+  it('loops month wheel: scrolling down from December wraps to January', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2026-12-15"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+    // December in midBlock (2 * 12 + 11 = 35 items, offset 35 * 38 = 1330)
+    // Scrolling down 1 item increases y by 38 to 1368 -> item 36 (January)
+    const monthWheel = getByTestId('wheel-picker-month');
+    fireEvent(monthWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: 1368 } },
+    });
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-01-15');
+  });
+
+  it('adapts day wheel loop dynamically to month length (e.g. February has 28 days)', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2026-02-01"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+    // February (28 days): Day 1 in midBlock (2 * 28 + 0 = 56 items, offset 56 * 38 = 2128)
+    // Scrolling up 1 item decreases y by 38 to 2090 -> item 55 (Day 28)
+    const dayWheel = getByTestId('wheel-picker-day');
+    fireEvent(dayWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: 2090 } },
+    });
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2026-02-28');
+  });
+
+  it('keeps year wheel bounded without looping', () => {
+    const onConfirm = jest.fn();
+    const { getByTestId } = render(
+      <ThemeProvider>
+        <WheelDatePickerModal
+          visible
+          value="2025-08-15"
+          onClose={jest.fn()}
+          onConfirm={onConfirm}
+        />
+      </ThemeProvider>,
+    );
+
+    // Year wheel starts at startYear (2025), bounded at index 0 (offset 0)
+    // Scrolling up past top clamps at index 0 without wrapping
+    const yearWheel = getByTestId('wheel-picker-year');
+    fireEvent(yearWheel, 'momentumScrollEnd', {
+      nativeEvent: { contentOffset: { y: -38 } },
+    });
+
+    fireEvent.press(getByTestId('date-picker-done'));
+    expect(onConfirm).toHaveBeenCalledWith('2025-08-15');
   });
 });

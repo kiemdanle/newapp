@@ -69,6 +69,7 @@ export const NAV: NavSection[] = [
       { label: 'Moderation notifications', href: '/system/moderation-notifications', icon: 'Bell' },
       { label: 'API errors', href: '/system/api-errors', icon: 'AlertTriangle' },
       { label: 'External Barcode APIs', href: '/system/external-apis', icon: 'Barcode' },
+      { label: 'Google Maps API', href: '/system/external-apis/google-maps', icon: 'Compass' },
     ],
   },
   {
@@ -80,6 +81,7 @@ export const NAV: NavSection[] = [
       { label: 'Pantry limits', href: '/settings/pantry-limits', icon: 'Layers' },
       { label: 'Photo upload limits', href: '/settings/photo-limits', icon: 'Camera' },
       { label: 'Notification templates', href: '/settings/notification-templates', icon: 'Bell' },
+      { label: 'Giveaway distance', href: '/settings/giveaways', icon: 'Compass' },
       { label: 'Moderation', href: '/settings/moderation', icon: 'Shield' },
       { label: 'Admins', href: '/settings/admins', icon: 'ShieldCheck' },
     ],

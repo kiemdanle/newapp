@@ -172,7 +172,7 @@ export default function DealDetailScreen() {
           ]}
         >
           <Text style={{ color: '#B45309', fontWeight: '700', fontSize: 14 }}>
-            ⏳ Expiration / Best-By Date: {formatDate(deal.expiryDate, userCountry || deal.country)}
+            ⏳ Expiry / Best-By Date: {formatDate(deal.expiryDate, userCountry || deal.country)}
           </Text>
         </View>
       )}

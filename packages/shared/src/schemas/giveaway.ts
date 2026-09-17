@@ -4,7 +4,7 @@ export const giveawayStatusSchema = z.enum(['open', 'claimed', 'handed_off', 'co
 export type GiveawayStatus = z.infer<typeof giveawayStatusSchema>;
 
 export const giveawaySortSchema = z
-  .enum(['new', 'old', 'claims_asc', 'claims_desc', 'expiry_asc'])
+  .enum(['new', 'old', 'claims_asc', 'claims_desc', 'expiry_asc', 'distance_asc'])
   .default('new');
 export type GiveawaySort = z.infer<typeof giveawaySortSchema>;
 
@@ -26,6 +26,9 @@ export const giveawaySchema = z.object({
   photoUrls: z.array(z.string().url()).optional(),
   locationText: z.string(),
   country: z.string().length(2).nullable(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
+  distanceKm: z.number().nonnegative().nullable().optional(),
   status: giveawayStatusSchema,
   selectedRecipientId: z.string().uuid().nullable(),
   quantity: z.number().positive().default(1),
@@ -72,6 +75,8 @@ export const giveawayCreateSchema = z.object({
     .optional(),
   productId: z.string().uuid().optional(),
   recordId: z.string().uuid().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 export type GiveawayCreate = z.infer<typeof giveawayCreateSchema>;
 
@@ -93,6 +98,8 @@ export const giveawayPatchSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'expiryDate must be YYYY-MM-DD')
       .nullable()
       .optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: 'at least one field required',
@@ -134,6 +141,9 @@ export const giveawayListQuerySchema = z.object({
     .optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  radiusKm: z.coerce.number().positive().max(500).optional(),
 });
 export type GiveawayListQuery = z.infer<typeof giveawayListQuerySchema>;
 

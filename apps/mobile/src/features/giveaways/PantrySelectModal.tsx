@@ -186,7 +186,7 @@ export function PantrySelectModal({ visible, onClose, onSelectRecord }: PantrySe
                 Select from Pantry
               </Text>
               <Text style={[styles.sheetSubtitle, { color: theme.colors.textMuted }]}>
-                Choose an item to auto-fill details, photos, and expiration date.
+                Choose an item to auto-fill details, photos, and expiry date.
               </Text>
             </View>
             <Pressable

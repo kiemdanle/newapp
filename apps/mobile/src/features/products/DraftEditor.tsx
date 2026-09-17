@@ -62,10 +62,10 @@ export function DraftEditor({ product, feedback, onDirtyChange, onDiscard, onSub
           </Text>
         </View>
         <Text style={{ color: theme.colors.text, fontSize: 20, fontWeight: '800' }}>
-          Catalog Entry
+          Catalogue Entry
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
-          Add photos and accurate metadata before submitting for community catalog review.
+          Add photos and accurate metadata before submitting for community catalogue review.
         </Text>
       </View>
 

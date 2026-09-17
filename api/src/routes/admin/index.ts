@@ -48,6 +48,8 @@ import { adminSettingsPantryUnitsRoute } from './settings/pantry-units.js';
 import { adminSettingsContributorLevelsRoute } from './settings/contributor-levels.js';
 import { adminSettingsPhotoLimitsRoute } from './settings/photo-limits.js';
 import { adminSettingsPantryLimitsRoute } from './settings/pantry-limits.js';
+import { adminSettingsGiveawaysRoute } from './settings/giveaways.js';
+import { adminSystemGoogleMapsRoute } from './system/google-maps.js';
 import { adminTrustedDevicesRoute } from './trusted-devices.js';
 import { adminFeedbackRoutes } from './feedback/index.js';
 import { adminPantryItemsRoutes } from './pantry-items/index.js';
@@ -106,6 +108,8 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminSettingsContributorLevelsRoute, { prefix: '/settings' });
   await app.register(adminSettingsPhotoLimitsRoute, { prefix: '/settings' });
   await app.register(adminSettingsPantryLimitsRoute, { prefix: '/settings' });
+  await app.register(adminSettingsGiveawaysRoute, { prefix: '/settings' });
+  await app.register(adminSystemGoogleMapsRoute);
   await app.register(adminDealsListRoute, { prefix: '/deals' });
   await app.register(adminDealsStatusRoute, { prefix: '/deals' });
   await app.register(adminGiveawaysListRoute, { prefix: '/giveaways' });

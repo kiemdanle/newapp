@@ -505,7 +505,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
 
             {/* Location Field */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>Location / Neighborhood *</Text>
+              <Text style={[styles.label, { color: theme.colors.text }]}>Location / Neighbourhood *</Text>
               <TextInput
                 accessibilityLabel="Pickup location"
                 value={locationText}
@@ -528,7 +528,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
             <View style={styles.fieldGroup}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.label, { color: theme.colors.text }]}>
-                  Item Expiration / Best-By Date (Optional)
+                  Item Expiry / Best-By Date (Optional)
                 </Text>
                 {expiryDate ? (
                   <Pressable
@@ -544,7 +544,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Select expiration date"
+                accessibilityLabel="Select expiry date"
                 onPress={() => setShowDatePicker(true)}
                 style={[
                   styles.input,
@@ -569,7 +569,7 @@ export function GiveawayQuickEditModal({ visible, giveaway, onClose, onSave }: P
                   >
                     {expiryDate
                       ? formatDate(expiryDate, userCountry)
-                      : 'Select expiration date'}
+                      : 'Select expiry date'}
                   </Text>
                 </View>
                 <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />

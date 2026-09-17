@@ -103,7 +103,7 @@ export function ManualCodeEntryModal({
                   marginTop: 2,
                 }}
               >
-                Type a barcode or QR code to start a new catalog draft
+                Type a barcode or QR code to start a new catalogue draft
               </Text>
             </View>
             <Pressable

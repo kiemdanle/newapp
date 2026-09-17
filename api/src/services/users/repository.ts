@@ -11,6 +11,8 @@ export function toApiUser(u: User): ApiUser {
     lastName: u.lastName,
     address: u.address ?? null,
     country: u.country,
+    latitude: u.latitude ?? null,
+    longitude: u.longitude ?? null,
     avatarUrl: u.avatarUrl,
     hasPassword: u.passwordHash !== null,
     role: u.role,

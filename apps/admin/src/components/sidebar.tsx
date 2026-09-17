@@ -34,6 +34,7 @@ import {
   Layers,
   Barcode,
   Archive,
+  Compass,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -66,6 +67,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Layers,
   Barcode,
   Archive,
+  Compass,
 };
 
 export function Sidebar({

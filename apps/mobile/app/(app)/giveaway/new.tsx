@@ -26,6 +26,8 @@ import type { AppNavigationProp } from '@/navigation/AppNavigator';
 import type { LocalRecord } from '@/api/records';
 import type { Product } from '@expyrico/shared';
 import { PantrySelectModal } from '@/features/giveaways/PantrySelectModal';
+import { getCurrentCoordinates } from '@/services/location';
+import { geoEndpoints } from '@/api/endpoints';
 
 const MAX_PHOTOS = 5;
 const COMMON_UNITS = ['pcs', 'pack', 'can', 'bottle', 'kg', 'box'] as const;
@@ -54,6 +56,26 @@ export default function NewGiveawayScreen() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [locationText, setLocation] = useState(profileLocation);
+  const [latitude, setLatitude] = useState<number | null>(user?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(user?.longitude ?? null);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
+
+  const handleDetectLocation = async () => {
+    setIsLocating(true);
+    setError(null);
+    try {
+      const coords = await getCurrentCoordinates();
+      const res = await geoEndpoints.reverseGeocode(coords.latitude, coords.longitude);
+      setLocation(res.address);
+      setLatitude(res.latitude);
+      setLongitude(res.longitude);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unable to determine your location.';
+      setError(msg);
+    } finally {
+      setIsLocating(false);
+    }
+  };
   const [expiryDate, setExpiryDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [photos, setPhotos] = useState<LocalPhotoItem[]>([]);
@@ -197,6 +219,8 @@ export default function NewGiveawayScreen() {
         title: title.trim(),
         description: description.trim() || undefined,
         locationText: locationText.trim(),
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
         expiryDate: expiryDate || undefined,
         quantity,
         unit: unit.trim() || 'pcs',
@@ -607,25 +631,43 @@ export default function NewGiveawayScreen() {
       <View style={styles.fieldGroup}>
         <View style={styles.labelRow}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Pickup Location / Neighborhood *
+            Pickup Location / Neighbourhood *
           </Text>
-          {profileLocation && locationText !== profileLocation ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {profileLocation && locationText !== profileLocation ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Auto-fill location from profile"
+                onPress={() => {
+                  setLocation(profileLocation);
+                  setLatitude(user?.latitude ?? null);
+                  setLongitude(user?.longitude ?? null);
+                }}
+                hitSlop={8}
+                style={styles.profileLocationBtn}
+              >
+                <Ionicons name="location-outline" size={13} color={theme.colors.primaryDark} />
+                <Text style={styles.profileLocationBtnText}>From profile</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Auto-fill location from profile"
-              onPress={() => setLocation(profileLocation)}
+              accessibilityLabel="Use current GPS location"
+              onPress={handleDetectLocation}
+              disabled={isLocating}
               hitSlop={8}
               style={styles.profileLocationBtn}
             >
-              <Ionicons name="location-outline" size={13} color={theme.colors.primaryDark} />
-              <Text style={styles.profileLocationBtnText}>Use profile address</Text>
+              {isLocating ? (
+                <ActivityIndicator size="small" color={theme.colors.primaryDark} />
+              ) : (
+                <>
+                  <Ionicons name="navigate-outline" size={13} color={theme.colors.primaryDark} />
+                  <Text style={styles.profileLocationBtnText}>Use GPS</Text>
+                </>
+              )}
             </Pressable>
-          ) : profileLocation && locationText === profileLocation ? (
-            <View style={styles.profileLocationFilledBadge}>
-              <Ionicons name="checkmark-circle" size={12} color="#3A8F6F" />
-              <Text style={styles.profileLocationFilledText}>From profile</Text>
-            </View>
-          ) : null}
+          </View>
         </View>
         <TextInput
           testID="giveaway-location-input"
@@ -647,17 +689,23 @@ export default function NewGiveawayScreen() {
             },
           ]}
         />
+        {latitude != null && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+            <Ionicons name="checkmark-circle" size={12} color="#3A8F6F" />
+            <Text style={{ color: '#3A8F6F', fontSize: 11, fontWeight: '600' }}>GPS Coordinates linked</Text>
+          </View>
+        )}
       </View>
       {/* Item Expiry Date Field (Optional) */}
       <View style={styles.fieldGroup}>
         <View style={styles.labelRow}>
           <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>
-            Item Expiration Date (Optional)
+            Item Expiry Date (Optional)
           </Text>
           {expiryDate ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Clear expiration date"
+              accessibilityLabel="Clear expiry date"
               onPress={() => setExpiryDate('')}
               hitSlop={8}
             >
@@ -669,7 +717,7 @@ export default function NewGiveawayScreen() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Select expiration date"
+          accessibilityLabel="Select expiry date"
           onPress={() => setShowDatePicker(true)}
           style={[
             styles.input,
@@ -692,7 +740,7 @@ export default function NewGiveawayScreen() {
                 fontWeight: expiryDate ? '600' : '400',
               }}
             >
-              {expiryDate ? formatDate(expiryDate, userCountry) : 'Select expiration date'}
+              {expiryDate ? formatDate(expiryDate, userCountry) : 'Select expiry date'}
             </Text>
           </View>
           <Ionicons name="chevron-down" size={16} color={theme.colors.textMuted} />

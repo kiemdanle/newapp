@@ -58,6 +58,8 @@ export async function updateGiveawayRoute(app: FastifyInstance) {
         ...(input.expiryDate !== undefined ? { expiryDate: input.expiryDate } : {}),
         ...(input.quantity !== undefined ? { quantity: input.quantity } : {}),
         ...(input.unit !== undefined ? { unit: input.unit } : {}),
+        ...(input.latitude !== undefined ? { latitude: input.latitude } : {}),
+        ...(input.longitude !== undefined ? { longitude: input.longitude } : {}),
       },
       include: {
         giver: { select: { id: true, firstName: true, avatarUrl: true, giverRatingAvg: true, transactionCount: true } },

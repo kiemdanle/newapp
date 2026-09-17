@@ -1,5 +1,5 @@
 // apps/mobile/src/features/deals/DealFeed.tsx
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -21,6 +21,7 @@ import { DealSearchBar } from './DealSearchBar';
 import { DealFilterModal } from './DealFilterModal';
 import { EmptyState } from '../../components/EmptyState';
 import { HamburgerButton } from '../../components/HamburgerButton';
+import { BackToTopButton, useBackToTop } from '../../components/BackToTopButton';
 import { useTheme } from '../../theme/useTheme';
 import { useDealFeedStore } from '../../store/dealFeedStore';
 import { retryIfServerUnavailable } from '../../store/connectionStore';
@@ -48,6 +49,19 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filters, setFilters] = useState<DealFeedFilters>({
     sort: 'score',
+  });
+  const flatListRef = useRef<FlatList<Deal>>(null);
+
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef: flatListRef,
+    hasTabBar: true,
+    threshold: 280,
+    autoHideTimeout: 2500,
   });
 
   // Calculate active filter count (excluding default sort)
@@ -298,6 +312,10 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
 
       {/* Main Deals Feed List */}
       <FlatList
+        ref={flatListRef}
+        onTouchStart={handleTouchActivity}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={items}
         keyExtractor={(d: Deal) => d.id}
         contentContainerStyle={[
@@ -393,6 +411,14 @@ export function DealFeed({ currentUserId, onOpen, onReport, onNew }: Props) {
             </View>
           ) : null
         }
+      />
+
+      <BackToTopButton
+        scrollRef={flatListRef}
+        visible={showBackToTop}
+        onPress={handleScrollToTop}
+        hasTabBar={true}
+        testID="deals-back-to-top"
       />
 
       {/* Filter Modal Sheet */}

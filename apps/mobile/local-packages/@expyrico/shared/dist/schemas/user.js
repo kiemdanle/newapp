@@ -10,6 +10,8 @@ export const userSchema = z.object({
     lastName: z.string(),
     address: z.string().nullable().default(null),
     country: z.string().length(2).nullable(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
     avatarUrl: z.string().url().nullable(),
     hasPassword: z.boolean().default(false),
     role: userRoleSchema,
@@ -25,6 +27,8 @@ export const updateProfileSchema = z.object({
     country: z.string().length(2).nullable().optional(),
     avatarUrl: z.string().url().nullable().optional(),
     themePreference: themePreferenceSchema.optional(),
+    latitude: z.number().min(-90).max(90).nullable().optional(),
+    longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 export const meUsageResponseSchema = z.object({
     itemCount: z.number().int().min(0),

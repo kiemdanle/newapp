@@ -34,7 +34,7 @@ export function ConnectionNotice({ testID = 'connection-notice' }: ConnectionNot
     : 'Checking Connection...';
 
   const description = isOffline
-    ? 'Please check your Wi-Fi or mobile network settings. Expyrico requires an active connection to keep your pantry, household sharing, and catalog safely in sync.'
+    ? 'Please check your Wi-Fi or mobile network settings. Expyrico requires an active connection to keep your pantry, household sharing, and catalogue safely in sync.'
     : 'We are unable to reach the Expyrico server right now. Your pantry and household data are safe, and we will reconnect automatically as soon as the service is ready.';
 
   const diagnosticText = isOffline

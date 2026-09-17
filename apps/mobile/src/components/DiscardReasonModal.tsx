@@ -30,14 +30,14 @@ const REASON_OPTIONS: ReasonOption[] = [
   {
     key: 'expired',
     label: 'Expired',
-    description: 'Past its expiration date',
+    description: 'Past its expiry date',
     icon: 'alarm-outline',
     testID: 'discard-reason-expired',
   },
   {
     key: 'spoiled',
     label: 'Spoiled',
-    description: 'Molded, bad odor, or ruined texture',
+    description: 'Moulded, bad odour, or ruined texture',
     icon: 'warning-outline',
     testID: 'discard-reason-spoiled',
   },

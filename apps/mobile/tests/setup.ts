@@ -24,6 +24,14 @@ jest.mock('react-native/Libraries/ActionSheetIOS/ActionSheetIOS', () => ({
   }),
 }));
 
+jest.mock('@react-native-community/geolocation', () => ({
+  requestAuthorization: jest.fn(),
+  getCurrentPosition: jest.fn(),
+  watchPosition: jest.fn(),
+  clearWatch: jest.fn(),
+  stopObserving: jest.fn(),
+}));
+
 
 // Safe area context test shim
 jest.mock('react-native-safe-area-context', () => {

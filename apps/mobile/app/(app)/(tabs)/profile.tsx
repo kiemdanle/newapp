@@ -368,7 +368,7 @@ export default function Profile() {
             accessibilityLabel="Open community contributions"
             icon="globe-outline"
             label="Community contributions"
-            subtitle="Products & photos you've added to catalog"
+            subtitle="Products & photos you've added to catalogue"
             onPress={() => navigation.push('CommunityContributions')}
             badge={
               contributionsData?.enabled !== false && contributionsData?.progression ? (

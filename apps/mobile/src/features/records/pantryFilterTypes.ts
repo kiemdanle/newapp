@@ -38,7 +38,7 @@ export const PANTRY_SORT_OPTIONS: PantrySortOptionMeta[] = [
     id: 'expiry_desc',
     label: 'Latest Expiry',
     icon: 'calendar-outline',
-    accessibilityLabel: 'Sort by latest expiration date',
+    accessibilityLabel: 'Sort by latest expiry date',
   },
   {
     id: 'name_asc',

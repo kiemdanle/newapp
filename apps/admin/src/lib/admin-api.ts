@@ -95,6 +95,13 @@ import {
   adminPantryFilterOptionsSchema,
   type AdminPantryItemPatch,
   type AdminPantryItemsQuery,
+  giveawayDistanceSettingsSchema,
+  type GiveawayDistanceSettings,
+  googleMapsSummarySchema,
+  googleMapsProbeResponseSchema,
+  type GoogleMapsSummary,
+  type GoogleMapsProbeResponse,
+  type GoogleMapsAnalyticsQuery,
 } from '@expyrico/shared';
 import { z } from 'zod';
 
@@ -342,6 +349,15 @@ export const serverAdminApi = {
           moderationNotificationHealthSchema.parse(r),
         ),
     },
+    googleMapsStats: (query: { timeRange?: '24h' | '7d' | '30d'; page?: number; limit?: number; status?: 'all' | 'success' | 'cached' | 'error' } = {}) =>
+      apiServerFetch(`/v1/admin/system/google-maps/stats${qs(query)}`).then((r) =>
+        googleMapsSummarySchema.parse(r),
+      ),
+    googleMapsProbe: (body: { latitude: number; longitude: number }) =>
+      apiServerFetch('/v1/admin/system/google-maps/probe', {
+        method: 'POST',
+        body,
+      }).then((r) => googleMapsProbeResponseSchema.parse(r)),
   },
   settings: {
     featureFlags: {
@@ -439,6 +455,17 @@ export const serverAdminApi = {
         ),
       revoke: (id: string) =>
         apiServerFetch(`/v1/admin/settings/admins/${id}`, { method: 'DELETE' }),
+    },
+    giveaways: {
+      get: () =>
+        apiServerFetch('/v1/admin/settings/giveaways').then((r) =>
+          giveawayDistanceSettingsSchema.parse(r),
+        ),
+      put: (body: GiveawayDistanceSettings) =>
+        apiServerFetch('/v1/admin/settings/giveaways', {
+          method: 'PATCH',
+          body,
+        }).then((r) => giveawayDistanceSettingsSchema.parse(r)),
     },
   },
   deals: {

@@ -272,8 +272,9 @@ export function GiveawayCard({
             ) : null}
 
             <View style={styles.metaRow}>
-              <Text style={[styles.locationText, { color: theme.colors.textMuted }]}>
+              <Text style={[styles.locationText, { color: theme.colors.textMuted }]} numberOfLines={1}>
                 📍 {loc}
+                {giveaway.distanceKm != null ? ` · ${giveaway.distanceKm} km away` : ''}
               </Text>
               {giveaway.claimCount ? (
                 <Text style={[styles.claimCountText, { color: theme.colors.primaryDark }]}>

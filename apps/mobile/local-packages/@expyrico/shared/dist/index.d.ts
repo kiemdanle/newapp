@@ -29,4 +29,6 @@ export * from './schemas/admin/feedback.js';
 export * from './gamification/contributor-levels.js';
 export * from './schemas/admin/contributor-levels.js';
 export * from './schemas/admin/pantry-items.js';
+export * from './schemas/admin/giveaway-settings.js';
+export * from './schemas/admin/google-maps-analytics.js';
 //# sourceMappingURL=index.d.ts.map

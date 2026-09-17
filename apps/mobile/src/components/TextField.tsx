@@ -7,6 +7,7 @@ export interface TextFieldProps extends Omit<TextInputProps, 'style'> {
   label: string;
   error?: string;
   showPasswordToggle?: boolean;
+  rightAccessory?: React.ReactNode;
 }
 
 export function TextField({
@@ -16,6 +17,7 @@ export function TextField({
   autoCapitalize,
   autoCorrect,
   showPasswordToggle,
+  rightAccessory,
   ...rest
 }: TextFieldProps) {
   const theme = useTheme();
@@ -47,8 +49,7 @@ export function TextField({
       >
         {label}
       </Text>
-      <Pressable
-        onPress={handleContainerPress}
+      <View
         style={[
           styles.inputContainer,
           {
@@ -83,7 +84,9 @@ export function TextField({
           ]}
           {...rest}
         />
-        {isPassword ? (
+        {rightAccessory ? (
+          <View style={styles.toggleButton}>{rightAccessory}</View>
+        ) : isPassword ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={passwordHidden ? 'Show password' : 'Hide password'}
@@ -100,7 +103,7 @@ export function TextField({
             />
           </Pressable>
         ) : null}
-      </Pressable>
+      </View>
       {error ? (
         <Text style={[styles.error, { color: theme.colors.danger, fontSize: theme.typeRamp.labelMedium.fontSize }]}>
           {error}

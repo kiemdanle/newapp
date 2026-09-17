@@ -39,6 +39,7 @@ import type { AppNavigationProp } from '../../../src/navigation/AppNavigator';
 import { ItemImageGallery } from '../../../src/components/ItemImageGallery';
 import { ProductReviewsSection } from '../../../src/features/reviews/ProductReviewsSection';
 import { ProductReviewSummaryCard } from '../../../src/features/reviews/ProductReviewSummaryCard';
+import { BackToTopButton, useBackToTop } from '../../../src/components/BackToTopButton';
 export function getRelativeExpiryLabel(
   expiryDateStr: string,
   country?: string | null,
@@ -82,6 +83,20 @@ export default function RecordDetail() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [photoSaveState, setPhotoSaveState] = useState<'idle' | 'uploading' | 'saving' | 'error'>('idle');
   const [pendingPhotos, setPendingPhotos] = useState<string[] | null>(null);
+  const scrollRef = React.useRef<ScrollView>(null);
+
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef,
+    hasTabBar: false,
+    offsetBottom: 84,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   const photoSaveInFlight = React.useRef(false);
   const photoSaveAttempt = React.useRef<{ urls: string[]; photos: PickedPhoto[] } | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -471,6 +486,10 @@ export default function RecordDetail() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
       <ScrollView
+        ref={scrollRef}
+        onScroll={handleScroll}
+        onTouchStart={handleTouchActivity}
+        scrollEventThrottle={16}
         contentContainerStyle={{
           padding: 16,
           paddingBottom: Math.max(insets.bottom, 34) + 90,
@@ -902,7 +921,7 @@ export default function RecordDetail() {
             <View style={{ gap: 8, marginTop: 4 }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Add to product catalog"
+                accessibilityLabel="Add to product catalogue"
                 testID="record-create-catalog-product"
                 onPress={() =>
                   navigation.navigate('ProductNew', {
@@ -924,7 +943,7 @@ export default function RecordDetail() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
-                    Add to Global Product Catalog
+                    Add to Global Product Catalogue
                   </Text>
                   <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>
                     Publish details & photos for the community
@@ -939,6 +958,7 @@ export default function RecordDetail() {
             <ProductReviewsSection product={product} />
           ) : null}
       </ScrollView>
+
 
       {/* Floating Bottom Action Toolbar */}
       <View
@@ -982,6 +1002,15 @@ export default function RecordDetail() {
           </View>
         )}
       </View>
+
+      <BackToTopButton
+        scrollRef={scrollRef}
+        visible={showBackToTop}
+        onPress={handleScrollToTop}
+        hasTabBar={false}
+        offsetBottom={84}
+        testID="record-detail-back-to-top"
+      />
       {/* Quick Edit Modal */}
       <QuickEditModal
         visible={showEditModal}
@@ -1440,7 +1469,7 @@ export function RecordLocationRow({
         <Pressable
           testID="reassign-modal-backdrop"
           accessibilityRole="button"
-          accessibilityLabel="Dismiss pantry move dialog"
+          accessibilityLabel="Dismiss pantry move dialogue"
           style={styles.modalBackdrop}
           onPress={() => setModalVisible(false)}
         >

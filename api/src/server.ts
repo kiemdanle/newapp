@@ -30,6 +30,7 @@ import { reviewsRoutes } from './routes/reviews/index.js';
 import { reportsRoutes } from './routes/reports/index.js';
 import { dealsRoutes } from './routes/deals/index.js';
 import { giveawaysRoutes } from './routes/giveaways/index.js';
+import { geoRoutes } from './routes/geo/index.js';
 import { userReputationRoute } from './routes/users/reputation.js';
 import { referralRoutes } from './routes/referrals/index.js';
 import { householdsRoutes } from './routes/households/index.js';
@@ -164,6 +165,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(reportsRoutes, { prefix: '/v1' });
   await app.register(dealsRoutes, { prefix: '/v1' });
   await app.register(giveawaysRoutes, { prefix: '/v1' });
+  await app.register(geoRoutes, { prefix: '/v1' });
   await app.register(userReputationRoute, { prefix: '/v1' });
   await app.register(referralRoutes, { prefix: '/v1' });
   await app.register(householdsRoutes, { prefix: '/v1' });

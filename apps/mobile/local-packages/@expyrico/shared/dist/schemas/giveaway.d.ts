@@ -1,7 +1,7 @@
 import { z } from 'zod';
 export declare const giveawayStatusSchema: z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>;
 export type GiveawayStatus = z.infer<typeof giveawayStatusSchema>;
-export declare const giveawaySortSchema: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc"]>>;
+export declare const giveawaySortSchema: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc", "distance_asc"]>>;
 export type GiveawaySort = z.infer<typeof giveawaySortSchema>;
 export declare const claimStatusSchema: z.ZodEnum<["requested", "selected", "rejected"]>;
 export type ClaimStatus = z.infer<typeof claimStatusSchema>;
@@ -16,6 +16,9 @@ export declare const giveawaySchema: z.ZodObject<{
     photoUrls: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
     locationText: z.ZodString;
     country: z.ZodNullable<z.ZodString>;
+    latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    distanceKm: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     status: z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>;
     selectedRecipientId: z.ZodNullable<z.ZodString>;
     quantity: z.ZodDefault<z.ZodNumber>;
@@ -34,11 +37,11 @@ export declare const giveawaySchema: z.ZodObject<{
         pickupNote: z.ZodNullable<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         id: string;
-        status: "rejected" | "requested" | "selected";
+        status: "requested" | "selected" | "rejected";
         pickupNote: string | null;
     }, {
         id: string;
-        status: "rejected" | "requested" | "selected";
+        status: "requested" | "selected" | "rejected";
         pickupNote: string | null;
     }>>>;
     giver: z.ZodOptional<z.ZodObject<{
@@ -63,29 +66,32 @@ export declare const giveawaySchema: z.ZodObject<{
 }, "strip", z.ZodTypeAny, {
     id: string;
     country: string | null;
-    status: "open" | "completed" | "claimed" | "handed_off" | "cancelled";
+    status: "open" | "claimed" | "handed_off" | "completed" | "cancelled";
     createdAt: string;
     updatedAt: string;
-    description: string | null;
-    title: string;
-    productId: string | null;
-    quantity: number;
-    unit: string;
-    photoUrl: string | null;
-    completedAt: string | null;
     giverUserId: string;
+    productId: string | null;
     recordId: string | null;
+    title: string;
+    description: string | null;
+    photoUrl: string | null;
     locationText: string;
     selectedRecipientId: string | null;
+    quantity: number;
+    unit: string;
     claimExpiresAt: string | null;
     handedOffAt: string | null;
     confirmedAt: string | null;
-    expiryDate?: string | null | undefined;
+    completedAt: string | null;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     photoUrls?: string[] | undefined;
+    distanceKm?: number | null | undefined;
+    expiryDate?: string | null | undefined;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
-        status: "rejected" | "requested" | "selected";
+        status: "requested" | "selected" | "rejected";
         pickupNote: string | null;
     } | null | undefined;
     giver?: {
@@ -98,29 +104,32 @@ export declare const giveawaySchema: z.ZodObject<{
 }, {
     id: string;
     country: string | null;
-    status: "open" | "completed" | "claimed" | "handed_off" | "cancelled";
+    status: "open" | "claimed" | "handed_off" | "completed" | "cancelled";
     createdAt: string;
     updatedAt: string;
-    description: string | null;
-    title: string;
-    productId: string | null;
-    photoUrl: string | null;
-    completedAt: string | null;
     giverUserId: string;
+    productId: string | null;
     recordId: string | null;
+    title: string;
+    description: string | null;
+    photoUrl: string | null;
     locationText: string;
     selectedRecipientId: string | null;
     claimExpiresAt: string | null;
     handedOffAt: string | null;
     confirmedAt: string | null;
-    expiryDate?: string | null | undefined;
+    completedAt: string | null;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
+    photoUrls?: string[] | undefined;
+    distanceKm?: number | null | undefined;
     quantity?: number | undefined;
     unit?: string | undefined;
-    photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimCount?: number | undefined;
     myClaim?: {
         id: string;
-        status: "rejected" | "requested" | "selected";
+        status: "requested" | "selected" | "rejected";
         pickupNote: string | null;
     } | null | undefined;
     giver?: {
@@ -144,29 +153,35 @@ export declare const giveawayCreateSchema: z.ZodObject<{
     expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     productId: z.ZodOptional<z.ZodString>;
     recordId: z.ZodOptional<z.ZodString>;
+    latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
     title: string;
+    locationText: string;
     quantity: number;
     unit: string;
-    locationText: string;
-    description?: string | null | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     productId?: string | undefined;
-    expiryDate?: string | null | undefined;
-    photoUrl?: string | undefined;
     recordId?: string | undefined;
+    description?: string | null | undefined;
+    photoUrl?: string | undefined;
     photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
     title: string;
     locationText: string;
-    description?: string | null | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     productId?: string | undefined;
-    expiryDate?: string | null | undefined;
+    recordId?: string | undefined;
+    description?: string | null | undefined;
+    photoUrl?: string | undefined;
+    photoUrls?: string[] | undefined;
     quantity?: number | undefined;
     unit?: string | undefined;
-    photoUrl?: string | undefined;
-    recordId?: string | undefined;
-    photoUrls?: string[] | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayCreate = z.infer<typeof giveawayCreateSchema>;
@@ -180,45 +195,55 @@ export declare const giveawayPatchSchema: z.ZodEffects<z.ZodObject<{
     unit: z.ZodOptional<z.ZodString>;
     claimExpiresAt: z.ZodOptional<z.ZodNullable<z.ZodUnion<[z.ZodString, z.ZodString]>>>;
     expiryDate: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
-    description?: string | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     title?: string | undefined;
-    expiryDate?: string | null | undefined;
-    quantity?: number | undefined;
-    unit?: string | undefined;
+    description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
-    description?: string | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     title?: string | undefined;
-    expiryDate?: string | null | undefined;
-    quantity?: number | undefined;
-    unit?: string | undefined;
+    description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>, {
-    description?: string | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     title?: string | undefined;
-    expiryDate?: string | null | undefined;
-    quantity?: number | undefined;
-    unit?: string | undefined;
+    description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }, {
-    description?: string | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     title?: string | undefined;
-    expiryDate?: string | null | undefined;
-    quantity?: number | undefined;
-    unit?: string | undefined;
+    description?: string | undefined;
     photoUrl?: string | null | undefined;
     photoUrls?: string[] | undefined;
     locationText?: string | undefined;
+    quantity?: number | undefined;
+    unit?: string | undefined;
+    expiryDate?: string | null | undefined;
     claimExpiresAt?: string | null | undefined;
 }>;
 export type GiveawayPatch = z.infer<typeof giveawayPatchSchema>;
@@ -250,7 +275,7 @@ export declare const claimSchema: z.ZodObject<{
     }>>;
 }, "strip", z.ZodTypeAny, {
     id: string;
-    status: "rejected" | "requested" | "selected";
+    status: "requested" | "selected" | "rejected";
     createdAt: string;
     pickupNote: string | null;
     giveawayId: string;
@@ -264,7 +289,7 @@ export declare const claimSchema: z.ZodObject<{
     } | undefined;
 }, {
     id: string;
-    status: "rejected" | "requested" | "selected";
+    status: "requested" | "selected" | "rejected";
     createdAt: string;
     pickupNote: string | null;
     giveawayId: string;
@@ -297,30 +322,39 @@ export type SelectClaim = z.infer<typeof selectClaimSchema>;
 export declare const giveawayListQuerySchema: z.ZodObject<{
     q: z.ZodOptional<z.ZodString>;
     status: z.ZodDefault<z.ZodUnion<[z.ZodEnum<["open", "claimed", "handed_off", "completed", "cancelled"]>, z.ZodLiteral<"all">]>>;
-    sort: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc"]>>;
+    sort: z.ZodDefault<z.ZodEnum<["new", "old", "claims_asc", "claims_desc", "expiry_asc", "distance_asc"]>>;
     location: z.ZodOptional<z.ZodString>;
     country: z.ZodOptional<z.ZodString>;
     hasPhoto: z.ZodOptional<z.ZodEffects<z.ZodUnion<[z.ZodBoolean, z.ZodEnum<["true", "false"]>]>, boolean, boolean | "true" | "false">>;
     cursor: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
+    latitude: z.ZodOptional<z.ZodNumber>;
+    longitude: z.ZodOptional<z.ZodNumber>;
+    radiusKm: z.ZodOptional<z.ZodNumber>;
 }, "strip", z.ZodTypeAny, {
-    status: "all" | "open" | "completed" | "claimed" | "handed_off" | "cancelled";
-    sort: "new" | "expiry_asc" | "old" | "claims_asc" | "claims_desc";
+    status: "open" | "claimed" | "handed_off" | "completed" | "cancelled" | "all";
+    sort: "new" | "old" | "claims_asc" | "claims_desc" | "expiry_asc" | "distance_asc";
     limit: number;
     country?: string | undefined;
-    cursor?: string | undefined;
+    latitude?: number | undefined;
+    longitude?: number | undefined;
     q?: string | undefined;
     location?: string | undefined;
     hasPhoto?: boolean | undefined;
+    cursor?: string | undefined;
+    radiusKm?: number | undefined;
 }, {
     country?: string | undefined;
-    status?: "all" | "open" | "completed" | "claimed" | "handed_off" | "cancelled" | undefined;
-    sort?: "new" | "expiry_asc" | "old" | "claims_asc" | "claims_desc" | undefined;
-    cursor?: string | undefined;
-    limit?: number | undefined;
+    latitude?: number | undefined;
+    longitude?: number | undefined;
+    status?: "open" | "claimed" | "handed_off" | "completed" | "cancelled" | "all" | undefined;
+    sort?: "new" | "old" | "claims_asc" | "claims_desc" | "expiry_asc" | "distance_asc" | undefined;
     q?: string | undefined;
     location?: string | undefined;
     hasPhoto?: boolean | "true" | "false" | undefined;
+    cursor?: string | undefined;
+    limit?: number | undefined;
+    radiusKm?: number | undefined;
 }>;
 export type GiveawayListQuery = z.infer<typeof giveawayListQuerySchema>;
 export declare const giveawayPhotoUploadResponseSchema: z.ZodObject<{

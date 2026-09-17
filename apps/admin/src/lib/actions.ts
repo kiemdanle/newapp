@@ -15,6 +15,7 @@ import type {
 import type { ContributorLevelsSetting } from '@expyrico/shared';
 import type { PhotoLimitsSettings } from '@expyrico/shared';
 import type { PantryLimitsPatch } from '@expyrico/shared';
+import type { GiveawayDistanceSettings } from '@expyrico/shared';
 import type {
   AdminUserReset2faRequest,
   AdminUserReset2faResponse,
@@ -387,6 +388,12 @@ export async function savePhotoLimitsAction(body: PhotoLimitsSettings) {
 export async function savePantryLimitsAction(body: PantryLimitsPatch) {
   const result = await serverAdminApi.settings.pantryLimits.patch(body);
   revalidatePath('/settings/pantry-limits');
+  return result;
+}
+
+export async function saveGiveawayDistanceAction(body: GiveawayDistanceSettings) {
+  const result = await serverAdminApi.settings.giveaways.put(body);
+  revalidatePath('/settings/giveaways');
   return result;
 }
 

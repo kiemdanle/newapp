@@ -10,6 +10,8 @@ export declare const userSchema: z.ZodObject<{
     lastName: z.ZodString;
     address: z.ZodDefault<z.ZodNullable<z.ZodString>>;
     country: z.ZodNullable<z.ZodString>;
+    latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
     avatarUrl: z.ZodNullable<z.ZodString>;
     hasPassword: z.ZodDefault<z.ZodBoolean>;
     role: z.ZodEnum<["user", "admin"]>;
@@ -32,6 +34,8 @@ export declare const userSchema: z.ZodObject<{
     themePreference: "expyrico" | "bento" | "clay" | "material";
     createdAt: string;
     updatedAt: string;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
 }, {
     id: string;
     email: string;
@@ -46,6 +50,8 @@ export declare const userSchema: z.ZodObject<{
     createdAt: string;
     updatedAt: string;
     address?: string | null | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     hasPassword?: boolean | undefined;
 }>;
 export type User = z.infer<typeof userSchema>;
@@ -56,11 +62,15 @@ export declare const updateProfileSchema: z.ZodObject<{
     country: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     avatarUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
     themePreference: z.ZodOptional<z.ZodEnum<["expyrico", "bento", "clay", "material"]>>;
+    latitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    longitude: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
 }, "strip", z.ZodTypeAny, {
     firstName?: string | undefined;
     lastName?: string | undefined;
     address?: string | null | undefined;
     country?: string | null | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     avatarUrl?: string | null | undefined;
     themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }, {
@@ -68,6 +78,8 @@ export declare const updateProfileSchema: z.ZodObject<{
     lastName?: string | undefined;
     address?: string | null | undefined;
     country?: string | null | undefined;
+    latitude?: number | null | undefined;
+    longitude?: number | null | undefined;
     avatarUrl?: string | null | undefined;
     themePreference?: "expyrico" | "bento" | "clay" | "material" | undefined;
 }>;

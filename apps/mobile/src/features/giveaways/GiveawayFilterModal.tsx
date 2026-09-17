@@ -146,7 +146,7 @@ export function GiveawayFilterModal({ visible, onClose, filters, onApply }: Prop
             <View style={styles.section}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-                  Location / Neighborhood
+                  Location / Neighbourhood
                 </Text>
                 {profileLocation && location !== profileLocation ? (
                   <Pressable

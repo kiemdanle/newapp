@@ -1,5 +1,5 @@
 // apps/mobile/src/features/records/PantryHistoryView.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -22,6 +22,7 @@ import { useMyHouseholds } from '../../api/households';
 import { useSyncStateStore } from '../../store/syncStateStore';
 import { PantryHistorySkeleton } from './PantryHistorySkeleton';
 import { SkeletonBone, SkeletonShimmer } from '../../components/skeleton';
+import { BackToTopButton, useBackToTop } from '../../components/BackToTopButton';
 import { useSessionStore } from '../../auth/session-store';
 import { useTheme } from '../../theme/useTheme';
 import { calculatePantryWasteStats } from '../../utils/waste-metrics';
@@ -47,8 +48,20 @@ export function PantryHistoryView({
   const navigation = useNavigation<AppNavigationProp>();
   const userCountry = useSessionStore((s) => s.user?.country ?? null);
   const { data: householdsData } = useMyHouseholds();
-
   const [activeFilter, setActiveFilter] = useState<HistoryFilter>('all');
+  const flatListRef = useRef<FlatList<LocalRecord>>(null);
+
+  const {
+    visible: showBackToTop,
+    handleScroll,
+    scrollToTop: handleScrollToTop,
+    onTouchStart: handleTouchActivity,
+  } = useBackToTop({
+    scrollRef: flatListRef,
+    hasTabBar: !showBackHeader,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
 
   // Query all history items for stats and counts
   const allHistoryRecords = usePantryHistoryRecords('all');
@@ -313,7 +326,11 @@ export function PantryHistoryView({
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.bg }]}>
       <FlatList
+        ref={flatListRef}
         data={displayRecords}
+        onTouchStart={handleTouchActivity}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <HistoryRecordCard
@@ -330,6 +347,13 @@ export function PantryHistoryView({
           { paddingBottom: Math.max(insets.bottom, 24) + 80 },
         ]}
         showsVerticalScrollIndicator={false}
+      />
+      <BackToTopButton
+        scrollRef={flatListRef}
+        visible={showBackToTop}
+        onPress={handleScrollToTop}
+        hasTabBar={!showBackHeader}
+        testID="pantry-history-back-to-top"
       />
     </View>
   );

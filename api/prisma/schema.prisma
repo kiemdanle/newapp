@@ -222,6 +222,8 @@ model User {
   lastName                String
   address                 String?
   country                 String?         @db.Char(2)
+  latitude                Float?
+  longitude               Float?
   avatarUrl               String?
   role                    UserRole        @default(user)
   status                  UserStatus      @default(active)
@@ -283,6 +285,7 @@ model User {
   feedbackTicketsResolved  FeedbackTicket[]     @relation("FeedbackResolver")
   feedbackAttachments      FeedbackAttachment[] @relation("FeedbackAttachmentUploader")
   feedbackMessagesSent     FeedbackMessage[]    @relation("FeedbackMessageSender")
+  googleMapsLogs           GoogleMapsApiCallLog[]
   @@map("users")
 }
 
@@ -972,6 +975,8 @@ model Giveaway {
   photoUrl       String?        @map("photo_url")
   locationText   String         @map("location_text")
   country        String?        @db.Char(2)
+  latitude       Float?
+  longitude      Float?
   status         GiveawayStatus @default(open)
   quantity       Float          @default(1)
   unit           String         @default("pcs") @db.VarChar(16)
@@ -991,6 +996,7 @@ model Giveaway {
   @@index([country, status, createdAt(sort: Desc)])
   @@index([giverUserId, status])
   @@index([status, claimExpiresAt])
+  @@index([latitude, longitude])
   @@map("giveaways")
 }
 
@@ -1234,4 +1240,26 @@ model BarcodeApiCallLog {
   @@index([barcode])
   @@index([status, createdAt])
   @@map("barcode_api_call_logs")
+}
+
+model GoogleMapsApiCallLog {
+  id                 String   @id @default(uuid()) @db.Uuid
+  endpoint           String   @db.Text
+  latitude           Float
+  longitude          Float
+  status             String   @db.VarChar(32)
+  httpStatus         Int?     @map("http_status") @db.SmallInt
+  durationMs         Int      @map("duration_ms") @db.Integer
+  formattedAddress   String?  @map("formatted_address") @db.Text
+  countryCode        String?  @map("country_code") @db.Char(2)
+  errorMessage       String?  @map("error_message") @db.Text
+  callerContext      String   @default("profile_location") @map("caller_context") @db.VarChar(32)
+  userId             String?  @map("user_id") @db.Uuid
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("google_maps_api_call_logs")
 }

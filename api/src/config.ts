@@ -102,6 +102,7 @@ const envSchema = z.object({
   RECAPTCHA_SITE_KEY_IOS: z.string().min(1),
   RECAPTCHA_MIN_SCORE: z.coerce.number().min(0).max(1).default(0.5),
   RECAPTCHA_ASSESSMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
+  GOOGLE_MAPS_API_KEY: z.string().optional(),
 
   // `product_creation` mode (Phase 7): `internal` cohort is admins plus this
   // environment-managed allowlist of user IDs. Optional/empty is valid — an
@@ -199,6 +200,9 @@ export interface Config {
     credentialsPath?: string | undefined;
     minScore: number;
     assessmentTimeoutMs: number;
+  };
+  googleMaps: {
+    apiKey?: string | undefined;
   };
   productCreation: {
     internalAllowlist: string[];
@@ -394,6 +398,9 @@ export function parseConfig(source: NodeJS.ProcessEnv | Record<string, unknown>)
       minScore: e.RECAPTCHA_MIN_SCORE,
       assessmentTimeoutMs: e.RECAPTCHA_ASSESSMENT_TIMEOUT_MS,
       credentialsPath: e.RECAPTCHA_APPLICATION_CREDENTIALS ?? e.GOOGLE_APPLICATION_CREDENTIALS,
+    },
+    googleMaps: {
+      apiKey: e.GOOGLE_MAPS_API_KEY,
     },
     productCreation: {
       internalAllowlist: parseUuidAllowlist(e.PRODUCT_CREATION_INTERNAL_ALLOWLIST),

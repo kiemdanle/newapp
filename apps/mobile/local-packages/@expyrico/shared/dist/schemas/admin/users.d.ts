@@ -52,16 +52,16 @@ export declare const adminUsersQuerySchema: z.ZodObject<{
     country?: string | undefined;
     role?: "user" | "admin" | undefined;
     status?: "active" | "suspended" | "deleted" | undefined;
-    cursor?: string | undefined;
     q?: string | undefined;
+    cursor?: string | undefined;
 }, {
     country?: string | undefined;
     role?: "user" | "admin" | undefined;
     status?: "active" | "suspended" | "deleted" | undefined;
     sort?: "email" | "createdAt" | "lastSeenAt" | undefined;
+    q?: string | undefined;
     cursor?: string | undefined;
     limit?: number | undefined;
-    q?: string | undefined;
     order?: "asc" | "desc" | undefined;
 }>;
 export declare const adminUsersListSchema: z.ZodObject<{
@@ -174,12 +174,12 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
     createdAt: string;
-    reviewCount: number;
     requireProductApproval: boolean;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
     recordCount: number;
+    reviewCount: number;
     openReportsAgainst: number;
     sessions: {
         id: string;
@@ -197,11 +197,11 @@ export declare const adminUserDetailSchema: z.ZodObject<{
     role: "user" | "admin";
     status: "active" | "suspended" | "deleted";
     createdAt: string;
-    reviewCount: number;
     lastSeenAt: string | null;
     emailVerifiedAt: string | null;
     totpEnabledAt: string | null;
     recordCount: number;
+    reviewCount: number;
     openReportsAgainst: number;
     sessions: {
         id: string;
@@ -272,12 +272,12 @@ export declare const adminUserReset2faResponseSchema: z.ZodObject<{
     message: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }>;
 export type AdminUserReset2faResponse = z.infer<typeof adminUserReset2faResponseSchema>;
 export declare const adminUserChangePasswordRequestSchema: z.ZodObject<{
@@ -294,12 +294,12 @@ export declare const adminUserChangePasswordResponseSchema: z.ZodObject<{
     message: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }>;
 export type AdminUserChangePasswordResponse = z.infer<typeof adminUserChangePasswordResponseSchema>;
 export declare const adminUserSendRandomPasswordRequestSchema: z.ZodObject<{
@@ -316,12 +316,12 @@ export declare const adminUserSendRandomPasswordResponseSchema: z.ZodObject<{
     message: z.ZodString;
 }, "strip", z.ZodTypeAny, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }, {
     message: string;
-    ok: true;
     userId: string;
+    ok: true;
 }>;
 export type AdminUserSendRandomPasswordResponse = z.infer<typeof adminUserSendRandomPasswordResponseSchema>;
 //# sourceMappingURL=users.d.ts.map

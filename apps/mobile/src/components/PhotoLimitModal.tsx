@@ -38,7 +38,7 @@ export function PhotoLimitModal({
         <Pressable
           testID="photo-limit-dismiss-overlay"
           accessibilityRole="button"
-          accessibilityLabel="Dismiss photo limit dialog"
+          accessibilityLabel="Dismiss photo limit dialogue"
           style={styles.dismissOverlay}
           onPress={onClose}
         />

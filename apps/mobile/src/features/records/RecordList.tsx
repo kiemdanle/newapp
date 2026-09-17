@@ -55,7 +55,7 @@ import { PantryGridCard } from './PantryGridCard';
 import { useSyncStateStore } from '../../store/syncStateStore';
 import { PantryListSkeleton } from './PantryListSkeleton';
 import { SyncStatusBar } from '../../components/SyncStatusBar';
-
+import { BackToTopButton, useBackToTop } from '../../components/BackToTopButton';
 function chunkArray<T>(items: T[], size: number = 2): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
@@ -254,7 +254,19 @@ export function RecordList({
   const [activeDrawerId, setActiveDrawerId] = useState<string | null>(null);
   const lastPropRef = useRef(urgentFilterActive);
   const prevExpiryStatusRef = useRef(filters.expiryStatus);
+  const sectionListRef = useRef<SectionList<LocalRecord | LocalRecord[]>>(null);
 
+  const {
+    visible: showBackToTop,
+    handleScroll: handleBackToTopScroll,
+    scrollToTop: handleBackToTopPress,
+    onTouchStart: handleBackToTopTouch,
+  } = useBackToTop({
+    scrollRef: sectionListRef,
+    hasTabBar: true,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   useEffect(() => {
     if (urgentFilterActive !== undefined && urgentFilterActive !== lastPropRef.current) {
       lastPropRef.current = urgentFilterActive;
@@ -413,6 +425,7 @@ export function RecordList({
   }, [showFloatingControls, floatingControlsAnim]);
 
   const handleListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    handleBackToTopScroll(e);
     const currentY = e.nativeEvent.contentOffset.y;
     const deltaY = currentY - lastScrollYRef.current;
     lastScrollYRef.current = currentY;
@@ -1018,6 +1031,8 @@ export function RecordList({
       )}
       {/* STABLE SINGLE SectionList: Preserves search input focus, cursor, and keyboard connection */}
       <SectionList
+        ref={sectionListRef}
+        onTouchStart={handleBackToTopTouch}
         testID="pantry-record-list"
         sections={sections as unknown as SectionListData<LocalRecord | LocalRecord[]>[]}
         extraData={extraData}
@@ -1216,6 +1231,14 @@ export function RecordList({
           </View>
         </View>
       )}
+
+      <BackToTopButton
+        scrollRef={sectionListRef}
+        visible={showBackToTop}
+        onPress={handleBackToTopPress}
+        hasTabBar={true}
+        testID="pantry-back-to-top"
+      />
 
       <BulkScopeModal
         visible={bulkScopeModalVisible}

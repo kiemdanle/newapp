@@ -49,8 +49,8 @@ export const UNIT_CATEGORIES: UnitCategory[] = [
     units: [
       { key: 'kg', label: 'Kilogram', sublabel: 'kg · Mass' },
       { key: 'g', label: 'Gram', sublabel: 'g · Small mass' },
-      { key: 'l', label: 'Liter', sublabel: 'l · Liquid volume' },
-      { key: 'ml', label: 'Milliliter', sublabel: 'ml · Liquid volume' },
+      { key: 'l', label: 'Litre', sublabel: 'l · Liquid volume' },
+      { key: 'ml', label: 'Millilitre', sublabel: 'ml · Liquid volume' },
     ],
   },
   {

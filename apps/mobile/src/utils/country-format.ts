@@ -154,7 +154,7 @@ export function formatDateTime(
 
 /**
  * Formats currency values with correct symbols, symbol positioning, and grouping.
- * Prioritizes explicit entity currency (`currencyOverride`) when provided.
+ * Prioritises explicit entity currency (`currencyOverride`) when provided.
  */
 export function formatCurrency(
   amount: number | null | undefined,

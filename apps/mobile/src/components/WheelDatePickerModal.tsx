@@ -22,7 +22,8 @@ import { useSessionStore } from '../auth/session-store';
 const ITEM_HEIGHT = 38;
 const VISIBLE_ITEMS = 3;
 const PADDING_ITEMS = 1; // 1 item padding on top and bottom for 3 visible items
-
+const LOOP_MULTIPLIER = 5; // 5 copies (blocks 0, 1, 2 [center], 3, 4) for lightweight 60fps scrolling
+const MID_BLOCK = 2;
 const MONTH_NAMES_EN = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -70,96 +71,304 @@ interface WheelColumnProps<T> {
   onSelect: (index: number) => void;
   renderLabel: (item: T) => string;
   flex?: number;
+  loop?: boolean;
+  testID?: string;
 }
 
-function WheelColumn<T>({ items, selectedIndex, onSelect, renderLabel, flex = 1 }: WheelColumnProps<T>) {
+interface DisplayItem<T> {
+  item: T;
+  originalIndex: number;
+  virtualIndex: number;
+}
+
+interface WheelRowProps {
+  label: string;
+  virtualIndex: number;
+  originalIndex: number;
+  isSelected: boolean;
+  distance: number;
+  isDark: boolean;
+  onPressItem: (virtualIndex: number, originalIndex: number) => void;
+}
+
+const WheelRow = React.memo(
+  function WheelRow({
+    label,
+    virtualIndex,
+    originalIndex,
+    isSelected,
+    distance,
+    isDark,
+    onPressItem,
+  }: WheelRowProps) {
+    const textColor = isSelected
+      ? (isDark ? '#4BAE8A' : '#2C2C28')
+      : (isDark ? '#B7BDB7' : '#73736C');
+    const opacity = isSelected ? 1 : distance === 1 ? 0.75 : 0.45;
+    const fontSize = isSelected ? 16 : 14;
+    const fontWeight: '700' | '500' = isSelected ? '700' : '500';
+
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={() => onPressItem(virtualIndex, originalIndex)}
+        style={styles.itemRow}
+      >
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.itemText,
+            {
+              color: textColor,
+              opacity,
+              fontSize,
+              fontWeight,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    );
+  },
+  (prev, next) => {
+    const prevBucket = prev.isSelected ? 0 : prev.distance === 1 ? 1 : 2;
+    const nextBucket = next.isSelected ? 0 : next.distance === 1 ? 1 : 2;
+    return (
+      prevBucket === nextBucket &&
+      prev.label === next.label &&
+      prev.isDark === next.isDark
+    );
+  },
+);
+
+function WheelColumn<T>({
+  items,
+  selectedIndex,
+  onSelect,
+  renderLabel,
+  flex = 1,
+  loop = false,
+  testID,
+}: WheelColumnProps<T>) {
   const theme = useTheme();
   const isDark = theme.scheme === 'dark';
   const scrollRef = useRef<ScrollView>(null);
   const isUserScrolling = useRef(false);
+  const isMomentumRef = useRef(false);
+  const scrollEndDragTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSelectedByWheelRef = useRef<number | null>(null);
+  const finalizedOffsetRef = useRef<number | null>(null);
+  const N = items.length;
+  const isLooping = Boolean(loop && N > 1);
+  const currentVirtualRef = useRef(isLooping ? MID_BLOCK * N + selectedIndex : selectedIndex);
+  const [localSelectedIndex, setLocalSelectedIndex] = useState(selectedIndex);
+  const lastScrollYRef = useRef((isLooping ? MID_BLOCK * N + selectedIndex : selectedIndex) * ITEM_HEIGHT);
+  const displayItems = useMemo<DisplayItem<T>[]>(() => {
+    if (!isLooping) {
+      return items.map((item, originalIndex) => ({
+        item,
+        originalIndex,
+        virtualIndex: originalIndex,
+      }));
+    }
+    const result: DisplayItem<T>[] = [];
+    for (let b = 0; b < LOOP_MULTIPLIER; b++) {
+      for (const [i, item] of items.entries()) {
+        result.push({
+          item,
+          originalIndex: i,
+          virtualIndex: b * N + i,
+        });
+      }
+    }
+    return result;
+  }, [items, isLooping, N]);
+
+  const initialOffset = (isLooping ? MID_BLOCK * N + selectedIndex : selectedIndex) * ITEM_HEIGHT;
 
   useEffect(() => {
+    return () => {
+      clearTimeout(scrollEndDragTimerRef.current ?? undefined);
+      clearTimeout(scrollSettleTimerRef.current ?? undefined);
+    };
+  }, []);
+
+  // Synchronize scroll position only on external changes (presets, text typing, month clamps).
+  // Skips redundant scrollTo when the change originated from the user scrolling this wheel.
+  useEffect(() => {
+    setLocalSelectedIndex(selectedIndex);
+    if (lastSelectedByWheelRef.current === selectedIndex) {
+      lastSelectedByWheelRef.current = null;
+      return;
+    }
+    lastSelectedByWheelRef.current = null;
     if (!isUserScrolling.current) {
+      const targetVirtual = isLooping ? MID_BLOCK * N + selectedIndex : selectedIndex;
+      currentVirtualRef.current = targetVirtual;
+      lastScrollYRef.current = targetVirtual * ITEM_HEIGHT;
       scrollRef.current?.scrollTo({
-        y: selectedIndex * ITEM_HEIGHT,
+        y: targetVirtual * ITEM_HEIGHT,
         animated: false,
       });
     }
-  }, [selectedIndex]);
+  }, [selectedIndex, isLooping, N]);
 
-  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const finalizeScroll = (contentOffsetY: number) => {
     isUserScrolling.current = false;
-    const y = e.nativeEvent.contentOffset.y;
-    const index = Math.max(0, Math.min(items.length - 1, Math.round(y / ITEM_HEIGHT)));
-    if (index !== selectedIndex) {
-      onSelect(index);
+    isMomentumRef.current = false;
+    clearTimeout(scrollSettleTimerRef.current ?? undefined);
+    clearTimeout(scrollEndDragTimerRef.current ?? undefined);
+
+    const roundedY = Math.round(contentOffsetY / ITEM_HEIGHT) * ITEM_HEIGHT;
+    if (finalizedOffsetRef.current === roundedY) {
+      return;
+    }
+    finalizedOffsetRef.current = roundedY;
+
+    if (isLooping) {
+      const rawVIdx = Math.round(contentOffsetY / ITEM_HEIGHT);
+      const realIndex = ((rawVIdx % N) + N) % N;
+
+      setLocalSelectedIndex(realIndex);
+      lastSelectedByWheelRef.current = realIndex;
+      if (realIndex !== selectedIndex) {
+        onSelect(realIndex);
+      }
+
+      // Only re-center if drifted close to outer boundaries (Block 0 or Block 4),
+      // preserving native smooth momentum without layout jumps during normal scrolling.
+      if (rawVIdx < N || rawVIdx >= (LOOP_MULTIPLIER - 1) * N) {
+        const centeredVirtual = MID_BLOCK * N + realIndex;
+        currentVirtualRef.current = centeredVirtual;
+        lastScrollYRef.current = centeredVirtual * ITEM_HEIGHT;
+        finalizedOffsetRef.current = centeredVirtual * ITEM_HEIGHT;
+        scrollRef.current?.scrollTo({
+          y: centeredVirtual * ITEM_HEIGHT,
+          animated: false,
+        });
+      } else {
+        currentVirtualRef.current = rawVIdx;
+        lastScrollYRef.current = rawVIdx * ITEM_HEIGHT;
+      }
+    } else {
+      const index = Math.max(0, Math.min(N - 1, Math.round(contentOffsetY / ITEM_HEIGHT)));
+      setLocalSelectedIndex(index);
+      currentVirtualRef.current = index;
+      lastSelectedByWheelRef.current = index;
+      lastScrollYRef.current = index * ITEM_HEIGHT;
+      if (index !== selectedIndex) {
+        onSelect(index);
+      }
     }
   };
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y;
+    lastScrollYRef.current = y;
+
+    // 1. Immediately update visual bold highlight as items pass through the center slot
+    const rawVIdx = Math.round(y / ITEM_HEIGHT);
+    const currentRealIndex = isLooping
+      ? ((rawVIdx % N) + N) % N
+      : Math.max(0, Math.min(N - 1, rawVIdx));
+    setLocalSelectedIndex((prev) => (prev === currentRealIndex ? prev : currentRealIndex));
+
+    // 2. Debounce settling: whenever scrolling motion stops for 60ms, finalize immediately!
+    clearTimeout(scrollSettleTimerRef.current ?? undefined);
+    scrollSettleTimerRef.current = setTimeout(() => {
+      finalizeScroll(lastScrollYRef.current);
+    }, 60);
+  };
+
+  const handleScrollBeginDrag = () => {
+    isUserScrolling.current = true;
+    isMomentumRef.current = false;
+    finalizedOffsetRef.current = null;
+    clearTimeout(scrollEndDragTimerRef.current ?? undefined);
+    clearTimeout(scrollSettleTimerRef.current ?? undefined);
+  };
+
+  const handleMomentumScrollBegin = () => {
+    isMomentumRef.current = true;
+  };
+
+  const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    finalizeScroll(e.nativeEvent.contentOffset.y);
+  };
+
+  const handleScrollEndDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    isUserScrolling.current = false;
+    const y = e.nativeEvent.contentOffset.y;
+    lastScrollYRef.current = y;
+    clearTimeout(scrollSettleTimerRef.current ?? undefined);
+    scrollSettleTimerRef.current = setTimeout(() => {
+      finalizeScroll(lastScrollYRef.current);
+    }, 60);
+  };
+
+  const handlePressItem = useCallback(
+    (virtualIndex: number, originalIndex: number) => {
+      isUserScrolling.current = false;
+      isMomentumRef.current = false;
+      setLocalSelectedIndex(originalIndex);
+      lastSelectedByWheelRef.current = originalIndex;
+      currentVirtualRef.current = virtualIndex;
+      lastScrollYRef.current = virtualIndex * ITEM_HEIGHT;
+      onSelect(originalIndex);
+      scrollRef.current?.scrollTo({ y: virtualIndex * ITEM_HEIGHT, animated: true });
+    },
+    [onSelect],
+  );
 
   return (
     <View style={[styles.columnContainer, { flex }]}>
       <ScrollView
+        testID={testID}
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={ITEM_HEIGHT}
         decelerationRate="fast"
         nestedScrollEnabled
-        contentOffset={{ x: 0, y: selectedIndex * ITEM_HEIGHT }}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        contentOffset={{ x: 0, y: initialOffset }}
         onLayout={() => {
-          scrollRef.current?.scrollTo({ y: selectedIndex * ITEM_HEIGHT, animated: false });
+          scrollRef.current?.scrollTo({ y: currentVirtualRef.current * ITEM_HEIGHT, animated: false });
         }}
-        onScrollBeginDrag={() => {
-          isUserScrolling.current = true;
-        }}
-        onMomentumScrollEnd={handleScrollEnd}
-        onScrollEndDrag={handleScrollEnd}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onMomentumScrollBegin={handleMomentumScrollBegin}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollEndDrag={handleScrollEndDrag}
         contentContainerStyle={{
           paddingVertical: PADDING_ITEMS * ITEM_HEIGHT,
         }}
       >
-        {items.map((item, idx) => {
-          const isSelected = idx === selectedIndex;
-          const distance = Math.abs(idx - selectedIndex);
-
-          const textColor = isSelected
-            ? (isDark ? '#4BAE8A' : '#2C2C28')
-            : (isDark ? '#B7BDB7' : '#73736C');
-          const opacity = isSelected ? 1 : distance === 1 ? 0.75 : 0.45;
-          const fontSize = isSelected ? 16 : 14;
-          const fontWeight = isSelected ? '700' : '500';
+        {displayItems.map((entry) => {
+          const diff = Math.abs(entry.originalIndex - localSelectedIndex);
+          const distance = isLooping ? Math.min(diff, N - diff) : diff;
+          const isSelected = distance === 0;
 
           return (
-            <Pressable
-              key={idx}
-              accessibilityRole="button"
-              accessibilityLabel={`${renderLabel(item)}`}
-              onPress={() => {
-                onSelect(idx);
-                scrollRef.current?.scrollTo({ y: idx * ITEM_HEIGHT, animated: true });
-              }}
-              style={styles.itemRow}
-            >
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.itemText,
-                  {
-                    color: textColor,
-                    opacity,
-                    fontSize,
-                    fontWeight: fontWeight as any,
-                  },
-                ]}
-              >
-                {renderLabel(item)}
-              </Text>
-            </Pressable>
+            <WheelRow
+              key={entry.virtualIndex}
+              label={renderLabel(entry.item)}
+              virtualIndex={entry.virtualIndex}
+              originalIndex={entry.originalIndex}
+              isSelected={isSelected}
+              distance={distance}
+              isDark={isDark}
+              onPressItem={handlePressItem}
+            />
           );
         })}
       </ScrollView>
     </View>
   );
 }
+
 
 export function WheelDatePickerModal({
   visible,
@@ -459,10 +668,12 @@ export function WheelDatePickerModal({
                 ]}
               />
 
-              {/* Day Column */}
+              {/* Day Column (Loops) */}
               <WheelColumn<number>
+                testID="wheel-picker-day"
                 items={days}
                 selectedIndex={dayIndex}
+                loop={true}
                 onSelect={(idx) => {
                   const d = days[idx] ?? 1;
                   setSelectedDay(d);
@@ -473,10 +684,12 @@ export function WheelDatePickerModal({
                 flex={1}
               />
 
-              {/* Month Column */}
+              {/* Month Column (Loops) */}
               <WheelColumn<number>
+                testID="wheel-picker-month"
                 items={months}
                 selectedIndex={selectedMonth}
+                loop={true}
                 onSelect={(idx) => {
                   setSelectedMonth(idx);
                   setTypedText(formatDateForInput(selectedYear, idx, selectedDay, dateFormat));
@@ -486,10 +699,12 @@ export function WheelDatePickerModal({
                 flex={1.8}
               />
 
-              {/* Year Column */}
+              {/* Year Column (Bounded) */}
               <WheelColumn<number>
+                testID="wheel-picker-year"
                 items={years}
                 selectedIndex={yearIndex}
+                loop={false}
                 onSelect={(idx) => {
                   const y = years[idx] ?? selectedYear;
                   setSelectedYear(y);

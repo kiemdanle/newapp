@@ -28,6 +28,8 @@ import {
   takeAndCropPhoto,
 } from '../../../src/features/products/photo-picker-adapter';
 import { useTheme } from '../../../src/theme/useTheme';
+import { getCurrentCoordinates } from '../../../src/services/location';
+import { geoEndpoints } from '../../../src/api/endpoints';
 
 export default function EditProfileScreen() {
   const theme = useTheme();
@@ -39,6 +41,9 @@ export default function EditProfileScreen() {
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [address, setAddress] = useState(user?.address ?? '');
   const [country, setCountry] = useState(user?.country ?? 'US');
+  const [latitude, setLatitude] = useState<number | null>(user?.latitude ?? null);
+  const [longitude, setLongitude] = useState<number | null>(user?.longitude ?? null);
+  const [isLocating, setIsLocating] = useState<boolean>(false);
 
   const [isPhotoPickerVisible, setIsPhotoPickerVisible] = useState(false);
   const [isCountryModalVisible, setIsCountryModalVisible] = useState(false);
@@ -53,7 +58,9 @@ export default function EditProfileScreen() {
     firstName !== (user?.firstName ?? '') ||
     lastName !== (user?.lastName ?? '') ||
     address !== (user?.address ?? '') ||
-    country !== (user?.country ?? 'US');
+    country !== (user?.country ?? 'US') ||
+    latitude !== (user?.latitude ?? null) ||
+    longitude !== (user?.longitude ?? null);
 
   const dirtyRef = useRef(isDirty);
   dirtyRef.current = isDirty;
@@ -172,6 +179,26 @@ export default function EditProfileScreen() {
   const handleCountrySelect = (meta: CountryMetadata) => {
     setCountry(meta.code);
   };
+  const handleDetectLocation = async () => {
+    setIsLocating(true);
+    setErrorMessage(null);
+    try {
+      const coords = await getCurrentCoordinates();
+      const res = await geoEndpoints.reverseGeocode(coords.latitude, coords.longitude);
+      setAddress(res.address);
+      if (res.country) {
+        setCountry(res.country);
+      }
+      setLatitude(res.latitude);
+      setLongitude(res.longitude);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unable to determine your location.';
+      setErrorMessage(msg);
+      Alert.alert('Location Notice', msg);
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -188,6 +215,8 @@ export default function EditProfileScreen() {
         lastName: lastName.trim(),
         address: address.trim() || null,
         country: country || null,
+        latitude,
+        longitude,
       });
 
       setUser(updatedUser);
@@ -304,14 +333,49 @@ export default function EditProfileScreen() {
         <View style={styles.fieldContainer}>
           <TextField
             testID="edit-profile-address"
-            label="Address (Optional)"
+            label="Neighbourhood / Address (Optional)"
             value={address}
-            onChangeText={setAddress}
-            placeholder="e.g. 123 Market St, Apt 4B"
+            onChangeText={(text) => {
+              setAddress(text);
+              if (!text.trim()) {
+                setLatitude(null);
+                setLongitude(null);
+              }
+            }}
+            placeholder="e.g. Ben Nghe, District 1"
+            rightAccessory={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Detect current location"
+                accessibilityHint="Uses device GPS to auto-fill neighbourhood and country"
+                onPress={handleDetectLocation}
+                disabled={isLocating}
+                hitSlop={8}
+                style={{ padding: 4 }}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                ) : (
+                  <Ionicons
+                    name={latitude != null ? 'navigate-circle' : 'locate-outline'}
+                    size={22}
+                    color={latitude != null ? theme.colors.primary : theme.colors.textMuted}
+                  />
+                )}
+              </Pressable>
+            }
           />
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: -4 }}>
-            Used for local deals, community giveaways, and delivery
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: -4 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12, flex: 1 }}>
+              Used for local deals, community giveaways, and distance
+            </Text>
+            {latitude != null && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="checkmark-circle" size={12} color="#3A8F6F" />
+                <Text style={{ color: '#3A8F6F', fontSize: 11, fontWeight: '600' }}>GPS linked</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         <View style={styles.fieldContainer}>

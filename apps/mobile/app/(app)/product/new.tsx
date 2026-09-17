@@ -301,13 +301,13 @@ export default function NewProductScreen() {
               <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
               <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>
                 {isApproved
-                  ? 'Published to catalog — you can add it to your pantry now.'
+                  ? 'Published to catalogue — you can add it to your pantry now.'
                   : 'Submitted for review — you can add it to your pantry now.'}
               </Text>
             </View>
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
               {isApproved
-                ? 'Your product is live in the catalog. You can add it to your pantry now with an expiration date, or skip and add it anytime from My Product Drafts.'
+                ? 'Your product is live in the catalogue. You can add it to your pantry now with an expiry date, or skip and add it anytime from My Product Drafts.'
                 : 'Your product is under review. You can add it to your personal pantry now, or skip and add it anytime from My Product Drafts.'}
             </Text>
           </View>

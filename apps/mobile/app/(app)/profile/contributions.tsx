@@ -24,6 +24,7 @@ import {
   type DraftSortOption,
 } from '../../../src/features/products/DraftsSortPills';
 import type { CommunityContributionRow } from '@expyrico/shared';
+import { BackToTopButton, useBackToTop } from '../../../src/components/BackToTopButton';
 
 type FilterTab = 'all' | 'active' | 'pending' | 'changes_required';
 
@@ -37,6 +38,19 @@ export default function CommunityContributionsScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const listRef = useRef<FlatList<CommunityContributionRow>>(null);
   const [showFloatingControls, setShowFloatingControls] = useState(false);
+
+  const {
+    visible: showBackToTop,
+    handleScroll: handleBackToTopScroll,
+    scrollToTop: handleBackToTopPress,
+    onTouchStart: handleBackToTopTouch,
+  } = useBackToTop({
+    scrollRef: listRef,
+    hasTabBar: false,
+    offsetBottom: 56,
+    threshold: 280,
+    autoHideTimeout: 2500,
+  });
   const showFloatingControlsRef = useRef(false);
   showFloatingControlsRef.current = showFloatingControls;
   const lastScrollYRef = useRef(0);
@@ -145,6 +159,7 @@ export default function CommunityContributionsScreen() {
 
   const handleListScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      handleBackToTopScroll(e);
       const currentY = e.nativeEvent.contentOffset.y;
       scrollY.setValue(currentY);
       const deltaY = currentY - lastScrollYRef.current;
@@ -206,7 +221,7 @@ export default function CommunityContributionsScreen() {
           Community Contributions
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: 13, marginTop: 4 }}>
-          Products and packaging photos you've added to the public catalog
+          Products and packaging photos you've added to the public catalogue
         </Text>
       </View>
 
@@ -435,8 +450,9 @@ export default function CommunityContributionsScreen() {
       ) : (
         <FlatList
           ref={listRef}
-          testID="contributions-list"
           data={items}
+          onTouchStart={handleBackToTopTouch}
+          testID="contributions-list"
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.listContent}
@@ -535,6 +551,14 @@ export default function CommunityContributionsScreen() {
           <Text style={styles.bottomDockText}>Scan to contribute</Text>
         </Pressable>
       </View>
+      <BackToTopButton
+        scrollRef={listRef}
+        visible={showBackToTop}
+        onPress={handleBackToTopPress}
+        hasTabBar={false}
+        offsetBottom={56}
+        testID="contributions-back-to-top"
+      />
     </View>
   );
 }

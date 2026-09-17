@@ -259,7 +259,7 @@ export function DealFilterModal({ visible, onClose, filters, onApply }: Props) {
 
             {/* Expiry Status Filter */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Expiration Status</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Expiry Status</Text>
               <View style={styles.verticalOptionList}>
                 {EXPIRY_OPTIONS.map((opt) => {
                   const isSelected = expiryStatus === opt.id;

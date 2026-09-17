@@ -6,6 +6,8 @@
 **/google-services.json
 **/GoogleService-Info.plist
 **/serviceAccount*.json
+**/firebase-service-account*.json
+api/secrets/
 
 # Deps
 node_modules/
