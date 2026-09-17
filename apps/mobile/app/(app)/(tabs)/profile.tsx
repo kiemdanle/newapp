@@ -13,6 +13,7 @@ import { authEndpoints } from '../../../src/api/endpoints';
 import { useProductDrafts } from '../../../src/api/products';
 import { useUserContributions } from '../../../src/api/contributions';
 import { ContributorHeroCard } from '../../../src/features/gamification/ContributorHeroCard';
+import { SignOutLoadingModal } from '../../../src/components/SignOutLoadingModal';
 
 interface ActionRowProps {
   testID: string;
@@ -145,14 +146,8 @@ export default function Profile() {
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: async () => {
-          setIsSigningOut(true);
-          try {
-            await authEndpoints.logout();
-          } catch {
-            /* best-effort */
-          }
-          await signOut();
+        onPress: () => {
+          void signOut();
         },
       },
     ]);

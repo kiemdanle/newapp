@@ -31,6 +31,7 @@ import { ConnectionNoticeModal } from './components/ConnectionNoticeModal';
 import { AppAlertModal } from './components/AppAlertModal';
 import { installAppAlertInterceptor } from './store/alertStore';
 import { useSyncStateStore } from './store/syncStateStore';
+import { SignOutLoadingModal } from './components/SignOutLoadingModal';
 const queryClient = createQueryClient();
 // Global font-scale cap at 1.5x (200% system text size per WCAG). Prevents
 // layout shatter at extreme accessibility text sizes while allowing the
@@ -65,6 +66,7 @@ function RootApp() {
   const themeHydrated = useThemeStore((s) => s.hydrated);
   const sessionHydrated = useSessionStore((s) => s.hydrated);
   const activeNotification = useInAppNotificationStore((s) => s.current);
+  const isSigningOut = useSessionStore((s) => s.isSigningOut);
   const dismissNotification = useInAppNotificationStore((s) => s.dismiss);
 
   useEffect(() => {
@@ -157,6 +159,7 @@ function RootApp() {
       <UndoToast />
       <ConnectionNoticeModal />
       <AppAlertModal />
+      <SignOutLoadingModal visible={isSigningOut} />
     </View>
   );
 }

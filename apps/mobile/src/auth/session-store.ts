@@ -70,6 +70,7 @@ interface SessionState {
   accessToken: string | null;
   refreshToken: string | null;
   hydrated: boolean;
+  isSigningOut: boolean;
   // Session returned by register, held (not persisted) until the user completes
   // the email OTP step. Keeping it out of accessToken means AuthGate doesn't
   // treat a registered-but-unverified user as signed in and bounce them to home.
@@ -86,6 +87,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   refreshToken: null,
   hydrated: false,
   pendingAuth: null,
+  isSigningOut: false,
   signIn: async ({ user, tokens }) => {
     const currentUserId = get().user?.id;
     if (currentUserId && currentUserId !== user.id) {
@@ -103,13 +105,25 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     triggerSyncSoon();
   },
   signOut: async () => {
-    const outgoingUserId = get().user?.id;
-    await clearAllLocalUserData(outgoingUserId);
-    await Promise.allSettled([
-      secureStore.clearAll(),
-      AsyncStorage.removeItem(KEY_CACHED_USER),
-    ]);
-    set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
+    set({ isSigningOut: true });
+    try {
+      const outgoingUserId = get().user?.id;
+      await clearAllLocalUserData(outgoingUserId);
+      try {
+        await authEndpoints.logout();
+      } catch {
+        /* best-effort */
+      }
+      await Promise.allSettled([
+        secureStore.clearAll(),
+        AsyncStorage.removeItem(KEY_CACHED_USER),
+      ]);
+      // Settle briefly so user experiences smooth dimming and spinner feedback
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      set({ user: null, accessToken: null, refreshToken: null, pendingAuth: null });
+    } finally {
+      set({ isSigningOut: false });
+    }
   },
   setUser: (user) => {
     const prevUserId = get().user?.id;

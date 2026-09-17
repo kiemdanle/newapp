@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Logo } from '../components/Logo';
 import { Avatar } from '../components/Avatar';
+import { SignOutLoadingModal } from '../components/SignOutLoadingModal';
 import { useTheme } from '../theme/useTheme';
 import { useSessionStore } from '../auth/session-store';
 import { usePantryScope } from '../store/pantryScope';
@@ -116,15 +117,9 @@ export function LeftDrawerMenu() {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: async () => {
-            setIsSigningOut(true);
-            try {
-              await authEndpoints.logout();
-            } catch {
-              /* best-effort */
-            }
+          onPress: () => {
             closeDrawer();
-            await signOut();
+            void signOut();
           },
         },
       ],
