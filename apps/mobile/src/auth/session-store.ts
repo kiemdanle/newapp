@@ -21,6 +21,7 @@ import { invalidateSyncEpoch, LAST_SYNC_KEY } from '../db/sync';
 import { stopSyncTriggers } from '../db/triggers';
 import { deleteItem } from './secure-store';
 import { clearAllRecordPhotoAttachments } from '../features/records/record-photo-storage';
+import { clearPushRegistrationState } from '../features/push/registerPushToken';
 const KEY_CACHED_USER = '@pantry_cached_user';
 export async function clearAllLocalUserData(userId?: string | null): Promise<void> {
   // Synchronous resets and un-namespaced global key deletions must fire immediately
@@ -39,6 +40,7 @@ export async function clearAllLocalUserData(userId?: string | null): Promise<voi
   await purgePrivateImageCache(userId);
   clearQueryClient();
   await purgeProductCache();
+  await clearPushRegistrationState().catch(() => {});
   if (userId) {
     await Promise.allSettled([
       clearDraftLocalStateForUser(userId),
