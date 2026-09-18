@@ -84,7 +84,8 @@ Settings & Households
 
 Auth & Onboarding
   └── Welcome / Sign In: "Keep your stash visible..." / "Sign in to your Expyrico stash"
-```
+<!-- Updated: Red Team Review Session - F5 unit test assertions -->
+
 
 ## Related Code Files
 
@@ -126,7 +127,9 @@ Auth & Onboarding
    - Update share text and card description to `stash`.
 7. Edit `apps/mobile/app/(app)/(tabs)/profile.tsx` and auth screens:
    - Update footer and auth header descriptions to reference `stash`.
-8. Update unit test assertions in `PantrySelectModal.test.tsx` and `scope-selector-pill.test.tsx`.
+8. Update unit test assertions in `PantrySelectModal.test.tsx` and `scope-selector-pill.test.tsx`:
+   - Update `scope-selector-pill.test.tsx:167` to assert `'Default Stash for New Items'`.
+   - Update `PantrySelectModal.test.tsx` for `'Search stash items'` and `'Your stash is empty'`.
 
 ## Success Criteria
 

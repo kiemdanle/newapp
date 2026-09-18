@@ -50,6 +50,8 @@ Update the admin dashboard sidebar navigation, overview and analytics KPI cards,
     - Warning banner: `"This product is currently used by {N} stash item(s). Deleting it directly would break or orphan user stash records."`
     - Recommended action: `"Use the Merge tool to consolidate this product into another canonical product. All stash items, reviews, and deals will be safely moved."`
     - Zero in-use copy: `"No stash items are currently using this product..."`
+  - `api/src/routes/admin/products/delete.ts`:
+    - Update deletion block detail error from `used by ${recordCount} pantry items` to `used by ${recordCount} stash items` so backend error responses align with UI terminology.
   - `product-actions.tsx`:
     - Prompt: `'Hide this product from search? Existing stash references will stay intact.'`
   - `merge/page.tsx` & `merge-tool.tsx`:
@@ -80,8 +82,11 @@ Admin Dashboard Navigation
 ```
 
 ## Related Code Files
+<!-- Updated: Red Team Review Session - F3 API delete error string, F5 admin test updates -->
 
 ### Modify
+- `api/src/routes/admin/products/delete.ts`
+- `apps/admin/tests/unit/products-delete.test.ts`
 - `apps/admin/src/lib/nav.ts`
 - `apps/admin/src/app/(admin)/page.tsx`
 - `apps/admin/src/app/(admin)/analytics/overview/page.tsx`
@@ -117,7 +122,8 @@ Admin Dashboard Navigation
 5. Edit `apps/admin/src/app/(admin)/products/`:
    - Update table header to `'Stash Items'`.
    - Update deletion guard and merge tool prompt copy.
-6. Edit `apps/admin/src/app/(admin)/pantry-items/`:
+   - Update `api/src/routes/admin/products/delete.ts` error detail to reference `stash items`.
+   - Update `apps/admin/tests/unit/products-delete.test.ts` assertion to expect `'used by 3 stash items'`.
    - Update explorer title, breadcrumb, empty state, and modal headers.
    - Verify `LOCATION_PRESETS` in `edit-pantry-item-modal.tsx` retains `'Pantry'`.
 7. Typecheck and lint:
@@ -131,6 +137,8 @@ Admin Dashboard Navigation
 - [ ] Stash units settings page displays "Stash Configuration" badge.
 - [ ] Product catalogue table displays "Stash Items" column.
 - [ ] Product deletion modal displays "This product is in use by stash items and cannot be deleted."
+- [ ] Backend delete endpoint returns "used by N stash items" in conflict detail.
+- [ ] Admin product delete unit test passes with updated stash assertion.
 - [ ] Stash items explorer displays "Stash Items" and "No stash items found."
 - [ ] Admin location presets retain `['Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter']`.
 - [ ] `pnpm --filter @expyrico/admin typecheck` passes with 0 errors.

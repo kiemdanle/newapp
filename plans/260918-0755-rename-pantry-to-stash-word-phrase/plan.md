@@ -114,3 +114,27 @@ flowchart TD
 - **Exclusion Guard**: Verified that `'Pantry'` food category chips and storage location presets (`'Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter'`) are explicitly preserved across all phase specifications.
 - **Interface Consistency**: Verified that phase files 01 through 07 align with all confirmed decisions.
 - **Unresolved Contradictions**: 0.
+
+---
+
+## Red Team Review
+
+### Session — 2026-09-18
+**Findings:** 5 (5 accepted, 0 rejected)
+**Severity breakdown:** 1 Critical, 2 High, 2 Medium
+
+| # | Finding | Severity | Disposition | Applied To | Codebase Evidence |
+|---|---------|----------|-------------|------------|-------------------|
+| 1 | Missing mobile vendored package sync (`local-packages/@expyrico/shared`) | Critical | Accept | Phase 1 | `apps/mobile/package.json:22`, `docs/build-and-release.md:21-23` |
+| 2 | Subshell path trap in Phase 7 Gradle and ADB execution chain | High | Accept | Phase 7 | `phase-07:74-75` (`cd apps/mobile && ...`) |
+| 3 | API product delete endpoint leaks "pantry items" error detail to admin modal | High | Accept | Phase 5 | `api/src/routes/admin/products/delete.ts:70`, `apps/admin/.../delete-product-modal.tsx:57` |
+| 4 | Persisted `contributor_levels` setting row in DB overrides updated shared defaults | Medium | Accept | Phase 1 | `api/src/services/admin/settings.ts:85`, `settings` table |
+| 5 | Hardcoded test assertions and Jest snapshots break on text changes | Medium | Accept | Phases 3, 4, 5 | `product-drafts.test.tsx:228`, `scan.test.tsx:457`, `products-delete.test.ts:83` |
+
+### Whole-Plan Consistency Sweep
+- **Vendored Sync Parity**: Phase 1 now explicitly includes `rm -rf apps/mobile/local-packages/@expyrico/shared/dist && cp -R packages/shared/dist apps/mobile/local-packages/@expyrico/shared/dist && pnpm install` and mobile node verification.
+- **Path Traps Resolved**: Phase 7 wraps the Gradle command in a subshell `(cd apps/mobile && ...) && adb install -r apps/mobile/...` to ensure directory consistency.
+- **Backend/Frontend Error Alignment**: Phase 5 includes `api/src/routes/admin/products/delete.ts` to ensure error details return `"used by N stash items"`.
+- **Settings Override Guard**: Phase 1 includes a database check to update any legacy `'Pantry Scout'` entry stored in `settings`.
+- **Test Assertions Mapped**: Phases 3, 4, and 5 explicitly enumerate test assertion updates.
+- **Unresolved Contradictions**: 0.

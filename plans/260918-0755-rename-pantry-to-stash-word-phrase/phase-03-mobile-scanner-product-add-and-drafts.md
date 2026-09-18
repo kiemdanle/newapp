@@ -58,6 +58,7 @@ Barcode Scanned
 ```
 
 ## Related Code Files
+<!-- Updated: Red Team Review Session - F5 unit test assertions -->
 
 ### Modify
 - `apps/mobile/app/(app)/scan.tsx`
@@ -86,7 +87,9 @@ Barcode Scanned
    - Update title to `'Add to Stash'`.
 5. Edit `apps/mobile/src/features/products/DraftGridCard.tsx`, `DraftSwipeableRow.tsx`, and `DraftGridActionDrawer.tsx`:
    - Update button labels and accessibility labels to reference `stash`.
-6. Update unit tests in `apps/mobile/__tests__/routes/scan.test.tsx` and `product-drafts.test.tsx`.
+6. Update unit tests in `apps/mobile/__tests__/routes/scan.test.tsx` and `product-drafts.test.tsx`:
+   - Update `scan.test.tsx:403,457` to assert `'Add to Stash Manually'`.
+   - Update `product-drafts.test.tsx:228,595` to assert `'Add to Stash'`.
 
 ## Success Criteria
 

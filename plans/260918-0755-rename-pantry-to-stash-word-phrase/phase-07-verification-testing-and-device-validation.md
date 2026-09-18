@@ -47,8 +47,9 @@ Android Native Compilation (Gradle)
   └── assembleDebug ──> adb install ──> Physical Device Verification
 ```
 
-## Related Code Files
+<!-- Updated: Red Team Review Session - F2 subshell path trap in Gradle/ADB chain -->
 
+## Related Code Files
 ### Verification Scripts & Commands
 - `apps/mobile/android/`
 - `scripts/capture_all_screens.py`
@@ -69,9 +70,9 @@ Android Native Compilation (Gradle)
    pnpm --filter @expyrico/mobile test
    pnpm --filter api test
    ```
-3. Compile and install Android debug APK:
+3. Compile and install Android debug APK (isolated in subshell to prevent directory drift):
    ```bash
-   cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug
+   (cd apps/mobile && JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ANDROID_HOME="$HOME/Library/Android/sdk" ../../node_modules/@react-native/gradle-plugin/gradlew -p android :app:assembleDebug) && \
    adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
    ```
 4. Verify on physical Xiaomi device:
@@ -96,5 +97,7 @@ Android Native Compilation (Gradle)
 
 ## Risk Assessment
 
+- **Risk**: Working directory drift when running `cd apps/mobile` causing subsequent adb commands to fail (F2).
+- **Mitigation**: Wrap the Gradle compilation step in parentheses `(cd apps/mobile && ...) && adb install -r apps/mobile/...` so the subshell terminates and leaves the outer terminal rooted in the repository root.
 - **Risk**: Device UI state requires re-authentication after APK installation.
 - **Mitigation**: Sign-in via Google is 1-tap with existing credentials, as verified during push notification tests.
