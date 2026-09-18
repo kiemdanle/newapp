@@ -1,0 +1,94 @@
+---
+title: "rename-pantry-to-stash-word-phrase"
+description: "Migrate user-facing terminology from 'Pantry' to 'Stash' across mobile app, admin dashboard, emails, and notifications, strictly preserving food category and storage location presets."
+status: pending
+priority: P1
+effort: "8h"
+tags: [terminology, mobile, admin, shared, copy, i18n]
+created: 2026-09-18
+---
+
+# Rename 'Pantry' Word Phrase to 'Stash' Implementation Plan
+
+## Overview
+
+This plan comprehensively updates the user-facing brand terminology from **"Pantry"** to **"Stash"** (capitalized as appropriate: "Stash", "stash", "Personal Stash", "All Stashes", "Stash Items") across all user-facing surfaces:
+1. **Mobile App (`apps/mobile`)**: Navigation drawer, tabs, headers, empty states, scanner action buttons, item details, modals, giveaway fast fill, household settings, and onboarding/auth screens.
+2. **Admin Dashboard (`apps/admin`)**: Sidebar navigation, dashboard KPI cards, analytics cards, settings forms (stash limits, stash units), product catalogue merge/delete prompts, and item management explorer views.
+3. **Emails, Notifications & Workers (`api`)**: Household invitation/joined emails, system notification headers, default SMTP sender strings, and worker queue comments.
+4. **Shared Package (`@expyrico/shared`)**: Gamification Level 4 badge title ("Pantry Scout" → "Stash Scout").
+
+### Strict Exclusions (MUST NOT change to Stash)
+- **Food Category list**: `Produce`, `Dairy`, `Bakery`, `Pantry`, `Meat`, `Frozen` (the food category represents shelf-stable dry goods/staples and must remain `Pantry`).
+- **Storage Location Preset**: `Fridge`, `Freezer`, `Pantry`, `Cabinet`, `Counter` (the physical storage furniture/room where goods are placed remains `Pantry`).
+- **Admin Location Presets**: `['Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter']`.
+
+### Technical Invariants
+- **Database Schema**: Prisma models (`Record`, `Household`, `Product`, `User`, `SystemSetting`) and database table names (`records`, `households`, `system_settings`) remain intact with zero breaking schema migrations.
+- **REST APIs & IPC Contracts**: API route endpoints (`/v1/records`, `/v1/admin/settings/pantry-limits`, etc.) remain backward-compatible to avoid breaking existing clients during rolling deployments.
+- **Internal Storage Keys**: Persistent WatermelonDB names (`dbName: 'pantry'`) and local storage namespaces (`pantry.access_token`, `pantry.pushRegisteredV2`) remain stable to ensure seamless client updates without data loss.
+
+---
+
+## User Flow & System Terminology Mapping
+
+```mermaid
+flowchart TD
+    subgraph MobileApp [Mobile App: apps/mobile]
+        A[Drawer / Home Header] -->|Label| B["'Stash' (formerly 'Pantry')"]
+        A -->|Scope Pill| C["'Personal Stash' / 'All Stashes'"]
+        D[Scanner / Add] -->|Actions| E["'Add to Stash' / 'STASH SCAN'"]
+        F[Item Detail] -->|Specs & Actions| G["'Stash Item' / 'Stash Location' / 'Back to stash'"]
+        H[Giveaway / Deals] -->|Fast Fill| I["'Select from Your Stash'"]
+        J[Household Settings] -->|Invite & Config| K["'Share a stash with your people' / 'Default Stash'"]
+    end
+
+    subgraph AdminDashboard [Admin Dashboard: apps/admin]
+        L[Sidebar & Nav] -->|Menu| M["'Stash limits' / 'Stash units' / 'Stash Items'"]
+        N[KPI Cards] -->|Metrics| O["'Stash Records' / 'Tracked stash items'"]
+        P[Catalogue Guard] -->|Protection Alert| Q["'This product is in use by stash items'"]
+    end
+
+    subgraph ServerEmails [Backend & Emails: api]
+        R[Household Mail] -->|Templates| S["'Welcome to {household}'s shared stash!'"]
+        T[Default Sender] -->|SMTP| U["'Stash <no-reply@...>'"]
+    end
+
+    subgraph Exclusions [Protected Presets: Untouched]
+        V["Food Category: 'Pantry'"]
+        W["Location Preset: 'Fridge', 'Freezer', 'Pantry', 'Cabinet'"]
+    end
+```
+
+---
+
+## Phases
+
+| # | Phase | Status | Priority | Effort | Deliverables |
+|---|-------|--------|----------|--------|--------------|
+| 1 | [Shared Gamification & Contributor Levels](./phase-01-shared-gamification-and-contributor-levels.md) | Pending | P1 | 30m | Update Level 4 tier title from "Pantry Scout" to "Stash Scout" in `@expyrico/shared` and associated unit tests. |
+| 2 | [Mobile Navigation, Drawer & Home Screen](./phase-02-mobile-navigation-drawer-and-home.md) | Pending | P1 | 1.5h | Update drawer menu, scope toggle labels, home greeting, tabs, empty state, and offline sync banners. |
+| 3 | [Mobile Scanner, Product Add & Drafts UX](./phase-03-mobile-scanner-product-add-and-drafts.md) | Pending | P1 | 1.5h | Update "PANTRY SCAN" eyebrow, "Add to Stash", "Add as Private Item for My Stash", fast-add modals, and draft actions. |
+| 4 | [Mobile Item Detail, Giveaways & Settings](./phase-04-mobile-item-detail-giveaways-and-settings.md) | Pending | P1 | 2h | Update fallback labels, error messages, delete dialogs, fast fill giveaways, default stash settings, and auth screen descriptions. |
+| 5 | [Admin Dashboard Navigation & Settings](./phase-05-admin-dashboard-navigation-and-settings.md) | Pending | P1 | 1.5h | Update admin sidebar nav, KPI cards, stash limits/units form copy, product catalog delete/merge guard warnings, and explorer UI. |
+| 6 | [Server Emails, SMTP & System Workers](./phase-06-server-emails-smtp-and-workers.md) | Pending | P2 | 30m | Update household invitation and welcome emails, `.env.example` defaults, and notification worker comments. |
+| 7 | [Verification, Testing & Device Validation](./phase-07-verification-testing-and-device-validation.md) | Pending | P1 | 1h | Run unit test suites across all packages, perform Android debug build, and verify live on Xiaomi phone via screenshot capture. |
+
+---
+
+## Success Criteria
+
+- [ ] Contributor Level 4 tier title is updated to `"Stash Scout"` in `@expyrico/shared`.
+- [ ] Mobile app Home screen displays `"Stash"` greeting, `"Personal Stash"` / `"All Stashes"` scope pill, and `"Start your stash"` empty state.
+- [ ] Scanner renders `"STASH SCAN"` viewfinder eyebrow and `"Add to Stash"` action buttons.
+- [ ] Item detail screen (`record/[id].tsx`) displays `"Stash Item"` fallback, `"Stash Location"`, and `"Back to stash"`.
+- [ ] Community Giveaway creation hero card displays `"Select from Your Stash"` (FAST FILL) with updated modal copy.
+- [ ] Household settings and share invitations display `"Share a stash with your people"` and `"Default Stash for New Items"`.
+- [ ] Auth screens (Welcome, Sign In, Sign Up, Reset Password) display consistent Stash descriptions.
+- [ ] Admin dashboard sidebar displays `"Stash limits"`, `"Stash units"`, and `"Stash Records"` KPI.
+- [ ] Admin product catalogue delete/merge guard warnings refer to `"stash items"` and `"stash records"`.
+- [ ] Household invitation email displays `"Shared Stash Invitation"` and `"Welcome to {householdName}'s shared stash!"`.
+- [ ] **Preserved**: Storage location selector presets still display `'Pantry'` (`Fridge`, `Freezer`, `Pantry`, `Cabinet`, `Counter`).
+- [ ] **Preserved**: Food category quick chips still display `'Pantry'` (`Produce`, `Dairy`, `Bakery`, `Pantry`, `Meat`, `Frozen`).
+- [ ] All unit tests pass across `@expyrico/shared`, `@expyrico/mobile`, `@expyrico/admin`, and `api`.
+- [ ] Android APK builds successfully and live physical device screenshots confirm visual consistency.
