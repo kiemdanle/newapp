@@ -92,3 +92,25 @@ flowchart TD
 - [ ] **Preserved**: Food category quick chips still display `'Pantry'` (`Produce`, `Dairy`, `Bakery`, `Pantry`, `Meat`, `Frozen`).
 - [ ] All unit tests pass across `@expyrico/shared`, `@expyrico/mobile`, `@expyrico/admin`, and `api`.
 - [ ] Android APK builds successfully and live physical device screenshots confirm visual consistency.
+
+---
+
+## Validation Log
+
+### Verification Results
+- **Claims checked**: 24
+- **Verified**: 24 | **Failed**: 0 | **Unverified**: 0
+- **Tier**: Full (all phases verified against active source code)
+- **Failures**: None.
+
+### Critical Questions Interview Decisions
+1. **Scope Pluralization**: Confirmed **"All Stashes"** for combined multi-scope views (matching "Personal Stash" / "All Stashes").
+2. **Home Tab Label**: Confirmed keeping **"In Stock"** for the active inventory tab, while updating tab accessibility and history tab to **"Stash history"**.
+3. **Admin URL Routes**: Confirmed **preserving existing Next.js URL routes** (`/settings/pantry-limits`, `/settings/pantry-units`, `/pantry-items`) and updating all visual labels, headings, toasts, and KPI cards to "Stash", avoiding breaking bookmarks or external links.
+4. **Local Database & Storage Keys**: Confirmed **keeping internal mobile SQLite / WatermelonDB database names (`dbName: 'pantry'`) and local storage keys intact**, preventing any risk of local database wipe or sync epoch invalidation.
+
+### Whole-Plan Consistency Sweep
+- **Old Terminology Check**: Verified that no stale references to "Pantry Scout" or un-scoped "Pantry" remain in active user-facing descriptions.
+- **Exclusion Guard**: Verified that `'Pantry'` food category chips and storage location presets (`'Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter'`) are explicitly preserved across all phase specifications.
+- **Interface Consistency**: Verified that phase files 01 through 07 align with all confirmed decisions.
+- **Unresolved Contradictions**: 0.
