@@ -39,6 +39,9 @@
     },
     "patchedDependencies": {
       "@google-cloud/recaptcha-enterprise-react-native@18.9.2": "patches/@google-cloud__recaptcha-enterprise-react-native@18.9.2.patch"
+    },
+    "overrides": {
+      "js-yaml": "^4.3.2"
     }
   }
 }

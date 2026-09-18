@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { adminRowSchema, adminInviteSchema, ERROR_CODES } from '@expyrico/shared';
@@ -23,7 +24,7 @@ export async function adminSettingsAdminsRoute(app: FastifyInstance) {
 
   app.post('/admins', async (req, reply) => {
     const input = adminInviteSchema.parse(req.body);
-    const tempPass = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+    const tempPass = randomBytes(24).toString('base64url');
     const user = await getPrisma().user.create({
       data: {
         email: input.email,
