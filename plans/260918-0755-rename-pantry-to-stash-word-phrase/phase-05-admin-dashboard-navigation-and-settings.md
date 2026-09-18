@@ -131,17 +131,17 @@ Admin Dashboard Navigation
 
 ## Success Criteria
 
-- [ ] Sidebar displays "Stash limits" and "Stash units".
-- [ ] Overview dashboard displays "Stash Records" KPI.
-- [ ] Stash limits settings page displays "Maximum Active Stash Items".
-- [ ] Stash units settings page displays "Stash Configuration" badge.
-- [ ] Product catalogue table displays "Stash Items" column.
-- [ ] Product deletion modal displays "This product is in use by stash items and cannot be deleted."
-- [ ] Backend delete endpoint returns "used by N stash items" in conflict detail.
-- [ ] Admin product delete unit test passes with updated stash assertion.
-- [ ] Stash items explorer displays "Stash Items" and "No stash items found."
-- [ ] Admin location presets retain `['Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter']`.
-- [ ] `pnpm --filter @expyrico/admin typecheck` passes with 0 errors.
+- [x] Sidebar displays "Stash limits" and "Stash units".
+- [x] Overview dashboard displays "Stash Records" KPI.
+- [x] Stash limits settings page displays "Maximum Active Stash Items".
+- [x] Stash units settings page displays "Stash Configuration" badge.
+- [x] Product catalogue table displays "Stash Items" column.
+- [x] Product deletion modal displays "This product is in use by stash items and cannot be deleted."
+- [x] Backend delete endpoint returns "used by N stash items" in conflict detail.
+- [x] Admin product delete unit test passes with updated stash assertion.
+- [x] Stash items explorer displays "Stash Items" and "No stash items found."
+- [x] Admin location presets retain `['Fridge', 'Freezer', 'Pantry', 'Cabinet', 'Counter']`.
+- [x] `pnpm --filter @expyrico/admin typecheck` passes with 0 errors.
 
 ## Risk Assessment
 

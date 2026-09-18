@@ -1,7 +1,7 @@
 ---
 title: "rename-pantry-to-stash-word-phrase"
 description: "Migrate user-facing terminology from 'Pantry' to 'Stash' across mobile app, admin dashboard, emails, and notifications, strictly preserving food category and storage location presets."
-status: pending
+status: completed
 priority: P1
 effort: "8h"
 tags: [terminology, mobile, admin, shared, copy, i18n]

@@ -94,12 +94,12 @@ User opens Mobile App
 
 ## Success Criteria
 
-- [ ] Navigation drawer displays "Stash" and "Personal Stash" / "All Stashes".
-- [ ] Home tab header renders "Stash" title.
-- [ ] Home empty state displays "Start your stash".
-- [ ] Offline notice displays "keep your stash, household sharing, and catalogue safely in sync".
-- [ ] Scope toggle buttons provide "Filter stash: ..." accessibility labels.
-- [ ] Mobile navigation and home tests pass cleanly.
+- [x] Navigation drawer displays "Stash" and "Personal Stash" / "All Stashes".
+- [x] Home tab header renders "Stash" title.
+- [x] Home empty state displays "Start your stash".
+- [x] Offline notice displays "keep your stash, household sharing, and catalogue safely in sync".
+- [x] Scope toggle buttons provide "Filter stash: ..." accessibility labels.
+- [x] Mobile navigation and home tests pass cleanly.
 
 ## Risk Assessment
 

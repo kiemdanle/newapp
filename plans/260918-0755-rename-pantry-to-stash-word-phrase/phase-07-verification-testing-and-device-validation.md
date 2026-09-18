@@ -88,12 +88,12 @@ Android Native Compilation (Gradle)
 
 ## Success Criteria
 
-- [ ] All package typechecks pass with 0 errors.
-- [ ] All unit test suites pass with 0 failures.
-- [ ] Android APK builds successfully in Gradle without warnings.
-- [ ] Physical Xiaomi phone displays "Stash" consistently across Home, Drawer, Item Details, Scanner, and Settings.
-- [ ] Storage location preset `'Pantry'` remains visible and selectable.
-- [ ] Production server is synced with `origin/main`.
+- [x] All package typechecks pass with 0 errors.
+- [x] All unit test suites pass with 0 failures.
+- [x] Android APK builds successfully in Gradle without warnings.
+- [x] Physical Xiaomi phone displays "Stash" consistently across Home, Drawer, Item Details, Scanner, and Settings.
+- [x] Storage location preset `'Pantry'` remains visible and selectable.
+- [x] Production server is synced with `origin/main`.
 
 ## Risk Assessment
 

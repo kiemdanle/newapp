@@ -133,15 +133,15 @@ Auth & Onboarding
 
 ## Success Criteria
 
-- [ ] Item detail screen displays "Stash Item", "Stash Location", and "Back to stash".
-- [ ] Giveaway fast fill hero displays "Select from Your Stash".
-- [ ] Item selection modal displays "Select from Stash" and "Your stash is empty".
-- [ ] Household settings row displays "Share a stash with your people".
-- [ ] Default stash modal displays "Default Stash for New Items".
-- [ ] Household share sheet message sends "Join my stash...".
-- [ ] Onboarding screens display "Keep your stash visible...".
-- [ ] Physical storage location preset `'Pantry'` in `LocationSelector.tsx` is preserved.
-- [ ] Mobile item detail, giveaway, and settings unit tests pass.
+- [x] Item detail screen displays "Stash Item", "Stash Location", and "Back to stash".
+- [x] Giveaway fast fill hero displays "Select from Your Stash".
+- [x] Item selection modal displays "Select from Stash" and "Your stash is empty".
+- [x] Household settings row displays "Share a stash with your people".
+- [x] Default stash modal displays "Default Stash for New Items".
+- [x] Household share sheet message sends "Join my stash...".
+- [x] Onboarding screens display "Keep your stash visible...".
+- [x] Physical storage location preset `'Pantry'` in `LocationSelector.tsx` is preserved.
+- [x] Mobile item detail, giveaway, and settings unit tests pass.
 
 ## Risk Assessment
 

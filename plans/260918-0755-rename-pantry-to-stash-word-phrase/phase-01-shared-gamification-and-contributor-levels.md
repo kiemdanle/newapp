@@ -69,13 +69,13 @@ packages/shared/src/gamification/contributor-levels.ts
    - Run `pnpm --filter @expyrico/mobile test -- ContributorHeroCard`.
 ## Success Criteria
 
-- [ ] `DEFAULT_CONTRIBUTOR_LEVELS` defines Level 4 with `title: 'Stash Scout'`.
-- [ ] Shared gamification test suite passes with 100% success.
-- [ ] Mobile contributor hero card test suite passes with 100% success.
-- [ ] `pnpm --filter @expyrico/shared build` outputs updated bundles into `dist/`.
-- [ ] Vendored distribution `apps/mobile/local-packages/@expyrico/shared/dist` is updated and committed.
-- [ ] Mobile-resolved `@expyrico/shared` confirms Level 4 is `"Stash Scout"`.
-- [ ] Database `settings` table does not contain stale `'Pantry Scout'` overrides.
+- [x] `DEFAULT_CONTRIBUTOR_LEVELS` defines Level 4 with `title: 'Stash Scout'`.
+- [x] Shared gamification test suite passes with 100% success.
+- [x] Mobile contributor hero card test suite passes with 100% success.
+- [x] `pnpm --filter @expyrico/shared build` outputs updated bundles into `dist/`.
+- [x] Vendored distribution `apps/mobile/local-packages/@expyrico/shared/dist` is updated and committed.
+- [x] Mobile-resolved `@expyrico/shared` confirms Level 4 is `"Stash Scout"`.
+- [x] Database `settings` table does not contain stale `'Pantry Scout'` overrides.
 ## Risk Assessment
 
 - **Risk**: Mobile app resolves stale `@expyrico/shared` from committed `local-packages/@expyrico/shared/dist/` (F1).

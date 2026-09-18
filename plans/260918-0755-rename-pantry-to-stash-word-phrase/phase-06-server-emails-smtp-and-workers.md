@@ -64,9 +64,9 @@ Household Invite Triggered
 
 ## Success Criteria
 
-- [ ] Household invitation email displays "Shared Stash Invitation".
-- [ ] Household confirmation email subject is "Welcome to {householdName}'s shared stash!".
-- [ ] API unit tests pass with 100% success.
+- [x] Household invitation email displays "Shared Stash Invitation".
+- [x] Household confirmation email subject is "Welcome to {householdName}'s shared stash!".
+- [x] API unit tests pass with 100% success.
 
 ## Risk Assessment
 

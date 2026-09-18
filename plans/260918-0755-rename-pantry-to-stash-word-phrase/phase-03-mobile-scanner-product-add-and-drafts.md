@@ -93,12 +93,12 @@ Barcode Scanned
 
 ## Success Criteria
 
-- [ ] Viewfinder displays "STASH SCAN" eyebrow.
-- [ ] Scan escape hatches display "Add as Private Item for My Stash" and "Add to Stash Manually".
-- [ ] Product creation submission screen displays "Add to Stash".
-- [ ] Draft actions and modals display "Add to Stash".
-- [ ] Food category chip `'Pantry'` remains untouched.
-- [ ] All scanner and product draft unit tests pass.
+- [x] Viewfinder displays "STASH SCAN" eyebrow.
+- [x] Scan escape hatches display "Add as Private Item for My Stash" and "Add to Stash Manually".
+- [x] Product creation submission screen displays "Add to Stash".
+- [x] Draft actions and modals display "Add to Stash".
+- [x] Food category chip `'Pantry'` remains untouched.
+- [x] All scanner and product draft unit tests pass.
 
 ## Risk Assessment
 
