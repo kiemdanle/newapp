@@ -117,7 +117,7 @@ export function AppNavigator() {
       <Stack.Screen name="GiveawayMine" component={GiveawayMineScreen} options={{ headerShown: true, title: 'My giveaways' }} />
       <Stack.Screen name="GiveawayManage" component={GiveawayManageScreen} options={{ headerShown: true, title: 'Manage claims' }} />
       <Stack.Screen name="GiveawayRate" component={GiveawayRateScreen} options={{ headerShown: true, title: 'Rate transaction' }} />
-      <Stack.Screen name="Record" component={RecordScreen} options={{ headerShown: true, title: 'Pantry item' }} />
+      <Stack.Screen name="Record" component={RecordScreen} options={{ headerShown: true, title: 'Stash item' }} />
       <Stack.Screen name="Report" component={ReportScreen} options={{ headerShown: true, title: 'Report' }} />
       <Stack.Screen name="Scan" component={ScanScreen} />
       <Stack.Screen name="ProfileEdit" component={EditProfileScreen} options={{ headerShown: true, title: 'Edit profile' }} />

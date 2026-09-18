@@ -278,7 +278,7 @@ export default function NewProductScreen() {
           >
             <Ionicons name="close" size={20} color={theme.colors.text} />
           </Pressable>
-          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Add to Pantry</Text>
+          <Text style={[styles.topBarTitle, { color: theme.colors.text }]}>Add to Stash</Text>
           <Pressable
             testID="product-submitted-done-btn"
             accessibilityRole="button"
@@ -301,14 +301,14 @@ export default function NewProductScreen() {
               <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
               <Text testID="new-product-submitted-message" style={{ color: theme.colors.text, fontWeight: '700', fontSize: 16, flex: 1 }}>
                 {isApproved
-                  ? 'Published to catalogue — you can add it to your pantry now.'
-                  : 'Submitted for review — you can add it to your pantry now.'}
+                  ? 'Published to catalogue — you can add it to your stash now.'
+                  : 'Submitted for review — you can add it to your stash now.'}
               </Text>
             </View>
             <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
               {isApproved
-                ? 'Your product is live in the catalogue. You can add it to your pantry now with an expiry date, or skip and add it anytime from My Product Drafts.'
-                : 'Your product is under review. You can add it to your personal pantry now, or skip and add it anytime from My Product Drafts.'}
+                ? 'Your product is live in the catalogue. You can add it to your stash now with an expiry date, or skip and add it anytime from My Product Drafts.'
+                : 'Your product is under review. You can add it to your personal stash now, or skip and add it anytime from My Product Drafts.'}
             </Text>
           </View>
           <AddRecordForm
@@ -382,7 +382,7 @@ export default function NewProductScreen() {
         >
           <View style={{ padding: theme.spacing.lg, gap: theme.spacing.md }}>
             <Text style={{ color: theme.colors.textMuted }}>
-              This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your pantry now.'}
+              This product is awaiting review. {target === 'deal' ? 'You can use it to post your deal now.' : 'You can still add it to your stash now.'}
             </Text>
             <ProductDraftForm initialProduct={product} readOnly />
             {target === 'deal' ? (

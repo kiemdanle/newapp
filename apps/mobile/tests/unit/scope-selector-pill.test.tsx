@@ -164,7 +164,7 @@ describe('DefaultPantryModal', () => {
       'expyrico',
     );
 
-    expect(getByText('Default Pantry for New Items')).toBeTruthy();
+    expect(getByText('Default Stash for New Items')).toBeTruthy();
     expect(getByTestId('default-pantry-option-personal')).toBeTruthy();
     expect(getByTestId('default-pantry-option-hh-1')).toBeTruthy();
     expect(getByTestId('default-pantry-option-hh-2')).toBeTruthy();

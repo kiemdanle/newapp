@@ -147,7 +147,7 @@ export default function SignIn() {
       <AuthHeader
         compact
         title="Welcome back"
-        description="Sign in to your Expyrico pantry"
+        description="Sign in to your Expyrico stash"
       />
 
       <View style={styles.form}>

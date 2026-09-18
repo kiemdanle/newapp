@@ -400,7 +400,7 @@ describe('<ScanScreen /> — lookup-v2 state machine', () => {
     expect(mockLookup).toHaveBeenCalledTimes(1);
     await act(async () => resolveLookup?.({ outcome: 'not_found', canCreate: true }));
   });
-  it('unavailable screen offers Add to Pantry Manually escape hatch, transitioning to custom-item form', async () => {
+  it('unavailable screen offers Add to Stash Manually escape hatch, transitioning to custom-item form', async () => {
     mockLookup.mockResolvedValueOnce({ outcome: 'temporarily_unavailable' });
     const { getByTestId, findByTestId } = render(wrap(<ScanScreen />));
 

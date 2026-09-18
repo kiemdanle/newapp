@@ -51,10 +51,10 @@ export function DefaultPantryModal({ visible, onClose }: Props) {
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: theme.colors.text }]}>
-                Default Pantry for New Items
+                Default Stash for New Items
               </Text>
               <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-                New items scanned or created manually will automatically be assigned to this pantry.
+                New items scanned or created manually will automatically be assigned to this stash.
               </Text>
             </View>
             <Pressable
@@ -72,7 +72,7 @@ export function DefaultPantryModal({ visible, onClose }: Props) {
             <Pressable
               testID="default-pantry-option-personal"
               accessibilityRole="button"
-              accessibilityLabel="Personal Pantry (Private)"
+              accessibilityLabel="Personal Stash (Private)"
               onPress={() => handleSelect('personal', null)}
               style={[
                 styles.optionRow,
@@ -117,7 +117,7 @@ export function DefaultPantryModal({ visible, onClose }: Props) {
                       },
                     ]}
                   >
-                    Personal Pantry
+                    Personal Stash
                   </Text>
                   <Text style={[styles.optionSub, { color: theme.colors.textMuted }]}>
                     Private to you only

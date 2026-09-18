@@ -58,7 +58,7 @@ export function DraftPantryAddModal({
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[styles.title, { color: theme.colors.text }]}>Add to Pantry</Text>
+              <Text style={[styles.title, { color: theme.colors.text }]}>Add to Stash</Text>
               <Text style={[styles.productName, { color: theme.colors.primaryDark }]} numberOfLines={1}>
                 {product.name}
               </Text>
@@ -66,7 +66,7 @@ export function DraftPantryAddModal({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                   <Ionicons name="time-outline" size={12} color={theme.colors.accent} />
                   <Text style={{ fontSize: 11, color: theme.colors.accent, fontWeight: '600' }}>
-                    Awaiting review · Personal pantry only
+                    Awaiting review · Personal stash only
                   </Text>
                 </View>
               ) : !isCatalogEligible ? (

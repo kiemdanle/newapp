@@ -32,7 +32,7 @@ export function ScopeToggle() {
         testID={`scope-toggle-${segment.key === 'household' ? segment.householdId : segment.key}`}
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={`Filter pantry: ${segment.label}`}
+        accessibilityLabel={`Filter stash: ${segment.label}`}
         onPress={() => setScope(segment.key, segment.householdId ?? null)}
         style={({ pressed }) => ({
           flex: usesScrollingLayout ? undefined : 1,

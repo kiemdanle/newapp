@@ -13,16 +13,16 @@ export declare const contributorLevelTierSchema: z.ZodObject<{
     colorToken: z.ZodEnum<["fresh_sage", "deep_sage", "mint_mist", "honey", "soft_butter", "pebble", "almost_black"]>;
     perks: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    title: string;
     level: number;
+    title: string;
     productsReq: number;
     minPoints: number;
     badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";
     colorToken: "fresh_sage" | "deep_sage" | "mint_mist" | "honey" | "soft_butter" | "pebble" | "almost_black";
     perks: string;
 }, {
-    title: string;
     level: number;
+    title: string;
     productsReq: number;
     minPoints: number;
     badgeKey: "seedling" | "bronze_star" | "silver_star" | "gold_star" | "emerald_gem" | "sapphire_crown" | "diamond_starburst";

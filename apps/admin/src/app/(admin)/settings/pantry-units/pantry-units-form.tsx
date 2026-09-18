@@ -44,7 +44,7 @@ export function PantryUnitsForm({ initial }: { initial: PantryUnitsSettings }) {
     startTransition(async () => {
       try {
         await savePantryUnitsAction({ topUnits: trimmed });
-        setMsg('Pantry units setting saved successfully.');
+        setMsg('Stash units setting saved successfully.');
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : 'Failed to save setting.');
       }

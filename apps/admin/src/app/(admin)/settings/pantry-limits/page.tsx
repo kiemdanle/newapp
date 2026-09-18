@@ -12,7 +12,7 @@ export default async function SettingsPantryLimitsPage() {
   try {
     pantryLimits = await serverAdminApi.settings.pantryLimits.get();
   } catch (err) {
-    loadError = err instanceof Error ? err.message : 'Failed to load pantry limits from API server';
+    loadError = err instanceof Error ? err.message : 'Failed to load stash limits from API server';
   }
 
   return (
@@ -23,10 +23,10 @@ export default async function SettingsPantryLimitsPage() {
           <span>Inventory & Capacity</span>
         </div>
         <h1 className="text-3xl font-bold text-neutral-dark font-display tracking-tight mt-1">
-          Pantry Item Limits
+          Stash Item Limits
         </h1>
         <p className="text-sm text-neutral-mid mt-0.5">
-          Configure the maximum number of active pantry items each user can hold in their personal and shared pantries.
+          Configure the maximum number of active stash items each user can hold in their personal and shared stashes.
         </p>
       </div>
 

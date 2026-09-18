@@ -311,7 +311,7 @@ export default function ScanScreen() {
         </Pressable>
         <View style={styles.heading}>
           <Text style={[styles.eyebrow, { color: theme.colors.primaryDark }]}>
-            {isManual ? 'MANUALLY INPUT' : 'PANTRY SCAN'}
+            {isManual ? 'MANUALLY INPUT' : 'STASH SCAN'}
           </Text>
           <Text style={[styles.title, { color: theme.colors.text }]}>
             {isManual ? 'Manually Input' : 'Find your item'}
@@ -413,7 +413,7 @@ export default function ScanScreen() {
               <Text style={[styles.codeText, { color: theme.colors.text }]}>{lastScanRef.current.value}</Text>
             </View>
           ) : null}
-          <Button testID="scan-add-custom-item" label="Add as Private Item for My Pantry" onPress={() => setUi({ phase: 'under-review-custom-item' })} />
+          <Button testID="scan-add-custom-item" label="Add as Private Item for My Stash" onPress={() => setUi({ phase: 'under-review-custom-item' })} />
           <Button testID="scan-again" label="Scan again" variant="outline" onPress={scanAgain} />
         </View>
       ) : null}
@@ -511,7 +511,7 @@ export default function ScanScreen() {
           {target !== 'deal' ? (
             <Button
               testID="scan-add-custom-from-not-found"
-              label="Add as Private Item for My Pantry"
+              label="Add as Private Item for My Stash"
               variant="outline"
               onPress={() => setUi({ phase: 'under-review-custom-item' })}
             />
@@ -530,7 +530,7 @@ export default function ScanScreen() {
           {target !== 'deal' ? (
             <Button
               testID="scan-add-custom-from-unavailable"
-              label="Add to Pantry Manually"
+              label="Add to Stash Manually"
               variant="outline"
               onPress={() => setUi({ phase: 'under-review-custom-item' })}
             />

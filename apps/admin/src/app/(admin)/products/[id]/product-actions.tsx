@@ -500,7 +500,7 @@ export function ProductActions({
                 onClick={() =>
                   run(
                     () => patchProductAction(id, version, { status: 'report_hidden' }),
-                    'Hide this product from search? Existing pantry references will stay intact.',
+                    'Hide this product from search? Existing stash references will stay intact.',
                   )
                 }
               >

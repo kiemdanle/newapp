@@ -61,13 +61,13 @@ export async function sendHouseholdInvitationEmail(params: {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px; background-color:#FFFFFF; border:1px solid ${PALETTE.stone}; border-radius:16px; overflow:hidden; padding:32px;">
             <tr>
               <td align="center">
-                <h1 style="margin:0 0 12px; font-size:20px; font-weight:700; color:${PALETTE.primaryDark};">Shared Pantry Invitation</h1>
+                <h1 style="margin:0 0 12px; font-size:20px; font-weight:700; color:${PALETTE.primaryDark};">Shared Stash Invitation</h1>
                 <p style="margin:0 0 24px; font-size:15px; line-height:22px; color:${PALETTE.ink};">
                   <strong>${escapeHtml(params.inviterName)}</strong> has invited you to join <strong>${escapeHtml(params.householdName)}</strong>.
                 </p>
                 <div style="background-color:${PALETTE.primaryLight}; padding:16px; border-radius:12px; margin-bottom:24px; text-align:left;">
                   <p style="margin:0; font-size:13px; line-height:18px; color:${PALETTE.primaryDark};">
-                    Joining lets you share grocery tracking, collaborate on pantries, and receive expiry reminders together.
+                    Joining lets you share grocery tracking, collaborate on stashes, and receive expiry reminders together.
                   </p>
                 </div>
                 <a href="${acceptUrl}" style="display:inline-block; background-color:${PALETTE.primary}; color:#FFFFFF; padding:14px 28px; border-radius:12px; text-decoration:none; font-weight:700; font-size:15px;">
@@ -102,7 +102,7 @@ export async function sendHouseholdJoinedConfirmationEmail(params: {
   householdName: string;
 }): Promise<void> {
   const cfg = getConfig();
-  const subject = `Welcome to ${params.householdName}'s shared pantry!`;
+  const subject = `Welcome to ${params.householdName}'s shared stash!`;
 
   const html = `<!doctype html>
 <html lang="en">

@@ -95,7 +95,7 @@ export function DraftGridActionDrawer({
             <Pressable
               testID={`draft-grid-action-add-${item.id}`}
               accessibilityRole="button"
-              accessibilityLabel={`Add ${item.name} to pantry`}
+              accessibilityLabel={`Add ${item.name} to stash`}
               disabled={isProcessing}
               onPress={() => {
                 if (!isProcessing) {

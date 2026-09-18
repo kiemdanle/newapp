@@ -21,7 +21,7 @@ export default async function AnalyticsOverviewPage() {
         <KpiCard label="Total Users" value={o.totalUsers.toLocaleString()} icon={Users} sub="All-time registered accounts" />
         <KpiCard label="Active Users (7d)" value={o.activeUsers7d.toLocaleString()} icon={Activity} sub="Active in past 7 days" />
         <KpiCard label="Active Users (30d)" value={o.activeUsers30d.toLocaleString()} icon={Users} sub="Active in past 30 days" />
-        <KpiCard label="Total Records" value={o.totalRecords.toLocaleString()} icon={Package} sub="User & household pantry items" />
+        <KpiCard label="Total Records" value={o.totalRecords.toLocaleString()} icon={Package} sub="User & household stash items" />
         <KpiCard label="Total Reviews" value={o.totalReviews.toLocaleString()} icon={MessageSquare} sub="User-submitted product ratings" />
         <KpiCard label="Barcode Scans (7d)" value={o.scans7d.toLocaleString()} icon={Smartphone} sub="Scans performed via mobile app" />
       </div>

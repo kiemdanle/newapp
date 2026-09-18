@@ -50,7 +50,7 @@ export default function ResetPassword() {
 
   return (
     <Screen backFallback="/(auth)/sign-in">
-      <AuthHeader icon="lock-closed-outline" title="Choose a new password" description="Use a strong, memorable password to protect your pantry." />
+      <AuthHeader icon="lock-closed-outline" title="Choose a new password" description="Use a strong, memorable password to protect your stash." />
       {!ticket ? (
         <>
           <ErrorText>Your reset session expired. Start over to get a new code.</ErrorText>

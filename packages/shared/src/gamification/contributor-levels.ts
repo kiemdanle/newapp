@@ -75,7 +75,7 @@ export const DEFAULT_CONTRIBUTOR_LEVELS: readonly ContributorLevelTier[] = [
   },
   {
     level: 4,
-    title: 'Pantry Scout',
+    title: 'Stash Scout',
     productsReq: 15,
     minPoints: 150,
     badgeKey: 'silver_star',

@@ -32,7 +32,7 @@ interface NavItemMeta {
 const PRIMARY_NAV_ITEMS: NavItemMeta[] = [
   {
     key: 'Home',
-    label: 'Pantry',
+    label: 'Stash',
     sublabel: 'Expiring & in stock',
     icon: 'grid-outline',
     testID: 'nav-Home',
@@ -86,10 +86,10 @@ export function LeftDrawerMenu() {
 
   const scopeLabel =
     scope === 'household'
-      ? 'Household Pantry'
+      ? 'Household Stash'
       : scope === 'personal'
-      ? 'Personal Pantry'
-      : 'All Pantries';
+      ? 'Personal Stash'
+      : 'All Stashes';
 
   const handleTabPress = (tabName: TabName) => {
     closeDrawer();

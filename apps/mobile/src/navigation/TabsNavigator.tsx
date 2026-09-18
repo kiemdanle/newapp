@@ -44,7 +44,7 @@ export const TAB_META: Record<
   Home: {
     icon: 'home',
     label: 'Home',
-    sublabel: 'Pantry inventory',
+    sublabel: 'Stash inventory',
     badgeBg: 'rgba(75, 174, 138, 0.14)',
     iconColor: '#3A8F6F',
   },

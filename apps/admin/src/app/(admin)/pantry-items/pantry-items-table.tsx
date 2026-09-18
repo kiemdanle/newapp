@@ -324,7 +324,7 @@ export function PantryItemsTable({
         <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-light/70 text-neutral-mid/80">
           <Inbox size={24} />
         </div>
-        <p className="text-sm font-semibold text-neutral-dark">No pantry items found.</p>
+        <p className="text-sm font-semibold text-neutral-dark">No stash items found.</p>
         <p className="mt-1 text-xs text-neutral-mid">No records match your active search and filter criteria.</p>
       </div>
     );

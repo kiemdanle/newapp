@@ -42,8 +42,8 @@ export default async function MergePage({
         </h1>
         <p className="text-xs text-neutral-mid leading-relaxed max-w-2xl">
           {isSourceMode
-            ? `Consolidate this product's ${winner.pantryItemCount} pantry item(s), reviews, and deals into another active canonical target. This product will be retired as merged_into.`
-            : 'Consolidate barcode scans, reviews, and pantry records from duplicate items into this canonical target product.'}
+            ? `Consolidate this product's ${winner.pantryItemCount} stash item(s), reviews, and deals into another active canonical target. This product will be retired as merged_into.`
+            : 'Consolidate barcode scans, reviews, and stash records from duplicate items into this canonical target product.'}
         </p>
       </div>
 

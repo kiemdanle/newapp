@@ -19,7 +19,7 @@ export default function Welcome() {
         <View style={[styles.hero, compact && styles.heroCompact]}>
           <AuthHeader
             title="Eat fresh, waste less."
-            description="Keep your pantry visible, catch expiry dates early, and choose what to use next."
+            description="Keep your stash visible, catch expiry dates early, and choose what to use next."
           />
         </View>
         <View style={styles.actions}>

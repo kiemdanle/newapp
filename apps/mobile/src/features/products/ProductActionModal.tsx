@@ -147,7 +147,7 @@ export function ProductActionModal({
             <Pressable
               testID="action-modal-add-btn"
               accessibilityRole="button"
-              accessibilityLabel="Add to pantry"
+              accessibilityLabel="Add to stash"
               onPress={() => onAddToPantry(product)}
               style={({ pressed }) => [
                 styles.actionCard,
@@ -164,7 +164,7 @@ export function ProductActionModal({
               </View>
               <View style={styles.actionTextCol}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.actionTitle, { color: '#2A6F54' }]}>Add to Pantry</Text>
+                  <Text style={[styles.actionTitle, { color: '#2A6F54' }]}>Add to Stash</Text>
                   <View style={styles.quickPill}>
                     <Text style={styles.quickPillText}>FAST ADD</Text>
                   </View>

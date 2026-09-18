@@ -267,7 +267,7 @@ export function HouseholdSettings({ initialJoinCode }: HouseholdSettingsProps = 
             >
               <View style={{ flex: 1, paddingRight: theme.spacing.sm }}>
                 <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: '600' }}>
-                  Default Household Pantry
+                  Default Household Stash
                 </Text>
                 <Text style={{ color: theme.colors.textMuted, fontSize: 12, marginTop: 2 }}>
                   Save newly scanned and added groceries to this household by default.

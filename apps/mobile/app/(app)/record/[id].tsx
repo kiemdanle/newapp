@@ -180,10 +180,10 @@ export default function RecordDetail() {
         </View>
         <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Unable to load item</Text>
         <Text style={[styles.emptySubcopy, { color: theme.colors.textMuted }]}>
-          {recordErrorMessage || "We couldn't connect to your pantry to load this item. Please check your network and try again."}
+          {recordErrorMessage || "We couldn't connect to your stash to load this item. Please check your network and try again."}
         </Text>
         <Button label="Retry" onPress={retryRecord} style={{ marginBottom: 12 }} />
-        <Button label="Back to pantry" variant="outline" onPress={() => navigation.goBack()} />
+        <Button label="Back to stash" variant="outline" onPress={() => navigation.goBack()} />
       </View>
     );
   }
@@ -200,9 +200,9 @@ export default function RecordDetail() {
         </View>
         <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Item not found</Text>
         <Text style={[styles.emptySubcopy, { color: theme.colors.textMuted }]}>
-          This record may have been removed from your pantry.
+          This record may have been removed from your stash.
         </Text>
-        <Button label="Back to pantry" onPress={() => navigation.goBack()} />
+        <Button label="Back to stash" onPress={() => navigation.goBack()} />
       </View>
     );
   }
@@ -210,7 +210,7 @@ export default function RecordDetail() {
     return <RecordDetailSkeleton />;
   }
 
-  const displayName = record.customName || product?.name || 'Pantry Item';
+  const displayName = record.customName || product?.name || 'Stash Item';
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
   const barcode = product?.barcode;
@@ -220,7 +220,7 @@ export default function RecordDetail() {
     if (activeGiveaways && activeGiveaways.length > 0) {
       Alert.alert(
         'Item Listed in Giveaway',
-        'This pantry item is currently offered in a community giveaway. Please cancel the giveaway before marking it as used or discarded.',
+        'This stash item is currently offered in a community giveaway. Please cancel the giveaway before marking it as used or discarded.',
         [{ text: 'OK', style: 'default' }],
       );
       return;
@@ -277,8 +277,8 @@ export default function RecordDetail() {
     const result = await restoreLocalRecord(record.id, accessibleHouseholdIds);
     if (result.wasReassignedToPersonal) {
       Alert.alert(
-        'Restored to Personal Pantry',
-        'Your previous household is no longer accessible, so this item was restored to your personal pantry.',
+        'Restored to Personal Stash',
+        'Your previous household is no longer accessible, so this item was restored to your personal stash.',
         [{ text: 'OK' }],
       );
     }
@@ -288,7 +288,7 @@ export default function RecordDetail() {
   const remove = () => {
     Alert.alert(
       'Delete Item',
-      `Are you sure you want to delete "${displayName}"? It will be removed from your pantry.`,
+      `Are you sure you want to delete "${displayName}"? It will be removed from your stash.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -336,7 +336,7 @@ export default function RecordDetail() {
       }
       setPhotoSaveState('saving');
       setUploadProgress(0.85);
-      setUploadStatusText('Saving to pantry…');
+      setUploadStatusText('Saving to stash…');
       if (useSessionStore.getState().user?.id !== userId) throw new Error('Session changed during upload');
       await saveRecordPhotos(record.id, attempt.urls);
       photoSaveAttempt.current = null;
@@ -864,7 +864,7 @@ export default function RecordDetail() {
             <View style={{ gap: 8, marginTop: 4 }}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Add another to pantry"
+                accessibilityLabel="Add another to stash"
                 onPress={() => navigation.navigate('Product', { id: catalogProductId })}
                 style={({ pressed }) => [
                   styles.catalogRow,
@@ -880,7 +880,7 @@ export default function RecordDetail() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.catalogLinkText, { color: theme.colors.text }]}>
-                    Add another to pantry
+                    Add another to stash
                   </Text>
                   <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>
                     Log another item with a different expiry date
@@ -974,7 +974,7 @@ export default function RecordDetail() {
         {record.status !== 'active' ? (
           <Button
             testID="record-restore-pantry-btn"
-            label="Restore to Pantry"
+            label="Restore to Stash"
             icon="refresh-outline"
             variant="primary"
             onPress={handleRestore}
@@ -1053,7 +1053,7 @@ export default function RecordDetail() {
         }
         subtitle={
           photoSourceModal.mode === 'cover'
-            ? 'Select a new photo to represent this pantry item'
+            ? 'Select a new photo to represent this stash item'
             : photoSourceModal.mode === 'replace'
               ? 'Update this photo with a new capture or upload'
               : 'Snap or choose photos to attach to this item (up to 5)'
@@ -1421,7 +1421,7 @@ export function RecordLocationRow({
   const canMoveToPersonal = !record.householdId || isCreator;
 
   const currentHousehold = households.find((h) => h.id === record.householdId);
-  const locationLabel = currentHousehold ? currentHousehold.name : 'Personal Pantry';
+  const locationLabel = currentHousehold ? currentHousehold.name : 'Personal Stash';
 
   return (
     <>
@@ -1432,13 +1432,13 @@ export function RecordLocationRow({
             size={15}
             color={theme.colors.textMuted}
           />
-          <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>Pantry Location</Text>
+          <Text style={[styles.specLabel, { color: theme.colors.textMuted }]}>Stash Location</Text>
         </View>
         <Pressable
           testID="record-reassign-scope-btn"
           disabled={households.length === 0}
           accessibilityRole="button"
-          accessibilityLabel={`Change pantry location, currently ${locationLabel}`}
+          accessibilityLabel={`Change stash location, currently ${locationLabel}`}
           onPress={() => setModalVisible(true)}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
         >
@@ -1469,7 +1469,7 @@ export function RecordLocationRow({
         <Pressable
           testID="reassign-modal-backdrop"
           accessibilityRole="button"
-          accessibilityLabel="Dismiss pantry move dialogue"
+          accessibilityLabel="Dismiss stash move dialogue"
           style={styles.modalBackdrop}
           onPress={() => setModalVisible(false)}
         >
@@ -1487,7 +1487,7 @@ export function RecordLocationRow({
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>
-              Move Pantry Item
+              Move Stash Item
             </Text>
             <Text style={[styles.modalSubcopy, { color: theme.colors.textMuted }]}>
               Choose where this item is stored
@@ -1499,7 +1499,7 @@ export function RecordLocationRow({
               <Pressable
                 testID="reassign-option-personal"
                 accessibilityRole="button"
-                accessibilityLabel="Move to Personal Pantry"
+                accessibilityLabel="Move to Personal Stash"
                 onPress={async () => {
                   setModalVisible(false);
                   await onReassign(null);
@@ -1541,7 +1541,7 @@ export function RecordLocationRow({
                         },
                       ]}
                     >
-                      Personal Pantry
+                      Personal Stash
                     </Text>
                     <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                       Only you can see and manage this item

@@ -67,7 +67,7 @@ export async function adminProductsDeleteRoute(app: FastifyInstance) {
             status: 409,
             code: ERROR_CODES.PRODUCT_HAS_PANTRY_ITEMS,
             title: 'Cannot delete product in use',
-            detail: `Cannot delete product: used by ${recordCount} pantry items (or has ${inboundAliases} merged aliases). Use merge instead.`,
+            detail: `Cannot delete product: used by ${recordCount} stash items (or has ${inboundAliases} merged aliases). Use merge instead.`,
             pantryItemCount: recordCount,
           });
         }

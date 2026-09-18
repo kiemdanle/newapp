@@ -183,7 +183,7 @@ describe('Contributor Levels Gamification', () => {
       expect(progress.progressPercent).toBe(50); // (20 - 10) / (30 - 10) = 50%
     });
 
-    it('computes Level 4 (Pantry Scout) at 180 points', () => {
+    it('computes Level 4 (Stash Scout) at 180 points', () => {
       // Lv 4 is 150 points, Lv 5 is 300 points (span = 150)
       // At 180 points, progress = (180 - 150) / 150 = 30 / 150 = 20%
       const progress = computeContributorProgression({
@@ -192,7 +192,7 @@ describe('Contributor Levels Gamification', () => {
       });
 
       expect(progress.currentLevel).toBe(4);
-      expect(progress.title).toBe('Pantry Scout');
+      expect(progress.title).toBe('Stash Scout');
       expect(progress.badgeKey).toBe('silver_star');
       expect(progress.colorToken).toBe('pebble');
       expect(progress.nextLevel).toBe(5);

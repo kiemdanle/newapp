@@ -35,9 +35,9 @@ export const NAV: NavSection[] = [
   // Pantry Items management is hidden and access denied per admin policy.
   // Preserved for future re-enablement without deleting functions.
   // {
-  //   title: 'Pantry',
+  //   title: 'Stash',
   //   items: [
-  //     { label: 'Pantry Items', href: '/pantry-items', icon: 'Archive' },
+  //     { label: 'Stash Items', href: '/pantry-items', icon: 'Archive' },
   //   ],
   // },
   {
@@ -76,8 +76,8 @@ export const NAV: NavSection[] = [
     items: [
       { label: 'Feature flags', href: '/settings/feature-flags', icon: 'ToggleRight' },
       { label: 'Contributor levels', href: '/settings/contributor-levels', icon: 'Award' },
-      { label: 'Pantry units', href: '/settings/pantry-units', icon: 'Scale' },
-      { label: 'Pantry limits', href: '/settings/pantry-limits', icon: 'Layers' },
+      { label: 'Stash units', href: '/settings/pantry-units', icon: 'Scale' },
+      { label: 'Stash limits', href: '/settings/pantry-limits', icon: 'Layers' },
       { label: 'Photo upload limits', href: '/settings/photo-limits', icon: 'Camera' },
       { label: 'Notification templates', href: '/settings/notification-templates', icon: 'Bell' },
       { label: 'Giveaway distance', href: '/settings/giveaways', icon: 'Compass' },

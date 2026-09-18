@@ -79,7 +79,7 @@ export function DraftSwipeableRow({
           <Pressable
             testID={`draft-swipe-add-${item.id}`}
             accessibilityRole="button"
-            accessibilityLabel={`Add ${item.name} to pantry`}
+            accessibilityLabel={`Add ${item.name} to stash`}
             onPress={() => {
               swipeableRef.current?.close();
               onAddToPantry(item);

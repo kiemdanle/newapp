@@ -95,7 +95,7 @@ export default async function PantryItemDetailPage({
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-neutral-mid hover:text-primary transition"
         >
           <ArrowLeft size={14} />
-          <span>Back to Pantry Items</span>
+          <span>Back to Stash Items</span>
         </Link>
       </div>
 

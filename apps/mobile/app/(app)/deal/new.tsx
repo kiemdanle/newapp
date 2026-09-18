@@ -153,7 +153,7 @@ export default function NewDealScreen() {
         <Pressable
           testID="deal-select-from-pantry-btn"
           accessibilityRole="button"
-          accessibilityLabel="Select from pantry"
+          accessibilityLabel="Select from stash"
           onPress={() => setShowPantryModal(true)}
           style={[
             styles.actionCardBtn,
@@ -167,10 +167,10 @@ export default function NewDealScreen() {
           <Text style={{ fontSize: 22, marginRight: 10 }}>📦</Text>
           <View style={{ flex: 1 }}>
             <Text style={{ color: theme.colors.text, fontWeight: '700', fontSize: 15 }}>
-              Select from Pantry
+              Select from Stash
             </Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-              Choose item from your pantry
+              Choose item from your stash
             </Text>
           </View>
           <Text style={{ color: theme.colors.primaryDark, fontWeight: '700' }}>Pick →</Text>

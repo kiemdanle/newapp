@@ -167,7 +167,7 @@ export async function processSendJob(data: NotificationSendJob): Promise<void> {
     };
     associatedRecordId = null;
   }
-  // 4. Pantry record expiry notifications
+  // 4. Stash record expiry notifications
   else {
     const record = await prisma.record.findUnique({
       where: { id: data.recordId },

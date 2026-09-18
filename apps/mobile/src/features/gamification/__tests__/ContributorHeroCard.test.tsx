@@ -38,7 +38,7 @@ describe('ContributorHeroCard', () => {
     levels: [...DEFAULT_CONTRIBUTOR_LEVELS],
     progression: {
       currentLevel: 4,
-      title: 'Pantry Scout',
+      title: 'Stash Scout',
       badgeKey: 'silver_star',
       colorToken: 'pebble',
       colorHex: '#8C8C85',
@@ -98,7 +98,7 @@ describe('ContributorHeroCard', () => {
     const { getByText, getByTestId } = render(<ContributorHeroCard data={baseMockData} />);
 
     expect(getByText('LVL 4')).toBeTruthy();
-    expect(getByText('Pantry Scout')).toBeTruthy();
+    expect(getByText('Stash Scout')).toBeTruthy();
     expect(getByText('180 / 300 pts')).toBeTruthy();
     expect(getByText('20 more products to Level 5 Catalog Explorer!')).toBeTruthy();
 

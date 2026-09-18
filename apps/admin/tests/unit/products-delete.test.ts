@@ -70,7 +70,7 @@ describe('Product Deletion Server Actions & Merge Routing', () => {
         status: 409,
         code: 'product_has_pantry_items',
         title: 'Cannot delete product in use',
-        detail: 'Cannot delete product: used by 3 pantry items.',
+        detail: 'Cannot delete product: used by 3 stash items.',
         pantryItemCount: 3,
       }),
     });
@@ -80,7 +80,7 @@ describe('Product Deletion Server Actions & Merge Routing', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.code).toBe('product_has_pantry_items');
-      expect(result.detail).toContain('used by 3 pantry items');
+      expect(result.detail).toContain('used by 3 stash items');
     }
   });
 

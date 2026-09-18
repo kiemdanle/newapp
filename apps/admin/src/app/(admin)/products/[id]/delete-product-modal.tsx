@@ -54,7 +54,7 @@ export function DeleteProductModal({
         if (res.code === 'product_has_pantry_items') {
           // Dynamic switch to in-use merge prompt if pantry records were added concurrently
           setPantryCount(1);
-          setError(res.detail ?? 'This product is in use by pantry items and cannot be deleted.');
+          setError(res.detail ?? 'This product is in use by stash items and cannot be deleted.');
         } else if (res.code === 'version_conflict') {
           setError('This product was modified by another administrator. Please refresh the page.');
         } else {
@@ -122,12 +122,12 @@ export function DeleteProductModal({
             {/* Explanation & Guidance */}
             <div className="rounded-xl bg-amber-50/70 border border-amber-200/70 p-3.5 space-y-2 text-xs text-amber-950 leading-relaxed">
               <p>
-                This product is currently used by <strong>{pantryCount}</strong> pantry item(s).
-                Deleting it directly would break or orphan user pantry records.
+                This product is currently used by <strong>{pantryCount}</strong> stash item(s).
+                Deleting it directly would break or orphan user stash records.
               </p>
               <p className="text-amber-900/90">
                 <strong>Recommended action:</strong> Use the Merge tool to consolidate this product into
-                another canonical product. All pantry items, reviews, and deals will be safely moved.
+                another canonical product. All stash items, reviews, and deals will be safely moved.
               </p>
             </div>
 
@@ -209,7 +209,7 @@ export function DeleteProductModal({
                 Are you sure you want to permanently delete <strong>{product.name}</strong>?
               </p>
               <p className="text-red-800/90">
-                No pantry items are currently using this product. Deleting it will permanently remove it
+                No stash items are currently using this product. Deleting it will permanently remove it
                 from the catalog, detach referencing giveaways, clean up stored photos, and release its
                 barcode/identifiers.
               </p>

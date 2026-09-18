@@ -78,7 +78,7 @@ describe('PantrySelectModal', () => {
       ),
     );
 
-    expect(getByText('Select from Pantry')).toBeTruthy();
+    expect(getByText('Select from Stash')).toBeTruthy();
     expect(getByText('Organic Soy Milk')).toBeTruthy();
     expect(getByText('3 cartons')).toBeTruthy();
     expect(getByText('Canned Sweet Corn')).toBeTruthy();

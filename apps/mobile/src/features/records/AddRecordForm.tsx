@@ -139,7 +139,7 @@ export function AddRecordForm({
   });
   const effectiveHouseholdId = lockedPersonalScope ? null : selectedHouseholdId;
   const save = async () => {
-    if (!useConnectionGuardStore.getState().requireServerConnection('Add Pantry Item', () => void save())) {
+    if (!useConnectionGuardStore.getState().requireServerConnection('Add Stash Item', () => void save())) {
       return;
     }
     if (isAtCapacity) {
@@ -344,7 +344,7 @@ export function AddRecordForm({
           <Ionicons name="warning-outline" size={20} color="#F5A623" />
           <View style={{ flex: 1 }}>
             <Text style={{ color: '#B45309', fontSize: 13, fontWeight: '700' }}>
-              Pantry Nearly Full ({myActiveCount}/{pantryLimit} items)
+              Stash Nearly Full ({myActiveCount}/{pantryLimit} items)
             </Text>
             <Text style={{ color: '#92400E', fontSize: 12, marginTop: 2 }}>
               Consider consuming or sharing items before adding more.

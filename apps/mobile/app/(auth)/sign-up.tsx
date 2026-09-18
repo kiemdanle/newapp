@@ -77,7 +77,7 @@ export default function SignUp() {
 
   return (
     <Screen backFallback="/(auth)/welcome">
-      <AuthHeader title="Create your account" description="Start tracking pantry items with expiry alerts and fresh-use suggestions." compact />
+      <AuthHeader title="Create your account" description="Start tracking stash items with expiry alerts and fresh-use suggestions." compact />
 
       <TextField
         label="Email"

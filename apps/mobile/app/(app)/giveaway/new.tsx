@@ -276,7 +276,7 @@ export default function NewGiveawayScreen() {
         <View style={styles.pantryHeroTextCol}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={[styles.pantryHeroTitle, { color: '#2A6F54' }]}>
-              Select from Your Pantry
+              Select from Your Stash
             </Text>
             <View style={styles.fastAddPill}>
               <Text style={styles.fastAddPillText}>FAST FILL</Text>

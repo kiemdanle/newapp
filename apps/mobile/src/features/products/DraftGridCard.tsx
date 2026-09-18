@@ -243,7 +243,7 @@ export function DraftGridCard({
         <Pressable
           testID={`draft-grid-add-btn-${item.id}`}
           accessibilityRole="button"
-          accessibilityLabel={`Add ${item.name} to pantry`}
+          accessibilityLabel={`Add ${item.name} to stash`}
           onPress={(e) => {
             e?.stopPropagation?.();
             onAddPress?.(item);
@@ -259,7 +259,7 @@ export function DraftGridCard({
           disabled={isSubmitting}
         >
           <Ionicons name="add" size={15} color="#2A6F54" />
-          <Text style={styles.addBtnText}>Add to Pantry</Text>
+          <Text style={styles.addBtnText}>Add to Stash</Text>
         </Pressable>
       ) : (
         <View style={styles.draftEditNotice}>

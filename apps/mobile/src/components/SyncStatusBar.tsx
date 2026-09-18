@@ -43,7 +43,7 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
       accessibilityRole="button"
       accessibilityLabel={
         isTimeout
-          ? 'Offline, showing local pantry. Tap to retry sync.'
+          ? 'Offline, showing local stash. Tap to retry sync.'
           : `Sync status: ${lastSyncError}`
       }
       style={[
@@ -71,7 +71,7 @@ export function SyncStatusBar({ style, testID }: SyncStatusBarProps) {
         numberOfLines={1}
       >
         {isTimeout
-          ? 'Offline — showing local pantry (tap to retry)'
+          ? 'Offline — showing local stash (tap to retry)'
           : 'Sync error — tap to retry'}
       </Text>
     </Pressable>

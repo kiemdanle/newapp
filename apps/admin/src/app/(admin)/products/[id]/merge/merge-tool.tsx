@@ -98,7 +98,7 @@ export function MergeTool({
   function runSourceMerge(target: Candidate) {
     if (
       !window.confirm(
-        `Merge "${winnerName}" into "${target.name}"? All ${winnerPantryItemCount} pantry records and associated data will move to "${target.name}". "${winnerName}" will be retired as merged_into.`,
+        `Merge "${winnerName}" into "${target.name}"? All ${winnerPantryItemCount} stash records and associated data will move to "${target.name}". "${winnerName}" will be retired as merged_into.`,
       )
     ) {
       return;

@@ -72,10 +72,10 @@ export default async function HouseholdsPage({
           <span>Shared Spaces</span>
         </div>
         <h1 className="text-3xl font-bold text-neutral-dark font-display tracking-tight mt-1">
-          Pantry Households
+          Stash Households
         </h1>
         <p className="text-sm text-neutral-mid mt-0.5">
-          Shared pantry management groups and household memberships.
+          Shared stash management groups and household memberships.
         </p>
       </div>
 

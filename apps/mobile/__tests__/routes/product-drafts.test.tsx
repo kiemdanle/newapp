@@ -217,7 +217,7 @@ describe('<ProductDraftsScreen />', () => {
     expect(await findByTestId('draft-swipe-add-prod-active-1')).toBeTruthy();
   });
 
-  it('swiping and tapping Add action on active row opens the Add to Pantry modal', async () => {
+  it('swiping and tapping Add action on active row opens the Add to Stash modal', async () => {
     const activeRow = { ...DRAFT_ROW, id: 'prod-active-2', name: 'Almond Butter', status: 'active' as const };
     queueFetch(jsonResponse({ items: [activeRow], nextCursor: null }));
     const { findByTestId, findByText } = render(wrap(<ProductDraftsScreen />));
@@ -225,7 +225,7 @@ describe('<ProductDraftsScreen />', () => {
     const addBtn = await findByTestId('draft-swipe-add-prod-active-2');
     fireEvent.press(addBtn);
 
-    expect(await findByText('Add to Pantry')).toBeTruthy();
+    expect(await findByText('Add to Stash')).toBeTruthy();
   });
 
   it('searches and filters drafts by query text', async () => {
@@ -592,7 +592,7 @@ describe('<ProductDraftsScreen />', () => {
     jest.useRealTimers();
   });
 
-  it('universal actions: active and pending items support Delete and draft items support Add to Pantry', async () => {
+  it('universal actions: active and pending items support Delete and draft items support Add to Stash', async () => {
     const activeRow = { ...DRAFT_ROW, id: 'active-item-1', name: 'Active Catalog Prod', status: 'active' as const };
     const pendingRow = { ...DRAFT_ROW, id: 'pending-item-1', name: 'Pending Review Prod', status: 'pending' as const };
     const draftRow = { ...DRAFT_ROW, id: 'draft-item-1', name: 'Regular Draft Prod', status: 'draft' as const };

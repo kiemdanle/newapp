@@ -24,7 +24,7 @@ export function HouseholdInviteCard({ householdId, householdName, inviteCode, is
     try {
       await Share.share({
         title: `Join ${householdName} on Expyrico`,
-        message: `Join my pantry "${householdName}" on Expyrico so we can track shared groceries and expiry together! Use invite code ${code} or tap: ${shareUrl}`,
+        message: `Join my stash "${householdName}" on Expyrico so we can track shared groceries and expiry together! Use invite code ${code} or tap: ${shareUrl}`,
         url: shareUrl,
       });
     } catch {
@@ -98,7 +98,7 @@ export function HouseholdInviteCard({ householdId, householdName, inviteCode, is
       </View>
 
       <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
-        Share this code or link with your partner, family, or roommates so they can join your shared pantry.
+        Share this code or link with your partner, family, or roommates so they can join your shared stash.
       </Text>
 
       {/* Code Display Box */}

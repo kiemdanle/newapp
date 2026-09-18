@@ -62,7 +62,7 @@ export function EditPantryItemModal({ item, onClose }: EditPantryItemModalProps)
       if (res.ok) {
         onClose();
       } else {
-        setError(res.detail ?? 'Failed to update pantry item.');
+        setError(res.detail ?? 'Failed to update stash item.');
       }
     });
   };
@@ -82,7 +82,7 @@ export function EditPantryItemModal({ item, onClose }: EditPantryItemModalProps)
             </div>
             <div>
               <h3 className="text-base font-semibold text-neutral-dark font-display">
-                Edit Pantry Item
+                Edit Stash Item
               </h3>
               <p className="text-xs text-neutral-mid truncate max-w-[340px]">
                 {item.displayName}

@@ -45,7 +45,7 @@ export function PantryLimitsForm({ initial }: { initial: PantryLimitsSettings })
         await savePantryLimitsAction({
           defaultUserPantryLimit: validLimit,
         });
-        setMsg(`Pantry item limit set to ${validLimit} items successfully.`);
+        setMsg(`Stash item limit set to ${validLimit} items successfully.`);
       } catch (e: unknown) {
         setErr(e instanceof Error ? e.message : 'Failed to save settings.');
       }
@@ -99,7 +99,7 @@ export function PantryLimitsForm({ initial }: { initial: PantryLimitsSettings })
         {/* Input & Stepper Section */}
         <div className="p-4 rounded-xl border border-stone-200/80 bg-stone-50/50 space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-neutral-dark">Maximum Active Pantry Items</h3>
+            <h3 className="text-sm font-semibold text-neutral-dark">Maximum Active Stash Items</h3>
             <p className="text-xs text-neutral-mid mt-0.5">
               Enforced per user across all personal records and household records created by the user.
             </p>
@@ -109,7 +109,7 @@ export function PantryLimitsForm({ initial }: { initial: PantryLimitsSettings })
               type="button"
               onClick={() => setLimit((prev) => clamp(prev - 5))}
               disabled={limit <= 1 || pending}
-              aria-label="Decrease pantry limit by 5"
+              aria-label="Decrease stash limit by 5"
               className="w-10 h-10 rounded-lg border border-stone-300 bg-white flex items-center justify-center text-neutral-dark hover:bg-stone-100 disabled:opacity-40 transition"
             >
               <Minus size={16} />
@@ -129,7 +129,7 @@ export function PantryLimitsForm({ initial }: { initial: PantryLimitsSettings })
               type="button"
               onClick={() => setLimit((prev) => clamp(prev + 5))}
               disabled={limit >= 10000 || pending}
-              aria-label="Increase pantry limit by 5"
+              aria-label="Increase stash limit by 5"
               className="w-10 h-10 rounded-lg border border-stone-300 bg-white flex items-center justify-center text-neutral-dark hover:bg-stone-100 disabled:opacity-40 transition"
             >
               <Plus size={16} />
@@ -211,7 +211,7 @@ export function PantryLimitsForm({ initial }: { initial: PantryLimitsSettings })
               <h2 className="text-base font-bold text-neutral-dark">Confirm Limit Reduction</h2>
             </div>
             <p className="text-xs text-neutral-mid leading-relaxed">
-              Are you sure you want to reduce the default pantry limit from{' '}
+              Are you sure you want to reduce the default stash limit from{' '}
               <strong className="text-neutral-dark">{initial.defaultUserPantryLimit}</strong> to{' '}
               <strong className="text-neutral-dark">{limit}</strong> items?
             </p>

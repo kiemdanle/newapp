@@ -82,7 +82,7 @@ export default async function GiveawaysPage({
           <span>Surplus Sharing</span>
         </div>
         <h1 className="text-3xl font-bold text-neutral-dark font-display tracking-tight mt-1">
-          Pantry Giveaways
+          Stash Giveaways
         </h1>
         <p className="text-sm text-neutral-mid mt-0.5">
           Monitor community food surplus giveaways, claim hand-offs, and completion states.

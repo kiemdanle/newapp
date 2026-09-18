@@ -39,7 +39,7 @@ function PantryItemRow({
 }) {
   const theme = useTheme();
   const { data: product } = useProduct(record.productId ?? undefined);
-  const displayName = record.customName || product?.name || 'Pantry item';
+  const displayName = record.customName || product?.name || 'Stash item';
   const brand = record.brand || product?.brand;
   const category = record.category || product?.category;
   const imageUrl =
@@ -183,7 +183,7 @@ export function PantrySelectModal({ visible, onClose, onSelectRecord }: PantrySe
           <View style={[styles.sheetHeader, { borderBottomColor: theme.colors.border }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.sheetTitle, { color: theme.colors.text }]}>
-                Select from Pantry
+                Select from Stash
               </Text>
               <Text style={[styles.sheetSubtitle, { color: theme.colors.textMuted }]}>
                 Choose an item to auto-fill details, photos, and expiry date.
@@ -191,7 +191,7 @@ export function PantrySelectModal({ visible, onClose, onSelectRecord }: PantrySe
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close pantry selection"
+              accessibilityLabel="Close stash selection"
               onPress={onClose}
               style={[styles.closeBtn, { backgroundColor: theme.colors.bgElevated }]}
             >
@@ -214,7 +214,7 @@ export function PantrySelectModal({ visible, onClose, onSelectRecord }: PantrySe
               <Ionicons name="search-outline" size={18} color={theme.colors.textMuted} />
               <TextInput
                 testID="pantry-select-search-input"
-                accessibilityLabel="Search pantry items"
+                accessibilityLabel="Search stash items"
                 placeholder="Search by name, category, or note…"
                 placeholderTextColor={theme.colors.textMuted}
                 value={searchQuery}
@@ -252,12 +252,12 @@ export function PantrySelectModal({ visible, onClose, onSelectRecord }: PantrySe
               <View style={styles.emptyWrap}>
                 <Ionicons name="file-tray-outline" size={40} color={theme.colors.textMuted} />
                 <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
-                  {searchQuery ? 'No matching pantry items' : 'Your pantry is empty'}
+                  {searchQuery ? 'No matching stash items' : 'Your stash is empty'}
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: theme.colors.textMuted }]}>
                   {searchQuery
                     ? 'Try searching with another keyword.'
-                    : 'Add items to your pantry first or enter giveaway details manually.'}
+                    : 'Add items to your stash first or enter giveaway details manually.'}
                 </Text>
               </View>
             }

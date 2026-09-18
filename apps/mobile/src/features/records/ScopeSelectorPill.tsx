@@ -25,7 +25,7 @@ export function ScopeSelectorPill({
   selectedHouseholdId,
   onChange,
   testID = 'scope-selector-pill',
-  label = 'Save to pantry:',
+  label = 'Save to stash:',
   canMoveToPersonal = true,
 }: ScopeSelectorPillProps) {
   const theme = useTheme();
@@ -46,7 +46,7 @@ export function ScopeSelectorPill({
     if (!canMoveToPersonal) {
       Alert.alert(
         'Creator only',
-        'Only the item creator can move it to personal pantry',
+        'Only the item creator can move it to personal stash',
         [{ text: 'OK' }],
       );
       return;
@@ -83,7 +83,7 @@ export function ScopeSelectorPill({
         <Pressable
           testID={`${testID}-personal`}
           accessibilityRole="button"
-          accessibilityLabel="Personal pantry"
+          accessibilityLabel="Personal stash"
           onPress={handlePersonalPress}
           style={[
             styles.segment,

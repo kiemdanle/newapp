@@ -12,7 +12,7 @@ export default async function SettingsPantryUnitsPage() {
       <div>
         <div className="flex items-center gap-2 text-xs font-semibold text-primary uppercase tracking-wider">
           <Scale size={14} />
-          <span>Pantry Configuration</span>
+          <span>Stash Configuration</span>
         </div>
         <h1 className="text-3xl font-bold text-neutral-dark font-display tracking-tight mt-1">
           Default Grocery Units

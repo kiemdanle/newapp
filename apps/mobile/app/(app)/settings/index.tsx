@@ -31,7 +31,7 @@ const ACCOUNT_ROWS: Row[] = [
   {
     key: 'household',
     label: 'Household',
-    subtitle: 'Share a pantry with your people',
+    subtitle: 'Share a stash with your people',
     screen: 'Household',
     icon: 'home-outline',
   },
@@ -144,7 +144,7 @@ export default function SettingsIndex() {
           <Pressable
             testID="settings-row-default-pantry"
             accessibilityRole="button"
-            accessibilityLabel="Default Pantry for New Items"
+            accessibilityLabel="Default Stash for New Items"
             onPress={() => setDefaultPantryModalVisible(true)}
             style={({ pressed }) => [
               styles.row,
@@ -172,7 +172,7 @@ export default function SettingsIndex() {
                   fontWeight: theme.typeRamp.titleMedium.fontWeight as any,
                 }}
               >
-                Default Pantry
+                Default Stash
               </Text>
               <Text
                 style={{

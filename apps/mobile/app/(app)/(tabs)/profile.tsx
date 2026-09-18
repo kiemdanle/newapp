@@ -507,7 +507,7 @@ export default function Profile() {
 
         <View style={styles.footerNote}>
           <Text style={[styles.footerText, { color: theme.colors.textMuted }]}>
-            Expyrico • Fresh & Waste-Free Pantry
+            Expyrico • Fresh & Waste-Free Stash
           </Text>
         </View>
       </View>

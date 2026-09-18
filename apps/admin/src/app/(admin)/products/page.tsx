@@ -108,7 +108,7 @@ export default async function ProductsPage({
     },
     { header: 'Status', cell: (p) => <StatusBadge status={p.status} /> },
     {
-      header: 'Pantry Items',
+      header: 'Stash Items',
       cell: (p) => (
         <span
           className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${

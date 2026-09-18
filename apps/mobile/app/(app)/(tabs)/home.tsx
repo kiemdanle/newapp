@@ -84,7 +84,7 @@ export default function HomeTab() {
           <Logo size={28} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={[styles.greeting, { color: theme.colors.text }]} numberOfLines={1}>
-              Pantry
+              Stash
             </Text>
           </View>
         </View>
@@ -131,7 +131,7 @@ export default function HomeTab() {
           <Pressable
             testID="home-share-pantry-btn"
             accessibilityRole="button"
-            accessibilityLabel="Share pantry with family or roommates"
+            accessibilityLabel="Share stash with family or roommates"
             onPress={() => navigation.navigate('Household')}
             style={({ pressed }) => ({
               width: 44,
@@ -222,7 +222,7 @@ export default function HomeTab() {
           testID="pantry-tab-history"
           accessibilityRole="tab"
           accessibilityState={{ selected: activeTab === 'history' }}
-          accessibilityLabel={`Pantry history and discarded items, ${allHistoryRecords.length} items`}
+          accessibilityLabel={`Stash history and discarded items, ${allHistoryRecords.length} items`}
           onPress={() => setActiveTab('history')}
           style={[
             styles.tabItem,
@@ -278,7 +278,7 @@ export default function HomeTab() {
     <View style={[styles.emptyCard, { backgroundColor: theme.colors.bgGlass, borderColor: theme.colors.border, borderRadius: theme.radii.lg }]}>
       <View style={[styles.emptyIcon, { backgroundColor: theme.colors.primaryLight, borderRadius: theme.radii.md }]}><Ionicons name="basket-outline" size={28} color={theme.colors.primaryDark} /></View>
       <Text style={[styles.emptyEyebrow, { color: theme.colors.primaryDark }]}>START FRESH</Text>
-      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Start your pantry</Text>
+      <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>Start your stash</Text>
       <Text style={[styles.emptyBody, { color: theme.colors.textMuted }]}>Scan the first item on your shelf and we’ll help you use it on time.</Text>
     </View>
   );

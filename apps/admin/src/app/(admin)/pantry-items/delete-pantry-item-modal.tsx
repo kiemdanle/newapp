@@ -32,7 +32,7 @@ export function DeletePantryItemModal({
           router.push('/pantry-items');
         }
       } else {
-        setError(res.detail ?? 'Failed to delete pantry item.');
+        setError(res.detail ?? 'Failed to delete stash item.');
       }
     });
   };

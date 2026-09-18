@@ -86,10 +86,10 @@ export default async function OverviewPage() {
           sub="Monthly engagement"
         />
         <KpiCard
-          label="Pantry Records"
+          label="Stash Records"
           value={o.totalRecords.toLocaleString()}
           icon={Package}
-          sub="Tracked pantry items"
+          sub="Tracked stash items"
         />
         <KpiCard
           label="Product Reviews"

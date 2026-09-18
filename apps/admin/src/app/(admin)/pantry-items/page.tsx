@@ -54,10 +54,10 @@ export default async function PantryItemsPage({
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-neutral-dark font-display">
-                Pantry Items
+                Stash Items
               </h1>
               <p className="text-xs text-neutral-mid mt-0.5">
-                Manage, search, filter, and inspect user pantry items across the entire platform.
+                Manage, search, filter, and inspect user stash items across the entire platform.
               </p>
             </div>
           </div>
